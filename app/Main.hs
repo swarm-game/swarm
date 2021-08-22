@@ -17,9 +17,10 @@ import           Linear
 
 import           Brick
 import           Brick.BChan
-import qualified Brick.Widgets.Border       as B
+import           Brick.Widgets.Border       (border, borderWithLabel, hBorder,
+                                             vBorder)
 import qualified Brick.Widgets.Border.Style as BS
-import qualified Brick.Widgets.Center       as C
+import           Brick.Widgets.Center       (center, hCenter, vCenter)
 import qualified Graphics.Vty               as V
 
 import           Data.Text                  (Text)
@@ -135,6 +136,26 @@ vLeft (V2 x y) = V2 (-y) (x)
 vRight (V2 x y) = V2 y (-x)
 
 ------------------------------------------------------------
+-- Resources
+
+data ResourceInfo = RI
+  { _resourceChar :: Char
+  , _resourceName :: Text
+  , _resourceAttr :: AttrName
+  }
+
+makeLenses ''ResourceInfo
+
+resourceMap :: Map Char ResourceInfo
+resourceMap = M.fromList $
+  [ ('T', RI 'T' "Tree"   treeAttr)
+  , ('*', RI '*' "Flower" flowerAttr)
+  , ('.', RI '.' "Dirt"   dirtAttr)
+  , ('O', RI 'O' "Rock"   rockAttr)
+  , (' ', RI ' ' "Air"    defAttr)
+  ]
+
+------------------------------------------------------------
 -- UI
 
 data Tick = Tick
@@ -150,12 +171,22 @@ app = App
   , appAttrMap      = const theMap
   }
 
-robotAttr :: AttrName
-robotAttr = "robotAttr"
+robotAttr, treeAttr, flowerAttr, dirtAttr, rockAttr, defAttr :: AttrName
+robotAttr  = "robotAttr"
+treeAttr   = "treeAttr"
+flowerAttr = "flowerAttr"
+dirtAttr   = "dirtAttr"
+rockAttr   = "rockAttr"
+defAttr    = "defAttr"
 
 theMap :: AttrMap
 theMap = attrMap V.defAttr
   [ (robotAttr, fg V.cyan `V.withStyle` V.bold)
+  , (treeAttr, fg V.green)
+  , (flowerAttr, fg V.yellow)
+  , (dirtAttr, fg (V.rgbColor 165 42 42))
+  , (rockAttr, fg (V.rgbColor 80 80 80))
+  , (defAttr, V.defAttr)
   ]
 
 handleEvent :: GameState -> BrickEvent Name Tick -> EventM Name (Next GameState)
@@ -166,18 +197,29 @@ handleEvent g _                                     = continue g
 
 drawUI :: GameState -> [Widget Name]
 drawUI g =
-  [ C.center $ drawWorld g <+> padLeft (Pad 2) (drawInventory (g ^. inventory))]
+  [ joinBorders
+  $ border
+  $ vBox
+    [ hBox
+      [ hLimitPercent 75 $ drawWorld g
+      , vBorder
+      , drawInventory $ g ^. inventory
+      ]
+    , hBorder
+    , vLimit 10 $ center $ str "REPL"
+    ]
+  ]
 
 drawWorld :: GameState -> Widget Name
-drawWorld g = withBorderStyle BS.unicode
-  $ B.border
+drawWorld g
+  = center
   $ padAll 1
   $ vBox (imap (\r -> hBox . imap (\c x -> drawLoc r c x)) (g ^. world))
   where
     robotLocs = M.fromList $ g ^.. robots . traverse . lensProduct location direction
     drawLoc r c x = case M.lookup (V2 r c) robotLocs of
       Just dir -> withAttr robotAttr $ str (robotDir dir)
-      Nothing  -> str [x]
+      Nothing  -> drawResource x
 
 robotDir (V2 0 1)    = "▶"
 robotDir (V2 0 (-1)) = "◀"
@@ -185,26 +227,38 @@ robotDir (V2 1 0)    = "▼"
 robotDir (V2 (-1) 0) = "▲"
 
 drawInventory :: Map Item Int -> Widget Name
-drawInventory inv = withBorderStyle BS.unicode
-  $ B.borderWithLabel (str "Inventory")
-  $ padAll 1
-  $ vLimit 10
-  $ padBottom Max
-  $ vBox
-  $ map drawItem (M.assocs inv)
+drawInventory inv
+  = vBox
+  [ hCenter (str "Inventory")
+  , padAll 2
+    $ padBottom Max
+    $ vBox
+    $ map drawItem (M.assocs inv)
+  ]
 
 drawItem :: (Item, Int) -> Widget Name
-drawItem (Resource c, n) = padRight (Pad 1) (str [c]) <+> showCount n
+drawItem (Resource c, n) = drawNamedResource c <+> showCount n
   where
-    showCount = hLimit 7 . padLeft Max . str . show
+    showCount = padLeft Max . str . show
+
+drawNamedResource :: Char -> Widget Name
+drawNamedResource c = case M.lookup c resourceMap of
+  Nothing -> str [c]
+  Just (RI _ nm attr) ->
+    hBox [ withAttr attr (padRight (Pad 2) (str [c])), txt nm ]
+
+drawResource :: Char -> Widget Name
+drawResource c = case M.lookup c resourceMap of
+  Nothing            -> str [c]
+  Just (RI _ _ attr) -> withAttr attr (str [c])
 
 ------------------------------------------------------------
 
 testGameState :: GameState
-testGameState = GameState [] [Robot (V2 0 0) (V2 0 1) testProgram] ["*.*$", "%**a"] M.empty
+testGameState = GameState [] [Robot (V2 0 0) (V2 0 1) testProgram] ["TT*O", "T*.O"] M.empty
 
 testProgram :: Program
-testProgram = [Wait, Harvest, Move, Harvest, TR, Move, Harvest, TL, Move, Harvest, Harvest]
+testProgram = [Wait, Harvest, Move, Harvest, TR, Move, Harvest, TL, Move, Harvest, Harvest, Move, Harvest]
 
 main :: IO ()
 main = do
