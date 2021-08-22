@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
+-- XXX way to configure to use fancy Unicode characters or stick to ASCII
+
 module Main where
 
 import           Control.Concurrent         (forkIO, threadDelay)
@@ -181,7 +183,7 @@ defAttr    = "defAttr"
 
 theMap :: AttrMap
 theMap = attrMap V.defAttr
-  [ (robotAttr, fg V.cyan `V.withStyle` V.bold)
+  [ (robotAttr, fg V.white `V.withStyle` V.bold)
   , (treeAttr, fg V.green)
   , (flowerAttr, fg V.yellow)
   , (dirtAttr, fg (V.rgbColor 165 42 42))
@@ -265,7 +267,7 @@ main = do
   chan <- newBChan 10
   forkIO $ forever $ do
     writeBChan chan Tick
-    threadDelay 500000 -- decides how fast your game moves
+    threadDelay 500000
   let buildVty = V.mkVty V.defaultConfig
   initialVty <- buildVty
   void $ customMain initialVty buildVty (Just chan) app testGameState
