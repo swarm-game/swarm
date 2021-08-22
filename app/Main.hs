@@ -1,5 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TemplateHaskell       #-}
 
 -- XXX way to configure to use fancy Unicode characters or stick to ASCII
 
@@ -21,8 +23,9 @@ import           System.Random              (randomRIO)
 
 import           Brick
 import           Brick.BChan
-import           Brick.Widgets.Border       (border, borderWithLabel, hBorder,
-                                             vBorder)
+import           Brick.Focus
+import           Brick.Widgets.Border       (border, borderAttr,
+                                             borderWithLabel, hBorder, vBorder)
 import qualified Brick.Widgets.Border.Style as BS
 import           Brick.Widgets.Center       (center, hCenter, vCenter)
 import qualified Graphics.Vty               as V
@@ -101,11 +104,23 @@ data GameState = GameState
   , _robots      :: [Robot]
   , _world       :: [[Char]]
   , _inventory   :: Map Item Int
+
+  , _uiState     :: UIState
   }
-  deriving (Eq, Ord, Show)
+
+data Name
+  = REPLPanel
+  | WorldPanel
+  | InfoPanel
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
+data UIState = UIState
+  { _uiFocusRing :: FocusRing Name
+  }
 
 makeLenses ''Robot
 makeLenses ''GameState
+makeLenses ''UIState
 
 step :: State GameState ()
 step = do
@@ -123,9 +138,9 @@ stepRobot r = case r ^. robotProgram of
 
 exec :: Command -> Robot -> State GameState Robot
 exec Wait    r = return r
-exec Move    r = return $ (r & location %~ (^+^ (r ^. direction)))
-exec TL      r = return $ (r & direction %~ vLeft)
-exec TR      r = return $ (r & direction %~ vRight)
+exec Move    r = return (r & location %~ (^+^ (r ^. direction)))
+exec TL      r = return (r & direction %~ vLeft)
+exec TR      r = return (r & direction %~ vRight)
 exec Harvest r = do
   let V2 row col = r ^. location
   mh <- preuse $ world . ix row . ix col
@@ -136,7 +151,7 @@ exec Harvest r = do
       inventory . at (Resource h) . non 0 += 1
   return r
 
-vLeft (V2 x y) = V2 (-y) (x)
+vLeft (V2 x y) = V2 (-y) x
 vRight (V2 x y) = V2 y (-x)
 
 ------------------------------------------------------------
@@ -151,7 +166,7 @@ data ResourceInfo = RI
 makeLenses ''ResourceInfo
 
 resourceMap :: Map Char ResourceInfo
-resourceMap = M.fromList $
+resourceMap = M.fromList
   [ ('T', RI 'T' "Tree"   plantAttr)
   , (',', RI ',' "Grass"  plantAttr)
   , ('*', RI '*' "Flower" flowerAttr)
@@ -168,24 +183,14 @@ resourceList = M.keys resourceMap
 
 data Tick = Tick
 
-type Name = ()
-
-app :: App GameState Tick Name
-app = App
-  { appDraw         = drawUI
-  , appChooseCursor = neverShowCursor
-  , appHandleEvent  = handleEvent
-  , appStartEvent   = return
-  , appAttrMap      = const theMap
-  }
-
-robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, defAttr :: AttrName
-robotAttr  = "robotAttr"
-plantAttr  = "plantAttr"
-flowerAttr = "flowerAttr"
-dirtAttr   = "dirtAttr"
-rockAttr   = "rockAttr"
-defAttr    = "defAttr"
+robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, highlightAttr, defAttr :: AttrName
+robotAttr     = "robotAttr"
+plantAttr     = "plantAttr"
+flowerAttr    = "flowerAttr"
+dirtAttr      = "dirtAttr"
+rockAttr      = "rockAttr"
+highlightAttr = "highlightAttr"
+defAttr       = "defAttr"
 
 theMap :: AttrMap
 theMap = attrMap V.defAttr
@@ -194,49 +199,71 @@ theMap = attrMap V.defAttr
   , (flowerAttr, fg V.yellow)
   , (dirtAttr, fg (V.rgbColor 165 42 42))
   , (rockAttr, fg (V.rgbColor 80 80 80))
+  , (highlightAttr, fg V.cyan)
   , (defAttr, V.defAttr)
   ]
 
+data Panel n = Panel { _panelName :: n, _panelContent :: Widget n }
+
+makeLenses ''Panel
+
+instance Named (Panel n) n where
+  getName = view panelName
+
+drawPanel :: Eq n => FocusRing n -> Panel n -> Widget n
+drawPanel fr p = withFocusRing fr drawPanel' p
+  where
+    drawPanel' :: Bool -> Panel n -> Widget n
+    drawPanel' focused p
+      = (if focused then overrideAttr borderAttr plantAttr else id)
+      $ border (p ^. panelContent)
+
+panel :: Eq n => FocusRing n -> n -> Widget n -> Widget n
+panel fr nm w = drawPanel fr (Panel nm w)
+
 handleEvent :: GameState -> BrickEvent Name Tick -> EventM Name (Next GameState)
-handleEvent g (AppEvent Tick)                       = continue $ doStep g
-handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
-handleEvent g (VtyEvent (V.EvKey V.KEsc []))        = halt g
-handleEvent g _                                     = continue g
+handleEvent g (AppEvent Tick)                        = continue $ doStep g
+handleEvent g (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ g & uiState . uiFocusRing %~ focusNext
+handleEvent g (VtyEvent (V.EvKey V.KBackTab []))     = continue $ g & uiState . uiFocusRing %~ focusPrev
+handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') []))  = halt g
+handleEvent g (VtyEvent (V.EvKey V.KEsc []))         = halt g
+handleEvent g _                                      = continue g
 
 drawUI :: GameState -> [Widget Name]
 drawUI g =
-  [ joinBorders
-  $ border
-  $ vBox
+  [ vBox
     [ hBox
-      [ hLimitPercent 75 $ drawWorld g
-      , vBorder
-      , drawInventory $ g ^. inventory
+      [ panel fr WorldPanel $ hLimitPercent 75 $ drawWorld g
+      , panel fr InfoPanel $ drawInventory $ g ^. inventory
       ]
-    , hBorder
-    , vLimit 10 $ center $ str "REPL"
+    , panel fr REPLPanel $ vLimit 10 $ center $ str "REPL"
     ]
   ]
+  where
+    fr = g ^. uiState . uiFocusRing
 
 drawWorld :: GameState -> Widget Name
 drawWorld g
   = center
   $ padAll 1
-  $ vBox (imap (\r -> hBox . imap (\c x -> drawLoc r c x)) (g ^. world))
+  $ vBox (imap (\r -> hBox . imap (drawLoc r)) (g ^. world))
   where
     robotLocs = M.fromList $ g ^.. robots . traverse . lensProduct location direction
     drawLoc r c x = case M.lookup (V2 r c) robotLocs of
-      Just dir -> withAttr robotAttr $ str (robotDir dir)
+      Just dir -> withAttr robotAttr $ txt (robotDir dir)
       Nothing  -> drawResource x
 
+robotDir :: V2 Int -> Text
 robotDir (V2 0 1)    = "▶"
 robotDir (V2 0 (-1)) = "◀"
 robotDir (V2 1 0)    = "▼"
 robotDir (V2 (-1) 0) = "▲"
+robotDir _           = "■"
 
 drawInventory :: Map Item Int -> Widget Name
 drawInventory inv
-  = vBox
+  = padBottom Max
+  $ vBox
   [ hCenter (str "Inventory")
   , padAll 2
     $ vBox
@@ -261,10 +288,26 @@ drawResource c = case M.lookup c resourceMap of
   Nothing            -> str [c]
   Just (RI _ _ attr) -> withAttr attr (str [c])
 
+app :: App GameState Tick Name
+app = App
+  { appDraw         = drawUI
+  , appChooseCursor = neverShowCursor
+  , appHandleEvent  = handleEvent
+  , appStartEvent   = return
+  , appAttrMap      = const theMap
+  }
+
 ------------------------------------------------------------
 
+initFocusRing :: FocusRing Name
+initFocusRing = focusRing [REPLPanel, InfoPanel, WorldPanel]
+
+initUIState :: UIState
+initUIState = UIState initFocusRing
+
 testGameState :: GameState
-testGameState = GameState [] [Robot (V2 0 0) (V2 0 1) testProgram] ["TT*O", "T*.O"] M.empty
+testGameState
+  = GameState [] [Robot (V2 0 0) (V2 0 1) testProgram] ["TT*O", "T*.O"] M.empty initUIState
 
 testProgram :: Program
 testProgram = [Wait, Harvest, Move, Harvest, TR, Move, Harvest, TL, Move, Harvest, Harvest, Move, Harvest]
@@ -286,6 +329,7 @@ initGameState = do
       ]
       (chunksOf initCs (map (resourceList!!) rs))
       M.empty
+      initUIState
 
 main :: IO ()
 main = do
