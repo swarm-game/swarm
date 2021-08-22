@@ -9,6 +9,7 @@ import           Control.Concurrent         (forkIO, threadDelay)
 import           Control.Lens
 import           Control.Lens.Unsound       (lensProduct)
 import           Control.Monad.State
+import           Data.List.Split            (chunksOf)
 import           Data.Map                   (Map)
 import qualified Data.Map                   as M
 import           Data.Maybe
@@ -16,6 +17,7 @@ import           Data.Set                   (Set)
 import qualified Data.Set                   as S
 import           Data.Void
 import           Linear
+import           System.Random              (randomRIO)
 
 import           Brick
 import           Brick.BChan
@@ -150,12 +152,16 @@ makeLenses ''ResourceInfo
 
 resourceMap :: Map Char ResourceInfo
 resourceMap = M.fromList $
-  [ ('T', RI 'T' "Tree"   treeAttr)
+  [ ('T', RI 'T' "Tree"   plantAttr)
+  , (',', RI ',' "Grass"  plantAttr)
   , ('*', RI '*' "Flower" flowerAttr)
   , ('.', RI '.' "Dirt"   dirtAttr)
   , ('O', RI 'O' "Rock"   rockAttr)
   , (' ', RI ' ' "Air"    defAttr)
   ]
+
+resourceList :: [Char]
+resourceList = M.keys resourceMap
 
 ------------------------------------------------------------
 -- UI
@@ -173,9 +179,9 @@ app = App
   , appAttrMap      = const theMap
   }
 
-robotAttr, treeAttr, flowerAttr, dirtAttr, rockAttr, defAttr :: AttrName
+robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, defAttr :: AttrName
 robotAttr  = "robotAttr"
-treeAttr   = "treeAttr"
+plantAttr  = "plantAttr"
 flowerAttr = "flowerAttr"
 dirtAttr   = "dirtAttr"
 rockAttr   = "rockAttr"
@@ -184,7 +190,7 @@ defAttr    = "defAttr"
 theMap :: AttrMap
 theMap = attrMap V.defAttr
   [ (robotAttr, fg V.white `V.withStyle` V.bold)
-  , (treeAttr, fg V.green)
+  , (plantAttr, fg V.green)
   , (flowerAttr, fg V.yellow)
   , (dirtAttr, fg (V.rgbColor 165 42 42))
   , (rockAttr, fg (V.rgbColor 80 80 80))
@@ -233,9 +239,10 @@ drawInventory inv
   = vBox
   [ hCenter (str "Inventory")
   , padAll 2
-    $ padBottom Max
     $ vBox
     $ map drawItem (M.assocs inv)
+  , padLeftRight 1
+    $ txtWrap "Hello there, this is some long text, to see how the text wrapping feature works. Seems like it works great! Blah blah blah, I like long descriptive texts."
   ]
 
 drawItem :: (Item, Int) -> Widget Name
@@ -262,6 +269,24 @@ testGameState = GameState [] [Robot (V2 0 0) (V2 0 1) testProgram] ["TT*O", "T*.
 testProgram :: Program
 testProgram = [Wait, Harvest, Move, Harvest, TR, Move, Harvest, TL, Move, Harvest, Harvest, Move, Harvest]
 
+longTestProgram :: Program
+longTestProgram = take 100 $ cycle [Harvest, Move, TR, Harvest, Move, TL]
+
+initRs = 50
+initCs = 50
+
+initGameState :: IO GameState
+initGameState = do
+  rs <- replicateM (initRs * initCs) (randomRIO (0, length resourceList - 1))
+  return $
+    GameState
+      []
+      [ Robot (V2 0 0) (V2 0 1) longTestProgram
+      , Robot (V2 15 3) (V2 0 1) longTestProgram
+      ]
+      (chunksOf initCs (map (resourceList!!) rs))
+      M.empty
+
 main :: IO ()
 main = do
   chan <- newBChan 10
@@ -270,4 +295,5 @@ main = do
     threadDelay 500000
   let buildVty = V.mkVty V.defaultConfig
   initialVty <- buildVty
-  void $ customMain initialVty buildVty (Just chan) app testGameState
+  g <- initGameState
+  void $ customMain initialVty buildVty (Just chan) app g
