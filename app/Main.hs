@@ -101,13 +101,10 @@ parseCommand =
   <|> Turn    <$> (reserved "turn" *> parseDirection)
   <|> Harvest <$  reserved "harvest"
   <|> parseBlock
-  <|> Build   <$> (reserved "build" *> parseCmdArg)
+  <|> Build   <$> (reserved "build" *> parseCommand)
 
 parseBlock :: Parser Command
 parseBlock = Block <$> braces parseProgram
-
-parseCmdArg :: Parser Command
-parseCmdArg = parens parseCommand <|> parseBlock
 
 parseDirection :: Parser Direction
 parseDirection =
