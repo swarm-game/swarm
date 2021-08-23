@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TemplateHaskell       #-}
 
 -- XXX way to configure to use fancy Unicode characters or stick to ASCII
 
@@ -18,7 +17,6 @@ import qualified Data.Map                   as M
 import           Data.Maybe
 import           Data.Set                   (Set)
 import qualified Data.Set                   as S
-import           Data.Void
 import           Linear
 import           System.Random              (randomRIO)
 
@@ -34,113 +32,14 @@ import qualified Graphics.Vty               as V
 
 import           Brick.Widgets.Dialog
 import           Data.Text                  (Text)
-import           Text.Megaparsec            hiding (State)
-import           Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
 
 import           Swarm.AST
-
-------------------------------------------------------------
--- Parsing
-------------------------------------------------------------
-
-type Parser = Parsec Void Text
-
---------------------------------------------------
--- Lexer
-
-sc :: Parser ()
-sc = L.space
-  space1
-  (L.skipLineComment "//")
-  (L.skipBlockComment "/*" "*/")
-
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
-
-symbol :: Text -> Parser Text
-symbol = L.symbol sc
-
-reserved :: Text -> Parser ()
-reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
-
-integer :: Parser Integer
-integer = lexeme L.decimal
-
-braces :: Parser a -> Parser a
-braces = between (symbol "{") (symbol "}")
-
-parens :: Parser a -> Parser a
-parens = between (symbol "(") (symbol ")")
-
---------------------------------------------------
--- Parser
-
-parseCommand :: Parser Command
-parseCommand =
-      Wait    <$  reserved "wait"
-  <|> Move    <$  reserved "move"
-  <|> Turn    <$> (reserved "turn" *> parseDirection)
-  <|> Harvest <$  reserved "harvest"
-  <|> Block   <$> braces parseProgram
-  <|> Repeat  <$> (reserved "repeat" *> integer) <*> parseCommand
-  <|> Build   <$> (reserved "build" *> parseCommand)
-
-parseDirection :: Parser Direction
-parseDirection =
-      Lt    <$ reserved "left"
-  <|> Rt    <$ reserved "right"
-  <|> North <$ reserved "north"
-  <|> South <$ reserved "south"
-  <|> East  <$ reserved "east"
-  <|> West  <$ reserved "west"
-
-parseProgram :: Parser Program
-parseProgram = sepEndBy parseCommand (symbol ";")
+import           Swarm.Game
+import           Swarm.Parse
 
 ------------------------------------------------------------
 -- State machine
 ------------------------------------------------------------
-
-data Tick = Tick
-
-data Robot = Robot
-  { _location     :: V2 Int
-  , _direction    :: V2 Int
-  , _robotProgram :: Program
-  , _static       :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-data Item = Resource Char
-  deriving (Eq, Ord, Show)
-
-data GameState = GameState
-  { _robots    :: [Robot]
-  , _newRobots :: [Robot]
-  , _world     :: [[Char]]
-  , _inventory :: Map Item Int
-  , _uiState   :: UIState
-  }
-
-data Name
-  = REPLPanel
-  | WorldPanel
-  | InfoPanel
-  | REPLInput
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
-data UIState = UIState
-  { _uiFocusRing   :: FocusRing Name
-  , _uiReplForm    :: Form Text Tick Name
-  , _uiReplHistory :: [Text]
-  , _uiReplHistIdx :: Int
-  , _uiError       :: Maybe (Widget Name)
-  }
-
-makeLenses ''Robot
-makeLenses ''GameState
-makeLenses ''UIState
 
 mkBase :: Command -> Robot
 mkBase cmd = Robot (V2 0 0) (V2 0 0) [cmd] True
