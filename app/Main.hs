@@ -423,12 +423,7 @@ initGameState :: IO GameState
 initGameState = do
   rs <- replicateM (initRs * initCs) (randomRIO (0, length resourceList - 1))
   return $
-    GameState
-      [
-      --   Robot (V2 0 0) (V2 0 1) longTestProgram
-      -- , Robot (V2 15 3) (V2 0 1) longTestProgram
-      ]
-      []
+    GameState [] []
       (chunksOf initCs (map (resourceList!!) rs))
       M.empty
       initUIState
