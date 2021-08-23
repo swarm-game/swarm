@@ -8,10 +8,12 @@ module Swarm.Game
 
 import           Control.Lens
 import           Control.Monad.State
+import           Data.List.Split     (chunksOf)
 import           Data.Map            (Map)
 import qualified Data.Map            as M
 import           Data.Maybe          (catMaybes)
 import           Linear
+import           System.Random
 
 import           Swarm.AST
 import           Swarm.Game.Resource
@@ -37,6 +39,17 @@ data GameState = GameState
   , _inventory :: Map Item Int
   }
 
+initRs = 50
+initCs = 50
+
+initGameState :: IO GameState
+initGameState = do
+  rs <- replicateM (initRs * initCs) (randomRIO (0, length resourceList - 1))
+  return $
+    GameState [] []
+      (chunksOf initCs (map (resourceList!!) rs))
+      M.empty
+
 makeLenses ''Robot
 makeLenses ''GameState
 
@@ -49,8 +62,8 @@ step = do
   robots %= (new++)
   newRobots .= []
 
-doStep :: GameState -> GameState
-doStep = execState step
+gameStep :: GameState -> GameState
+gameStep = execState step
 
 stepRobot :: Robot -> State GameState (Maybe Robot)
 stepRobot r = stepProgram (r ^. robotProgram) r
