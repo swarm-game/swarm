@@ -10,7 +10,7 @@ module Main where
 import           Control.Concurrent         (forkIO, threadDelay)
 import           Control.Lens
 import           Control.Lens.Unsound       (lensProduct)
-import           Control.Monad.State
+import           Control.Monad              (forever, replicateM, void)
 import           Data.Either                (isRight)
 import           Data.List.Split            (chunksOf)
 import           Data.Map                   (Map)
@@ -34,59 +34,10 @@ import           Brick.Widgets.Dialog
 import qualified Graphics.Vty               as V
 
 import           Swarm.AST
+import           Swarm.Game
 import           Swarm.Parse
-import           Swarm.Types
-
-------------------------------------------------------------
--- State machine
-------------------------------------------------------------
-
-step :: State GameState ()
-step = do
-  rs <- use robots
-  rs' <- catMaybes <$> forM rs stepRobot
-  robots .= rs'
-  new <- use newRobots
-  robots %= (new++)
-  newRobots .= []
-
-doStep :: GameState -> GameState
-doStep = execState step
-
-stepRobot :: Robot -> State GameState (Maybe Robot)
-stepRobot r = stepProgram (r ^. robotProgram) r
-
-stepProgram :: Program -> Robot -> State GameState (Maybe Robot)
-stepProgram []                 = const (return Nothing)
-stepProgram (Block p1 : p2)    = stepProgram (p1 ++ p2)
-stepProgram (Repeat 0 _ : p)   = stepProgram p
-stepProgram (Repeat n p1 : p2) = stepProgram (p1 : Repeat (n-1) p1 : p2)
-stepProgram (cmd : p)          = fmap Just . exec cmd . (robotProgram .~ p)
-
-exec :: Command -> Robot -> State GameState Robot
-exec Wait     r = return r
-exec Move     r = return (r & location %~ (^+^ (r ^. direction)))
-exec (Turn d) r = return (r & direction %~ applyTurn d)
-exec Harvest  r = do
-  let V2 row col = r ^. location
-  mh <- preuse $ world . ix row . ix col
-  case mh of
-    Nothing -> return ()
-    Just h  -> do
-      world . ix row . ix col .= ' '
-      inventory . at (Resource h) . non 0 += 1
-  return r
-exec (Build p) r = do
-  newRobots %= (Robot (r ^. location) (V2 0 1) [p] False :)
-  return r
-
-applyTurn :: Direction -> V2 Int -> V2 Int
-applyTurn Lt (V2 x y) = V2 (-y) x
-applyTurn Rt (V2 x y) = V2 y (-x)
-applyTurn North _     = V2 (-1) 0
-applyTurn South _     = V2 1 0
-applyTurn East _      = V2 0 1
-applyTurn West _      = V2 0 (-1)
+import           Swarm.UI
+import           Swarm.UI.Panel
 
 ------------------------------------------------------------
 -- Resources
@@ -144,24 +95,6 @@ data AppState = AppState
   }
 
 makeLenses ''AppState
-
-data Panel n = Panel { _panelName :: n, _panelContent :: Widget n }
-
-makeLenses ''Panel
-
-instance Named (Panel n) n where
-  getName = view panelName
-
-drawPanel :: Eq n => FocusRing n -> Panel n -> Widget n
-drawPanel fr p = withFocusRing fr drawPanel' p
-  where
-    drawPanel' :: Bool -> Panel n -> Widget n
-    drawPanel' focused p
-      = (if focused then overrideAttr borderAttr plantAttr else id)
-      $ border (p ^. panelContent)
-
-panel :: Eq n => FocusRing n -> n -> Widget n -> Widget n
-panel fr nm w = drawPanel fr (Panel nm w)
 
 errorDialog :: Dialog ()
 errorDialog = dialog (Just "Error") Nothing 80
@@ -223,10 +156,10 @@ drawUI s =
   [ drawDialog (s ^. uiState)
   , vBox
     [ hBox
-      [ panel fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
-      , panel fr InfoPanel $ drawInventory $ (s ^. gameState . inventory)
+      [ panel plantAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
+      , panel plantAttr fr InfoPanel $ drawInventory $ (s ^. gameState . inventory)
       ]
-    , panel fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
+    , panel plantAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
     ]
   ]
   where

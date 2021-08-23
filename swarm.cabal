@@ -24,7 +24,9 @@ extra-source-files: CHANGELOG.md
 library
     exposed-modules:  Swarm.AST
                       Swarm.Parse
-                      Swarm.Types
+                      Swarm.Game
+                      Swarm.UI
+                      Swarm.UI.Panel
 
     build-depends:    base ^>= 4.14,
                       megaparsec,
@@ -33,6 +35,7 @@ library
                       linear,
                       containers,
                       brick >= 0.64,
+                      mtl,
                       witch
     hs-source-dirs:   src
     default-language: Haskell2010
@@ -53,7 +56,6 @@ executable swarm
                       containers,
                       linear,
                       lens,
-                      mtl,
                       split,
                       random,
                       megaparsec
