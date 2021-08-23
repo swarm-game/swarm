@@ -156,6 +156,7 @@ data UIState = UIState
   { _uiFocusRing   :: FocusRing Name
   , _uiReplForm    :: Form Text Tick Name
   , _uiReplHistory :: [Text]
+  , _uiReplHistIdx :: Int
   , _uiError       :: Maybe (Widget Name)
   }
 
@@ -179,12 +180,14 @@ doStep :: GameState -> GameState
 doStep = execState step
 
 stepRobot :: Robot -> State GameState (Maybe Robot)
-stepRobot r = case r ^. robotProgram of
-  []                 -> return Nothing
-  (Block p1 : p2)    -> stepRobot (r & robotProgram .~ (p1 ++ p2))
-  (Repeat 0 _ : p)   -> stepRobot (r & robotProgram .~ p)
-  (Repeat n p1 : p2) -> stepRobot (r & robotProgram .~ (p1 : Repeat (n-1) p1 : p2))
-  (cmd : p)          -> Just <$> exec cmd (r & robotProgram .~ p)
+stepRobot r = stepProgram (r ^. robotProgram) r
+
+stepProgram :: Program -> Robot -> State GameState (Maybe Robot)
+stepProgram []                 = const (return Nothing)
+stepProgram (Block p1 : p2)    = stepProgram (p1 ++ p2)
+stepProgram (Repeat 0 _ : p)   = stepProgram p
+stepProgram (Repeat n p1 : p2) = stepProgram (p1 : Repeat (n-1) p1 : p2)
+stepProgram (cmd : p)          = fmap Just . exec cmd . (robotProgram .~ p)
 
 exec :: Command -> Robot -> State GameState Robot
 exec Wait     r = return r
@@ -303,6 +306,12 @@ handleEvent g (VtyEvent (V.EvKey V.KEnter []))
   where
     entry = formState (g ^. uiState . uiReplForm)
     result = parse parseCommand "" entry
+handleEvent g (VtyEvent (V.EvKey V.KUp []))
+  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
+  = continue $ adjReplHistIndex g (+)
+handleEvent g (VtyEvent (V.EvKey V.KDown []))
+  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
+  = continue $ adjReplHistIndex g (-)
 handleEvent g ev
   | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
   = do
@@ -311,6 +320,18 @@ handleEvent g ev
           f''    = setFieldValid (isRight result) REPLInput f'
       continue $ g & uiState . uiReplForm .~ f''
 handleEvent g _                                      = continue g
+
+adjReplHistIndex :: GameState -> (Int -> Int -> Int) -> GameState
+adjReplHistIndex g (+/-) =
+  g & uiState . uiReplHistIdx .~ newIndex
+    & if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id
+  where
+    curIndex = g ^. uiState . uiReplHistIdx
+    histLen  = length (g ^. uiState . uiReplHistory)
+    newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
+    newEntry
+      | newIndex == -1 = ""
+      | otherwise      = (g ^. uiState . uiReplHistory) !! newIndex
 
 replHeight :: Int
 replHeight = 10
@@ -408,7 +429,7 @@ initReplForm = newForm
   ""
 
 initUIState :: UIState
-initUIState = UIState initFocusRing initReplForm [] Nothing
+initUIState = UIState initFocusRing initReplForm [] (-1) Nothing
 
 testGameState :: GameState
 testGameState
