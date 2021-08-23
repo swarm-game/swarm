@@ -16,8 +16,8 @@ baseAttr      = "baseAttr"
 highlightAttr = "highlightAttr"
 defAttr       = "defAttr"
 
-theMap :: AttrMap
-theMap = attrMap V.defAttr
+theAttrMap :: AttrMap
+theAttrMap = attrMap V.defAttr
   [ (robotAttr, fg V.white `V.withStyle` V.bold)
   , (plantAttr, fg V.green)
   , (flowerAttr, fg V.yellow)

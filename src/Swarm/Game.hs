@@ -1,6 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Swarm.Game where
+module Swarm.Game
+  ( module Swarm.Game
+  , module Swarm.Game.Resource
+  )
+  where
 
 import           Control.Lens
 import           Control.Monad.State
@@ -10,6 +14,7 @@ import           Data.Maybe          (catMaybes)
 import           Linear
 
 import           Swarm.AST
+import           Swarm.Game.Resource
 
 data Robot = Robot
   { _location     :: V2 Int
