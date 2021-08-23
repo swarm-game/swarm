@@ -35,34 +35,11 @@ import qualified Graphics.Vty               as V
 
 import           Swarm.AST
 import           Swarm.Game
+import           Swarm.Game.Resource
 import           Swarm.Parse
 import           Swarm.UI
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
-
-------------------------------------------------------------
--- Resources
-
-data ResourceInfo = RI
-  { _resourceChar :: Char
-  , _resourceName :: Text
-  , _resourceAttr :: AttrName
-  }
-
-makeLenses ''ResourceInfo
-
-resourceMap :: Map Char ResourceInfo
-resourceMap = M.fromList
-  [ ('T', RI 'T' "Tree"   plantAttr)
-  , (',', RI ',' "Grass"  plantAttr)
-  , ('*', RI '*' "Flower" flowerAttr)
-  , ('.', RI '.' "Dirt"   dirtAttr)
-  , ('O', RI 'O' "Rock"   rockAttr)
-  , (' ', RI ' ' "Air"    defAttr)
-  ]
-
-resourceList :: [Char]
-resourceList = M.keys resourceMap
 
 ------------------------------------------------------------
 -- UI

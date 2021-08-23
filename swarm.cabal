@@ -25,6 +25,7 @@ library
     exposed-modules:  Swarm.AST
                       Swarm.Parse
                       Swarm.Game
+                      Swarm.Game.Resource
                       Swarm.UI
                       Swarm.UI.Attr
                       Swarm.UI.Panel
