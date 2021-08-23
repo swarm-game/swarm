@@ -37,6 +37,7 @@ import           Swarm.AST
 import           Swarm.Game
 import           Swarm.Parse
 import           Swarm.UI
+import           Swarm.UI.Attr
 import           Swarm.UI.Panel
 
 ------------------------------------------------------------
@@ -49,29 +50,6 @@ data ResourceInfo = RI
   }
 
 makeLenses ''ResourceInfo
-
-robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, baseAttr, highlightAttr, defAttr :: AttrName
-robotAttr     = "robotAttr"
-plantAttr     = "plantAttr"
-flowerAttr    = "flowerAttr"
-dirtAttr      = "dirtAttr"
-rockAttr      = "rockAttr"
-baseAttr      = "baseAttr"
-highlightAttr = "highlightAttr"
-defAttr       = "defAttr"
-
-theMap :: AttrMap
-theMap = attrMap V.defAttr
-  [ (robotAttr, fg V.white `V.withStyle` V.bold)
-  , (plantAttr, fg V.green)
-  , (flowerAttr, fg V.yellow)
-  , (dirtAttr, fg (V.rgbColor 165 42 42))
-  , (rockAttr, fg (V.rgbColor 80 80 80))
-  , (highlightAttr, fg V.cyan)
-  , (invalidFormInputAttr, fg V.red)
-  , (focusedFormInputAttr, V.defAttr)
-  , (defAttr, V.defAttr)
-  ]
 
 resourceMap :: Map Char ResourceInfo
 resourceMap = M.fromList

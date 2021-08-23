@@ -26,6 +26,7 @@ library
                       Swarm.Parse
                       Swarm.Game
                       Swarm.UI
+                      Swarm.UI.Attr
                       Swarm.UI.Panel
 
     build-depends:    base ^>= 4.14,
@@ -36,7 +37,8 @@ library
                       containers,
                       brick >= 0.64,
                       mtl,
-                      witch
+                      witch,
+                      vty
     hs-source-dirs:   src
     default-language: Haskell2010
 
