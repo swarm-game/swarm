@@ -438,7 +438,7 @@ main = do
   chan <- newBChan 10
   forkIO $ forever $ do
     writeBChan chan Tick
-    threadDelay 500000
+    threadDelay 50000
   let buildVty = V.mkVty V.defaultConfig
   initialVty <- buildVty
   g <- initGameState
