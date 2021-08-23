@@ -56,6 +56,7 @@ data Command
   | Turn Direction
   | Harvest
   | Block Program
+  | Repeat Integer Command
   | Build Command
   deriving (Eq, Ord, Show)
 
@@ -85,6 +86,9 @@ symbol = L.symbol sc
 reserved :: Text -> Parser ()
 reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
 
+integer :: Parser Integer
+integer = lexeme L.decimal
+
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
 
@@ -100,11 +104,9 @@ parseCommand =
   <|> Move    <$  reserved "move"
   <|> Turn    <$> (reserved "turn" *> parseDirection)
   <|> Harvest <$  reserved "harvest"
-  <|> parseBlock
+  <|> Block   <$> braces parseProgram
+  <|> Repeat  <$> (reserved "repeat" *> integer) <*> parseCommand
   <|> Build   <$> (reserved "build" *> parseCommand)
-
-parseBlock :: Parser Command
-parseBlock = Block <$> braces parseProgram
 
 parseDirection :: Parser Direction
 parseDirection =
@@ -178,9 +180,11 @@ doStep = execState step
 
 stepRobot :: Robot -> State GameState (Maybe Robot)
 stepRobot r = case r ^. robotProgram of
-  []              -> return Nothing
-  (Block p1 : p2) -> stepRobot (r & robotProgram .~ (p1 ++ p2))
-  (cmd : p)       -> Just <$> exec cmd (r & robotProgram .~ p)
+  []                 -> return Nothing
+  (Block p1 : p2)    -> stepRobot (r & robotProgram .~ (p1 ++ p2))
+  (Repeat 0 _ : p)   -> stepRobot (r & robotProgram .~ p)
+  (Repeat n p1 : p2) -> stepRobot (r & robotProgram .~ (p1 : Repeat (n-1) p1 : p2))
+  (cmd : p)          -> Just <$> exec cmd (r & robotProgram .~ p)
 
 exec :: Command -> Robot -> State GameState Robot
 exec Wait     r = return r
