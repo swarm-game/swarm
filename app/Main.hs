@@ -292,13 +292,19 @@ handleEvent g (VtyEvent (V.EvKey V.KBackTab []))     = continue $ g & uiState . 
 handleEvent g (VtyEvent (V.EvKey V.KEsc []))
   | isJust (g ^. uiState . uiError) = continue $ g & uiState . uiError .~ Nothing
   | otherwise                       = halt g
-handleEvent g (VtyEvent (V.EvKey V.KEnter []))
-  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
+handleEvent g ev =
+  case focusGetCurrent (g ^. uiState . uiFocusRing) of
+    Just REPLPanel -> handleREPLEvent g ev
+    _              -> continueWithoutRedraw g
+
+handleREPLEvent :: GameState -> BrickEvent Name Tick -> EventM Name (Next GameState)
+handleREPLEvent g (VtyEvent (V.EvKey V.KEnter []))
   = case result of
       Right cmd ->
         continue $ g
           & uiState . uiReplForm    %~ updateFormState ""
           & uiState . uiReplHistory %~ (entry :)
+          & uiState . uiReplHistIdx .~ (-1)
           & robots                  %~ (mkBase cmd :)
       Left err ->
         continue $ g
@@ -306,20 +312,13 @@ handleEvent g (VtyEvent (V.EvKey V.KEnter []))
   where
     entry = formState (g ^. uiState . uiReplForm)
     result = parse parseCommand "" entry
-handleEvent g (VtyEvent (V.EvKey V.KUp []))
-  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
-  = continue $ adjReplHistIndex g (+)
-handleEvent g (VtyEvent (V.EvKey V.KDown []))
-  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
-  = continue $ adjReplHistIndex g (-)
-handleEvent g ev
-  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
-  = do
-      f' <- handleFormEvent ev (g ^. uiState . uiReplForm)
-      let result = parse parseCommand "" (formState f')
-          f''    = setFieldValid (isRight result) REPLInput f'
-      continue $ g & uiState . uiReplForm .~ f''
-handleEvent g _                                      = continue g
+handleREPLEvent g (VtyEvent (V.EvKey V.KUp []))   = continue $ adjReplHistIndex g (+)
+handleREPLEvent g (VtyEvent (V.EvKey V.KDown [])) = continue $ adjReplHistIndex g (-)
+handleREPLEvent g ev = do
+  f' <- handleFormEvent ev (g ^. uiState . uiReplForm)
+  let result = parse parseCommand "" (formState f')
+      f''    = setFieldValid (isRight result) REPLInput f'
+  continue $ g & uiState . uiReplForm .~ f''
 
 adjReplHistIndex :: GameState -> (Int -> Int -> Int) -> GameState
 adjReplHistIndex g (+/-) =
