@@ -11,6 +11,7 @@ import           Control.Concurrent         (forkIO, threadDelay)
 import           Control.Lens
 import           Control.Lens.Unsound       (lensProduct)
 import           Control.Monad.State
+import           Data.Either                (isRight)
 import           Data.List.Split            (chunksOf)
 import           Data.Map                   (Map)
 import qualified Data.Map                   as M
@@ -21,15 +22,17 @@ import           Data.Void
 import           Linear
 import           System.Random              (randomRIO)
 
-import           Brick
+import           Brick                      hiding (Direction)
 import           Brick.BChan
 import           Brick.Focus
+import           Brick.Forms
 import           Brick.Widgets.Border       (border, borderAttr,
                                              borderWithLabel, hBorder, vBorder)
 import qualified Brick.Widgets.Border.Style as BS
 import           Brick.Widgets.Center       (center, hCenter, vCenter)
 import qualified Graphics.Vty               as V
 
+import           Brick.Widgets.Dialog
 import           Data.Text                  (Text)
 import           Text.Megaparsec            hiding (State)
 import           Text.Megaparsec.Char
@@ -38,12 +41,22 @@ import qualified Text.Megaparsec.Char.Lexer as L
 ------------------------------------------------------------
 -- AST
 
+data Direction
+  = Lt
+  | Rt
+  | North
+  | South
+  | East
+  | West
+  deriving (Eq, Ord, Show, Read)
+
 data Command
   = Wait
   | Move
-  | TL
-  | TR
+  | Turn Direction
   | Harvest
+  | Block Program
+  | Build Command
   deriving (Eq, Ord, Show)
 
 type Program = [Command]
@@ -72,27 +85,53 @@ symbol = L.symbol sc
 reserved :: Text -> Parser ()
 reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
 
+braces :: Parser a -> Parser a
+braces = between (symbol "{") (symbol "}")
+
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
+
 --------------------------------------------------
 -- Parser
 
 parseCommand :: Parser Command
 parseCommand =
-      Move    <$ reserved "move"
-  <|> TL      <$ reserved "left"
-  <|> TR      <$ reserved "right"
-  <|> Harvest <$ reserved "harvest"
+      Wait    <$  reserved "wait"
+  <|> Move    <$  reserved "move"
+  <|> Turn    <$> (reserved "turn" *> parseDirection)
+  <|> Harvest <$  reserved "harvest"
+  <|> parseBlock
+  <|> Build   <$> (reserved "build" *> parseCmdArg)
+
+parseBlock :: Parser Command
+parseBlock = Block <$> braces parseProgram
+
+parseCmdArg :: Parser Command
+parseCmdArg = parens parseCommand <|> parseBlock
+
+parseDirection :: Parser Direction
+parseDirection =
+      Lt    <$ reserved "left"
+  <|> Rt    <$ reserved "right"
+  <|> North <$ reserved "north"
+  <|> South <$ reserved "south"
+  <|> East  <$ reserved "east"
+  <|> West  <$ reserved "west"
 
 parseProgram :: Parser Program
-parseProgram = many parseCommand
+parseProgram = sepEndBy parseCommand (symbol ";")
 
 ------------------------------------------------------------
 -- State machine
 ------------------------------------------------------------
 
+data Tick = Tick
+
 data Robot = Robot
   { _location     :: V2 Int
   , _direction    :: V2 Int
   , _robotProgram :: Program
+  , _static       :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -100,48 +139,57 @@ data Item = Resource Char
   deriving (Eq, Ord, Show)
 
 data GameState = GameState
-  { _baseProgram :: Program
-  , _robots      :: [Robot]
-  , _world       :: [[Char]]
-  , _inventory   :: Map Item Int
-
-  , _uiState     :: UIState
+  { _robots    :: [Robot]
+  , _newRobots :: [Robot]
+  , _world     :: [[Char]]
+  , _inventory :: Map Item Int
+  , _uiState   :: UIState
   }
 
 data Name
   = REPLPanel
   | WorldPanel
   | InfoPanel
+  | REPLInput
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 data UIState = UIState
-  { _uiFocusRing :: FocusRing Name
+  { _uiFocusRing   :: FocusRing Name
+  , _uiReplForm    :: Form Text Tick Name
+  , _uiReplHistory :: [Text]
+  , _uiError       :: Maybe (Widget Name)
   }
 
 makeLenses ''Robot
 makeLenses ''GameState
 makeLenses ''UIState
 
+mkBase :: Command -> Robot
+mkBase cmd = Robot (V2 0 0) (V2 0 0) [cmd] True
+
 step :: State GameState ()
 step = do
   rs <- use robots
   rs' <- catMaybes <$> forM rs stepRobot
   robots .= rs'
+  new <- use newRobots
+  robots %= (new++)
+  newRobots .= []
 
 doStep :: GameState -> GameState
 doStep = execState step
 
 stepRobot :: Robot -> State GameState (Maybe Robot)
 stepRobot r = case r ^. robotProgram of
-  []        -> return Nothing
-  (cmd : p) -> Just <$> exec cmd (r & robotProgram .~ p)
+  []              -> return Nothing
+  (Block p1 : p2) -> stepRobot (r & robotProgram .~ (p1 ++ p2))
+  (cmd : p)       -> Just <$> exec cmd (r & robotProgram .~ p)
 
 exec :: Command -> Robot -> State GameState Robot
-exec Wait    r = return r
-exec Move    r = return (r & location %~ (^+^ (r ^. direction)))
-exec TL      r = return (r & direction %~ vLeft)
-exec TR      r = return (r & direction %~ vRight)
-exec Harvest r = do
+exec Wait     r = return r
+exec Move     r = return (r & location %~ (^+^ (r ^. direction)))
+exec (Turn d) r = return (r & direction %~ applyTurn d)
+exec Harvest  r = do
   let V2 row col = r ^. location
   mh <- preuse $ world . ix row . ix col
   case mh of
@@ -150,9 +198,17 @@ exec Harvest r = do
       world . ix row . ix col .= ' '
       inventory . at (Resource h) . non 0 += 1
   return r
+exec (Build p) r = do
+  newRobots %= (Robot (r ^. location) (V2 0 1) [p] False :)
+  return r
 
-vLeft (V2 x y) = V2 (-y) x
-vRight (V2 x y) = V2 y (-x)
+applyTurn :: Direction -> V2 Int -> V2 Int
+applyTurn Lt (V2 x y) = V2 (-y) x
+applyTurn Rt (V2 x y) = V2 y (-x)
+applyTurn North _     = V2 (-1) 0
+applyTurn South _     = V2 1 0
+applyTurn East _      = V2 0 1
+applyTurn West _      = V2 0 (-1)
 
 ------------------------------------------------------------
 -- Resources
@@ -181,14 +237,13 @@ resourceList = M.keys resourceMap
 ------------------------------------------------------------
 -- UI
 
-data Tick = Tick
-
-robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, highlightAttr, defAttr :: AttrName
+robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, baseAttr, highlightAttr, defAttr :: AttrName
 robotAttr     = "robotAttr"
 plantAttr     = "plantAttr"
 flowerAttr    = "flowerAttr"
 dirtAttr      = "dirtAttr"
 rockAttr      = "rockAttr"
+baseAttr      = "baseAttr"
 highlightAttr = "highlightAttr"
 defAttr       = "defAttr"
 
@@ -200,6 +255,8 @@ theMap = attrMap V.defAttr
   , (dirtAttr, fg (V.rgbColor 165 42 42))
   , (rockAttr, fg (V.rgbColor 80 80 80))
   , (highlightAttr, fg V.cyan)
+  , (invalidFormInputAttr, fg V.red)
+  , (focusedFormInputAttr, V.defAttr)
   , (defAttr, V.defAttr)
   ]
 
@@ -221,26 +278,60 @@ drawPanel fr p = withFocusRing fr drawPanel' p
 panel :: Eq n => FocusRing n -> n -> Widget n -> Widget n
 panel fr nm w = drawPanel fr (Panel nm w)
 
+errorDialog :: Dialog ()
+errorDialog = dialog (Just "Error") Nothing 80
+
 handleEvent :: GameState -> BrickEvent Name Tick -> EventM Name (Next GameState)
 handleEvent g (AppEvent Tick)                        = continue $ doStep g
 handleEvent g (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ g & uiState . uiFocusRing %~ focusNext
 handleEvent g (VtyEvent (V.EvKey V.KBackTab []))     = continue $ g & uiState . uiFocusRing %~ focusPrev
-handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') []))  = halt g
-handleEvent g (VtyEvent (V.EvKey V.KEsc []))         = halt g
+handleEvent g (VtyEvent (V.EvKey V.KEsc []))
+  | isJust (g ^. uiState . uiError) = continue $ g & uiState . uiError .~ Nothing
+  | otherwise                       = halt g
+handleEvent g (VtyEvent (V.EvKey V.KEnter []))
+  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
+  = case result of
+      Right cmd ->
+        continue $ g
+          & uiState . uiReplForm    %~ updateFormState ""
+          & uiState . uiReplHistory %~ (entry :)
+          & robots                  %~ (mkBase cmd :)
+      Left err ->
+        continue $ g
+          & uiState . uiError ?~ str (errorBundlePretty err)
+  where
+    entry = formState (g ^. uiState . uiReplForm)
+    result = parse parseCommand "" entry
+handleEvent g ev
+  | focusGetCurrent (g ^. uiState . uiFocusRing) == Just REPLPanel
+  = do
+      f' <- handleFormEvent ev (g ^. uiState . uiReplForm)
+      let result = parse parseCommand "" (formState f')
+          f''    = setFieldValid (isRight result) REPLInput f'
+      continue $ g & uiState . uiReplForm .~ f''
 handleEvent g _                                      = continue g
+
+replHeight :: Int
+replHeight = 10
 
 drawUI :: GameState -> [Widget Name]
 drawUI g =
-  [ vBox
+  [ drawDialog g
+  , vBox
     [ hBox
       [ panel fr WorldPanel $ hLimitPercent 75 $ drawWorld g
       , panel fr InfoPanel $ drawInventory $ g ^. inventory
       ]
-    , panel fr REPLPanel $ vLimit 10 $ center $ str "REPL"
+    , panel fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl g
     ]
   ]
   where
     fr = g ^. uiState . uiFocusRing
+
+drawDialog :: GameState -> Widget Name
+drawDialog g = case g ^. uiState . uiError of
+  Nothing -> emptyWidget
+  Just d  -> renderDialog errorDialog d
 
 drawWorld :: GameState -> Widget Name
 drawWorld g
@@ -249,6 +340,7 @@ drawWorld g
   $ vBox (imap (\r -> hBox . imap (drawLoc r)) (g ^. world))
   where
     robotLocs = M.fromList $ g ^.. robots . traverse . lensProduct location direction
+    drawLoc 0 0 _ = withAttr robotAttr $ txt "■"
     drawLoc r c x = case M.lookup (V2 r c) robotLocs of
       Just dir -> withAttr robotAttr $ txt (robotDir dir)
       Nothing  -> drawResource x
@@ -268,8 +360,6 @@ drawInventory inv
   , padAll 2
     $ vBox
     $ map drawItem (M.assocs inv)
-  , padLeftRight 1
-    $ txtWrap "Hello there, this is some long text, to see how the text wrapping feature works. Seems like it works great! Blah blah blah, I like long descriptive texts."
   ]
 
 drawItem :: (Item, Int) -> Widget Name
@@ -288,10 +378,19 @@ drawResource c = case M.lookup c resourceMap of
   Nothing            -> str [c]
   Just (RI _ _ attr) -> withAttr attr (str [c])
 
+replPrompt :: Text
+replPrompt = "> "
+
+drawRepl :: GameState -> Widget Name
+drawRepl g = vBox $
+  map ((txt replPrompt <+>) . txt) (reverse (take (replHeight - 1) (g ^. uiState . uiReplHistory)))
+  ++
+  [ renderForm (g ^. uiState . uiReplForm) ]
+
 app :: App GameState Tick Name
 app = App
   { appDraw         = drawUI
-  , appChooseCursor = neverShowCursor
+  , appChooseCursor = showFirstCursor
   , appHandleEvent  = handleEvent
   , appStartEvent   = return
   , appAttrMap      = const theMap
@@ -302,18 +401,23 @@ app = App
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, WorldPanel]
 
+initReplForm :: Form Text Tick Name
+initReplForm = newForm
+  [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
+  ""
+
 initUIState :: UIState
-initUIState = UIState initFocusRing
+initUIState = UIState initFocusRing initReplForm [] Nothing
 
 testGameState :: GameState
 testGameState
-  = GameState [] [Robot (V2 0 0) (V2 0 1) testProgram] ["TT*O", "T*.O"] M.empty initUIState
+  = GameState [Robot (V2 0 0) (V2 0 1) testProgram False] [] ["TT*O", "T*.O"] M.empty initUIState
 
 testProgram :: Program
-testProgram = [Wait, Harvest, Move, Harvest, TR, Move, Harvest, TL, Move, Harvest, Harvest, Move, Harvest]
+testProgram = [Wait, Harvest, Move, Harvest, Turn Rt, Move, Harvest, Turn Lt, Move, Harvest, Harvest, Move, Harvest]
 
 longTestProgram :: Program
-longTestProgram = take 100 $ cycle [Harvest, Move, TR, Harvest, Move, TL]
+longTestProgram = take 100 $ cycle [Harvest, Move, Turn Rt, Harvest, Move, Turn Lt]
 
 initRs = 50
 initCs = 50
@@ -323,10 +427,11 @@ initGameState = do
   rs <- replicateM (initRs * initCs) (randomRIO (0, length resourceList - 1))
   return $
     GameState
-      []
-      [ Robot (V2 0 0) (V2 0 1) longTestProgram
-      , Robot (V2 15 3) (V2 0 1) longTestProgram
+      [
+      --   Robot (V2 0 0) (V2 0 1) longTestProgram
+      -- , Robot (V2 15 3) (V2 0 1) longTestProgram
       ]
+      []
       (chunksOf initCs (map (resourceList!!) rs))
       M.empty
       initUIState
