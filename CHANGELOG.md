@@ -1,4 +1,4 @@
-# Revision history for robot-exploration
+# Revision history for swarm
 
 ## 0.1.0.0 -- YYYY-mm-dd
 
