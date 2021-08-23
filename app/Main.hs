@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TemplateHaskell       #-}
 
 -- XXX way to configure to use fancy Unicode characters or stick to ASCII
 
@@ -17,6 +18,7 @@ import qualified Data.Map                   as M
 import           Data.Maybe
 import           Data.Set                   (Set)
 import qualified Data.Set                   as S
+import           Data.Text                  (Text)
 import           Linear
 import           System.Random              (randomRIO)
 
@@ -28,21 +30,16 @@ import           Brick.Widgets.Border       (border, borderAttr,
                                              borderWithLabel, hBorder, vBorder)
 import qualified Brick.Widgets.Border.Style as BS
 import           Brick.Widgets.Center       (center, hCenter, vCenter)
+import           Brick.Widgets.Dialog
 import qualified Graphics.Vty               as V
 
-import           Brick.Widgets.Dialog
-import           Data.Text                  (Text)
-
 import           Swarm.AST
-import           Swarm.Game
 import           Swarm.Parse
+import           Swarm.Types
 
 ------------------------------------------------------------
 -- State machine
 ------------------------------------------------------------
-
-mkBase :: Command -> Robot
-mkBase cmd = Robot (V2 0 0) (V2 0 0) [cmd] True
 
 step :: State GameState ()
 step = do
@@ -102,22 +99,6 @@ data ResourceInfo = RI
 
 makeLenses ''ResourceInfo
 
-resourceMap :: Map Char ResourceInfo
-resourceMap = M.fromList
-  [ ('T', RI 'T' "Tree"   plantAttr)
-  , (',', RI ',' "Grass"  plantAttr)
-  , ('*', RI '*' "Flower" flowerAttr)
-  , ('.', RI '.' "Dirt"   dirtAttr)
-  , ('O', RI 'O' "Rock"   rockAttr)
-  , (' ', RI ' ' "Air"    defAttr)
-  ]
-
-resourceList :: [Char]
-resourceList = M.keys resourceMap
-
-------------------------------------------------------------
--- UI
-
 robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, baseAttr, highlightAttr, defAttr :: AttrName
 robotAttr     = "robotAttr"
 plantAttr     = "plantAttr"
@@ -141,6 +122,29 @@ theMap = attrMap V.defAttr
   , (defAttr, V.defAttr)
   ]
 
+resourceMap :: Map Char ResourceInfo
+resourceMap = M.fromList
+  [ ('T', RI 'T' "Tree"   plantAttr)
+  , (',', RI ',' "Grass"  plantAttr)
+  , ('*', RI '*' "Flower" flowerAttr)
+  , ('.', RI '.' "Dirt"   dirtAttr)
+  , ('O', RI 'O' "Rock"   rockAttr)
+  , (' ', RI ' ' "Air"    defAttr)
+  ]
+
+resourceList :: [Char]
+resourceList = M.keys resourceMap
+
+------------------------------------------------------------
+-- UI
+
+data AppState = AppState
+  { _gameState :: GameState
+  , _uiState   :: UIState
+  }
+
+makeLenses ''AppState
+
 data Panel n = Panel { _panelName :: n, _panelContent :: Widget n }
 
 makeLenses ''Panel
@@ -162,72 +166,74 @@ panel fr nm w = drawPanel fr (Panel nm w)
 errorDialog :: Dialog ()
 errorDialog = dialog (Just "Error") Nothing 80
 
-handleEvent :: GameState -> BrickEvent Name Tick -> EventM Name (Next GameState)
-handleEvent g (AppEvent Tick)                        = continue $ doStep g
-handleEvent g (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ g & uiState . uiFocusRing %~ focusNext
-handleEvent g (VtyEvent (V.EvKey V.KBackTab []))     = continue $ g & uiState . uiFocusRing %~ focusPrev
-handleEvent g (VtyEvent (V.EvKey V.KEsc []))
-  | isJust (g ^. uiState . uiError) = continue $ g & uiState . uiError .~ Nothing
-  | otherwise                       = halt g
-handleEvent g ev =
-  case focusGetCurrent (g ^. uiState . uiFocusRing) of
-    Just REPLPanel -> handleREPLEvent g ev
-    _              -> continueWithoutRedraw g
+handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
+handleEvent s (AppEvent Tick)                        = continue $ s & gameState %~ doStep
+handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
+handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
+handleEvent s (VtyEvent (V.EvKey V.KEsc []))
+  | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
+  | otherwise                       = halt s
+handleEvent s ev =
+  case focusGetCurrent (s ^. uiState . uiFocusRing) of
+    Just REPLPanel -> handleREPLEvent s ev
+    _              -> continueWithoutRedraw s
 
-handleREPLEvent :: GameState -> BrickEvent Name Tick -> EventM Name (Next GameState)
-handleREPLEvent g (VtyEvent (V.EvKey V.KEnter []))
+handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
+handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
   = case result of
       Right cmd ->
-        continue $ g
+        continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
           & uiState . uiReplHistory %~ (entry :)
           & uiState . uiReplHistIdx .~ (-1)
-          & robots                  %~ (mkBase cmd :)
+          & gameState . robots      %~ (mkBase cmd :)
       Left err ->
-        continue $ g
-          & uiState . uiError ?~ str (errorBundlePretty err)
+        continue $ s
+          & uiState . uiError ?~ txt err
   where
-    entry = formState (g ^. uiState . uiReplForm)
-    result = parse parseCommand "" entry
-handleREPLEvent g (VtyEvent (V.EvKey V.KUp []))   = continue $ adjReplHistIndex g (+)
-handleREPLEvent g (VtyEvent (V.EvKey V.KDown [])) = continue $ adjReplHistIndex g (-)
-handleREPLEvent g ev = do
-  f' <- handleFormEvent ev (g ^. uiState . uiReplForm)
-  let result = parse parseCommand "" (formState f')
+    entry = formState (s ^. uiState . uiReplForm)
+    result = readCommand entry
+handleREPLEvent s (VtyEvent (V.EvKey V.KUp []))
+  = continue $ s & uiState %~ adjReplHistIndex (+)
+handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
+  = continue $ s & uiState %~ adjReplHistIndex (-)
+handleREPLEvent s ev = do
+  f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
+  let result = readCommand (formState f')
       f''    = setFieldValid (isRight result) REPLInput f'
-  continue $ g & uiState . uiReplForm .~ f''
+  continue $ s & uiState . uiReplForm .~ f''
 
-adjReplHistIndex :: GameState -> (Int -> Int -> Int) -> GameState
-adjReplHistIndex g (+/-) =
-  g & uiState . uiReplHistIdx .~ newIndex
-    & if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id
+adjReplHistIndex :: (Int -> Int -> Int) -> UIState -> UIState
+adjReplHistIndex (+/-) s =
+  s & uiReplHistIdx .~ newIndex
+    & if newIndex /= curIndex then uiReplForm %~ updateFormState newEntry else id
   where
-    curIndex = g ^. uiState . uiReplHistIdx
-    histLen  = length (g ^. uiState . uiReplHistory)
+    curIndex = s ^. uiReplHistIdx
+    histLen  = length (s ^. uiReplHistory)
     newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
     newEntry
       | newIndex == -1 = ""
-      | otherwise      = (g ^. uiState . uiReplHistory) !! newIndex
+      | otherwise      = (s ^. uiReplHistory) !! newIndex
 
 replHeight :: Int
 replHeight = 10
 
-drawUI :: GameState -> [Widget Name]
-drawUI g =
-  [ drawDialog g
+drawUI :: AppState -> [Widget Name]
+drawUI s =
+  [ drawDialog (s ^. uiState)
   , vBox
     [ hBox
-      [ panel fr WorldPanel $ hLimitPercent 75 $ drawWorld g
-      , panel fr InfoPanel $ drawInventory $ g ^. inventory
+      [ panel fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
+      , panel fr InfoPanel $ drawInventory $ (s ^. gameState . inventory)
       ]
-    , panel fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl g
+    , panel fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
     ]
   ]
   where
-    fr = g ^. uiState . uiFocusRing
+    fr = s ^. uiState . uiFocusRing
 
-drawDialog :: GameState -> Widget Name
-drawDialog g = case g ^. uiState . uiError of
+drawDialog :: UIState -> Widget Name
+drawDialog s = case s ^. uiError of
   Nothing -> emptyWidget
   Just d  -> renderDialog errorDialog d
 
@@ -279,13 +285,13 @@ drawResource c = case M.lookup c resourceMap of
 replPrompt :: Text
 replPrompt = "> "
 
-drawRepl :: GameState -> Widget Name
-drawRepl g = vBox $
-  map ((txt replPrompt <+>) . txt) (reverse (take (replHeight - 1) (g ^. uiState . uiReplHistory)))
+drawRepl :: AppState -> Widget Name
+drawRepl s = vBox $
+  map ((txt replPrompt <+>) . txt) (reverse (take (replHeight - 1) (s ^. uiState . uiReplHistory)))
   ++
-  [ renderForm (g ^. uiState . uiReplForm) ]
+  [ renderForm (s ^. uiState . uiReplForm) ]
 
-app :: App GameState Tick Name
+app :: App AppState Tick Name
 app = App
   { appDraw         = drawUI
   , appChooseCursor = showFirstCursor
@@ -309,7 +315,7 @@ initUIState = UIState initFocusRing initReplForm [] (-1) Nothing
 
 testGameState :: GameState
 testGameState
-  = GameState [Robot (V2 0 0) (V2 0 1) testProgram False] [] ["TT*O", "T*.O"] M.empty initUIState
+  = GameState [Robot (V2 0 0) (V2 0 1) testProgram False] [] ["TT*O", "T*.O"] M.empty
 
 testProgram :: Program
 testProgram = [Wait, Harvest, Move, Harvest, Turn Rt, Move, Harvest, Turn Lt, Move, Harvest, Harvest, Move, Harvest]
@@ -327,7 +333,9 @@ initGameState = do
     GameState [] []
       (chunksOf initCs (map (resourceList!!) rs))
       M.empty
-      initUIState
+
+initAppState :: IO AppState
+initAppState = AppState <$> initGameState <*> pure initUIState
 
 main :: IO ()
 main = do
@@ -337,5 +345,5 @@ main = do
     threadDelay 50000
   let buildVty = V.mkVty V.defaultConfig
   initialVty <- buildVty
-  g <- initGameState
-  void $ customMain initialVty buildVty (Just chan) app g
+  s <- initAppState
+  void $ customMain initialVty buildVty (Just chan) app s
