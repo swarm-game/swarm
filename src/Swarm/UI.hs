@@ -240,18 +240,19 @@ adjReplHistIndex (+/-) s =
 
 handleWorldEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 handleWorldEvent s (VtyEvent (V.EvKey V.KUp []))
-  = continue $ s & gameState . viewCenter %~ (^+^ north)
+  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ north))
 handleWorldEvent s (VtyEvent (V.EvKey V.KDown []))
-  = continue $ s & gameState . viewCenter %~ (^+^ south)
+  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ south))
 handleWorldEvent s (VtyEvent (V.EvKey V.KLeft []))
-  = continue $ s & gameState . viewCenter %~ (^+^ west)
+  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ west))
 handleWorldEvent s (VtyEvent (V.EvKey V.KRight []))
-  = continue $ s & gameState . viewCenter %~ (^+^ east)
+  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ east))
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
   = adjustTPS (+) s >> continueWithoutRedraw s
 handleWorldEvent s ev = continueWithoutRedraw s
+
 adjustTPS :: (Int -> Int -> Int) -> AppState -> EventM Name ()
 adjustTPS (+/-) s =
   liftIO $ atomically $ modifyTVar (s ^. uiState . lgTicksPerSecond) (+/- 1)
