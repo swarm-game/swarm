@@ -76,7 +76,7 @@ stepRobot :: Robot -> State GameState (Maybe Robot)
 stepRobot r = stepProgram (r ^. robotProgram) r
 
 stepProgram :: Program -> Robot -> State GameState (Maybe Robot)
-stepProgram []                 = const (return Nothing)
+stepProgram []                 = const (updated .= True >> return Nothing)
 stepProgram (Block p1 : p2)    = stepProgram (p1 ++ p2)
 stepProgram (Repeat 0 _ : p)   = stepProgram p
 stepProgram (Repeat n p1 : p2) = stepProgram (p1 : Repeat (n-1) p1 : p2)

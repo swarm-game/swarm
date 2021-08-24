@@ -73,7 +73,7 @@ initLgTicksPerSecond = 3    -- 2^3 = 8 ticks per second
 initUIState :: IO UIState
 initUIState = do
   tv <- newTVarIO initLgTicksPerSecond
-  return $ UIState initFocusRing initReplForm [] (-1) Nothing Nothing tv
+  return $ UIState initFocusRing initReplForm [] (-1) Nothing tv
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)
@@ -86,7 +86,7 @@ data AppState = AppState
 makeLenses ''AppState
 
 initAppState :: IO AppState
-initAppState = AppState <$> initGameState <*> pure initUIState
+initAppState = AppState <$> initGameState <*> initUIState
 
 ------------------------------------------------------------
 -- UI drawing
@@ -184,6 +184,9 @@ handleEvent s (AppEvent Tick)                        = do
   when (s' ^. gameState . updated) $ do
     invalidateCacheEntry WorldCache
   continue s'
+handleEvent s (VtyEvent (V.EvResize _ _))            = do
+  invalidateCacheEntry WorldCache
+  continue s
 handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
