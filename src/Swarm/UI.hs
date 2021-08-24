@@ -51,6 +51,7 @@ data UIState = UIState
   , _uiReplHistory :: [Text]
   , _uiReplHistIdx :: Int
   , _uiError       :: Maybe (Widget Name)
+  , _lgTicksPerSecond :: TVar Int
   }
 
 makeLenses ''UIState
@@ -66,8 +67,13 @@ initReplForm = newForm
   [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
   ""
 
-initUIState :: UIState
-initUIState = UIState initFocusRing initReplForm [] (-1) Nothing
+initLgTicksPerSecond :: Int
+initLgTicksPerSecond = 3    -- 2^3 = 8 ticks per second
+
+initUIState :: IO UIState
+initUIState = do
+  tv <- newTVarIO initLgTicksPerSecond
+  return $ UIState initFocusRing initReplForm [] (-1) Nothing Nothing tv
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)
@@ -235,4 +241,11 @@ handleWorldEvent s (VtyEvent (V.EvKey V.KLeft []))
   = continue $ s & gameState . viewCenter %~ (^+^ west)
 handleWorldEvent s (VtyEvent (V.EvKey V.KRight []))
   = continue $ s & gameState . viewCenter %~ (^+^ east)
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
+  = adjustTPS (-) s >> continueWithoutRedraw s
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
+  = adjustTPS (+) s >> continueWithoutRedraw s
 handleWorldEvent s ev = continueWithoutRedraw s
+adjustTPS :: (Int -> Int -> Int) -> AppState -> EventM Name ()
+adjustTPS (+/-) s =
+  liftIO $ atomically $ modifyTVar (s ^. uiState . lgTicksPerSecond) (+/- 1)
