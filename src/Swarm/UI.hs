@@ -3,29 +3,32 @@
 
 module Swarm.UI where
 
+import           Control.Concurrent.STM      (atomically)
+import           Control.Concurrent.STM.TVar
 import           Control.Lens
-import           Control.Lens.Unsound       (lensProduct)
-import           Control.Monad              (when)
-import           Data.Either                (isRight)
-import           Data.Map                   (Map)
-import qualified Data.Map                   as M
-import           Data.Maybe                 (isJust)
-import           Data.Text                  (Text)
+import           Control.Lens.Unsound        (lensProduct)
+import           Control.Monad               (when)
+import           Control.Monad.IO.Class      (liftIO)
+import           Data.Either                 (isRight)
+import           Data.Map                    (Map)
+import qualified Data.Map                    as M
+import           Data.Maybe                  (isJust)
+import           Data.Text                   (Text)
 import           Linear
 
-import           Brick                      hiding (Direction)
+import           Brick                       hiding (Direction)
 import           Brick.Focus
 import           Brick.Forms
-import           Brick.Widgets.Border       (border, borderAttr,
-                                             borderWithLabel, hBorder, vBorder)
-import qualified Brick.Widgets.Border.Style as BS
-import           Brick.Widgets.Center       (center, hCenter, vCenter)
+import           Brick.Widgets.Border        (border, borderAttr,
+                                              borderWithLabel, hBorder, vBorder)
+import qualified Brick.Widgets.Border.Style  as BS
+import           Brick.Widgets.Center        (center, hCenter, vCenter)
 import           Brick.Widgets.Dialog
-import qualified Graphics.Vty               as V
+import qualified Graphics.Vty                as V
 
 import           Swarm.Game
-import qualified Swarm.Game.World           as W
-import           Swarm.Parse                (readCommand)
+import qualified Swarm.Game.World            as W
+import           Swarm.Parse                 (readCommand)
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
 
@@ -46,11 +49,11 @@ data Name
 -- UI state
 
 data UIState = UIState
-  { _uiFocusRing   :: FocusRing Name
-  , _uiReplForm    :: Form Text Tick Name
-  , _uiReplHistory :: [Text]
-  , _uiReplHistIdx :: Int
-  , _uiError       :: Maybe (Widget Name)
+  { _uiFocusRing      :: FocusRing Name
+  , _uiReplForm       :: Form Text Tick Name
+  , _uiReplHistory    :: [Text]
+  , _uiReplHistIdx    :: Int
+  , _uiError          :: Maybe (Widget Name)
   , _lgTicksPerSecond :: TVar Int
   }
 
