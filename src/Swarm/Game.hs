@@ -36,10 +36,11 @@ data Item = Resource Char
   deriving (Eq, Ord, Show)
 
 data GameState = GameState
-  { _robots    :: [Robot]
-  , _newRobots :: [Robot]
-  , _world     :: W.World
-  , _inventory :: Map Item Int
+  { _robots     :: [Robot]
+  , _newRobots  :: [Robot]
+  , _world      :: W.World
+  , _viewCenter :: V2 Int
+  , _inventory  :: Map Item Int
   }
 
 -- initRs = 50
@@ -47,11 +48,10 @@ data GameState = GameState
 
 initGameState :: IO GameState
 initGameState = do
-  -- rs <- replicateM (initRs * initCs) (randomRIO (0, length resourceList - 1))
   return $
     GameState [] []
       (W.newWorld (\(i,j) -> if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '))
-      -- (chunksOf initCs (map (resourceList !!) rs))
+      (V2 0 0)
       M.empty
 
 makeLenses ''Robot

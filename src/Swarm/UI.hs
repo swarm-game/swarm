@@ -115,7 +115,10 @@ drawWorld g
     ctx <- getContext
     let w   = ctx ^. availWidthL
         h   = ctx ^. availHeightL
-        ixs = [ [(r,c) | c <- [0 .. w - 1] ] | r <- [0 .. h - 1] ]
+        V2 cr cc = g ^. viewCenter
+        rows = map (+ (cr - h`div`2)) [0 .. h - 1]
+        cols = map (+ (cc - w`div`2)) [0 .. w - 1]
+        ixs = [ [(r,c) | c <- cols ] | r <- rows ]
     render $ vBox $ map (hBox . map drawLoc) ixs
   where
     robotLocs = M.fromList $ g ^.. robots . traverse . lensProduct location direction
