@@ -125,7 +125,7 @@ drawWorld g
     drawLoc (0,0) = withAttr robotAttr $ txt "■"
     drawLoc (r,c) = case M.lookup (V2 r c) robotLocs of
       Just dir -> withAttr robotAttr $ txt (robotDir dir)
-      Nothing  -> drawResource (fst (W.lookup (r,c) (g ^. world)))  -- XXX
+      Nothing  -> drawResource (W.lookup (r,c) (g ^. world))
 
 robotDir :: V2 Int -> Text
 robotDir (V2 0 1)    = "▶"
@@ -178,8 +178,9 @@ handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | otherwise                       = halt s
 handleEvent s ev =
   case focusGetCurrent (s ^. uiState . uiFocusRing) of
-    Just REPLPanel -> handleREPLEvent s ev
-    _              -> continueWithoutRedraw s
+    Just REPLPanel  -> handleREPLEvent s ev
+    Just WorldPanel -> handleWorldEvent s ev
+    _               -> continueWithoutRedraw s
 
 handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
@@ -218,3 +219,13 @@ adjReplHistIndex (+/-) s =
       | newIndex == -1 = ""
       | otherwise      = (s ^. uiReplHistory) !! newIndex
 
+handleWorldEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
+handleWorldEvent s (VtyEvent (V.EvKey V.KUp []))
+  = continue $ s & gameState . viewCenter %~ (^+^ north)
+handleWorldEvent s (VtyEvent (V.EvKey V.KDown []))
+  = continue $ s & gameState . viewCenter %~ (^+^ south)
+handleWorldEvent s (VtyEvent (V.EvKey V.KLeft []))
+  = continue $ s & gameState . viewCenter %~ (^+^ west)
+handleWorldEvent s (VtyEvent (V.EvKey V.KRight []))
+  = continue $ s & gameState . viewCenter %~ (^+^ east)
+handleWorldEvent s ev = continueWithoutRedraw s

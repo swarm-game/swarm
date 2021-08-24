@@ -85,8 +85,7 @@ exec Move     r = return (r & location %~ (^+^ (r ^. direction)))
 exec (Turn d) r = return (r & direction %~ applyTurn d)
 exec Harvest  r = do
   let V2 row col = r ^. location
-  (h, w') <- uses world (W.lookup (row,col))
-  world .= w'
+  h <- uses world (W.lookup (row,col))
   world %= W.insert (row,col) ' '
   inventory . at (Resource h) . non 0 += 1
   return r
@@ -97,7 +96,13 @@ exec (Build p) r = do
 applyTurn :: Direction -> V2 Int -> V2 Int
 applyTurn Lt (V2 x y) = V2 (-y) x
 applyTurn Rt (V2 x y) = V2 y (-x)
-applyTurn North _     = V2 (-1) 0
-applyTurn South _     = V2 1 0
-applyTurn East _      = V2 0 1
-applyTurn West _      = V2 0 (-1)
+applyTurn North _     = north
+applyTurn South _     = south
+applyTurn East _      = east
+applyTurn West _      = west
+
+north, south, east, west :: V2 Int
+north = V2 (-1) 0
+south = V2 1 0
+east = V2 0 1
+west = V2 0 (-1)
