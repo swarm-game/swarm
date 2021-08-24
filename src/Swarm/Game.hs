@@ -8,15 +8,18 @@ module Swarm.Game
 
 import           Control.Lens
 import           Control.Monad.State
+import           Data.Hash.Murmur
 import           Data.List.Split     (chunksOf)
 import           Data.Map            (Map)
 import qualified Data.Map            as M
 import           Data.Maybe          (catMaybes)
 import           Linear
 import           System.Random
+import           Witch
 
 import           Swarm.AST
 import           Swarm.Game.Resource
+import qualified Swarm.Game.World    as W
 
 data Robot = Robot
   { _location     :: V2 Int
@@ -35,19 +38,20 @@ data Item = Resource Char
 data GameState = GameState
   { _robots    :: [Robot]
   , _newRobots :: [Robot]
-  , _world     :: [[Char]]
+  , _world     :: W.World
   , _inventory :: Map Item Int
   }
 
-initRs = 50
-initCs = 50
+-- initRs = 50
+-- initCs = 50
 
 initGameState :: IO GameState
 initGameState = do
-  rs <- replicateM (initRs * initCs) (randomRIO (0, length resourceList - 1))
+  -- rs <- replicateM (initRs * initCs) (randomRIO (0, length resourceList - 1))
   return $
     GameState [] []
-      (chunksOf initCs (map (resourceList!!) rs))
+      (W.newWorld (\(i,j) -> if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '))
+      -- (chunksOf initCs (map (resourceList !!) rs))
       M.empty
 
 makeLenses ''Robot
@@ -81,12 +85,10 @@ exec Move     r = return (r & location %~ (^+^ (r ^. direction)))
 exec (Turn d) r = return (r & direction %~ applyTurn d)
 exec Harvest  r = do
   let V2 row col = r ^. location
-  mh <- preuse $ world . ix row . ix col
-  case mh of
-    Nothing -> return ()
-    Just h  -> do
-      world . ix row . ix col .= ' '
-      inventory . at (Resource h) . non 0 += 1
+  (h, w') <- uses world (W.lookup (row,col))
+  world .= w'
+  world %= W.insert (row,col) ' '
+  inventory . at (Resource h) . non 0 += 1
   return r
 exec (Build p) r = do
   newRobots %= (Robot (r ^. location) (V2 0 1) [p] False :)

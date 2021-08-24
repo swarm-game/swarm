@@ -23,6 +23,7 @@ import           Brick.Widgets.Dialog
 import qualified Graphics.Vty               as V
 
 import           Swarm.Game
+import qualified Swarm.Game.World           as W
 import           Swarm.Parse                (readCommand)
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
@@ -110,14 +111,18 @@ drawDialog s = case s ^. uiError of
 drawWorld :: GameState -> Widget Name
 drawWorld g
   = center
-  $ padAll 1
-  $ vBox (imap (\r -> hBox . imap (drawLoc r)) (g ^. world))
+  $ Widget Fixed Fixed $ do
+    ctx <- getContext
+    let w   = ctx ^. availWidthL
+        h   = ctx ^. availHeightL
+        ixs = [ [(r,c) | c <- [0 .. w - 1] ] | r <- [0 .. h - 1] ]
+    render $ vBox $ map (hBox . map drawLoc) ixs
   where
     robotLocs = M.fromList $ g ^.. robots . traverse . lensProduct location direction
-    drawLoc 0 0 _ = withAttr robotAttr $ txt "■"
-    drawLoc r c x = case M.lookup (V2 r c) robotLocs of
+    drawLoc (0,0) = withAttr robotAttr $ txt "■"
+    drawLoc (r,c) = case M.lookup (V2 r c) robotLocs of
       Just dir -> withAttr robotAttr $ txt (robotDir dir)
-      Nothing  -> drawResource x
+      Nothing  -> drawResource (fst (W.lookup (r,c) (g ^. world)))  -- XXX
 
 robotDir :: V2 Int -> Text
 robotDir (V2 0 1)    = "▶"
