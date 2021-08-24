@@ -40,6 +40,7 @@ data GameState = GameState
   , _newRobots  :: [Robot]
   , _world      :: W.World
   , _viewCenter :: V2 Int
+  , _updated    :: Bool
   , _inventory  :: Map Item Int
   }
 
@@ -52,22 +53,24 @@ initGameState = do
     GameState [] []
       (W.newWorld (\(i,j) -> if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '))
       (V2 0 0)
+      False
       M.empty
 
 makeLenses ''Robot
 makeLenses ''GameState
 
+gameStep :: GameState -> GameState
+gameStep = execState step
+
 step :: State GameState ()
 step = do
+  updated .= False
   rs <- use robots
   rs' <- catMaybes <$> forM rs stepRobot
   robots .= rs'
   new <- use newRobots
   robots %= (new++)
   newRobots .= []
-
-gameStep :: GameState -> GameState
-gameStep = execState step
 
 stepRobot :: Robot -> State GameState (Maybe Robot)
 stepRobot r = stepProgram (r ^. robotProgram) r
@@ -81,8 +84,12 @@ stepProgram (cmd : p)          = fmap Just . exec cmd . (robotProgram .~ p)
 
 exec :: Command -> Robot -> State GameState Robot
 exec Wait     r = return r
-exec Move     r = return (r & location %~ (^+^ (r ^. direction)))
-exec (Turn d) r = return (r & direction %~ applyTurn d)
+exec Move     r = do
+  updated .= True
+  return (r & location %~ (^+^ (r ^. direction)))
+exec (Turn d) r = do
+  updated .= True
+  return (r & direction %~ applyTurn d)
 exec Harvest  r = do
   let V2 row col = r ^. location
   h <- uses world (W.lookup (row,col))
@@ -91,6 +98,7 @@ exec Harvest  r = do
   return r
 exec (Build p) r = do
   newRobots %= (Robot (r ^. location) (V2 0 1) [p] False :)
+  updated .= True
   return r
 
 applyTurn :: Direction -> V2 Int -> V2 Int

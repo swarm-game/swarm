@@ -5,6 +5,7 @@ module Swarm.UI where
 
 import           Control.Lens
 import           Control.Lens.Unsound       (lensProduct)
+import           Control.Monad              (when)
 import           Data.Either                (isRight)
 import           Data.Map                   (Map)
 import qualified Data.Map                   as M
@@ -38,6 +39,7 @@ data Name
   | WorldPanel
   | InfoPanel
   | REPLInput
+  | WorldCache
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 ------------------------------------------------------------
@@ -111,6 +113,7 @@ drawDialog s = case s ^. uiError of
 drawWorld :: GameState -> Widget Name
 drawWorld g
   = center
+  $ cached WorldCache
   $ Widget Fixed Fixed $ do
     ctx <- getContext
     let w   = ctx ^. availWidthL
@@ -170,7 +173,11 @@ drawRepl s = vBox $
 -- Event handling
 
 handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
-handleEvent s (AppEvent Tick)                        = continue $ s & gameState %~ gameStep
+handleEvent s (AppEvent Tick)                        = do
+  let s' = s & gameState %~ gameStep
+  when (s' ^. gameState . updated) $ do
+    invalidateCacheEntry WorldCache
+  continue s'
 handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
