@@ -2,14 +2,14 @@ module Swarm.Game.World where
 
 import           Control.Lens
 import           Data.Array.IArray
-import qualified Data.Array.Unboxed  as U
+import qualified Data.Array.Unboxed as U
 import           Data.Bits
 -- import           Data.Cache.LRU
-import           Control.Arrow       ((&&&))
-import           Data.Foldable       (foldl')
-import qualified Data.HashMap.Strict as HM
+import           Control.Arrow      ((&&&))
+import           Data.Foldable      (foldl')
+import qualified Data.Map.Strict    as M
 import           Data.Maybe
-import           Prelude             hiding (lookup)
+import           Prelude            hiding (lookup)
 
 infixr 1 ?
 (?) :: Maybe a -> a -> a
@@ -32,13 +32,13 @@ class Worldly w where
 
 data SimpleWorld = SimpleWorld
   { sworldFun :: (Int,Int) -> Char
-  , sworldMap :: HM.HashMap (Int,Int) Char
+  , sworldMap :: M.Map (Int,Int) Char
   }
 
 instance Worldly SimpleWorld where
-  newWorld f                    = SimpleWorld f HM.empty
-  lookup ix (SimpleWorld f m)   = HM.lookup ix m ? f ix
-  insert ix c (SimpleWorld f m) = SimpleWorld f (HM.insert ix c m)
+  newWorld f                    = SimpleWorld f M.empty
+  lookup ix (SimpleWorld f m)   = M.lookup ix m ? f ix
+  insert ix c (SimpleWorld f m) = SimpleWorld f (M.insert ix c m)
   loadRegion _ w                = w
 
 ------------------------------------------------------------
@@ -60,25 +60,25 @@ type Tile = U.UArray (Int,Int) Char
 
 data TileCachingWorld = TileCachingWorld
   { tcWorldFun :: (Int,Int) -> Char
-  , tcTileMap  :: HM.HashMap (Int,Int) Tile
-  , tcWorldMap :: HM.HashMap (Int,Int) Char
+  , tcTileMap  :: M.Map (Int,Int) Tile
+  , tcWorldMap :: M.Map (Int,Int) Char
   }
 
 instance Worldly TileCachingWorld where
-  newWorld f = TileCachingWorld f HM.empty HM.empty
+  newWorld f = TileCachingWorld f M.empty M.empty
   lookup ix (TileCachingWorld f t m)
-    = HM.lookup ix m
-        ? ((U.! over both (.&. tileMask) ix) <$> HM.lookup (tileIndex ix) t)
+    = M.lookup ix m
+        ? ((U.! over both (.&. tileMask) ix) <$> M.lookup (tileIndex ix) t)
         ? f ix
-  insert ix c (TileCachingWorld f t m) = TileCachingWorld f t (HM.insert ix c m)
+  insert ix c (TileCachingWorld f t m) = TileCachingWorld f t (M.insert ix c m)
   loadRegion reg (TileCachingWorld f t m) = TileCachingWorld f t' m
     where
       tiles = range (over both tileIndex reg)
       t' = foldl' (\hm (ix,tile) -> maybeInsert ix tile hm) t (map (id &&& loadTile) tiles)
 
       maybeInsert k v m
-        | k `HM.member` m = m
-        | otherwise       = HM.insert k v m
+        | k `M.member` m = m
+        | otherwise       = M.insert k v m
 
       loadTile :: (Int,Int) -> Tile
       loadTile tix = listArray tileBounds (map (f . plusRng tileCorner) (range tileBounds))
