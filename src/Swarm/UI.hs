@@ -30,7 +30,7 @@ import qualified Graphics.Vty                as V
 
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
-import           Swarm.Parse                 (readCommand)
+import           Swarm.Parse                 (readTerm)
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
 
@@ -227,14 +227,14 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
           & uiState . uiError ?~ txt err
   where
     entry = formState (s ^. uiState . uiReplForm)
-    result = readCommand entry
+    result = readTerm entry
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp []))
   = continue $ s & uiState %~ adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
   = continue $ s & uiState %~ adjReplHistIndex (-)
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  let result = readCommand (formState f')
+  let result = readTerm (formState f')
       f''    = setFieldValid (isRight result) REPLInput f'
   continue $ s & uiState . uiReplForm .~ f''
 

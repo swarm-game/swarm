@@ -19,14 +19,26 @@ data Term
   | TDir Direction
   | TInt Integer
 --  | TString Text
---  | TLam Text Type Expr
-  | TApp Expr Expr
-  | TBind Expr Expr
+--  | TLam Text Type Term
+  | TApp Term Term
+  | TBind Term Term
+  deriving (Eq, Ord, Show)
 
+-- | Built-in function and command constants.
 data Const
   = Wait
   | Move
   | Turn
   | Harvest
-  | Repeat
+  | Repeat    -- XXX get rid of repeat, encode it as a function within the language?
   | Build
+  deriving (Eq, Ord, Show)
+
+-- | The arity of a constant.
+constArity :: Const -> Int
+constArity Wait    = 0
+constArity Move    = 0
+constArity Turn    = 1
+constArity Harvest = 0
+constArity Repeat  = 2
+constArity Build   = 1
