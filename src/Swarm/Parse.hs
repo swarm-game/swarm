@@ -27,6 +27,7 @@ reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
   , "wait", "move", "turn", "harvest", "repeat", "build", "load"
   , "int", "string", "dir", "cmd"
+  , "let", "in"
   ]
 
 sc :: Parser ()
@@ -116,6 +117,10 @@ parseTermAtom =
   <|> TLam    <$> (symbol "\\" *> identifier)
               <*> optional (symbol ":" *> parseType)
               <*> (symbol "." *> parseTerm)
+  <|> TLet    <$> (reserved "let" *> identifier)
+              <*> optional (symbol ":" *> parseType)
+              <*> (symbol "=" *> parseTerm)
+              <*> (reserved "in" *> parseTerm)
   <|> parens parseTerm
   <|> TNop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm

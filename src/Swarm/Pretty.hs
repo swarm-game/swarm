@@ -62,6 +62,11 @@ instance PrettyPrec Term where
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
   prettyPrec p (TApp t1 t2)  = pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
+  prettyPrec _ (TLet x mty t1 t2) =
+    sep $
+      ["let", pretty x] ++
+      maybe [] (\ty -> [":", ppr ty]) mty ++
+      ["=", ppr t1, "in", ppr t2]
   prettyPrec p (TBind t1 t2) = pparens (p > 0) $
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec _ TNop          = braces emptyDoc
@@ -83,3 +88,5 @@ instance PrettyPrec TypeErr where
       ]
   prettyPrec _ (UnboundVar x) =
     "Unbound variable" <+> pretty x
+  prettyPrec _ (CantInfer t) =
+    "Can't infer the type of" <+> ppr t

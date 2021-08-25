@@ -23,6 +23,7 @@ data Term
   | TVar Text
   | TLam Text (Maybe Type) Term
   | TApp Term Term
+  | TLet Text (Maybe Type) Term Term
   | TBind Term Term
   | TNop
   deriving (Eq, Ord, Show)

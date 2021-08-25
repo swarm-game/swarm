@@ -45,6 +45,7 @@ emptyEnv = M.empty
 data Frame
   = FArg Term Env
   | FApp Value
+  | FLet Text Term Env
   | FMkBind Term Env
   | FExec
   | FExecBind Term Env
@@ -157,13 +158,16 @@ stepRobot r = case r ^. machine of
   In (TVar x) e k                  -> mkStep r $ Out (e!x) k
   In (TLam x _ t) e k              -> mkStep r $ Out (VClo x t e) k
   In (TApp t1 t2) e k              -> mkStep r $ In t1 e (FArg t2 e : k)
+  In (TLet x _ t1 t2) e k          -> mkStep r $ In t1 e (FLet x t2 e : k)
   In (TBind t1 t2) e k             -> mkStep r $ In t1 e (FMkBind t2 e : k)
   In TNop _ k                      -> mkStep r $ Out VNop k
 
   Out _ []                         -> updated .= True >> return Nothing
+
   Out v1 (FArg t2 e : k)           -> mkStep r $ In t2 e (FApp v1 : k)
   Out v2 (FApp (VCApp c args) : k) -> mkStep r $ Out (VCApp c (v2 : args)) k
   Out v2 (FApp (VClo x t e) : k)   -> mkStep r $ In t (M.insert x v2 e) k
+  Out v1 (FLet x t2 e : k)         -> mkStep r $ In t2 (M.insert x v1 e) k
   Out v1 (FMkBind t2 e : k)        -> mkStep r $ Out (VBind v1 t2 e) k
   Out VNop (FExec : k)             -> mkStep r $ Out VUnit k
   Out (VCApp c args) (FExec : k)   -> execConst c args k (r & tickSteps .~ 0)

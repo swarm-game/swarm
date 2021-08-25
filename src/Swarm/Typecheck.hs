@@ -4,7 +4,6 @@ module Swarm.Typecheck where
 
 import           Data.Map    (Map)
 import qualified Data.Map    as M
-import           Data.Maybe  (fromMaybe)
 import           Data.Text   (Text)
 
 import           Swarm.AST
@@ -18,6 +17,7 @@ data TypeErr
   = NotFunTy Term Type
   | Mismatch Term {- expected -} Type {- inferred -} Type
   | UnboundVar Text
+  | CantInfer Term
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -37,11 +37,18 @@ infer ctx (TApp f x)    = do
   (ty1, ty2) <- inferFunTy ctx f
   check ctx x ty1
   return ty2
+infer ctx (TLet x Nothing t1 t2) = do
+  xTy <- infer ctx t1
+  infer (M.insert x xTy ctx) t2
+infer ctx (TLet x (Just xTy) t1 t2) = do
+  check ctx t1 xTy
+  infer (M.insert x xTy ctx) t2
 infer ctx (TBind c1 c2) = do   -- Later this may have a variable binding etc.
   check ctx c1 TyCmd
   check ctx c2 TyCmd
   return TyCmd
 infer _ TNop          = return TyCmd
+infer _ t             = Left $ CantInfer t
 
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded) must be checked.
