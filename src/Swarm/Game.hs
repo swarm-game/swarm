@@ -211,12 +211,14 @@ execConst Run [VString fileName] k r = do
     --
     --   load : String -> Cmd (Cmd ())
     --
-    -- then the code would be the same as for run, EXCEPT that we
-    -- would NOT add the FExec to the stack above.  The fact that
-    -- there are two FExec frames involved in executing 'run' (one to
-    -- execute the run command itself, and one to execute the thing it
-    -- loads) corresponds to the fact that it is equivalent to (in
-    -- pseudo-Haskell syntax) 'join . load'.
+    -- (which could indeed be useful, once commands have return values
+    -- and Bind does more than just sequencing) then the code would be
+    -- the same as for run, EXCEPT that we would NOT add the FExec to
+    -- the stack above.  The fact that there are two FExec frames
+    -- involved in executing 'run' (one to execute the run command
+    -- itself, and one to execute the thing it loads) corresponds to
+    -- the fact that it is equivalent to (in pseudo-Haskell syntax)
+    -- 'join . load'.
 
 execConst Run args k _ = badConst Run args k
 
