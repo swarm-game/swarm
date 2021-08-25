@@ -3,6 +3,7 @@ module Swarm.AST where
 data Direction
   = Lt
   | Rt
+  | Around
   | North
   | South
   | East

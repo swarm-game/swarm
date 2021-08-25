@@ -102,15 +102,16 @@ exec (Build p) r = do
   return r
 
 applyTurn :: Direction -> V2 Int -> V2 Int
-applyTurn Lt (V2 x y) = V2 (-y) x
-applyTurn Rt (V2 x y) = V2 y (-x)
-applyTurn North _     = north
-applyTurn South _     = south
-applyTurn East _      = east
-applyTurn West _      = west
+applyTurn Lt (V2 x y)     = V2 (-y) x
+applyTurn Rt (V2 x y)     = V2 y (-x)
+applyTurn Around (V2 x y) = V2 (-x) (-y)
+applyTurn North _         = north
+applyTurn South _         = south
+applyTurn East _          = east
+applyTurn West _          = west
 
 north, south, east, west :: V2 Int
 north = V2 (-1) 0
 south = V2 1 0
-east = V2 0 1
-west = V2 0 (-1)
+east  = V2 0 1
+west  = V2 0 (-1)

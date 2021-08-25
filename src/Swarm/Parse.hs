@@ -57,12 +57,13 @@ parseCommand =
 
 parseDirection :: Parser Direction
 parseDirection =
-      Lt    <$ reserved "left"
-  <|> Rt    <$ reserved "right"
-  <|> North <$ reserved "north"
-  <|> South <$ reserved "south"
-  <|> East  <$ reserved "east"
-  <|> West  <$ reserved "west"
+      Lt     <$ reserved "left"
+  <|> Rt     <$ reserved "right"
+  <|> Around <$ reserved "around"
+  <|> North  <$ reserved "north"
+  <|> South  <$ reserved "south"
+  <|> East   <$ reserved "east"
+  <|> West   <$ reserved "west"
 
 parseProgram :: Parser Program
 parseProgram = sepEndBy parseCommand (symbol ";")
