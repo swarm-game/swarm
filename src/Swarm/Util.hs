@@ -1,9 +1,7 @@
 module Swarm.Util where
 
-import           Data.Bifunctor            (bimap)
-import           Data.Text                 (Text)
-import           Prettyprinter
-import           Prettyprinter.Render.Text
+import           Data.Bifunctor  (bimap)
+import           Data.Text       (Text)
 
 import           Swarm.AST
 import           Swarm.Parse

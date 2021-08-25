@@ -34,6 +34,9 @@ symbol = L.symbol sc
 reserved :: Text -> Parser ()
 reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
 
+stringLiteral :: Parser Text
+stringLiteral = into <$> (char '"' >> manyTill L.charLiteral (char '"'))
+
 integer :: Parser Integer
 integer = lexeme L.decimal
 
@@ -59,18 +62,20 @@ parseDirection =
 
 parseConst :: Parser Const
 parseConst =
-      Wait <$ reserved "wait"
-  <|> Move <$ reserved "move"
-  <|> Turn <$ reserved "turn"
+      Wait    <$ reserved "wait"
+  <|> Move    <$ reserved "move"
+  <|> Turn    <$ reserved "turn"
   <|> Harvest <$ reserved "harvest"
-  <|> Repeat <$ reserved "repeat"
-  <|> Build <$ reserved "build"
+  <|> Repeat  <$ reserved "repeat"
+  <|> Build   <$ reserved "build"
+  <|> Load    <$ reserved "load"
 
 parseTermAtom :: Parser Term
 parseTermAtom =
       TConst <$> parseConst
   <|> TDir   <$> parseDirection
   <|> TInt   <$> integer
+  <|> TString <$> stringLiteral
   <|> parens parseTerm
   <|> TNop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm

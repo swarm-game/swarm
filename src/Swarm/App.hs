@@ -31,7 +31,7 @@ appMain = do
 
   chan <- newBChan 10
   let tpsTV = s ^. uiState . lgTicksPerSecond
-  forkIO $ forever $ do
+  _ <- forkIO $ forever $ do
     writeBChan chan Tick
     lgTPS <- readTVarIO tpsTV
     let delay

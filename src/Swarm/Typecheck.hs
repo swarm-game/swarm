@@ -2,14 +2,12 @@
 
 module Swarm.Typecheck where
 
-import           Data.Bifunctor (first)
-import           Data.Text      (Text)
-
 import           Swarm.AST
 
 data Type
   = TyUnit
   | TyInt
+  | TyString
   | TyDir
   | TyCmd                   -- Later this may have a result type attached
   | Type :->: Type
@@ -24,10 +22,11 @@ data TypeErr
 ------------------------------------------------------------
 
 infer :: Term -> Either TypeErr Type
-infer (TConst c) = inferConst c
-infer (TDir _)   = return TyDir
-infer (TInt _)   = return TyInt
-infer (TApp f x) = do
+infer (TConst c)    = inferConst c
+infer (TDir _)      = return TyDir
+infer (TInt _)      = return TyInt
+infer (TString _)   = return TyString
+infer (TApp f x)    = do
   (ty1, ty2) <- inferFunTy f
   check x ty1
   return ty2
@@ -35,7 +34,7 @@ infer (TBind c1 c2) = do   -- Later this may have a variable binding etc.
   check c1 TyCmd
   check c2 TyCmd
   return TyCmd
-infer TNop = return TyCmd
+infer TNop          = return TyCmd
 
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded) must be checked.
@@ -46,6 +45,7 @@ inferConst Turn    = return (TyDir :->: TyCmd)
 inferConst Harvest = return TyCmd
 inferConst Repeat  = return (TyInt :->: TyCmd :->: TyCmd)
 inferConst Build   = return (TyCmd :->: TyCmd)
+inferConst Load    = return (TyString :->: TyCmd)
 
 inferFunTy :: Term -> Either TypeErr (Type, Type)
 inferFunTy t = do

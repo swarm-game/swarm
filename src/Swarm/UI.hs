@@ -21,16 +21,12 @@ import           Linear
 import           Brick                       hiding (Direction)
 import           Brick.Focus
 import           Brick.Forms
-import           Brick.Widgets.Border        (border, borderAttr,
-                                              borderWithLabel, hBorder, vBorder)
-import qualified Brick.Widgets.Border.Style  as BS
-import           Brick.Widgets.Center        (center, hCenter, vCenter)
+import           Brick.Widgets.Center        (center, hCenter)
 import           Brick.Widgets.Dialog
 import qualified Graphics.Vty                as V
 
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
-import           Swarm.Parse                 (readTerm)
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
 import           Swarm.Util
@@ -186,9 +182,11 @@ drawRepl s = vBox $
 
 handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 handleEvent s (AppEvent Tick)                        = do
-  let s' = s & gameState %~ gameStep
-  when (s' ^. gameState . updated) $ do
-    invalidateCacheEntry WorldCache
+  let g = s ^. gameState
+  g' <- liftIO $ gameStep g
+  when (g' ^. updated) $ invalidateCacheEntry WorldCache
+
+  let s' = s & gameState .~ g'
 
   s'' <- case s' ^. uiState . needsLoad of
     False -> return s'
@@ -261,7 +259,7 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
   = adjustTPS (+) s >> continueWithoutRedraw s
 
 -- Fall-through case: don't do anything.
-handleWorldEvent s ev = continueWithoutRedraw s
+handleWorldEvent s _ = continueWithoutRedraw s
 
 updateView :: AppState -> (V2 Int -> V2 Int) -> EventM Name AppState
 updateView s update = do

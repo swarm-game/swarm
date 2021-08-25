@@ -2,6 +2,7 @@
 
 module Swarm.Pretty where
 
+import           Data.String               (fromString)
 import           Data.Text                 (Text)
 import           Prettyprinter
 import           Prettyprinter.Render.Text
@@ -23,10 +24,11 @@ pparens True  = parens
 pparens False = id
 
 instance PrettyPrec Type where
-  prettyPrec _ TyUnit = "()"
-  prettyPrec _ TyInt  = "Int"
-  prettyPrec _ TyDir  = "Dir"
-  prettyPrec _ TyCmd  = "Cmd"
+  prettyPrec _ TyUnit         = "()"
+  prettyPrec _ TyInt          = "Int"
+  prettyPrec _ TyDir          = "Dir"
+  prettyPrec _ TyString       = "String"
+  prettyPrec _ TyCmd          = "Cmd"
   prettyPrec p (ty1 :->: ty2) = pparens (p > 0) $
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
@@ -47,15 +49,18 @@ instance PrettyPrec Const where
   prettyPrec _ Harvest = "harvest"
   prettyPrec _ Repeat  = "repeat"
   prettyPrec _ Build   = "build"
+  prettyPrec _ Load    = "load"
 
 instance PrettyPrec Term where
   prettyPrec _ (TConst c)    = ppr c
   prettyPrec _ (TDir d)      = ppr d
   prettyPrec _ (TInt n)      = pretty n
+  prettyPrec _ (TString s)   = fromString (show s)
   prettyPrec p (TApp t1 t2)  = pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
   prettyPrec p (TBind t1 t2) = pparens (p > 0) $
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+  prettyPrec _ TNop          = braces emptyDoc
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (NotFunTy t ty) =

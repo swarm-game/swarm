@@ -18,7 +18,7 @@ instance Named (Panel n) n where
   getName = view panelName
 
 drawPanel :: Eq n => AttrName -> FocusRing n -> Panel n -> Widget n
-drawPanel attr fr p = withFocusRing fr drawPanel' p
+drawPanel attr fr = withFocusRing fr drawPanel'
   where
     drawPanel' :: Bool -> Panel n -> Widget n
     drawPanel' focused p

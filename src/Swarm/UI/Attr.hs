@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module Swarm.UI.Attr where
 
@@ -21,8 +22,8 @@ theAttrMap = attrMap V.defAttr
   [ (robotAttr, fg V.white `V.withStyle` V.bold)
   , (plantAttr, fg V.green)
   , (flowerAttr, fg V.yellow)
-  , (dirtAttr, fg (V.rgbColor 165 42 42))
-  , (rockAttr, fg (V.rgbColor 80 80 80))
+  , (dirtAttr, fg (V.rgbColor @Int 165 42 42))
+  , (rockAttr, fg (V.rgbColor @Int 80 80 80))
   , (highlightAttr, fg V.cyan)
   , (invalidFormInputAttr, fg V.red)
   , (focusedFormInputAttr, V.defAttr)

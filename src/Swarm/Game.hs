@@ -10,29 +10,30 @@ module Swarm.Game
 import           Control.Lens        hiding (Const)
 import           Control.Monad.State
 import           Data.Hash.Murmur
-import           Data.List.Split     (chunksOf)
 import           Data.Map            (Map)
 import qualified Data.Map            as M
 import           Data.Maybe          (catMaybes)
-import           Data.Text
+import           Data.Text           (Text)
+import qualified Data.Text.IO        as T
 import           Linear
-import           System.Random
 import           Witch
 
 import           Swarm.AST
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World    as W
+import           Swarm.Util          (processCmd)
 
 ------------------------------------------------------------
 -- CEK machine types
 
 data Value where
-  VUnit  :: Value
-  VInt   :: Integer -> Value
-  VDir   :: Direction -> Value
-  VCApp  :: Const -> [Value] -> Value
-  VBind  :: Value -> Term -> Env -> Value
-  VNop   :: Value
+  VUnit   :: Value
+  VInt    :: Integer -> Value
+  VString :: Text -> Value
+  VDir    :: Direction -> Value
+  VCApp   :: Const -> [Value] -> Value
+  VBind   :: Value -> Term -> Env -> Value
+  VNop    :: Value
   deriving (Eq, Ord, Show)
 
 type Env = Map Text Value
@@ -120,13 +121,13 @@ makeLenses ''GameState
 ------------------------------------------------------------
 -- CEK machine
 
-gameStep :: GameState -> GameState
-gameStep = execState step
+gameStep :: GameState -> IO GameState
+gameStep = execStateT step
 
 evalStepsPerTick :: Int
 evalStepsPerTick = 30
 
-step :: State GameState ()
+step :: StateT GameState IO ()
 step = do
   updated .= False
   rs <- use robots
@@ -136,24 +137,25 @@ step = do
   robots %= (new++)
   newRobots .= []
 
-bigStepRobot :: Robot -> State GameState (Maybe Robot)
+bigStepRobot :: Robot -> StateT GameState IO (Maybe Robot)
 bigStepRobot r
-  | r ^. tickSteps == 0 = return (Just r)
+  | r ^. tickSteps <= 0 = return (Just r)
   | otherwise           = do
       r' <- stepRobot r
-      maybe (return Nothing) bigStepRobot r'
+      maybe (return Nothing) (bigStepRobot . (tickSteps -~ 1)) r'
 
-mkStep :: Robot -> CEK -> State GameState (Maybe Robot)
+mkStep :: Robot -> CEK -> StateT GameState IO (Maybe Robot)
 mkStep r cek = return . Just $ r & machine .~ cek
 
-stepRobot :: Robot -> State GameState (Maybe Robot)
+stepRobot :: Robot -> StateT GameState IO (Maybe Robot)
 stepRobot r = case r ^. machine of
-  In (TConst c) e k                -> mkStep r $ Out (VCApp c []) k
-  In (TDir d) e k                  -> mkStep r $ Out (VDir d) k
-  In (TInt n) e k                  -> mkStep r $ Out (VInt n) k
+  In (TConst c) _ k                -> mkStep r $ Out (VCApp c []) k
+  In (TDir d) _ k                  -> mkStep r $ Out (VDir d) k
+  In (TInt n) _ k                  -> mkStep r $ Out (VInt n) k
+  In (TString s) _ k               -> mkStep r $ Out (VString s) k
   In (TApp t1 t2) e k              -> mkStep r $ In t1 e (FArg t2 e : k)
   In (TBind t1 t2) e k             -> mkStep r $ In t1 e (FMkBind t2 e : k)
-  In TNop e k                      -> mkStep r $ Out VNop k
+  In TNop _ k                      -> mkStep r $ Out VNop k
 
   Out _ []                         -> updated .= True >> return Nothing
   Out v1 (FArg t2 e : k)           -> mkStep r $ In t2 e (FApp v1 : k)
@@ -172,7 +174,7 @@ stepRobot r = case r ^. machine of
 appArity :: Const -> [Value] -> Int
 appArity c args = constArity c - Prelude.length args
 
-execConst :: Const -> [Value] -> Cont -> Robot -> State GameState (Maybe Robot)
+execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r = mkStep r $ Out VUnit k
 execConst Move _ k r = do
   updated .= True
@@ -186,15 +188,25 @@ execConst Harvest _ k r = do
 execConst Turn [VDir d] k r = do
   updated .= True
   mkStep (r & direction %~ applyTurn d) (Out VUnit k)
+execConst Turn args k _ = badConst Turn args k
 execConst Repeat [_, VInt 0] k r = mkStep r $ Out VUnit k
 execConst Repeat [c, VInt n] k r = mkStep r $ Out c (FExec : FRepeat (n-1) c : k)
+execConst Repeat args k _ = badConst Repeat args k
 execConst Build [c] k r = do
   newRobots %= (mkRobot (r ^. location) (V2 0 1) (initMachineV c) :)
   updated .= True
   mkStep r (Out VUnit k)
+execConst Build args k _ = badConst Build args k
+execConst Load [VString fileName] k r = do
+  f <- liftIO $ T.readFile (into fileName)  -- XXX handle file not existing
+  case processCmd f of
+    Left  err -> error (into err)  -- XXX
+    Right t   -> mkStep r $ In t M.empty k
+execConst Load args k _ = badConst Load args k
 
-execConst cnst args k r = error $
-  "Panic! Bad application of execConst " ++ show cnst ++ " " ++ show args ++ " " ++ show k
+badConst :: Const -> [Value] -> Cont -> a
+badConst c args k = error $
+  "Panic! Bad application of execConst " ++ show c ++ " " ++ show args ++ " " ++ show k
 
 applyTurn :: Direction -> V2 Int -> V2 Int
 applyTurn Lt (V2 x y)   = V2 (-y) x

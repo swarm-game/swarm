@@ -18,7 +18,7 @@ data Term
 --  | TVar Text
   | TDir Direction
   | TInt Integer
---  | TString Text
+  | TString Text
 --  | TLam Text Type Term
   | TApp Term Term
   | TBind Term Term
@@ -33,6 +33,7 @@ data Const
   | Harvest
   | Repeat    -- XXX get rid of repeat, encode it as a function within the language?
   | Build
+  | Load
   deriving (Eq, Ord, Show)
 
 -- | The arity of a constant.
@@ -43,3 +44,4 @@ constArity Turn    = 1
 constArity Harvest = 0
 constArity Repeat  = 2
 constArity Build   = 1
+constArity Load    = 1

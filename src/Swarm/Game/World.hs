@@ -75,9 +75,9 @@ instance Worldly TileCachingWorld where
       tiles = range (over both tileIndex reg)
       t' = foldl' (\hm (i,tile) -> maybeInsert i tile hm) t (map (id &&& loadTile) tiles)
 
-      maybeInsert k v m
-        | k `M.member` m = m
-        | otherwise       = M.insert k v m
+      maybeInsert k v hm
+        | k `M.member` hm = hm
+        | otherwise       = M.insert k v hm
 
       loadTile :: (Int,Int) -> Tile
       loadTile ti = listArray tileBounds (map (f . plusRng tileCorner) (range tileBounds))
