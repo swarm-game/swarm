@@ -87,7 +87,7 @@ mkRobot l d m = Robot
 mkBase :: Term -> Robot
 mkBase e = Robot
   { _location  = V2 0 0
-  , _direction = V2 0 0
+  , _direction = V2 0 1
   , _machine   = initMachine e
   , _tickSteps = 0
   , _static    = True
@@ -182,18 +182,23 @@ stepRobot r = case r ^. machine of
 appArity :: Const -> [Value] -> Int
 appArity c args = constArity c - Prelude.length args
 
+nonStatic :: Cont -> Robot -> StateT GameState IO (Maybe Robot) -> StateT GameState IO (Maybe Robot)
+nonStatic k r m
+  | r ^. static = mkStep r (Out VUnit k)  -- XXX message saying that the base can't move?
+  | otherwise   = m
+
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r = mkStep r $ Out VUnit k
-execConst Move _ k r = do
+execConst Move _ k r = nonStatic k r $ do
   updated .= True
   mkStep (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
-execConst Harvest _ k r = do
+execConst Harvest _ k r = nonStatic k r $ do
   let V2 row col = r ^. location
   h <- uses world (W.lookup (row,col))
   world %= W.insert (row,col) ' '
   inventory . at (Resource h) . non 0 += 1
   mkStep r (Out VUnit k)
-execConst Turn [VDir d] k r = do
+execConst Turn [VDir d] k r = nonStatic k r $ do
   updated .= True
   mkStep (r & direction %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k
@@ -201,7 +206,7 @@ execConst Repeat [_, VInt 0] k r = mkStep r $ Out VUnit k
 execConst Repeat [c, VInt n] k r = mkStep r $ Out c (FExec : FRepeat (n-1) c : k)
 execConst Repeat args k _ = badConst Repeat args k
 execConst Build [c] k r = do
-  newRobots %= (mkRobot (r ^. location) (V2 0 1) (initMachineV c) :)
+  newRobots %= (mkRobot (r ^. location) (r ^. direction) (initMachineV c) :)
   updated .= True
   mkStep r (Out VUnit k)
 execConst Build args k _ = badConst Build args k
