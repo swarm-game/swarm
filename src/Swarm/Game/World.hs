@@ -1,56 +1,92 @@
 module Swarm.Game.World where
 
+import           Control.Lens
 import           Data.Array.IArray
 import qualified Data.Array.Unboxed  as U
 import           Data.Bits
 -- import           Data.Cache.LRU
+import           Control.Arrow       ((&&&))
+import           Data.Foldable       (foldl')
 import qualified Data.HashMap.Strict as HM
 import           Data.Maybe
 import           Prelude             hiding (lookup)
 
-data World = World
-  { worldFun :: (Int,Int) -> Char
-  , worldMap :: HM.HashMap (Int,Int) Char
+infixr 1 ?
+(?) :: Maybe a -> a -> a
+(?) = flip fromMaybe
+
+------------------------------------------------------------
+-- Worldly type class
+
+class Worldly w where
+  newWorld   :: ((Int,Int) -> Char) -> w
+  lookup     :: (Int,Int) -> w -> Char
+  insert     :: (Int,Int) -> Char -> w -> w
+  loadRegion :: ((Int,Int), (Int,Int)) -> w -> w
+
+------------------------------------------------------------
+-- SimpleWorld
+
+-- A SimpleWorld just stores the world function and a map with changed
+-- locations.  It does not do any fancy caching.
+
+data SimpleWorld = SimpleWorld
+  { sworldFun :: (Int,Int) -> Char
+  , sworldMap :: HM.HashMap (Int,Int) Char
   }
 
-newWorld :: ((Int,Int) -> Char) -> World
-newWorld f = World f HM.empty
+instance Worldly SimpleWorld where
+  newWorld f                    = SimpleWorld f HM.empty
+  lookup ix (SimpleWorld f m)   = HM.lookup ix m ? f ix
+  insert ix c (SimpleWorld f m) = SimpleWorld f (HM.insert ix c m)
+  loadRegion _ w                = w
 
-lookup :: (Int, Int) -> World -> Char
-lookup ix w@(World f m) = fromMaybe (f ix) (HM.lookup ix m)
+------------------------------------------------------------
+-- TileCachingWorld
 
-insert :: (Int, Int) -> Char -> World -> World
-insert ix c (World f m) = World f (HM.insert ix c m)
+-- A TileCachingWorld keeps a cache of recently accessed square tiles
+-- to make lookups faster.
 
--- Make sure a region is loaded into the world cache.
-loadRegion :: (Int, Int) -> (Int, Int) -> World -> World
-loadRegion topLeft bottomRight w = w
+tileBits :: Int
+tileBits = 6     -- Each tile is 2^tileBits x 2^tileBits
 
--- tileBits :: Int
--- tileBits = 6     -- Each tile is 2^tileBits x 2^tileBits
+tileMask :: Int
+tileMask = (1 `shiftL` tileBits) - 1
 
--- tileMask = (1 `shiftL` tileBits) - 1
+tileBounds :: ((Int,Int), (Int,Int))
+tileBounds = ((0,0),(tileMask,tileMask))
 
--- type Tile = IOUArray (Int,Int) Char
+type Tile = U.UArray (Int,Int) Char
 
--- data World = World
---   { worldFun :: Int -> Int -> Char
---   , tileMap  :: HM.HashMap (Int,Int) Tile
---   , worldMap :: HM.HashMap (Int,Int) Char
---   }
+data TileCachingWorld = TileCachingWorld
+  { tcWorldFun :: (Int,Int) -> Char
+  , tcTileMap  :: HM.HashMap (Int,Int) Tile
+  , tcWorldMap :: HM.HashMap (Int,Int) Char
+  }
 
--- wlookup :: World -> (Int,Int) -> (Char, World)
--- wlookup w@(World _ tiles _) (i,j)
---   | tileIndex `HM.member` tiles = ((tiles HM.! tileIndex) U.! (i .&. tileMask, j .&. tileMask), w)
---   | otherwise                   = wlookup (loadTile tileIndex w) (i,j)
---   where
---     tileIndex = (i `shiftR` tileBits, j `shiftR` tileBits)
+instance Worldly TileCachingWorld where
+  newWorld f = TileCachingWorld f HM.empty HM.empty
+  lookup ix (TileCachingWorld f t m)
+    = HM.lookup ix m
+        ? ((U.! over both (.&. tileMask) ix) <$> HM.lookup (tileIndex ix) t)
+        ? f ix
+  insert ix c (TileCachingWorld f t m) = TileCachingWorld f t (HM.insert ix c m)
+  loadRegion reg (TileCachingWorld f t m) = TileCachingWorld f t' m
+    where
+      tiles = range (over both tileIndex reg)
+      t' = foldl' (\hm (ix,tile) -> maybeInsert ix tile hm) t (map (id &&& loadTile) tiles)
 
--- loadTile :: (Int,Int) -> World -> World
--- loadTile (i,j) (World f t w)
---   = World f (HM.insert (i,j) newTile t) w
---   where
---     newTile = listArray ((0,0), (tileMask, tileMask)) (map cellValue indexList)
---     cellValue ix = fromMaybe (uncurry f ix) (HM.lookup ix w)
---     indexList = [(ii,jj) | ii <- [i `shiftL` tileBits .. ((i+1) `shiftL` tileBits) - 1]
---                          , jj <- [j `shiftL` tileBits .. ((j+1) `shiftL` tileBits) - 1]]
+      maybeInsert k v m
+        | k `HM.member` m = m
+        | otherwise       = HM.insert k v m
+
+      loadTile :: (Int,Int) -> Tile
+      loadTile tix = listArray tileBounds (map (f . plusRng tileCorner) (range tileBounds))
+        where
+          tileCorner = over both (`shiftL` tileBits) tix
+
+plusRng :: (Int,Int) -> (Int,Int) -> (Int,Int)
+plusRng (x1,y1) (x2,y2) = (x1 `xor` x2,y1 `xor` y2)
+
+tileIndex :: (Int,Int) -> (Int,Int)
+tileIndex = over both (`shiftR` tileBits)

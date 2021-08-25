@@ -9,7 +9,9 @@ import           Control.Lens
 import           Control.Lens.Unsound        (lensProduct)
 import           Control.Monad               (when)
 import           Control.Monad.IO.Class      (liftIO)
+import           Data.Array                  (range)
 import           Data.Either                 (isRight)
+import           Data.List.Split             (chunksOf)
 import           Data.Map                    (Map)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
@@ -43,6 +45,7 @@ data Name
   | InfoPanel
   | REPLInput
   | WorldCache
+  | WorldExtent
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 ------------------------------------------------------------
@@ -54,6 +57,7 @@ data UIState = UIState
   , _uiReplHistory    :: [Text]
   , _uiReplHistIdx    :: Int
   , _uiError          :: Maybe (Widget Name)
+  , _needsLoad        :: Bool
   , _lgTicksPerSecond :: TVar Int
   }
 
@@ -76,7 +80,7 @@ initLgTicksPerSecond = 3    -- 2^3 = 8 ticks per second
 initUIState :: IO UIState
 initUIState = do
   tv <- newTVarIO initLgTicksPerSecond
-  return $ UIState initFocusRing initReplForm [] (-1) Nothing tv
+  return $ UIState initFocusRing initReplForm [] (-1) Nothing True tv
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)
@@ -123,15 +127,13 @@ drawWorld :: GameState -> Widget Name
 drawWorld g
   = center
   $ cached WorldCache
+  $ reportExtent WorldExtent
   $ Widget Fixed Fixed $ do
     ctx <- getContext
     let w   = ctx ^. availWidthL
         h   = ctx ^. availHeightL
-        V2 cr cc = g ^. viewCenter
-        rows = map (+ (cr - h`div`2)) [0 .. h - 1]
-        cols = map (+ (cc - w`div`2)) [0 .. w - 1]
-        ixs = [ [(r,c) | c <- cols ] | r <- rows ]
-    render $ vBox $ map (hBox . map drawLoc) ixs
+        ixs = range (viewingRegion g (w,h))
+    render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
     robotLocs = M.fromList $ g ^.. robots . traverse . lensProduct location direction
     drawLoc (0,0) = withAttr robotAttr $ txt "■"
@@ -186,10 +188,20 @@ handleEvent s (AppEvent Tick)                        = do
   let s' = s & gameState %~ gameStep
   when (s' ^. gameState . updated) $ do
     invalidateCacheEntry WorldCache
-  continue s'
+
+  s'' <- case s' ^. uiState . needsLoad of
+    False -> return s'
+    True  -> do
+      mext <- lookupExtent WorldExtent
+      case mext of
+        Nothing -> return s'
+        Just _  -> (uiState . needsLoad .~ False) <$> updateView s' id
+
+  continue s''
+
 handleEvent s (VtyEvent (V.EvResize _ _))            = do
   invalidateCacheEntry WorldCache
-  continue s
+  continue $ s & uiState . needsLoad .~ True
 handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
@@ -239,19 +251,34 @@ adjReplHistIndex (+/-) s =
       | otherwise      = (s ^. uiReplHistory) !! newIndex
 
 handleWorldEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
-handleWorldEvent s (VtyEvent (V.EvKey V.KUp []))
-  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ north))
-handleWorldEvent s (VtyEvent (V.EvKey V.KDown []))
-  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ south))
-handleWorldEvent s (VtyEvent (V.EvKey V.KLeft []))
-  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ west))
-handleWorldEvent s (VtyEvent (V.EvKey V.KRight []))
-  = invalidateCacheEntry WorldCache >> continue (s & gameState . viewCenter %~ (^+^ east))
+handleWorldEvent s (VtyEvent (V.EvKey V.KUp []))    = updateView s (^+^ north) >>= continue
+handleWorldEvent s (VtyEvent (V.EvKey V.KDown []))  = updateView s (^+^ south) >>= continue
+handleWorldEvent s (VtyEvent (V.EvKey V.KLeft []))  = updateView s (^+^ west)  >>= continue
+handleWorldEvent s (VtyEvent (V.EvKey V.KRight [])) = updateView s (^+^ east)  >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
   = adjustTPS (+) s >> continueWithoutRedraw s
+
+-- Fall-through case: don't do anything.
 handleWorldEvent s ev = continueWithoutRedraw s
+
+updateView :: AppState -> (V2 Int -> V2 Int) -> EventM Name AppState
+updateView s update = do
+  invalidateCacheEntry WorldCache
+  let s' = s & gameState . viewCenter %~ update
+  mext <- lookupExtent WorldExtent
+  case mext of
+    Nothing  -> return s'
+    Just (Extent _ _ size) -> return $
+      s' & gameState . world %~ W.loadRegion (viewingRegion (s' ^. gameState) size)
+
+viewingRegion :: GameState -> (Int,Int) -> ((Int, Int), (Int, Int))
+viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
+  where
+    V2 cr cc = g ^. viewCenter
+    (rmin,rmax) = over both (+ (cr - h`div`2)) (0, h-1)
+    (cmin,cmax) = over both (+ (cc - w`div`2)) (0, w-1)
 
 adjustTPS :: (Int -> Int -> Int) -> AppState -> EventM Name ()
 adjustTPS (+/-) s =

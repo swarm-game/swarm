@@ -38,7 +38,7 @@ data Item = Resource Char
 data GameState = GameState
   { _robots     :: [Robot]
   , _newRobots  :: [Robot]
-  , _world      :: W.World
+  , _world      :: W.TileCachingWorld
   , _viewCenter :: V2 Int
   , _updated    :: Bool
   , _inventory  :: Map Item Int
