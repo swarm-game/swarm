@@ -35,7 +35,7 @@ import           Swarm.UI.Attr
 import           Swarm.UI.Panel
 
 ------------------------------------------------------------
--- XXX
+-- Custom UI label types
 
 data Tick = Tick
 

@@ -1,11 +1,10 @@
 module Swarm.Game.World where
 
+import           Control.Arrow      ((&&&))
 import           Control.Lens
 import           Data.Array.IArray
 import qualified Data.Array.Unboxed as U
 import           Data.Bits
--- import           Data.Cache.LRU
-import           Control.Arrow      ((&&&))
 import           Data.Foldable      (foldl')
 import qualified Data.Map.Strict    as M
 import           Data.Maybe
