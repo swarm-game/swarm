@@ -33,6 +33,7 @@ import qualified Swarm.Game.World            as W
 import           Swarm.Parse                 (readTerm)
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
+import           Swarm.Util
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -215,7 +216,7 @@ handleEvent s ev =
 
 handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
-  = case result of
+  = case processCmd entry of
       Right cmd ->
         continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
@@ -227,7 +228,6 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
           & uiState . uiError ?~ txt err
   where
     entry = formState (s ^. uiState . uiReplForm)
-    result = readTerm entry
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp []))
   = continue $ s & uiState %~ adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
