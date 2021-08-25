@@ -201,7 +201,7 @@ execConst Load [VString fileName] k r = do
   f <- liftIO $ T.readFile (into fileName)  -- XXX handle file not existing
   case processCmd f of
     Left  err -> error (into err)  -- XXX
-    Right t   -> mkStep r $ In t M.empty k
+    Right t   -> mkStep r $ In t M.empty (FExec : k)   -- XXX
 execConst Load args k _ = badConst Load args k
 
 badConst :: Const -> [Value] -> Cont -> a
