@@ -2,6 +2,8 @@ module Swarm.AST where
 
 import           Data.Text
 
+import           Swarm.Types
+
 data Direction
   = Lt
   | Rt
@@ -15,11 +17,11 @@ data Direction
 
 data Term
   = TConst Const
---  | TVar Text
   | TDir Direction
   | TInt Integer
   | TString Text
---  | TLam Text Type Term
+  | TVar Text
+  | TLam Text (Maybe Type) Term
   | TApp Term Term
   | TBind Term Term
   | TNop

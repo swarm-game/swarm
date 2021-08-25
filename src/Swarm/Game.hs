@@ -10,7 +10,7 @@ module Swarm.Game
 import           Control.Lens        hiding (Const)
 import           Control.Monad.State
 import           Data.Hash.Murmur
-import           Data.Map            (Map)
+import           Data.Map            (Map, (!))
 import qualified Data.Map            as M
 import           Data.Maybe          (catMaybes)
 import           Data.Text           (Text)
@@ -31,6 +31,7 @@ data Value where
   VInt    :: Integer -> Value
   VString :: Text -> Value
   VDir    :: Direction -> Value
+  VClo    :: Text -> Term -> Env -> Value
   VCApp   :: Const -> [Value] -> Value
   VBind   :: Value -> Term -> Env -> Value
   VNop    :: Value
@@ -153,6 +154,8 @@ stepRobot r = case r ^. machine of
   In (TDir d) _ k                  -> mkStep r $ Out (VDir d) k
   In (TInt n) _ k                  -> mkStep r $ Out (VInt n) k
   In (TString s) _ k               -> mkStep r $ Out (VString s) k
+  In (TVar x) e k                  -> mkStep r $ Out (e!x) k
+  In (TLam x _ t) e k              -> mkStep r $ Out (VClo x t e) k
   In (TApp t1 t2) e k              -> mkStep r $ In t1 e (FArg t2 e : k)
   In (TBind t1 t2) e k             -> mkStep r $ In t1 e (FMkBind t2 e : k)
   In TNop _ k                      -> mkStep r $ Out VNop k
@@ -160,6 +163,7 @@ stepRobot r = case r ^. machine of
   Out _ []                         -> updated .= True >> return Nothing
   Out v1 (FArg t2 e : k)           -> mkStep r $ In t2 e (FApp v1 : k)
   Out v2 (FApp (VCApp c args) : k) -> mkStep r $ Out (VCApp c (v2 : args)) k
+  Out v2 (FApp (VClo x t e) : k)   -> mkStep r $ In t (M.insert x v2 e) k
   Out v1 (FMkBind t2 e : k)        -> mkStep r $ Out (VBind v1 t2 e) k
   Out VNop (FExec : k)             -> mkStep r $ Out VUnit k
   Out (VCApp c args) (FExec : k)   -> execConst c args k (r & tickSteps .~ 0)

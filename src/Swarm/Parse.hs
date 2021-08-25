@@ -15,11 +15,19 @@ import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
 
 import           Swarm.AST
+import           Swarm.Types
 
 type Parser = Parsec Void Text
 
 --------------------------------------------------
 -- Lexer
+
+reservedWords :: [String]
+reservedWords =
+  [ "left", "right", "back", "forward", "north", "south", "east", "west"
+  , "wait", "move", "turn", "harvest", "repeat", "build", "load"
+  , "int", "string", "dir", "cmd"
+  ]
 
 sc :: Parser ()
 sc = L.space
@@ -36,6 +44,17 @@ symbol = L.symbol sc
 reserved :: Text -> Parser ()
 reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
 
+-- | Parse an identifier, i.e. any non-reserved string containing
+--   alphanumeric characters and not starting with a number.
+identifier :: Parser Text
+identifier = (lexeme . try) (p >>= check) <?> "variable name"
+  where
+    p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_')
+    check x
+      | map toLower x `elem` reservedWords
+      = fail $ "reserved word " ++ x ++ " cannot be used as variable name"
+      | otherwise = return (into @Text x)
+
 stringLiteral :: Parser Text
 stringLiteral = into <$> (char '"' >> manyTill L.charLiteral (char '"'))
 
@@ -50,6 +69,21 @@ parens = between (symbol "(") (symbol ")")
 
 --------------------------------------------------
 -- Parser
+
+parseType :: Parser Type
+parseType = makeExprParser parseTypeAtom table
+  where
+    table =
+      [ [ InfixR ((:->:) <$ symbol "->") ]
+      ]
+
+parseTypeAtom :: Parser Type
+parseTypeAtom =
+      TyUnit   <$ symbol "()"
+  <|> TyInt    <$ reserved "int"
+  <|> TyString <$ reserved "string"
+  <|> TyDir    <$ reserved "dir"
+  <|> TyCmd    <$ reserved "cmd"
 
 parseDirection :: Parser Direction
 parseDirection =
@@ -74,10 +108,14 @@ parseConst =
 
 parseTermAtom :: Parser Term
 parseTermAtom =
-      TConst <$> parseConst
-  <|> TDir   <$> parseDirection
-  <|> TInt   <$> integer
+      TConst  <$> parseConst
+  <|> TVar    <$> identifier
+  <|> TDir    <$> parseDirection
+  <|> TInt    <$> integer
   <|> TString <$> stringLiteral
+  <|> TLam    <$> (symbol "\\" *> identifier)
+              <*> optional (symbol ":" *> parseType)
+              <*> (symbol "." *> parseTerm)
   <|> parens parseTerm
   <|> TNop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm

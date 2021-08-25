@@ -22,7 +22,8 @@ maintainer:         byorgey@gmail.com
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  Swarm.AST
+    exposed-modules:  Swarm.Types
+                      Swarm.AST
                       Swarm.Parse
                       Swarm.Pretty
                       Swarm.Typecheck

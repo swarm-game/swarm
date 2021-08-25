@@ -9,6 +9,7 @@ import           Prettyprinter.Render.Text
 
 import           Swarm.AST
 import           Swarm.Typecheck
+import           Swarm.Types
 
 class PrettyPrec a where
   prettyPrec :: Int -> a -> Doc ann   -- can replace with custom ann type later if desired
@@ -56,6 +57,9 @@ instance PrettyPrec Term where
   prettyPrec _ (TDir d)      = ppr d
   prettyPrec _ (TInt n)      = pretty n
   prettyPrec _ (TString s)   = fromString (show s)
+  prettyPrec _ (TVar s)      = pretty s
+  prettyPrec _ (TLam x mty body) =
+    "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
   prettyPrec p (TApp t1 t2)  = pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
   prettyPrec p (TBind t1 t2) = pparens (p > 0) $
@@ -77,3 +81,5 @@ instance PrettyPrec TypeErr where
       , "Expected type:" <+> ppr expected
       , "Actual type:" <+> ppr inferred
       ]
+  prettyPrec _ (UnboundVar x) =
+    "Unbound variable" <+> pretty x
