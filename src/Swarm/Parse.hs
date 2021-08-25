@@ -7,9 +7,10 @@ import           Data.Text
 import           Data.Void
 import           Witch
 
-import           Text.Megaparsec            hiding (State, runParser)
+import           Control.Monad.Combinators.Expr
+import           Text.Megaparsec                hiding (State, runParser)
 import           Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Char.Lexer     as L
 
 import           Swarm.AST
 
@@ -45,28 +46,41 @@ parens = between (symbol "(") (symbol ")")
 --------------------------------------------------
 -- Parser
 
-parseCommand :: Parser Command
-parseCommand =
-      Wait    <$  reserved "wait"
-  <|> Move    <$  reserved "move"
-  <|> Turn    <$> (reserved "turn" *> parseDirection)
-  <|> Harvest <$  reserved "harvest"
-  <|> Block   <$> braces parseProgram
-  <|> Repeat  <$> (reserved "repeat" *> integer) <*> parseCommand
-  <|> Build   <$> (reserved "build" *> parseCommand)
-
 parseDirection :: Parser Direction
 parseDirection =
       Lt     <$ reserved "left"
   <|> Rt     <$ reserved "right"
-  <|> Around <$ reserved "around"
+  <|> Back   <$ reserved "back"
+  <|> Fwd    <$ reserved "forward"
   <|> North  <$ reserved "north"
   <|> South  <$ reserved "south"
   <|> East   <$ reserved "east"
   <|> West   <$ reserved "west"
 
-parseProgram :: Parser Program
-parseProgram = sepEndBy parseCommand (symbol ";")
+parseConst :: Parser Const
+parseConst =
+      Wait <$ reserved "wait"
+  <|> Move <$ reserved "move"
+  <|> Turn <$ reserved "turn"
+  <|> Harvest <$ reserved "harvest"
+  <|> Repeat <$ reserved "repeat"
+  <|> Build <$ reserved "build"
+
+parseTermAtom :: Parser Term
+parseTermAtom =
+      TConst <$> parseConst
+  <|> TDir   <$> parseDirection
+  <|> TInt   <$> integer
+  <|> parens parseTerm
+  <|> braces parseTerm
+
+parseTerm :: Parser Term
+parseTerm = makeExprParser parseTermAtom table
+  where
+    table =
+      [ [ InfixL (TApp <$ string "") ]
+      , [ InfixR (TBind <$ symbol ";") ]
+      ]
 
 --------------------------------------------------
 -- Utilities
@@ -74,5 +88,5 @@ parseProgram = sepEndBy parseCommand (symbol ";")
 runParser :: Parser a -> Text -> Either Text a
 runParser p t = first (from . errorBundlePretty) (parse p "" t)
 
-readCommand :: Text -> Either Text Command
-readCommand = runParser parseCommand
+readTerm :: Text -> Either Text Term
+readTerm = runParser parseTerm

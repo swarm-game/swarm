@@ -1,23 +1,32 @@
 module Swarm.AST where
 
+import           Data.Text
+
 data Direction
   = Lt
   | Rt
-  | Around
+  | Back
+  | Fwd
   | North
   | South
   | East
   | West
   deriving (Eq, Ord, Show, Read)
 
-data Command
+data Term
+  = TConst Const
+--  | TVar Text
+  | TDir Direction
+  | TInt Integer
+--  | TString Text
+--  | TLam Text Type Expr
+  | TApp Expr Expr
+  | TBind Expr Expr
+
+data Const
   = Wait
   | Move
-  | Turn Direction
+  | Turn
   | Harvest
-  | Block Program
-  | Repeat Integer Command
-  | Build Command
-  deriving (Eq, Ord, Show)
-
-type Program = [Command]
+  | Repeat
+  | Build

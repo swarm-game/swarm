@@ -35,10 +35,10 @@ data SimpleWorld = SimpleWorld
   }
 
 instance Worldly SimpleWorld where
-  newWorld f                    = SimpleWorld f M.empty
-  lookup ix (SimpleWorld f m)   = M.lookup ix m ? f ix
-  insert ix c (SimpleWorld f m) = SimpleWorld f (M.insert ix c m)
-  loadRegion _ w                = w
+  newWorld f                   = SimpleWorld f M.empty
+  lookup i (SimpleWorld f m)   = M.lookup i m ? f i
+  insert i c (SimpleWorld f m) = SimpleWorld f (M.insert i c m)
+  loadRegion _ w               = w
 
 ------------------------------------------------------------
 -- TileCachingWorld
@@ -65,24 +65,24 @@ data TileCachingWorld = TileCachingWorld
 
 instance Worldly TileCachingWorld where
   newWorld f = TileCachingWorld f M.empty M.empty
-  lookup ix (TileCachingWorld f t m)
-    = M.lookup ix m
-        ? ((U.! over both (.&. tileMask) ix) <$> M.lookup (tileIndex ix) t)
-        ? f ix
-  insert ix c (TileCachingWorld f t m) = TileCachingWorld f t (M.insert ix c m)
+  lookup i (TileCachingWorld f t m)
+    = M.lookup i m
+        ? ((U.! over both (.&. tileMask) i) <$> M.lookup (tileIndex i) t)
+        ? f i
+  insert i c (TileCachingWorld f t m) = TileCachingWorld f t (M.insert i c m)
   loadRegion reg (TileCachingWorld f t m) = TileCachingWorld f t' m
     where
       tiles = range (over both tileIndex reg)
-      t' = foldl' (\hm (ix,tile) -> maybeInsert ix tile hm) t (map (id &&& loadTile) tiles)
+      t' = foldl' (\hm (i,tile) -> maybeInsert i tile hm) t (map (id &&& loadTile) tiles)
 
       maybeInsert k v m
         | k `M.member` m = m
         | otherwise       = M.insert k v m
 
       loadTile :: (Int,Int) -> Tile
-      loadTile tix = listArray tileBounds (map (f . plusRng tileCorner) (range tileBounds))
+      loadTile ti = listArray tileBounds (map (f . plusRng tileCorner) (range tileBounds))
         where
-          tileCorner = over both (`shiftL` tileBits) tix
+          tileCorner = over both (`shiftL` tileBits) ti
 
 plusRng :: (Int,Int) -> (Int,Int) -> (Int,Int)
 plusRng (x1,y1) (x2,y2) = (x1 `xor` x2,y1 `xor` y2)
