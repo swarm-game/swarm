@@ -234,7 +234,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
   = continue $ s & uiState %~ adjReplHistIndex (-)
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  let result = readTerm (formState f')
+  let result = processCmd (formState f')
       f''    = setFieldValid (isRight result) REPLInput f'
   continue $ s & uiState . uiReplForm .~ f''
 

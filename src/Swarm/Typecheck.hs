@@ -35,6 +35,7 @@ infer (TBind c1 c2) = do   -- Later this may have a variable binding etc.
   check c1 TyCmd
   check c2 TyCmd
   return TyCmd
+infer TNop = return TyCmd
 
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded) must be checked.

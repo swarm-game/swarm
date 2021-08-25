@@ -32,6 +32,7 @@ data Value where
   VDir   :: Direction -> Value
   VCApp  :: Const -> [Value] -> Value
   VBind  :: Value -> Term -> Env -> Value
+  VNop   :: Value
   deriving (Eq, Ord, Show)
 
 type Env = Map Text Value
@@ -152,11 +153,13 @@ stepRobot r = case r ^. machine of
   In (TInt n) e k                  -> mkStep r $ Out (VInt n) k
   In (TApp t1 t2) e k              -> mkStep r $ In t1 e (FArg t2 e : k)
   In (TBind t1 t2) e k             -> mkStep r $ In t1 e (FMkBind t2 e : k)
+  In TNop e k                      -> mkStep r $ Out VNop k
 
   Out _ []                         -> updated .= True >> return Nothing
   Out v1 (FArg t2 e : k)           -> mkStep r $ In t2 e (FApp v1 : k)
   Out v2 (FApp (VCApp c args) : k) -> mkStep r $ Out (VCApp c (v2 : args)) k
   Out v1 (FMkBind t2 e : k)        -> mkStep r $ Out (VBind v1 t2 e) k
+  Out VNop (FExec : k)             -> mkStep r $ Out VUnit k
   Out (VCApp c args) (FExec : k)   -> execConst c args k (r & tickSteps .~ 0)
   Out (VBind c t2 e) (FExec : k)   -> mkStep r $ Out c (FExec : FExecBind t2 e : k)
   Out _v (FExecBind t2 e : k)      -> mkStep r $ In t2 e (FExec : k)

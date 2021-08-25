@@ -22,6 +22,7 @@ data Term
 --  | TLam Text Type Term
   | TApp Term Term
   | TBind Term Term
+  | TNop
   deriving (Eq, Ord, Show)
 
 -- | Built-in function and command constants.

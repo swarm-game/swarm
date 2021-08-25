@@ -72,6 +72,7 @@ parseTermAtom =
   <|> TDir   <$> parseDirection
   <|> TInt   <$> integer
   <|> parens parseTerm
+  <|> TNop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm
 
 parseTerm :: Parser Term
