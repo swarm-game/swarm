@@ -45,7 +45,7 @@ inferConst Turn    = return (TyDir :->: TyCmd)
 inferConst Harvest = return TyCmd
 inferConst Repeat  = return (TyInt :->: TyCmd :->: TyCmd)
 inferConst Build   = return (TyCmd :->: TyCmd)
-inferConst Load    = return (TyString :->: TyCmd)
+inferConst Run     = return (TyString :->: TyCmd)
 
 inferFunTy :: Term -> Either TypeErr (Type, Type)
 inferFunTy t = do

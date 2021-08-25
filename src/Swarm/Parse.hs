@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module Swarm.Parse where
 
 import           Data.Bifunctor
-import           Data.Text
+import           Data.Char
+import           Data.Text                      (Text)
 import           Data.Void
 import           Witch
 
@@ -68,7 +70,7 @@ parseConst =
   <|> Harvest <$ reserved "harvest"
   <|> Repeat  <$ reserved "repeat"
   <|> Build   <$ reserved "build"
-  <|> Load    <$ reserved "load"
+  <|> Run     <$ reserved "run"
 
 parseTermAtom :: Parser Term
 parseTermAtom =

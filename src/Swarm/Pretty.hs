@@ -49,7 +49,7 @@ instance PrettyPrec Const where
   prettyPrec _ Harvest = "harvest"
   prettyPrec _ Repeat  = "repeat"
   prettyPrec _ Build   = "build"
-  prettyPrec _ Load    = "load"
+  prettyPrec _ Run     = "run"
 
 instance PrettyPrec Term where
   prettyPrec _ (TConst c)    = ppr c
