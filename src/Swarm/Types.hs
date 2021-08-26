@@ -5,7 +5,7 @@ data Type
   | TyInt
   | TyString
   | TyDir
-  | TyCmd                   -- Later this may have a result type attached
+  | TyCmd Type
   | Type :->: Type
   deriving (Eq, Ord, Show)
 

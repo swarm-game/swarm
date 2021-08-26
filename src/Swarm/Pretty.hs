@@ -26,10 +26,10 @@ pparens False = id
 
 instance PrettyPrec Type where
   prettyPrec _ TyUnit         = "()"
-  prettyPrec _ TyInt          = "Int"
-  prettyPrec _ TyDir          = "Dir"
-  prettyPrec _ TyString       = "String"
-  prettyPrec _ TyCmd          = "Cmd"
+  prettyPrec _ TyInt          = "int"
+  prettyPrec _ TyDir          = "dir"
+  prettyPrec _ TyString       = "string"
+  prettyPrec p (TyCmd ty)     = pparens (p > 1) $ "cmd" <+> prettyPrec 2 ty
   prettyPrec p (ty1 :->: ty2) = pparens (p > 0) $
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
@@ -68,14 +68,24 @@ instance PrettyPrec Term where
       ["let", pretty x] ++
       maybe [] (\ty -> [":", ppr ty]) mty ++
       ["=", ppr t1, "in", ppr t2]
-  prettyPrec p (TBind t1 t2) = pparens (p > 0) $
+  prettyPrec p (TBind Nothing t1 t2) = pparens (p > 0) $
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+  prettyPrec p (TBind (Just x) t1 t2) = pparens (p > 0) $
+    pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
   prettyPrec _ TNop          = braces emptyDoc
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (NotFunTy t ty) =
     sep
     [ "Expecting a function type, but"
+    , ppr t
+    , "has type"
+    , ppr ty
+    , "instead."
+    ]
+  prettyPrec _ (NotCmdTy t ty) =
+    sep
+    [ "Expecting a command type, but"
     , ppr t
     , "has type"
     , ppr ty

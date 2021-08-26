@@ -5,6 +5,7 @@ module Swarm.Parse where
 
 import           Data.Bifunctor
 import           Data.Char
+import           Data.List                      (foldl1')
 import           Data.Text                      (Text)
 import           Data.Void
 import           Witch
@@ -84,7 +85,8 @@ parseTypeAtom =
   <|> TyInt    <$ reserved "int"
   <|> TyString <$ reserved "string"
   <|> TyDir    <$ reserved "dir"
-  <|> TyCmd    <$ reserved "cmd"
+  <|> TyCmd    <$> (reserved "cmd" *> parseTypeAtom)
+  <|> parens parseType
 
 parseDirection :: Parser Direction
 parseDirection =
@@ -127,12 +129,32 @@ parseTermAtom =
   <|> braces parseTerm
 
 parseTerm :: Parser Term
-parseTerm = makeExprParser parseTermAtom table
+parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
+
+mkBindChain :: [Stmt] -> Parser Term
+mkBindChain stmts = case last stmts of
+  Binder _ _ -> fail "Last command in a chain must not have a binder"
+  BareTerm t -> return $ foldr mkBind t (init stmts)
+
   where
-    table =
-      [ [ InfixL (TApp <$ string "") ]
-      , [ InfixR (TBind <$ symbol ";") ]
-      ]
+    mkBind (BareTerm t1) t2 = TBind Nothing t1 t2
+    mkBind (Binder x t1) t2 = TBind (Just x) t1 t2
+
+data Stmt
+  = BareTerm      Term
+  | Binder   Text Term
+  deriving (Eq, Ord, Show)
+
+parseStmt :: Parser Stmt
+parseStmt =
+  mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseAppChain
+
+mkStmt :: Maybe Text -> Term -> Stmt
+mkStmt Nothing  = BareTerm
+mkStmt (Just x) = Binder x
+
+parseAppChain :: Parser Term
+parseAppChain = foldl1' TApp <$> sepBy1 parseTermAtom (string "")
 
 --------------------------------------------------
 -- Utilities
@@ -141,4 +163,4 @@ runParser :: Parser a -> Text -> Either Text a
 runParser p t = first (from . errorBundlePretty) (parse p "" t)
 
 readTerm :: Text -> Either Text Term
-readTerm = runParser parseTerm
+readTerm = runParser (parseTerm <* eof)

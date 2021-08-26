@@ -15,6 +15,7 @@ import           Swarm.Types
 
 data TypeErr
   = NotFunTy Term Type
+  | NotCmdTy Term Type
   | Mismatch Term {- expected -} Type {- inferred -} Type
   | UnboundVar Text
   | CantInfer Term
@@ -44,23 +45,28 @@ infer ctx (TLet x Nothing t1 t2) = do
 infer ctx (TLet x (Just xTy) t1 t2) = do
   check ctx t1 xTy
   infer (M.insert x xTy ctx) t2
-infer ctx (TBind c1 c2) = do   -- Later this may have a variable binding etc.
-  check ctx c1 TyCmd
-  check ctx c2 TyCmd
-  return TyCmd
-infer _ TNop          = return TyCmd
+infer ctx (TBind mx c1 c2) = do
+  a <- decomposeCmdTy c1 =<< infer ctx c1
+  cmdb <- infer (maybe id (`M.insert` a) mx ctx) c2
+  _ <- decomposeCmdTy c2 cmdb
+  return cmdb
+infer _ TNop          = return $ TyCmd TyUnit
 infer _ t             = Left $ CantInfer t
+
+decomposeCmdTy :: Term -> Type -> Either TypeErr Type
+decomposeCmdTy _ (TyCmd resTy) = return resTy
+decomposeCmdTy t ty            = Left (NotCmdTy t ty)
 
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded) must be checked.
 inferConst :: Const -> Either TypeErr Type
-inferConst Wait    = return TyCmd
-inferConst Move    = return TyCmd
-inferConst Turn    = return (TyDir :->: TyCmd)
-inferConst Harvest = return TyCmd
-inferConst Repeat  = return (TyInt :->: TyCmd :->: TyCmd)
-inferConst Build   = return (TyCmd :->: TyCmd)
-inferConst Run     = return (TyString :->: TyCmd)
+inferConst Wait    = return $ TyCmd TyUnit
+inferConst Move    = return $ TyCmd TyUnit
+inferConst Turn    = return $ TyDir :->: TyCmd TyUnit
+inferConst Harvest = return $ TyCmd TyUnit
+inferConst Repeat  = return $ TyInt :->: TyCmd TyUnit :->: TyCmd TyUnit
+inferConst Build   = return $ TyCmd TyUnit :->: TyCmd TyUnit
+inferConst Run     = return $ TyString :->: TyCmd TyUnit
 
 inferFunTy :: Ctx -> Term -> Either TypeErr (Type, Type)
 inferFunTy ctx t = infer ctx t >>= decomposeFunTy t

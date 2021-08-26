@@ -36,7 +36,7 @@ data Value where
   VDir    :: Direction -> Value
   VClo    :: Text -> Term -> Env -> Value
   VCApp   :: Const -> [Value] -> Value
-  VBind   :: Value -> Term -> Env -> Value
+  VBind   :: Value -> Maybe Text -> Term -> Env -> Value
   VNop    :: Value
   deriving (Eq, Ord, Show)
 
@@ -49,9 +49,9 @@ data Frame
   = FArg Term Env
   | FApp Value
   | FLet Text Term Env
-  | FMkBind Term Env
+  | FMkBind (Maybe Text) Term Env
   | FExec
-  | FExecBind Term Env
+  | FExecBind (Maybe Text) Term Env
   | FRepeat Integer Value
   deriving (Eq, Ord, Show)
 
@@ -167,30 +167,29 @@ mkStep r cek = return . Just $ r & machine .~ cek
 
 stepRobot :: Robot -> StateT GameState IO (Maybe Robot)
 stepRobot r = case r ^. machine of
-  In TUnit _ k                     -> mkStep r $ Out VUnit k
-  In (TConst c) _ k                -> mkStep r $ Out (VCApp c []) k
-  In (TDir d) _ k                  -> mkStep r $ Out (VDir d) k
-  In (TInt n) _ k                  -> mkStep r $ Out (VInt n) k
-  In (TString s) _ k               -> mkStep r $ Out (VString s) k
-  In (TVar x) e k                  -> mkStep r $ Out (e!x) k
-  In (TLam x _ t) e k              -> mkStep r $ Out (VClo x t e) k
-  In (TApp t1 t2) e k              -> mkStep r $ In t1 e (FArg t2 e : k)
-  In (TLet x _ t1 t2) e k          -> mkStep r $ In t1 e (FLet x t2 e : k)
-  In (TBind t1 t2) e k             -> mkStep r $ In t1 e (FMkBind t2 e : k)
-  In TNop _ k                      -> mkStep r $ Out VNop k
+  In TUnit _ k                      -> mkStep r $ Out VUnit k
+  In (TConst c) _ k                 -> mkStep r $ Out (VCApp c []) k
+  In (TDir d) _ k                   -> mkStep r $ Out (VDir d) k
+  In (TInt n) _ k                   -> mkStep r $ Out (VInt n) k
+  In (TString s) _ k                -> mkStep r $ Out (VString s) k
+  In (TVar x) e k                   -> mkStep r $ Out (e!x) k
+  In (TLam x _ t) e k               -> mkStep r $ Out (VClo x t e) k
+  In (TApp t1 t2) e k               -> mkStep r $ In t1 e (FArg t2 e : k)
+  In (TLet x _ t1 t2) e k           -> mkStep r $ In t1 e (FLet x t2 e : k)
+  In (TBind mx t1 t2) e k           -> mkStep r $ In t1 e (FMkBind mx t2 e : k)
+  In TNop _ k                       -> mkStep r $ Out VNop k
 
-  Out _ []                         -> updated .= True >> return Nothing
+  Out _ []                          -> updated .= True >> return Nothing
 
-  Out v1 (FArg t2 e : k)           -> mkStep r $ In t2 e (FApp v1 : k)
-  Out v2 (FApp (VCApp c args) : k) -> mkStep r $ Out (VCApp c (v2 : args)) k
-  Out v2 (FApp (VClo x t e) : k)   -> mkStep r $ In t (M.insert x v2 e) k
-  Out v1 (FLet x t2 e : k)         -> mkStep r $ In t2 (M.insert x v1 e) k
-  Out v1 (FMkBind t2 e : k)        -> mkStep r $ Out (VBind v1 t2 e) k
-  Out VNop (FExec : k)             -> mkStep r $ Out VUnit k
-  Out (VCApp c args) (FExec : k)   -> execConst c args k (r & tickSteps .~ 0)
-  Out (VBind c t2 e) (FExec : k)   -> mkStep r $ Out c (FExec : FExecBind t2 e : k)
-  Out _v (FExecBind t2 e : k)      -> mkStep r $ In t2 e (FExec : k)
-    -- eventually the above case will update e with a binding to _v
+  Out v1 (FArg t2 e : k)            -> mkStep r $ In t2 e (FApp v1 : k)
+  Out v2 (FApp (VCApp c args) : k)  -> mkStep r $ Out (VCApp c (v2 : args)) k
+  Out v2 (FApp (VClo x t e) : k)    -> mkStep r $ In t (M.insert x v2 e) k
+  Out v1 (FLet x t2 e : k)          -> mkStep r $ In t2 (M.insert x v1 e) k
+  Out v1 (FMkBind mx t2 e : k)      -> mkStep r $ Out (VBind v1 mx t2 e) k
+  Out VNop (FExec : k)              -> mkStep r $ Out VUnit k
+  Out (VCApp c args) (FExec : k)    -> execConst c args k (r & tickSteps .~ 0)
+  Out (VBind c mx t2 e) (FExec : k) -> mkStep r $ Out c (FExec : FExecBind mx t2 e : k)
+  Out v (FExecBind mx t2 e : k)     -> mkStep r $ In t2 (maybe id (`M.insert` v) mx e) (FExec : k)
 
   Out _ (FRepeat n c : k)          -> execConst Repeat [c, VInt n] k r
 

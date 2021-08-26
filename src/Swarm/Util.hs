@@ -13,5 +13,5 @@ import           Swarm.Types
 processCmd :: Text -> Either Text Term
 processCmd txt = do
   t <- readTerm txt
-  bimap renderPretty (const t) (check M.empty t TyCmd)
+  bimap renderPretty (const t) (check M.empty t (TyCmd TyUnit))
 
