@@ -226,9 +226,11 @@ execConst GetY _ k r             = mkStep r $ Out (VInt (fromIntegral (-row))) k
   where
     V2 row _ = r ^. location
 
-execConst Repeat [_, VInt 0] k r = mkStep r $ Out VUnit k
-execConst Repeat [c, VInt n] k r = mkStep r $ Out c (FExec : FRepeat (n-1) c : k)
+execConst Repeat [c, VInt n] k r
+  | n <= 0    = mkStep r $ Out VUnit k
+  | otherwise = mkStep r $ Out c (FExec : FRepeat (n-1) c : k)
 execConst Repeat args k _ = badConst Repeat args k
+
 execConst Build [c] k r = do
   newRobots %= (mkRobot (r ^. location) (r ^. direction) (initMachineV c) :)
   updated .= True
