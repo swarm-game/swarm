@@ -1,11 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+  -- IsString (Parser u) instance
 
 module Swarm.Parse where
 
 import           Data.Bifunctor
 import           Data.Char
-import           Data.List                      (foldl1')
+import           Data.Functor                   (void)
 import           Data.Text                      (Text)
 import           Data.Void
 import           Witch
@@ -15,6 +21,7 @@ import           Text.Megaparsec                hiding (State, runParser)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
 
+import           Data.String                    (IsString, fromString)
 import           Swarm.AST
 import           Swarm.Types
 
@@ -45,6 +52,11 @@ symbol = L.symbol sc
 
 reserved :: Text -> Parser ()
 reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
+
+instance () ~ u => IsString (Parser u) where
+  fromString s
+    | s `elem` reservedWords = reserved (from s)
+    | otherwise              = void (symbol (from s))
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and not starting with a number.
@@ -90,8 +102,8 @@ parseTypeAtom =
 
 parseDirection :: Parser Direction
 parseDirection =
-      Lt     <$ reserved "left"
-  <|> Rt     <$ reserved "right"
+      Lft    <$ reserved "left"
+  <|> Rgt    <$ reserved "right"
   <|> Back   <$ reserved "back"
   <|> Fwd    <$ reserved "forward"
   <|> North  <$ reserved "north"
@@ -151,14 +163,29 @@ data Stmt
 
 parseStmt :: Parser Stmt
 parseStmt =
-  mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseAppChain
+  mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseExpr
 
 mkStmt :: Maybe Text -> Term -> Stmt
 mkStmt Nothing  = BareTerm
 mkStmt (Just x) = Binder x
 
-parseAppChain :: Parser Term
-parseAppChain = foldl1' (TApp Nothing) <$> sepBy1 parseTermAtom (string "")
+parseExpr :: Parser Term
+parseExpr = makeExprParser parseTermAtom table
+  where
+    table =
+      [ [InfixL (TApp Nothing <$ string "")]
+      , map (\(s, op) -> InfixN (mkOp (Cmp op) <$ symbol s))
+        [ ("==", CmpEq)
+        , ("/=", CmpNeq)
+        , ("<=", CmpLeq)
+        , (">=", CmpGeq)
+        , ("<", CmpLt)
+        , (">", CmpGt)
+        ]
+      ]
+
+mkOp :: Const -> Term -> Term -> Term
+mkOp c = TApp Nothing . TApp Nothing (TConst c)
 
 --------------------------------------------------
 -- Utilities

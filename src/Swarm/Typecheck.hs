@@ -97,6 +97,7 @@ inferConst Build   = return $ TyCmd TyUnit :->: TyCmd TyUnit
 inferConst Run     = return $ TyString :->: TyCmd TyUnit
 inferConst GetX    = return $ TyCmd TyInt
 inferConst GetY    = return $ TyCmd TyInt
+inferConst (Cmp _) = return $ TyInt :->: TyInt :->: TyBool
 
 inferConst c       = Left $ CantInfer (TConst c)
 

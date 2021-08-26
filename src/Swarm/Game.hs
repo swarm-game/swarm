@@ -237,6 +237,9 @@ execConst GetY _ k r = mkStep r $ Out (VInt (fromIntegral (-row))) k
   where
     V2 row _ = r ^. location
 
+execConst (Cmp c) [VInt n1, VInt n2] k r = mkStep r $ Out (VBool (evalCmp c n1 n2)) k
+execConst (Cmp c) args k _ = badConst (Cmp c) args k
+
 execConst Force [VDelay t e] k r = mkStep r $ In t e k
 execConst Force args k _ = badConst Force args k
 
@@ -289,8 +292,8 @@ badConst c args k = error $
   "Panic! Bad application of execConst " ++ show c ++ " " ++ show args ++ " " ++ show k
 
 applyTurn :: Direction -> V2 Int -> V2 Int
-applyTurn Lt (V2 x y)   = V2 (-y) x
-applyTurn Rt (V2 x y)   = V2 y (-x)
+applyTurn Lft (V2 x y)  = V2 (-y) x
+applyTurn Rgt (V2 x y)  = V2 y (-x)
 applyTurn Back (V2 x y) = V2 (-x) (-y)
 applyTurn Fwd v         = v
 applyTurn North _       = north
@@ -303,3 +306,11 @@ north = V2 (-1) 0
 south = V2 1 0
 east  = V2 0 1
 west  = V2 0 (-1)
+
+evalCmp :: CmpConst -> Integer -> Integer -> Bool
+evalCmp CmpEq  = (==)
+evalCmp CmpNeq = (/=)
+evalCmp CmpLt  = (<)
+evalCmp CmpGt  = (>)
+evalCmp CmpLeq = (<=)
+evalCmp CmpGeq = (>=)

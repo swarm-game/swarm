@@ -13,7 +13,7 @@ import           Swarm.Types
 
 type Var = Text
 
-data Direction = Lt | Rt | Back | Fwd | North | South | East | West
+data Direction = Lft | Rgt | Back | Fwd | North | South | East | West
   deriving (Eq, Ord, Show, Read)
 
 -- | Built-in function and command constants.
@@ -29,6 +29,10 @@ data Const
   | GetY
   | If
   | Force
+  | Cmp CmpConst
+  deriving (Eq, Ord, Show)
+
+data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
   deriving (Eq, Ord, Show)
 
 -- | The arity of a constant.
@@ -44,6 +48,7 @@ arity GetX    = 0
 arity GetY    = 0
 arity If      = 3
 arity Force   = 1
+arity (Cmp _) = 2
 
 -- | Some constants are commands, which means a fully saturated
 --   application of those constants counts as a value, and should not
@@ -52,6 +57,7 @@ arity Force   = 1
 --   functions; fully saturated applications of such constants should
 --   be evaluated immediately.
 isCmd :: Const -> Bool
+isCmd (Cmp _) = False
 isCmd c = c `notElem` funList
   where
     funList = [If, Force]

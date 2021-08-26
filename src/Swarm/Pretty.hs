@@ -39,8 +39,8 @@ instance PrettyPrec Type where
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
 instance PrettyPrec Direction where
-  prettyPrec _ Lt    = "left"
-  prettyPrec _ Rt    = "right"
+  prettyPrec _ Lft   = "left"
+  prettyPrec _ Rgt   = "right"
   prettyPrec _ Back  = "back"
   prettyPrec _ Fwd   = "forward"
   prettyPrec _ North = "north"
@@ -60,6 +60,15 @@ instance PrettyPrec Const where
   prettyPrec _ GetY    = "getY"
   prettyPrec _ If      = "if"
   prettyPrec _ Force   = "force"
+  prettyPrec p (Cmp c) = prettyPrec p c
+
+instance PrettyPrec CmpConst where
+  prettyPrec _ CmpEq  = "=="
+  prettyPrec _ CmpNeq = "/="
+  prettyPrec _ CmpLt  = "<"
+  prettyPrec _ CmpGt  = ">"
+  prettyPrec _ CmpLeq = "<="
+  prettyPrec _ CmpGeq = ">="
 
 instance PrettyPrec Term where
   prettyPrec _ TUnit         = "()"
