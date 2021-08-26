@@ -27,6 +27,7 @@ library
                       Swarm.Parse
                       Swarm.Pretty
                       Swarm.Typecheck
+                      Swarm.Elaborate
                       Swarm.Util
                       Swarm.Game
                       Swarm.Game.Resource

@@ -175,7 +175,7 @@ stepRobot r = case r ^. machine of
   In (TInt n) _ k                   -> mkStep r $ Out (VInt n) k
   In (TString s) _ k                -> mkStep r $ Out (VString s) k
   In (TBool b) _ k                  -> mkStep r $ Out (VBool b) k
-  In (TVar _ x) e k                 -> mkStep r $ Out (e!x) k
+  In (TVar x) e k                   -> mkStep r $ Out (e!x) k
   In (TLam x _ t) e k               -> mkStep r $ Out (VClo x t e) k
   In (TApp _ t1 t2) e k             -> mkStep r $ In t1 e (FArg t2 e : k)
   In (TLet x _ t1 t2) e k           -> mkStep r $ In t1 e (FLet x t2 e : k)

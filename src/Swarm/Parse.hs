@@ -116,8 +116,7 @@ parseTermAtom :: Parser Term
 parseTermAtom =
       TUnit   <$  symbol "()"
   <|> TConst  <$> parseConst
-  <|> TVar Nothing
-              <$> identifier
+  <|> TVar    <$> identifier
   <|> TDir    <$> parseDirection
   <|> TInt    <$> integer
   <|> TString <$> stringLiteral

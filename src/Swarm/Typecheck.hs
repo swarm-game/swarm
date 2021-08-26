@@ -42,7 +42,7 @@ infer _   (TInt n)                  = return $ TInt n ::: TyInt
 infer _   (TString s)               = return $ TString s ::: TyString
 infer _   (TBool b)                 = return $ TBool b ::: TyBool
 infer ctx (TApp _ (TApp _ (TApp _ (TConst If) cond) thn) els) = do
-  acond <- check ctx cond TyBool  --- allow cmd bool too??
+  acond <- check ctx cond TyBool
   athn ::: thnTy <- infer ctx thn
   aels ::: elsTy <- infer ctx els
   checkEqual thn thnTy elsTy
@@ -54,9 +54,9 @@ infer ctx (TDelay x)                = do
 infer ctx (TApp _ (TConst Force) t) = do
   at ::: ty <- infer ctx t
   return $ TApp (Identity ty) (TConst Force) at ::: ty
-infer ctx (TVar _ x)                = do
+infer ctx (TVar x)                = do
   ty <- lookupTy x ctx
-  return $ TVar (Identity ty) x ::: ty
+  return $ TVar x ::: ty
 infer ctx (TLam x (Just argTy) t)   = do
   at ::: resTy <- infer (M.insert x argTy ctx) t
   return $ TLam x (Identity argTy) at ::: (argTy :->: resTy)
@@ -78,7 +78,7 @@ infer ctx (TBind mx _ c1 c2)        = do
   a <- decomposeCmdTy c1 ty1
   ac2 ::: cmdb <- infer (maybe id (`M.insert` a) mx ctx) c2
   _ <- decomposeCmdTy c2 cmdb
-  return $ TBind mx (Identity ty1) ac1 ac2 ::: cmdb
+  return $ TBind mx (Identity a) ac1 ac2 ::: cmdb
 infer _ TNop = return $ TNop ::: TyCmd TyUnit
 infer _ t = Left $ CantInfer t
 

@@ -68,7 +68,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TInt n)      = pretty n
   prettyPrec _ (TString s)   = fromString (show s)
   prettyPrec _ (TBool b)     = bool "false" "true" b
-  prettyPrec _ (TVar _ s)    = pretty s
+  prettyPrec _ (TVar s)      = pretty s
   prettyPrec p (TDelay t)    = pparens (p > 10) $ "delay" <+> prettyPrec 11 t
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
