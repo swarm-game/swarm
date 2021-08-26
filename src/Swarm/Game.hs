@@ -7,21 +7,24 @@ module Swarm.Game
   )
   where
 
-import           Control.Lens        hiding (Const)
+import           Numeric.Noise.Perlin
+import           Numeric.Noise.Ridged
+
+import           Control.Lens         hiding (Const)
 import           Control.Monad.State
-import           Data.Hash.Murmur
-import           Data.Map            (Map, (!))
-import qualified Data.Map            as M
-import           Data.Maybe          (catMaybes)
-import           Data.Text           (Text)
-import qualified Data.Text.IO        as T
+-- import           Data.Hash.Murmur
+import           Data.Map             (Map, (!))
+import qualified Data.Map             as M
+import           Data.Maybe           (catMaybes)
+import           Data.Text            (Text)
+import qualified Data.Text.IO         as T
 import           Linear
 import           Witch
 
 import           Swarm.AST
 import           Swarm.Game.Resource
-import qualified Swarm.Game.World    as W
-import           Swarm.Util          (processCmd)
+import qualified Swarm.Game.World     as W
+import           Swarm.Util           (processCmd)
 
 ------------------------------------------------------------
 -- CEK machine types
@@ -99,11 +102,18 @@ data Item = Resource Char
 data GameState = GameState
   { _robots     :: [Robot]
   , _newRobots  :: [Robot]
-  , _world      :: W.TileCachingWorld
+  , _world      :: W.SimpleWorld
   , _viewCenter :: V2 Int
   , _updated    :: Bool
   , _inventory  :: Map Item Int
   }
+
+pn1, pn2 :: Perlin
+pn1 = perlin 0 5 0.05 0.5
+pn2 = perlin 0 5 0.05 0.75
+
+rn :: Ridged
+rn = ridged 0 5 0.005 1 2
 
 initGameState :: IO GameState
 initGameState = return $
@@ -111,7 +121,13 @@ initGameState = return $
   { _robots     = []
   , _newRobots  = []
   , _world      = W.newWorld $ \(i,j) ->
-      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
+      if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
+        then 'T'
+        else
+          if noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0
+            then 'O'
+            else '.'
+--      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
   , _viewCenter = V2 0 0
   , _updated    = False
   , _inventory  = M.empty
