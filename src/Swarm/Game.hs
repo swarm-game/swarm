@@ -62,7 +62,6 @@ data Frame
   | FMkBind (Maybe Text) UTerm Env
   | FExec
   | FExecBind (Maybe Text) UTerm Env
-  | FRepeat Integer Value
   deriving (Eq, Ord, Show)
 
 type Cont = [Frame]
@@ -115,7 +114,6 @@ prettyFrame (FMkBind (Just x) t _)   = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FExec                    = "exec _"
 prettyFrame (FExecBind Nothing t _)  = "_ ; " ++ prettyString t
 prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
-prettyFrame (FRepeat n v)            = "repeat " ++ show n ++ " " ++ prettyString (valueToTerm v)
 
 -- END DEBUGGING CODE
 ------------------------------------------------------------
@@ -252,8 +250,6 @@ stepRobot r = case r ^. machine of
   Out (VBind c mx t2 e) (FExec : k) -> mkStep r $ Out c (FExec : FExecBind mx t2 e : k)
   Out v (FExecBind mx t2 e : k)     -> mkStep r $ In t2 (maybe id (`M.insert` v) mx e) (FExec : k)
 
-  Out _ (FRepeat n c : k)          -> execConst Repeat [VInt n, c] k r
-
   cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
 
 nonStatic :: Cont -> Robot -> StateT GameState IO (Maybe Robot) -> StateT GameState IO (Maybe Robot)
@@ -308,11 +304,6 @@ execConst Force args k _ = badConst Force args k
 execConst If [VBool True , thn, _] k r = mkStep r $ Out thn k
 execConst If [VBool False, _, els] k r = mkStep r $ Out els k
 execConst If args k _ = badConst If args k
-
-execConst Repeat [VInt n, c] k r
-  | n <= 0    = mkStep r $ Out VUnit k
-  | otherwise = mkStep r $ Out c (FExec : FRepeat (n-1) c : k)
-execConst Repeat args k _ = badConst Repeat args k
 
 execConst Build [c] k r = do
   newRobots %= (mkRobot (r ^. location) (r ^. direction) (initMachineV c) :)

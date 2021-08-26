@@ -56,7 +56,6 @@ instance PrettyPrec Const where
   prettyPrec _ Move      = "move"
   prettyPrec _ Turn      = "turn"
   prettyPrec _ Harvest   = "harvest"
-  prettyPrec _ Repeat    = "repeat"
   prettyPrec _ Build     = "build"
   prettyPrec _ Run       = "run"
   prettyPrec _ GetX      = "getX"

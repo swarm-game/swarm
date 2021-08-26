@@ -92,7 +92,6 @@ inferConst Wait      = return $ TyCmd TyUnit
 inferConst Move      = return $ TyCmd TyUnit
 inferConst Turn      = return $ TyDir :->: TyCmd TyUnit
 inferConst Harvest   = return $ TyCmd TyUnit
-inferConst Repeat    = return $ TyInt :->: TyCmd TyUnit :->: TyCmd TyUnit
 inferConst Build     = return $ TyCmd TyUnit :->: TyCmd TyUnit
 inferConst Run       = return $ TyString :->: TyCmd TyUnit
 inferConst GetX      = return $ TyCmd TyInt

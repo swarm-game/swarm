@@ -117,7 +117,6 @@ parseConst =
   <|> Move    <$ reserved "move"
   <|> Turn    <$ reserved "turn"
   <|> Harvest <$ reserved "harvest"
-  <|> Repeat  <$ reserved "repeat"
   <|> Build   <$ reserved "build"
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"

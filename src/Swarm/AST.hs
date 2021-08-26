@@ -22,7 +22,6 @@ data Const
   | Move
   | Turn
   | Harvest
-  | Repeat    -- XXX get rid of repeat, encode it as a function within the language
   | Build
   | Run
   | GetX
@@ -45,7 +44,6 @@ arity Wait      = 0
 arity Move      = 0
 arity Turn      = 1
 arity Harvest   = 0
-arity Repeat    = 2
 arity Build     = 1
 arity Run       = 1
 arity GetX      = 0
