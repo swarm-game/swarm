@@ -30,25 +30,30 @@ data Const
   | If
   | Force
   | Cmp CmpConst
+  | Arith ArithConst
   deriving (Eq, Ord, Show)
 
 data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
   deriving (Eq, Ord, Show)
 
+data ArithConst = Add | Sub | Mul | Div | Exp
+  deriving (Eq, Ord, Show)
+
 -- | The arity of a constant.
 arity :: Const -> Int
-arity Wait    = 0
-arity Move    = 0
-arity Turn    = 1
-arity Harvest = 0
-arity Repeat  = 2
-arity Build   = 1
-arity Run     = 1
-arity GetX    = 0
-arity GetY    = 0
-arity If      = 3
-arity Force   = 1
-arity (Cmp _) = 2
+arity Wait      = 0
+arity Move      = 0
+arity Turn      = 1
+arity Harvest   = 0
+arity Repeat    = 2
+arity Build     = 1
+arity Run       = 1
+arity GetX      = 0
+arity GetY      = 0
+arity If        = 3
+arity Force     = 1
+arity (Cmp _)   = 2
+arity (Arith _) = 2
 
 -- | Some constants are commands, which means a fully saturated
 --   application of those constants counts as a value, and should not
@@ -58,6 +63,7 @@ arity (Cmp _) = 2
 --   be evaluated immediately.
 isCmd :: Const -> Bool
 isCmd (Cmp _) = False
+isCmd (Arith _) = False
 isCmd c = c `notElem` funList
   where
     funList = [If, Force]

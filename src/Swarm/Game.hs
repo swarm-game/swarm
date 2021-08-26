@@ -240,6 +240,9 @@ execConst GetY _ k r = mkStep r $ Out (VInt (fromIntegral (-row))) k
 execConst (Cmp c) [VInt n1, VInt n2] k r = mkStep r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k
 
+execConst (Arith c) [VInt n1, VInt n2] k r = mkStep r $ Out (VInt (evalArith c n1 n2)) k
+execConst (Arith c) args k _ = badConst (Arith c) args k
+
 execConst Force [VDelay t e] k r = mkStep r $ In t e k
 execConst Force args k _ = badConst Force args k
 
@@ -314,3 +317,10 @@ evalCmp CmpLt  = (<)
 evalCmp CmpGt  = (>)
 evalCmp CmpLeq = (<=)
 evalCmp CmpGeq = (>=)
+
+evalArith :: ArithConst -> Integer -> Integer -> Integer
+evalArith Add = (+)
+evalArith Sub = (-)
+evalArith Mul = (*)
+evalArith Div = div
+evalArith Exp = (^)

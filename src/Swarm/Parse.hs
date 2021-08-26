@@ -173,7 +173,14 @@ parseExpr :: Parser Term
 parseExpr = makeExprParser parseTermAtom table
   where
     table =
-      [ [InfixL (TApp Nothing <$ string "")]
+      [ [ InfixL (TApp Nothing <$ string "") ]
+      , [ InfixR (mkOp (Arith Exp) <$ symbol "^") ]
+      , [ InfixL (mkOp (Arith Mul) <$ symbol "*")
+        , InfixL (mkOp (Arith Div) <$ symbol "/")
+        ]
+      , [ InfixL (mkOp (Arith Add) <$ symbol "+")
+        , InfixL (mkOp (Arith Sub) <$ symbol "-")
+        ]
       , map (\(s, op) -> InfixN (mkOp (Cmp op) <$ symbol s))
         [ ("==", CmpEq)
         , ("/=", CmpNeq)

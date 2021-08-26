@@ -49,18 +49,19 @@ instance PrettyPrec Direction where
   prettyPrec _ West  = "west"
 
 instance PrettyPrec Const where
-  prettyPrec _ Wait    = "wait"
-  prettyPrec _ Move    = "move"
-  prettyPrec _ Turn    = "turn"
-  prettyPrec _ Harvest = "harvest"
-  prettyPrec _ Repeat  = "repeat"
-  prettyPrec _ Build   = "build"
-  prettyPrec _ Run     = "run"
-  prettyPrec _ GetX    = "getX"
-  prettyPrec _ GetY    = "getY"
-  prettyPrec _ If      = "if"
-  prettyPrec _ Force   = "force"
-  prettyPrec p (Cmp c) = prettyPrec p c
+  prettyPrec _ Wait      = "wait"
+  prettyPrec _ Move      = "move"
+  prettyPrec _ Turn      = "turn"
+  prettyPrec _ Harvest   = "harvest"
+  prettyPrec _ Repeat    = "repeat"
+  prettyPrec _ Build     = "build"
+  prettyPrec _ Run       = "run"
+  prettyPrec _ GetX      = "getX"
+  prettyPrec _ GetY      = "getY"
+  prettyPrec _ If        = "if"
+  prettyPrec _ Force     = "force"
+  prettyPrec p (Cmp c)   = prettyPrec p c
+  prettyPrec p (Arith c) = prettyPrec p c
 
 instance PrettyPrec CmpConst where
   prettyPrec _ CmpEq  = "=="
@@ -69,6 +70,13 @@ instance PrettyPrec CmpConst where
   prettyPrec _ CmpGt  = ">"
   prettyPrec _ CmpLeq = "<="
   prettyPrec _ CmpGeq = ">="
+
+instance PrettyPrec ArithConst where
+  prettyPrec _ Add = "+"
+  prettyPrec _ Sub = "-"
+  prettyPrec _ Mul = "*"
+  prettyPrec _ Div = "/"
+  prettyPrec _ Exp = "^"
 
 instance PrettyPrec Term where
   prettyPrec _ TUnit         = "()"
