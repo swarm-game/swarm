@@ -25,7 +25,7 @@ type Parser = Parsec Void Text
 reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
-  , "wait", "move", "turn", "harvest", "repeat", "build", "load"
+  , "wait", "move", "turn", "harvest", "repeat", "build", "run"
   , "int", "string", "dir", "cmd"
   , "let", "in"
   ]
