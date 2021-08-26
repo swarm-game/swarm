@@ -116,7 +116,8 @@ check ctx (TApp _ (TApp _ (TApp _ (TConst If) cond) thn) els) resTy = do
     TApp (ID resTy) (TApp (ID resTy) (TApp (ID TyBool) (TConst If) acond) athn) aels
 check ctx t@(TLam x Nothing body) ty = do
   (ty1, ty2) <- decomposeFunTy t ty
-  check (M.insert x ty1 ctx) body ty2
+  abody <- check (M.insert x ty1 ctx) body ty2
+  return $ TLam x (ID ty1) abody
 check ctx (TApp _ t1 t2) ty = do
   at2 ::: ty2 <- infer ctx t2
   at1 <- check ctx t1 (ty2 :->: ty)
