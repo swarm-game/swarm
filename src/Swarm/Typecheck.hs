@@ -69,7 +69,7 @@ infer ctx (TLet x Nothing t1 t2)    = do
   at2 ::: t2Ty <- infer (M.insert x xTy ctx) t2
   return $ TLet x (ID xTy) at1 at2 ::: t2Ty
 infer ctx (TLet x (Just xTy) t1 t2) = do
-  at1 <- check ctx t1 xTy
+  at1 <- check (M.insert x xTy ctx) t1 xTy
   at2 ::: t2Ty <- infer (M.insert x xTy ctx) t2
   return $ TLet x (ID xTy) at1 at2 ::: t2Ty
 infer ctx (TBind mx _ c1 c2)        = do

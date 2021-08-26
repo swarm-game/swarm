@@ -4,12 +4,12 @@
 
 module Swarm.Pretty where
 
-import           Data.Bool                 (bool)
-import           Data.Functor.Identity
-import           Data.String               (fromString)
-import           Data.Text                 (Text)
+import           Data.Bool                   (bool)
+import           Data.String                 (fromString)
+import           Data.Text                   (Text)
 import           Prettyprinter
-import           Prettyprinter.Render.Text
+import qualified Prettyprinter.Render.String as RS
+import qualified Prettyprinter.Render.Text   as RT
 
 import           Swarm.AST
 import           Swarm.Typecheck
@@ -21,8 +21,11 @@ class PrettyPrec a where
 ppr :: PrettyPrec a => a -> Doc ann
 ppr = prettyPrec 0
 
-renderPretty :: PrettyPrec a => a -> Text
-renderPretty = renderStrict . layoutPretty defaultLayoutOptions . ppr
+prettyText :: PrettyPrec a => a -> Text
+prettyText = RT.renderStrict . layoutPretty defaultLayoutOptions . ppr
+
+prettyString :: PrettyPrec a => a -> String
+prettyString = RS.renderString . layoutPretty defaultLayoutOptions . ppr
 
 pparens :: Bool -> Doc ann -> Doc ann
 pparens True  = parens
@@ -103,7 +106,10 @@ instance PrettyPrec Term where
   prettyPrec _ TNop          = braces emptyDoc
 
 instance PrettyPrec ATerm where
-  prettyPrec p = prettyPrec p . mapTerm' (\(Identity x) -> Just x)
+  prettyPrec p = prettyPrec p . mapTerm' (\(ID x) -> Just x)
+
+instance PrettyPrec UTerm where
+  prettyPrec p = prettyPrec p . mapTerm' (\NONE -> Nothing)
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (NotFunTy t ty) =

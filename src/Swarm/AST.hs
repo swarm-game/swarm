@@ -62,7 +62,7 @@ arity (Arith _) = 2
 --   functions; fully saturated applications of such constants should
 --   be evaluated immediately.
 isCmd :: Const -> Bool
-isCmd (Cmp _) = False
+isCmd (Cmp _)   = False
 isCmd (Arith _) = False
 isCmd c = c `notElem` funList
   where
@@ -115,6 +115,9 @@ type UTerm = Term' (C.Const ())
 pattern ID :: a -> Identity a
 pattern ID a = Identity a
 
+pattern NONE :: C.Const () a
+pattern NONE = C.Const ()
+
 mapTerm' :: (f Type -> g Type) -> Term' f -> Term' g
 mapTerm' _ TUnit              = TUnit
 mapTerm' _ (TConst co)        = TConst co
@@ -134,12 +137,30 @@ erase :: Term' f -> UTerm
 erase = mapTerm' (const (C.Const ()))
 
 bottomUp :: (Type -> ATerm -> ATerm) -> Type -> ATerm -> ATerm
-bottomUp f ty@(_ :->: ty2) (TLam x xTy t) = f ty (TLam x xTy (f ty2 t))
+bottomUp f ty@(_ :->: ty2) (TLam x xTy t) = f ty (TLam x xTy (bottomUp f ty2 t))
 bottomUp f ty (TApp ity2@(ID ty2) t1 t2)
-  = f ty (TApp ity2 (f (ty2 :->: ty) t1) (f ty2 t2))
+  = f ty (TApp ity2 (bottomUp f (ty2 :->: ty) t1) (bottomUp f ty2 t2))
 bottomUp f ty (TLet x xTy@(ID ty1) t1 t2)
-  = f ty (TLet x xTy (f ty1 t1) (f ty t2))
+  = f ty (TLet x xTy (bottomUp f ty1 t1) (bottomUp f ty t2))
 bottomUp f ty2 (TBind mx ia@(ID a) t1 t2)
-  = f ty2 (TBind mx ia (f (TyCmd a) t1) (f ty2 t2))
-bottomUp f ty (TDelay t) = f ty (TDelay (f ty t))
+  = f ty2 (TBind mx ia (bottomUp f (TyCmd a) t1) (bottomUp f ty2 t2))
+bottomUp f ty (TDelay t) = f ty (TDelay (bottomUp f ty t))
 bottomUp f ty t = f ty t
+
+-- Apply a function to all the free occurrences of a variable.
+mapFree :: Var -> (ATerm -> ATerm) -> ATerm -> ATerm
+mapFree x f (TVar y)
+  | x == y    = f (TVar y)
+  | otherwise = TVar y
+mapFree x f t@(TLam y ty body)
+  | x == y = t
+  | otherwise = TLam y ty (mapFree x f body)
+mapFree x f (TApp ty t1 t2) = TApp ty (mapFree x f t1) (mapFree x f t2)
+mapFree x f t@(TLet y ty t1 t2)
+  | x == y = t
+  | otherwise = TLet y ty (mapFree x f t1) (mapFree x f t2)
+mapFree x f (TBind mx ty t1 t2)
+  | Just y <- mx, x == y = TBind mx ty (mapFree x f t1) t2
+  | otherwise = TBind mx ty (mapFree x f t1) (mapFree x f t2)
+mapFree x f (TDelay t) = TDelay (mapFree x f t)
+mapFree _ _ t = t

@@ -14,6 +14,6 @@ import           Swarm.Types
 processCmd :: Text -> Either Text ATerm
 processCmd txt = do
   t <- readTerm txt
-  at <- first renderPretty (check M.empty t (TyCmd TyUnit))
+  at <- first prettyText (check M.empty t (TyCmd TyUnit))
   return $ elaborate (TyCmd TyUnit) at
 

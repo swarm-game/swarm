@@ -10,16 +10,19 @@ module Swarm.Game
 import           Numeric.Noise.Perlin
 import           Numeric.Noise.Ridged
 
-import           Control.Lens         hiding (Const)
+import           Control.Lens         hiding (Const, from)
 import           Control.Monad.State
+import           Data.List            (intercalate)
 -- import           Data.Hash.Murmur
-import           Data.Map             (Map, (!))
+import           Data.Map             (Map)
 import qualified Data.Map             as M
 import           Data.Maybe           (catMaybes)
 import           Data.Text            (Text)
 import qualified Data.Text.IO         as T
 import           Linear
 import           Witch
+
+import           Swarm.Pretty
 
 import           Swarm.AST
 import           Swarm.Game.Resource
@@ -37,12 +40,17 @@ data Value where
   VBool   :: Bool -> Value
   VClo    :: Text -> UTerm -> Env -> Value
   VCApp   :: Const -> [Value] -> Value
-  VBind   :: Value -> Maybe Text -> UTerm -> Env -> Value
+  VBind   :: Value -> Maybe Var -> UTerm -> Env -> Value
   VNop    :: Value
   VDelay  :: UTerm -> Env -> Value
   deriving (Eq, Ord, Show)
 
 type Env = Map Text Value
+
+(!!!) :: Env -> Var -> Value
+e !!! x = case M.lookup x e of
+  Nothing -> error $ from x ++ " is not a key in the environment!"
+  Just v  -> v
 
 emptyEnv :: Env
 emptyEnv = M.empty
@@ -67,6 +75,50 @@ initMachine e = In (erase e) M.empty [FExec]
 
 initMachineV :: Value -> CEK
 initMachineV v = Out v [FExec]
+
+------------------------------------------------------------
+-- FOR DEBUGGING ONLY
+-- Should really make a nicer version of this code.
+
+prettyCEK :: CEK -> String
+prettyCEK (In c _ k) = unlines $
+  [ "▶ " ++ prettyString c
+  , "  " ++ prettyCont k ]
+prettyCEK (Out v k) = unlines $
+  [ "◀ " ++ prettyValue v
+  , "  " ++ prettyCont k ]
+
+prettyValue :: Value -> String
+prettyValue = prettyString . valueToTerm
+
+valueToTerm :: Value -> UTerm
+valueToTerm VUnit            = TUnit
+valueToTerm (VInt n)         = TInt n
+valueToTerm (VString s)      = TString s
+valueToTerm (VDir d)         = TDir d
+valueToTerm (VBool b)        = TBool b
+valueToTerm (VClo x t _)     = TLam x NONE t
+valueToTerm (VCApp c vs)     = foldl (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
+valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
+valueToTerm VNop             = TNop
+valueToTerm (VDelay t _)     = TDelay t
+
+prettyCont :: Cont -> String
+prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
+
+prettyFrame :: Frame -> String
+prettyFrame (FArg t _)               = "_ " ++ prettyString t
+prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
+prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
+prettyFrame (FMkBind Nothing t _)    = "_ ; " ++ prettyString t
+prettyFrame (FMkBind (Just x) t _)   = from x ++ " <- _ ; " ++ prettyString t
+prettyFrame FExec                    = "exec _"
+prettyFrame (FExecBind Nothing t _)  = "_ ; " ++ prettyString t
+prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
+prettyFrame (FRepeat n v)            = "repeat " ++ show n ++ " " ++ prettyString (valueToTerm v)
+
+-- END DEBUGGING CODE
+------------------------------------------------------------
 
 ------------------------------------------------------------
 -- Game state data types
@@ -145,7 +197,7 @@ gameStep :: GameState -> IO GameState
 gameStep = execStateT step
 
 evalStepsPerTick :: Int
-evalStepsPerTick = 30
+evalStepsPerTick = 100
 
 step :: StateT GameState IO ()
 step = do
@@ -175,10 +227,12 @@ stepRobot r = case r ^. machine of
   In (TInt n) _ k                   -> mkStep r $ Out (VInt n) k
   In (TString s) _ k                -> mkStep r $ Out (VString s) k
   In (TBool b) _ k                  -> mkStep r $ Out (VBool b) k
-  In (TVar x) e k                   -> mkStep r $ Out (e!x) k
+  In (TVar x) e k                   -> mkStep r $ Out (e !!! x) k
   In (TLam x _ t) e k               -> mkStep r $ Out (VClo x t e) k
   In (TApp _ t1 t2) e k             -> mkStep r $ In t1 e (FArg t2 e : k)
-  In (TLet x _ t1 t2) e k           -> mkStep r $ In t1 e (FLet x t2 e : k)
+  In (TLet x _ t1 t2) e k           ->
+    let e' = M.insert x (VDelay t1 e') e
+    in mkStep r $ In t1 e' (FLet x t2 e : k)
   In (TBind mx _ t1 t2) e k         -> mkStep r $ In t1 e (FMkBind mx t2 e : k)
   In TNop _ k                       -> mkStep r $ Out VNop k
   In (TDelay t) e k                 -> mkStep r $ Out (VDelay t e) k
