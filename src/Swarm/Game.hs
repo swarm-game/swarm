@@ -34,10 +34,12 @@ data Value where
   VInt    :: Integer -> Value
   VString :: Text -> Value
   VDir    :: Direction -> Value
-  VClo    :: Text -> Term -> Env -> Value
+  VBool   :: Bool -> Value
+  VClo    :: Text -> UTerm -> Env -> Value
   VCApp   :: Const -> [Value] -> Value
-  VBind   :: Value -> Maybe Text -> Term -> Env -> Value
+  VBind   :: Value -> Maybe Text -> UTerm -> Env -> Value
   VNop    :: Value
+  VDelay  :: UTerm -> Env -> Value
   deriving (Eq, Ord, Show)
 
 type Env = Map Text Value
@@ -46,22 +48,22 @@ emptyEnv :: Env
 emptyEnv = M.empty
 
 data Frame
-  = FArg Term Env
+  = FArg UTerm Env
   | FApp Value
-  | FLet Text Term Env
-  | FMkBind (Maybe Text) Term Env
+  | FLet Text UTerm Env
+  | FMkBind (Maybe Text) UTerm Env
   | FExec
-  | FExecBind (Maybe Text) Term Env
+  | FExecBind (Maybe Text) UTerm Env
   | FRepeat Integer Value
   deriving (Eq, Ord, Show)
 
 type Cont = [Frame]
 
-data CEK = In Term Env Cont | Out Value Cont
+data CEK = In UTerm Env Cont | Out Value Cont
   deriving (Eq, Ord, Show)
 
-initMachine :: Term -> CEK
-initMachine e = In e M.empty [FExec]
+initMachine :: Term' f -> CEK
+initMachine e = In (erase e) M.empty [FExec]
 
 initMachineV :: Value -> CEK
 initMachineV v = Out v [FExec]
@@ -87,7 +89,7 @@ mkRobot l d m = Robot
   , _static    = False
   }
 
-mkBase :: Term -> Robot
+mkBase :: ATerm -> Robot
 mkBase e = Robot
   { _location  = V2 0 0
   , _direction = V2 0 1
@@ -172,36 +174,45 @@ stepRobot r = case r ^. machine of
   In (TDir d) _ k                   -> mkStep r $ Out (VDir d) k
   In (TInt n) _ k                   -> mkStep r $ Out (VInt n) k
   In (TString s) _ k                -> mkStep r $ Out (VString s) k
-  In (TVar x) e k                   -> mkStep r $ Out (e!x) k
+  In (TBool b) _ k                  -> mkStep r $ Out (VBool b) k
+  In (TVar _ x) e k                 -> mkStep r $ Out (e!x) k
   In (TLam x _ t) e k               -> mkStep r $ Out (VClo x t e) k
-  In (TApp t1 t2) e k               -> mkStep r $ In t1 e (FArg t2 e : k)
+  In (TApp _ t1 t2) e k             -> mkStep r $ In t1 e (FArg t2 e : k)
   In (TLet x _ t1 t2) e k           -> mkStep r $ In t1 e (FLet x t2 e : k)
-  In (TBind mx t1 t2) e k           -> mkStep r $ In t1 e (FMkBind mx t2 e : k)
+  In (TBind mx _ t1 t2) e k         -> mkStep r $ In t1 e (FMkBind mx t2 e : k)
   In TNop _ k                       -> mkStep r $ Out VNop k
+  In (TDelay t) e k                 -> mkStep r $ Out (VDelay t e) k
 
   Out _ []                          -> updated .= True >> return Nothing
 
   Out v1 (FArg t2 e : k)            -> mkStep r $ In t2 e (FApp v1 : k)
-  Out v2 (FApp (VCApp c args) : k)  -> mkStep r $ Out (VCApp c (v2 : args)) k
+  Out v2 (FApp (VCApp c args) : k)
+    | not (isCmd c) &&
+      arity c == length args + 1    -> evalConst c (reverse (v2 : args)) k r
+    | otherwise                     -> mkStep r $ Out (VCApp c (v2 : args)) k
   Out v2 (FApp (VClo x t e) : k)    -> mkStep r $ In t (M.insert x v2 e) k
   Out v1 (FLet x t2 e : k)          -> mkStep r $ In t2 (M.insert x v1 e) k
   Out v1 (FMkBind mx t2 e : k)      -> mkStep r $ Out (VBind v1 mx t2 e) k
   Out VNop (FExec : k)              -> mkStep r $ Out VUnit k
-  Out (VCApp c args) (FExec : k)    -> execConst c args k (r & tickSteps .~ 0)
+  Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
   Out (VBind c mx t2 e) (FExec : k) -> mkStep r $ Out c (FExec : FExecBind mx t2 e : k)
   Out v (FExecBind mx t2 e : k)     -> mkStep r $ In t2 (maybe id (`M.insert` v) mx e) (FExec : k)
 
-  Out _ (FRepeat n c : k)          -> execConst Repeat [c, VInt n] k r
+  Out _ (FRepeat n c : k)          -> execConst Repeat [VInt n, c] k r
 
   cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
-
-appArity :: Const -> [Value] -> Int
-appArity c args = constArity c - Prelude.length args
 
 nonStatic :: Cont -> Robot -> StateT GameState IO (Maybe Robot) -> StateT GameState IO (Maybe Robot)
 nonStatic k r m
   | r ^. static = mkStep r (Out VUnit k)  -- XXX message saying that the base can't move?
   | otherwise   = m
+
+-- | At the level of the CEK machine there's no particular difference
+--   between *evaluating* a function constant and *executing* a
+--   command constant, but it somehow feels better to have two
+--   different names for it anyway.
+evalConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
+evalConst = execConst
 
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r = mkStep r $ Out VUnit k
@@ -219,14 +230,26 @@ execConst Turn [VDir d] k r = nonStatic k r $ do
   mkStep (r & direction %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k
 
-execConst GetX _ k r             = mkStep r $ Out (VInt (fromIntegral col)) k
+execConst GetX _ k r = mkStep r $ Out (VInt (fromIntegral col)) k
   where
     V2 _ col = r ^. location
-execConst GetY _ k r             = mkStep r $ Out (VInt (fromIntegral (-row))) k
+execConst GetY _ k r = mkStep r $ Out (VInt (fromIntegral (-row))) k
   where
     V2 row _ = r ^. location
 
-execConst Repeat [c, VInt n] k r
+execConst Force [VDelay t e] k r = mkStep r $ In t e k
+execConst Force args k _ = badConst Force args k
+
+  -- Note, if should evaluate the branches lazily, but since
+  -- evaluation is eager, by the time we get here thn and els have
+  -- already been fully evaluated --- what gives?  The answer is that
+  -- we rely on elaboration to add 'lazy' wrappers around the branches
+  -- (and a 'force' wrapper around the entire if).
+execConst If [VBool True , thn, _] k r = mkStep r $ Out thn k
+execConst If [VBool False, _, els] k r = mkStep r $ Out els k
+execConst If args k _ = badConst If args k
+
+execConst Repeat [VInt n, c] k r
   | n <= 0    = mkStep r $ Out VUnit k
   | otherwise = mkStep r $ Out c (FExec : FRepeat (n-1) c : k)
 execConst Repeat args k _ = badConst Repeat args k
@@ -240,7 +263,7 @@ execConst Run [VString fileName] k r = do
   f <- liftIO $ T.readFile (into fileName)  -- XXX handle file not existing
   case processCmd f of
     Left  err -> error (into err)  -- XXX
-    Right t   -> mkStep r $ In t M.empty (FExec : k)
+    Right t   -> mkStep r $ In (erase t) M.empty (FExec : k)
     -- Note, adding FExec to the stack above is correct.  run has the
     --   type run : String -> Cmd (), i.e. executing (run s) for some
     --   string s causes it to load *and immediately execute* the

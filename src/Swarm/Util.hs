@@ -1,6 +1,6 @@
 module Swarm.Util where
 
-import           Data.Bifunctor  (bimap)
+import           Data.Bifunctor  (first)
 import qualified Data.Map        as M
 import           Data.Text       (Text)
 
@@ -10,8 +10,8 @@ import           Swarm.Pretty
 import           Swarm.Typecheck
 import           Swarm.Types
 
-processCmd :: Text -> Either Text Term
+processCmd :: Text -> Either Text ATerm
 processCmd txt = do
   t <- readTerm txt
-  bimap renderPretty (const t) (check M.empty t (TyCmd TyUnit))
+  first renderPretty (check M.empty t (TyCmd TyUnit))
 

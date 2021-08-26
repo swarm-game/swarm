@@ -26,9 +26,9 @@ type Parser = Parsec Void Text
 reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
-  , "wait", "move", "turn", "harvest", "repeat", "build", "run", "getx"
+  , "wait", "move", "turn", "harvest", "repeat", "build", "run", "getx", "gety"
   , "int", "string", "dir", "cmd"
-  , "let", "in"
+  , "let", "in", "if", "true", "false"
   ]
 
 sc :: Parser ()
@@ -110,15 +110,18 @@ parseConst =
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"
   <|> GetY    <$ reserved "gety"
+  <|> If      <$ reserved "if"
 
 parseTermAtom :: Parser Term
 parseTermAtom =
       TUnit   <$  symbol "()"
   <|> TConst  <$> parseConst
-  <|> TVar    <$> identifier
+  <|> TVar Nothing
+              <$> identifier
   <|> TDir    <$> parseDirection
   <|> TInt    <$> integer
   <|> TString <$> stringLiteral
+  <|> TBool   <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
   <|> TLam    <$> (symbol "\\" *> identifier)
               <*> optional (symbol ":" *> parseType)
               <*> (symbol "." *> parseTerm)
@@ -139,8 +142,8 @@ mkBindChain stmts = case last stmts of
   BareTerm t -> return $ foldr mkBind t (init stmts)
 
   where
-    mkBind (BareTerm t1) t2 = TBind Nothing t1 t2
-    mkBind (Binder x t1) t2 = TBind (Just x) t1 t2
+    mkBind (BareTerm t1) t2 = TBind Nothing Nothing t1 t2
+    mkBind (Binder x t1) t2 = TBind (Just x) Nothing t1 t2
 
 data Stmt
   = BareTerm      Term
@@ -156,7 +159,7 @@ mkStmt Nothing  = BareTerm
 mkStmt (Just x) = Binder x
 
 parseAppChain :: Parser Term
-parseAppChain = foldl1' TApp <$> sepBy1 parseTermAtom (string "")
+parseAppChain = foldl1' (TApp Nothing) <$> sepBy1 parseTermAtom (string "")
 
 --------------------------------------------------
 -- Utilities

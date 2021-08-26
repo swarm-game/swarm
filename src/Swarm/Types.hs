@@ -5,6 +5,7 @@ data Type
   | TyInt
   | TyString
   | TyDir
+  | TyBool
   | TyCmd Type
   | Type :->: Type
   deriving (Eq, Ord, Show)
