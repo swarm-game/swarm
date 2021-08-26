@@ -109,6 +109,7 @@ parseConst =
   <|> Build   <$ reserved "build"
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"
+  <|> GetY    <$ reserved "gety"
 
 parseTermAtom :: Parser Term
 parseTermAtom =

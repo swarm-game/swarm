@@ -52,6 +52,7 @@ instance PrettyPrec Const where
   prettyPrec _ Build   = "build"
   prettyPrec _ Run     = "run"
   prettyPrec _ GetX    = "getX"
+  prettyPrec _ GetY    = "getY"
 
 instance PrettyPrec Term where
   prettyPrec _ TUnit         = "()"

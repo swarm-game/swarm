@@ -39,6 +39,7 @@ data Const
   | Build
   | Run
   | GetX
+  | GetY
   deriving (Eq, Ord, Show)
 
 -- | The arity of a constant.
@@ -51,3 +52,4 @@ constArity Repeat  = 2
 constArity Build   = 1
 constArity Run     = 1
 constArity GetX    = 0
+constArity GetY    = 0
