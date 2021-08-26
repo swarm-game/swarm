@@ -26,7 +26,7 @@ type Parser = Parsec Void Text
 reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
-  , "wait", "move", "turn", "harvest", "repeat", "build", "run"
+  , "wait", "move", "turn", "harvest", "repeat", "build", "run", "getx"
   , "int", "string", "dir", "cmd"
   , "let", "in"
   ]
@@ -108,6 +108,7 @@ parseConst =
   <|> Repeat  <$ reserved "repeat"
   <|> Build   <$ reserved "build"
   <|> Run     <$ reserved "run"
+  <|> GetX    <$ reserved "getx"
 
 parseTermAtom :: Parser Term
 parseTermAtom =

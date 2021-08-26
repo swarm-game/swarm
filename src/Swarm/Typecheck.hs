@@ -67,6 +67,7 @@ inferConst Harvest = return $ TyCmd TyUnit
 inferConst Repeat  = return $ TyInt :->: TyCmd TyUnit :->: TyCmd TyUnit
 inferConst Build   = return $ TyCmd TyUnit :->: TyCmd TyUnit
 inferConst Run     = return $ TyString :->: TyCmd TyUnit
+inferConst GetX    = return $ TyCmd TyInt
 
 inferFunTy :: Ctx -> Term -> Either TypeErr (Type, Type)
 inferFunTy ctx t = infer ctx t >>= decomposeFunTy t

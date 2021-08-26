@@ -218,6 +218,11 @@ execConst Turn [VDir d] k r = nonStatic k r $ do
   updated .= True
   mkStep (r & direction %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k
+
+execConst GetX _ k r             = mkStep r $ Out (VInt (fromIntegral col)) k
+  where
+    V2 _ col = r ^. location
+
 execConst Repeat [_, VInt 0] k r = mkStep r $ Out VUnit k
 execConst Repeat [c, VInt n] k r = mkStep r $ Out c (FExec : FRepeat (n-1) c : k)
 execConst Repeat args k _ = badConst Repeat args k

@@ -38,6 +38,7 @@ data Const
   | Repeat    -- XXX get rid of repeat, encode it as a function within the language?
   | Build
   | Run
+  | GetX
   deriving (Eq, Ord, Show)
 
 -- | The arity of a constant.
@@ -49,3 +50,4 @@ constArity Harvest = 0
 constArity Repeat  = 2
 constArity Build   = 1
 constArity Run     = 1
+constArity GetX    = 0
