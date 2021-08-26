@@ -4,14 +4,10 @@
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-  -- IsString (Parser u) instance
-
 module Swarm.Parse where
 
 import           Data.Bifunctor
 import           Data.Char
-import           Data.Functor                   (void)
 import           Data.Text                      (Text)
 import           Data.Void
 import           Witch
@@ -21,7 +17,6 @@ import           Text.Megaparsec                hiding (State, runParser)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
 
-import           Data.String                    (IsString, fromString)
 import           Swarm.AST
 import           Swarm.Types
 
@@ -52,11 +47,6 @@ symbol = L.symbol sc
 
 reserved :: Text -> Parser ()
 reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
-
-instance () ~ u => IsString (Parser u) where
-  fromString s
-    | s `elem` reservedWords = reserved (from s)
-    | otherwise              = void (symbol (from s))
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and not starting with a number.
