@@ -25,6 +25,7 @@ data TypeErr
 type Ctx = Map Text Type
 
 infer :: Ctx -> Term -> Either TypeErr Type
+infer _ TUnit         = return TyUnit
 infer _ (TConst c)    = inferConst c
 infer _ (TDir _)      = return TyDir
 infer _ (TInt _)      = return TyInt

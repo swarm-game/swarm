@@ -53,6 +53,7 @@ instance PrettyPrec Const where
   prettyPrec _ Run     = "run"
 
 instance PrettyPrec Term where
+  prettyPrec _ TUnit         = "()"
   prettyPrec _ (TConst c)    = ppr c
   prettyPrec _ (TDir d)      = ppr d
   prettyPrec _ (TInt n)      = pretty n

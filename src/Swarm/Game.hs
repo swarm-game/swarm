@@ -167,6 +167,7 @@ mkStep r cek = return . Just $ r & machine .~ cek
 
 stepRobot :: Robot -> StateT GameState IO (Maybe Robot)
 stepRobot r = case r ^. machine of
+  In TUnit _ k                     -> mkStep r $ Out VUnit k
   In (TConst c) _ k                -> mkStep r $ Out (VCApp c []) k
   In (TDir d) _ k                  -> mkStep r $ Out (VDir d) k
   In (TInt n) _ k                  -> mkStep r $ Out (VInt n) k

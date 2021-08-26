@@ -109,7 +109,8 @@ parseConst =
 
 parseTermAtom :: Parser Term
 parseTermAtom =
-      TConst  <$> parseConst
+      TUnit   <$  symbol "()"
+  <|> TConst  <$> parseConst
   <|> TVar    <$> identifier
   <|> TDir    <$> parseDirection
   <|> TInt    <$> integer

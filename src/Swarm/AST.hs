@@ -16,7 +16,8 @@ data Direction
   deriving (Eq, Ord, Show, Read)
 
 data Term
-  = TConst Const
+  = TUnit
+  | TConst Const
   | TDir Direction
   | TInt Integer
   | TString Text
