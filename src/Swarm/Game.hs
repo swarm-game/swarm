@@ -262,7 +262,7 @@ execConst Build args k _ = badConst Build args k
 execConst Run [VString fileName] k r = do
   f <- liftIO $ T.readFile (into fileName)  -- XXX handle file not existing
   case processCmd f of
-    Left  err -> error (into err)  -- XXX
+    Left  err -> error (into err)  -- XXX, display message and do nothing
     Right t   -> mkStep r $ In (erase t) M.empty (FExec : k)
     -- Note, adding FExec to the stack above is correct.  run has the
     --   type run : String -> Cmd (), i.e. executing (run s) for some

@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms      #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -99,6 +100,9 @@ type Term = Term' Maybe
 type ATerm = Term' Identity
 type UTerm = Term' (C.Const ())
 
+pattern ID :: a -> Identity a
+pattern ID a = Identity a
+
 mapTerm' :: (f Type -> g Type) -> Term' f -> Term' g
 mapTerm' _ TUnit              = TUnit
 mapTerm' _ (TConst co)        = TConst co
@@ -119,11 +123,11 @@ erase = mapTerm' (const (C.Const ()))
 
 bottomUp :: (Type -> ATerm -> ATerm) -> Type -> ATerm -> ATerm
 bottomUp f ty@(_ :->: ty2) (TLam x xTy t) = f ty (TLam x xTy (f ty2 t))
-bottomUp f ty (TApp ity2@(Identity ty2) t1 t2)
+bottomUp f ty (TApp ity2@(ID ty2) t1 t2)
   = f ty (TApp ity2 (f (ty2 :->: ty) t1) (f ty2 t2))
-bottomUp f ty (TLet x xTy@(Identity ty1) t1 t2)
+bottomUp f ty (TLet x xTy@(ID ty1) t1 t2)
   = f ty (TLet x xTy (f ty1 t1) (f ty t2))
-bottomUp f ty2 (TBind mx ia@(Identity a) t1 t2)
+bottomUp f ty2 (TBind mx ia@(ID a) t1 t2)
   = f ty2 (TBind mx ia (f (TyCmd a) t1) (f ty2 t2))
 bottomUp f ty (TDelay t) = f ty (TDelay (f ty t))
 bottomUp f ty t = f ty t
