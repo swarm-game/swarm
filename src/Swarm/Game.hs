@@ -1,5 +1,6 @@
-{-# LANGUAGE GADTs           #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
   -- debugging code
@@ -307,7 +308,8 @@ prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 -- Game state data types
 
 data Robot = Robot
-  { _location  :: V2 Int
+  { _robotName :: Text
+  , _location  :: V2 Int
   , _direction :: V2 Int
   , _machine   :: CEK
   , _tickSteps :: Int
@@ -321,9 +323,10 @@ makeLenses ''Robot
 isActive :: Robot -> Bool
 isActive = not . isFinal . view machine
 
-mkRobot :: V2 Int -> V2 Int -> CEK -> Robot
-mkRobot l d m = Robot
-  { _location  = l
+mkRobot :: Text -> V2 Int -> V2 Int -> CEK -> Robot
+mkRobot name l d m = Robot
+  { _robotName = name
+  , _location  = l
   , _direction = d
   , _machine   = m
   , _tickSteps = 0
@@ -332,7 +335,8 @@ mkRobot l d m = Robot
 
 mkBase :: ATerm -> Robot
 mkBase e = Robot
-  { _location  = V2 0 0
+  { _robotName = "base"
+  , _location  = V2 0 0
   , _direction = V2 0 1
   , _machine   = initMachine e
   , _tickSteps = 0
@@ -498,8 +502,8 @@ execConst If [VBool True , thn, _] k r = mkStep r $ Out thn k
 execConst If [VBool False, _, els] k r = mkStep r $ Out els k
 execConst If args k _ = badConst If args k
 
-execConst Build [c] k r = do
-  newRobots %= (mkRobot (r ^. location) (r ^. direction) (initMachineV c) :)
+execConst Build [VString name, c] k r = do
+  newRobots %= (mkRobot name (r ^. location) (r ^. direction) (initMachineV c) :)
   updated .= True
   mkStep r (Out VUnit k)
 execConst Build args k _ = badConst Build args k

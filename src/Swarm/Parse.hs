@@ -60,7 +60,7 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
       | otherwise = return (into @Text x)
 
 stringLiteral :: Parser Text
-stringLiteral = into <$> (char '"' >> manyTill L.charLiteral (char '"'))
+stringLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
 
 integer :: Parser Integer
 integer = lexeme L.decimal
