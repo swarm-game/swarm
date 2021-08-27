@@ -1,0 +1,16 @@
+- REPL can handle any type of expression.
+- Some resources, e.g. rocks, block robots.
+- Pause button and single-stepping.
+- Message panel in the UI.
+- Store robots so they can be looked up by ID and by location.
+- Add UI feature to look up robots by ID.
+    - See their currently executing program?
+- Give each robot its own inventory.  Add commands for giving/receiving.
+- Implement craftable items.
+- Restrict programs based on installed devices etc.
+- Update world implementations with newtypes to represent indices.
+- Implement world zooming.
+- Improve handling of ticks.
+- Allow smaller, finite worlds?
+- Built-in program/function editor?
+- Create world with biomes etc. using multiple noise sources
