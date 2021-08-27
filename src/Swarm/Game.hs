@@ -74,7 +74,7 @@ module Swarm.Game
 
     -- * Robots
 
-  , Robot(..), mkRobot, mkBase
+  , Robot(..), mkRobot
 
     -- ** Lenses
   , location, direction, machine, tickSteps, static
@@ -263,8 +263,8 @@ initMachineV :: Value -> CEK
 initMachineV v = Out v [FExec]
 
 ------------------------------------------------------------
--- FOR DEBUGGING ONLY
--- Should really make a nicer version of this code.
+-- FOR DEBUGGING ONLY, not exported.  Very crude pretty-printing of
+-- CEK states.  Should really make a nicer version of this code...
 
 prettyCEK :: CEK -> String
 prettyCEK (In c _ k) = unlines
@@ -306,14 +306,69 @@ prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 
 ------------------------------------------------------------
 -- Game state data types
+------------------------------------------------------------
 
+-- | A value of type 'Robot' is a record representing the state of a
+--   single robot.
 data Robot = Robot
   { _robotName :: Text
+    -- ^ The name of the robot (unique across the whole world)
+
   , _location  :: V2 Int
+    -- ^ The location of the robot as (row,col).
+
   , _direction :: V2 Int
+    -- ^ The direction of the robot as a 2D vector.  When the robot
+    --   executes @move@, its 'location' is updated by adding
+    --   'direction' to it.
+
   , _machine   :: CEK
+    -- ^ The current state of the robot's CEK machine.
+
   , _tickSteps :: Int
+    -- ^ The need for 'tickSteps' is a bit technical, and I hope I can
+    --   eventually find a different, better way to accomplish it.
+    --   Ideally, we would want each robot to execute a single
+    --   /command/ at every game tick, so that /e.g./ two robots
+    --   executing @move;move;move@ and @repeat 3 move@ (given a
+    --   suitable definition of @repeat@) will move in lockstep.
+    --   However, the second robot actually has to do more computation
+    --   than the first (it has to look up the definition of @repeat@,
+    --   reduce its application to the number 3, etc.), so its CEK
+    --   machine will take more steps.  It won't do to simply let each
+    --   robot run until executing a command---because robot programs
+    --   can involve arbitrary recursion, it is very easy to write a
+    --   program that evaluates forever without ever executing a
+    --   command, which in this scenario would completely freeze the
+    --   UI. (It also wouldn't help to ensure all programs are
+    --   terminating---it would still be possible to effectively do
+    --   the same thing by making a program that takes a very, very
+    --   long time to terminate.)  So instead, we allocate each robot
+    --   a certain maximum number of computation steps per tick
+    --   (defined in 'evalStepsPerTick'), and it suspends computation
+    --   when it either executes a command or reaches the maximum
+    --   number of steps, whichever comes first.
+    --
+    --   It seems like this really isn't something the robot should be
+    --   keeping track of itself, but that seemed the most technically
+    --   convenient way to do it at the time.  The robot needs some
+    --   way to signal when it has executed a command, which it
+    --   currently does by setting tickSteps to zero.  However, that
+    --   has the disadvantage that when tickSteps becomes zero, we
+    --   can't tell whether that happened because the robot ran out of
+    --   steps, or because it executed a command and set it to zero
+    --   manually.
+    --
+    --   Perhaps instead, each robot should keep a counter saying how
+    --   many commands it has executed.  The loop stepping the robot
+    --   can tell when the counter increments.
+
   , _static    :: Bool
+    -- ^ Whether the robot is allowed to move, turn, or harvest.
+    --   Currently this is a hack to prevent the "base" robot from
+    --   moving; eventually this should go away, and the base will be
+    --   prevented from moving simply because it does not have treads
+    --   (or whatever the right device is for moving), and so on.
   }
   deriving (Eq, Ord, Show)
 
@@ -323,7 +378,14 @@ makeLenses ''Robot
 isActive :: Robot -> Bool
 isActive = not . isFinal . view machine
 
-mkRobot :: Text -> V2 Int -> V2 Int -> CEK -> Robot
+-- | Create a robot.
+mkRobot
+  :: Text    -- ^ Name of the robot.  Precondition: it should not be the same as any
+             --   other robot name.
+  -> V2 Int  -- ^ Initial location.
+  -> V2 Int  -- ^ Initial heading/direction.
+  -> CEK     -- ^ Initial CEK machine.
+  -> Robot
 mkRobot name l d m = Robot
   { _robotName = name
   , _location  = l
@@ -333,12 +395,13 @@ mkRobot name l d m = Robot
   , _static    = False
   }
 
-mkBase :: ATerm -> Robot
-mkBase e = Robot
+-- | The initial robot representing your "base".
+baseRobot :: Robot
+baseRobot = Robot
   { _robotName = "base"
   , _location  = V2 0 0
   , _direction = V2 0 1
-  , _machine   = initMachine e
+  , _machine   = initMachine (TConst Noop)
   , _tickSteps = 0
   , _static    = True
   }
@@ -367,7 +430,7 @@ pn2 = perlin 0 5 0.05 0.75
 initGameState :: IO GameState
 initGameState = return $
   GameState
-  { _robotMap   = M.singleton "base" (mkBase (TConst Noop))
+  { _robotMap   = M.singleton "base" baseRobot
   , _newRobots  = []
   , _world      = W.newWorld $ \(i,j) ->
       if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
@@ -428,11 +491,14 @@ step = do
   newRobots .= []
 
 bigStepRobot :: Robot -> StateT GameState IO (Maybe Robot)
-bigStepRobot r
+bigStepRobot = bigStepRobotRec . (tickSteps .~ evalStepsPerTick)
+
+bigStepRobotRec :: Robot -> StateT GameState IO (Maybe Robot)
+bigStepRobotRec r
   | not (isActive r) || r ^. tickSteps <= 0 = return (Just r)
   | otherwise           = do
       r' <- stepRobot r
-      maybe (return Nothing) (bigStepRobot . (tickSteps -~ 1)) r'
+      maybe (return Nothing) (bigStepRobotRec . (tickSteps -~ 1)) r'
 
 mkStep :: Robot -> CEK -> StateT GameState IO (Maybe Robot)
 mkStep r cek = do
@@ -521,7 +587,7 @@ execConst Force args k _ = badConst Force args k
 
   -- Note, if should evaluate the branches lazily, but since
   -- evaluation is eager, by the time we get here thn and els have
-  -- already been fully evaluated --- what gives?  The answer is that
+  -- already been fully evaluated --- what ves?  The answer is that
   -- we rely on elaboration to add 'lazy' wrappers around the branches
   -- (and a 'force' wrapper around the entire if).
 execConst If [VBool True , thn, _] k r = mkStep r $ Out thn k
