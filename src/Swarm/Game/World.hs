@@ -86,9 +86,9 @@ class Worldly w where
 --   locations, and if it's not there it simply runs the function to
 --   find out what character should be there.
 data SimpleWorld = SimpleWorld
-  { sworldFun :: (Int,Int) -> Char
-  , sworldMap :: M.Map (Int,Int) Char
-  }
+  ((Int,Int) -> Char)     -- ^ World generation function
+  (M.Map (Int,Int) Char)  -- ^ Map of locations that have changed from
+                          --   the original value
 
 instance Worldly SimpleWorld where
   newWorld f                   = SimpleWorld f M.empty
@@ -122,10 +122,9 @@ type Tile = U.UArray (Int,Int) Char
 --   much for a while.
 
 data TileCachingWorld = TileCachingWorld
-  { tcWorldFun :: (Int,Int) -> Char
-  , tcTileMap  :: M.Map (Int,Int) Tile
-  , tcWorldMap :: M.Map (Int,Int) Char
-  }
+  ((Int,Int) -> Char)     -- ^ World generation function
+  (M.Map (Int,Int) Tile)  -- ^ Tile cache
+  (M.Map (Int,Int) Char)  -- ^ Map of locations that have changed
 
 instance Worldly TileCachingWorld where
   newWorld f = TileCachingWorld f M.empty M.empty
