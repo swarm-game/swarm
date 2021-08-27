@@ -267,10 +267,10 @@ initMachineV v = Out v [FExec]
 -- Should really make a nicer version of this code.
 
 prettyCEK :: CEK -> String
-prettyCEK (In c _ k) = unlines $
+prettyCEK (In c _ k) = unlines
   [ "▶ " ++ prettyString c
   , "  " ++ prettyCont k ]
-prettyCEK (Out v k) = unlines $
+prettyCEK (Out v k) = unlines
   [ "◀ " ++ prettyValue v
   , "  " ++ prettyCont k ]
 
