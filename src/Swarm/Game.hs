@@ -1,6 +1,9 @@
 {-# LANGUAGE GADTs           #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+{-# OPTIONS_GHC -fno-warn-unused-binds #-}
+  -- debugging code
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Game
@@ -90,28 +93,26 @@ module Swarm.Game
   where
 
 import           Numeric.Noise.Perlin
-import           Numeric.Noise.Ridged
+-- import           Numeric.Noise.Ridged
 
-import           Control.Lens                  hiding (Const, from)
+import           Control.Lens         hiding (Const, from)
 import           Control.Monad.State
-import           Data.List                     (intercalate)
+import           Data.List            (intercalate)
 -- import           Data.Hash.Murmur
-import           Data.Map                      (Map)
-import qualified Data.Map                      as M
-import           Data.Maybe                    (catMaybes)
-import           Data.Text                     (Text)
-import qualified Data.Text.IO                  as T
+import           Data.Map             (Map)
+import qualified Data.Map             as M
+import           Data.Maybe           (catMaybes)
+import           Data.Text            (Text)
+import qualified Data.Text.IO         as T
 import           Linear
 import           Witch
 
 import           Swarm.Pretty
 
-import           Brick.Forms                   (focusedFormInputAttr)
-import           Control.Lens.Internal.FieldTH (LensRules (LensRules))
 import           Swarm.AST
 import           Swarm.Game.Resource
-import qualified Swarm.Game.World              as W
-import           Swarm.Util                    (processCmd)
+import qualified Swarm.Game.World     as W
+import           Swarm.Util           (processCmd)
 
 ------------------------------------------------------------
 -- CEK machine types
@@ -343,8 +344,8 @@ pn1, pn2 :: Perlin
 pn1 = perlin 0 5 0.05 0.5
 pn2 = perlin 0 5 0.05 0.75
 
-rn :: Ridged
-rn = ridged 0 5 0.005 1 2
+-- rn :: Ridged
+-- rn = ridged 0 5 0.005 1 2
 
 initGameState :: IO GameState
 initGameState = return $
@@ -446,6 +447,7 @@ evalConst = execConst
 
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r = mkStep r $ Out VUnit k
+execConst Noop _ _ _ = error "execConst Noop should have been handled already in stepRobot!"
 execConst Move _ k r = nonStatic k r $ do
   updated .= True
   mkStep (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
