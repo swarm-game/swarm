@@ -242,6 +242,11 @@ data CEK
     --   must carry along their environment with them.
   deriving (Eq, Ord, Show)
 
+-- | Is the CEK machine in a final (finished) state?
+isFinal :: CEK -> Bool
+isFinal (Out _ []) = True
+isFinal _          = False
+
 -- | Initialize a machine state with a starting command to execute,
 --   requiring a fully typechecked term (to make sure no type or scope
 --   errors can cause a crash), but erasing the term before putting it
@@ -310,6 +315,12 @@ data Robot = Robot
   }
   deriving (Eq, Ord, Show)
 
+makeLenses ''Robot
+
+-- | Is the robot actively in the middle of a computation?
+isActive :: Robot -> Bool
+isActive = not . isFinal . view machine
+
 mkRobot :: V2 Int -> V2 Int -> CEK -> Robot
 mkRobot l d m = Robot
   { _location  = l
@@ -340,6 +351,8 @@ data GameState = GameState
   , _inventory  :: Map Item Int
   }
 
+makeLenses ''GameState
+
 pn1, pn2 :: Perlin
 pn1 = perlin 0 5 0.05 0.5
 pn2 = perlin 0 5 0.05 0.75
@@ -365,9 +378,6 @@ initGameState = return $
   , _inventory  = M.empty
   }
 
-makeLenses ''Robot
-makeLenses ''GameState
-
 ------------------------------------------------------------
 -- CEK machine
 
@@ -389,7 +399,7 @@ step = do
 
 bigStepRobot :: Robot -> StateT GameState IO (Maybe Robot)
 bigStepRobot r
-  | r ^. tickSteps <= 0 = return (Just r)
+  | not (isActive r) || r ^. tickSteps <= 0 = return (Just r)
   | otherwise           = do
       r' <- stepRobot r
       maybe (return Nothing) (bigStepRobot . (tickSteps -~ 1)) r'
@@ -416,7 +426,7 @@ stepRobot r = case r ^. machine of
   In (TBind mx _ t1 t2) e k         -> mkStep r $ In t1 e (FEvalBind mx t2 e : k)
   In (TDelay t) e k                 -> mkStep r $ Out (VDelay t e) k
 
-  Out _ []                          -> updated .= True >> return Nothing
+  Out _ []                          -> return (Just r)
 
   Out v1 (FArg t2 e : k)            -> mkStep r $ In t2 e (FApp v1 : k)
   Out v2 (FApp (VCApp c args) : k)
@@ -447,6 +457,7 @@ evalConst = execConst
 
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r = mkStep r $ Out VUnit k
+execConst Halt _ _ _ = updated .= True >> return Nothing
 execConst Noop _ _ _ = error "execConst Noop should have been handled already in stepRobot!"
 execConst Move _ k r = nonStatic k r $ do
   updated .= True

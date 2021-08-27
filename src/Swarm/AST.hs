@@ -74,6 +74,7 @@ data Const
   = Wait              -- ^ Wait for one time step without doing anything.
   | Noop              -- ^ Do nothing.  This is different than 'Wait'
                       --   in that it does not take up a time step.
+  | Halt              -- ^ Self-destruct.
   | Move              -- ^ Move forward one step.
   | Turn              -- ^ Turn in some direction.
   | Harvest           -- ^ Pick up an item from the current location.
@@ -101,6 +102,7 @@ data ArithConst = Add | Sub | Mul | Div | Exp
 arity :: Const -> Int
 arity Wait      = 0
 arity Noop      = 0
+arity Halt      = 0
 arity Move      = 0
 arity Turn      = 1
 arity Harvest   = 0

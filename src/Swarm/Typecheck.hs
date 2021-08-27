@@ -88,6 +88,7 @@ decomposeCmdTy t ty            = Left (NotCmdTy t ty)
 --   that are overloaded) must be checked.
 inferConst :: Const -> Either TypeErr Type
 inferConst Wait      = return $ TyCmd TyUnit
+inferConst Halt      = return $ TyCmd TyUnit
 inferConst Noop      = return $ TyCmd TyUnit
 inferConst Move      = return $ TyCmd TyUnit
 inferConst Turn      = return $ TyDir :->: TyCmd TyUnit

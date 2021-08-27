@@ -1,8 +1,11 @@
+- Store robots so they can be looked up by ID (and by location?).
+    - Add a string argument to build command to name a robot
+    - Make sure names are unique
+    - Don't recreate a new base robot every time we run a command.
 - REPL can handle any type of expression.
 - Some resources, e.g. rocks, block robots.
 - Pause button and single-stepping.
 - Message panel in the UI.
-- Store robots so they can be looked up by ID and by location.
 - Add UI feature to look up robots by ID.
     - See their currently executing program?
 - Give each robot its own inventory.  Add commands for giving/receiving.
