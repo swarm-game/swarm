@@ -1,8 +1,90 @@
 {-# LANGUAGE GADTs           #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Swarm.Game
+-- Copyright   :  Brent Yorgey
+-- Maintainer  :  byorgey@gmail.com
+--
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- The implementation of the Swarm game itself, as separate from the UI.
+--
+-----------------------------------------------------------------------------
+
 module Swarm.Game
-  ( module Swarm.Game
+  ( -- * The CEK abstract machine
+
+    -- | The Swarm interpreter uses a technique known as a
+    --   <https://matt.might.net/articles/cek-machines/ CEK machine>.
+    --   Execution happens simply by iterating a step function,
+    --   sending one state of the CEK machine to the next. In addition
+    --   to being relatively efficient, this means we can easily run a
+    --   bunch of robots synchronously, in parallel, without resorting
+    --   to any threads (by stepping their machines in a round-robin
+    --   fashion); pause and single-step the game; save and resume,
+    --   and so on.
+    --
+    --   Essentially, a CEK machine state has three components:
+    --
+    --   - The __C__ontrol is the thing we are currently focused on:
+    --     either a 'UTerm' to evaluate, or a 'Value' that we have
+    --     just finished evaluating.
+    --   - The __E__nvironment ('Env') is a mapping from variables that might
+    --     occur free in the Control to their values.
+    --   - The __K__ontinuation ('Cont') is a stack of 'Frame's,
+    --     representing the evaluation context, /i.e./ what we are
+    --     supposed to do after we finish with the currently focused
+    --     thing.  When we reduce the current term to a value, the top
+    --     frame on the stack tells us how to proceed.
+    --
+    --   You can think of a CEK machine as a defunctionalization of a
+    --   recursive big-step interpreter, where we explicitly keep
+    --   track of the call stack and the environments that would be in
+    --   effect at various places in the recursion.
+    --
+    --   The slightly confusing thing about CEK machines is how we
+    --   have to pass around environments everywhere.  Basically,
+    --   anywhere there can be unevaluated terms containing free
+    --   variables (in values, in continuation stack frames, ...), we
+    --   have to store the proper environment alongside so that when
+    --   we eventually get around to evaluating it, we will be able to
+    --   pull out the environment to use.
+
+    -- ** Values
+    Value(..), Env, emptyEnv
+
+    -- ** Frames
+
+  , Frame(..), Cont
+
+    -- ** CEK machine states
+
+  , CEK(..), initMachine, initMachineV
+
+    -- ** Stepping the machine
+
+  , gameStep, step, evalStepsPerTick
+  , bigStepRobot, stepRobot, execConst
+
+    -- * Robots
+
+  , Robot(..), mkRobot, mkBase
+
+    -- ** Lenses
+  , location, direction, machine, tickSteps, static
+  , Item(..)
+
+    -- * Game state
+  , GameState(..), initGameState
+
+    -- ** Lenses
+
+  , robots, newRobots, world, viewCenter, updated, inventory
+
+    -- * Convenience re-exports
+
   , module Swarm.Game.Resource
   )
   where
@@ -10,42 +92,77 @@ module Swarm.Game
 import           Numeric.Noise.Perlin
 import           Numeric.Noise.Ridged
 
-import           Control.Lens         hiding (Const, from)
+import           Control.Lens                  hiding (Const, from)
 import           Control.Monad.State
-import           Data.List            (intercalate)
+import           Data.List                     (intercalate)
 -- import           Data.Hash.Murmur
-import           Data.Map             (Map)
-import qualified Data.Map             as M
-import           Data.Maybe           (catMaybes)
-import           Data.Text            (Text)
-import qualified Data.Text.IO         as T
+import           Data.Map                      (Map)
+import qualified Data.Map                      as M
+import           Data.Maybe                    (catMaybes)
+import           Data.Text                     (Text)
+import qualified Data.Text.IO                  as T
 import           Linear
 import           Witch
 
 import           Swarm.Pretty
 
+import           Brick.Forms                   (focusedFormInputAttr)
+import           Control.Lens.Internal.FieldTH (LensRules (LensRules))
 import           Swarm.AST
 import           Swarm.Game.Resource
-import qualified Swarm.Game.World     as W
-import           Swarm.Util           (processCmd)
+import qualified Swarm.Game.World              as W
+import           Swarm.Util                    (processCmd)
 
 ------------------------------------------------------------
 -- CEK machine types
+------------------------------------------------------------
 
+-- | A /value/ is a term that cannot (or does not) take any more
+--   evaluation steps on its own.
 data Value where
+  -- | The unit value.
   VUnit   :: Value
+
+  -- | An integer.
   VInt    :: Integer -> Value
+
+  -- | A literal string.
   VString :: Text -> Value
+
+  -- | A direction.
   VDir    :: Direction -> Value
+
+  -- | A boolean.
   VBool   :: Bool -> Value
+
+  -- | A /closure/, representing a lambda term along with an
+  --   environment containing bindings for any free variables in the
+  --   body of the lambda.
   VClo    :: Text -> UTerm -> Env -> Value
+
+  -- | An application of a constant to some value arguments,
+  --   potentially waiting for more arguments.
   VCApp   :: Const -> [Value] -> Value
+
+  -- | A bind where the first component has been reduced to a value,
+  --   /i.e./ @v ; c@ or @x <- v; c@.  We also store an @Env@ in which
+  --   to interpret the second component of the bind.
   VBind   :: Value -> Maybe Var -> UTerm -> Env -> Value
+
+  -- | A delayed term, along with its environment. If a term would
+  --   otherwise be evaluated but we don't want it to be, we can stick
+  --   a @delay@ on it, which turns it into a value.  Delayed terms
+  --   won't be evaluated until @force@ is applied to them.
   VDelay  :: UTerm -> Env -> Value
   deriving (Eq, Ord, Show)
 
-type Env = Map Text Value
+-- | An environment is a mapping from variable names to values.
+type Env = Map Var Value
 
+-- | Unsafely look up variables in an environment, with a slightly
+--   better error message just in case something goes wrong.  But in
+--   theory, if the type checker is doing its job and there are no
+--   bugs, a lookup error will never happen.
 (!!!) :: Env -> Var -> Value
 e !!! x = case M.lookup x e of
   Nothing -> error $ from x ++ " is not a key in the environment!"
@@ -54,23 +171,87 @@ e !!! x = case M.lookup x e of
 emptyEnv :: Env
 emptyEnv = M.empty
 
+-- | A frame is a single component of a continuation stack, explaining
+--   what to do next after we finish evaluating the currently focused
+--   term.
 data Frame
   = FArg UTerm Env
+    -- ^ @FArg t e@ says that we were evaluating the left-hand side of
+    -- an application, so the next thing we should do is evaluate the
+    -- term @t@ (the right-hand side, /i.e./ argument of the
+    -- application) in environment @e@.  We will also push an 'FApp'
+    -- frame on the stack.
+
   | FApp Value
-  | FLet Text UTerm Env
-  | FMkBind (Maybe Text) UTerm Env
+    -- ^ @FApp v@ says that we were evaluating the right-hand side of
+    -- an application; once we are done, we should pass the resulting
+    -- value as an argument to @v@.
+
+  | FLet Var UTerm Env
+    -- ^ @FLet x t2 e@ says that we were evaluating a term @t1@ in an
+    -- expression of the form @let x = t1 in t2@, that is, we were
+    -- evaluating the definition of @x@; the next thing we should do
+    -- is evaluate @t2@ in the environment @e@ extended with a binding
+    -- for @x@.
+
+  | FEvalBind (Maybe Text) UTerm Env
+    -- ^ If the top frame is of the form @FEvalBind mx c2 e@, we were
+    -- /evaluating/ a term @c1@ from a bind expression @x <- c1 ; c2@
+    -- (or without the @x@, if @mx@ is @Nothing@); once finished, we
+    -- should simply package it up into a value using @VBind@.
+
   | FExec
+    -- ^ An @FExec@ frame means the focused value is a command, which
+    -- we should now execute.
+
   | FExecBind (Maybe Text) UTerm Env
+    -- ^ This looks very similar to 'FEvalBind', but it means we are
+    -- in the process of /executing/ the first component of a bind;
+    -- once done, we should also execute the second component in the
+    -- given environment (extended by binding the variable, if there
+    -- is one, to the output of the first command.
+
   deriving (Eq, Ord, Show)
 
+-- | A continuation is just a stack of frames.
 type Cont = [Frame]
 
-data CEK = In UTerm Env Cont | Out Value Cont
+-- | The overall state of a CEK machine, which can actually be in one
+--   of two states. The CEK machine is named after the first kind of
+--   state, and it would probably be possible to inline a bunch of
+--   things and get rid of the second state, but I find it much more
+--   natural and elegant this way.
+data CEK
+  = In UTerm Env Cont
+    -- ^ When we are on our way "in/down" into a term, we have a
+    --   currently focused term to evaluate in the environment, and a
+    --   continuation.  In this mode we generally pattern-match on the
+    --   'UTerm' to decide what to do next.
+
+  | Out Value Cont
+    -- ^ Once we finish evaluating a term, we end up with a 'Value'
+    --   and we switch into "out/up" mode, bringing the value back up
+    --   out of the depths to the context that was expecting it.  In
+    --   this mode we generally pattern-match on the 'Cont' to decide
+    --   what to do next.
+    --
+    --   Note that there is no 'Env', because we don't have any
+    --   variables to evaluate at the moment, and we maintain the invariant
+    --   that any unevaluated terms buried inside a 'Value' or 'Cont'
+    --   must carry along their environment with them.
   deriving (Eq, Ord, Show)
 
-initMachine :: Term' f -> CEK
+-- | Initialize a machine state with a starting command to execute,
+--   requiring a fully typechecked term (to make sure no type or scope
+--   errors can cause a crash), but erasing the term before putting it
+--   in the machine.
+initMachine :: ATerm -> CEK
 initMachine e = In (erase e) M.empty [FExec]
 
+-- | Initialize a machine state with a command that is already a value
+--   (for example, this is the case when spawning a new robot with the
+--   'build' command; because of eager evaluation, the argument to
+--   'build' has already been evaluated (but not executed!).
 initMachineV :: Value -> CEK
 initMachineV v = Out v [FExec]
 
@@ -107,8 +288,8 @@ prettyFrame :: Frame -> String
 prettyFrame (FArg t _)               = "_ " ++ prettyString t
 prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FMkBind Nothing t _)    = "_ ; " ++ prettyString t
-prettyFrame (FMkBind (Just x) t _)   = from x ++ " <- _ ; " ++ prettyString t
+prettyFrame (FEvalBind Nothing t _)    = "_ ; " ++ prettyString t
+prettyFrame (FEvalBind (Just x) t _)   = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FExec                    = "exec _"
 prettyFrame (FExecBind Nothing t _)  = "_ ; " ++ prettyString t
 prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
@@ -231,7 +412,7 @@ stepRobot r = case r ^. machine of
   In (TLet x _ t1 t2) e k           ->
     let e' = M.insert x (VDelay t1 e') e
     in mkStep r $ In t1 e' (FLet x t2 e : k)
-  In (TBind mx _ t1 t2) e k         -> mkStep r $ In t1 e (FMkBind mx t2 e : k)
+  In (TBind mx _ t1 t2) e k         -> mkStep r $ In t1 e (FEvalBind mx t2 e : k)
   In (TDelay t) e k                 -> mkStep r $ Out (VDelay t e) k
 
   Out _ []                          -> updated .= True >> return Nothing
@@ -243,7 +424,7 @@ stepRobot r = case r ^. machine of
     | otherwise                     -> mkStep r $ Out (VCApp c (v2 : args)) k
   Out v2 (FApp (VClo x t e) : k)    -> mkStep r $ In t (M.insert x v2 e) k
   Out v1 (FLet x t2 e : k)          -> mkStep r $ In t2 (M.insert x v1 e) k
-  Out v1 (FMkBind mx t2 e : k)      -> mkStep r $ Out (VBind v1 mx t2 e) k
+  Out v1 (FEvalBind mx t2 e : k)    -> mkStep r $ Out (VBind v1 mx t2 e) k
   Out (VCApp Noop _) (FExec : k)    -> mkStep r $ Out VUnit k
   Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
   Out (VBind c mx t2 e) (FExec : k) -> mkStep r $ Out c (FExec : FExecBind mx t2 e : k)
@@ -337,22 +518,6 @@ execConst Run args k _ = badConst Run args k
 badConst :: Const -> [Value] -> Cont -> a
 badConst c args k = error $
   "Panic! Bad application of execConst " ++ show c ++ " " ++ show args ++ " " ++ show k
-
-applyTurn :: Direction -> V2 Int -> V2 Int
-applyTurn Lft (V2 x y)  = V2 (-y) x
-applyTurn Rgt (V2 x y)  = V2 y (-x)
-applyTurn Back (V2 x y) = V2 (-x) (-y)
-applyTurn Fwd v         = v
-applyTurn North _       = north
-applyTurn South _       = south
-applyTurn East _        = east
-applyTurn West _        = west
-
-north, south, east, west :: V2 Int
-north = V2 (-1) 0
-south = V2 1 0
-east  = V2 0 1
-west  = V2 0 (-1)
 
 evalCmp :: CmpConst -> Integer -> Integer -> Bool
 evalCmp CmpEq  = (==)

@@ -25,6 +25,7 @@ import           Brick.Widgets.Center        (center, hCenter)
 import           Brick.Widgets.Dialog
 import qualified Graphics.Vty                as V
 
+import           Swarm.AST                   (east, north, south, west)
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
 import           Swarm.UI.Attr

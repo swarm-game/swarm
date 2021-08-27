@@ -18,7 +18,8 @@
 module Swarm.AST
   ( -- * Constants
 
-    Direction(..), Const(..), CmpConst(..), ArithConst(..)
+    Direction(..), applyTurn, north, south, east, west
+  , Const(..), CmpConst(..), ArithConst(..)
 
   , arity, isCmd
 
@@ -36,6 +37,7 @@ module Swarm.AST
 import qualified Data.Functor.Const    as C
 import           Data.Functor.Identity
 import           Data.Text
+import           Linear
 
 import           Swarm.Types
 
@@ -47,6 +49,25 @@ import           Swarm.Types
 --   will turn.
 data Direction = Lft | Rgt | Back | Fwd | North | South | East | West
   deriving (Eq, Ord, Show, Read)
+
+-- | The 'applyTurn' function gives the meaning of each 'Direction' by
+--   turning relative to the given vector or by turning to an absolute
+--   direction vector.
+applyTurn :: Direction -> V2 Int -> V2 Int
+applyTurn Lft (V2 x y)  = V2 (-y) x
+applyTurn Rgt (V2 x y)  = V2 y (-x)
+applyTurn Back (V2 x y) = V2 (-x) (-y)
+applyTurn Fwd v         = v
+applyTurn North _       = north
+applyTurn South _       = south
+applyTurn East _        = east
+applyTurn West _        = west
+
+north, south, east, west :: V2 Int
+north = V2 (-1) 0
+south = V2 1 0
+east  = V2 0 1
+west  = V2 0 (-1)
 
 -- | Constants, representing various built-in functions and commands.
 data Const

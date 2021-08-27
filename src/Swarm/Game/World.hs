@@ -1,4 +1,33 @@
-module Swarm.Game.World where
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Swarm.Game.World
+-- Copyright   :  Brent Yorgey
+-- Maintainer  :  byorgey@gmail.com
+--
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- A /world/ refers to the grid of characters, aka resources, on which
+-- the game takes place.  A world is technically finite but
+-- practically infinite (worlds are indexed by 64-bit signed integers,
+-- so they correspond to a \( 2^{64} \times 2^{64} \) torus).
+--
+-- This module provides several implementations of a world
+-- abstraction, which allows creating a new world, querying or setting
+-- the world at a given location, and informing the world that it
+-- should preload a certain region to make subsequent lookups faster.
+--
+-----------------------------------------------------------------------------
+
+module Swarm.Game.World
+  ( -- * The @Worldly@ type class
+
+    Worldly(..)
+
+    -- * World implementations
+
+  , SimpleWorld, TileCachingWorld
+
+  ) where
 
 import           Control.Arrow      ((&&&))
 import           Control.Lens
