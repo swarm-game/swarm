@@ -53,6 +53,7 @@ instance PrettyPrec Direction where
 
 instance PrettyPrec Const where
   prettyPrec _ Wait      = "wait"
+  prettyPrec _ Noop      = "{}"
   prettyPrec _ Move      = "move"
   prettyPrec _ Turn      = "turn"
   prettyPrec _ Harvest   = "harvest"
@@ -102,7 +103,6 @@ instance PrettyPrec Term where
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec p (TBind (Just x) _ t1 t2) = pparens (p > 0) $
     pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
-  prettyPrec _ TNop          = braces emptyDoc
 
 instance PrettyPrec ATerm where
   prettyPrec p = prettyPrec p . mapTerm' (\(ID x) -> Just x)

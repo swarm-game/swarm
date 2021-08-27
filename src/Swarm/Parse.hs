@@ -130,7 +130,7 @@ parseTermAtom =
               <*> (symbol "=" *> parseTerm)
               <*> (reserved "in" *> parseTerm)
   <|> parens parseTerm
-  <|> TNop <$ try (symbol "{" *> symbol "}")
+  <|> TConst Noop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm
 
 parseTerm :: Parser Term

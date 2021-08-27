@@ -3,7 +3,35 @@
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Swarm.AST where
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Swarm.AST
+-- Copyright   :  Brent Yorgey
+-- Maintainer  :  byorgey@gmail.com
+--
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Abstract syntax for the Swarm programming language.
+--
+-----------------------------------------------------------------------------
+
+module Swarm.AST
+  ( -- * Constants
+
+    Direction(..), Const(..), CmpConst(..), ArithConst(..)
+
+  , arity, isCmd
+
+    -- * Terms
+  , Var, Term'(..), UTerm, Term, ATerm, pattern ID, pattern NONE
+
+  , mapTerm', erase
+
+    -- * Term traversal
+
+  , bottomUp, mapFree
+
+  ) where
 
 import qualified Data.Functor.Const    as C
 import           Data.Functor.Identity
@@ -11,36 +39,47 @@ import           Data.Text
 
 import           Swarm.Types
 
-type Var = Text
+------------------------------------------------------------
+-- Constants
+------------------------------------------------------------
 
+-- | The type of directions. Used /e.g./ to indicate which way a robot
+--   will turn.
 data Direction = Lft | Rgt | Back | Fwd | North | South | East | West
   deriving (Eq, Ord, Show, Read)
 
--- | Built-in function and command constants.
+-- | Constants, representing various built-in functions and commands.
 data Const
-  = Wait
-  | Move
-  | Turn
-  | Harvest
-  | Build
-  | Run
-  | GetX
-  | GetY
-  | If
-  | Force
-  | Cmp CmpConst
-  | Arith ArithConst
+  = Wait              -- ^ Wait for one time step without doing anything.
+  | Noop              -- ^ Do nothing.  This is different than 'Wait'
+                      --   in that it does not take up a time step.
+  | Move              -- ^ Move forward one step.
+  | Turn              -- ^ Turn in some direction.
+  | Harvest           -- ^ Pick up an item from the current location.
+  | Build             -- ^ Construct a new robot.
+  | Run               -- ^ Run a program loaded from a file.
+  | GetX              -- ^ Get the current x-coordinate.
+  | GetY              -- ^ Get the current y-coordinate.
+  | If                -- ^ If-expressions.
+  | Force             -- ^ Force a delayed evaluation.
+  | Cmp CmpConst      -- ^ Comparison operators.
+  | Arith ArithConst  -- ^ Arithmetic operators.
   deriving (Eq, Ord, Show)
 
+-- | Comparison operator constants.
 data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
   deriving (Eq, Ord, Show)
 
+-- | Arithmetic operator constants.
 data ArithConst = Add | Sub | Mul | Div | Exp
   deriving (Eq, Ord, Show)
 
--- | The arity of a constant.
+-- | The arity of a constant, /i.e./ how many arguments it expects.  The
+--   runtime system will collect arguments to a constant until it has
+--   enough, then dispatch the constant's behavior.
 arity :: Const -> Int
 arity Wait      = 0
+arity Noop      = 0
 arity Move      = 0
 arity Turn      = 1
 arity Harvest   = 0
@@ -55,8 +94,8 @@ arity (Arith _) = 2
 
 -- | Some constants are commands, which means a fully saturated
 --   application of those constants counts as a value, and should not
---   be reduced further until they are to be executed (i.e. until they
---   meet an FExec frame).  Other constants just represent pure
+--   be reduced further until it is to be executed (i.e. until it
+--   meets an 'FExec' frame).  Other constants just represent pure
 --   functions; fully saturated applications of such constants should
 --   be evaluated immediately.
 isCmd :: Const -> Bool
@@ -69,45 +108,92 @@ isCmd c = c `notElem` funList
 ------------------------------------------------------------
 -- Terms
 
--- | The Term' type is parameterized by a functor that expresses how
---   much type information we have.
+-- | We use 'Text' values to represent variables.
+type Var = Text
+
+-- | The 'Term'' type is parameterized by a functor that expresses how
+--   much type information we have, for a very lightweight way of
+--   having different levels of annotation at different phases.
 --
---   - When f = C.Const (), we have no type information at all.
---   - When f = Maybe, we might have some type information (e.g. type
---     annotations supplied in the surface syntax)
---   - When f = Identity, we have all type information.
+--   - When @f = C.Const ()@, we have no type information at all.
+--     This corresponds to the 'UTerm' (Untyped Term) type synonym.
+--   - When @f = Maybe@, we might have some type information (e.g. type
+--     annotations supplied in the surface syntax). This corresponds to 'Term'.
+--   - When @f = Identity@, we have all type information. This
+--     coresponds to 'ATerm' (Annotated Term).
 --
---   The type annotations are placed strategically to maintain the
---   following invariant: given the type of a term as input, we can
---   reconstruct the types of all subterms.  Additionally, some
---   annotations which would not otherwise be needed to maintain the
---   invariant (e.g. the type annotation on the binder of a lambda)
---   are there to allow the user to give hints to help type inference.
+--   Generally, we start out with a 'Term' from the parser; the
+--   typechecker then annotates it into an 'ATerm'; before handing a
+--   term off to the interpreter, the type annotations are erased,
+--   turning it into a 'UTerm'.
+--
+--   The type annotations in an 'ATerm' are placed strategically to
+--   maintain the following invariant: given the type of a term as
+--   input, we can reconstruct the types of all subterms.
+--   Additionally, some annotations which would not otherwise be
+--   needed to maintain the invariant (/e.g./ the type annotation on the
+--   binder of a lambda) are there to allow the user to give hints to
+--   help type inference.
 
 data Term' f
+    -- | The unit value.
   = TUnit
+
+    -- | A constant.
   | TConst Const
+
+    -- | A direction.
   | TDir Direction
+
+    -- | An integer literal.
   | TInt Integer
+
+    -- | A string literal.
   | TString Text
+
+    -- | A Boolean literal.
   | TBool Bool
+
+    -- | A variable.
   | TVar Var
+
+    -- | A lambda expression, with or without a type annotation on the
+    --   binder.
   | TLam Var (f Type) (Term' f)
+
+    -- | Application, possibly with a type annotation telling us the
+    --   type of the argument, which would otherwise be impossible to
+    --   figure out from the overall result type.
   | TApp (f Type) (Term' f) (Term' f)
+
+    -- | A __recursive__ let expression, with or without a type
+    --   annotation on the variable.
   | TLet Var (f Type) (Term' f) (Term' f)
+
+    -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
+    --   The type annotation tells us the /result/ type of @c1@.
   | TBind (Maybe Var) (f Type) (Term' f) (Term' f)
-  | TNop
+
+    -- | Delay evaluation of a term.  Swarm is an eager language, but
+    --   in some cases (e.g. for @if@ statements and recursive
+    --   bindings) we need to delay evaluation.  The counterpart to
+    --   @delay@ is @force@, where @force (delay t) = t@.  Note that
+    --   @force@ is just a constant, whereas 'TDelay' has to be a
+    --   special syntactic form so its argument can get special
+    --   treatment during evaluation.
   | TDelay (Term' f)
-    -- TDelay has to be a special form --- not just an application of
-    -- a constant --- so it can get special treatment during
-    -- evaluation.
 
 deriving instance Eq (f Type) => Eq (Term' f)
 deriving instance Ord (f Type) => Ord (Term' f)
 deriving instance Show (f Type) => Show (Term' f)
 
+-- | Terms with some type annotations.
 type Term = Term' Maybe
+
+-- | Terms with all type annotations.
 type ATerm = Term' Identity
+
+-- | Terms with no type annotations.
 type UTerm = Term' (C.Const ())
 
 pattern ID :: a -> Identity a
@@ -128,7 +214,6 @@ mapTerm' h (TLam x ty t)      = TLam x (h ty) (mapTerm' h t)
 mapTerm' h (TApp ty2 t1 t2)   = TApp (h ty2) (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TLet x ty t1 t2)  = TLet x (h ty) (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TBind x ty t1 t2) = TBind x (h ty) (mapTerm' h t1) (mapTerm' h t2)
-mapTerm' _ TNop               = TNop
 mapTerm' h (TDelay t)         = TDelay (mapTerm' h t)
 
 erase :: Term' f -> UTerm

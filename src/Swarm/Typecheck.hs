@@ -78,7 +78,6 @@ infer ctx (TBind mx _ c1 c2)        = do
   ac2 ::: cmdb <- infer (maybe id (`M.insert` a) mx ctx) c2
   _ <- decomposeCmdTy c2 cmdb
   return $ TBind mx (ID a) ac1 ac2 ::: cmdb
-infer _ TNop = return $ TNop ::: TyCmd TyUnit
 infer _ t = Left $ CantInfer t
 
 decomposeCmdTy :: Term -> Type -> Either TypeErr Type
@@ -89,6 +88,7 @@ decomposeCmdTy t ty            = Left (NotCmdTy t ty)
 --   that are overloaded) must be checked.
 inferConst :: Const -> Either TypeErr Type
 inferConst Wait      = return $ TyCmd TyUnit
+inferConst Noop      = return $ TyCmd TyUnit
 inferConst Move      = return $ TyCmd TyUnit
 inferConst Turn      = return $ TyDir :->: TyCmd TyUnit
 inferConst Harvest   = return $ TyCmd TyUnit

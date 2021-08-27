@@ -41,7 +41,6 @@ data Value where
   VClo    :: Text -> UTerm -> Env -> Value
   VCApp   :: Const -> [Value] -> Value
   VBind   :: Value -> Maybe Var -> UTerm -> Env -> Value
-  VNop    :: Value
   VDelay  :: UTerm -> Env -> Value
   deriving (Eq, Ord, Show)
 
@@ -99,7 +98,6 @@ valueToTerm (VBool b)        = TBool b
 valueToTerm (VClo x t _)     = TLam x NONE t
 valueToTerm (VCApp c vs)     = foldl (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
-valueToTerm VNop             = TNop
 valueToTerm (VDelay t _)     = TDelay t
 
 prettyCont :: Cont -> String
@@ -234,7 +232,6 @@ stepRobot r = case r ^. machine of
     let e' = M.insert x (VDelay t1 e') e
     in mkStep r $ In t1 e' (FLet x t2 e : k)
   In (TBind mx _ t1 t2) e k         -> mkStep r $ In t1 e (FMkBind mx t2 e : k)
-  In TNop _ k                       -> mkStep r $ Out VNop k
   In (TDelay t) e k                 -> mkStep r $ Out (VDelay t e) k
 
   Out _ []                          -> updated .= True >> return Nothing
@@ -247,7 +244,7 @@ stepRobot r = case r ^. machine of
   Out v2 (FApp (VClo x t e) : k)    -> mkStep r $ In t (M.insert x v2 e) k
   Out v1 (FLet x t2 e : k)          -> mkStep r $ In t2 (M.insert x v1 e) k
   Out v1 (FMkBind mx t2 e : k)      -> mkStep r $ Out (VBind v1 mx t2 e) k
-  Out VNop (FExec : k)              -> mkStep r $ Out VUnit k
+  Out (VCApp Noop _) (FExec : k)    -> mkStep r $ Out VUnit k
   Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
   Out (VBind c mx t2 e) (FExec : k) -> mkStep r $ Out c (FExec : FExecBind mx t2 e : k)
   Out v (FExecBind mx t2 e : k)     -> mkStep r $ In t2 (maybe id (`M.insert` v) mx e) (FExec : k)
