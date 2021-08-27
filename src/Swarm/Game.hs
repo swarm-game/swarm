@@ -215,7 +215,9 @@ bigStepRobot r
       maybe (return Nothing) (bigStepRobot . (tickSteps -~ 1)) r'
 
 mkStep :: Robot -> CEK -> StateT GameState IO (Maybe Robot)
-mkStep r cek = return . Just $ r & machine .~ cek
+mkStep r cek = do
+  -- liftIO $ appendFile "out.txt" (prettyCEK (r ^. machine))
+  return . Just $ r & machine .~ cek
 
 stepRobot :: Robot -> StateT GameState IO (Maybe Robot)
 stepRobot r = case r ^. machine of
