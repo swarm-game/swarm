@@ -46,18 +46,45 @@ infixr 1 ?
 ------------------------------------------------------------
 -- Worldly type class
 
+-- | A class to abstract over different world implementations.  We
+--   really only need one world implementation at a time, but it's
+--   helpful to think about what operations a world needs to support,
+--   and to be able to play with swapping in different implementations
+--   to see how it affects performance.
 class Worldly w where
+
+  -- | Create a new world from a function that defines what character
+  --   is at every location.
   newWorld   :: ((Int,Int) -> Char) -> w
+
+  -- | Look up the character at given (row, column) coordinates.  Note
+  --   that this does /not/ return an updated world, since it would be
+  --   difficult to manage all the updates.  Instead, the 'loadRegion'
+  --   function can be used before calling 'lookup'.
   lookup     :: (Int,Int) -> w -> Char
+
+  -- | Insert a new character into the world at the given coordinates.
   insert     :: (Int,Int) -> Char -> w -> w
+
+  -- | Give a hint to the world that it should preload the region in
+  --   between the given coordinates (upper left and bottom right) to
+  --   make subsequent lookups faster.
   loadRegion :: ((Int,Int), (Int,Int)) -> w -> w
+
+  -- XXX Allow smaller, finite worlds Too?  Maybe add a variant of
+  -- newWorld that creates a finite world from an array.  This could
+  -- be used e.g. to create puzzle levels, which can be loaded from a
+  -- file instead of generated via noise functions.
 
 ------------------------------------------------------------
 -- SimpleWorld
 
--- A SimpleWorld just stores the world function and a map with changed
--- locations.  It does not do any fancy caching.
-
+-- | A 'SimpleWorld' just stores the world function and a map with
+--   changed locations.  It does not do any fancy caching; in
+--   particular the 'loadRegion' function does nothing.  The 'lookup'
+--   function first just looks up the location in the map of changed
+--   locations, and if it's not there it simply runs the function to
+--   find out what character should be there.
 data SimpleWorld = SimpleWorld
   { sworldFun :: (Int,Int) -> Char
   , sworldMap :: M.Map (Int,Int) Char
@@ -72,9 +99,6 @@ instance Worldly SimpleWorld where
 ------------------------------------------------------------
 -- TileCachingWorld
 
--- A TileCachingWorld keeps a cache of recently accessed square tiles
--- to make lookups faster.
-
 tileBits :: Int
 tileBits = 6     -- Each tile is 2^tileBits x 2^tileBits
 
@@ -85,6 +109,17 @@ tileBounds :: ((Int,Int), (Int,Int))
 tileBounds = ((0,0),(tileMask,tileMask))
 
 type Tile = U.UArray (Int,Int) Char
+
+-- | A 'TileCachingWorld' keeps a cache of recently accessed square
+--   tiles to make lookups faster.  Currently, tiles are \(64 \times
+--   64\), but this is adjustible.  Honestly, it does not seem to make
+--   much difference as compared to 'SimpleWorld'.
+--
+--   Right now the 'TileCachingWorld' simply holds on to all the tiles
+--   it has ever loaded.  Ideally it would use some kind of LRU
+--   caching scheme to keep memory usage bounded, but it would be a
+--   bit tricky, and in any case it's probably not going to matter
+--   much for a while.
 
 data TileCachingWorld = TileCachingWorld
   { tcWorldFun :: (Int,Int) -> Char
