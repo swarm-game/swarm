@@ -134,7 +134,6 @@ drawWorld g
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
     robotLocs = M.fromList $ g ^.. robotMap . traverse . lensProduct location direction
-    drawLoc (0,0) = withAttr robotAttr $ txt "■"
     drawLoc (r,c) = case M.lookup (V2 r c) robotLocs of
       Just dir -> withAttr robotAttr $ txt (robotDir dir)
       Nothing  -> drawResource (W.lookup (r,c) (g ^. world))
