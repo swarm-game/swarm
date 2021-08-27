@@ -1,10 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Swarm.Elaborate
+-- Copyright   :  Brent Yorgey
+-- Maintainer  :  byorgey@gmail.com
+--
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Term elaboration which happens after type checking.
+--
+-----------------------------------------------------------------------------
+
+
 module Swarm.Elaborate where
 
 import           Swarm.AST
 import           Swarm.Types
 
+-- | Perform some elaboration / rewriting on a fully type-annotated
+--   term, given its top-level type.  This currently performs such
+--   operations as rewriting @if@ expressions and recursive let
+--   expressions to use laziness appropriately.  In theory it could
+--   also perform rewriting for overloaded constants depending on the
+--   actual type they are used at, but currently that sort of thing
+--   tends to make type inference fall over.
 elaborate :: Type -> ATerm -> ATerm
 elaborate = bottomUp rewrite
   where
@@ -33,4 +53,5 @@ elaborate = bottomUp rewrite
     -- in the context.
     rewrite _ (TLet x ty t1 t2) = TLet x ty (mapFree x (TApp ty (TConst Force)) t1) t2
 
+    -- Leave any other subterms alone.
     rewrite _ t = t
