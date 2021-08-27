@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeOperators #-}
 module Swarm.Util where
 
 import           Data.Bifunctor  (first)
@@ -17,3 +18,8 @@ processCmd txt = do
   at <- first prettyText (check M.empty t (TyCmd TyUnit))
   return $ elaborate (TyCmd TyUnit) at
 
+processTerm :: Text -> Either Text (ATerm ::: Type)
+processTerm txt = do
+  t <- readTerm txt
+  at ::: ty <- first prettyText (infer M.empty t)
+  return $ elaborate ty at ::: ty
