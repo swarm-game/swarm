@@ -202,6 +202,7 @@ pattern ID a = Identity a
 pattern NONE :: C.Const () a
 pattern NONE = C.Const ()
 
+-- | Change one sort of term into another, by updating the type information.
 mapTerm' :: (f Type -> g Type) -> Term' f -> Term' g
 mapTerm' _ TUnit              = TUnit
 mapTerm' _ (TConst co)        = TConst co
@@ -216,9 +217,12 @@ mapTerm' h (TLet x ty t1 t2)  = TLet x (h ty) (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TBind x ty t1 t2) = TBind x (h ty) (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TDelay t)         = TDelay (mapTerm' h t)
 
+-- | Erase the type annotations in a term.
 erase :: Term' f -> UTerm
 erase = mapTerm' (const (C.Const ()))
 
+-- | Rewrite a term using a bottom-up traversal.  Giving the rewriting
+--   function access to the type of each subtree.
 bottomUp :: (Type -> ATerm -> ATerm) -> Type -> ATerm -> ATerm
 bottomUp f ty@(_ :->: ty2) (TLam x xTy t) = f ty (TLam x xTy (bottomUp f ty2 t))
 bottomUp f ty (TApp ity2@(ID ty2) t1 t2)
@@ -230,7 +234,7 @@ bottomUp f ty2 (TBind mx ia@(ID a) t1 t2)
 bottomUp f ty (TDelay t) = f ty (TDelay (bottomUp f ty t))
 bottomUp f ty t = f ty t
 
--- Apply a function to all the free occurrences of a variable.
+-- | Apply a function to all the free occurrences of a variable.
 mapFree :: Var -> (ATerm -> ATerm) -> ATerm -> ATerm
 mapFree x f (TVar y)
   | x == y    = f (TVar y)
