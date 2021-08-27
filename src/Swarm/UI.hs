@@ -248,11 +248,13 @@ adjReplHistIndex (+/-) s =
       | newIndex == -1 = ""
       | otherwise      = (s ^. uiReplHistory) !! newIndex
 
+worldScrollDist :: Int
+worldScrollDist = 8
+
 handleWorldEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
-handleWorldEvent s (VtyEvent (V.EvKey V.KUp []))    = updateView s (^+^ north) >>= continue
-handleWorldEvent s (VtyEvent (V.EvKey V.KDown []))  = updateView s (^+^ south) >>= continue
-handleWorldEvent s (VtyEvent (V.EvKey V.KLeft []))  = updateView s (^+^ west)  >>= continue
-handleWorldEvent s (VtyEvent (V.EvKey V.KRight [])) = updateView s (^+^ east)  >>= continue
+handleWorldEvent s (VtyEvent (V.EvKey k []))
+  | k `elem` [V.KUp, V.KDown, V.KLeft, V.KRight]
+  = updateView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
@@ -270,6 +272,13 @@ updateView s update = do
     Nothing  -> return s'
     Just (Extent _ _ size) -> return $
       s' & gameState . world %~ W.loadRegion (viewingRegion (s' ^. gameState) size)
+
+keyToDir :: V.Key -> V2 Int
+keyToDir V.KUp    = north
+keyToDir V.KDown  = south
+keyToDir V.KRight = east
+keyToDir V.KLeft  = west
+keyToDir _        = V2 0 0
 
 viewingRegion :: GameState -> (Int,Int) -> ((Int, Int), (Int, Int))
 viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
