@@ -1,5 +1,4 @@
 - Store robots so they can be looked up by ID (and by location?).
-    - Add a string argument to build command to name a robot
     - Make sure names are unique
     - Don't recreate a new base robot every time we run a command.
 - REPL can handle any type of expression.

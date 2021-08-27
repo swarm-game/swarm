@@ -133,7 +133,7 @@ drawWorld g
         ixs = range (viewingRegion g (w,h))
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
-    robotLocs = M.fromList $ g ^.. robots . traverse . lensProduct location direction
+    robotLocs = M.fromList $ g ^.. robotMap . traverse . lensProduct location direction
     drawLoc (0,0) = withAttr robotAttr $ txt "■"
     drawLoc (r,c) = case M.lookup (V2 r c) robotLocs of
       Just dir -> withAttr robotAttr $ txt (robotDir dir)
@@ -221,7 +221,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
           & uiState . uiReplForm    %~ updateFormState ""
           & uiState . uiReplHistory %~ (entry :)
           & uiState . uiReplHistIdx .~ (-1)
-          & gameState . robots      %~ (mkBase cmd :)
+          & gameState . robotMap . ix "base" . machine .~ initMachine cmd
       Left err ->
         continue $ s
           & uiState . uiError ?~ txt err

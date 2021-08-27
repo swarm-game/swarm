@@ -85,7 +85,7 @@ module Swarm.Game
 
     -- ** Lenses
 
-  , robots, newRobots, world, viewCenter, updated, inventory
+  , robotMap, newRobots, world, viewCenter, updated, inventory
 
     -- * Convenience re-exports
 
@@ -102,7 +102,6 @@ import           Data.List            (intercalate)
 -- import           Data.Hash.Murmur
 import           Data.Map             (Map)
 import qualified Data.Map             as M
-import           Data.Maybe           (catMaybes)
 import           Data.Text            (Text)
 import qualified Data.Text.IO         as T
 import           Linear
@@ -110,6 +109,7 @@ import           Witch
 
 import           Swarm.Pretty
 
+import           Control.Arrow        ((&&&))
 import           Swarm.AST
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World     as W
@@ -347,7 +347,7 @@ data Item = Resource Char
   deriving (Eq, Ord, Show)
 
 data GameState = GameState
-  { _robots     :: [Robot]
+  { _robotMap   :: M.Map Text Robot
   , _newRobots  :: [Robot]
   , _world      :: W.TileCachingWorld
   , _viewCenter :: V2 Int
@@ -367,7 +367,7 @@ pn2 = perlin 0 5 0.05 0.75
 initGameState :: IO GameState
 initGameState = return $
   GameState
-  { _robots     = []
+  { _robotMap   = M.singleton "base" (mkBase (TConst Noop))
   , _newRobots  = []
   , _world      = W.newWorld $ \(i,j) ->
       if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
@@ -394,11 +394,37 @@ evalStepsPerTick = 100
 step :: StateT GameState IO ()
 step = do
   updated .= False
-  rs <- use robots
-  rs' <- catMaybes <$> forM rs (bigStepRobot . (tickSteps .~ evalStepsPerTick))
-  robots .= rs'
+
+  rm <- use robotMap
+  rm' <- M.traverseMaybeWithKey (const bigStepRobot) rm
+  robotMap .= rm'
+
+  -- XXX write why this doesn't work!
+  {-
+(19:42) <   byorgey> Does lens provide a combinator of type (something like)   MonadState s m => Lens' s a -> (a -> m a) -> m s  ?
+(19:43)                -!- dsrt^ [~dsrt@12.16.129.111] has joined #haskell
+(19:43) <   byorgey> I can do it with   get >>= theLens f   where   f :: a -> m a   ,  but wondered if there was already an operator to do this
+(19:43)                -!- orhan89 [~orhan89@151.91.188.35.bc.googleusercontent.com] has joined #haskell
+(19:44) <   byorgey> :t \lens f -> get >>= lens f
+(19:44) < lambdabot> MonadState a m => (t -> a -> m b) -> t -> m b
+(19:44)                -!- Codaraxis__ [~Codaraxis@user/codaraxis] has quit [Ping timeout: 240 seconds]
+(19:46) <  hololeap> I found a solution to my problem that seems ok: make a new typeclass for semigroups/monoids that have a "short-circuit state", so that wrappers can know whether or not to evaluate the second argument to `sappend`: http://sprunge.us/hYNINa
+(19:47) <   byorgey> In other words, I want to apply an update to the component of the monadic state targeted by the lens, but the update may itself have some effects in the monad
+(19:48)                -!- hyiltiz [~quassel@31.220.5.250] has quit [Ping timeout: 240 seconds]
+(19:48)                -!- hyiltiz [~quassel@31.220.5.250] has joined #haskell
+(19:52) <   byorgey> wait, I'm not even sure  get >>= lens f  does what I want, because I think that throws out the returned state which has the updated thing in it.  Maybe it should be get >>= lens f >>= put.
+(19:55)                -!- merijn [~merijn@83-160-49-249.ip.xs4all.nl] has joined #haskell
+(19:57)                -!- azeem [~azeem@176.200.202.67] has quit [Ping timeout: 250 seconds]
+(19:57)                -!- azeem [~azeem@176.200.202.67] has joined #haskell
+(19:58) <   byorgey> oh, that doesn't work because the put overwrites any changes to the state made by the 'lens f' part!  Never mind, maybe there's no concise, lawful way to do this, because what if the effects of the 'lens f' part modify the part of the state
+                     the lens is targeting?
+(19:59) <   byorgey> In my situation that's not the case, but anyway, I will stick with something like   do { a <- use lens; a' <- f a; lens %= a' }
+
+-}
+  -- get >>= robotMap (M.traverseMaybeWithKey (const bigStepRobot)) >>= put
+
   new <- use newRobots
-  robots %= (new++)
+  robotMap %= M.union (M.fromList $ map (view robotName &&& id) new)
   newRobots .= []
 
 bigStepRobot :: Robot -> StateT GameState IO (Maybe Robot)
