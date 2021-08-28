@@ -29,7 +29,7 @@ reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
   , "wait", "halt", "move", "turn", "harvest", "build", "run", "getx", "gety"
-  , "int", "string", "dir", "cmd"
+  , "int", "string", "dir", "bool", "cmd"
   , "let", "in", "if", "true", "false"
   ]
 
@@ -87,6 +87,7 @@ parseTypeAtom =
   <|> TyInt    <$ reserved "int"
   <|> TyString <$ reserved "string"
   <|> TyDir    <$ reserved "dir"
+  <|> TyBool   <$ reserved "bool"
   <|> TyCmd    <$> (reserved "cmd" *> parseTypeAtom)
   <|> parens parseType
 
