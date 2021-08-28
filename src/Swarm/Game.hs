@@ -119,6 +119,7 @@ import           Witch
 
 -- import           Data.Hash.Murmur
 
+import           Control.Arrow        ((&&&))
 import           Swarm.AST
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World     as W
@@ -491,16 +492,30 @@ applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . location
 updateViewCenter :: GameState -> GameState
 updateViewCenter g = g
   & viewCenter .~ newViewCenter
-  & (if (newViewCenter /= oldViewCenter) then updated .~ True else id)
+  & (if newViewCenter /= oldViewCenter then updated .~ True else id)
   where
     oldViewCenter = g ^. viewCenter
     newViewCenter = fromMaybe oldViewCenter (applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap))
+
 manualViewCenterUpdate :: (V2 Int -> V2 Int) -> GameState -> GameState
 manualViewCenterUpdate update g = g
   & case g ^. viewCenterRule of
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
       VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
   & updateViewCenter
+
+ensureUniqueName :: MonadState GameState m => Robot -> m Robot
+ensureUniqueName newRobot = do
+  -- See if another robot already has the same name...
+  let name = newRobot ^. robotName
+  collision <- uses robotMap (M.member name)
+  case collision of
+    -- If so, add a suffix to make the name unique.
+    True -> do
+      tag <- gensym <+= 1
+      let name' = name `T.append` into @Text (show tag)
+      return $ newRobot & robotName .~ name'
+    False -> return newRobot
 
 pn1, pn2 :: Perlin
 pn1 = perlin 0 5 0.05 0.5
@@ -583,27 +598,9 @@ gameStep = execStateT $ do
     Just r  -> unless (isActive r) $ replResult . _Just . _2 .= getResult r
     Nothing -> return ()
 
-  -- Get all the newly built robots
+  -- Get all the newly built robots and add them to the robot map.
   new <- use newRobots
-
-  -- For each robot...
-  forM_ new $ \newRobot -> do
-
-    -- See if another robot already has the same name...
-    let name = newRobot ^. robotName
-    collision <- uses robotMap (M.member name)
-    case collision of
-
-      -- If so, add a suffix to make the name unique.
-      True -> do
-        tag <- gensym <+= 1
-        let name' = name `T.append` into @Text (show tag)
-        robotMap %= M.insert name' (newRobot & robotName .~ name')
-
-      -- In either case, add the new robot to the robotMap.
-      False -> robotMap %= M.insert name newRobot
-
-  -- Reset the list of new robots.
+  robotMap %= M.union (M.fromList $ map (view robotName &&& id) new)
   newRobots .= []
 
   -- Possible update the view center.
@@ -774,10 +771,13 @@ execConst If [VBool False, _, els] k r = step r $ Out els k
 execConst If args k _ = badConst If args k
 
 execConst Build [VString name, c] k r = do
-  newRobots %= (mkRobot name (r ^. location) (r ^. direction) (initMachineV c) :)
+  let newRobot = mkRobot name (r ^. location) (r ^. direction) (initMachineV c)
+  newRobot' <- ensureUniqueName newRobot
+  newRobots %= (newRobot' :)
   updated .= True
-  step r (Out VUnit k)
+  step r $ Out (VString (newRobot' ^. robotName)) k
 execConst Build args k _ = badConst Build args k
+
 execConst Run [VString fileName] k r = do
   f <- liftIO $ T.readFile (into fileName)  -- XXX handle file not existing
   case processCmd f of

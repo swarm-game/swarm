@@ -1,5 +1,4 @@
 - Make commands return useful things
-    - Build should return string id of created robot
     - View should return boolean?
 - Special seed robots to make harvested things regrow
 - Add colors
