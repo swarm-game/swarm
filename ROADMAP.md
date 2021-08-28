@@ -1,5 +1,3 @@
-- Make commands return useful things
-    - View should return boolean?
 [
 - Add 'def' form, similar to let but without 'in' part, for top-level definitions
 - Mechanism for importing definitions from another file
@@ -12,11 +10,7 @@
     - Command to let a robot change its color
     - Command to let a robot change its appearance?
 - Add a version of turn that allows turning to any vector
-- Refactor
-    - Swarm.Language.{Types, AST -> Syntax, Parse, Typecheck,
-      Elaborate, Pipeline}
-    - Swarm.Game.*
-    - Swarm.{UI -> TUI.*}.*
+    - Add pairs, use pair to reprsent vectors
 - Implement craftable items.
 - Refactor
     - All V2 Int values should be x,y.  Only convert to row,column in
