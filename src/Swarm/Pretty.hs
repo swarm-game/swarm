@@ -62,6 +62,7 @@ instance PrettyPrec Const where
   prettyPrec _ Run       = "run"
   prettyPrec _ GetX      = "getX"
   prettyPrec _ Random    = "random"
+  prettyPrec _ Say       = "say"
   prettyPrec _ GetY      = "getY"
   prettyPrec _ If        = "if"
   prettyPrec _ Force     = "force"
@@ -129,8 +130,13 @@ instance PrettyPrec TypeErr where
     , ppr ty
     , "instead."
     ]
+  prettyPrec _ (NonCmdTyExpected t ty) =
+    sep
+    [ "Expecting type", ppr ty
+    , "but", ppr t, "is a command."
+    ]
   prettyPrec _ (Mismatch t expected inferred) =
-    vsep $
+    vsep
       [ "Type mismatch when checking expression" <+> squotes (ppr t)
       , "Expected type:" <+> ppr expected
       , "Actual type:" <+> ppr inferred

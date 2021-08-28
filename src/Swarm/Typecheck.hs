@@ -16,6 +16,7 @@ import           Swarm.Types
 data TypeErr
   = NotFunTy Term Type
   | NotCmdTy Term Type
+  | NonCmdTyExpected Term Type
   | Mismatch Term {- expected -} Type {- inferred -} Type
   | UnboundVar Var
   | CantInfer Term
@@ -97,6 +98,7 @@ inferConst Build     = return $ TyString :->: TyCmd TyUnit :->: TyCmd TyUnit
 inferConst Run       = return $ TyString :->: TyCmd TyUnit
 inferConst GetX      = return $ TyCmd TyInt
 inferConst Random    = return $ TyInt :->: TyCmd TyInt
+inferConst Say       = return $ TyString :->: TyCmd TyUnit
 inferConst GetY      = return $ TyCmd TyInt
 inferConst (Cmp _)   = return $ TyInt :->: TyInt :->: TyBool
 inferConst (Arith _) = return $ TyInt :->: TyInt :->: TyInt
@@ -123,12 +125,12 @@ check ctx (TApp _ t1 t2) ty = do
   at2 ::: ty2 <- infer ctx t2
   at1 <- check ctx t1 (ty2 :->: ty)
   return $ TApp (ID ty2) at1 at2
-check ctx t@(TBind mx _ t1 t2) ty = do
-  _ <- decomposeCmdTy t ty
+check ctx (TBind mx _ t1 t2) ty@(TyCmd _)  = do
   at1 ::: ty1 <- infer ctx t1
   a <- decomposeCmdTy t1 ty1
   at2 <- check (maybe id (`M.insert` a) mx ctx) t2 ty
   return $ TBind mx (ID a) at1 at2
+check _ t@TBind{} ty = Left $ NonCmdTyExpected t ty
 
 -- Fall-through case: switch into inference mode
 check ctx t ty          = do

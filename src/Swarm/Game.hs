@@ -676,6 +676,11 @@ execConst Random [VInt hi] k r = do
   step r $ Out (VInt n) k
 execConst Random args k _ = badConst Random args k
 
+execConst Say [VString s] k r = do
+  emitMessage (T.concat [r ^. robotName, ": ", s])
+  step r $ Out VUnit k
+execConst Say args k _ = badConst Say args k
+
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k
 
