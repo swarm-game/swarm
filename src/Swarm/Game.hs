@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell   #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE TypeApplications  #-}
   -- debugging code
 
@@ -87,6 +88,7 @@ module Swarm.Game
     -- ** Lenses
 
   , robotMap, newRobots, world, viewCenter, updated, replResult, inventory
+  , messageQueue
 
     -- * Convenience re-exports
 
@@ -429,14 +431,15 @@ data Item = Resource Char
   deriving (Eq, Ord, Show)
 
 data GameState = GameState
-  { _robotMap   :: M.Map Text Robot
-  , _newRobots  :: [Robot]
-  , _gensym     :: Int
-  , _world      :: W.TileCachingWorld
-  , _viewCenter :: V2 Int
-  , _updated    :: Bool
-  , _replResult :: Maybe (Type, Maybe Value)
-  , _inventory  :: Map Item Int
+  { _robotMap     :: M.Map Text Robot
+  , _newRobots    :: [Robot]
+  , _gensym       :: Int
+  , _world        :: W.TileCachingWorld
+  , _viewCenter   :: V2 Int
+  , _updated      :: Bool
+  , _replResult   :: Maybe (Type, Maybe Value)
+  , _inventory    :: Map Item Int
+  , _messageQueue :: [Text]
   }
 
 makeLenses ''GameState
@@ -466,7 +469,16 @@ initGameState = return $
   , _updated    = False
   , _replResult = Nothing
   , _inventory  = M.empty
+  , _messageQueue = []
   }
+
+maxMessageQueueSize :: Int
+maxMessageQueueSize = 1000
+
+emitMessage :: MonadState GameState m => Text -> m ()
+emitMessage msg = do
+  q <- use messageQueue
+  messageQueue %= (msg:) . (if length q >= maxMessageQueueSize then init else id)
 
 ------------------------------------------------------------
 -- CEK machine
@@ -619,9 +631,11 @@ stepRobot r = case r ^. machine of
 
   cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
 
-nonStatic :: Cont -> Robot -> StateT GameState IO (Maybe Robot) -> StateT GameState IO (Maybe Robot)
-nonStatic k r m
-  | r ^. static = step r (Out VUnit k)  -- XXX message saying that the base can't move?
+nonStatic :: Const -> Cont -> Robot -> StateT GameState IO (Maybe Robot) -> StateT GameState IO (Maybe Robot)
+nonStatic c k r m
+  | r ^. static = do
+      emitMessage $ T.concat ["Your base can't ", prettyText c, "!"]
+      step r (Out VUnit k)
   | otherwise   = m
 
 -- | At the level of the CEK machine there's no particular difference
@@ -635,16 +649,16 @@ execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Rob
 execConst Wait _ k r = step r $ Out VUnit k
 execConst Halt _ _ _ = updated .= True >> return Nothing
 execConst Noop _ _ _ = error "execConst Noop should have been handled already in stepRobot!"
-execConst Move _ k r = nonStatic k r $ do
+execConst Move _ k r = nonStatic Move k r $ do
   updated .= True
   step (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
-execConst Harvest _ k r = nonStatic k r $ do
+execConst Harvest _ k r = nonStatic Harvest k r $ do
   let V2 row col = r ^. location
   h <- uses world (W.lookup (row,col))
   world %= W.insert (row,col) ' '
   inventory . at (Resource h) . non 0 += 1
   step r (Out VUnit k)
-execConst Turn [VDir d] k r = nonStatic k r $ do
+execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   updated .= True
   step (r & direction %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k

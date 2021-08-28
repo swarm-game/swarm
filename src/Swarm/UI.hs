@@ -26,6 +26,7 @@ import           Brick.Widgets.Center        (center, hCenter)
 import           Brick.Widgets.Dialog
 import qualified Graphics.Vty                as V
 
+import           Brick.Widgets.Border        (hBorder)
 import           Swarm.AST                   (east, north, south, west)
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
@@ -104,10 +105,11 @@ initAppState = AppState <$> initGameState <*> initUIState
 drawUI :: AppState -> [Widget Name]
 drawUI s =
   [ drawDialog (s ^. uiState)
-  , vBox
+  , joinBorders $
+    vBox
     [ hBox
-      [ panel highlightAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
-      , panel highlightAttr fr InfoPanel $ drawInventory (s ^. gameState . inventory)
+      [ panel highlightAttr fr InfoPanel $ drawInfoPanel s
+      , panel highlightAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
       ]
     , panel highlightAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
     ]
@@ -149,6 +151,21 @@ robotDir (V2 0 (-1)) = "◀"
 robotDir (V2 1 0)    = "▼"
 robotDir (V2 (-1) 0) = "▲"
 robotDir _           = "■"
+
+drawInfoPanel :: AppState -> Widget Name
+drawInfoPanel s
+  = vBox
+    [ drawInventory (s ^. gameState . inventory)
+    , hBorder
+    , vLimitPercent 30 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
+    ]
+
+drawMessages :: [Text] -> Widget Name
+drawMessages [] = txt " "
+drawMessages ms = Widget Fixed Fixed $ do
+  ctx <- getContext
+  let h   = ctx ^. availHeightL
+  render . vBox . map txt . reverse . take h $ ms
 
 drawInventory :: Map Item Int -> Widget Name
 drawInventory inv
