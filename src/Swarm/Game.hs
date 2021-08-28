@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell   #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
+{-# LANGUAGE TypeApplications  #-}
   -- debugging code
 
 -----------------------------------------------------------------------------
@@ -109,7 +110,7 @@ import           Witch
 
 import           Swarm.Pretty
 
-import           Control.Arrow        ((&&&))
+import qualified Data.Text            as T
 import           Swarm.AST
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World     as W
@@ -412,6 +413,7 @@ data Item = Resource Char
 data GameState = GameState
   { _robotMap   :: M.Map Text Robot
   , _newRobots  :: [Robot]
+  , _gensym     :: Int
   , _world      :: W.TileCachingWorld
   , _viewCenter :: V2 Int
   , _updated    :: Bool
@@ -432,6 +434,7 @@ initGameState = return $
   GameState
   { _robotMap   = M.singleton "base" baseRobot
   , _newRobots  = []
+  , _gensym     = 0
   , _world      = W.newWorld $ \(i,j) ->
       if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
         then 'T'
@@ -487,7 +490,25 @@ step = do
   -- get >>= robotMap (M.traverseMaybeWithKey (const bigStepRobot)) >>= put
 
   new <- use newRobots
-  robotMap %= M.union (M.fromList $ map (view robotName &&& id) new)
+
+  -- For each robot...
+  forM_ new $ \newRobot -> do
+
+    -- See if another robot already has the same name...
+    let name = newRobot ^. robotName
+    collision <- uses robotMap (M.member name)
+    case collision of
+
+      -- If so, add a suffix to make the name unique.
+      True -> do
+        tag <- gensym <+= 1
+        let name' = name `T.append` into @Text (show tag)
+        robotMap %= M.insert name' (newRobot & robotName .~ name')
+
+      -- In either case, add the new robot to the robotMap.
+      False -> robotMap %= M.insert name newRobot
+
+  -- Reset the list of new robots.
   newRobots .= []
 
 bigStepRobot :: Robot -> StateT GameState IO (Maybe Robot)
