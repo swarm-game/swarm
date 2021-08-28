@@ -13,3 +13,4 @@
 - Allow smaller, finite worlds?
 - Built-in program/function editor?
 - Create world with biomes etc. using multiple noise sources
+- Add type annotations to the language.

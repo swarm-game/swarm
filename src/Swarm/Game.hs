@@ -100,6 +100,7 @@ import           Numeric.Noise.Perlin
 import           Control.Lens         hiding (Const, from)
 import           Control.Monad.State
 import           Data.List            (intercalate)
+import qualified Data.Set             as S
 -- import           Data.Hash.Murmur
 import           Data.Map             (Map)
 import qualified Data.Map             as M
@@ -159,6 +160,24 @@ data Value where
   --   won't be evaluated until @force@ is applied to them.
   VDelay  :: UTerm -> Env -> Value
   deriving (Eq, Ord, Show)
+
+prettyValue :: Value -> Text
+prettyValue = prettyText . valueToTerm
+
+valueToTerm :: Value -> UTerm
+valueToTerm VUnit            = TUnit
+valueToTerm (VInt n)         = TInt n
+valueToTerm (VString s)      = TString s
+valueToTerm (VDir d)         = TDir d
+valueToTerm (VBool b)        = TBool b
+valueToTerm (VClo x t e)     =
+  M.foldrWithKey
+    (\y v -> TLet y NONE (valueToTerm v))
+    (TLam x NONE t)
+    (M.restrictKeys e (S.delete x (fv t)))
+valueToTerm (VCApp c vs)     = foldl (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
+valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
+valueToTerm (VDelay t _)     = TDelay t
 
 -- | An environment is a mapping from variable names to values.
 type Env = Map Var Value
@@ -279,22 +298,8 @@ prettyCEK (In c _ k) = unlines
   [ "▶ " ++ prettyString c
   , "  " ++ prettyCont k ]
 prettyCEK (Out v k) = unlines
-  [ "◀ " ++ prettyValue v
+  [ "◀ " ++ from (prettyValue v)
   , "  " ++ prettyCont k ]
-
-prettyValue :: Value -> String
-prettyValue = prettyString . valueToTerm
-
-valueToTerm :: Value -> UTerm
-valueToTerm VUnit            = TUnit
-valueToTerm (VInt n)         = TInt n
-valueToTerm (VString s)      = TString s
-valueToTerm (VDir d)         = TDir d
-valueToTerm (VBool b)        = TBool b
-valueToTerm (VClo x t _)     = TLam x NONE t
-valueToTerm (VCApp c vs)     = foldl (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
-valueToTerm (VDelay t _)     = TDelay t
 
 prettyCont :: Cont -> String
 prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame

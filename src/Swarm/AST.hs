@@ -30,12 +30,14 @@ module Swarm.AST
 
     -- * Term traversal
 
-  , bottomUp, mapFree
+  , bottomUp, fv, mapFree
 
   ) where
 
 import qualified Data.Functor.Const    as C
 import           Data.Functor.Identity
+import           Data.Set              (Set)
+import qualified Data.Set              as S
 import           Data.Text
 import           Linear
 
@@ -256,6 +258,17 @@ bottomUp f ty2 (TBind mx ia@(ID a) t1 t2)
   = f ty2 (TBind mx ia (bottomUp f (TyCmd a) t1) (bottomUp f ty2 t2))
 bottomUp f ty (TDelay t) = f ty (TDelay (bottomUp f ty t))
 bottomUp f ty t = f ty t
+
+-- | The free variables of a term.
+fv :: Term' f -> Set Var
+fv (TVar x)                 = S.singleton x
+fv (TLam x _ t)             = S.delete x (fv t)
+fv (TApp _ t1 t2)           = fv t1 `S.union` fv t2
+fv (TLet x _ t1 t2)         = S.delete x (fv t1 `S.union` fv t2)
+fv (TBind (Just x) _ t1 t2) = fv t1 `S.union` S.delete x (fv t2)
+fv (TBind Nothing  _ t1 t2) = fv t1 `S.union` fv t2
+fv (TDelay t)               = fv t
+fv _                        = S.empty
 
 -- | Apply a function to all the free occurrences of a variable.
 mapFree :: Var -> (ATerm -> ATerm) -> ATerm -> ATerm
