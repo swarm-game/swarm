@@ -535,7 +535,7 @@ initGameState = return $
         then 'T'
         else
           if noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0
-            then 'O'
+            then '@'
             else '.'
 --      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
   , _viewCenterRule = VCLocation (V2 0 0)
@@ -714,8 +714,14 @@ execConst Halt _ _ _   = updated .= True >> return Nothing
 execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
 execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
 execConst Move _ k r   = nonStatic Move k r $ do
-  updated .= True
-  step (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
+  let V2 r' c' = (r ^. location) ^+^ (r ^. direction)
+  resrc <- uses world (W.lookup (r',c'))
+  let props = resourceMap ^. ix resrc . resProperties
+  case Solid `S.member` props of
+    True  -> step r (Out VUnit k)
+    False -> do
+      updated .= True
+      step (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do
   let V2 row col = r ^. location
   h <- uses world (W.lookup (row,col))

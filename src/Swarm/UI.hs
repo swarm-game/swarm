@@ -178,13 +178,13 @@ drawItem (Resource c, n) = drawNamedResource c <+> showCount n
 drawNamedResource :: Char -> Widget Name
 drawNamedResource c = case M.lookup c resourceMap of
   Nothing -> str [c]
-  Just (RI _ nm attr) ->
-    hBox [ withAttr attr (padRight (Pad 2) (str [c])), txt nm ]
+  Just rInfo ->
+    hBox [ withAttr (rInfo ^. resAttr) (padRight (Pad 2) (str [c])), txt (rInfo ^. resName) ]
 
 drawResource :: Char -> Widget Name
 drawResource c = case M.lookup c resourceMap of
-  Nothing            -> str [c]
-  Just (RI _ _ attr) -> withAttr attr (str [c])
+  Nothing    -> str [c]
+  Just rInfo -> withAttr (rInfo ^. resAttr) (str [c])
 
 drawRepl :: AppState -> Widget Name
 drawRepl s = vBox $
