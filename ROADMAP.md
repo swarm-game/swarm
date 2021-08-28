@@ -1,11 +1,11 @@
 - Message panel in the UI.
 - Program some "mobs", i.e. cats =D
+- Implement craftable items.
+- Give each robot its own inventory.  Add commands for giving/receiving.
 - Some resources, e.g. rocks, block robots.
 - Pause button and single-stepping.
 - Add UI feature to look up robots by ID.
     - See their currently executing program?
-- Give each robot its own inventory.  Add commands for giving/receiving.
-- Implement craftable items.
 - Restrict programs based on installed devices etc.
 - Update world implementations with newtypes to represent indices.
 - Implement world zooming.
