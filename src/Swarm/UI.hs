@@ -6,7 +6,6 @@ module Swarm.UI where
 import           Control.Concurrent.STM      (atomically)
 import           Control.Concurrent.STM.TVar
 import           Control.Lens
-import           Control.Lens.Unsound        (lensProduct)
 import           Control.Monad               (when)
 import           Control.Monad.IO.Class      (liftIO)
 import           Data.Array                  (range)
@@ -27,13 +26,14 @@ import           Brick.Widgets.Dialog
 import qualified Graphics.Vty                as V
 
 import           Brick.Widgets.Border        (hBorder)
+import           Control.Arrow               ((&&&))
 import           Swarm.AST                   (east, north, south, west)
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
+import           Swarm.Pipeline
 import           Swarm.Typecheck
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
-import           Swarm.Util
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -140,17 +140,10 @@ drawWorld g
         ixs = range (viewingRegion g (w,h))
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
-    robotLocs = M.fromList $ g ^.. robotMap . traverse . lensProduct location direction
-    drawLoc (r,c) = case M.lookup (V2 r c) robotLocs of
-      Just dir -> withAttr robotAttr $ txt (robotDir dir)
-      Nothing  -> drawResource (W.lookup (r,c) (g ^. world))
-
-robotDir :: V2 Int -> Text
-robotDir (V2 0 1)    = "▶"
-robotDir (V2 0 (-1)) = "◀"
-robotDir (V2 1 0)    = "▼"
-robotDir (V2 (-1) 0) = "▲"
-robotDir _           = "■"
+    robotsByLoc = M.fromList . map (view location &&& id) . M.elems $ g ^. robotMap
+    drawLoc (row,col) = case M.lookup (V2 row col) robotsByLoc of
+      Just r  -> withAttr robotAttr $ str [lookupRobotDisplay (r ^. direction) (r ^. robotDisplay)]
+      Nothing -> drawResource (W.lookup (row,col) (g ^. world))
 
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s

@@ -1,7 +1,6 @@
 - Program some "mobs", i.e. cats =D
     - Make a command to sense the ID of a nearby robot
     - Make a command to pick up another robot by ID
-    - Make a command to 'say' a message
 - Implement craftable items.
 - Give each robot its own inventory.  Add commands for giving/receiving.
 - Some resources, e.g. rocks, block robots.

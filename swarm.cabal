@@ -26,7 +26,7 @@ library
                       Swarm.Pretty
                       Swarm.Typecheck
                       Swarm.Elaborate
-                      Swarm.Util
+                      Swarm.Pipeline
                       Swarm.Game
                       Swarm.Game.Resource
                       Swarm.Game.World
@@ -34,6 +34,7 @@ library
                       Swarm.UI.Attr
                       Swarm.UI.Panel
                       Swarm.App
+                      Swarm.Util
 
     build-depends:    base ^>= 4.14,
                       array                         >= 0.5.4 && < 0.6,

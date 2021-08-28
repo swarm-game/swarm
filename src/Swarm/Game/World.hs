@@ -36,12 +36,9 @@ import qualified Data.Array.Unboxed as U
 import           Data.Bits
 import           Data.Foldable      (foldl')
 import qualified Data.Map.Strict    as M
-import           Data.Maybe
 import           Prelude            hiding (lookup)
 
-infixr 1 ?
-(?) :: Maybe a -> a -> a
-(?) = flip fromMaybe
+import           Swarm.Util
 
 ------------------------------------------------------------
 -- Worldly type class

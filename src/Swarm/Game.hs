@@ -76,10 +76,11 @@ module Swarm.Game
 
     -- * Robots
 
+  , RobotDisplay, lookupRobotDisplay, defaultRobotDisplay
   , Robot(..), mkRobot, baseRobot, isActive
 
     -- ** Lenses
-  , location, direction, machine, tickSteps, static
+  , robotName, robotDisplay, location, direction, machine, tickSteps, static
   , Item(..)
 
     -- * Game state
@@ -102,23 +103,24 @@ import           Numeric.Noise.Perlin
 import           Control.Lens         hiding (Const, from)
 import           Control.Monad.State
 import           Data.List            (intercalate)
-import qualified Data.Set             as S
--- import           Data.Hash.Murmur
 import           Data.Map             (Map)
 import qualified Data.Map             as M
+import qualified Data.Set             as S
 import           Data.Text            (Text)
+import qualified Data.Text            as T
 import qualified Data.Text.IO         as T
 import           Linear
 import           Witch
 
-import           Swarm.Pretty
+-- import           Data.Hash.Murmur
 
-import qualified Data.Text            as T
 import           Swarm.AST
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World     as W
+import           Swarm.Pipeline       (processCmd)
+import           Swarm.Pretty
 import           Swarm.Types
-import           Swarm.Util           (processCmd)
+import           Swarm.Util
 import           System.Random        (randomRIO)
 
 ------------------------------------------------------------
@@ -324,24 +326,48 @@ prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 -- Game state data types
 ------------------------------------------------------------
 
+data RobotDisplay = RD
+  { _defaultChar :: Char
+  , _dirMap      :: Map (V2 Int) Char
+  }
+  deriving (Eq, Ord, Show)
+
+makeLenses ''RobotDisplay
+
+defaultRobotDisplay :: RobotDisplay
+defaultRobotDisplay = RD
+  { _defaultChar = '■'
+  , _dirMap = M.fromList
+      [ (V2 0 1,    '▶')
+      , (V2 0 (-1), '◀')
+      , (V2 1 0,    '▼')
+      , (V2 (-1) 0, '▲')
+      ]
+  }
+
+lookupRobotDisplay :: V2 Int -> RobotDisplay -> Char
+lookupRobotDisplay v (RD def m) = M.lookup v m ? def
+
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
-  { _robotName :: Text
+  { _robotName    :: Text
     -- ^ The name of the robot (unique across the whole world)
 
-  , _location  :: V2 Int
+  , _robotDisplay :: RobotDisplay
+
+  , _location     :: V2 Int
     -- ^ The location of the robot as (row,col).
 
-  , _direction :: V2 Int
+  , _direction    :: V2 Int
     -- ^ The direction of the robot as a 2D vector.  When the robot
     --   executes @move@, its 'location' is updated by adding
     --   'direction' to it.
 
-  , _machine   :: CEK
+  , _machine      :: CEK
     -- ^ The current state of the robot's CEK machine.
 
-  , _tickSteps :: Int
+  , _tickSteps    :: Int
     -- ^ The need for 'tickSteps' is a bit technical, and I hope I can
     --   eventually find a different, better way to accomplish it.
     --   Ideally, we would want each robot to execute a single
@@ -379,7 +405,7 @@ data Robot = Robot
     --   many commands it has executed.  The loop stepping the robot
     --   can tell when the counter increments.
 
-  , _static    :: Bool
+  , _static       :: Bool
     -- ^ Whether the robot is allowed to move, turn, or harvest.
     --   Currently this is a hack to prevent the "base" robot from
     --   moving; eventually this should go away, and the base will be
@@ -399,23 +425,25 @@ mkRobot
   -> CEK     -- ^ Initial CEK machine.
   -> Robot
 mkRobot name l d m = Robot
-  { _robotName = name
-  , _location  = l
-  , _direction = d
-  , _machine   = m
-  , _tickSteps = 0
-  , _static    = False
+  { _robotName    = name
+  , _robotDisplay = defaultRobotDisplay
+  , _location     = l
+  , _direction    = d
+  , _machine      = m
+  , _tickSteps    = 0
+  , _static       = False
   }
 
 -- | The initial robot representing your "base".
 baseRobot :: Robot
 baseRobot = Robot
-  { _robotName = "base"
-  , _location  = V2 0 0
-  , _direction = V2 0 1
-  , _machine   = idleMachine
-  , _tickSteps = 0
-  , _static    = True
+  { _robotName    = "base"
+  , _robotDisplay = defaultRobotDisplay
+  , _location     = V2 0 0
+  , _direction    = V2 0 1
+  , _machine      = idleMachine
+  , _tickSteps    = 0
+  , _static       = True
   }
 
 -- | Is the robot actively in the middle of a computation?
