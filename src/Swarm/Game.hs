@@ -1,11 +1,11 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeApplications  #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE TypeApplications  #-}
-  -- debugging code
+  -- no-warn-unused-binds is for debugging code
 
 -----------------------------------------------------------------------------
 -- |
