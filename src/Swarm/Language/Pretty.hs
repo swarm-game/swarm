@@ -12,8 +12,8 @@ import qualified Prettyprinter.Render.String as RS
 import qualified Prettyprinter.Render.Text   as RT
 
 import           Swarm.Language.Syntax
-import           Swarm.Language.Types
 import           Swarm.Language.Typecheck
+import           Swarm.Language.Types
 
 class PrettyPrec a where
   prettyPrec :: Int -> a -> Doc ann   -- can replace with custom ann type later if desired
