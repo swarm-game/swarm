@@ -107,6 +107,7 @@ parseConst :: Parser Const
 parseConst =
       Wait    <$ reserved "wait"
   <|> Halt    <$ reserved "halt"
+  <|> Return  <$ reserved "return"
   <|> Move    <$ reserved "move"
   <|> Turn    <$ reserved "turn"
   <|> Harvest <$ reserved "harvest"

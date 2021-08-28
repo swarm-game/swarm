@@ -625,7 +625,11 @@ stepRobot r = case r ^. machine of
   Out v2 (FApp (VClo x t e) : k)    -> step r $ In t (M.insert x v2 e) k
   Out v1 (FLet x t2 e : k)          -> step r $ In t2 (M.insert x v1 e) k
   Out v1 (FEvalBind mx t2 e : k)    -> step r $ Out (VBind v1 mx t2 e) k
-  Out (VCApp Noop _) (FExec : k)    -> step r $ Out VUnit k
+
+  -- Special command applications that don't use up a tick (Noop and Return)
+  Out (VCApp Noop _) (FExec : k)     -> step r $ Out VUnit k
+  Out (VCApp Return [v]) (FExec : k) -> step r $ Out v k
+
   Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
   Out (VBind c mx t2 e) (FExec : k) -> step r $ Out c (FExec : FExecBind mx t2 e : k)
   Out v (FExecBind mx t2 e : k)     -> step r $ In t2 (maybe id (`M.insert` v) mx e) (FExec : k)
@@ -647,10 +651,11 @@ evalConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Rob
 evalConst = execConst
 
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
-execConst Wait _ k r = step r $ Out VUnit k
-execConst Halt _ _ _ = updated .= True >> return Nothing
-execConst Noop _ _ _ = error "execConst Noop should have been handled already in stepRobot!"
-execConst Move _ k r = nonStatic Move k r $ do
+execConst Wait _ k r   = step r $ Out VUnit k
+execConst Halt _ _ _   = updated .= True >> return Nothing
+execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
+execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
+execConst Move _ k r   = nonStatic Move k r $ do
   updated .= True
   step (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do

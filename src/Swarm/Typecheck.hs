@@ -41,6 +41,9 @@ infer _   (TDir d)                  = return $ TDir d ::: TyDir
 infer _   (TInt n)                  = return $ TInt n ::: TyInt
 infer _   (TString s)               = return $ TString s ::: TyString
 infer _   (TBool b)                 = return $ TBool b ::: TyBool
+infer ctx (TApp _ (TConst Return) t) = do
+  at ::: ty <- infer ctx t
+  return $ TApp (ID ty) (TConst Return) at ::: TyCmd ty
 infer ctx (TApp _ (TApp _ (TApp _ (TConst If) cond) thn) els) = do
   acond <- check ctx cond TyBool
   athn ::: thnTy <- infer ctx thn
@@ -111,6 +114,10 @@ decomposeFunTy t ty             = Left (NotFunTy t ty)
 
 check :: Ctx -> Term -> Type -> Either TypeErr ATerm
 check _ (TConst c) ty = checkConst c ty >> return (TConst c)
+check ctx (TApp _ (TConst Return) t) (TyCmd a) = do
+  at <- check ctx t a
+  return $ TApp (ID a) (TConst Return) at
+check _ t@(TApp _ (TConst Return) _) ty = Left $ NonCmdTyExpected t ty
 check ctx (TApp _ (TApp _ (TApp _ (TConst If) cond) thn) els) resTy = do
   acond <- check ctx cond TyBool
   athn  <- check ctx thn resTy

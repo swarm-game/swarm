@@ -54,6 +54,7 @@ instance PrettyPrec Direction where
 instance PrettyPrec Const where
   prettyPrec _ Wait      = "wait"
   prettyPrec _ Halt      = "halt"
+  prettyPrec _ Return    = "return"
   prettyPrec _ Noop      = "{}"
   prettyPrec _ Move      = "move"
   prettyPrec _ Turn      = "turn"

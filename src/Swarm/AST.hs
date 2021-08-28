@@ -77,6 +77,7 @@ data Const
   | Noop              -- ^ Do nothing.  This is different than 'Wait'
                       --   in that it does not take up a time step.
   | Halt              -- ^ Self-destruct.
+  | Return            -- ^ Return for the cmd monad.
   | Move              -- ^ Move forward one step.
   | Turn              -- ^ Turn in some direction.
   | Harvest           -- ^ Pick up an item from the current location.
@@ -107,6 +108,7 @@ arity :: Const -> Int
 arity Wait      = 0
 arity Noop      = 0
 arity Halt      = 0
+arity Return    = 1
 arity Move      = 0
 arity Turn      = 1
 arity Harvest   = 0
