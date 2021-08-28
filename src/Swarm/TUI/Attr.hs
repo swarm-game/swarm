@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module Swarm.UI.Attr where
+module Swarm.TUI.Attr where
 
 import           Brick
 import           Brick.Forms

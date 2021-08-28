@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
-module Swarm.UI where
+module Swarm.TUI where
 
 import           Control.Concurrent.STM      (atomically)
 import           Control.Concurrent.STM.TVar
@@ -27,13 +27,13 @@ import qualified Graphics.Vty                as V
 
 import           Brick.Widgets.Border        (hBorder)
 import           Control.Arrow               ((&&&))
-import           Swarm.Language.Syntax                   (east, north, south, west)
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
+import           Swarm.Language.Syntax       (east, north, south, west)
 import           Swarm.Language.Typecheck
-import           Swarm.UI.Attr
-import           Swarm.UI.Panel
+import           Swarm.TUI.Attr
+import           Swarm.TUI.Panel
 
 ------------------------------------------------------------
 -- Custom UI label types

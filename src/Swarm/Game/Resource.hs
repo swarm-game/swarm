@@ -35,7 +35,7 @@ import           Data.Text     (Text)
 
 import           Brick
 
-import           Swarm.UI.Attr
+import           Swarm.TUI.Attr
 
 data ResourceProperty
   = Solid          -- ^ Robots can't move onto a cell with this resource.

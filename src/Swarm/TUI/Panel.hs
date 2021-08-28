@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell       #-}
 
-module Swarm.UI.Panel where
+module Swarm.TUI.Panel where
 
 import           Brick
 import           Brick.Focus

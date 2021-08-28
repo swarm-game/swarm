@@ -24,8 +24,8 @@ import           Brick
 import           Brick.BChan
 import qualified Graphics.Vty                as V
 
-import           Swarm.UI
-import           Swarm.UI.Attr
+import           Swarm.TUI
+import           Swarm.TUI.Attr
 
 -- | The definition of the app used by the @brick@ library.
 app :: App AppState Tick Name

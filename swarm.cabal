@@ -30,9 +30,9 @@ library
                       Swarm.Game
                       Swarm.Game.Resource
                       Swarm.Game.World
-                      Swarm.UI
-                      Swarm.UI.Attr
-                      Swarm.UI.Panel
+                      Swarm.TUI
+                      Swarm.TUI.Attr
+                      Swarm.TUI.Panel
                       Swarm.App
                       Swarm.Util
 
