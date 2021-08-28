@@ -14,3 +14,6 @@
 - Built-in program/function editor?
 - Create world with biomes etc. using multiple noise sources
 - Add type annotations to the language.
+- Fix pretty-printing
+  - Print operators infix
+  - Better indentation/layout etc.
