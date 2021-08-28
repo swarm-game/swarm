@@ -66,7 +66,7 @@ module Swarm.Game
 
     -- ** CEK machine states
 
-  , CEK(..), initMachine, initMachineV
+  , CEK(..), initMachine, initMachineV, idleMachine
 
     -- ** Stepping the machine
 
@@ -75,7 +75,7 @@ module Swarm.Game
 
     -- * Robots
 
-  , Robot(..), mkRobot
+  , Robot(..), mkRobot, baseRobot, isActive
 
     -- ** Lenses
   , location, direction, machine, tickSteps, static
@@ -256,6 +256,10 @@ isFinal _          = False
 initMachine :: ATerm -> CEK
 initMachine e = In (erase e) M.empty [FExec]
 
+-- | A machine which does nothing.
+idleMachine :: CEK
+idleMachine = initMachine (TConst Noop)
+
 -- | Initialize a machine state with a command that is already a value
 --   (for example, this is the case when spawning a new robot with the
 --   'build' command; because of eager evaluation, the argument to
@@ -375,10 +379,6 @@ data Robot = Robot
 
 makeLenses ''Robot
 
--- | Is the robot actively in the middle of a computation?
-isActive :: Robot -> Bool
-isActive = not . isFinal . view machine
-
 -- | Create a robot.
 mkRobot
   :: Text    -- ^ Name of the robot.  Precondition: it should not be the same as any
@@ -402,10 +402,14 @@ baseRobot = Robot
   { _robotName = "base"
   , _location  = V2 0 0
   , _direction = V2 0 1
-  , _machine   = initMachine (TConst Noop)
+  , _machine   = idleMachine
   , _tickSteps = 0
   , _static    = True
   }
+
+-- | Is the robot actively in the middle of a computation?
+isActive :: Robot -> Bool
+isActive = not . isFinal . view machine
 
 data Item = Resource Char
   deriving (Eq, Ord, Show)

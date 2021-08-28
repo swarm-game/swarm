@@ -101,10 +101,10 @@ drawUI s =
   [ drawDialog (s ^. uiState)
   , vBox
     [ hBox
-      [ panel plantAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
-      , panel plantAttr fr InfoPanel $ drawInventory (s ^. gameState . inventory)
+      [ panel highlightAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
+      , panel highlightAttr fr InfoPanel $ drawInventory (s ^. gameState . inventory)
       ]
-    , panel plantAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
+    , panel highlightAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
     ]
   ]
   where
@@ -175,7 +175,9 @@ drawRepl :: AppState -> Widget Name
 drawRepl s = vBox $
   map ((txt replPrompt <+>) . txt) (reverse (take (replHeight - 1) (s ^. uiState . uiReplHistory)))
   ++
-  [ renderForm (s ^. uiState . uiReplForm) ]
+  case isActive <$> (s ^. gameState . robotMap . at "base") of
+    Just False -> [ renderForm (s ^. uiState . uiReplForm) ]
+    _          -> [ padRight Max $ txt "..." ]
 
 ------------------------------------------------------------
 -- Event handling
@@ -213,6 +215,9 @@ handleEvent s ev =
     _               -> continueWithoutRedraw s
 
 handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
+handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))
+  = continue $ s
+      & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
   = case processCmd entry of
       Right cmd ->
