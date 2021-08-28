@@ -87,6 +87,7 @@ data Const
   | GetY              -- ^ Get the current y-coordinate.
   | Random            -- ^ Get a uniformly random integer.
   | Say               -- ^ Emit a message.
+  | View              -- ^ View a certain robot.
   | If                -- ^ If-expressions.
   | Force             -- ^ Force a delayed evaluation.
   | Cmp CmpConst      -- ^ Comparison operators.
@@ -118,6 +119,7 @@ arity GetX      = 0
 arity GetY      = 0
 arity Random    = 1
 arity Say       = 1
+arity View      = 1
 arity If        = 3
 arity Force     = 1
 arity (Cmp _)   = 2

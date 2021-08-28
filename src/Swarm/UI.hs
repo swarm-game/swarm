@@ -222,7 +222,7 @@ handleEvent s (AppEvent Tick)                        = do
       mext <- lookupExtent WorldExtent
       case mext of
         Nothing -> return s'
-        Just _  -> (uiState . needsLoad .~ False) <$> updateView s' id
+        Just _  -> return $ s' & uiState . needsLoad .~ False
 
   continue s''
 
@@ -287,7 +287,7 @@ worldScrollDist = 8
 handleWorldEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 handleWorldEvent s (VtyEvent (V.EvKey k []))
   | k `elem` [V.KUp, V.KDown, V.KLeft, V.KRight]
-  = updateView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
+  = scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
@@ -296,15 +296,18 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
 -- Fall-through case: don't do anything.
 handleWorldEvent s _ = continueWithoutRedraw s
 
-updateView :: AppState -> (V2 Int -> V2 Int) -> EventM Name AppState
-updateView s update = do
+scrollView :: AppState -> (V2 Int -> V2 Int) -> EventM Name AppState
+scrollView s update =
+  updateView $ s & gameState %~ manualViewCenterUpdate update
+
+updateView :: AppState -> EventM Name AppState
+updateView s = do
   invalidateCacheEntry WorldCache
-  let s' = s & gameState . viewCenter %~ update
   mext <- lookupExtent WorldExtent
   case mext of
-    Nothing  -> return s'
+    Nothing  -> return s
     Just (Extent _ _ size) -> return $
-      s' & gameState . world %~ W.loadRegion (viewingRegion (s' ^. gameState) size)
+      s & gameState . world %~ W.loadRegion (viewingRegion (s ^. gameState) size)
 
 keyToDir :: V.Key -> V2 Int
 keyToDir V.KUp    = north

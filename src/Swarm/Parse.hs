@@ -117,6 +117,7 @@ parseConst =
   <|> GetY    <$ reserved "gety"
   <|> Random  <$ reserved "random"
   <|> Say     <$ reserved "say"
+  <|> View    <$ reserved "view"
   <|> If      <$ reserved "if"
 
 parseTermAtom :: Parser Term

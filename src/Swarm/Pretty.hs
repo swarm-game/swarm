@@ -62,9 +62,10 @@ instance PrettyPrec Const where
   prettyPrec _ Build     = "build"
   prettyPrec _ Run       = "run"
   prettyPrec _ GetX      = "getX"
+  prettyPrec _ GetY      = "getY"
   prettyPrec _ Random    = "random"
   prettyPrec _ Say       = "say"
-  prettyPrec _ GetY      = "getY"
+  prettyPrec _ View      = "view"
   prettyPrec _ If        = "if"
   prettyPrec _ Force     = "force"
   prettyPrec p (Cmp c)   = prettyPrec p c

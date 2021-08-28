@@ -74,6 +74,10 @@ module Swarm.Game
   , gameStep, step, evalStepsPerTick
   , bigStepRobot, stepRobot, execConst
 
+    -- * Items
+
+  , Item(..)
+
     -- * Robots
 
   , RobotDisplay, lookupRobotDisplay, defaultRobotDisplay
@@ -81,9 +85,9 @@ module Swarm.Game
 
     -- ** Lenses
   , robotName, robotDisplay, location, direction, machine, tickSteps, static
-  , Item(..)
 
     -- * Game state
+  , ViewCenterRule(..), updateViewCenter, manualViewCenterUpdate
   , GameState(..), initGameState
 
     -- ** Lenses
@@ -105,6 +109,7 @@ import           Control.Monad.State
 import           Data.List            (intercalate)
 import           Data.Map             (Map)
 import qualified Data.Map             as M
+import           Data.Maybe           (fromMaybe)
 import qualified Data.Set             as S
 import           Data.Text            (Text)
 import qualified Data.Text            as T
@@ -459,19 +464,43 @@ getResult r = case r ^. machine of
 data Item = Resource Char
   deriving (Eq, Ord, Show)
 
+data ViewCenterRule
+  = VCLocation (V2 Int)
+  | VCRobot Text
+  deriving (Eq, Ord, Show)
+
 data GameState = GameState
-  { _robotMap     :: M.Map Text Robot
-  , _newRobots    :: [Robot]
-  , _gensym       :: Int
-  , _world        :: W.TileCachingWorld
-  , _viewCenter   :: V2 Int
-  , _updated      :: Bool
-  , _replResult   :: Maybe (Type, Maybe Value)
-  , _inventory    :: Map Item Int
-  , _messageQueue :: [Text]
+  { _robotMap       :: M.Map Text Robot
+  , _newRobots      :: [Robot]
+  , _gensym         :: Int
+  , _world          :: W.TileCachingWorld
+  , _viewCenterRule :: ViewCenterRule
+  , _viewCenter     :: V2 Int
+  , _updated        :: Bool
+  , _replResult     :: Maybe (Type, Maybe Value)
+  , _inventory      :: Map Item Int
+  , _messageQueue   :: [Text]
   }
 
 makeLenses ''GameState
+
+applyViewCenterRule :: ViewCenterRule -> Map Text Robot -> Maybe (V2 Int)
+applyViewCenterRule (VCLocation l) _ = Just l
+applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . location
+
+updateViewCenter :: GameState -> GameState
+updateViewCenter g = g
+  & viewCenter .~ newViewCenter
+  & (if (newViewCenter /= oldViewCenter) then updated .~ True else id)
+  where
+    oldViewCenter = g ^. viewCenter
+    newViewCenter = fromMaybe oldViewCenter (applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap))
+manualViewCenterUpdate :: (V2 Int -> V2 Int) -> GameState -> GameState
+manualViewCenterUpdate update g = g
+  & case g ^. viewCenterRule of
+      VCLocation l -> viewCenterRule .~ VCLocation (update l)
+      VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
+  & updateViewCenter
 
 pn1, pn2 :: Perlin
 pn1 = perlin 0 5 0.05 0.5
@@ -494,6 +523,7 @@ initGameState = return $
             then 'O'
             else '.'
 --      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
+  , _viewCenterRule = VCLocation (V2 0 0)
   , _viewCenter = V2 0 0
   , _updated    = False
   , _replResult = Nothing
@@ -575,6 +605,9 @@ gameStep = execStateT $ do
 
   -- Reset the list of new robots.
   newRobots .= []
+
+  -- Possible update the view center.
+  modify updateViewCenter
 
 -- | Run a robot for one "big step", which may consist of up to
 --   'evalStepsPerTick' CEK machine steps and at most one command
@@ -713,6 +746,14 @@ execConst Say [VString s] k r = do
   emitMessage (T.concat [r ^. robotName, ": ", s])
   step r $ Out VUnit k
 execConst Say args k _ = badConst Say args k
+
+execConst View [VString s] k r = do
+  mr <- use (robotMap . at s)
+  case mr of
+    Nothing -> emitMessage $ T.concat["There is no robot named ", s, " to view."]
+    Just _  -> viewCenterRule .= VCRobot s
+  step r $ Out VUnit k
+execConst View args k _ = badConst View args k
 
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k
