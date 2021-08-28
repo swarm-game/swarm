@@ -1,6 +1,12 @@
 - Make commands return useful things
     - View should return boolean?
+[
+- Add 'def' form, similar to let but without 'in' part, for top-level definitions
+- Mechanism for importing definitions from another file
+- Lib dir with standard code to load
 - Special seed robots to make harvested things regrow
+- Make world not writeable
+]
 - Add colors
     - New type of colors and color constants
     - Command to let a robot change its color
@@ -37,3 +43,4 @@
 - Fix pretty-printing
   - Print operators infix
   - Better indentation/layout etc.
+- Redo using a fast effects library?
