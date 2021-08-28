@@ -119,6 +119,7 @@ import           Swarm.Game.Resource
 import qualified Swarm.Game.World     as W
 import           Swarm.Types
 import           Swarm.Util           (processCmd)
+import           System.Random        (randomRIO)
 
 ------------------------------------------------------------
 -- CEK machine types
@@ -669,6 +670,11 @@ execConst GetX _ k r = step r $ Out (VInt (fromIntegral col)) k
 execConst GetY _ k r = step r $ Out (VInt (fromIntegral (-row))) k
   where
     V2 row _ = r ^. location
+
+execConst Random [VInt hi] k r = do
+  n <- randomRIO (0, hi-1)
+  step r $ Out (VInt n) k
+execConst Random args k _ = badConst Random args k
 
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k

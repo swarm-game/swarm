@@ -84,6 +84,7 @@ data Const
   | Run               -- ^ Run a program loaded from a file.
   | GetX              -- ^ Get the current x-coordinate.
   | GetY              -- ^ Get the current y-coordinate.
+  | Random            -- ^ Get a uniformly random integer.
   | If                -- ^ If-expressions.
   | Force             -- ^ Force a delayed evaluation.
   | Cmp CmpConst      -- ^ Comparison operators.
@@ -112,6 +113,7 @@ arity Build     = 2
 arity Run       = 1
 arity GetX      = 0
 arity GetY      = 0
+arity Random    = 1
 arity If        = 3
 arity Force     = 1
 arity (Cmp _)   = 2

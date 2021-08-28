@@ -29,6 +29,7 @@ reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
   , "wait", "halt", "move", "turn", "harvest", "build", "run", "getx", "gety"
+  , "random"
   , "int", "string", "dir", "bool", "cmd"
   , "let", "in", "if", "true", "false"
   ]
@@ -113,6 +114,7 @@ parseConst =
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"
   <|> GetY    <$ reserved "gety"
+  <|> Random  <$ reserved "random"
   <|> If      <$ reserved "if"
 
 parseTermAtom :: Parser Term

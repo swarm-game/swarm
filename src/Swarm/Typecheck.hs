@@ -96,6 +96,7 @@ inferConst Harvest   = return $ TyCmd TyUnit
 inferConst Build     = return $ TyString :->: TyCmd TyUnit :->: TyCmd TyUnit
 inferConst Run       = return $ TyString :->: TyCmd TyUnit
 inferConst GetX      = return $ TyCmd TyInt
+inferConst Random    = return $ TyInt :->: TyCmd TyInt
 inferConst GetY      = return $ TyCmd TyInt
 inferConst (Cmp _)   = return $ TyInt :->: TyInt :->: TyBool
 inferConst (Arith _) = return $ TyInt :->: TyInt :->: TyInt

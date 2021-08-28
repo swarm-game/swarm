@@ -1,5 +1,4 @@
 - Program some "mobs", i.e. cats =D
-    - Make a 'random' command
     - Make a command to sense the ID of a nearby robot
     - Make a command to pick up another robot by ID
     - Make a command to 'say' a message
