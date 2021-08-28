@@ -58,7 +58,7 @@ module Swarm.Game
     --   pull out the environment to use.
 
     -- ** Values
-    Value(..), Env, emptyEnv
+    Value(..), prettyValue, Env, emptyEnv
 
     -- ** Frames
 
@@ -86,7 +86,7 @@ module Swarm.Game
 
     -- ** Lenses
 
-  , robotMap, newRobots, world, viewCenter, updated, inventory
+  , robotMap, newRobots, world, viewCenter, updated, replResult, inventory
 
     -- * Convenience re-exports
 
@@ -114,6 +114,7 @@ import qualified Data.Text            as T
 import           Swarm.AST
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World     as W
+import           Swarm.Types
 import           Swarm.Util           (processCmd)
 
 ------------------------------------------------------------
@@ -249,16 +250,18 @@ isFinal :: CEK -> Bool
 isFinal (Out _ []) = True
 isFinal _          = False
 
--- | Initialize a machine state with a starting command to execute,
---   requiring a fully typechecked term (to make sure no type or scope
---   errors can cause a crash), but erasing the term before putting it
---   in the machine.
-initMachine :: ATerm -> CEK
-initMachine e = In (erase e) M.empty [FExec]
+-- | Initialize a machine state with a starting term along with its
+--   type, which will be executed or evaluated depending on whether it
+--   has a command type or not.  It requires a fully typechecked term
+--   (to make sure no type or scope errors can cause a crash), but
+--   erases the term before putting it in the machine.
+initMachine :: ATerm -> Type -> CEK
+initMachine t (TyCmd _) = In (erase t) M.empty [FExec]
+initMachine t _         = In (erase t) M.empty []
 
 -- | A machine which does nothing.
 idleMachine :: CEK
-idleMachine = initMachine (TConst Noop)
+idleMachine = initMachine (TConst Noop) (TyCmd TyUnit)
 
 -- | Initialize a machine state with a command that is already a value
 --   (for example, this is the case when spawning a new robot with the
@@ -411,6 +414,12 @@ baseRobot = Robot
 isActive :: Robot -> Bool
 isActive = not . isFinal . view machine
 
+-- | Get the result of the machine if it is finished.
+getResult :: Robot -> Maybe Value
+getResult r = case r ^. machine of
+  Out v [] -> Just v
+  _        -> Nothing
+
 data Item = Resource Char
   deriving (Eq, Ord, Show)
 
@@ -421,6 +430,7 @@ data GameState = GameState
   , _world      :: W.TileCachingWorld
   , _viewCenter :: V2 Int
   , _updated    :: Bool
+  , _replResult :: Maybe (Type, Maybe Value)
   , _inventory  :: Map Item Int
   }
 
@@ -449,6 +459,7 @@ initGameState = return $
 --      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
   , _viewCenter = V2 0 0
   , _updated    = False
+  , _replResult = Nothing
   , _inventory  = M.empty
   }
 
@@ -488,6 +499,13 @@ gameStep = execStateT $ do
   rm <- use robotMap
   rm' <- M.traverseMaybeWithKey (const bigStepRobot) rm
   robotMap .= rm'
+
+  -- See if the base is finished with a computation, and if so, record
+  -- the result in the game state so it can be displayed by the REPL.
+  mr <- use (robotMap . at "base")
+  case mr of
+    Just r  -> unless (isActive r) $ replResult . _Just . _2 .= getResult r
+    Nothing -> return ()
 
   -- Get all the newly built robots
   new <- use newRobots

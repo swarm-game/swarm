@@ -17,6 +17,7 @@ import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
 import           Linear
+import           Witch                       (into)
 
 import           Brick                       hiding (Direction)
 import           Brick.Focus
@@ -28,6 +29,7 @@ import qualified Graphics.Vty                as V
 import           Swarm.AST                   (east, north, south, west)
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
+import           Swarm.Typecheck
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
 import           Swarm.Util
@@ -49,10 +51,13 @@ data Name
 ------------------------------------------------------------
 -- UI state
 
+data REPLHistItem = REPLEntry Text | REPLOutput Text
+  deriving (Eq, Ord, Show)
+
 data UIState = UIState
   { _uiFocusRing      :: FocusRing Name
   , _uiReplForm       :: Form Text Tick Name
-  , _uiReplHistory    :: [Text]
+  , _uiReplHistory    :: [REPLHistItem]
   , _uiReplHistIdx    :: Int
   , _uiError          :: Maybe (Widget Name)
   , _needsLoad        :: Bool
@@ -173,11 +178,14 @@ drawResource c = case M.lookup c resourceMap of
 
 drawRepl :: AppState -> Widget Name
 drawRepl s = vBox $
-  map ((txt replPrompt <+>) . txt) (reverse (take (replHeight - 1) (s ^. uiState . uiReplHistory)))
+  map fmt (reverse (take (replHeight - 1) (s ^. uiState . uiReplHistory)))
   ++
   case isActive <$> (s ^. gameState . robotMap . at "base") of
     Just False -> [ renderForm (s ^. uiState . uiReplForm) ]
     _          -> [ padRight Max $ txt "..." ]
+  where
+    fmt (REPLEntry e)  = txt replPrompt <+> txt e
+    fmt (REPLOutput t) = txt t
 
 ------------------------------------------------------------
 -- Event handling
@@ -189,6 +197,14 @@ handleEvent s (AppEvent Tick)                        = do
   when (g' ^. updated) $ invalidateCacheEntry WorldCache
 
   let s' = s & gameState .~ g'
+             & case g' ^. replResult of
+                 { Just (_, Just VUnit) ->
+                     gameState . replResult .~ Nothing
+                 ; Just (_ty, Just v) ->
+                     (uiState . uiReplHistory %~ (REPLOutput (into (prettyValue v)) :)) .
+                     (gameState . replResult .~ Nothing)
+                 ; _ -> id
+                 }
 
   s'' <- case s' ^. uiState . needsLoad of
     False -> return s'
@@ -219,13 +235,14 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))
   = continue $ s
       & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
-  = case processCmd entry of
-      Right cmd ->
+  = case processTerm entry of
+      Right (t ::: ty) ->
         continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
-          & uiState . uiReplHistory %~ (entry :)
+          & uiState . uiReplHistory %~ (REPLEntry entry :)
           & uiState . uiReplHistIdx .~ (-1)
-          & gameState . robotMap . ix "base" . machine .~ initMachine cmd
+          & gameState . replResult ?~ (ty, Nothing)
+          & gameState . robotMap . ix "base" . machine .~ initMachine t ty
       Left err ->
         continue $ s
           & uiState . uiError ?~ txt err
@@ -237,7 +254,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
   = continue $ s & uiState %~ adjReplHistIndex (-)
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  let result = processCmd (formState f')
+  let result = processTerm (formState f')
       f''    = setFieldValid (isRight result) REPLInput f'
   continue $ s & uiState . uiReplForm .~ f''
 
@@ -246,12 +263,13 @@ adjReplHistIndex (+/-) s =
   s & uiReplHistIdx .~ newIndex
     & if newIndex /= curIndex then uiReplForm %~ updateFormState newEntry else id
   where
+    entries = [e | REPLEntry e <- s ^. uiReplHistory]
     curIndex = s ^. uiReplHistIdx
-    histLen  = length (s ^. uiReplHistory)
+    histLen  = length entries
     newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
     newEntry
       | newIndex == -1 = ""
-      | otherwise      = (s ^. uiReplHistory) !! newIndex
+      | otherwise      = entries !! newIndex
 
 worldScrollDist :: Int
 worldScrollDist = 8
