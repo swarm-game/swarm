@@ -104,30 +104,30 @@ module Swarm.Game
 import           Numeric.Noise.Perlin
 -- import           Numeric.Noise.Ridged
 
-import           Control.Lens         hiding (Const, from)
+import           Control.Lens            hiding (Const, from)
 import           Control.Monad.State
-import           Data.List            (intercalate)
-import           Data.Map             (Map)
-import qualified Data.Map             as M
-import           Data.Maybe           (fromMaybe)
-import qualified Data.Set             as S
-import           Data.Text            (Text)
-import qualified Data.Text            as T
-import qualified Data.Text.IO         as T
+import           Data.List               (intercalate)
+import           Data.Map                (Map)
+import qualified Data.Map                as M
+import           Data.Maybe              (fromMaybe)
+import qualified Data.Set                as S
+import           Data.Text               (Text)
+import qualified Data.Text               as T
+import qualified Data.Text.IO            as T
 import           Linear
 import           Witch
 
 -- import           Data.Hash.Murmur
 
-import           Control.Arrow        ((&&&))
-import           Swarm.Language.Syntax
+import           Control.Arrow           ((&&&))
 import           Swarm.Game.Resource
-import qualified Swarm.Game.World     as W
-import           Swarm.Language.Pipeline       (processCmd)
+import qualified Swarm.Game.World        as W
+import           Swarm.Language.Pipeline (processCmd)
 import           Swarm.Language.Pretty
+import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.Util
-import           System.Random        (randomRIO)
+import           System.Random           (randomRIO)
 
 ------------------------------------------------------------
 -- CEK machine types
@@ -757,6 +757,25 @@ execConst View [VString s] k r = do
     Just _  -> viewCenterRule .= VCRobot s
   step r $ Out VUnit k
 execConst View args k _ = badConst View args k
+
+execConst Appear [VString s] k r = do
+  updated .= True
+  case into @String s of
+    [c] ->
+      step (r & robotDisplay . defaultChar .~ c
+              & robotDisplay . dirMap .~ M.empty
+           ) $ Out VUnit k
+    [c,nc,ec,sc,wc] ->
+      step ( r & robotDisplay . defaultChar .~ c
+               & robotDisplay . dirMap . ix north .~ nc
+               & robotDisplay . dirMap . ix east  .~ ec
+               & robotDisplay . dirMap . ix south .~ sc
+               & robotDisplay . dirMap . ix west  .~ wc
+           ) $ Out VUnit k
+    _ -> do
+      emitMessage $ T.concat[s, " is not a valid appearance string."]
+      step r $ Out VUnit k
+execConst Appear args k _ = badConst Appear args k
 
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k

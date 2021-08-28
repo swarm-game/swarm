@@ -23,7 +23,6 @@
         - Add colors
             - New type of colors and color constants
             - Command to let a robot change its color
-            - Command to let a robot change its appearance?
         - Add a version of turn that allows turning to any vector
         - Add pairs, use pair to reprsent vectors
         - Make a command to sense the ID of a nearby robot

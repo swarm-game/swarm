@@ -104,6 +104,7 @@ inferConst GetY      = return $ TyCmd TyInt
 inferConst Random    = return $ TyInt :->: TyCmd TyInt
 inferConst Say       = return $ TyString :->: TyCmd TyUnit
 inferConst View      = return $ TyString :->: TyCmd TyUnit
+inferConst Appear    = return $ TyString :->: TyCmd TyUnit
 inferConst (Cmp _)   = return $ TyInt :->: TyInt :->: TyBool
 inferConst (Arith _) = return $ TyInt :->: TyInt :->: TyInt
 

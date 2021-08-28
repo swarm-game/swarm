@@ -88,6 +88,7 @@ data Const
   | Random            -- ^ Get a uniformly random integer.
   | Say               -- ^ Emit a message.
   | View              -- ^ View a certain robot.
+  | Appear            -- ^ Set what characters are used for display.
   | If                -- ^ If-expressions.
   | Force             -- ^ Force a delayed evaluation.
   | Cmp CmpConst      -- ^ Comparison operators.
@@ -120,6 +121,7 @@ arity GetY      = 0
 arity Random    = 1
 arity Say       = 1
 arity View      = 1
+arity Appear    = 1
 arity If        = 3
 arity Force     = 1
 arity (Cmp _)   = 2
