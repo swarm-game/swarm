@@ -2,7 +2,7 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Swarm.Elaborate
+-- Module      :  Swarm.Language.Elaborate
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -13,10 +13,10 @@
 -----------------------------------------------------------------------------
 
 
-module Swarm.Elaborate where
+module Swarm.Language.Elaborate where
 
-import           Swarm.AST
-import           Swarm.Types
+import           Swarm.Language.Syntax
+import           Swarm.Language.Types
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term, given its top-level type.  This currently performs such

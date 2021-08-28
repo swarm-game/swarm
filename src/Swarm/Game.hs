@@ -120,12 +120,12 @@ import           Witch
 -- import           Data.Hash.Murmur
 
 import           Control.Arrow        ((&&&))
-import           Swarm.AST
+import           Swarm.Language.Syntax
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World     as W
-import           Swarm.Pipeline       (processCmd)
-import           Swarm.Pretty
-import           Swarm.Types
+import           Swarm.Language.Pipeline       (processCmd)
+import           Swarm.Language.Pretty
+import           Swarm.Language.Types
 import           Swarm.Util
 import           System.Random        (randomRIO)
 

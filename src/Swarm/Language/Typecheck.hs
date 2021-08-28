@@ -2,13 +2,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators     #-}
 
-module Swarm.Typecheck where
+module Swarm.Language.Typecheck where
 
-import           Data.Map    (Map)
-import qualified Data.Map    as M
+import           Data.Map              (Map)
+import qualified Data.Map              as M
 
-import           Swarm.AST
-import           Swarm.Types
+import           Swarm.Language.Syntax
+import           Swarm.Language.Types
 
 ------------------------------------------------------------
 -- Type errors

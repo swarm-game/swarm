@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Swarm.Types
+-- Module      :  Swarm.Language.Types
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -10,7 +10,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Swarm.Types where
+module Swarm.Language.Types where
 
 -- | A data type representing types in the Swarm programming language.
 data Type

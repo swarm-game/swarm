@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Swarm.Pretty where
+module Swarm.Language.Pretty where
 
 import           Data.Bool                   (bool)
 import           Data.String                 (fromString)
@@ -11,9 +11,9 @@ import           Prettyprinter
 import qualified Prettyprinter.Render.String as RS
 import qualified Prettyprinter.Render.Text   as RT
 
-import           Swarm.AST
-import           Swarm.Typecheck
-import           Swarm.Types
+import           Swarm.Language.Syntax
+import           Swarm.Language.Types
+import           Swarm.Language.Typecheck
 
 class PrettyPrec a where
   prettyPrec :: Int -> a -> Doc ann   -- can replace with custom ann type later if desired

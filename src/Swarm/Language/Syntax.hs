@@ -5,7 +5,7 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Swarm.AST
+-- Module      :  Swarm.Language.Syntax
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -15,7 +15,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Swarm.AST
+module Swarm.Language.Syntax
   ( -- * Constants
 
     Direction(..), applyTurn, north, south, east, west
@@ -41,7 +41,7 @@ import qualified Data.Set              as S
 import           Data.Text
 import           Linear
 
-import           Swarm.Types
+import           Swarm.Language.Types
 
 ------------------------------------------------------------
 -- Constants

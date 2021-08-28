@@ -27,11 +27,11 @@ import qualified Graphics.Vty                as V
 
 import           Brick.Widgets.Border        (hBorder)
 import           Control.Arrow               ((&&&))
-import           Swarm.AST                   (east, north, south, west)
+import           Swarm.Language.Syntax                   (east, north, south, west)
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
-import           Swarm.Pipeline
-import           Swarm.Typecheck
+import           Swarm.Language.Pipeline
+import           Swarm.Language.Typecheck
 import           Swarm.UI.Attr
 import           Swarm.UI.Panel
 

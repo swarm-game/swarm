@@ -20,13 +20,13 @@ source-repository head
     location: git://github.com/byorgey/swarm.git
 
 library
-    exposed-modules:  Swarm.Types
-                      Swarm.AST
-                      Swarm.Parse
-                      Swarm.Pretty
-                      Swarm.Typecheck
-                      Swarm.Elaborate
-                      Swarm.Pipeline
+    exposed-modules:  Swarm.Language.Types
+                      Swarm.Language.Syntax
+                      Swarm.Language.Parse
+                      Swarm.Language.Pretty
+                      Swarm.Language.Typecheck
+                      Swarm.Language.Elaborate
+                      Swarm.Language.Pipeline
                       Swarm.Game
                       Swarm.Game.Resource
                       Swarm.Game.World

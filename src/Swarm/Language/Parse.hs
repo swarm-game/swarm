@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Swarm.Parse where
+module Swarm.Language.Parse where
 
 import           Data.Bifunctor
 import           Data.Char
@@ -17,8 +17,8 @@ import           Text.Megaparsec                hiding (State, runParser)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
 
-import           Swarm.AST
-import           Swarm.Types
+import           Swarm.Language.Syntax
+import           Swarm.Language.Types
 
 type Parser = Parsec Void Text
 
