@@ -69,6 +69,8 @@
     - Big
         - Special seed robots to make harvested things regrow
             - Add z-priority to robots, draw seeds behind etc.
+            - Disallow harvesting while a seed robot is present
+              (i.e. patch the "infinite tree glitch" =)
             - Make seeds take longer to grow =)
             - Load seed program from a file in data dir!
         - Make world not writeable
