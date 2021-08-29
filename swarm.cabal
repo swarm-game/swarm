@@ -3,7 +3,13 @@ name:               swarm
 version:            0.1.0.0
 synopsis:           2D resource gathering game with programmable robots.
 
-description:        A longer description will go here! (TODO)
+description:        Swarm is a 2D programming and resource gathering
+                    game. Program your robots to explore the world and
+                    collect resources, which in turn allows you to
+                    build upgraded robots that can run more
+                    interesting and complex programs. See the README
+                    for more information and instructions on how to
+                    play or contribute!
 
 license:            BSD-3-Clause
 license-file:       LICENSE
