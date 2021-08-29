@@ -140,7 +140,9 @@ drawWorld g
         ixs = range (viewingRegion g (w,h))
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
-    robotsByLoc = M.fromList . map (view location &&& id) . M.elems $ g ^. robotMap
+    robotsByLoc
+      = M.fromListWith (maxOn (^. robotDisplay . priority)) . map (view location &&& id)
+      . M.elems $ g ^. robotMap
     drawLoc (row,col) = case M.lookup (V2 row col) robotsByLoc of
       Just r  -> withAttr (r ^. robotDisplay . robotDisplayAttr)
                  $ str [lookupRobotDisplay (r ^. direction) (r ^. robotDisplay)]

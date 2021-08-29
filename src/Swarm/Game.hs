@@ -80,7 +80,7 @@ module Swarm.Game
 
     -- * Robots
 
-  , RobotDisplay, defaultChar, dirMap, robotDisplayAttr
+  , RobotDisplay, defaultChar, dirMap, robotDisplayAttr, priority
   , lookupRobotDisplay, defaultRobotDisplay
   , Robot(..), mkRobot, baseRobot, isActive
 
@@ -339,6 +339,7 @@ data RobotDisplay = RD
   { _defaultChar      :: Char
   , _dirMap           :: Map (V2 Int) Char
   , _robotDisplayAttr :: AttrName
+  , _priority         :: Int
   }
   deriving (Eq, Ord, Show)
 
@@ -349,6 +350,7 @@ singleRobotDisplay c = RD
   { _defaultChar = c
   , _dirMap = M.empty
   , _robotDisplayAttr = robotAttr
+  , _priority = 10
   }
 
 defaultRobotDisplay :: RobotDisplay
@@ -361,6 +363,7 @@ defaultRobotDisplay = RD
       , (V2 (-1) 0, '▲')
       ]
   , _robotDisplayAttr = robotAttr
+  , _priority = 10
   }
 
 lookupRobotDisplay :: V2 Int -> RobotDisplay -> Char
@@ -762,7 +765,11 @@ execConst Harvest _ k r = nonStatic Harvest k r $ do
       inventory . at (Resource h) . non 0 += 1
       let seedBot =
             mkRobot "seed" (r ^. location) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
-              & robotDisplay .~ (singleRobotDisplay '.' & robotDisplayAttr .~ plantAttr)
+              & robotDisplay .~
+                (singleRobotDisplay '.'
+                 & robotDisplayAttr .~ plantAttr
+                 & priority .~ 1
+                )
       seedBot' <- ensureUniqueName seedBot
       newRobots %= (seedBot' :)
       step r (Out VUnit k)
