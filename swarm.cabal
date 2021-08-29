@@ -12,7 +12,7 @@ maintainer:         byorgey@gmail.com
 bug-reports:        https://github.com/byorgey/swarm/issues
 copyright:          Brent Yorgey 2021
 category:           Game
-tested-with:        GHC == 8.10.4
+tested-with:        GHC ==8.10.4 || ==9.0.1
 extra-source-files: CHANGELOG.md
 
 source-repository head
