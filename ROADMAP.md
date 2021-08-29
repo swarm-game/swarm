@@ -67,15 +67,21 @@
         - Allow smaller, finite worlds?
 
     - Big
-        - Special seed robots to make harvested things regrow
-            - Disallow harvesting while a seed robot is present
-              (i.e. patch the "infinite tree glitch" =)
-            - Load seed program from a file in data dir!
+        - Disallow harvesting while a seed robot is present
+          (i.e. patch the "infinite tree glitch" =)
+        - Load seed program from a file in data dir!
         - Make world not writeable
         - Restrict programs based on installed devices etc.
         - Implement craftable items / devices
         - Give each robot its own inventory.  Add commands for giving/receiving.
         - Create world with biomes etc. using multiple noise sources
+        - Implement a challenge mode
+            - A challenge consists of
+                - A world
+                - Initial inventory etc.
+                - An unrestricted global program (of type cmd bool)
+                  that runs once every tick to determine whether the
+                  challenge has been completed.
 
 - Refactoring/technical debt
     - All V2 Int values should be x,y.  Only convert to row,column in
