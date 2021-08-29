@@ -31,9 +31,9 @@ import           Swarm.Game
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax       (east, north, south, west)
-import           Swarm.Language.Typecheck
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Panel
+import           Swarm.Util
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -142,7 +142,8 @@ drawWorld g
   where
     robotsByLoc = M.fromList . map (view location &&& id) . M.elems $ g ^. robotMap
     drawLoc (row,col) = case M.lookup (V2 row col) robotsByLoc of
-      Just r  -> withAttr robotAttr $ str [lookupRobotDisplay (r ^. direction) (r ^. robotDisplay)]
+      Just r  -> withAttr (r ^. robotDisplay . robotDisplayAttr)
+                 $ str [lookupRobotDisplay (r ^. direction) (r ^. robotDisplay)]
       Nothing -> drawResource (W.lookup (row,col) (g ^. world))
 
 drawInfoPanel :: AppState -> Widget Name

@@ -80,7 +80,8 @@ module Swarm.Game
 
     -- * Robots
 
-  , RobotDisplay, lookupRobotDisplay, defaultRobotDisplay
+  , RobotDisplay, defaultChar, dirMap, robotDisplayAttr
+  , lookupRobotDisplay, defaultRobotDisplay
   , Robot(..), mkRobot, baseRobot, isActive
 
     -- ** Lenses
@@ -104,6 +105,8 @@ module Swarm.Game
 import           Numeric.Noise.Perlin
 -- import           Numeric.Noise.Ridged
 
+import           Brick                   (AttrName)
+import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, from)
 import           Control.Monad.State
 import           Data.List               (intercalate)
@@ -115,19 +118,19 @@ import           Data.Text               (Text)
 import qualified Data.Text               as T
 import qualified Data.Text.IO            as T
 import           Linear
+import           System.Random           (randomRIO)
 import           Witch
 
 -- import           Data.Hash.Murmur
 
-import           Control.Arrow           ((&&&))
 import           Swarm.Game.Resource
 import qualified Swarm.Game.World        as W
-import           Swarm.Language.Pipeline (processCmd)
+import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
+import           Swarm.TUI.Attr
 import           Swarm.Util
-import           System.Random           (randomRIO)
 
 ------------------------------------------------------------
 -- CEK machine types
@@ -333,12 +336,20 @@ prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 ------------------------------------------------------------
 
 data RobotDisplay = RD
-  { _defaultChar :: Char
-  , _dirMap      :: Map (V2 Int) Char
+  { _defaultChar      :: Char
+  , _dirMap           :: Map (V2 Int) Char
+  , _robotDisplayAttr :: AttrName
   }
   deriving (Eq, Ord, Show)
 
 makeLenses ''RobotDisplay
+
+singleRobotDisplay :: Char -> RobotDisplay
+singleRobotDisplay c = RD
+  { _defaultChar = c
+  , _dirMap = M.empty
+  , _robotDisplayAttr = robotAttr
+  }
 
 defaultRobotDisplay :: RobotDisplay
 defaultRobotDisplay = RD
@@ -349,10 +360,11 @@ defaultRobotDisplay = RD
       , (V2 1 0,    '▼')
       , (V2 (-1) 0, '▲')
       ]
+  , _robotDisplayAttr = robotAttr
   }
 
 lookupRobotDisplay :: V2 Int -> RobotDisplay -> Char
-lookupRobotDisplay v (RD def m) = M.lookup v m ? def
+lookupRobotDisplay v rd = M.lookup v (rd ^. dirMap) ? (rd ^. defaultChar)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -708,6 +720,22 @@ nonStatic c k r m
 evalConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 evalConst = execConst
 
+-- XXX load this from a file and have it available in a map?
+--     Or make a quasiquoter?
+seedProgram :: ATerm
+Right (seedProgram ::: _) = processTerm . into @Text . unlines $
+  [ "let repeat : int -> cmd () -> cmd () = \\n.\\c."
+  , "  if (n == 0) {} {c ; repeat (n-1) c}"
+  , "in {"
+  , "  r <- random 20;"
+  , "  repeat (r + 30) wait;"
+  , "  appear \"|\";"
+  , "  r <- random 20;"
+  , "  repeat (r + 30) wait;"
+  , "  halt"
+  , "}"
+  ]
+
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r   = step r $ Out VUnit k
 execConst Halt _ _ _   = updated .= True >> return Nothing
@@ -723,11 +751,21 @@ execConst Move _ k r   = nonStatic Move k r $ do
       updated .= True
       step (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do
+  updated .= True
   let V2 row col = r ^. location
-  h <- uses world (W.lookup (row,col))
-  world %= W.insert (row,col) ' '
-  inventory . at (Resource h) . non 0 += 1
-  step r (Out VUnit k)
+  resrc <- uses world (W.lookup (row,col))
+  let props = resourceMap ^. ix resrc . resProperties
+  case Harvestable `S.member` props of
+    False -> step r $ Out VUnit k
+    True -> do
+      h <- uses world (W.lookup (row,col))
+      inventory . at (Resource h) . non 0 += 1
+      let seedBot =
+            mkRobot "seed" (r ^. location) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
+              & robotDisplay .~ (singleRobotDisplay '.' & robotDisplayAttr .~ plantAttr)
+      seedBot' <- ensureUniqueName seedBot
+      newRobots %= (seedBot' :)
+      step r (Out VUnit k)
 execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   updated .= True
   step (r & direction %~ applyTurn d) (Out VUnit k)

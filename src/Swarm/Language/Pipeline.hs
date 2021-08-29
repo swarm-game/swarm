@@ -2,17 +2,17 @@
 
 module Swarm.Language.Pipeline where
 
-import           Data.Bifunctor        (first)
-import qualified Data.Map              as M
-import           Data.Text             (Text)
+import           Data.Bifunctor           (first)
+import qualified Data.Map                 as M
+import           Data.Text                (Text)
 
 import           Swarm.Language.Elaborate
-import           Swarm.Language.Syntax
-import           Swarm.Language.Types
 import           Swarm.Language.Parse
 import           Swarm.Language.Pretty
+import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
-
+import           Swarm.Language.Types
+import           Swarm.Util
 
 processCmd :: Text -> Either Text ATerm
 processCmd txt = do

@@ -9,6 +9,7 @@ import qualified Data.Map              as M
 
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
+import           Swarm.Util
 
 ------------------------------------------------------------
 -- Type errors
@@ -26,17 +27,12 @@ data TypeErr
 
 type Ctx = Map Var Type
 
-data a ::: b = a ::: b
-
-(<:::>) :: Functor f => a -> f b -> f (a ::: b)
-a <:::> fb = fmap (a :::) fb
-
 lookupTy :: Var -> Ctx -> Either TypeErr Type
 lookupTy x ctx = maybe (Left (UnboundVar x)) return (M.lookup x ctx)
 
 infer :: Ctx -> Term -> Either TypeErr (ATerm ::: Type)
 infer _   TUnit                     = return $ TUnit ::: TyUnit
-infer _   (TConst c)                = TConst c <:::> inferConst c
+infer _   (TConst c)                = (TConst c :::) <$> inferConst c
 infer _   (TDir d)                  = return $ TDir d ::: TyDir
 infer _   (TInt n)                  = return $ TInt n ::: TyInt
 infer _   (TString s)               = return $ TString s ::: TyString
