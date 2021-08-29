@@ -87,3 +87,5 @@
         - Fix Turn values, e.g. north, south etc.
     - Update world implementations with newtypes to represent indices.
     - Redo using a fast effects library?
+    - Make a test suite
+    - Collect some example Swarm programs
