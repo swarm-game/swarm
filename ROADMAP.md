@@ -61,6 +61,29 @@
         - Fix pretty-printing
             - Print operators infix
             - Better indentation/layout etc.
+        - Add polymorphism!
+            - Makes typechecking certain primitives (e.g. if) simpler,
+              can just infer them instead of having to resort to
+              checking mode
+            - This is a good example of why we might like
+              polymorphism:
+
+              let rep : int -> cmd () -> cmd () =
+                \n.\c.
+                  if (n == 0)
+                    {}
+                    {c ; rep (n-1) c}
+              in
+              rep 4 {
+                rep 10 move;
+                turn left;
+                build "sq" (run("square.sw"))
+              }
+
+              The above actually does not type check, because the 'build'
+              command returns a string, but 'rep' expects a cmd (),
+              not a cmd string.  But the return type really doesn't
+              matter. We'd like to say e.g.  rep : int -> cmd a -> cmd ().
 
 - Game mechanics
     - Small
