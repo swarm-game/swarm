@@ -36,7 +36,7 @@ library
                       Swarm.App
                       Swarm.Util
 
-    build-depends:    base ^>= 4.14,
+    build-depends:    base                          >= 4.14 && < 4.16,
                       array                         >= 0.5.4 && < 0.6,
                       base                          >= 4.14.1 && < 4.15,
                       brick                         >= 0.64 && < 0.65,
