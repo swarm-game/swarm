@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module Swarm.TUI where
 
+import           Control.Arrow               ((&&&))
 import           Control.Concurrent.STM      (atomically)
 import           Control.Concurrent.STM.TVar
 import           Control.Lens
@@ -16,17 +18,17 @@ import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
 import           Linear
+import           Text.Read                   (readMaybe)
 import           Witch                       (into)
 
 import           Brick                       hiding (Direction)
 import           Brick.Focus
 import           Brick.Forms
+import           Brick.Widgets.Border        (hBorder)
 import           Brick.Widgets.Center        (center, hCenter)
 import           Brick.Widgets.Dialog
 import qualified Graphics.Vty                as V
 
-import           Brick.Widgets.Border        (hBorder)
-import           Control.Arrow               ((&&&))
 import           Swarm.Game
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
@@ -52,8 +54,8 @@ data Name
 ------------------------------------------------------------
 -- UI state
 
-data REPLHistItem = REPLEntry Text | REPLOutput Text
-  deriving (Eq, Ord, Show)
+data REPLHistItem = REPLEntry Bool Text | REPLOutput Text
+  deriving (Eq, Ord, Show, Read)
 
 data UIState = UIState
   { _uiFocusRing      :: FocusRing Name
@@ -84,7 +86,8 @@ initLgTicksPerSecond = 3    -- 2^3 = 8 ticks per second
 initUIState :: IO UIState
 initUIState = do
   tv <- newTVarIO initLgTicksPerSecond
-  return $ UIState initFocusRing initReplForm [] (-1) Nothing True tv
+  mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
+  return $ UIState initFocusRing initReplForm (mhist ? []) (-1) Nothing True tv
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)
@@ -191,14 +194,17 @@ drawResource c = case M.lookup c resourceMap of
 
 drawRepl :: AppState -> Widget Name
 drawRepl s = vBox $
-  map fmt (reverse (take (replHeight - 1) (s ^. uiState . uiReplHistory)))
+  map fmt (reverse (take (replHeight - 1) . filter newEntry $ (s ^. uiState . uiReplHistory)))
   ++
   case isActive <$> (s ^. gameState . robotMap . at "base") of
     Just False -> [ renderForm (s ^. uiState . uiReplForm) ]
     _          -> [ padRight Max $ txt "..." ]
   where
-    fmt (REPLEntry e)  = txt replPrompt <+> txt e
-    fmt (REPLOutput t) = txt t
+    newEntry (REPLEntry False _) = False
+    newEntry _                   = True
+
+    fmt (REPLEntry _ e) = txt replPrompt <+> txt e
+    fmt (REPLOutput t)  = txt t
 
 ------------------------------------------------------------
 -- Event handling
@@ -236,7 +242,7 @@ handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . 
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
-  | otherwise                       = halt s
+  | otherwise                       = shutdown s
 handleEvent s ev =
   case focusGetCurrent (s ^. uiState . uiFocusRing) of
     Just REPLPanel  -> handleREPLEvent s ev
@@ -252,7 +258,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
       Right (t ::: ty) ->
         continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
-          & uiState . uiReplHistory %~ (REPLEntry entry :)
+          & uiState . uiReplHistory %~ (REPLEntry True entry :)
           & uiState . uiReplHistIdx .~ (-1)
           & gameState . replResult ?~ (ty, Nothing)
           & gameState . robotMap . ix "base" . machine .~ initMachine t ty
@@ -276,7 +282,7 @@ adjReplHistIndex (+/-) s =
   s & uiReplHistIdx .~ newIndex
     & if newIndex /= curIndex then uiReplForm %~ updateFormState newEntry else id
   where
-    entries = [e | REPLEntry e <- s ^. uiReplHistory]
+    entries = [e | REPLEntry _ e <- s ^. uiReplHistory]
     curIndex = s ^. uiReplHistIdx
     histLen  = length entries
     newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
@@ -329,3 +335,17 @@ viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
 adjustTPS :: (Int -> Int -> Int) -> AppState -> EventM Name ()
 adjustTPS (+/-) s =
   liftIO $ atomically $ modifyTVar (s ^. uiState . lgTicksPerSecond) (+/- 1)
+
+shutdown :: AppState -> EventM Name (Next AppState)
+shutdown s = do
+  let s'   = s & uiState . uiReplHistory . traverse %~ markOld
+      hist = filter isEntry (s' ^. uiState . uiReplHistory)
+  liftIO $ writeFile ".swarm_history" (show hist)
+  halt s'
+
+  where
+    markOld (REPLEntry _ e) = REPLEntry False e
+    markOld r               = r
+
+    isEntry REPLEntry{} = True
+    isEntry _           = False
