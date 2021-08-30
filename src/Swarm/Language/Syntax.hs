@@ -100,32 +100,33 @@ data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
   deriving (Eq, Ord, Show)
 
 -- | Arithmetic operator constants.
-data ArithConst = Add | Sub | Mul | Div | Exp
+data ArithConst = Neg | Add | Sub | Mul | Div | Exp
   deriving (Eq, Ord, Show)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.  The
 --   runtime system will collect arguments to a constant until it has
 --   enough, then dispatch the constant's behavior.
 arity :: Const -> Int
-arity Wait      = 0
-arity Noop      = 0
-arity Halt      = 0
-arity Return    = 1
-arity Move      = 0
-arity Turn      = 1
-arity Harvest   = 0
-arity Build     = 2
-arity Run       = 1
-arity GetX      = 0
-arity GetY      = 0
-arity Random    = 1
-arity Say       = 1
-arity View      = 1
-arity Appear    = 1
-arity If        = 3
-arity Force     = 1
-arity (Cmp _)   = 2
-arity (Arith _) = 2
+arity Wait        = 0
+arity Noop        = 0
+arity Halt        = 0
+arity Return      = 1
+arity Move        = 0
+arity Turn        = 1
+arity Harvest     = 0
+arity Build       = 2
+arity Run         = 1
+arity GetX        = 0
+arity GetY        = 0
+arity Random      = 1
+arity Say         = 1
+arity View        = 1
+arity Appear      = 1
+arity If          = 3
+arity Force       = 1
+arity (Cmp _)     = 2
+arity (Arith Neg) = 1
+arity (Arith _)   = 2
 
 -- | Some constants are commands, which means a fully saturated
 --   application of those constants counts as a value, and should not

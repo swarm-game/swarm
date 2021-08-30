@@ -825,6 +825,7 @@ execConst Appear args k _ = badConst Appear args k
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k
 
+execConst (Arith Neg) [VInt n] k r = step r $ Out (VInt (-n)) k
 execConst (Arith c) [VInt n1, VInt n2] k r = step r $ Out (VInt (evalArith c n1 n2)) k
 execConst (Arith c) args k _ = badConst (Arith c) args k
 
@@ -886,6 +887,7 @@ evalCmp CmpLeq = (<=)
 evalCmp CmpGeq = (>=)
 
 evalArith :: ArithConst -> Integer -> Integer -> Integer
+evalArith Neg = error "evalArith Neg: should have been handled already"
 evalArith Add = (+)
 evalArith Sub = (-)
 evalArith Mul = (*)

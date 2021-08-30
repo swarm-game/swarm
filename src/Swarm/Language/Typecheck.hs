@@ -87,24 +87,25 @@ decomposeCmdTy t ty            = Left (NotCmdTy t ty)
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded) must be checked.
 inferConst :: Const -> Either TypeErr Type
-inferConst Wait      = return $ TyCmd TyUnit
-inferConst Halt      = return $ TyCmd TyUnit
-inferConst Noop      = return $ TyCmd TyUnit
-inferConst Move      = return $ TyCmd TyUnit
-inferConst Turn      = return $ TyDir :->: TyCmd TyUnit
-inferConst Harvest   = return $ TyCmd TyUnit
-inferConst Build     = return $ TyString :->: TyCmd TyUnit :->: TyCmd TyString
-inferConst Run       = return $ TyString :->: TyCmd TyUnit
-inferConst GetX      = return $ TyCmd TyInt
-inferConst GetY      = return $ TyCmd TyInt
-inferConst Random    = return $ TyInt :->: TyCmd TyInt
-inferConst Say       = return $ TyString :->: TyCmd TyUnit
-inferConst View      = return $ TyString :->: TyCmd TyUnit
-inferConst Appear    = return $ TyString :->: TyCmd TyUnit
-inferConst (Cmp _)   = return $ TyInt :->: TyInt :->: TyBool
-inferConst (Arith _) = return $ TyInt :->: TyInt :->: TyInt
+inferConst Wait        = return $ TyCmd TyUnit
+inferConst Halt        = return $ TyCmd TyUnit
+inferConst Noop        = return $ TyCmd TyUnit
+inferConst Move        = return $ TyCmd TyUnit
+inferConst Turn        = return $ TyDir :->: TyCmd TyUnit
+inferConst Harvest     = return $ TyCmd TyUnit
+inferConst Build       = return $ TyString :->: TyCmd TyUnit :->: TyCmd TyString
+inferConst Run         = return $ TyString :->: TyCmd TyUnit
+inferConst GetX        = return $ TyCmd TyInt
+inferConst GetY        = return $ TyCmd TyInt
+inferConst Random      = return $ TyInt :->: TyCmd TyInt
+inferConst Say         = return $ TyString :->: TyCmd TyUnit
+inferConst View        = return $ TyString :->: TyCmd TyUnit
+inferConst Appear      = return $ TyString :->: TyCmd TyUnit
+inferConst (Cmp _)     = return $ TyInt :->: TyInt :->: TyBool
+inferConst (Arith Neg) = return $ TyInt :->: TyInt
+inferConst (Arith _)   = return $ TyInt :->: TyInt :->: TyInt
 
-inferConst c         = Left $ CantInfer (TConst c)
+inferConst c           = Left $ CantInfer (TConst c)
 
 decomposeFunTy :: Term -> Type -> Either TypeErr (Type, Type)
 decomposeFunTy _ (ty1 :->: ty2) = return (ty1, ty2)

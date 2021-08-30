@@ -172,6 +172,7 @@ parseExpr = makeExprParser parseTermAtom table
     table =
       [ [ InfixL (TApp Nothing <$ string "") ]
       , [ InfixR (mkOp (Arith Exp) <$ symbol "^") ]
+      , [ Prefix (TApp Nothing (TConst (Arith Neg)) <$ symbol "-") ]
       , [ InfixL (mkOp (Arith Mul) <$ symbol "*")
         , InfixL (mkOp (Arith Div) <$ symbol "/")
         ]

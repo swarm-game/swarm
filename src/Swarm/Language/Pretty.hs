@@ -81,6 +81,7 @@ instance PrettyPrec CmpConst where
   prettyPrec _ CmpGeq = ">="
 
 instance PrettyPrec ArithConst where
+  prettyPrec _ Neg = "-"
   prettyPrec _ Add = "+"
   prettyPrec _ Sub = "-"
   prettyPrec _ Mul = "*"
