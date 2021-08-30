@@ -88,6 +88,11 @@
 - Game mechanics
     - Small
         - Allow smaller, finite worlds?
+        - Base sequence of random values from the 'random' command
+          deterministically on the world seed?  Then IO is not required
+          and also it will pave the way for networked play (clients
+          will stay in sync without having to communicate their
+          choices of random values). =D
 
     - Big
         - Disallow harvesting while a seed robot is present
