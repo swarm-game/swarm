@@ -459,7 +459,7 @@ mkRobot name l d m = Robot
 baseRobot :: Robot
 baseRobot = Robot
   { _robotName    = "base"
-  , _robotDisplay = defaultRobotDisplay
+  , _robotDisplay = singleRobotDisplay '■'
   , _location     = V2 0 0
   , _direction    = north
   , _machine      = idleMachine
