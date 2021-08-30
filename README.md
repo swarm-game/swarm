@@ -40,7 +40,7 @@ of the planned features and has no help or tutorial system at all.
 But you can program cute little robots, and hey, that's all that
 really matters, right?
 
-The recommended way to install Swarm is as follows:
+The recommended way to install Swarm at the moment is as follows:
 
 1. Clone the Swarm repository, e.g.
 
@@ -56,7 +56,9 @@ The recommended way to install Swarm is as follows:
        cd /path/to/the/swarm/repo
        stack build
 
-1. You can now use `stack` to run it:
+1. Go get a snack while `stack build` downloads a Haskell compiler and
+   builds all of Swarm's dependencies.
+1. Once the build completes, you should be able to use `stack` to run it:
 
        stack exec swarm
 
