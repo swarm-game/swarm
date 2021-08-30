@@ -197,5 +197,8 @@ mkOp c = TApp Nothing . TApp Nothing (TConst c)
 runParser :: Parser a -> Text -> Either Text a
 runParser p t = first (from . errorBundlePretty) (parse p "" t)
 
+fully :: Parser a -> Parser a
+fully p = sc *> p <* eof
+
 readTerm :: Text -> Either Text Term
-readTerm = runParser (parseTerm <* eof)
+readTerm = runParser (fully parseTerm)
