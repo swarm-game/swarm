@@ -146,7 +146,7 @@ drawWorld g
     robotsByLoc
       = M.fromListWith (maxOn (^. robotDisplay . priority)) . map (view location &&& id)
       . M.elems $ g ^. robotMap
-    drawLoc (row,col) = case M.lookup (V2 row col) robotsByLoc of
+    drawLoc (row,col) = case M.lookup (V2 col (-row)) robotsByLoc of
       Just r  -> withAttr (r ^. robotDisplay . robotDisplayAttr)
                  $ str [lookupRobotDisplay (r ^. direction) (r ^. robotDisplay)]
       Nothing -> drawResource (W.lookup (row,col) (g ^. world))
@@ -328,9 +328,9 @@ keyToDir _        = V2 0 0
 viewingRegion :: GameState -> (Int,Int) -> ((Int, Int), (Int, Int))
 viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
   where
-    V2 cr cc = g ^. viewCenter
-    (rmin,rmax) = over both (+ (cr - h`div`2)) (0, h-1)
-    (cmin,cmax) = over both (+ (cc - w`div`2)) (0, w-1)
+    V2 cx cy = g ^. viewCenter
+    (rmin,rmax) = over both (+ (-cy - h`div`2)) (0, h-1)
+    (cmin,cmax) = over both (+ (cx - w`div`2)) (0, w-1)
 
 adjustTPS :: (Int -> Int -> Int) -> AppState -> EventM Name ()
 adjustTPS (+/-) s =

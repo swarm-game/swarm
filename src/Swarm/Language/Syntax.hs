@@ -66,10 +66,10 @@ applyTurn East _        = east
 applyTurn West _        = west
 
 north, south, east, west :: V2 Int
-north = V2 (-1) 0
-south = V2 1 0
-east  = V2 0 1
-west  = V2 0 (-1)
+north = V2 0 1
+south = V2 0 (-1)
+east  = V2 1 0
+west  = V2 (-1) 0
 
 -- | Constants, representing various built-in functions and commands.
 data Const

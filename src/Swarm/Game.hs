@@ -357,10 +357,10 @@ defaultRobotDisplay :: RobotDisplay
 defaultRobotDisplay = RD
   { _defaultChar = '■'
   , _dirMap = M.fromList
-      [ (V2 0 1,    '▶')
-      , (V2 0 (-1), '◀')
-      , (V2 1 0,    '▼')
-      , (V2 (-1) 0, '▲')
+      [ (east,  '▶')
+      , (west,  '◀')
+      , (south, '▼')
+      , (north, '▲')
       ]
   , _robotDisplayAttr = robotAttr
   , _priority = 10
@@ -461,7 +461,7 @@ baseRobot = Robot
   { _robotName    = "base"
   , _robotDisplay = defaultRobotDisplay
   , _location     = V2 0 0
-  , _direction    = V2 0 1
+  , _direction    = north
   , _machine      = idleMachine
   , _tickSteps    = 0
   , _static       = True
@@ -745,8 +745,8 @@ execConst Halt _ _ _   = updated .= True >> return Nothing
 execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
 execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
 execConst Move _ k r   = nonStatic Move k r $ do
-  let V2 r' c' = (r ^. location) ^+^ (r ^. direction)
-  resrc <- uses world (W.lookup (r',c'))
+  let V2 x y = (r ^. location) ^+^ (r ^. direction)
+  resrc <- uses world (W.lookup (-y,x))
   let props = resourceMap ^. ix resrc . resProperties
   case Solid `S.member` props of
     True  -> step r (Out VUnit k)
@@ -755,13 +755,13 @@ execConst Move _ k r   = nonStatic Move k r $ do
       step (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do
   updated .= True
-  let V2 row col = r ^. location
-  resrc <- uses world (W.lookup (row,col))
+  let V2 x y = r ^. location
+  resrc <- uses world (W.lookup (-y,x))
   let props = resourceMap ^. ix resrc . resProperties
   case Harvestable `S.member` props of
     False -> step r $ Out VUnit k
     True -> do
-      h <- uses world (W.lookup (row,col))
+      h <- uses world (W.lookup (-y,x))
       inventory . at (Resource h) . non 0 += 1
       let seedBot =
             mkRobot "seed" (r ^. location) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
@@ -778,12 +778,12 @@ execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   step (r & direction %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k
 
-execConst GetX _ k r = step r $ Out (VInt (fromIntegral col)) k
+execConst GetX _ k r = step r $ Out (VInt (fromIntegral x)) k
   where
-    V2 _ col = r ^. location
-execConst GetY _ k r = step r $ Out (VInt (fromIntegral (-row))) k
+    V2 x _ = r ^. location
+execConst GetY _ k r = step r $ Out (VInt (fromIntegral y)) k
   where
-    V2 row _ = r ^. location
+    V2 _ y = r ^. location
 
 execConst Random [VInt hi] k r = do
   n <- randomRIO (0, hi-1)

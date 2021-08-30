@@ -112,11 +112,6 @@
                   challenge has been completed.
 
 - Refactoring/technical debt
-    - All V2 Int values should be x,y.  Only convert to row,column in
-      the UI.
-        - Start by making a newtype for V2 Int, then fix all the type
-          errors and think carefully about it.
-        - Fix Turn values, e.g. north, south etc.
     - Update world implementations with newtypes to represent indices.
     - Redo using a fast effects library?
     - Make a test suite

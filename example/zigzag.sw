@@ -3,6 +3,7 @@ let rep : int -> cmd () -> cmd () = \n. \c.
     {}
     { c; rep (n-1) c }
 in
+turn east;
 rep 50 {
   harvest; move;
   turn left;
