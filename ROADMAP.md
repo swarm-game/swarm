@@ -1,33 +1,4 @@
 - Big projects
-    - Modules
-        - New type form: Module(Δ, σ) where Δ is a context, σ a type
-        - Special function inferModule (⊢im below) that takes a term and returns a
-          Module type:
-
-                       Γ ⊢im t₂ : Module(Δ ; σ)
-            ———————————————————————————————————————————————–
-            Γ ⊢im let x : τ = t₁ in t₂ : Module(Δ, x : τ ; σ)
-
-                  Γ ⊢ t : σ
-            ————————————————————–  (t is not a let expression)
-            Γ ⊢im t : Module(∅; σ)
-
-        - Then a new term form,  import m in t, with typing rule
-
-              Γ ⊢ m : Module(Δ, σ)        Γ, Δ ⊢ t : τ
-              ————————————————————————————————————————
-                        Γ ⊢ import m in t : τ
-
-          Typically m will be a variable referencing some module in
-          the global context, not a literal module (at that point
-          might as well just use a let expression).
-
-        - Load all files in a directory indicated as a command-line
-          argument, make them available as modules with the same name
-          as the files.
-        - Eventually there may also be a way to edit modules in an
-          editor directly inside the game, which could also be saved
-          and reloaded along with the world.
 
 - UI
     - Small
@@ -53,11 +24,12 @@
             - New type of colors and color constants
             - Command to let a robot change its color
         - Add a version of turn that allows turning to any vector
-        - Add pairs, use pair to reprsent vectors
         - Make a command to sense the ID of a nearby robot
         - Make a command to pick up another robot by ID
         - Add type annotations to the language.
     - Big
+        - Implement type inference via constraint generation +
+          unification.
         - Fix pretty-printing
             - Print operators infix
             - Better indentation/layout etc.
@@ -84,6 +56,35 @@
               command returns a string, but 'rep' expects a cmd (),
               not a cmd string.  But the return type really doesn't
               matter. We'd like to say e.g.  rep : int -> cmd a -> cmd ().
+        - Modules
+            - New type form: Module(Δ, σ) where Δ is a context, σ a type
+            - Special function inferModule (⊢im below) that takes a term and returns a
+              Module type:
+
+                           Γ ⊢im t₂ : Module(Δ ; σ)
+                ———————————————————————————————————————————————–
+                Γ ⊢im let x : τ = t₁ in t₂ : Module(Δ, x : τ ; σ)
+
+                      Γ ⊢ t : σ
+                ————————————————————–  (t is not a let expression)
+                Γ ⊢im t : Module(∅; σ)
+
+            - Then a new term form,  import m in t, with typing rule
+
+                  Γ ⊢ m : Module(Δ, σ)        Γ, Δ ⊢ t : τ
+                  ————————————————————————————————————————
+                            Γ ⊢ import m in t : τ
+
+              Typically m will be a variable referencing some module in
+              the global context, not a literal module (at that point
+              might as well just use a let expression).
+
+            - Load all files in a directory indicated as a command-line
+              argument, make them available as modules with the same name
+              as the files.
+            - Eventually there may also be a way to edit modules in an
+              editor directly inside the game, which could also be saved
+              and reloaded along with the world.
 
 - Game mechanics
     - Small
