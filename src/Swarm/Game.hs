@@ -16,63 +16,25 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- The implementation of the Swarm game itself, as separate from the UI.
+-- XXX
 --
 -----------------------------------------------------------------------------
 
 module Swarm.Game
   ( -- * The CEK abstract machine
 
-    -- | The Swarm interpreter uses a technique known as a
-    --   <https://matt.might.net/articles/cek-machines/ CEK machine>.
-    --   Execution happens simply by iterating a step function,
-    --   sending one state of the CEK machine to the next. In addition
-    --   to being relatively efficient, this means we can easily run a
-    --   bunch of robots synchronously, in parallel, without resorting
-    --   to any threads (by stepping their machines in a round-robin
-    --   fashion); pause and single-step the game; save and resume,
-    --   and so on.
-    --
-    --   Essentially, a CEK machine state has three components:
-    --
-    --   - The __C__ontrol is the thing we are currently focused on:
-    --     either a 'UTerm' to evaluate, or a 'Value' that we have
-    --     just finished evaluating.
-    --   - The __E__nvironment ('Env') is a mapping from variables that might
-    --     occur free in the Control to their values.
-    --   - The __K__ontinuation ('Cont') is a stack of 'Frame's,
-    --     representing the evaluation context, /i.e./ what we are
-    --     supposed to do after we finish with the currently focused
-    --     thing.  When we reduce the current term to a value, the top
-    --     frame on the stack tells us how to proceed.
-    --
-    --   You can think of a CEK machine as a defunctionalization of a
-    --   recursive big-step interpreter, where we explicitly keep
-    --   track of the call stack and the environments that would be in
-    --   effect at various places in the recursion.
-    --
-    --   The slightly confusing thing about CEK machines is how we
-    --   have to pass around environments everywhere.  Basically,
-    --   anywhere there can be unevaluated terms containing free
-    --   variables (in values, in continuation stack frames, ...), we
-    --   have to store the proper environment alongside so that when
-    --   we eventually get around to evaluating it, we will be able to
-    --   pull out the environment to use.
 
     -- ** Values
-    Value(..), prettyValue, Env, emptyEnv
 
-    -- ** Frames
+    Value(..), prettyValue
 
-  , Frame(..), Cont
+    -- ** Constructing CEK machine states
 
-    -- ** CEK machine states
+  , initMachine, initMachineV, idleMachine
 
-  , CEK(..), initMachine, initMachineV, idleMachine
+    -- ** Running the game
 
-    -- ** Stepping the machine
-
-  , gameStep, step, evalStepsPerTick
-  , bigStepRobot, stepRobot, execConst
+  , gameStep
 
     -- * Items
 
@@ -80,8 +42,8 @@ module Swarm.Game
 
     -- * Robots
 
-  , RobotDisplay, defaultChar, dirMap, robotDisplayAttr, priority
-  , lookupRobotDisplay, defaultRobotDisplay
+  , Display, defaultChar, orientationMap, displayAttr, displayPriority
+  , lookupDisplay, defaultRobotDisplay
   , Robot(..), mkRobot, baseRobot, isActive
 
     -- ** Lenses
@@ -105,14 +67,12 @@ module Swarm.Game
 import           Numeric.Noise.Perlin
 -- import           Numeric.Noise.Ridged
 
-import           Brick                   (AttrName)
 import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, from)
 import           Control.Monad.State
-import           Data.List               (intercalate)
 import           Data.Map                (Map)
 import qualified Data.Map                as M
-import           Data.Maybe              (fromMaybe)
+import           Data.Maybe              (fromMaybe, isNothing)
 import qualified Data.Set                as S
 import           Data.Text               (Text)
 import qualified Data.Text               as T
@@ -123,6 +83,8 @@ import           Witch
 
 -- import           Data.Hash.Murmur
 
+import           Swarm.Game.CEK
+import           Swarm.Game.Display
 import           Swarm.Game.Resource
 import           Swarm.Game.Value
 import qualified Swarm.Game.World        as W
@@ -134,181 +96,8 @@ import           Swarm.TUI.Attr
 import           Swarm.Util
 
 ------------------------------------------------------------
--- CEK machine types
-------------------------------------------------------------
-
--- | A frame is a single component of a continuation stack, explaining
---   what to do next after we finish evaluating the currently focused
---   term.
-data Frame
-   = FSnd UTerm Env
-     -- ^ We were evaluating the fst component of a pair; next, we
-     --   should evaluate the second component which was saved in this
-     --   frame.
-
-   | FFst Value
-     -- ^ We were evaluating the snd component of a pair; when done,
-     --   we should combine it with the value of the fst component saved
-     --   in this frame to construct a fully evaluated pair.
-
-   | FArg UTerm Env
-    -- ^ @FArg t e@ says that we were evaluating the left-hand side of
-    -- an application, so the next thing we should do is evaluate the
-    -- term @t@ (the right-hand side, /i.e./ argument of the
-    -- application) in environment @e@.  We will also push an 'FApp'
-    -- frame on the stack.
-
-  | FApp Value
-    -- ^ @FApp v@ says that we were evaluating the right-hand side of
-    -- an application; once we are done, we should pass the resulting
-    -- value as an argument to @v@.
-
-  | FLet Var UTerm Env
-    -- ^ @FLet x t2 e@ says that we were evaluating a term @t1@ in an
-    -- expression of the form @let x = t1 in t2@, that is, we were
-    -- evaluating the definition of @x@; the next thing we should do
-    -- is evaluate @t2@ in the environment @e@ extended with a binding
-    -- for @x@.
-
-  | FEvalBind (Maybe Text) UTerm Env
-    -- ^ If the top frame is of the form @FEvalBind mx c2 e@, we were
-    -- /evaluating/ a term @c1@ from a bind expression @x <- c1 ; c2@
-    -- (or without the @x@, if @mx@ is @Nothing@); once finished, we
-    -- should simply package it up into a value using @VBind@.
-
-  | FExec
-    -- ^ An @FExec@ frame means the focused value is a command, which
-    -- we should now execute.
-
-  | FExecBind (Maybe Text) UTerm Env
-    -- ^ This looks very similar to 'FEvalBind', but it means we are
-    -- in the process of /executing/ the first component of a bind;
-    -- once done, we should also execute the second component in the
-    -- given environment (extended by binding the variable, if there
-    -- is one, to the output of the first command.
-
-  deriving (Eq, Ord, Show)
-
--- | A continuation is just a stack of frames.
-type Cont = [Frame]
-
--- | The overall state of a CEK machine, which can actually be in one
---   of two states. The CEK machine is named after the first kind of
---   state, and it would probably be possible to inline a bunch of
---   things and get rid of the second state, but I find it much more
---   natural and elegant this way.
-data CEK
-  = In UTerm Env Cont
-    -- ^ When we are on our way "in/down" into a term, we have a
-    --   currently focused term to evaluate in the environment, and a
-    --   continuation.  In this mode we generally pattern-match on the
-    --   'UTerm' to decide what to do next.
-
-  | Out Value Cont
-    -- ^ Once we finish evaluating a term, we end up with a 'Value'
-    --   and we switch into "out/up" mode, bringing the value back up
-    --   out of the depths to the context that was expecting it.  In
-    --   this mode we generally pattern-match on the 'Cont' to decide
-    --   what to do next.
-    --
-    --   Note that there is no 'Env', because we don't have any
-    --   variables to evaluate at the moment, and we maintain the invariant
-    --   that any unevaluated terms buried inside a 'Value' or 'Cont'
-    --   must carry along their environment with them.
-  deriving (Eq, Ord, Show)
-
--- | Is the CEK machine in a final (finished) state?
-isFinal :: CEK -> Bool
-isFinal (Out _ []) = True
-isFinal _          = False
-
--- | Initialize a machine state with a starting term along with its
---   type, which will be executed or evaluated depending on whether it
---   has a command type or not.  It requires a fully typechecked term
---   (to make sure no type or scope errors can cause a crash), but
---   erases the term before putting it in the machine.
-initMachine :: ATerm -> Type -> CEK
-initMachine t (TyCmd _) = In (erase t) M.empty [FExec]
-initMachine t _         = In (erase t) M.empty []
-
--- | A machine which does nothing.
-idleMachine :: CEK
-idleMachine = initMachine (TConst Noop) (TyCmd TyUnit)
-
--- | Initialize a machine state with a command that is already a value
---   (for example, this is the case when spawning a new robot with the
---   'build' command; because of eager evaluation, the argument to
---   'build' has already been evaluated (but not executed!).
-initMachineV :: Value -> CEK
-initMachineV v = Out v [FExec]
-
-------------------------------------------------------------
--- FOR DEBUGGING ONLY, not exported.  Very crude pretty-printing of
--- CEK states.  Should really make a nicer version of this code...
-
-prettyCEK :: CEK -> String
-prettyCEK (In c _ k) = unlines
-  [ "▶ " ++ prettyString c
-  , "  " ++ prettyCont k ]
-prettyCEK (Out v k) = unlines
-  [ "◀ " ++ from (prettyValue v)
-  , "  " ++ prettyCont k ]
-
-prettyCont :: Cont -> String
-prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
-
-prettyFrame :: Frame -> String
-prettyFrame (FSnd t _)               = "(_, " ++ prettyString t ++ ")"
-prettyFrame (FFst v)                 = "(" ++ from (prettyValue v) ++ ", _)"
-prettyFrame (FArg t _)               = "_ " ++ prettyString t
-prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
-prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FEvalBind Nothing t _)    = "_ ; " ++ prettyString t
-prettyFrame (FEvalBind (Just x) t _)   = from x ++ " <- _ ; " ++ prettyString t
-prettyFrame FExec                    = "exec _"
-prettyFrame (FExecBind Nothing t _)  = "_ ; " ++ prettyString t
-prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
-
--- END DEBUGGING CODE
-------------------------------------------------------------
-
-------------------------------------------------------------
 -- Game state data types
 ------------------------------------------------------------
-
-data RobotDisplay = RD
-  { _defaultChar      :: Char
-  , _dirMap           :: Map (V2 Int) Char
-  , _robotDisplayAttr :: AttrName
-  , _priority         :: Int
-  }
-  deriving (Eq, Ord, Show)
-
-makeLenses ''RobotDisplay
-
-singleRobotDisplay :: Char -> RobotDisplay
-singleRobotDisplay c = RD
-  { _defaultChar = c
-  , _dirMap = M.empty
-  , _robotDisplayAttr = robotAttr
-  , _priority = 10
-  }
-
-defaultRobotDisplay :: RobotDisplay
-defaultRobotDisplay = RD
-  { _defaultChar = '■'
-  , _dirMap = M.fromList
-      [ (east,  '▶')
-      , (west,  '◀')
-      , (south, '▼')
-      , (north, '▲')
-      ]
-  , _robotDisplayAttr = robotAttr
-  , _priority = 10
-  }
-
-lookupRobotDisplay :: V2 Int -> RobotDisplay -> Char
-lookupRobotDisplay v rd = M.lookup v (rd ^. dirMap) ? (rd ^. defaultChar)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -316,12 +105,12 @@ data Robot = Robot
   { _robotName    :: Text
     -- ^ The name of the robot (unique across the whole world)
 
-  , _robotDisplay :: RobotDisplay
+  , _robotDisplay :: Display
 
   , _location     :: V2 Int
     -- ^ The location of the robot as (row,col).
 
-  , _direction    :: V2 Int
+  , _direction    :: Maybe (V2 Int)
     -- ^ The direction of the robot as a 2D vector.  When the robot
     --   executes @move@, its 'location' is updated by adding
     --   'direction' to it.
@@ -390,7 +179,7 @@ mkRobot name l d m = Robot
   { _robotName    = name
   , _robotDisplay = defaultRobotDisplay
   , _location     = l
-  , _direction    = d
+  , _direction    = Just d
   , _machine      = m
   , _tickSteps    = 0
   , _static       = False
@@ -400,9 +189,9 @@ mkRobot name l d m = Robot
 baseRobot :: Robot
 baseRobot = Robot
   { _robotName    = "base"
-  , _robotDisplay = singleRobotDisplay '■'
+  , _robotDisplay = defaultRobotDisplay
   , _location     = V2 0 0
-  , _direction    = north
+  , _direction    = Nothing
   , _machine      = idleMachine
   , _tickSteps    = 0
   , _static       = True
@@ -410,13 +199,11 @@ baseRobot = Robot
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
-isActive = not . isFinal . view machine
+isActive = isNothing . getResult
 
--- | Get the result of the machine if it is finished.
+-- | Get the result of the robot's computation if it is finished.
 getResult :: Robot -> Maybe Value
-getResult r = case r ^. machine of
-  Out v [] -> Just v
-  _        -> Nothing
+getResult = finalValue . view machine
 
 data Item = Resource Char
   deriving (Eq, Ord, Show)
@@ -691,14 +478,14 @@ execConst Halt _ _ _   = updated .= True >> return Nothing
 execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
 execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
 execConst Move _ k r   = nonStatic Move k r $ do
-  let V2 x y = (r ^. location) ^+^ (r ^. direction)
+  let V2 x y = (r ^. location) ^+^ (r ^. direction ? zero)
   resrc <- uses world (W.lookup (-y,x))
   let props = resourceMap ^. ix resrc . resProperties
   case Solid `S.member` props of
     True  -> step r (Out VUnit k)
     False -> do
       updated .= True
-      step (r & location %~ (^+^ (r ^. direction))) (Out VUnit k)
+      step (r & location %~ (^+^ (r ^. direction ? zero))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do
   updated .= True
   let V2 x y = r ^. location
@@ -712,16 +499,13 @@ execConst Harvest _ k r = nonStatic Harvest k r $ do
       let seedBot =
             mkRobot "seed" (r ^. location) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
               & robotDisplay .~
-                (singleRobotDisplay '.'
-                 & robotDisplayAttr .~ plantAttr
-                 & priority .~ 1
-                )
+                (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
       seedBot' <- ensureUniqueName seedBot
       newRobots %= (seedBot' :)
       step r (Out VUnit k)
 execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   updated .= True
-  step (r & direction %~ applyTurn d) (Out VUnit k)
+  step (r & direction . _Just %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k
 
 execConst GetX _ k r = step r $ Out (VInt (fromIntegral x)) k
@@ -754,14 +538,14 @@ execConst Appear [VString s] k r = do
   case into @String s of
     [c] ->
       step (r & robotDisplay . defaultChar .~ c
-              & robotDisplay . dirMap .~ M.empty
+              & robotDisplay . orientationMap .~ M.empty
            ) $ Out VUnit k
     [c,nc,ec,sc,wc] ->
       step ( r & robotDisplay . defaultChar .~ c
-               & robotDisplay . dirMap . ix north .~ nc
-               & robotDisplay . dirMap . ix east  .~ ec
-               & robotDisplay . dirMap . ix south .~ sc
-               & robotDisplay . dirMap . ix west  .~ wc
+               & robotDisplay . orientationMap . ix north .~ nc
+               & robotDisplay . orientationMap . ix east  .~ ec
+               & robotDisplay . orientationMap . ix south .~ sc
+               & robotDisplay . orientationMap . ix west  .~ wc
            ) $ Out VUnit k
     _ -> do
       emitMessage $ T.concat[s, " is not a valid appearance string."]
@@ -793,7 +577,7 @@ execConst Snd [VPair _ v] k r = step r $ Out v k
 execConst Snd args k _        = badConst Snd args k
 
 execConst Build [VString name, c] k r = do
-  let newRobot = mkRobot name (r ^. location) (r ^. direction) (initMachineV c)
+  let newRobot = mkRobot name (r ^. location) (r ^. direction ? east) (initMachineV c)
   newRobot' <- ensureUniqueName newRobot
   newRobots %= (newRobot' :)
   updated .= True

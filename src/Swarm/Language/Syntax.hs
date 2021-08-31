@@ -105,9 +105,10 @@ data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
 data ArithConst = Neg | Add | Sub | Mul | Div | Exp
   deriving (Eq, Ord, Show)
 
--- | The arity of a constant, /i.e./ how many arguments it expects.  The
---   runtime system will collect arguments to a constant until it has
---   enough, then dispatch the constant's behavior.
+-- | The arity of a constant, /i.e./ how many arguments it expects.
+--   The runtime system will collect arguments to a constant (see
+--   'VCApp') until it has enough, then dispatch the constant's
+--   behavior.
 arity :: Const -> Int
 arity (Cmp _)     = 2
 arity (Arith Neg) = 1

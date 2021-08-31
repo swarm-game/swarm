@@ -9,6 +9,7 @@ import qualified Graphics.Vty as V
 
 robotAttr, plantAttr, flowerAttr, dirtAttr, rockAttr, baseAttr, highlightAttr, defAttr :: AttrName
 robotAttr     = "robotAttr"
+entityAttr    = "entityAttr"
 plantAttr     = "plantAttr"
 flowerAttr    = "flowerAttr"
 dirtAttr      = "dirtAttr"
@@ -20,6 +21,7 @@ defAttr       = "defAttr"
 theAttrMap :: AttrMap
 theAttrMap = attrMap V.defAttr
   [ (robotAttr, fg V.white `V.withStyle` V.bold)
+  , (entityAttr, fg V.white)
   , (plantAttr, fg V.green)
   , (flowerAttr, fg V.yellow)
   , (dirtAttr, fg (V.rgbColor @Int 165 42 42))

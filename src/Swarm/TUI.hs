@@ -144,11 +144,11 @@ drawWorld g
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
     robotsByLoc
-      = M.fromListWith (maxOn (^. robotDisplay . priority)) . map (view location &&& id)
+      = M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view location &&& id)
       . M.elems $ g ^. robotMap
     drawLoc (row,col) = case M.lookup (V2 col (-row)) robotsByLoc of
-      Just r  -> withAttr (r ^. robotDisplay . robotDisplayAttr)
-                 $ str [lookupRobotDisplay (r ^. direction) (r ^. robotDisplay)]
+      Just r  -> withAttr (r ^. robotDisplay . displayAttr)
+                 $ str [lookupDisplay (r ^. direction) (r ^. robotDisplay)]
       Nothing -> drawResource (W.lookup (row,col) (g ^. world))
 
 drawInfoPanel :: AppState -> Widget Name
