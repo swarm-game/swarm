@@ -90,6 +90,8 @@ data Const
   | View              -- ^ View a certain robot.
   | Appear            -- ^ Set what characters are used for display.
   | If                -- ^ If-expressions.
+  | Fst               -- ^ First projection.
+  | Snd               -- ^ Second projection.
   | Force             -- ^ Force a delayed evaluation.
   | Cmp CmpConst      -- ^ Comparison operators.
   | Arith ArithConst  -- ^ Arithmetic operators.
@@ -107,26 +109,15 @@ data ArithConst = Neg | Add | Sub | Mul | Div | Exp
 --   runtime system will collect arguments to a constant until it has
 --   enough, then dispatch the constant's behavior.
 arity :: Const -> Int
-arity Wait        = 0
-arity Noop        = 0
-arity Halt        = 0
-arity Return      = 1
-arity Move        = 0
-arity Turn        = 1
-arity Harvest     = 0
-arity Build       = 2
-arity Run         = 1
-arity GetX        = 0
-arity GetY        = 0
-arity Random      = 1
-arity Say         = 1
-arity View        = 1
-arity Appear      = 1
-arity If          = 3
-arity Force       = 1
 arity (Cmp _)     = 2
 arity (Arith Neg) = 1
 arity (Arith _)   = 2
+arity c
+  | c `elem` [ Wait, Noop, Halt, Move, Harvest, GetX, GetY] = 0
+  | c `elem` [ Return, Turn, Run, Random, Say, View, Appear
+             , Fst, Snd, Force ]                            = 1
+  | c == Build                                              = 2
+  | otherwise                                               = 3
 
 -- | Some constants are commands, which means a fully saturated
 --   application of those constants counts as a value, and should not
@@ -139,7 +130,7 @@ isCmd (Cmp _)   = False
 isCmd (Arith _) = False
 isCmd c = c `notElem` funList
   where
-    funList = [If, Force]
+    funList = [If, Force, Fst, Snd]
 
 ------------------------------------------------------------
 -- Terms
@@ -192,6 +183,9 @@ data Term' f
 
     -- | A variable.
   | TVar Var
+
+    -- | A pair.
+  | TPair (Term' f) (Term' f)
 
     -- | A lambda expression, with or without a type annotation on the
     --   binder.
@@ -247,6 +241,7 @@ mapTerm' _ (TInt n)           = TInt n
 mapTerm' _ (TString s)        = TString s
 mapTerm' _ (TBool b)          = TBool b
 mapTerm' _ (TVar x)           = TVar x
+mapTerm' h (TPair t1 t2)      = TPair (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TLam x ty t)      = TLam x (h ty) (mapTerm' h t)
 mapTerm' h (TApp ty2 t1 t2)   = TApp (h ty2) (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TLet x ty t1 t2)  = TLet x (h ty) (mapTerm' h t1) (mapTerm' h t2)
@@ -260,6 +255,7 @@ erase = mapTerm' (const (C.Const ()))
 -- | Rewrite a term using a bottom-up traversal.  Giving the rewriting
 --   function access to the type of each subtree.
 bottomUp :: (Type -> ATerm -> ATerm) -> Type -> ATerm -> ATerm
+bottomUp f ty@(ty1 :*: ty2) (TPair t1 t2) = f ty (TPair (bottomUp f ty1 t1) (bottomUp f ty2 t2))
 bottomUp f ty@(_ :->: ty2) (TLam x xTy t) = f ty (TLam x xTy (bottomUp f ty2 t))
 bottomUp f ty (TApp ity2@(ID ty2) t1 t2)
   = f ty (TApp ity2 (bottomUp f (ty2 :->: ty) t1) (bottomUp f ty2 t2))
@@ -273,6 +269,7 @@ bottomUp f ty t = f ty t
 -- | The free variables of a term.
 fv :: Term' f -> Set Var
 fv (TVar x)                 = S.singleton x
+fv (TPair t1 t2)            = fv t1 `S.union` fv t2
 fv (TLam x _ t)             = S.delete x (fv t)
 fv (TApp _ t1 t2)           = fv t1 `S.union` fv t2
 fv (TLet x _ t1 t2)         = S.delete x (fv t1 `S.union` fv t2)
@@ -286,6 +283,7 @@ mapFree :: Var -> (ATerm -> ATerm) -> ATerm -> ATerm
 mapFree x f (TVar y)
   | x == y    = f (TVar y)
   | otherwise = TVar y
+mapFree x f (TPair t1 t2) = TPair (mapFree x f t1) (mapFree x f t2)
 mapFree x f t@(TLam y ty body)
   | x == y = t
   | otherwise = TLam y ty (mapFree x f body)

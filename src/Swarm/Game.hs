@@ -154,6 +154,9 @@ data Value where
   -- | A boolean.
   VBool   :: Bool -> Value
 
+  -- | A pair.
+  VPair   :: Value -> Value -> Value
+
   -- | A /closure/, representing a lambda term along with an
   --   environment containing bindings for any free variables in the
   --   body of the lambda.
@@ -184,6 +187,7 @@ valueToTerm (VInt n)         = TInt n
 valueToTerm (VString s)      = TString s
 valueToTerm (VDir d)         = TDir d
 valueToTerm (VBool b)        = TBool b
+valueToTerm (VPair v1 v2)    = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e)     =
   M.foldrWithKey
     (\y v -> TLet y NONE (valueToTerm v))
@@ -212,7 +216,17 @@ emptyEnv = M.empty
 --   what to do next after we finish evaluating the currently focused
 --   term.
 data Frame
-  = FArg UTerm Env
+   = FSnd UTerm Env
+     -- ^ We were evaluating the fst component of a pair; next, we
+     --   should evaluate the second component which was saved in this
+     --   frame.
+
+   | FFst Value
+     -- ^ We were evaluating the snd component of a pair; when done,
+     --   we should combine it with the value of the fst component saved
+     --   in this frame to construct a fully evaluated pair.
+
+   | FArg UTerm Env
     -- ^ @FArg t e@ says that we were evaluating the left-hand side of
     -- an application, so the next thing we should do is evaluate the
     -- term @t@ (the right-hand side, /i.e./ argument of the
@@ -319,6 +333,8 @@ prettyCont :: Cont -> String
 prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
 
 prettyFrame :: Frame -> String
+prettyFrame (FSnd t _)               = "(_, " ++ prettyString t ++ ")"
+prettyFrame (FFst v)                 = "(" ++ from (prettyValue v) ++ ", _)"
 prettyFrame (FArg t _)               = "_ " ++ prettyString t
 prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
@@ -673,6 +689,9 @@ stepRobot r = case r ^. machine of
   -- To evaluate a variable, just look it up in the context.
   In (TVar x) e k                   -> step r $ Out (e !!! x) k
 
+  -- XXX
+  In (TPair t1 t2) e k              -> step r $ In t1 e (FSnd t2 e : k)
+
   -- Lambdas just immediately turn into closures.
   In (TLam x _ t) e k               -> step r $ Out (VClo x t e) k
 
@@ -690,6 +709,8 @@ stepRobot r = case r ^. machine of
 
   Out _ []                          -> return (Just r)
 
+  Out v1 (FSnd t2 e : k)            -> step r $ In t2 e (FFst v1 : k)
+  Out v2 (FFst v1 : k)              -> step r $ Out (VPair v1 v2) k
   Out v1 (FArg t2 e : k)            -> step r $ In t2 e (FApp v1 : k)
   Out v2 (FApp (VCApp c args) : k)
     | not (isCmd c) &&
@@ -840,6 +861,11 @@ execConst Force args k _ = badConst Force args k
 execConst If [VBool True , thn, _] k r = step r $ Out thn k
 execConst If [VBool False, _, els] k r = step r $ Out els k
 execConst If args k _ = badConst If args k
+
+execConst Fst [VPair v _] k r = step r $ Out v k
+execConst Fst args k _        = badConst Fst args k
+execConst Snd [VPair _ v] k r = step r $ Out v k
+execConst Snd args k _        = badConst Snd args k
 
 execConst Build [VString name, c] k r = do
   let newRobot = mkRobot name (r ^. location) (r ^. direction) (initMachineV c)

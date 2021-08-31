@@ -49,7 +49,7 @@ reservedWords =
   , "wait", "halt", "move", "turn", "harvest", "build", "run", "getx", "gety"
   , "random", "say", "view", "appear"
   , "int", "string", "dir", "bool", "cmd"
-  , "let", "in", "if", "true", "false"
+  , "let", "in", "if", "true", "false", "fst", "snd"
   ]
 
 -- | Skip spaces and comments.
@@ -111,6 +111,7 @@ parseType = makeExprParser parseTypeAtom table
   where
     table =
       [ [ InfixR ((:->:) <$ symbol "->") ]
+      , [ InfixR ((:*:) <$ symbol "*") ]
       ]
 
 parseTypeAtom :: Parser Type
@@ -151,6 +152,8 @@ parseConst =
   <|> View    <$ reserved "view"
   <|> Appear  <$ reserved "appear"
   <|> If      <$ reserved "if"
+  <|> Fst     <$ reserved "fst"
+  <|> Snd     <$ reserved "snd"
 
 parseTermAtom :: Parser Term
 parseTermAtom =
@@ -218,6 +221,7 @@ parseExpr = makeExprParser parseTermAtom table
         , ("<", CmpLt)
         , (">", CmpGt)
         ]
+      , [ InfixR (TPair <$ symbol ",") ]
       ]
 
 mkOp :: Const -> Term -> Term -> Term

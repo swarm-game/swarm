@@ -16,8 +16,10 @@ import           Swarm.Util
 
 data TypeErr
   = NotFunTy Term Type
+  | NotPairTy Term Type
   | NotCmdTy Term Type
   | NonCmdTyExpected Term Type
+  | NonPairTyExpected Term Type
   | Mismatch Term {- expected -} Type {- inferred -} Type
   | UnboundVar Var
   | CantInfer Term
@@ -37,6 +39,10 @@ infer _   (TDir d)                  = return $ TDir d ::: TyDir
 infer _   (TInt n)                  = return $ TInt n ::: TyInt
 infer _   (TString s)               = return $ TString s ::: TyString
 infer _   (TBool b)                 = return $ TBool b ::: TyBool
+infer ctx (TPair t1 t2)             = do
+  at1 ::: ty1 <- infer ctx t1
+  at2 ::: ty2 <- infer ctx t2
+  return $ TPair at1 at2 ::: (ty1 :*: ty2)
 infer ctx (TApp _ (TConst Return) t) = do
   at ::: ty <- infer ctx t
   return $ TApp (ID ty) (TConst Return) at ::: TyCmd ty
@@ -47,6 +53,14 @@ infer ctx (TApp _ (TApp _ (TApp _ (TConst If) cond) thn) els) = do
   checkEqual thn thnTy elsTy
   return $
     TApp (ID thnTy) (TApp (ID thnTy) (TApp (ID TyBool) (TConst If) acond) athn) aels ::: thnTy
+infer ctx (TApp _ (TConst Fst) t) = do
+  at ::: ty <- infer ctx t
+  (ty1, _) <- decomposePairTy t ty
+  return $ TApp (ID ty) (TConst Fst) at ::: ty1
+infer ctx (TApp _ (TConst Snd) t) = do
+  at ::: ty <- infer ctx t
+  (_, ty2) <- decomposePairTy t ty
+  return $ TApp (ID ty) (TConst Snd) at ::: ty2
 infer ctx (TDelay x)                = do
   t ::: ty <- infer ctx x
   return $ TDelay t ::: ty
@@ -111,8 +125,17 @@ decomposeFunTy :: Term -> Type -> Either TypeErr (Type, Type)
 decomposeFunTy _ (ty1 :->: ty2) = return (ty1, ty2)
 decomposeFunTy t ty             = Left (NotFunTy t ty)
 
+decomposePairTy :: Term -> Type -> Either TypeErr (Type, Type)
+decomposePairTy _ (ty1 :*: ty2) = return (ty1, ty2)
+decomposePairTy t ty            = Left (NotPairTy t ty)
+
 check :: Ctx -> Term -> Type -> Either TypeErr ATerm
 check _ (TConst c) ty = checkConst c ty >> return (TConst c)
+check ctx (TPair t1 t2) (ty1 :*: ty2) = do
+  at1 <- check ctx t1 ty1
+  at2 <- check ctx t2 ty2
+  return $ TPair at1 at2
+check _ t@TPair{} ty = Left $ NonPairTyExpected t ty
 check ctx (TApp _ (TConst Return) t) (TyCmd a) = do
   at <- check ctx t a
   return $ TApp (ID a) (TConst Return) at

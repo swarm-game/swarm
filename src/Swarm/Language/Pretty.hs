@@ -37,7 +37,9 @@ instance PrettyPrec Type where
   prettyPrec _ TyDir          = "dir"
   prettyPrec _ TyString       = "string"
   prettyPrec _ TyBool         = "bool"
-  prettyPrec p (TyCmd ty)     = pparens (p > 1) $ "cmd" <+> prettyPrec 2 ty
+  prettyPrec p (ty1 :*: ty2)  = pparens (p > 2) $
+    prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
+  prettyPrec p (TyCmd ty)     = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec p (ty1 :->: ty2) = pparens (p > 0) $
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
@@ -68,6 +70,8 @@ instance PrettyPrec Const where
   prettyPrec _ View      = "view"
   prettyPrec _ Appear    = "appear"
   prettyPrec _ If        = "if"
+  prettyPrec _ Fst       = "fst"
+  prettyPrec _ Snd       = "snd"
   prettyPrec _ Force     = "force"
   prettyPrec p (Cmp c)   = prettyPrec p c
   prettyPrec p (Arith c) = prettyPrec p c
@@ -97,6 +101,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TBool b)     = bool "false" "true" b
   prettyPrec _ (TVar s)      = pretty s
   prettyPrec p (TDelay t)    = pparens (p > 10) $ "delay" <+> prettyPrec 11 t
+  prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
   prettyPrec p (TApp _ t1 t2)  = pparens (p > 10) $
@@ -126,6 +131,14 @@ instance PrettyPrec TypeErr where
     , ppr ty
     , "instead."
     ]
+  prettyPrec _ (NotPairTy t ty) =
+    sep
+    [ "Expecting a pair type, but"
+    , ppr t
+    , "has type"
+    , ppr ty
+    , "instead."
+    ]
   prettyPrec _ (NotCmdTy t ty) =
     sep
     [ "Expecting a command type, but"
@@ -138,6 +151,11 @@ instance PrettyPrec TypeErr where
     sep
     [ "Expecting type", ppr ty
     , "but", ppr t, "is a command."
+    ]
+  prettyPrec _ (NonPairTyExpected t ty) =
+    sep
+    [ "Expecting type", ppr ty
+    , "but", ppr t, "is a pair."
     ]
   prettyPrec _ (Mismatch t expected inferred) =
     vsep

@@ -21,6 +21,7 @@ data Type
   | TyBool             -- ^ Booleans.
   | TyCmd Type         -- ^ Commands, with return type. Note that
                        --   commands form a monad.
+  | Type :*: Type      -- ^ Product type.
   | Type :->: Type     -- ^ Functions.
   deriving (Eq, Ord, Show)
 
