@@ -34,6 +34,7 @@ library
                       Swarm.Language.Elaborate
                       Swarm.Language.Pipeline
                       Swarm.Game
+                      Swarm.Game.Value
                       Swarm.Game.Resource
                       Swarm.Game.World
                       Swarm.TUI

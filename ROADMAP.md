@@ -117,6 +117,7 @@
                   challenge has been completed.
 
 - Refactoring/technical debt
+    - Split up Game module into multiple modules
     - Update world implementations with newtypes to represent indices.
     - Redo using a fast effects library?
     - Make a test suite

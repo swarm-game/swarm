@@ -124,6 +124,7 @@ import           Witch
 -- import           Data.Hash.Murmur
 
 import           Swarm.Game.Resource
+import           Swarm.Game.Value
 import qualified Swarm.Game.World        as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
@@ -135,82 +136,6 @@ import           Swarm.Util
 ------------------------------------------------------------
 -- CEK machine types
 ------------------------------------------------------------
-
--- | A /value/ is a term that cannot (or does not) take any more
---   evaluation steps on its own.
-data Value where
-  -- | The unit value.
-  VUnit   :: Value
-
-  -- | An integer.
-  VInt    :: Integer -> Value
-
-  -- | A literal string.
-  VString :: Text -> Value
-
-  -- | A direction.
-  VDir    :: Direction -> Value
-
-  -- | A boolean.
-  VBool   :: Bool -> Value
-
-  -- | A pair.
-  VPair   :: Value -> Value -> Value
-
-  -- | A /closure/, representing a lambda term along with an
-  --   environment containing bindings for any free variables in the
-  --   body of the lambda.
-  VClo    :: Text -> UTerm -> Env -> Value
-
-  -- | An application of a constant to some value arguments,
-  --   potentially waiting for more arguments.
-  VCApp   :: Const -> [Value] -> Value
-
-  -- | A bind where the first component has been reduced to a value,
-  --   /i.e./ @v ; c@ or @x <- v; c@.  We also store an @Env@ in which
-  --   to interpret the second component of the bind.
-  VBind   :: Value -> Maybe Var -> UTerm -> Env -> Value
-
-  -- | A delayed term, along with its environment. If a term would
-  --   otherwise be evaluated but we don't want it to be, we can stick
-  --   a @delay@ on it, which turns it into a value.  Delayed terms
-  --   won't be evaluated until @force@ is applied to them.
-  VDelay  :: UTerm -> Env -> Value
-  deriving (Eq, Ord, Show)
-
-prettyValue :: Value -> Text
-prettyValue = prettyText . valueToTerm
-
-valueToTerm :: Value -> UTerm
-valueToTerm VUnit            = TUnit
-valueToTerm (VInt n)         = TInt n
-valueToTerm (VString s)      = TString s
-valueToTerm (VDir d)         = TDir d
-valueToTerm (VBool b)        = TBool b
-valueToTerm (VPair v1 v2)    = TPair (valueToTerm v1) (valueToTerm v2)
-valueToTerm (VClo x t e)     =
-  M.foldrWithKey
-    (\y v -> TLet y NONE (valueToTerm v))
-    (TLam x NONE t)
-    (M.restrictKeys e (S.delete x (fv t)))
-valueToTerm (VCApp c vs)     = foldl (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
-valueToTerm (VDelay t _)     = TDelay t
-
--- | An environment is a mapping from variable names to values.
-type Env = Map Var Value
-
--- | Unsafely look up variables in an environment, with a slightly
---   better error message just in case something goes wrong.  But in
---   theory, if the type checker is doing its job and there are no
---   bugs, a lookup error will never happen.
-(!!!) :: Env -> Var -> Value
-e !!! x = case M.lookup x e of
-  Nothing -> error $ from x ++ " is not a key in the environment!"
-  Just v  -> v
-
-emptyEnv :: Env
-emptyEnv = M.empty
 
 -- | A frame is a single component of a continuation stack, explaining
 --   what to do next after we finish evaluating the currently focused
@@ -701,8 +626,8 @@ stepRobot r = case r ^. machine of
 
   -- Evaluating let expressions is a little bit tricky. XXX write more
   In (TLet x _ t1 t2) e k           ->
-    let e' = M.insert x (VDelay t1 e') e   -- XXX do this without making a recursive
-                                           -- (hence unprintable) env?
+    let e' = addBinding x (VDelay t1 e') e   -- XXX do this without making a recursive
+                                             -- (hence unprintable) env?
     in step r $ In t1 e' (FLet x t2 e : k)
   In (TBind mx _ t1 t2) e k         -> step r $ In t1 e (FEvalBind mx t2 e : k)
   In (TDelay t) e k                 -> step r $ Out (VDelay t e) k
@@ -716,8 +641,8 @@ stepRobot r = case r ^. machine of
     | not (isCmd c) &&
       arity c == length args + 1    -> evalConst c (reverse (v2 : args)) k r
     | otherwise                     -> step r $ Out (VCApp c (v2 : args)) k
-  Out v2 (FApp (VClo x t e) : k)    -> step r $ In t (M.insert x v2 e) k
-  Out v1 (FLet x t2 e : k)          -> step r $ In t2 (M.insert x v1 e) k
+  Out v2 (FApp (VClo x t e) : k)    -> step r $ In t (addBinding x v2 e) k
+  Out v1 (FLet x t2 e : k)          -> step r $ In t2 (addBinding x v1 e) k
   Out v1 (FEvalBind mx t2 e : k)    -> step r $ Out (VBind v1 mx t2 e) k
 
   -- Special command applications that don't use up a tick (Noop and Return)
@@ -726,7 +651,7 @@ stepRobot r = case r ^. machine of
 
   Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
   Out (VBind c mx t2 e) (FExec : k) -> step r $ Out c (FExec : FExecBind mx t2 e : k)
-  Out v (FExecBind mx t2 e : k)     -> step r $ In t2 (maybe id (`M.insert` v) mx e) (FExec : k)
+  Out v (FExecBind mx t2 e : k)     -> step r $ In t2 (maybe id (`addBinding` v) mx e) (FExec : k)
 
   cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
 
