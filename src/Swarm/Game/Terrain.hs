@@ -44,7 +44,7 @@ displayTerrain t = displayWidget Nothing (terrainMap ! t)
 -- | A map containing a 'Display' record for each different 'TerrainType'.
 terrainMap :: Map TerrainType Display
 terrainMap = M.fromList
-  [ (RockT, defaultTerrainDisplay '_' rockAttr)
+  [ (RockT, defaultTerrainDisplay '.' rockAttr)
   , (DirtT, defaultTerrainDisplay '_' dirtAttr)
-  , (GrassT, defaultTerrainDisplay '_' plantAttr)
+  , (GrassT, defaultTerrainDisplay ',' plantAttr)
   ]
