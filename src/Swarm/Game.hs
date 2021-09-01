@@ -40,11 +40,13 @@ module Swarm.Game
     -- * Robots
 
   , Robot, isActive
-  , robotName, robotDisplay, robotLocation, robotOrientation, machine, tickSteps, static
+  , robotEntity
+  , robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
+  , machine, tickSteps, static
 
     -- * Game state
   , ViewCenterRule(..), updateViewCenter, manualViewCenterUpdate
-  , GameState(..), initGameState
+  , GameState(..), initGameState, viewCenterRule
 
     -- ** Lenses
 
@@ -172,7 +174,7 @@ initGameState = return $
             then (RockT, Just (entityMap ! RockE))
             else (GrassT, Nothing)
 --      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
-  , _viewCenterRule = VCLocation (V2 0 0)
+  , _viewCenterRule = VCRobot "base"
   , _viewCenter = V2 0 0
   , _updated    = False
   , _replResult = Nothing

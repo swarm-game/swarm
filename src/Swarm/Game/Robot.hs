@@ -19,7 +19,7 @@ module Swarm.Game.Robot
     Robot(..)
 
     -- ** Lenses
-  , robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
+  , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
   , machine, tickSteps, static
 
     -- ** Create

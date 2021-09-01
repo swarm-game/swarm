@@ -17,6 +17,7 @@ import           Data.List.Split             (chunksOf)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
+import qualified Data.Text                   as T
 import           Linear
 import           Text.Read                   (readMaybe)
 import           Witch                       (into)
@@ -30,6 +31,7 @@ import           Brick.Widgets.Dialog
 import qualified Graphics.Vty                as V
 
 import           Swarm.Game
+import qualified Swarm.Game.Entity           as E
 import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
@@ -162,7 +164,7 @@ drawCell i w = case W.lookupEntity i w of
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
   = vBox
-    [ drawInventoryPlaceholder
+    [ drawInventory (s ^. gameState)
     , hBorder
     , vLimitPercent 30 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
     ]
@@ -174,13 +176,31 @@ drawMessages ms = Widget Fixed Fixed $ do
   let h   = ctx ^. availHeightL
   render . vBox . map txt . reverse . take h $ ms
 
-drawInventoryPlaceholder :: Widget Name
-drawInventoryPlaceholder
+drawInventory :: GameState -> Widget Name
+drawInventory g = case g ^. viewCenterRule of
+  VCRobot r -> drawInventoryFor (g ^? robotMap . ix r . robotEntity)
+  _         -> padBottom Max $ str " "
+
+drawInventoryFor :: Maybe Entity -> Widget Name
+drawInventoryFor Nothing = padBottom Max $ str " "
+drawInventoryFor (Just e)
   = padBottom Max
   $ vBox
-  [ hCenter (str "Inventory")
+  [ hCenter (txt $ T.append (e ^. entityName) " inventory" )
   , padAll 2
-    $ str "Coming soon!"
+    $ vBox
+    $ map drawItem (E.elems (e ^. entityInventory))
+  ]
+
+drawItem :: (Int, Entity) -> Widget Name
+drawItem (n, e) = drawLabelledEntityName e <+> showCount n
+  where
+    showCount = padLeft Max . str . show
+
+drawLabelledEntityName :: Entity -> Widget Name
+drawLabelledEntityName e = hBox
+  [ padRight (Pad 2) (displayEntity e)
+  , txt (e ^. entityName)
   ]
 
 drawRepl :: AppState -> Widget Name
