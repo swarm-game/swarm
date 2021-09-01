@@ -13,7 +13,6 @@ import           Control.Monad.IO.Class      (liftIO)
 import           Data.Array                  (range)
 import           Data.Either                 (isRight)
 import           Data.List.Split             (chunksOf)
-import           Data.Map                    (Map)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
@@ -159,7 +158,7 @@ drawCell i w = case W.lookupEntity i w of
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
   = vBox
-    [ drawInventory (s ^. gameState . inventoryGS)
+    [ drawInventoryPlaceholder
     , hBorder
     , vLimitPercent 30 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
     ]
@@ -171,33 +170,14 @@ drawMessages ms = Widget Fixed Fixed $ do
   let h   = ctx ^. availHeightL
   render . vBox . map txt . reverse . take h $ ms
 
-drawInventory :: Map Item Int -> Widget Name
-drawInventory inv
+drawInventoryPlaceholder :: Widget Name
+drawInventoryPlaceholder
   = padBottom Max
   $ vBox
   [ hCenter (str "Inventory")
   , padAll 2
-    $ vBox
-    $ map drawItem (M.assocs inv)
+    $ str "Coming soon!"
   ]
-
-drawItem :: (Item, Int) -> Widget Name
-drawItem (Resource c, n) = drawNamedResource c <+> showCount n
-  where
-    showCount = padLeft Max . str . show
-
-drawNamedResource :: Char -> Widget Name
-drawNamedResource c = str [c]
-  -- case M.lookup c resourceMap of
-  -- Nothing -> str [c]
-  -- Just rInfo ->
-  --   hBox [ withAttr (rInfo ^. resAttr) (padRight (Pad 2) (str [c])), txt (rInfo ^. resName) ]
-
-drawResource :: Char -> Widget Name
-drawResource c = str [c]
--- drawResource c = case M.lookup c resourceMap of
---   Nothing    -> str [c]
---   Just rInfo -> withAttr (rInfo ^. resAttr) (str [c])
 
 drawRepl :: AppState -> Widget Name
 drawRepl s = vBox $
