@@ -149,7 +149,12 @@ drawWorld g
     drawLoc (row,col) = case M.lookup (V2 col (-row)) robotsByLoc of
       Just r  -> withAttr (r ^. robotDisplay . displayAttr)
                  $ str [lookupDisplay (r ^. direction) (r ^. robotDisplay)]
-      Nothing -> drawResource (W.lookup (row,col) (g ^. world))
+      Nothing -> drawCell (row,col) (g ^. world)
+
+drawCell :: W.Worldly w => (Int, Int) -> w Entity -> Widget Name
+drawCell i w = case W.lookupEntity i w of
+  Just e  -> displayEntity e
+  Nothing -> str [W.lookupTerrain i w]
 
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
@@ -182,15 +187,17 @@ drawItem (Resource c, n) = drawNamedResource c <+> showCount n
     showCount = padLeft Max . str . show
 
 drawNamedResource :: Char -> Widget Name
-drawNamedResource c = case M.lookup c resourceMap of
-  Nothing -> str [c]
-  Just rInfo ->
-    hBox [ withAttr (rInfo ^. resAttr) (padRight (Pad 2) (str [c])), txt (rInfo ^. resName) ]
+drawNamedResource c = str [c]
+  -- case M.lookup c resourceMap of
+  -- Nothing -> str [c]
+  -- Just rInfo ->
+  --   hBox [ withAttr (rInfo ^. resAttr) (padRight (Pad 2) (str [c])), txt (rInfo ^. resName) ]
 
 drawResource :: Char -> Widget Name
-drawResource c = case M.lookup c resourceMap of
-  Nothing    -> str [c]
-  Just rInfo -> withAttr (rInfo ^. resAttr) (str [c])
+drawResource c = str [c]
+-- drawResource c = case M.lookup c resourceMap of
+--   Nothing    -> str [c]
+--   Just rInfo -> withAttr (rInfo ^. resAttr) (str [c])
 
 drawRepl :: AppState -> Widget Name
 drawRepl s = vBox $

@@ -67,10 +67,9 @@ import           Numeric.Noise.Perlin
 import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, from)
 import           Control.Monad.State
-import           Data.Map                (Map)
+import           Data.Map                (Map, (!))
 import qualified Data.Map                as M
 import           Data.Maybe              (fromMaybe, isNothing)
-import qualified Data.Set                as S
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import qualified Data.Text.IO            as T
@@ -214,7 +213,7 @@ data GameState = GameState
   { _robotMap       :: M.Map Text Robot
   , _newRobots      :: [Robot]
   , _gensym         :: Int
-  , _world          :: W.TileCachingWorld
+  , _world          :: W.TileCachingWorld Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter     :: V2 Int
   , _updated        :: Bool
@@ -272,11 +271,11 @@ initGameState = return $
   , _gensym     = 0
   , _world      = W.newWorld $ \(i,j) ->
       if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
-        then 'T'
+        then ('.', Just (entityMap ! TreeE))
         else
           if noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0
-            then '@'
-            else '.'
+            then ('.', Just (entityMap ! RockE))
+            else ('.', Nothing)
 --      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
   , _viewCenterRule = VCLocation (V2 0 0)
   , _viewCenter = V2 0 0
@@ -476,23 +475,22 @@ execConst Return _ _ _ = error "execConst Return should have been handled alread
 execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
 execConst Move _ k r   = nonStatic Move k r $ do
   let V2 x y = (r ^. location) ^+^ (r ^. direction ? zero)
-  resrc <- uses world (W.lookup (-y,x))
-  let props = resourceMap ^. ix resrc . resProperties
-  case Solid `S.member` props of
-    True  -> step r (Out VUnit k)
-    False -> do
+  me <- uses world (W.lookupEntity (-y,x))
+  case (Solid `elem`) . view entityProperties <$> me of
+    Just True  -> step r (Out VUnit k)
+    _          -> do
       updated .= True
       step (r & location %~ (^+^ (r ^. direction ? zero))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do
   updated .= True
   let V2 x y = r ^. location
-  resrc <- uses world (W.lookup (-y,x))
-  let props = resourceMap ^. ix resrc . resProperties
-  case Harvestable `S.member` props of
-    False -> step r $ Out VUnit k
-    True -> do
-      h <- uses world (W.lookup (-y,x))
-      inventory . at (Resource h) . non 0 += 1
+  me <- uses world (W.lookupEntity (-y,x))
+  case (Harvestable `elem`) . view entityProperties <$> me of
+    Just False -> step r $ Out VUnit k
+    _ -> do
+      --    XXX fix inventory
+      -- h <- uses world (W.lookupEntity (-y,x))
+      -- inventory . at (Resource h) . non 0 += 1
       let seedBot =
             mkRobot "seed" (r ^. location) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
               & robotDisplay .~
