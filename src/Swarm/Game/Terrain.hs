@@ -37,7 +37,7 @@ data TerrainType
   | GrassT
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
--- | XXX
+-- | Display a terrain type as a single charcter widget.
 displayTerrain :: TerrainType -> Widget n
 displayTerrain t = displayWidget Nothing (terrainMap ! t)
 
