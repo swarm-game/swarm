@@ -1,8 +1,3 @@
-{-# LANGUAGE PatternSynonyms      #-}
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Language.Syntax
@@ -14,6 +9,11 @@
 -- Abstract syntax for the Swarm programming language.
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE PatternSynonyms      #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Swarm.Language.Syntax
   ( -- * Constants
@@ -65,6 +65,7 @@ applyTurn South _       = south
 applyTurn East _        = east
 applyTurn West _        = west
 
+-- | The cardinal directions.
 north, south, east, west :: V2 Int
 north = V2 0 1
 south = V2 0 (-1)
@@ -107,7 +108,7 @@ data ArithConst = Neg | Add | Sub | Mul | Div | Exp
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
---   'VCApp') until it has enough, then dispatch the constant's
+--   'Swarm.Game.Value.VCApp') until it has enough, then dispatch the constant's
 --   behavior.
 arity :: Const -> Int
 arity (Cmp _)     = 2
@@ -123,7 +124,7 @@ arity c
 -- | Some constants are commands, which means a fully saturated
 --   application of those constants counts as a value, and should not
 --   be reduced further until it is to be executed (i.e. until it
---   meets an 'FExec' frame).  Other constants just represent pure
+--   meets an 'Swarm.Game.CEK.FExec' frame).  Other constants just represent pure
 --   functions; fully saturated applications of such constants should
 --   be evaluated immediately.
 isCmd :: Const -> Bool
@@ -227,9 +228,13 @@ type ATerm = Term' Identity
 -- | Terms with no type annotations.
 type UTerm = Term' (C.Const ())
 
+-- | Convenient synonym for the 'Identity' constructor, to be used to
+--   build and pattern match on @'ATerm' = Term' Identity@ values.
 pattern ID :: a -> Identity a
 pattern ID a = Identity a
 
+-- | Convenient synonym for @Const ()@, to be used to build and
+--   pattern match on @'UTerm' = Term' (Const ())@ values.
 pattern NONE :: C.Const () a
 pattern NONE = C.Const ()
 

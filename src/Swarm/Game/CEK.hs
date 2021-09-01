@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Swarm.Game.Value
+-- Module      :  Swarm.Game.CEK
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -181,8 +181,8 @@ idleMachine = initMachine (TConst Noop) (TyCmd TyUnit)
 
 -- | Initialize a machine state with a command that is already a value
 --   (for example, this is the case when spawning a new robot with the
---   'build' command; because of eager evaluation, the argument to
---   'build' has already been evaluated (but not executed!)).
+--   'Build' command; because of eager evaluation, the argument to
+--   'Build' has already been evaluated (but not executed!)).
 initMachineV :: Value -> CEK
 initMachineV v = Out v [FExec]
 

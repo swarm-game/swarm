@@ -22,7 +22,7 @@ data Type
   | TyCmd Type         -- ^ Commands, with return type. Note that
                        --   commands form a monad.
   | Type :*: Type      -- ^ Product type.
-  | Type :->: Type     -- ^ Functions.
+  | Type :->: Type     -- ^ Function type.
   deriving (Eq, Ord, Show)
 
 infixr 1 :->:

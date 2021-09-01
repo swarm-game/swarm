@@ -1,5 +1,3 @@
-{-# LANGUAGE NumericUnderscores #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.App
@@ -11,6 +9,8 @@
 -- Main entry point for the Swarm application.
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE NumericUnderscores #-}
 
 module Swarm.App where
 
@@ -34,7 +34,7 @@ app = App
   , appChooseCursor = showFirstCursor
   , appHandleEvent  = handleEvent
   , appStartEvent   = return
-  , appAttrMap      = const theAttrMap
+  , appAttrMap      = const swarmAttrMap
   }
 
 -- | The main @IO@ computation which initializes the state, sets up

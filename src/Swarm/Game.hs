@@ -1,12 +1,3 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE GADTs             #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeApplications  #-}
-
-{-# OPTIONS_GHC -fno-warn-unused-binds #-}
-  -- no-warn-unused-binds is for debugging code
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Game
@@ -20,19 +11,25 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeApplications  #-}
+
+{-# OPTIONS_GHC -fno-warn-unused-binds #-}
+  -- no-warn-unused-binds is for debugging code
+
 module Swarm.Game
-  ( -- * The CEK abstract machine
-
-
-    -- ** Values
+  ( -- * Values
 
     Value(..), prettyValue
 
-    -- ** Constructing CEK machine states
+    -- * Constructing CEK machine states
 
   , initMachine, initMachineV, idleMachine
 
-    -- ** Running the game
+    -- * Running the game
 
   , gameStep
 
@@ -60,7 +57,7 @@ module Swarm.Game
 
     -- * Convenience re-exports
 
-  , module Swarm.Game.Resource
+  , module Swarm.Game.Entity
   )
   where
 
@@ -85,7 +82,7 @@ import           Witch
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Resource
+import           Swarm.Game.Entity
 import           Swarm.Game.Value
 import qualified Swarm.Game.World        as W
 import           Swarm.Language.Pipeline
@@ -307,7 +304,7 @@ evalStepsPerTick = 100
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
---   the 'run' command; but eventually I want to get rid of that
+--   the 'Run' command; but eventually I want to get rid of that
 --   command and have a library of modules that you can create, edit,
 --   and run all from within the UI (the library could also be loaded
 --   from a file when the whole program starts up).
@@ -381,7 +378,7 @@ step r cek = do
 
 -- | The main CEK machine workhorse.  Given a robot, look at its CEK
 --   machine state and figure out a single next step. The reason we
---   return a @Maybe Robot@ is that the robot could execute a 'halt'
+--   return a @Maybe Robot@ is that the robot could execute a 'Halt'
 --   instruction, making it disappear, which we signal by returning
 --   @Nothing@.
 stepRobot :: Robot -> StateT GameState IO (Maybe Robot)

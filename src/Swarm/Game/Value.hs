@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Game.Value
@@ -11,6 +9,8 @@
 -- Values and environments used for interpreting the Swarm language.
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE GADTs #-}
 
 module Swarm.Game.Value
   ( -- * Values
@@ -63,7 +63,7 @@ data Value where
   --   application is fully saturated (as defined by its 'arity'),
   --   whether it is a value or not depends on whether or not it
   --   represents a command (as defined by 'isCmd').  If a command
-  --   (e.g. 'Build'), it is a value, and awaits an 'FExec' frame
+  --   (e.g. 'Build'), it is a value, and awaits an 'Swarm.Game.CEK.FExec' frame
   --   which will cause it to execute.  Otherwise (e.g. 'If'), it is
   --   not a value, and will immediately reduce.
   VCApp   :: Const -> [Value] -> Value
@@ -82,7 +82,8 @@ data Value where
   VDelay  :: UTerm -> Env -> Value
   deriving (Eq, Ord, Show)
 
--- XXX write a more principled pretty-printer?
+-- XXX write a more principled pretty-printer, i.e. actually make a
+-- PrettyPrec instance
 -- | Pretty-print a value.
 prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm

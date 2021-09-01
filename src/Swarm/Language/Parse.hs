@@ -12,12 +12,20 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Parser for the Swarm language.
+-- Parser for the Swarm language.  Note, you probably don't want to
+-- use this directly, unless there is a good reason to parse a term
+-- without also type checking it; use 'Swarm.Language.Pipeline.processTerm'
+-- or 'Swarm.Language.Pipeline.processCmd' instead, which parse,
+-- typecheck, and elaborate a term all at once.
 --
 -----------------------------------------------------------------------------
 
 module Swarm.Language.Parse
-  ( parseType, parseTerm
+  ( -- * Parsers
+
+    parseType, parseTerm
+
+    -- * Utility functions
 
   , runParser, readTerm
 
@@ -106,6 +114,7 @@ parens = between (symbol "(") (symbol ")")
 --------------------------------------------------
 -- Parser
 
+-- | Parse a Swarm language type.
 parseType :: Parser Type
 parseType = makeExprParser parseTypeAtom table
   where
@@ -175,6 +184,7 @@ parseTermAtom =
   <|> TConst Noop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm
 
+-- | Parse a Swarm language term.
 parseTerm :: Parser Term
 parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 

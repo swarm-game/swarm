@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Swarm.Language.Pretty
+-- Copyright   :  Brent Yorgey
+-- Maintainer  :  byorgey@gmail.com
+--
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Pretty-printing for the Swarm language.
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -15,18 +27,25 @@ import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
 
+-- | Type class for things that can be pretty-printed, given a
+--   precedence level of their context.
 class PrettyPrec a where
   prettyPrec :: Int -> a -> Doc ann   -- can replace with custom ann type later if desired
 
+-- | Pretty-print a thing, with a context precedence level of zero.
 ppr :: PrettyPrec a => a -> Doc ann
 ppr = prettyPrec 0
 
+-- | Pretty-print something and render it as @Text@.
 prettyText :: PrettyPrec a => a -> Text
 prettyText = RT.renderStrict . layoutPretty defaultLayoutOptions . ppr
 
+-- | Pretty-print something and render it as a @String@.
 prettyString :: PrettyPrec a => a -> String
 prettyString = RS.renderString . layoutPretty defaultLayoutOptions . ppr
 
+-- | Optionally surround a document with parentheses depending on the
+--   @Bool@ argument.
 pparens :: Bool -> Doc ann -> Doc ann
 pparens True  = parens
 pparens False = id
