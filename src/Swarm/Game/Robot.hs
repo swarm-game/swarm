@@ -19,7 +19,8 @@ module Swarm.Game.Robot
     Robot(..)
 
     -- ** Lenses
-  , robotName, robotDisplay, robotLocation, robotOrientation, machine, tickSteps, static
+  , robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
+  , machine, tickSteps, static
 
     -- ** Create
 
@@ -110,6 +111,9 @@ robotDisplay = robotEntity . entityDisplay
 
 robotOrientation :: Lens' Robot (Maybe (V2 Int))
 robotOrientation = robotEntity . entityOrientation
+
+robotInventory :: Lens' Robot Inventory
+robotInventory = robotEntity . entityInventory
 
 -- | Create a robot.
 mkRobot

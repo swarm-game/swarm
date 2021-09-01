@@ -34,7 +34,7 @@ module Swarm.Game.Entity
 
     -- ** Lenses
   , entityDisplay, entityName, entityDescription, entityOrientation
-  , entityProperties, inventory
+  , entityProperties, entityInventory
 
     -- ** Basic entity types and entity map
   , EntityType(..)
@@ -48,6 +48,7 @@ module Swarm.Game.Entity
   )
 where
 
+import           Brick              (Widget)
 import           Control.Lens       (Getter, Lens', Wrapped (..), lens, to,
                                      (%~), (&), (.~), (^.))
 import           Data.Bifunctor     (second)
@@ -61,8 +62,6 @@ import           Data.Text          (Text)
 import           GHC.Generics       (Generic)
 import           Linear
 import           Prelude            hiding (lookup)
-
-import           Brick              (Widget, str, withAttr)
 
 import           Swarm.Game.Display
 import           Swarm.TUI.Attr
@@ -219,14 +218,12 @@ entityProperties :: Lens' Entity [EntityProperty]
 entityProperties = hashedLens _entityProperties (\e x -> e { _entityProperties = x })
 
 -- | The inventory of other entities carried by this entity.
-inventory :: Lens' Entity Inventory
-inventory = hashedLens _entityInventory (\e x -> e { _entityInventory = x })
+entityInventory :: Lens' Entity Inventory
+entityInventory = hashedLens _entityInventory (\e x -> e { _entityInventory = x })
 
 -- | Display an entity as a single character.
 displayEntity :: Entity -> Widget n
-displayEntity e
-  = withAttr (e ^. entityDisplay . displayAttr)
-  $ str [lookupDisplay (e ^. entityOrientation) (e ^. entityDisplay)]
+displayEntity e = displayWidget (e ^. entityOrientation) (e ^. entityDisplay)
 
 ------------------------------------------------------------
 -- Inventory

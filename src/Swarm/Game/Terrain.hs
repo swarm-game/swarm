@@ -1,0 +1,50 @@
+{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Swarm.Game.Terrain
+-- Copyright   :  Brent Yorgey
+-- Maintainer  :  byorgey@gmail.com
+--
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Terrain types and properties.
+--
+-----------------------------------------------------------------------------
+
+module Swarm.Game.Terrain
+  ( -- * Terrain
+
+    TerrainType(..)
+  , displayTerrain
+  , terrainMap
+
+  ) where
+
+import           Brick              (Widget)
+import           Data.Map           (Map, (!))
+import qualified Data.Map           as M
+
+import           Swarm.Game.Display
+import           Swarm.TUI.Attr
+
+-- | The different possible types of terrain. Unlike entities and
+--   robots, these are hard-coded into the game.
+data TerrainType
+  = RockT
+  | DirtT
+  | GrassT
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+-- | XXX
+displayTerrain :: TerrainType -> Widget n
+displayTerrain t = displayWidget Nothing (terrainMap ! t)
+
+-- | A map containing a 'Display' record for each different 'TerrainType'.
+terrainMap :: Map TerrainType Display
+terrainMap = M.fromList
+  [ (RockT, defaultTerrainDisplay '_' rockAttr)
+  , (DirtT, defaultTerrainDisplay '_' dirtAttr)
+  , (GrassT, defaultTerrainDisplay '_' plantAttr)
+  ]

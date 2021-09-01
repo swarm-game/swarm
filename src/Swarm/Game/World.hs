@@ -9,7 +9,7 @@
 -- A /world/ refers to the grid on which the game takes place, and the
 -- things in it (besides robots). A world has a base, immutable
 -- /terrain/ layer, where each cell contains a terrain type, and a
--- mutable /entity/ layer, where each cell has at most one entity.
+-- mutable /entity/ layer, with at most one entity per cell.
 --
 -- A world is technically finite but practically infinite (worlds are
 -- indexed by 64-bit signed integers, so they correspond to a \(
@@ -22,7 +22,10 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
 
 module Swarm.Game.World
   ( -- * The @Worldly@ type class
@@ -55,30 +58,29 @@ import           Swarm.Util
 --   helpful to think about what operations a world needs to support,
 --   and to be able to play with swapping in different implementations
 --   to see how it affects performance.
-class Worldly w where
+class Worldly w t e | w -> t e where
 
   -- | Create a new world from a function that defines what is at
-  --   every location: a character representing the terrain, and
-  --   possibly an entity.
-  newWorld   :: ((Int,Int) -> (Char, Maybe e)) -> w e
+  --   every location: a terrain value, and possibly an entity.
+  newWorld   :: ((Int,Int) -> (t, Maybe e)) -> w
 
   -- | Look up the terrain character at given (row, column)
   --   coordinates.  Note that this does /not/ return an updated
   --   world, since it would be difficult to manage all the updates.
   --   Instead, the 'loadRegion' function can be used before calling
   --   'lookupTerrain'.
-  lookupTerrain :: (Int,Int) -> w e -> Char
+  lookupTerrain :: (Int,Int) -> w -> t
 
   -- | Look up the entity at given (row, column) coordinates.
-  lookupEntity :: (Int,Int) -> w e -> Maybe e
+  lookupEntity :: (Int,Int) -> w -> Maybe e
 
   -- | Update the entity at a given location. into the world.
-  update     :: (Int,Int) -> (Maybe e -> Maybe e) -> w e -> w e
+  update     :: (Int,Int) -> (Maybe e -> Maybe e) -> w -> w
 
   -- | Give a hint to the world that it should preload the region in
   --   between the given coordinates (upper left and bottom right) to
   --   make subsequent lookups faster.
-  loadRegion :: ((Int,Int), (Int,Int)) -> w e -> w e
+  loadRegion :: ((Int,Int), (Int,Int)) -> w -> w
 
   -- XXX Allow smaller, finite worlds Too?  Maybe add a variant of
   -- newWorld that creates a finite world from an array.  This could
@@ -94,17 +96,18 @@ class Worldly w where
 --   function first just looks up the location in the map of changed
 --   locations, and if it's not there it simply runs the function to
 --   find out what character should be there.
-data SimpleWorld e = SimpleWorld
-  ((Int,Int) -> (Char, Maybe e))    -- ^ World generation function
-  (M.Map (Int,Int) (Maybe e))       -- ^ Map of locations that have a different entity
-                                    --   than originally
+data SimpleWorld t e = SimpleWorld
+  ((Int,Int) -> (t, Maybe e))    -- ^ World generation function
+  (M.Map (Int,Int) (Maybe e))    -- ^ Map of locations that have a different entity
+                                 --   than originally
 
-instance Worldly SimpleWorld where
-  newWorld f                   = SimpleWorld f M.empty
+instance Worldly (SimpleWorld t e) t e where
+  newWorld f                        = SimpleWorld f M.empty
   lookupTerrain i (SimpleWorld f _) = fst (f i)
   lookupEntity i (SimpleWorld f m)  = M.lookup i m ? snd (f i)
-  update i g (SimpleWorld f m) = SimpleWorld f (M.adjust g i m)
-  loadRegion _ w               = w
+  update i g w@(SimpleWorld f m)
+    = SimpleWorld f (M.insert i (g (lookupEntity i w)) m)
+  loadRegion _ w                    = w
 
 ------------------------------------------------------------
 -- TileCachingWorld
@@ -118,8 +121,8 @@ tileMask = (1 `shiftL` tileBits) - 1
 tileBounds :: ((Int,Int), (Int,Int))
 tileBounds = ((0,0),(tileMask,tileMask))
 
-type TerrainTile  = U.UArray (Int,Int) Char
-type EntityTile e = A.Array (Int,Int) (Maybe e)
+type TerrainTile t = U.UArray (Int,Int) t
+type EntityTile e  = A.Array (Int,Int) (Maybe e)
 
 -- | A 'TileCachingWorld' keeps a cache of recently accessed square
 --   tiles to make lookups faster.  Currently, tiles are \(64 \times
@@ -132,12 +135,12 @@ type EntityTile e = A.Array (Int,Int) (Maybe e)
 --   bit tricky, and in any case it's probably not going to matter
 --   much for a while.
 
-data TileCachingWorld e = TileCachingWorld
-  ((Int,Int) -> (Char, Maybe e))                 -- ^ World generation function
-  (M.Map (Int,Int) (TerrainTile, EntityTile e))  -- ^ Tile cache
-  (M.Map (Int,Int) (Maybe e))                    -- ^ Map of locations that have changed entities
+data TileCachingWorld t e = TileCachingWorld
+  ((Int,Int) -> (t, Maybe e))                      -- ^ World generation function
+  (M.Map (Int,Int) (TerrainTile t, EntityTile e))  -- ^ Tile cache
+  (M.Map (Int,Int) (Maybe e))                      -- ^ Map of locations that have changed entities
 
-instance Worldly TileCachingWorld where
+instance IArray U.UArray t => Worldly (TileCachingWorld t e) t e where
   newWorld f = TileCachingWorld f M.empty M.empty
   lookupTerrain i (TileCachingWorld f t _)
     = ((U.! over both (.&. tileMask) i) . fst <$> M.lookup (tileIndex i) t)
@@ -146,7 +149,8 @@ instance Worldly TileCachingWorld where
     = M.lookup i m
         ? ((A.! over both (.&. tileMask) i) . snd <$> M.lookup (tileIndex i) t)
         ? snd (f i)
-  update i g (TileCachingWorld f t m) = TileCachingWorld f t (M.adjust g i m)
+  update i g w@(TileCachingWorld f t m)
+    = TileCachingWorld f t (M.insert i (g (lookupEntity i w)) m)
   loadRegion reg (TileCachingWorld f t m) = TileCachingWorld f t' m
     where
       tiles = range (over both tileIndex reg)

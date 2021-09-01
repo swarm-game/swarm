@@ -28,14 +28,16 @@ module Swarm.Game.Display
 
     -- ** Lookup
   , lookupDisplay
+  , displayWidget
 
     -- ** Construction
+  , defaultTerrainDisplay
   , defaultEntityDisplay
   , defaultRobotDisplay
 
   ) where
 
-import           Brick                 (AttrName)
+import           Brick                 (AttrName, Widget, str, withAttr)
 import           Control.Lens          hiding (Const, from)
 import           Data.Hashable
 import           Data.Map              (Map)
@@ -84,6 +86,19 @@ makeLenses ''Display
 lookupDisplay :: Maybe (V2 Int) -> Display -> Char
 lookupDisplay Nothing disp  = disp ^. defaultChar
 lookupDisplay (Just v) disp = M.lookup v (disp ^. orientationMap) ? (disp ^. defaultChar)
+
+-- | Given the (optional) orientation of an entity and its display,
+--   return a widget showing the entity.
+displayWidget :: Maybe (V2 Int) -> Display -> Widget n
+displayWidget orient disp = withAttr (disp ^. displayAttr) $ str [lookupDisplay orient disp]
+
+-- | The default way to display some terrain using the given character
+--   and attribute, with priority 0.
+defaultTerrainDisplay :: Char -> AttrName -> Display
+defaultTerrainDisplay c attr
+  = defaultEntityDisplay c
+  & displayPriority .~ 0
+  & displayAttr .~ attr
 
 -- | Construct a default display for an entity that uses only a single
 --   display character, the default entity attribute, and priority 1.

@@ -63,6 +63,7 @@ import           Numeric.Noise.Perlin
 import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, from)
 import           Control.Monad.State
+import           Data.Bifunctor          (first)
 import           Data.Map                (Map, (!))
 import qualified Data.Map                as M
 import           Data.Maybe              (fromMaybe)
@@ -79,6 +80,7 @@ import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entity
 import           Swarm.Game.Robot
+import           Swarm.Game.Terrain
 import           Swarm.Game.Value
 import qualified Swarm.Game.World        as W
 import           Swarm.Language.Pipeline
@@ -101,7 +103,7 @@ data GameState = GameState
   { _robotMap       :: M.Map Text Robot
   , _newRobots      :: [Robot]
   , _gensym         :: Int
-  , _world          :: W.TileCachingWorld Entity
+  , _world          :: W.TileCachingWorld Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter     :: V2 Int
   , _updated        :: Bool
@@ -143,6 +145,12 @@ ensureUniqueName newRobot = do
       return $ newRobot & robotName .~ name'
     False -> return newRobot
 
+addRobot :: MonadState GameState m => Robot -> m Robot
+addRobot r = do
+  r' <- ensureUniqueName r
+  newRobots %= (r' :)
+  return r'
+
 pn1, pn2 :: Perlin
 pn1 = perlin 0 5 0.05 0.5
 pn2 = perlin 0 5 0.05 0.75
@@ -156,13 +164,13 @@ initGameState = return $
   { _robotMap   = M.singleton "base" baseRobot
   , _newRobots  = []
   , _gensym     = 0
-  , _world      = W.newWorld $ \(i,j) ->
+  , _world      = W.newWorld . fmap (first fromEnum) $ \(i,j) ->
       if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
-        then ('.', Just (entityMap ! TreeE))
+        then (DirtT, Just (entityMap ! TreeE))
         else
           if noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0
-            then ('.', Just (entityMap ! RockE))
-            else ('.', Nothing)
+            then (RockT, Just (entityMap ! RockE))
+            else (GrassT, Nothing)
 --      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
   , _viewCenterRule = VCLocation (V2 0 0)
   , _viewCenter = V2 0 0
@@ -368,22 +376,37 @@ execConst Move _ k r   = nonStatic Move k r $ do
       updated .= True
       step (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do
-  updated .= True
   let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y,x))
-  case (Harvestable `elem`) . view entityProperties <$> me of
-    Just False -> step r $ Out VUnit k
-    _ -> do
-      --    XXX fix inventory
-      -- h <- uses world (W.lookupEntity (-y,x))
-      -- inventory . at (Resource h) . non 0 += 1
-      let seedBot =
-            mkRobot "seed" (r ^. robotLocation) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
-              & robotDisplay .~
-                (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
-      seedBot' <- ensureUniqueName seedBot
-      newRobots %= (seedBot' :)
-      step r (Out VUnit k)
+  case me of
+
+    -- No entity here.
+    Nothing -> step r $ Out VUnit k
+
+    -- There is an entity here...
+    Just e -> case Harvestable `elem` (e ^. entityProperties) of
+
+      -- ...but it is not harvestable.
+      False -> step r $ Out VUnit k
+
+      -- ...and it is harvestable.
+      True -> do
+        updated .= True
+
+        -- Remove the entity from the world.
+        world %= W.update (-y,x) (const Nothing)
+
+        -- Grow a new entity from a seed.
+        -- XXX need to figure out how the seedbot is going to replant the same kind of entity.
+        let seedBot =
+              mkRobot "seed" (r ^. robotLocation) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
+                & robotDisplay .~
+                  (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
+        _ <- addRobot seedBot
+
+        -- Add the harvested item to the robot's inventory
+        step (r & robotInventory %~ insert e) $ Out VUnit k
+
 execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   updated .= True
   step (r & robotOrientation . _Just %~ applyTurn d) (Out VUnit k)
@@ -459,8 +482,7 @@ execConst Snd args k _        = badConst Snd args k
 
 execConst Build [VString name, c] k r = do
   let newRobot = mkRobot name (r ^. robotLocation) (r ^. robotOrientation ? east) (initMachineV c)
-  newRobot' <- ensureUniqueName newRobot
-  newRobots %= (newRobot' :)
+  newRobot' <- addRobot newRobot
   updated .= True
   step r $ Out (VString (newRobot' ^. robotName)) k
 execConst Build args k _ = badConst Build args k

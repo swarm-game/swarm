@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
@@ -29,6 +30,7 @@ import           Brick.Widgets.Dialog
 import qualified Graphics.Vty                as V
 
 import           Swarm.Game
+import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax       (east, north, south, west)
@@ -142,6 +144,8 @@ drawWorld g
         ixs = range (viewingRegion g (w,h))
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
+    -- XXX update how this works!  Gather all displays, all entities...
+
     robotsByLoc
       = M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
       . M.elems $ g ^. robotMap
@@ -150,10 +154,10 @@ drawWorld g
                  $ str [lookupDisplay (r ^. robotOrientation) (r ^. robotDisplay)]
       Nothing -> drawCell (row,col) (g ^. world)
 
-drawCell :: W.Worldly w => (Int, Int) -> w Entity -> Widget Name
+drawCell :: W.Worldly w Int Entity => (Int, Int) -> w -> Widget Name
 drawCell i w = case W.lookupEntity i w of
   Just e  -> displayEntity e
-  Nothing -> str [W.lookupTerrain i w]
+  Nothing -> displayTerrain (toEnum (W.lookupTerrain i w))
 
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
