@@ -159,7 +159,7 @@ drawCell i w = case W.lookupEntity i w of
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
   = vBox
-    [ drawInventory (s ^. gameState . inventory)
+    [ drawInventory (s ^. gameState . inventoryGS)
     , hBorder
     , vLimitPercent 30 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
     ]

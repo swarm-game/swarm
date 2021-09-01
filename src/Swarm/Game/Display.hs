@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Game.Display
@@ -11,6 +9,13 @@
 -- Utilities for describing how to display in-game entities in the TUI.
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE DeriveAnyClass  #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE TemplateHaskell #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+  -- Orphan Hashable instances needed to derive Hashable Display
 
 module Swarm.Game.Display
   (
@@ -32,8 +37,10 @@ module Swarm.Game.Display
 
 import           Brick                 (AttrName)
 import           Control.Lens          hiding (Const, from)
+import           Data.Hashable
 import           Data.Map              (Map)
 import qualified Data.Map              as M
+import           GHC.Generics          (Generic)
 import           Linear
 
 import           Swarm.Language.Syntax
@@ -62,7 +69,13 @@ data Display = Display
     --   on top of lower.
   , _displayPriority :: Priority
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, Hashable)
+
+-- Some orphan instances we need to be able to derive a Hashable
+-- instance for Display
+instance (Hashable k, Hashable v) => Hashable (Map k v) where
+  hashWithSalt = hashUsing M.assocs
+instance Hashable AttrName
 
 makeLenses ''Display
 

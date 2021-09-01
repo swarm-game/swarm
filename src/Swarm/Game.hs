@@ -52,7 +52,7 @@ module Swarm.Game
 
     -- ** Lenses
 
-  , robotMap, newRobots, world, viewCenter, updated, replResult, inventory
+  , robotMap, newRobots, world, viewCenter, updated, replResult, inventoryGS
   , messageQueue
 
     -- * Convenience re-exports
@@ -218,7 +218,7 @@ data GameState = GameState
   , _viewCenter     :: V2 Int
   , _updated        :: Bool
   , _replResult     :: Maybe (Type, Maybe Value)
-  , _inventory      :: Map Item Int
+  , _inventoryGS    :: Map Item Int
   , _messageQueue   :: [Text]
   }
 
@@ -281,7 +281,7 @@ initGameState = return $
   , _viewCenter = V2 0 0
   , _updated    = False
   , _replResult = Nothing
-  , _inventory  = M.empty
+  , _inventoryGS  = M.empty
   , _messageQueue = []
   }
 
