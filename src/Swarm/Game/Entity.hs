@@ -48,7 +48,8 @@ module Swarm.Game.Entity
   )
 where
 
-import           Control.Lens
+import           Control.Lens       (Getter, Lens', Wrapped (..), lens, to,
+                                     (%~), (&), (.~), (^.))
 import           Data.Bifunctor     (second)
 import           Data.Function      (on)
 import           Data.Hashable
@@ -56,7 +57,6 @@ import           Data.IntMap        (IntMap)
 import qualified Data.IntMap        as IM
 import           Data.Map           (Map)
 import qualified Data.Map           as M
-import           Data.Maybe         (fromMaybe)
 import           Data.Text          (Text)
 import           GHC.Generics       (Generic)
 import           Linear
@@ -121,13 +121,21 @@ data EntityProperty
 --   entities stored in the world that are the same will literally
 --   just be stored as pointers to the same shared record.
 data Entity = Entity
-  { _entityHash        :: Int              -- ^ A hash value computed from the other fields
-  , _entityDisplay     :: Display          -- ^ The way this entity should be displayed
-                                           --   on the world map.
-  , _entityName        :: Text             -- ^ The name of the entity, used
-                                           --   /e.g./ in an inventory display.
+  { _entityHash        :: Int              -- ^ A hash value computed
+                                           --   from the other fields
+  , _entityDisplay     :: Display          -- ^ The way this entity
+                                           --   should be displayed on
+                                           --   the world map.
+  , _entityName        :: Text             -- ^ The name of the
+                                           --   entity, used /e.g./ in
+                                           --   an inventory display.
   , _entityDescription :: Text             -- ^ A longer-form description.
-  , _entityOrientation :: Maybe (V2 Int)   -- ^ The entity's orientation (if it has one).
+  , _entityOrientation :: Maybe (V2 Int)   -- ^ The entity's
+                                           --   orientation (if it has
+                                           --   one).  For example,
+                                           --   when a robot moves, it
+                                           --   moves in the direction
+                                           --   of its orientation.
   , _entityProperties  :: [EntityProperty] -- ^ Properties of the entity.
   , _entityInventory   :: Inventory
   }
@@ -141,11 +149,11 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm descr or props inv)
+  hashWithSalt s (Entity _ disp nm descr orient props inv)
     = s `hashWithSalt` disp
         `hashWithSalt` nm
         `hashWithSalt` descr
-        `hashWithSalt` or
+        `hashWithSalt` orient
         `hashWithSalt` props
         `hashWithSalt` inv
 
@@ -170,7 +178,7 @@ mkEntity
   -> Maybe (V2 Int)   -- ^ Orientation
   -> [EntityProperty] -- ^ Properties
   -> Entity
-mkEntity disp nm descr or props = rehashEntity $ Entity 0 disp nm descr or props empty
+mkEntity disp nm descr orient props = rehashEntity $ Entity 0 disp nm descr orient props empty
 
 ------------------------------------------------------------
 -- Entity lenses
@@ -261,11 +269,11 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount n e = _Wrapped' %~ IM.alter (removeCount n) (e ^. entityHash)
+deleteCount k e = _Wrapped' %~ IM.alter removeCount (e ^. entityHash)
   where
-    removeCount :: Count -> Maybe (Count, a) -> Maybe (Count, a)
-    removeCount _ Nothing       = Nothing
-    removeCount k (Just (n, a))
+    removeCount :: Maybe (Count, a) -> Maybe (Count, a)
+    removeCount Nothing       = Nothing
+    removeCount (Just (n, a))
       | k >= n    = Nothing
       | otherwise = Just (n-k, a)
 

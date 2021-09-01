@@ -33,14 +33,14 @@ module Swarm.Game
 
   , gameStep
 
+    -- * Displays
+
+  , Display, lookupDisplay, displayAttr, displayPriority
+
     -- * Robots
 
-  , Display, defaultChar, orientationMap, displayAttr, displayPriority
-  , lookupDisplay, defaultRobotDisplay
-  , Robot(..), mkRobot, baseRobot, isActive
-
-    -- ** Lenses
-  , robotName, robotDisplay, location, direction, machine, tickSteps, static
+  , Robot, isActive
+  , robotName, robotDisplay, robotLocation, robotOrientation, machine, tickSteps, static
 
     -- * Game state
   , ViewCenterRule(..), updateViewCenter, manualViewCenterUpdate
@@ -113,7 +113,7 @@ makeLenses ''GameState
 
 applyViewCenterRule :: ViewCenterRule -> Map Text Robot -> Maybe (V2 Int)
 applyViewCenterRule (VCLocation l) _ = Just l
-applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . location
+applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 
 updateViewCenter :: GameState -> GameState
 updateViewCenter g = g
@@ -360,16 +360,16 @@ execConst Halt _ _ _   = updated .= True >> return Nothing
 execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
 execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
 execConst Move _ k r   = nonStatic Move k r $ do
-  let V2 x y = (r ^. location) ^+^ (r ^. direction ? zero)
+  let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
   me <- uses world (W.lookupEntity (-y,x))
   case (Solid `elem`) . view entityProperties <$> me of
     Just True  -> step r (Out VUnit k)
     _          -> do
       updated .= True
-      step (r & location %~ (^+^ (r ^. direction ? zero))) (Out VUnit k)
+      step (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) (Out VUnit k)
 execConst Harvest _ k r = nonStatic Harvest k r $ do
   updated .= True
-  let V2 x y = r ^. location
+  let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y,x))
   case (Harvestable `elem`) . view entityProperties <$> me of
     Just False -> step r $ Out VUnit k
@@ -378,7 +378,7 @@ execConst Harvest _ k r = nonStatic Harvest k r $ do
       -- h <- uses world (W.lookupEntity (-y,x))
       -- inventory . at (Resource h) . non 0 += 1
       let seedBot =
-            mkRobot "seed" (r ^. location) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
+            mkRobot "seed" (r ^. robotLocation) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
               & robotDisplay .~
                 (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
       seedBot' <- ensureUniqueName seedBot
@@ -386,15 +386,15 @@ execConst Harvest _ k r = nonStatic Harvest k r $ do
       step r (Out VUnit k)
 execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   updated .= True
-  step (r & direction . _Just %~ applyTurn d) (Out VUnit k)
+  step (r & robotOrientation . _Just %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k
 
 execConst GetX _ k r = step r $ Out (VInt (fromIntegral x)) k
   where
-    V2 x _ = r ^. location
+    V2 x _ = r ^. robotLocation
 execConst GetY _ k r = step r $ Out (VInt (fromIntegral y)) k
   where
-    V2 _ y = r ^. location
+    V2 _ y = r ^. robotLocation
 
 execConst Random [VInt hi] k r = do
   n <- randomRIO (0, hi-1)
@@ -458,7 +458,7 @@ execConst Snd [VPair _ v] k r = step r $ Out v k
 execConst Snd args k _        = badConst Snd args k
 
 execConst Build [VString name, c] k r = do
-  let newRobot = mkRobot name (r ^. location) (r ^. direction ? east) (initMachineV c)
+  let newRobot = mkRobot name (r ^. robotLocation) (r ^. robotOrientation ? east) (initMachineV c)
   newRobot' <- ensureUniqueName newRobot
   newRobots %= (newRobot' :)
   updated .= True

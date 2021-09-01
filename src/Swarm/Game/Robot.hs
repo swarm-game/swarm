@@ -19,7 +19,7 @@ module Swarm.Game.Robot
     Robot(..)
 
     -- ** Lenses
-  , robotName, robotDisplay, location, direction, machine, tickSteps, static
+  , robotName, robotDisplay, robotLocation, robotOrientation, machine, tickSteps, static
 
     -- ** Create
 
@@ -37,28 +37,23 @@ import           Linear
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
+import           Swarm.Game.Entity
 import           Swarm.Game.Value
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
-  { _robotName    :: Text
-    -- ^ The name of the robot (unique across the whole world)
+  { _robotEntity   :: Entity
+    -- ^ An entity record storing the robot's name, display,
+    --   inventory, and so on.
 
-  , _robotDisplay :: Display
+  , _robotLocation :: V2 Int
+    -- ^ The location of the robot as (x,y).
 
-  , _location     :: V2 Int
-    -- ^ The location of the robot as (row,col).
-
-  , _direction    :: Maybe (V2 Int)
-    -- ^ The direction of the robot as a 2D vector.  When the robot
-    --   executes @move@, its 'location' is updated by adding
-    --   'direction' to it.
-
-  , _machine      :: CEK
+  , _machine       :: CEK
     -- ^ The current state of the robot's CEK machine.
 
-  , _tickSteps    :: Int
+  , _tickSteps     :: Int
     -- ^ The need for 'tickSteps' is a bit technical, and I hope I can
     --   eventually find a different, better way to accomplish it.
     --   Ideally, we would want each robot to execute a single
@@ -96,7 +91,7 @@ data Robot = Robot
     --   many commands it has executed.  The loop stepping the robot
     --   can tell when the counter increments.
 
-  , _static       :: Bool
+  , _static        :: Bool
     -- ^ Whether the robot is allowed to move, turn, or harvest.
     --   Currently this is a hack to prevent the "base" robot from
     --   moving; eventually this should go away, and the base will be
@@ -107,6 +102,15 @@ data Robot = Robot
 
 makeLenses ''Robot
 
+robotName :: Lens' Robot Text
+robotName = robotEntity . entityName
+
+robotDisplay :: Lens' Robot Display
+robotDisplay = robotEntity . entityDisplay
+
+robotOrientation :: Lens' Robot (Maybe (V2 Int))
+robotOrientation = robotEntity . entityOrientation
+
 -- | Create a robot.
 mkRobot
   :: Text    -- ^ Name of the robot.  Precondition: it should not be the same as any
@@ -116,25 +120,31 @@ mkRobot
   -> CEK     -- ^ Initial CEK machine.
   -> Robot
 mkRobot name l d m = Robot
-  { _robotName    = name
-  , _robotDisplay = defaultRobotDisplay
-  , _location     = l
-  , _direction    = Just d
-  , _machine      = m
-  , _tickSteps    = 0
-  , _static       = False
+  { _robotEntity  = mkEntity
+      defaultRobotDisplay
+      name
+      "A generic robot."
+      (Just d)
+      []
+  , _robotLocation = l
+  , _machine       = m
+  , _tickSteps     = 0
+  , _static        = False
   }
 
 -- | The initial robot representing your "base".
 baseRobot :: Robot
 baseRobot = Robot
-  { _robotName    = "base"
-  , _robotDisplay = defaultRobotDisplay
-  , _location     = V2 0 0
-  , _direction    = Nothing
-  , _machine      = idleMachine
-  , _tickSteps    = 0
-  , _static       = True
+  { _robotEntity = mkEntity
+      defaultRobotDisplay
+      "base"
+      "Your base of operations."
+      Nothing
+      []
+  , _robotLocation = V2 0 0
+  , _machine       = idleMachine
+  , _tickSteps     = 0
+  , _static        = True
   }
 
 -- | Is the robot actively in the middle of a computation?
