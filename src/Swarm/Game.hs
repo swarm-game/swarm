@@ -42,7 +42,7 @@ module Swarm.Game
   , Robot, isActive
   , robotEntity
   , robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
-  , machine, tickSteps, static
+  , machine, tickSteps
 
     -- * Game state
   , ViewCenterRule(..), updateViewCenter, manualViewCenterUpdate
@@ -347,12 +347,6 @@ stepRobot r = case r ^. machine of
 
   cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
 
-nonStatic :: Const -> Cont -> Robot -> StateT GameState IO (Maybe Robot) -> StateT GameState IO (Maybe Robot)
-nonStatic c k r m
-  | r ^. static = do
-      emitMessage $ T.concat ["Your base can't ", prettyText c, "!"]
-      stepUnit r k
-  | otherwise   = m
 
 -- | At the level of the CEK machine there's no particular difference
 --   between *evaluating* a function constant and *executing* a
@@ -436,7 +430,8 @@ execConst Grab _ k r = do
         -- Add the picked up item to the robot's inventory
         stepUnit (r & robotInventory %~ insert e) k
 
-execConst Turn [VDir d] k r = nonStatic Turn k r $ do
+-- XXX require treads
+execConst Turn [VDir d] k r = do
   updated .= True
   stepUnit (r & robotOrientation . _Just %~ applyTurn d) k
 execConst Turn args k _ = badConst Turn args k

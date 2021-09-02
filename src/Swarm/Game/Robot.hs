@@ -20,7 +20,7 @@ module Swarm.Game.Robot
 
     -- ** Lenses
   , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
-  , machine, tickSteps, static
+  , machine, tickSteps
 
     -- ** Create
 
@@ -92,12 +92,6 @@ data Robot = Robot
     --   many commands it has executed.  The loop stepping the robot
     --   can tell when the counter increments.
 
-  , _static        :: Bool
-    -- ^ Whether the robot is allowed to move, turn, or harvest.
-    --   Currently this is a hack to prevent the "base" robot from
-    --   moving; eventually this should go away, and the base will be
-    --   prevented from moving simply because it does not have treads
-    --   (or whatever the right device is for moving), and so on.
   }
   deriving (Eq, Ord, Show)
 
@@ -133,7 +127,6 @@ mkRobot name l d m = Robot
   , _robotLocation = l
   , _machine       = m
   , _tickSteps     = 0
-  , _static        = False
   }
 
 -- | The initial robot representing your "base".
@@ -148,7 +141,6 @@ baseRobot = Robot
   , _robotLocation = V2 0 0
   , _machine       = idleMachine
   , _tickSteps     = 0
-  , _static        = True
   }
 
 -- | Is the robot actively in the middle of a computation?
