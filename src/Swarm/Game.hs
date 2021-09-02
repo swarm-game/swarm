@@ -50,7 +50,7 @@ module Swarm.Game
 
     -- ** Lenses
 
-  , robotMap, newRobots, world, viewCenter, updated, replResult
+  , gameMode, robotMap, newRobots, world, viewCenter, updated, replResult
   , messageQueue
 
     -- * Convenience re-exports
@@ -63,10 +63,10 @@ import           Numeric.Noise.Perlin
 -- import           Numeric.Noise.Ridged
 
 import           Control.Arrow           ((&&&))
-import           Control.Lens            hiding (Const, from)
+import           Control.Lens            hiding (Const, contains, from)
 import           Control.Monad.State
 import           Data.Bifunctor          (first)
-import           Data.Map                (Map, (!))
+import           Data.Map                (Map)
 import qualified Data.Map                as M
 import           Data.Maybe              (fromMaybe)
 import           Data.Text               (Text)
@@ -80,6 +80,7 @@ import           Witch
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
+import qualified Swarm.Game.Entities     as E
 import           Swarm.Game.Entity
 import           Swarm.Game.Robot
 import           Swarm.Game.Terrain
@@ -101,8 +102,14 @@ data ViewCenterRule
   | VCRobot Text
   deriving (Eq, Ord, Show)
 
+data GameMode
+  = Classic
+  | Creative
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
 data GameState = GameState
-  { _robotMap       :: M.Map Text Robot
+  { _gameMode       :: GameMode
+  , _robotMap       :: Map Text Robot
   , _newRobots      :: [Robot]
   , _gensym         :: Int
   , _world          :: W.TileCachingWorld Int Entity
@@ -163,15 +170,16 @@ pn2 = perlin 0 5 0.05 0.75
 initGameState :: IO GameState
 initGameState = return $
   GameState
-  { _robotMap   = M.singleton "base" baseRobot
+  { _gameMode   = Classic
+  , _robotMap   = M.singleton "base" baseRobot
   , _newRobots  = []
   , _gensym     = 0
   , _world      = W.newWorld . fmap (first fromEnum) $ \(i,j) ->
       if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
-        then (DirtT, Just (entityMap ! TreeE))
+        then (DirtT, Just E.tree)
         else
           if noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0
-            then (RockT, Just (entityMap ! RockE))
+            then (RockT, Just E.rock)
             else (GrassT, Nothing)
 --      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
   , _viewCenterRule = VCRobot "base"
@@ -369,15 +377,18 @@ execConst Wait _ k r   = step r $ Out VUnit k
 execConst Halt _ _ _   = updated .= True >> return Nothing
 execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
 execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
-execConst Move _ k r   = nonStatic Move k r $ do
+execConst Move _ k r   = do
   let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
   me <- uses world (W.lookupEntity (-y,x))
-  case (`hasProperty` Unwalkable) <$> me of
+  mode <- use gameMode
+  let canMove = mode == Creative || (r ^. robotInventory) `contains` E.treads
+      canWalk = maybe True (not . (`hasProperty` Unwalkable)) me
+  case canMove && canWalk of
 
-    -- There's something there, and we can't walk on it
-    Just True  -> step r (Out VUnit k)
+    -- Either we can't move, or there's something there, and we can't walk on it
+    False -> step r (Out VUnit k)
 
-    -- Otherwise, we can move
+    -- Otherwise, move forward.
     _          -> do
       updated .= True
       step (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) $ Out VUnit k
@@ -493,7 +504,16 @@ execConst Snd [VPair _ v] k r = step r $ Out v k
 execConst Snd args k _        = badConst Snd args k
 
 execConst Build [VString name, c] k r = do
-  let newRobot = mkRobot name (r ^. robotLocation) (r ^. robotOrientation ? east) (initMachineV c)
+  let newRobot =
+        mkRobot
+          name
+          (r ^. robotLocation)
+          (r ^. robotOrientation ? east)
+          (initMachineV c)
+          & robotInventory %~ insert E.treads  -- start off every
+            -- robot with a pair of treads.  XXX later, in hardcore
+            -- mode, this has to be taken from the inventory of the
+            -- base.
   newRobot' <- addRobot newRobot
   updated .= True
   step r $ Out (VString (newRobot' ^. robotName)) k

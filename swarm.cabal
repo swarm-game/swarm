@@ -37,6 +37,7 @@ library
                       Swarm.Game.CEK
                       Swarm.Game.Display
                       Swarm.Game.Entity
+                      Swarm.Game.Entities
                       Swarm.Game.Robot
                       Swarm.Game.Terrain
                       Swarm.Game.Value

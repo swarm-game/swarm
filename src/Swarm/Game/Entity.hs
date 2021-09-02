@@ -37,26 +37,23 @@ module Swarm.Game.Entity
   , entityProperties, entityInventory
   , hasProperty
 
-    -- ** Basic entity types and entity map
-  , EntityType(..)
-  , entityMap
-
     -- * Inventories
 
   , Inventory, Count
-  , empty, singleton, insert, lookup, delete, deleteCount, deleteAll, elems
+  , empty, singleton, insert, lookup, lookupByName, contains, delete, deleteCount, deleteAll, elems
 
   )
 where
 
 import           Brick              (Widget)
-import           Control.Lens       (Getter, Lens', Wrapped (..), lens, to,
-                                     (%~), (&), (.~), (^.))
+import           Control.Lens       (Getter, Lens', lens, to, (^.))
 import           Data.Bifunctor     (second)
 import           Data.Function      (on)
 import           Data.Hashable
 import           Data.IntMap        (IntMap)
 import qualified Data.IntMap        as IM
+import           Data.IntSet        (IntSet)
+import qualified Data.IntSet        as IS
 import           Data.Map           (Map)
 import qualified Data.Map           as M
 import           Data.Text          (Text)
@@ -65,7 +62,6 @@ import           Linear
 import           Prelude            hiding (lookup)
 
 import           Swarm.Game.Display
-import           Swarm.TUI.Attr
 
 ------------------------------------------------------------
 -- Properties
@@ -236,24 +232,25 @@ displayEntity e = displayWidget (e ^. entityOrientation) (e ^. entityDisplay)
 
 type Count = Int
 
--- Invariant:
 -- | An inventory is really just a bag/multiset of entities.  That is,
 --   it contains some entities, along with the number of times each
---   occurs.
-newtype Inventory = Inventory { unInventory :: IntMap (Count, Entity) }
+--   occurs.  Entities can be looked up directly, or by name.
+data Inventory = Inventory
+  { counts :: IntMap (Count, Entity)     -- main map
+  , byName :: Map Text IntSet            -- Mirrors the main map; just
+                                         -- caching the ability to
+                                         -- look up by name.
+  }
   deriving (Show, Generic)
-
-instance Wrapped Inventory where
-  type Unwrapped Inventory = IntMap (Count, Entity)
 
 instance Hashable Inventory where
   -- Don't look at Entity records themselves --- just hash their keys,
   -- which are already a hash.
-  hashWithSalt = hashUsing (map (second fst) . IM.assocs . unInventory)
+  hashWithSalt = hashUsing (map (second fst) . IM.assocs . counts)
 
 -- | The empty inventory.
 empty :: Inventory
-empty = Inventory IM.empty
+empty = Inventory IM.empty M.empty
 
 -- | Create an inventory containing one entity.
 singleton :: Entity -> Inventory
@@ -262,12 +259,25 @@ singleton = flip insert empty
 -- | Insert an entity into an inventory.  If the inventory already
 --   contains this entity, then only its count will be incremented.
 insert :: Entity -> Inventory -> Inventory
-insert e = _Wrapped' %~ IM.insertWith (\(m,_) (n,_) -> (m+n,e)) (e ^. entityHash) (1,e)
+insert e (Inventory cs byN)
+  = Inventory
+      (IM.insertWith (\(m,_) (n,_) -> (m+n,e)) (e ^. entityHash) (1,e) cs)
+      (M.insertWith IS.union (e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
 
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
 lookup :: Entity -> Inventory -> Count
-lookup e = maybe 0 fst . IM.lookup (e ^. entityHash) . unInventory
+lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
+
+-- | Look up an entity by name in an inventory, returning a list of
+--   matching entities.
+lookupByName :: Text -> Inventory -> [Entity]
+lookupByName name (Inventory cs byN)
+  = maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup name byN)
+
+-- | Check whether an inventory contains a given entity.
+contains :: Inventory -> Entity -> Bool
+contains inv e = lookup e inv > 0
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory
@@ -275,8 +285,15 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount k e = _Wrapped' %~ IM.alter removeCount (e ^. entityHash)
+deleteCount k e (Inventory cs byN) = Inventory cs' byN'
   where
+    cs' = IM.alter removeCount (e ^. entityHash) cs
+    newCount = lookup e (Inventory cs' byN)
+
+    byN'
+      | newCount == 0 = M.adjust (IS.delete (e ^. entityHash)) (e ^. entityName) byN
+      | otherwise     = byN
+
     removeCount :: Maybe (Count, a) -> Maybe (Count, a)
     removeCount Nothing       = Nothing
     removeCount (Just (n, a))
@@ -285,52 +302,11 @@ deleteCount k e = _Wrapped' %~ IM.alter removeCount (e ^. entityHash)
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
-deleteAll e = _Wrapped' %~ IM.alter (const Nothing) (e ^. entityHash)
+deleteAll e (Inventory cs byN)
+  = Inventory
+      (IM.alter (const Nothing) (e ^. entityHash) cs)
+      (M.adjust (IS.delete (e ^. entityHash)) (e ^. entityName) byN)
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
-elems = IM.elems . unInventory
-
-------------------------------------------------------------
--- Basic entities
-------------------------------------------------------------
-
--- | An enumeration of the basic entities in the game.  Note there can
---   easily be other, custom entities besides the ones listed here.
-data EntityType
-  = TreeE
-  | RockE
-  | TreadsE
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
-
--- | A map containing a default entity record for each basic entity.
-entityMap :: Map EntityType Entity
-entityMap = M.fromList
-  [ (TreeE, treeE)
-  , (RockE, rockE)
-  , (TreadsE, treadsE)
-  ]
-
-treeE :: Entity
-treeE = mkEntity
-  (defaultEntityDisplay 'T' & displayAttr .~ plantAttr)
-  "Tree"
-  "It is a tree."
-  Nothing
-  [Portable, Growable]
-
-rockE :: Entity
-rockE = mkEntity
-  (defaultEntityDisplay '@' & displayAttr .~ rockAttr)
-  "Rock"
-  "A rock."
-  Nothing
-  [Unwalkable]
-
-treadsE :: Entity
-treadsE = mkEntity
-  (defaultEntityDisplay '%' & displayAttr .~ deviceAttr)
-  "Treads"
-  "Installing treads on a robot allows it to move (via the 'move' command) and turn (via the 'turn' command)."
-  Nothing
-  [Portable]
+elems (Inventory cs _) = IM.elems cs

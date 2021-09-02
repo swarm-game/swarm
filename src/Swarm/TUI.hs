@@ -13,6 +13,7 @@ import           Control.Monad               (when)
 import           Control.Monad.IO.Class      (liftIO)
 import           Data.Array                  (range)
 import           Data.Either                 (isRight)
+import           Data.List                   (sortOn)
 import           Data.List.Split             (chunksOf)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
@@ -194,7 +195,7 @@ drawInventoryFor (Just e)
   [ hCenter (txt $ T.append (e ^. entityName) " inventory" )
   , padAll 2
     $ vBox
-    $ map drawItem (E.elems (e ^. entityInventory))
+    $ map drawItem (sortOn (view entityName . snd) (E.elems (e ^. entityInventory)))
   ]
 
 drawItem :: (Int, Entity) -> Widget Name
@@ -317,9 +318,17 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
   = adjustTPS (+) s >> continueWithoutRedraw s
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') []))
+  = continueWithoutRedraw (s & gameState . gameMode %~ cycleEnum)
 
 -- Fall-through case: don't do anything.
 handleWorldEvent s _ = continueWithoutRedraw s
+
+cycleEnum :: (Eq e, Enum e, Bounded e) => e -> e
+cycleEnum e
+  | e == maxBound = minBound
+  | otherwise     = succ e
+
 
 scrollView :: AppState -> (V2 Int -> V2 Int) -> EventM Name AppState
 scrollView s update =
