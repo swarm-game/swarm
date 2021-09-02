@@ -51,3 +51,5 @@ treads = mkEntity
   "Installing treads on a robot allows it to move (via the 'move' command) and turn (via the 'turn' command)."
   Nothing
   [Portable]
+
+-- XXX Ability to read description text when highlighting items in inventory.

@@ -363,19 +363,22 @@ evalConst = execConst
 
 -- XXX load this from a file and have it available in a map?
 --     Or make a quasiquoter?
-seedProgram :: ATerm
-Right (seedProgram ::: _) = processTerm . into @Text . unlines $
-  [ "let repeat : int -> cmd () -> cmd () = \\n.\\c."
-  , "  if (n == 0) {} {c ; repeat (n-1) c}"
-  , "in {"
-  , "  r <- random 500;"
-  , "  repeat (r + 100) wait;"
-  , "  appear \"|\";"
-  , "  r <- random 500;"
-  , "  repeat (r + 100) wait;"
-  , "  halt"
-  , "}"
-  ]
+seedProgram :: Text -> ATerm
+seedProgram thing = prog
+  where
+    Right (prog ::: _) = processTerm . into @Text . unlines $
+      [ "let repeat : int -> cmd () -> cmd () = \\n.\\c."
+      , "  if (n == 0) {} {c ; repeat (n-1) c}"
+      , "in {"
+      , "  r <- random 500;"
+      , "  repeat (r + 100) wait;"
+      , "  appear \"|\";"
+      , "  r <- random 500;"
+      , "  repeat (r + 100) wait;"
+      , "  place \"" ++ from @Text thing ++ "\";"
+      , "  halt"
+      , "}"
+      ]
 
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r   = stepUnit r k
@@ -419,13 +422,11 @@ execConst Grab _ k r = do
         world %= W.update (-y,x) (const Nothing)
 
         when (e `hasProperty` Growable) $ do
+
           -- Grow a new entity from a seed.
-          -- XXX need to figure out how the seedbot is going to
-          -- replant the same kind of entity... need to add a 'place'
-          -- command, but how does it specify what thing from its
-          -- inventory to place?  By name I suppose...
           let seedBot =
-                mkRobot "seed" (r ^. robotLocation) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
+                mkRobot "seed" (r ^. robotLocation) (V2 0 0)
+                  (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit))
                   & robotDisplay .~
                     (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
                   & robotInventory .~ singleton e
