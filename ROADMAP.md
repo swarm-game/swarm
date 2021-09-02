@@ -3,7 +3,6 @@
 - UI
     - Small
         - Show information about the robot being currently viewed.
-            - Inventory
             - Location, direction
             - See their currently executing program somehow?
         - Pause button and single-stepping
@@ -96,17 +95,9 @@
           choices of random values). =D
 
     - Big
-        - Disallow harvesting while a seed robot is present
-          (i.e. patch the "infinite tree glitch" =)
         - Load seed program from a file in data dir!
-        - World should have immutable terrain layer + mutable entity
-          layer (at most one entity per cell), with a function to
-          generate each layer.  Entities would be things like trees,
-          rocks, items, ...  However, robots are separate, and there
-          can be multiple robots on the same cell.
-        - Restrict programs based on installed devices etc.
         - Implement craftable items / devices
-        - Give each robot its own inventory.  Add commands for giving/receiving.
+        - Add commands for giving/receiving inventory contents.
         - Create world with biomes etc. using multiple noise sources
         - Implement a challenge mode
             - A challenge consists of
