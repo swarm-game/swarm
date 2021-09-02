@@ -293,7 +293,7 @@ stepRobot r = case r ^. machine of
   -- To evaluate a variable, just look it up in the context.
   In (TVar x) e k                   -> step r $ Out (e !!! x) k
 
-  -- XXX
+  -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e k              -> step r $ In t1 e (FSnd t2 e : k)
 
   -- Lambdas just immediately turn into closures.
@@ -372,12 +372,16 @@ execConst Noop _ _ _   = error "execConst Noop should have been handled already 
 execConst Move _ k r   = nonStatic Move k r $ do
   let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
   me <- uses world (W.lookupEntity (-y,x))
-  case (Solid `elem`) . view entityProperties <$> me of
+  case (`hasProperty` Unwalkable) <$> me of
+
+    -- There's something there, and we can't walk on it
     Just True  -> step r (Out VUnit k)
+
+    -- Otherwise, we can move
     _          -> do
       updated .= True
-      step (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) (Out VUnit k)
-execConst Harvest _ k r = nonStatic Harvest k r $ do
+      step (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) $ Out VUnit k
+execConst Harvest _ k r = do
   let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y,x))
   case me of
@@ -386,7 +390,7 @@ execConst Harvest _ k r = nonStatic Harvest k r $ do
     Nothing -> step r $ Out VUnit k
 
     -- There is an entity here...
-    Just e -> case Harvestable `elem` (e ^. entityProperties) of
+    Just e -> case e `hasProperty` Portable of
 
       -- ...but it is not harvestable.
       False -> step r $ Out VUnit k
@@ -398,13 +402,19 @@ execConst Harvest _ k r = nonStatic Harvest k r $ do
         -- Remove the entity from the world.
         world %= W.update (-y,x) (const Nothing)
 
-        -- Grow a new entity from a seed.
-        -- XXX need to figure out how the seedbot is going to replant the same kind of entity.
-        let seedBot =
-              mkRobot "seed" (r ^. robotLocation) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
-                & robotDisplay .~
-                  (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
-        _ <- addRobot seedBot
+        when (e `hasProperty` Growable) $ do
+          -- Grow a new entity from a seed.
+          -- XXX need to figure out how the seedbot is going to
+          -- replant the same kind of entity... need to add a 'place'
+          -- command, but how does it specify what thing from its
+          -- inventory to place?  By name I suppose...
+          let seedBot =
+                mkRobot "seed" (r ^. robotLocation) (V2 0 0) (initMachine seedProgram (TyCmd TyUnit))
+                  & robotDisplay .~
+                    (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
+                  & robotInventory .~ singleton e
+          _ <- addRobot seedBot
+          return ()
 
         -- Add the harvested item to the robot's inventory
         step (r & robotInventory %~ insert e) $ Out VUnit k

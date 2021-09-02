@@ -35,6 +35,7 @@ module Swarm.Game.Entity
     -- ** Lenses
   , entityDisplay, entityName, entityDescription, entityOrientation
   , entityProperties, entityInventory
+  , hasProperty
 
     -- ** Basic entity types and entity map
   , EntityType(..)
@@ -43,7 +44,7 @@ module Swarm.Game.Entity
     -- * Inventories
 
   , Inventory, Count
-  , empty, insert, lookup, delete, deleteCount, deleteAll, elems
+  , empty, singleton, insert, lookup, delete, deleteCount, deleteAll, elems
 
   )
 where
@@ -71,10 +72,10 @@ import           Swarm.TUI.Attr
 ------------------------------------------------------------
 
 data EntityProperty
-  = Solid          -- ^ Robots can't move onto a cell with this resource.  XXX rename Walkable
-  | Harvestable    -- ^ Robots can harvest this.                           XXX rename Grabbable
-  -- XXX add more properties
-  deriving (Eq, Ord, Show, Generic, Hashable)
+  = Unwalkable     -- ^ Robots can't move onto a cell containing this entity.
+  | Portable       -- ^ Robots can pick this up (via 'grab').
+  | Growable       -- ^ Regrows from a seed after it is grabbed.
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 ------------------------------------------------------------
 -- Entity
@@ -217,6 +218,10 @@ entityOrientation = hashedLens _entityOrientation (\e x -> e { _entityOrientatio
 entityProperties :: Lens' Entity [EntityProperty]
 entityProperties = hashedLens _entityProperties (\e x -> e { _entityProperties = x })
 
+-- | Test whether an entity has a certain property.
+hasProperty :: Entity -> EntityProperty -> Bool
+hasProperty e p = p `elem` (e ^. entityProperties)
+
 -- | The inventory of other entities carried by this entity.
 entityInventory :: Lens' Entity Inventory
 entityInventory = hashedLens _entityInventory (\e x -> e { _entityInventory = x })
@@ -249,6 +254,10 @@ instance Hashable Inventory where
 -- | The empty inventory.
 empty :: Inventory
 empty = Inventory IM.empty
+
+-- | Create an inventory containing one entity.
+singleton :: Entity -> Inventory
+singleton = flip insert empty
 
 -- | Insert an entity into an inventory.  If the inventory already
 --   contains this entity, then only its count will be incremented.
@@ -291,27 +300,37 @@ elems = IM.elems . unInventory
 data EntityType
   = TreeE
   | RockE
-  deriving (Eq, Ord, Show)
+  | TreadsE
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 -- | A map containing a default entity record for each basic entity.
 entityMap :: Map EntityType Entity
 entityMap = M.fromList
-  [ (TreeE, treeEntity)
-  , (RockE, rockEntity)
+  [ (TreeE, treeE)
+  , (RockE, rockE)
+  , (TreadsE, treadsE)
   ]
 
-treeEntity :: Entity
-treeEntity = mkEntity
+treeE :: Entity
+treeE = mkEntity
   (defaultEntityDisplay 'T' & displayAttr .~ plantAttr)
   "Tree"
   "It is a tree."
   Nothing
-  [Harvestable]
+  [Portable, Growable]
 
-rockEntity :: Entity
-rockEntity = mkEntity
+rockE :: Entity
+rockE = mkEntity
   (defaultEntityDisplay '@' & displayAttr .~ rockAttr)
   "Rock"
   "A rock."
   Nothing
-  [Solid]
+  [Unwalkable]
+
+treadsE :: Entity
+treadsE = mkEntity
+  (defaultEntityDisplay '%' & displayAttr .~ deviceAttr)
+  "Treads"
+  "Installing treads on a robot allows it to move (via the 'move' command) and turn (via the 'turn' command)."
+  Nothing
+  [Portable]

@@ -146,7 +146,12 @@ drawWorld g
         ixs = range (viewingRegion g (w,h))
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
-    -- XXX update how this works!  Gather all displays, all entities...
+    -- XXX update how this works!  Gather all displays, all
+    -- entities...  Should make a Display remember which is the
+    -- currently selected char (based on orientation); Entity lens for
+    -- setting orientation updates the Display too.  Then we can just
+    -- get all the Displays for each cell, make a monoid based on
+    -- priority.
 
     robotsByLoc
       = M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
