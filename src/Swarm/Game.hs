@@ -392,7 +392,7 @@ execConst Move _ k r   = do
     _          -> do
       updated .= True
       step (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) $ Out VUnit k
-execConst Harvest _ k r = do
+execConst Grab _ k r = do
   let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y,x))
   case me of
@@ -403,10 +403,10 @@ execConst Harvest _ k r = do
     -- There is an entity here...
     Just e -> case e `hasProperty` Portable of
 
-      -- ...but it is not harvestable.
+      -- ...but it can't be picked up.
       False -> step r $ Out VUnit k
 
-      -- ...and it is harvestable.
+      -- ...and it can be picked up.
       True -> do
         updated .= True
 
@@ -427,7 +427,7 @@ execConst Harvest _ k r = do
           _ <- addRobot seedBot
           return ()
 
-        -- Add the harvested item to the robot's inventory
+        -- Add the picked up item to the robot's inventory
         step (r & robotInventory %~ insert e) $ Out VUnit k
 
 execConst Turn [VDir d] k r = nonStatic Turn k r $ do

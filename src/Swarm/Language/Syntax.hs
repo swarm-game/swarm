@@ -81,7 +81,7 @@ data Const
   | Return            -- ^ Return for the cmd monad.
   | Move              -- ^ Move forward one step.
   | Turn              -- ^ Turn in some direction.
-  | Harvest           -- ^ Pick up an item from the current location.
+  | Grab              -- ^ Grab an item from the current location.
   | Build             -- ^ Construct a new robot.
   | Run               -- ^ Run a program loaded from a file.
   | GetX              -- ^ Get the current x-coordinate.
@@ -115,7 +115,7 @@ arity (Cmp _)     = 2
 arity (Arith Neg) = 1
 arity (Arith _)   = 2
 arity c
-  | c `elem` [ Wait, Noop, Halt, Move, Harvest, GetX, GetY] = 0
+  | c `elem` [ Wait, Noop, Halt, Move, Grab, GetX, GetY]    = 0
   | c `elem` [ Return, Turn, Run, Random, Say, View, Appear
              , Fst, Snd, Force ]                            = 1
   | c == Build                                              = 2

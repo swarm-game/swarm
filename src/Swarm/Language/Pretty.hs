@@ -79,7 +79,7 @@ instance PrettyPrec Const where
   prettyPrec _ Noop      = "{}"
   prettyPrec _ Move      = "move"
   prettyPrec _ Turn      = "turn"
-  prettyPrec _ Harvest   = "harvest"
+  prettyPrec _ Grab      = "grab"
   prettyPrec _ Build     = "build"
   prettyPrec _ Run       = "run"
   prettyPrec _ GetX      = "getX"
