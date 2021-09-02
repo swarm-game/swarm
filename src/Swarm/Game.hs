@@ -63,7 +63,7 @@ import           Numeric.Noise.Perlin
 -- import           Numeric.Noise.Ridged
 
 import           Control.Arrow           ((&&&))
-import           Control.Lens            hiding (Const, contains, from)
+import           Control.Lens            hiding (Const, contains, from, parts)
 import           Control.Monad.State
 import           Data.Bifunctor          (first)
 import           Data.Map                (Map)
@@ -351,6 +351,13 @@ stepRobot r = case r ^. machine of
 
   cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
 
+emitError :: MonadState GameState m => Robot -> Const -> [Text] -> m ()
+emitError r c parts = emitMessage (formatError r c parts)
+
+formatError :: Robot -> Const -> [Text] -> Text
+formatError r c = T.unwords . (colon (r ^. robotName) :) . (colon (prettyText c) :)
+  where
+    colon = flip T.append ":"
 
 -- | At the level of the CEK machine there's no particular difference
 --   between *evaluating* a function constant and *executing* a
