@@ -279,6 +279,11 @@ step r cek = do
 
   return . Just $ r & tickSteps -~ 1 & machine .~ cek
 
+-- | Step to an updated robot and continuation, producing a unit-value
+--   output.  @stepUnit r k == step r (Out VUnit k)@.
+stepUnit :: Robot -> Cont -> StateT GameState IO (Maybe Robot)
+stepUnit r k = step r $ Out VUnit k
+
 -- | The main CEK machine workhorse.  Given a robot, look at its CEK
 --   machine state and figure out a single next step. The reason we
 --   return a @Maybe Robot@ is that the robot could execute a 'Halt'
@@ -289,7 +294,7 @@ stepRobot r = case r ^. machine of
 
   -- First a bunch of straightforward cases.  These are all
   -- immediately turned into values.
-  In TUnit _ k                      -> step r $ Out VUnit k
+  In TUnit _ k                      -> stepUnit r k
   In (TDir d) _ k                   -> step r $ Out (VDir d) k
   In (TInt n) _ k                   -> step r $ Out (VInt n) k
   In (TString s) _ k                -> step r $ Out (VString s) k
@@ -333,7 +338,7 @@ stepRobot r = case r ^. machine of
   Out v1 (FEvalBind mx t2 e : k)    -> step r $ Out (VBind v1 mx t2 e) k
 
   -- Special command applications that don't use up a tick (Noop and Return)
-  Out (VCApp Noop _) (FExec : k)     -> step r $ Out VUnit k
+  Out (VCApp Noop _) (FExec : k)     -> stepUnit r k
   Out (VCApp Return [v]) (FExec : k) -> step r $ Out v k
 
   Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
@@ -346,7 +351,7 @@ nonStatic :: Const -> Cont -> Robot -> StateT GameState IO (Maybe Robot) -> Stat
 nonStatic c k r m
   | r ^. static = do
       emitMessage $ T.concat ["Your base can't ", prettyText c, "!"]
-      step r (Out VUnit k)
+      stepUnit r k
   | otherwise   = m
 
 -- | At the level of the CEK machine there's no particular difference
@@ -373,7 +378,7 @@ Right (seedProgram ::: _) = processTerm . into @Text . unlines $
   ]
 
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
-execConst Wait _ k r   = step r $ Out VUnit k
+execConst Wait _ k r   = stepUnit r k
 execConst Halt _ _ _   = updated .= True >> return Nothing
 execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
 execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
@@ -386,25 +391,25 @@ execConst Move _ k r   = do
   case canMove && canWalk of
 
     -- Either we can't move, or there's something there, and we can't walk on it
-    False -> step r (Out VUnit k)
+    False -> stepUnit r k
 
     -- Otherwise, move forward.
     _          -> do
       updated .= True
-      step (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) $ Out VUnit k
+      stepUnit (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) k
 execConst Grab _ k r = do
   let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y,x))
   case me of
 
     -- No entity here.
-    Nothing -> step r $ Out VUnit k
+    Nothing -> stepUnit r k
 
     -- There is an entity here...
     Just e -> case e `hasProperty` Portable of
 
       -- ...but it can't be picked up.
-      False -> step r $ Out VUnit k
+      False -> stepUnit r k
 
       -- ...and it can be picked up.
       True -> do
@@ -428,11 +433,11 @@ execConst Grab _ k r = do
           return ()
 
         -- Add the picked up item to the robot's inventory
-        step (r & robotInventory %~ insert e) $ Out VUnit k
+        stepUnit (r & robotInventory %~ insert e) k
 
 execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   updated .= True
-  step (r & robotOrientation . _Just %~ applyTurn d) (Out VUnit k)
+  stepUnit (r & robotOrientation . _Just %~ applyTurn d) k
 execConst Turn args k _ = badConst Turn args k
 
 -- XXX do we need a device to do placement?
@@ -463,7 +468,7 @@ execConst Random args k _ = badConst Random args k
 
 execConst Say [VString s] k r = do
   emitMessage (T.concat [r ^. robotName, ": ", s])
-  step r $ Out VUnit k
+  stepUnit r k
 execConst Say args k _ = badConst Say args k
 
 execConst View [VString s] k r = do
@@ -471,26 +476,30 @@ execConst View [VString s] k r = do
   case mr of
     Nothing -> emitMessage $ T.concat["There is no robot named ", s, " to view."]
     Just _  -> viewCenterRule .= VCRobot s
-  step r $ Out VUnit k
+  stepUnit r k
 execConst View args k _ = badConst View args k
 
 execConst Appear [VString s] k r = do
   updated .= True
   case into @String s of
     [c] ->
-      step (r & robotDisplay . defaultChar .~ c
-              & robotDisplay . orientationMap .~ M.empty
-           ) $ Out VUnit k
+      stepUnit
+        (r & robotDisplay . defaultChar .~ c
+           & robotDisplay . orientationMap .~ M.empty
+        )
+        k
     [c,nc,ec,sc,wc] ->
-      step ( r & robotDisplay . defaultChar .~ c
-               & robotDisplay . orientationMap . ix north .~ nc
-               & robotDisplay . orientationMap . ix east  .~ ec
-               & robotDisplay . orientationMap . ix south .~ sc
-               & robotDisplay . orientationMap . ix west  .~ wc
-           ) $ Out VUnit k
+      stepUnit
+        ( r & robotDisplay . defaultChar .~ c
+            & robotDisplay . orientationMap . ix north .~ nc
+            & robotDisplay . orientationMap . ix east  .~ ec
+            & robotDisplay . orientationMap . ix south .~ sc
+            & robotDisplay . orientationMap . ix west  .~ wc
+        )
+        k
     _ -> do
       emitMessage $ T.concat[s, " is not a valid appearance string."]
-      step r $ Out VUnit k
+      stepUnit r k
 execConst Appear args k _ = badConst Appear args k
 
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
