@@ -461,6 +461,23 @@ execConst Place [VString s] k r = do
         stepUnit (r & robotInventory %~ delete e) k
 execConst Place args k _ = badConst Place args k
 
+-- XXX need a device to give --- but it should be available from the beginning
+execConst Give [VString otherName, VString itemName] k r = do
+  mother <- use (robotMap . at otherName)
+  let mitem = listToMaybe . lookupByName itemName $ (r ^. robotInventory)
+  case (mother, mitem) of
+    (Just _, Just item) -> do
+      robotMap . at otherName . _Just . robotInventory %= insert item
+      stepUnit (r & robotInventory %~ delete item) k
+    (Nothing, _) -> do
+      emitError r Give ["there is no robot named", otherName, "here." ]
+      stepUnit r k
+    (_, Nothing) -> do
+      emitError r Give ["you don't have a", itemName, "to give." ]
+      stepUnit r k
+
+execConst Give args k _ = badConst Give args k
+
 execConst GetX _ k r = step r $ Out (VInt (fromIntegral x)) k
   where
     V2 x _ = r ^. robotLocation

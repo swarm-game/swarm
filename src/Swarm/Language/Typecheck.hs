@@ -234,6 +234,7 @@ inferConst Move        = return $ TyCmd TyUnit
 inferConst Turn        = return $ TyDir :->: TyCmd TyUnit
 inferConst Grab        = return $ TyCmd TyUnit
 inferConst Place       = return $ TyString :->: TyCmd TyUnit
+inferConst Give        = return $ TyString :->: TyString :->: TyCmd TyUnit
 inferConst Build       = return $ TyString :->: TyCmd TyUnit :->: TyCmd TyString
 inferConst Run         = return $ TyString :->: TyCmd TyUnit
 inferConst GetX        = return $ TyCmd TyInt
