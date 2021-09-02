@@ -80,6 +80,7 @@ instance PrettyPrec Const where
   prettyPrec _ Move      = "move"
   prettyPrec _ Turn      = "turn"
   prettyPrec _ Grab      = "grab"
+  prettyPrec _ Place     = "place"
   prettyPrec _ Build     = "build"
   prettyPrec _ Run       = "run"
   prettyPrec _ GetX      = "getX"

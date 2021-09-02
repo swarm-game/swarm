@@ -435,6 +435,20 @@ execConst Turn [VDir d] k r = nonStatic Turn k r $ do
   step (r & robotOrientation . _Just %~ applyTurn d) (Out VUnit k)
 execConst Turn args k _ = badConst Turn args k
 
+-- XXX do we need a device to do placement?
+execConst Place [VString s] k r = do
+  let V2 x y = r ^. robotLocation
+  me <- uses world (W.lookupEntity (-y, x))
+  case me of
+    Just _  -> stepUnit r k
+    Nothing -> case lookupByName s (r ^. robotInventory) of
+      []    -> stepUnit r k
+      (e:_) -> do
+        updated .= True
+        world %= W.update (-y, x) (const (Just e))
+        stepUnit (r & robotInventory %~ delete e) k
+execConst Place args k _ = badConst Place args k
+
 execConst GetX _ k r = step r $ Out (VInt (fromIntegral x)) k
   where
     V2 x _ = r ^. robotLocation

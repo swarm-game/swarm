@@ -152,6 +152,7 @@ parseConst =
   <|> Move    <$ reserved "move"
   <|> Turn    <$ reserved "turn"
   <|> Grab    <$ reserved "grab"
+  <|> Place   <$ reserved "place"
   <|> Build   <$ reserved "build"
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"

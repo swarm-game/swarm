@@ -82,6 +82,7 @@ data Const
   | Move              -- ^ Move forward one step.
   | Turn              -- ^ Turn in some direction.
   | Grab              -- ^ Grab an item from the current location.
+  | Place             -- ^ Try to place an item at the current location.
   | Build             -- ^ Construct a new robot.
   | Run               -- ^ Run a program loaded from a file.
   | GetX              -- ^ Get the current x-coordinate.
@@ -115,7 +116,8 @@ arity (Cmp _)     = 2
 arity (Arith Neg) = 1
 arity (Arith _)   = 2
 arity c
-  | c `elem` [ Wait, Noop, Halt, Move, Grab, GetX, GetY]    = 0
+  | c `elem` [ Wait, Noop, Halt, Move, Grab, Place
+             , GetX, GetY]                                  = 0
   | c `elem` [ Return, Turn, Run, Random, Say, View, Appear
              , Fst, Snd, Force ]                            = 1
   | c == Build                                              = 2
