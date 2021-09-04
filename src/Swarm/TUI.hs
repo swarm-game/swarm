@@ -18,7 +18,7 @@ import           Data.List.Split             (chunksOf)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
-import qualified Data.Text                   as T
+-- import qualified Data.Text                   as T
 import           Linear
 import           Text.Read                   (readMaybe)
 import           Witch                       (into)
@@ -33,6 +33,7 @@ import qualified Graphics.Vty                as V
 
 import           Swarm.Game
 import qualified Swarm.Game.Entity           as E
+import           Swarm.Game.Robot            (installedDevices)
 import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
@@ -170,7 +171,7 @@ drawCell i w = case W.lookupEntity i w of
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
   = vBox
-    [ drawInventory (s ^. gameState)
+    [ drawRobotInfo (s ^. gameState)
     , hBorder
     , vLimitPercent 30 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
     ]
@@ -182,23 +183,34 @@ drawMessages ms = Widget Fixed Fixed $ do
   let h   = ctx ^. availHeightL
   render . vBox . map txt . reverse . take h $ ms
 
-drawInventory :: GameState -> Widget Name
-drawInventory g = case g ^. viewCenterRule of
-  VCRobot r -> drawInventoryFor (g ^? robotMap . ix r . robotEntity)
+drawRobotInfo :: GameState -> Widget Name
+drawRobotInfo g = case g ^. viewCenterRule of
+  VCRobot r -> drawRobotInfoFor (g ^? robotMap . ix r)
   _otherVCR -> padBottom Max $ str " "
 
-drawInventoryFor :: Maybe Entity -> Widget Name
-drawInventoryFor Nothing = padBottom Max $ str " "
-drawInventoryFor (Just e)
+drawRobotInfoFor :: Maybe Robot -> Widget Name
+drawRobotInfoFor Nothing = padBottom Max $ str " "
+drawRobotInfoFor (Just r)
   = padBottom Max
   $ vBox
-  [ hCenter (txt $ T.append (e ^. entityName) " inventory" )
-  , padAll 2
+  [ hCenter $ txt (r ^. robotName)
+  , padAll 1
     $ vBox
-    $ map drawItem (sortOn (view entityName . snd) (E.elems (e ^. entityInventory)))
+    [ drawInventory (r ^. robotInventory)
+    , txt " "
+    , drawInventory (r ^. installedDevices)
+    ]
   ]
 
+drawInventory :: Inventory -> Widget Name
+drawInventory = vBox . map drawItem . sortOn (view entityName . snd) . E.elems
+
+-- drawInstalledDevices :: Robot -> Widget Name
+-- drawInstalledDevices r
+--   = hBox . map (displayEntity . snd) . elems $ (r ^. installedDevices)
+
 drawItem :: (Int, Entity) -> Widget Name
+drawItem (1, e) = drawLabelledEntityName e
 drawItem (n, e) = drawLabelledEntityName e <+> showCount n
   where
     showCount = padLeft Max . str . show
