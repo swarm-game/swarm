@@ -278,40 +278,43 @@ drawRepl s = vBox $
 
 handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 
--- XXX refactor using StateT AppState ?
-
 -- XXX regenerate inventory list if necessary (check currently focused
 -- robot entity hash against the one stored in the ui state)
 
-handleEvent s (AppEvent Tick) = do
+handleEvent s (AppEvent Tick) = execStateT handleTick s >>= continue
+  where
+    handleTick :: StateT AppState (EventM Name) ()
+    handleTick = do
 
-  -- execStateT handleTick s >>= continue
-  -- where
-  --   handleTick = do
+      -- Run one step of the game
+      zoom gameState gameStep
 
-  let g = s ^. gameState
-  g' <- liftIO $ execStateT gameStep g
-  when (g' ^. updated) $ invalidateCacheEntry WorldCache
+      -- If things were updated, invalidate the world cache so it will be redrawn.
+      g <- use gameState
+      when (g ^. updated) $ lift (invalidateCacheEntry WorldCache)
 
-  let s' = s & gameState .~ g'
-             & case g' ^. replResult of
-                 { Just (_, Just VUnit) ->
-                     gameState . replResult .~ Nothing
-                 ; Just (_ty, Just v) ->
-                     (uiState . uiReplHistory %~ (REPLOutput (into (prettyValue v)) :)) .
-                     (gameState . replResult .~ Nothing)
-                 ; _ -> id
-                 }
+      -- Now check if the base finished running a program entered at the REPL.
+      case g ^. replResult of
 
-  s'' <- case s' ^. uiState . needsLoad of
-    False -> return s'
-    True  -> do
-      mext <- lookupExtent WorldExtent
-      case mext of
-        Nothing -> return s'
-        Just _  -> return $ s' & uiState . needsLoad .~ False
+        -- It did, and the result was the unit value.  Just reset replResult.
+        Just (_, Just VUnit) -> gameState . replResult .= Nothing
 
-  continue s''
+        -- It did, and returned some other value.  Pretty-print the
+        -- result as a REPL output, and reset the replResult.
+        Just (_ty, Just v) -> do
+          uiState . uiReplHistory %= (REPLOutput (into (prettyValue v)) :)
+          gameState . replResult .= Nothing
+
+        -- Otherwise, do nothing.
+        _ -> return ()
+
+      -- Finally, see if the world extent needs to be loaded??? This seems to do nothing...
+      nl <- use $ uiState . needsLoad
+      when nl $ do
+        mext <- lift $ lookupExtent WorldExtent
+        case mext of
+          Nothing -> return ()
+          Just _  -> uiState . needsLoad .= False
 
 handleEvent s (VtyEvent (V.EvResize _ _))            = do
   invalidateCacheEntry WorldCache
