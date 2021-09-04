@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -15,8 +16,13 @@
 
 module Swarm.Util where
 
-import           Data.Maybe       (fromMaybe)
-import           System.Directory (doesFileExist)
+import           Data.Maybe            (fromMaybe)
+import           Data.Text             (Text)
+import qualified Data.Text             as T
+import qualified NLP.Minimorph.English as MM
+import           NLP.Minimorph.Util    ((<+>))
+import           System.Directory      (doesFileExist)
+
 
 infixr 1 ?
 
@@ -50,3 +56,31 @@ readFileMay file = do
   case b of
     False -> return Nothing
     True  -> Just <$> readFile file
+
+--------------------------------------------------
+-- Some language-y stuff
+
+-- | Prepend a noun with the proper indefinite article (\"a\" or \"an\").
+indefinite :: Text -> Text
+indefinite w = MM.indefiniteDet w <+> w
+
+-- | Prepend a noun with the proper indefinite article, and surround
+--   the noun in double quotes.
+indefiniteQ :: Text -> Text
+indefiniteQ w = MM.indefiniteDet w <+> quote w
+
+-- | Pluralize a noun.
+plural :: Text -> Text
+plural = MM.defaultNounPlural
+  -- For now, it is just MM.defaultNounPlural, which only uses heuristics;
+  -- in the future, if we discover specific nouns that it gets wrong,
+  -- we can add a lookup table.
+
+-- | XXX
+number :: Int -> Text -> Text
+number 1 = id
+number _ = plural
+
+-- | Surround some text in double quotes.
+quote :: Text -> Text
+quote t = T.concat ["\"", t, "\""]

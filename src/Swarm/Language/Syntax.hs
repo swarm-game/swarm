@@ -84,6 +84,7 @@ data Const
   | Grab              -- ^ Grab an item from the current location.
   | Place             -- ^ Try to place an item at the current location.
   | Give              -- ^ Give an item to another robot at the current location.
+  | Craft             -- ^ Craft an item.
   | Build             -- ^ Construct a new robot.
   | Run               -- ^ Run a program loaded from a file.
   | GetX              -- ^ Get the current x-coordinate.
@@ -118,7 +119,7 @@ arity (Arith Neg) = 1
 arity (Arith _)   = 2
 arity c
   | c `elem` [ Wait, Noop, Halt, Move, Grab, Place, Give
-             , GetX, GetY]                                  = 0
+             , Craft, GetX, GetY]                           = 0
   | c `elem` [ Return, Turn, Run, Random, Say, View, Appear
              , Fst, Snd, Force ]                            = 1
   | c == Build                                              = 2

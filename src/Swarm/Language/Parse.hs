@@ -155,6 +155,7 @@ parseConst =
   <|> Grab    <$ reserved "grab"
   <|> Place   <$ reserved "place"
   <|> Give    <$ reserved "give"
+  <|> Craft   <$ reserved "craft"
   <|> Build   <$ reserved "build"
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"

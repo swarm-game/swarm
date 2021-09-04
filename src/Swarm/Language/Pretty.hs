@@ -82,6 +82,7 @@ instance PrettyPrec Const where
   prettyPrec _ Grab      = "grab"
   prettyPrec _ Place     = "place"
   prettyPrec _ Give      = "give"
+  prettyPrec _ Craft     = "craft"
   prettyPrec _ Build     = "build"
   prettyPrec _ Run       = "run"
   prettyPrec _ GetX      = "getX"

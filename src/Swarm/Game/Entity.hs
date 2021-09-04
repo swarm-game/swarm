@@ -34,13 +34,16 @@ module Swarm.Game.Entity
 
     -- ** Lenses
   , entityDisplay, entityName, entityDescription, entityOrientation
-  , entityProperties, entityInventory
+  , entityProperties, entityInventory, entityHash
   , hasProperty
 
     -- * Inventories
 
   , Inventory, Count
-  , empty, singleton, insert, lookup, lookupByName, contains, delete, deleteCount, deleteAll, elems
+  , empty, singleton, insert, insertCount
+  , lookup, lookupByName, contains
+  , delete, deleteCount, deleteAll
+  , elems
 
   )
 where
@@ -57,6 +60,7 @@ import qualified Data.IntSet        as IS
 import           Data.Map           (Map)
 import qualified Data.Map           as M
 import           Data.Text          (Text)
+import qualified Data.Text          as T
 import           GHC.Generics       (Generic)
 import           Linear
 import           Prelude            hiding (lookup)
@@ -165,16 +169,15 @@ instance Ord Entity where
 rehashEntity :: Entity -> Entity
 rehashEntity e = e { _entityHash = hash e }
 
--- | Create an entity with an empty inventory (automatically filling
---   in the hash value).
+-- | Create an entity with on orientation and an empty inventory
+--   (automatically filling in the hash value).
 mkEntity
   :: Display          -- ^ Display
   -> Text             -- ^ Entity name
   -> Text             -- ^ Entity description
-  -> Maybe (V2 Int)   -- ^ Orientation
   -> [EntityProperty] -- ^ Properties
   -> Entity
-mkEntity disp nm descr orient props = rehashEntity $ Entity 0 disp nm descr orient props empty
+mkEntity disp nm descr props = rehashEntity $ Entity 0 disp nm descr Nothing props empty
 
 ------------------------------------------------------------
 -- Entity lenses
@@ -259,10 +262,16 @@ singleton = flip insert empty
 -- | Insert an entity into an inventory.  If the inventory already
 --   contains this entity, then only its count will be incremented.
 insert :: Entity -> Inventory -> Inventory
-insert e (Inventory cs byN)
+insert = insertCount 1
+
+-- | Insert a certain number of copies of an entity into an inventory.
+--   If the inventory already contains this entity, then only its
+--   count will be incremented.
+insertCount :: Count -> Entity -> Inventory -> Inventory
+insertCount cnt e (Inventory cs byN)
   = Inventory
-      (IM.insertWith (\(m,_) (n,_) -> (m+n,e)) (e ^. entityHash) (1,e) cs)
-      (M.insertWith IS.union (e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
+      (IM.insertWith (\(m,_) (n,_) -> (m+n,e)) (e ^. entityHash) (cnt,e) cs)
+      (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
 
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
@@ -273,7 +282,7 @@ lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 --   matching entities.
 lookupByName :: Text -> Inventory -> [Entity]
 lookupByName name (Inventory cs byN)
-  = maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup name byN)
+  = maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
 
 -- | Check whether an inventory contains a given entity.
 contains :: Inventory -> Entity -> Bool

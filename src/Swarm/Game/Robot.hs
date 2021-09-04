@@ -13,6 +13,8 @@
 --
 -----------------------------------------------------------------------------
 
+-- XXX make a special inventory for "installed" devices
+
 module Swarm.Game.Robot
   ( -- * Robots
 
@@ -28,10 +30,10 @@ module Swarm.Game.Robot
 
     -- ** Query
 
-  , isActive, getResult
+  , isActive, getResult, hasInstalled
   ) where
 
-import           Control.Lens
+import           Control.Lens       hiding (contains)
 import           Data.Maybe         (isNothing)
 import           Data.Text          (Text)
 import           Linear
@@ -122,8 +124,8 @@ mkRobot name l d m = Robot
       defaultRobotDisplay
       name
       "A generic robot."
-      (Just d)
       []
+      & entityOrientation ?~ d
   , _robotLocation = l
   , _machine       = m
   , _tickSteps     = 0
@@ -136,7 +138,6 @@ baseRobot = Robot
       defaultRobotDisplay
       "base"
       "Your base of operations."
-      Nothing
       []
   , _robotLocation = V2 0 0
   , _machine       = idleMachine
@@ -151,3 +152,7 @@ isActive = isNothing . getResult
 getResult :: Robot -> Maybe Value
 getResult = finalValue . view machine
 
+-- | Check whether a robot has a specific device installed.
+hasInstalled :: Robot -> Entity -> Bool
+hasInstalled r = ((r ^. robotInventory) `contains`)
+  -- XXX later, change this to look at installed devices instead of inventory

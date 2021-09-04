@@ -11,14 +11,12 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE BlockArguments    #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
-
-{-# OPTIONS_GHC -fno-warn-unused-binds #-}
-  -- no-warn-unused-binds is for debugging code
 
 module Swarm.Game
   ( -- * Values
@@ -59,9 +57,6 @@ module Swarm.Game
   )
   where
 
-import           Numeric.Noise.Perlin
--- import           Numeric.Noise.Ridged
-
 import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, contains, from, parts)
 import           Control.Monad.State
@@ -71,7 +66,6 @@ import qualified Data.Map                as M
 import           Data.Maybe              (fromMaybe, listToMaybe)
 import           Data.Text               (Text)
 import qualified Data.Text               as T
-import qualified Data.Text.IO            as T
 import           Linear
 import           System.Random           (randomRIO)
 import           Witch
@@ -82,10 +76,11 @@ import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import qualified Swarm.Game.Entities     as E
 import           Swarm.Game.Entity
+import           Swarm.Game.Recipes
 import           Swarm.Game.Robot
-import           Swarm.Game.Terrain
 import           Swarm.Game.Value
 import qualified Swarm.Game.World        as W
+import           Swarm.Game.WorldGen     (testWorld2)
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
@@ -160,13 +155,6 @@ addRobot r = do
   newRobots %= (r' :)
   return r'
 
-pn1, pn2 :: Perlin
-pn1 = perlin 0 5 0.05 0.5
-pn2 = perlin 0 5 0.05 0.75
-
--- rn :: Ridged
--- rn = ridged 0 5 0.005 1 2
-
 initGameState :: IO GameState
 initGameState = return $
   GameState
@@ -174,14 +162,7 @@ initGameState = return $
   , _robotMap   = M.singleton "base" baseRobot
   , _newRobots  = []
   , _gensym     = 0
-  , _world      = W.newWorld . fmap (first fromEnum) $ \(i,j) ->
-      if noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0
-        then (DirtT, Just E.tree)
-        else
-          if noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0
-            then (RockT, Just E.rock)
-            else (GrassT, Nothing)
---      if murmur3 0 (into (show (i + 3947*j))) `mod` 20 == 0 then '.' else ' '
+  , _world      = W.newWorld . fmap (first fromEnum) $ testWorld2
   , _viewCenterRule = VCRobot "base"
   , _viewCenter = V2 0 0
   , _updated    = False
@@ -359,6 +340,14 @@ formatError r c = T.unwords . (colon (r ^. robotName) :) . (colon (prettyText c)
   where
     colon = flip T.append ":"
 
+-- | Require that a robot has a given device installed, OR we are in
+--   creative mode.  Run the first (failure) continuation if not, and
+--   the second (success) continuation if so.
+require :: MonadState GameState m => Robot -> Entity -> m a -> m a -> m a
+require r e fk sk = do
+  mode <- use gameMode
+  if mode == Creative || r `hasInstalled` e then sk else fk
+
 -- | At the level of the CEK machine there's no particular difference
 --   between *evaluating* a function constant and *executing* a
 --   command constant, but it somehow feels better to have two
@@ -385,6 +374,9 @@ seedProgram thing = prog
       , "}"
       ]
 
+-- XXX rewrite nested pattern-matching code nicely using ideas from
+-- https://www.haskellforall.com/2021/05/the-trick-to-avoid-deeply-nested-error.html
+
 execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
 execConst Wait _ k r   = stepUnit r k
 execConst Halt _ _ _   = updated .= True >> return Nothing
@@ -393,58 +385,68 @@ execConst Noop _ _ _   = error "execConst Noop should have been handled already 
 execConst Move _ k r   = do
   let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
   me <- uses world (W.lookupEntity (-y,x))
-  mode <- use gameMode
-  let canMove = mode == Creative || (r ^. robotInventory) `contains` E.treads
-      canWalk = maybe True (not . (`hasProperty` Unwalkable)) me
-  case canMove && canWalk of
+  require r E.treads
+    (emitError r Move ["You need treads to move."] >> stepUnit r k)
+    case maybe True (not . (`hasProperty` Unwalkable)) me of
 
-    -- Either we can't move, or there's something there, and we can't walk on it
-    False -> stepUnit r k
-
-    -- Otherwise, move forward.
-    _          -> do
-      updated .= True
-      stepUnit (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) k
-execConst Grab _ k r = do
-  let V2 x y = r ^. robotLocation
-  me <- uses world (W.lookupEntity (-y,x))
-  case me of
-
-    -- No entity here.
-    Nothing -> stepUnit r k
-
-    -- There is an entity here...
-    Just e -> case e `hasProperty` Portable of
-
-      -- ...but it can't be picked up.
+      -- There's something there, and we can't walk on it.
+      -- It seems like it would be super annoying for this to generate
+      -- an error message or throw an exception!  We just consider this
+      -- normal operation of the Move instruction when a robot is blocked.
       False -> stepUnit r k
 
-      -- ...and it can be picked up.
-      True -> do
+      -- Otherwise, move forward.
+      _          -> do
         updated .= True
+        stepUnit (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) k
 
-        -- Remove the entity from the world.
-        world %= W.update (-y,x) (const Nothing)
+execConst Grab _ k r =
+  require r E.grabber
+    (emitError r Grab ["You need a grabber device to grab things."] >> stepUnit r k)
+    do
+      let V2 x y = r ^. robotLocation
+      me <- uses world (W.lookupEntity (-y,x))
+      case me of
 
-        when (e `hasProperty` Growable) $ do
+        -- No entity here.
+        Nothing -> emitError r Grab ["There is nothing here to grab."] >> stepUnit r k
 
-          -- Grow a new entity from a seed.
-          let seedBot =
-                mkRobot "seed" (r ^. robotLocation) (V2 0 0)
-                  (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit))
-                  & robotDisplay .~
-                    (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
-                  & robotInventory .~ singleton e
-          _ <- addRobot seedBot
-          return ()
+        -- There is an entity here...
+        Just e -> case e `hasProperty` Portable of
 
-        -- Add the picked up item to the robot's inventory
-        stepUnit (r & robotInventory %~ insert e) k
+          -- ...but it can't be picked up.
+          False -> do
+            emitError r Grab ["The", e ^. entityName, "here can't be grabbed."]
+            stepUnit r k
 
--- XXX require treads
+          -- ...and it can be picked up.
+          True -> do
+            updated .= True
+
+            -- Remove the entity from the world.
+            world %= W.update (-y,x) (const Nothing)
+
+            when (e `hasProperty` Growable) $ do
+
+              -- Grow a new entity from a seed.
+              let seedBot =
+                    mkRobot "seed" (r ^. robotLocation) (V2 0 0)
+                      (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit))
+                      & robotDisplay .~
+                        (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
+                      & robotInventory .~ singleton e
+              _ <- addRobot seedBot
+              return ()
+
+            -- Add the picked up item to the robot's inventory
+            stepUnit (r & robotInventory %~ insert e) k
+
 execConst Turn [VDir d] k r = do
-  updated .= True
-  stepUnit (r & robotOrientation . _Just %~ applyTurn d) k
+  require r E.treads
+    (emitError r Turn ["You need treads to turn."] >> stepUnit r k)
+    do
+      updated .= True
+      stepUnit (r & robotOrientation . _Just %~ applyTurn d) k
 execConst Turn args k _ = badConst Turn args k
 
 -- XXX do we need a device to do placement?
@@ -452,9 +454,9 @@ execConst Place [VString s] k r = do
   let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y, x))
   case me of
-    Just _  -> stepUnit r k
+    Just _  -> emitError r Place ["There is already an entity here."] >> stepUnit r k
     Nothing -> case lookupByName s (r ^. robotInventory) of
-      []    -> stepUnit r k
+      []    -> emitError r Place ["You don't have", indefinite s, "to place."] >> stepUnit r k
       (e:_) -> do
         updated .= True
         world %= W.update (-y, x) (const (Just e))
@@ -470,13 +472,31 @@ execConst Give [VString otherName, VString itemName] k r = do
       robotMap . at otherName . _Just . robotInventory %= insert item
       stepUnit (r & robotInventory %~ delete item) k
     (Nothing, _) -> do
-      emitError r Give ["there is no robot named", otherName, "here." ]
+      emitError r Give ["There is no robot named", otherName, "here." ]
       stepUnit r k
     (_, Nothing) -> do
-      emitError r Give ["you don't have a", itemName, "to give." ]
+      emitError r Give ["You don't have", indefinite itemName, "to give." ]
       stepUnit r k
 
 execConst Give args k _ = badConst Give args k
+
+-- XXX do we need a device to craft?
+execConst Craft [VString name] k r =
+  case listToMaybe $ lookupByName name E.entityCatalog of
+    Nothing -> emitError r Craft ["I've never heard of", indefiniteQ name, "."] >> stepUnit r k
+    Just e  -> case recipeFor e of
+      Nothing -> do
+        emitError r Craft ["There is no known recipe for crafting", indefinite name, "."]
+        stepUnit r k
+      Just recipe -> case craft recipe (r ^. robotInventory) of
+        -- XXX describe the missing ingredients
+        Left missing -> do
+          emitError r Craft ["Missing ingredients:", prettyIngredientList missing]
+          stepUnit r k
+        Right inv'    -> stepUnit (r & robotInventory .~ inv') k
+
+execConst Craft args k _ = badConst Craft args k
+
 
 execConst GetX _ k r = step r $ Out (VInt (fromIntegral x)) k
   where
@@ -498,7 +518,7 @@ execConst Say args k _ = badConst Say args k
 execConst View [VString s] k r = do
   mr <- use (robotMap . at s)
   case mr of
-    Nothing -> emitMessage $ T.concat["There is no robot named ", s, " to view."]
+    Nothing -> emitError r View [ "There is no robot named ", s, " to view." ]
     Just _  -> viewCenterRule .= VCRobot s
   stepUnit r k
 execConst View args k _ = badConst View args k
@@ -522,7 +542,7 @@ execConst Appear [VString s] k r = do
         )
         k
     _ -> do
-      emitMessage $ T.concat[s, " is not a valid appearance string."]
+      emitError r Appear [quote s, "is not a valid appearance string."]
       stepUnit r k
 execConst Appear args k _ = badConst Appear args k
 
@@ -557,7 +577,9 @@ execConst Build [VString name, c] k r = do
           (r ^. robotLocation)
           (r ^. robotOrientation ? east)
           (initMachineV c)
-          & robotInventory %~ insert E.treads  -- start off every
+          & robotInventory %~ insert E.treads
+          & robotInventory %~ insert E.grabber   -- XXX install, not put in inventory
+     -- start off every
             -- robot with a pair of treads.  XXX later, in hardcore
             -- mode, this has to be taken from the inventory of the
             -- base.
@@ -567,27 +589,29 @@ execConst Build [VString name, c] k r = do
 execConst Build args k _ = badConst Build args k
 
 execConst Run [VString fileName] k r = do
-  f <- liftIO $ T.readFile (into fileName)  -- XXX handle file not existing
-  case processCmd f of
-    Left  err -> error (into err)  -- XXX, display message and do nothing
-    Right t   -> step r $ In (erase t) M.empty (FExec : k)
-    -- Note, adding FExec to the stack above is correct.  run has the
-    --   type run : String -> Cmd (), i.e. executing (run s) for some
-    --   string s causes it to load *and immediately execute* the
-    --   program in the file.
-    --
-    -- If we instead had
-    --
-    --   load : String -> Cmd (Cmd ())
-    --
-    -- (which could indeed be useful, once commands have return values
-    -- and Bind does more than just sequencing) then the code would be
-    -- the same as for run, EXCEPT that we would NOT add the FExec to
-    -- the stack above.  The fact that there are two FExec frames
-    -- involved in executing 'run' (one to execute the run command
-    -- itself, and one to execute the thing it loads) corresponds to
-    -- the fact that it is equivalent to (in pseudo-Haskell syntax)
-    -- 'join . load'.
+  mf <- liftIO $ readFileMay (into fileName)
+  case mf of
+    Nothing -> emitError r Run ["File not found:", fileName] >> stepUnit r k
+    Just f -> case processCmd (into @Text f) of
+      Left  _ -> emitError r Run ["Error while processing", fileName] >> stepUnit r k
+      Right t -> step r $ In (erase t) M.empty (FExec : k)
+      -- Note, adding FExec to the stack above is correct.  run has the
+      --   type run : String -> Cmd (), i.e. executing (run s) for some
+      --   string s causes it to load *and immediately execute* the
+      --   program in the file.
+      --
+      -- If we instead had
+      --
+      --   load : String -> Cmd (Cmd ())
+      --
+      -- (which could indeed be useful, once commands have return values
+      -- and Bind does more than just sequencing) then the code would be
+      -- the same as for run, EXCEPT that we would NOT add the FExec to
+      -- the stack above.  The fact that there are two FExec frames
+      -- involved in executing 'run' (one to execute the run command
+      -- itself, and one to execute the thing it loads) corresponds to
+      -- the fact that it is equivalent to (in pseudo-Haskell syntax)
+      -- 'join . load'.
 
 execConst Run args k _ = badConst Run args k
 

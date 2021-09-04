@@ -32,9 +32,11 @@ import           Swarm.TUI.Attr
 -- | The different possible types of terrain. Unlike entities and
 --   robots, these are hard-coded into the game.
 data TerrainType
-  = RockT
+  = StoneT
   | DirtT
   | GrassT
+  | WaterT
+  | IceT
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | Display a terrain type as a single charcter widget.
@@ -44,7 +46,9 @@ displayTerrain t = displayWidget Nothing (terrainMap ! t)
 -- | A map containing a 'Display' record for each different 'TerrainType'.
 terrainMap :: Map TerrainType Display
 terrainMap = M.fromList
-  [ (RockT, defaultTerrainDisplay '.' rockAttr)
-  , (DirtT, defaultTerrainDisplay '_' dirtAttr)
-  , (GrassT, defaultTerrainDisplay ',' plantAttr)
+  [ (StoneT, defaultTerrainDisplay '░' rockAttr)
+  , (DirtT, defaultTerrainDisplay '░' dirtAttr)
+  , (GrassT, defaultTerrainDisplay '░' grassAttr)
+  , (WaterT, defaultTerrainDisplay ' ' waterAttr)
+  , (IceT, defaultTerrainDisplay ' ' iceAttr)
   ]
