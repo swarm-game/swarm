@@ -25,7 +25,7 @@ module Swarm.Game
 
     -- * Constructing CEK machine states
 
-  , initMachine, initMachineV, idleMachine
+  , initMachine, idleMachine
 
     -- * Running the game
 

@@ -57,7 +57,7 @@ module Swarm.Game.CEK
 
     -- ** Construction
 
-  , initMachine, initMachineV, idleMachine
+  , initMachine, idleMachine
 
     -- ** Extracting information
   , finalValue
@@ -178,13 +178,6 @@ initMachine t _         = In (erase t) emptyEnv []
 -- | A machine which does nothing.
 idleMachine :: CEK
 idleMachine = initMachine (TConst Noop) (TyCmd TyUnit)
-
--- | Initialize a machine state with a command that is already a value
---   (for example, this is the case when spawning a new robot with the
---   'Build' command; because of eager evaluation, the argument to
---   'Build' has already been evaluated (but not executed!)).
-initMachineV :: Value -> CEK
-initMachineV v = Out v [FExec]
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CEK states.  Should really make a
