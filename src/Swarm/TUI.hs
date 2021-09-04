@@ -72,7 +72,6 @@ data UIState = UIState
     --   tell if its inventory changed) along with a list with the
     --   items in the focused robot's inventory.
   , _uiError          :: Maybe (Widget Name)
-  , _needsLoad        :: Bool
   , _lgTicksPerSecond :: TVar Int
   }
 
@@ -103,7 +102,6 @@ initUIState = do
     , _uiReplHistIdx    = -1
     , _uiInventory      = Nothing
     , _uiError          = Nothing
-    , _needsLoad        = True
     , _lgTicksPerSecond = tv
     }
 
@@ -308,17 +306,9 @@ handleEvent s (AppEvent Tick) = execStateT handleTick s >>= continue
         -- Otherwise, do nothing.
         _ -> return ()
 
-      -- Finally, see if the world extent needs to be loaded??? This seems to do nothing...
-      nl <- use $ uiState . needsLoad
-      when nl $ do
-        mext <- lift $ lookupExtent WorldExtent
-        case mext of
-          Nothing -> return ()
-          Just _  -> uiState . needsLoad .= False
-
 handleEvent s (VtyEvent (V.EvResize _ _))            = do
   invalidateCacheEntry WorldCache
-  continue $ s & uiState . needsLoad .~ True
+  continue s
 handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
