@@ -13,17 +13,20 @@
 module Swarm.Game.WorldGen where
 
 import           Data.Bool
+import           Data.Enumeration
 import           Data.Hash.Murmur
 import           Numeric.Noise.Perlin
 import           Witch
 
+import           Data.List            (find)
 import qualified Swarm.Game.Entities  as E
 import           Swarm.Game.Entity    (Entity)
 import           Swarm.Game.Terrain
+import           Swarm.Game.World
 
 
 -- | A simple test world I used for a while during early development.
-testWorld1 :: (Int,Int) -> (TerrainType, Maybe Entity)
+testWorld1 :: WorldFun TerrainType Entity
 testWorld1 (-5, 3) = (StoneT, Just E.flerb)
 testWorld1 (2, -1) = (GrassT, Just E.elephant)
 testWorld1 (i,j)
@@ -40,7 +43,7 @@ data Hardness = Soft    | Hard       deriving (Eq, Ord, Show, Read)
 data Origin   = Natural | Artificial deriving (Eq, Ord, Show, Read)
 
 -- | A more featureful test world.
-testWorld2 :: (Int,Int) -> (TerrainType, Maybe Entity)
+testWorld2 :: WorldFun TerrainType Entity
 testWorld2 ix@(r,c)
   = genBiome
     (bool Small Big (sample ix pn0 > 0))
@@ -56,7 +59,6 @@ testWorld2 ix@(r,c)
       | otherwise            = (GrassT, Nothing)
     genBiome Small Hard Natural
       | h `mod` 30  == 0  = (StoneT, Just E.pebbles)
-      | h `mod` 120 == 1  = (StoneT, Just E.lambda)
       | otherwise         = (StoneT, Nothing)
     genBiome Big Soft Natural
       | even (r+c) = (WaterT, Just E.wave)
@@ -71,7 +73,9 @@ testWorld2 ix@(r,c)
       | h `mod` 5000 == 0   = (DirtT, Just E.linux)
       | sample ix cl0 > 0.5 = (GrassT, Nothing)
       | otherwise           = (DirtT, Nothing)
-    genBiome Small Hard Artificial = (StoneT, Nothing)
+    genBiome Small Hard Artificial
+      | h `mod` 120 == 1  = (StoneT, Just E.lambda)
+      | otherwise = (StoneT, Nothing)
     genBiome Big Hard Artificial
       | sample ix cl0 > 0.8 = (IceT, Nothing)
       | otherwise           = (StoneT, Nothing)
@@ -89,3 +93,11 @@ testWorld2 ix@(r,c)
     clumps seed = perlin seed 4 0.08 0.5
 
     cl0 = clumps 0
+
+findGoodOrigin :: WorldFun t Entity -> WorldFun t Entity
+findGoodOrigin f = \(r,c) -> f (r + fromIntegral rOffset, c + fromIntegral cOffset)
+  where
+    int' :: Enumeration Int
+    int' = fromIntegral <$> int
+    Just (rOffset, cOffset) = find isTree (enumerate (int' >< int'))
+    isTree = (== Just E.tree) . snd . f

@@ -80,7 +80,7 @@ import           Swarm.Game.Recipes
 import           Swarm.Game.Robot
 import           Swarm.Game.Value
 import qualified Swarm.Game.World        as W
-import           Swarm.Game.WorldGen     (testWorld2)
+import           Swarm.Game.WorldGen     (findGoodOrigin, testWorld2)
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
@@ -158,16 +158,16 @@ addRobot r = do
 initGameState :: IO GameState
 initGameState = return $
   GameState
-  { _gameMode   = Classic
-  , _robotMap   = M.singleton "base" baseRobot
-  , _newRobots  = []
-  , _gensym     = 0
-  , _world      = W.newWorld . fmap (first fromEnum) $ testWorld2
+  { _gameMode       = Classic
+  , _robotMap       = M.singleton "base" baseRobot
+  , _newRobots      = []
+  , _gensym         = 0
+  , _world          = W.newWorld . fmap (first fromEnum) . findGoodOrigin $ testWorld2
   , _viewCenterRule = VCRobot "base"
-  , _viewCenter = V2 0 0
-  , _updated    = False
-  , _replResult = Nothing
-  , _messageQueue = []
+  , _viewCenter     = V2 0 0
+  , _updated        = False
+  , _replResult     = Nothing
+  , _messageQueue   = []
   }
 
 maxMessageQueueSize :: Int

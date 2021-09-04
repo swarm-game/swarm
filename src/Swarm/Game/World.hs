@@ -30,7 +30,8 @@
 module Swarm.Game.World
   ( -- * The @Worldly@ type class
 
-    Worldly(..)
+    WorldFun
+  , Worldly(..)
 
     -- * World implementations
 
@@ -53,6 +54,8 @@ import           Swarm.Util
 ------------------------------------------------------------
 -- Worldly type class
 
+type WorldFun t e = (Int,Int) -> (t, Maybe e)
+
 -- | A class to abstract over different world implementations.  We
 --   really only need one world implementation at a time, but it's
 --   helpful to think about what operations a world needs to support,
@@ -62,7 +65,7 @@ class Worldly w t e | w -> t e where
 
   -- | Create a new world from a function that defines what is at
   --   every location: a terrain value, and possibly an entity.
-  newWorld   :: ((Int,Int) -> (t, Maybe e)) -> w
+  newWorld   :: WorldFun t e -> w
 
   -- | Look up the terrain character at given (row, column)
   --   coordinates.  Note that this does /not/ return an updated
@@ -97,7 +100,7 @@ class Worldly w t e | w -> t e where
 --   locations, and if it's not there it simply runs the function to
 --   find out what character should be there.
 data SimpleWorld t e = SimpleWorld
-  ((Int,Int) -> (t, Maybe e))    -- ^ World generation function
+  (WorldFun t e)                 -- ^ World generation function
   (M.Map (Int,Int) (Maybe e))    -- ^ Map of locations that have a different entity
                                  --   than originally
 
@@ -136,7 +139,7 @@ type EntityTile e  = A.Array (Int,Int) (Maybe e)
 --   much for a while.
 
 data TileCachingWorld t e = TileCachingWorld
-  ((Int,Int) -> (t, Maybe e))                      -- ^ World generation function
+  (WorldFun t e)                                   -- ^ World generation function
   (M.Map (Int,Int) (TerrainTile t, EntityTile e))  -- ^ Tile cache
   (M.Map (Int,Int) (Maybe e))                      -- ^ Map of locations that have changed entities
 

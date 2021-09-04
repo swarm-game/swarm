@@ -44,6 +44,7 @@ extra-deps:
 - brick-0.64
 - git: https://github.com/colinhect/hsnoise
   commit: 4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d
+- simple-enumeration-0.2.1@sha256:8625b269c1650d3dd0e3887351c153049f4369853e0d525219e07480ea004b9f,1178
 
 
 # Override default flag values for local packages and extra-deps
