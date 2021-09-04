@@ -40,5 +40,11 @@ elaborate = bottomUp rewrite
     -- in the context.
     rewrite _ (TLet x ty t1 t2) = TLet x ty (mapFree x (TApp ty (TConst Force)) t1) t2
 
+    -- Delay evaluation of the program argument to a 'Build' command,
+    -- so it will be evaluated by the constructed robot instead of the one
+    -- doing the constructing.
+    rewrite _ (TApp ty1 (TApp ty2 (TConst Build) nm) prog)
+      = TApp ty1 (TApp ty2 (TConst Build) nm) (TDelay prog)
+
     -- Leave any other subterms alone.
     rewrite _ t = t

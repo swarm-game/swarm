@@ -571,13 +571,13 @@ execConst Fst args k _        = badConst Fst args k
 execConst Snd [VPair _ v] k r = step r $ Out v k
 execConst Snd args k _        = badConst Snd args k
 
-execConst Build [VString name, c] k r = do
+execConst Build [VString name, VDelay c e] k r = do
   let newRobot =
         mkRobot
           name
           (r ^. robotLocation)
           (r ^. robotOrientation ? east)
-          (initMachineV c)
+          (In c e [FExec])  -- XXX require cap for env that gets shared here?
           [E.treads, E.grabber, E.solarPanels]
 
   newRobot' <- addRobot newRobot
