@@ -33,7 +33,6 @@ import qualified Graphics.Vty                as V
 
 import           Control.Monad.State
 import           Swarm.Game
-import qualified Swarm.Game.Entity           as E
 import           Swarm.Game.Robot            (installedDevices)
 import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
@@ -168,7 +167,9 @@ drawMenu
       , ("<>", "slower/faster")
       ]
     keyCmdsFor (Just InfoPanel)  =
-      []
+      [ ("↓↑/jk/Pg{Up,Dn}/Home/End", "navigate")
+      , ("Enter", "craft")
+      ]
     keyCmdsFor _ = []
 
 drawKeyCmd :: (Text, Text) -> Widget Name
@@ -209,10 +210,23 @@ drawCell i w = case W.lookupEntity i w of
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
   = vBox
-    [ drawRobotInfo (s ^. gameState)
+    [ drawRobotInfo s
     , hBorder
-    , vLimitPercent 50 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
+    , vLimitPercent 50 $ padBottom Max $ padAll 1 $ drawMessageBox s
     ]
+
+drawMessageBox :: AppState -> Widget Name
+drawMessageBox s = case s ^. uiState . uiFocusRing . to focusGetCurrent of
+  Just InfoPanel -> explainFocusedItem s
+  _              -> drawMessages (s ^. gameState . messageQueue)
+
+explainFocusedItem :: AppState -> Widget Name
+explainFocusedItem s = case mItem of
+  Nothing    -> txt " "
+  Just (_,e) -> vBox . onTail (padTop (Pad 1)) . map txtWrap $ e ^. entityDescription
+  where
+    mList = s ^? uiState . uiInventory . _Just . _2
+    mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
 
 drawMessages :: [Text] -> Widget Name
 drawMessages [] = txt " "
@@ -221,32 +235,27 @@ drawMessages ms = Widget Fixed Fixed $ do
   let h   = ctx ^. availHeightL
   render . vBox . map txt . reverse . take h $ ms
 
-drawRobotInfo :: GameState -> Widget Name
-drawRobotInfo = drawRobotInfoFor . focusedRobot
-
-drawRobotInfoFor :: Maybe Robot -> Widget Name
-drawRobotInfoFor Nothing = padBottom Max $ str " "
-drawRobotInfoFor (Just r)
-  = padBottom Max
-  $ vBox
-  [ hCenter $ txt (r ^. robotName)
-  , padAll 1
+drawRobotInfo :: AppState -> Widget Name
+drawRobotInfo s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
+  (Just r, Just (_, lst)) ->
+    padBottom Max
     $ vBox
-    [ drawInventory (r ^. robotInventory)
-    , txt " "
-    , drawInventory (r ^. installedDevices)
+    [ hCenter $ txt (r ^. robotName)
+    , padAll 1 (BL.renderList (const drawItem) isFocused lst)
     ]
-  ]
+  _ -> padBottom Max $ str " "
+  where
+    isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just InfoPanel
 
-drawInventory :: Inventory -> Widget Name
-drawInventory = vBox . map drawItem . sortOn (view entityName . snd) . E.elems
+-- drawInventory :: Inventory -> Widget Name
+-- drawInventory = vBox . map drawItem . sortOn (view entityName . snd) . E.elems
 
 -- drawInstalledDevices :: Robot -> Widget Name
 -- drawInstalledDevices r
 --   = hBox . map (displayEntity . snd) . elems $ (r ^. installedDevices)
 
 drawItem :: (Int, Entity) -> Widget Name
-drawItem (1, e) = drawLabelledEntityName e
+drawItem (1, e) = padRight Max $ drawLabelledEntityName e
 drawItem (n, e) = drawLabelledEntityName e <+> showCount n
   where
     showCount = padLeft Max . str . show
@@ -327,12 +336,15 @@ handleEvent s ev =
   case focusGetCurrent (s ^. uiState . uiFocusRing) of
     Just REPLPanel  -> handleREPLEvent s ev
     Just WorldPanel -> handleWorldEvent s ev
+    Just InfoPanel  -> handleInfoPanelEvent s ev
     _               -> continueWithoutRedraw s
 
 populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
 populateInventoryList Nothing  = uiInventory .= Nothing
 populateInventoryList (Just r) = do
-  let lst = BL.list InventoryList (V.fromList (r ^. robotInventory . to elems)) 1
+  let itemList = sortOn (view entityName . snd) . elems
+      items = (r ^. robotInventory . to itemList) ++ (r ^. installedDevices . to itemList)
+      lst = BL.list InventoryList (V.fromList items) 1
   uiInventory .= Just (r ^. robotEntity . entityHash, lst)
 
 handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
@@ -434,6 +446,17 @@ viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
 adjustTPS :: (Int -> Int -> Int) -> AppState -> EventM Name ()
 adjustTPS (+/-) s =
   liftIO $ atomically $ modifyTVar (s ^. uiState . lgTicksPerSecond) (+/- 1)
+
+handleInfoPanelEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
+handleInfoPanelEvent s (VtyEvent ev) = do
+  let mList = s ^? uiState . uiInventory . _Just . _2
+  case mList of
+    Nothing -> continueWithoutRedraw s
+    Just l  -> do
+      l' <- BL.handleListEventVi BL.handleListEvent ev l
+      let s' = s & uiState . uiInventory . _Just . _2 .~ l'
+      continue s'
+handleInfoPanelEvent s _ = continueWithoutRedraw s
 
 shutdown :: AppState -> EventM Name (Next AppState)
 shutdown s = do

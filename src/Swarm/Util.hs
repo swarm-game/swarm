@@ -26,6 +26,11 @@ import           System.Directory      (doesFileExist)
 
 infixr 1 ?
 
+-- | Apply a function to all the elements in the tail of a list.
+onTail :: (a -> a) -> [a] -> [a]
+onTail _ []     = []
+onTail f (x:xs) = x : map f xs
+
 -- | A convenient infix flipped version of 'fromMaybe': @Just a ? b =
 --   a@, and @Nothing ? b = b@. It can also be chained, as in @x ? y ?
 --   z ? def@, which takes the value inside the first @Just@,

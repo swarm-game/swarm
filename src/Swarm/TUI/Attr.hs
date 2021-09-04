@@ -18,7 +18,8 @@ module Swarm.TUI.Attr where
 
 import           Brick
 import           Brick.Forms
-import qualified Graphics.Vty as V
+import           Brick.Widgets.List
+import qualified Graphics.Vty       as V
 
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap
@@ -45,6 +46,8 @@ swarmAttrMap = attrMap V.defAttr
   , (highlightAttr, fg V.cyan)
   , (invalidFormInputAttr, fg V.red)
   , (focusedFormInputAttr, V.defAttr)
+
+  , (listSelectedFocusedAttr, bg V.blue)
 
   -- Default attribute
   , (defAttr, V.defAttr)

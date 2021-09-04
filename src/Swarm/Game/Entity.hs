@@ -131,7 +131,10 @@ data Entity = Entity
   , _entityName         :: Text             -- ^ The name of the
                                             --   entity, used /e.g./ in
                                             --   an inventory display.
-  , _entityDescription  :: Text             -- ^ A longer-form description.
+  , _entityDescription  :: [Text]           -- ^ A longer-form
+                                            --   description. Each
+                                            --   'Text' value is one
+                                            --   paragraph.
   , _entityOrientation  :: Maybe (V2 Int)   -- ^ The entity's
                                             --   orientation (if it has
                                             --   one).  For example,
@@ -182,7 +185,7 @@ rehashEntity e = e { _entityHash = hash e }
 mkEntity
   :: Display          -- ^ Display
   -> Text             -- ^ Entity name
-  -> Text             -- ^ Entity description
+  -> [Text]           -- ^ Entity description
   -> [EntityProperty] -- ^ Properties
   -> Entity
 mkEntity disp nm descr props
@@ -194,7 +197,7 @@ mkEntity disp nm descr props
 mkDevice
   :: Char             -- ^ Display char
   -> Text             -- ^ Device name
-  -> Text             -- ^ Device description
+  -> [Text]           -- ^ Device description
   -> [Capability]     -- ^ Provided capabilities
   -> Entity
 mkDevice c nm descr caps
@@ -227,7 +230,7 @@ entityName :: Lens' Entity Text
 entityName = hashedLens _entityName (\e x -> e { _entityName = x })
 
 -- | A longer, free-form description of the entity.
-entityDescription :: Lens' Entity Text
+entityDescription :: Lens' Entity [Text]
 entityDescription = hashedLens _entityDescription (\e x -> e { _entityDescription = x })
 
 -- | The direction this entity is facing (if it has one).

@@ -128,7 +128,7 @@ mkRobot name l d m devs = Robot
   { _robotEntity  = mkEntity
       defaultRobotDisplay
       name
-      "A generic robot."
+      ["A generic robot."]
       []
       & entityOrientation ?~ d
   , _installedDevices = fromList devs
@@ -143,7 +143,7 @@ baseRobot = Robot
   { _robotEntity = mkEntity
       defaultRobotDisplay
       "base"
-      "Your base of operations."
+      ["Your base of operations."]
       []
   , _installedDevices = fromList [solarPanels]
   , _robotLocation = V2 0 0
