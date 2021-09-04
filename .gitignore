@@ -4,5 +4,7 @@ TAGS
 
 .stack-work/
 stack.yaml.lock
+.hie/
+stan.html
 
 .swarm_history
