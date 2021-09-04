@@ -25,7 +25,12 @@ source-repository head
     type:     git
     location: git://github.com/byorgey/swarm.git
 
+common stan-config
+    ghc-options:      -fwrite-ide-info
+                      -hiedir=.hie
+
 library
+    import:           stan-config
     exposed-modules:  Swarm.Language.Types
                       Swarm.Language.Syntax
                       Swarm.Language.Parse
@@ -77,6 +82,7 @@ library
     default-language: Haskell2010
 
 executable swarm
+    import:           stan-config
     main-is:          Main.hs
     build-depends:    swarm, base
     hs-source-dirs:   app
