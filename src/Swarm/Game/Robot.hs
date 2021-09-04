@@ -13,8 +13,6 @@
 --
 -----------------------------------------------------------------------------
 
--- XXX make a special inventory for "installed" devices
-
 module Swarm.Game.Robot
   ( -- * Robots
 
@@ -22,6 +20,7 @@ module Swarm.Game.Robot
 
     -- ** Lenses
   , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
+  , installedDevices
   , machine, tickSteps
 
     -- ** Create
@@ -46,17 +45,21 @@ import           Swarm.Game.Value
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
-  { _robotEntity   :: Entity
+  { _robotEntity      :: Entity
     -- ^ An entity record storing the robot's name, display,
     --   inventory, and so on.
 
-  , _robotLocation :: V2 Int
+  , _installedDevices :: Inventory
+    -- ^ A special inventory of devices the robot has "installed" (and
+    --   thus can use).
+
+  , _robotLocation    :: V2 Int
     -- ^ The location of the robot as (x,y).
 
-  , _machine       :: CEK
+  , _machine          :: CEK
     -- ^ The current state of the robot's CEK machine.
 
-  , _tickSteps     :: Int
+  , _tickSteps        :: Int
     -- ^ The need for 'tickSteps' is a bit technical, and I hope I can
     --   eventually find a different, better way to accomplish it.
     --   Ideally, we would want each robot to execute a single
@@ -95,7 +98,7 @@ data Robot = Robot
     --   can tell when the counter increments.
 
   }
-  deriving (Eq, Ord, Show)
+  deriving (Show)
 
 makeLenses ''Robot
 
@@ -118,14 +121,16 @@ mkRobot
   -> V2 Int  -- ^ Initial location.
   -> V2 Int  -- ^ Initial heading/direction.
   -> CEK     -- ^ Initial CEK machine.
+  -> [Entity] -- ^ Installed devices.
   -> Robot
-mkRobot name l d m = Robot
+mkRobot name l d m devs = Robot
   { _robotEntity  = mkEntity
       defaultRobotDisplay
       name
       "A generic robot."
       []
       & entityOrientation ?~ d
+  , _installedDevices = fromList devs
   , _robotLocation = l
   , _machine       = m
   , _tickSteps     = 0
@@ -139,6 +144,7 @@ baseRobot = Robot
       "base"
       "Your base of operations."
       []
+  , _installedDevices = empty
   , _robotLocation = V2 0 0
   , _machine       = idleMachine
   , _tickSteps     = 0
@@ -154,5 +160,4 @@ getResult = finalValue . view machine
 
 -- | Check whether a robot has a specific device installed.
 hasInstalled :: Robot -> Entity -> Bool
-hasInstalled r = ((r ^. robotInventory) `contains`)
-  -- XXX later, change this to look at installed devices instead of inventory
+hasInstalled r = ((r ^. installedDevices) `contains`)

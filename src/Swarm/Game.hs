@@ -432,6 +432,7 @@ execConst Grab _ k r =
               let seedBot =
                     mkRobot "seed" (r ^. robotLocation) (V2 0 0)
                       (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit))
+                      []
                       & robotDisplay .~
                         (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
                       & robotInventory .~ singleton e
@@ -577,12 +578,8 @@ execConst Build [VString name, c] k r = do
           (r ^. robotLocation)
           (r ^. robotOrientation ? east)
           (initMachineV c)
-          & robotInventory %~ insert E.treads
-          & robotInventory %~ insert E.grabber   -- XXX install, not put in inventory
-     -- start off every
-            -- robot with a pair of treads.  XXX later, in hardcore
-            -- mode, this has to be taken from the inventory of the
-            -- base.
+          [E.treads, E.grabber]
+
   newRobot' <- addRobot newRobot
   updated .= True
   step r $ Out (VString (newRobot' ^. robotName)) k

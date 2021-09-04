@@ -40,7 +40,7 @@ module Swarm.Game.Entity
     -- * Inventories
 
   , Inventory, Count
-  , empty, singleton, insert, insertCount
+  , empty, singleton, fromList, insert, insertCount
   , lookup, lookupByName, contains
   , delete, deleteCount, deleteAll
   , elems
@@ -57,6 +57,7 @@ import           Data.IntMap        (IntMap)
 import qualified Data.IntMap        as IM
 import           Data.IntSet        (IntSet)
 import qualified Data.IntSet        as IS
+import           Data.List          (foldl')
 import           Data.Map           (Map)
 import qualified Data.Map           as M
 import           Data.Text          (Text)
@@ -263,6 +264,10 @@ singleton = flip insert empty
 --   contains this entity, then only its count will be incremented.
 insert :: Entity -> Inventory -> Inventory
 insert = insertCount 1
+
+-- | Create an inventory from a list of entities.
+fromList :: [Entity] -> Inventory
+fromList = foldl' (flip insert) empty
 
 -- | Insert a certain number of copies of an entity into an inventory.
 --   If the inventory already contains this entity, then only its
