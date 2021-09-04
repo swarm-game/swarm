@@ -18,7 +18,7 @@ import           Data.List.Split             (chunksOf)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
--- import qualified Data.Text                   as T
+import qualified Data.Text                   as T
 import           Linear
 import           Text.Read                   (readMaybe)
 import           Witch                       (into)
@@ -29,6 +29,7 @@ import           Brick.Forms
 import           Brick.Widgets.Border        (hBorder)
 import           Brick.Widgets.Center        (center, hCenter)
 import           Brick.Widgets.Dialog
+import qualified Brick.Widgets.List          as BL
 import qualified Graphics.Vty                as V
 
 import           Swarm.Game
@@ -67,6 +68,7 @@ data UIState = UIState
   , _uiReplForm       :: Form Text Tick Name
   , _uiReplHistory    :: [REPLHistItem]
   , _uiReplHistIdx    :: Int
+  , _uiItemList       :: Maybe (BL.List Name (Count, Entity))
   , _uiError          :: Maybe (Widget Name)
   , _needsLoad        :: Bool
   , _lgTicksPerSecond :: TVar Int
@@ -92,7 +94,16 @@ initUIState :: IO UIState
 initUIState = do
   tv <- newTVarIO initLgTicksPerSecond
   mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
-  return $ UIState initFocusRing initReplForm (mhist ? []) (-1) Nothing True tv
+  return $ UIState
+    { _uiFocusRing      = initFocusRing
+    , _uiReplForm       = initReplForm
+    , _uiReplHistory    = mhist ? []
+    , _uiReplHistIdx    = -1
+    , _uiItemList       = Nothing
+    , _uiError          = Nothing
+    , _needsLoad        = True
+    , _lgTicksPerSecond = tv
+    }
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)
@@ -117,7 +128,10 @@ drawUI s =
     vBox
     [ hBox
       [ panel highlightAttr fr InfoPanel $ drawInfoPanel s
-      , panel highlightAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
+      , vBox
+        [ panel highlightAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
+        , drawMenu (s ^. uiState)
+        ]
       ]
     , panel highlightAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
     ]
@@ -135,6 +149,30 @@ drawDialog :: UIState -> Widget Name
 drawDialog s = case s ^. uiError of
   Nothing -> emptyWidget
   Just d  -> renderDialog errorDialog d
+
+drawMenu :: UIState -> Widget Name
+drawMenu
+  = vLimit 1
+  . hBox . map (padLeftRight 1 . drawKeyCmd)
+  . (globalKeyCmds++) . keyCmdsFor . focusGetCurrent . view uiFocusRing
+  where
+    globalKeyCmds =
+      [ ("^Q", "quit")
+      , ("Tab", "cycle panels")
+      ]
+    keyCmdsFor (Just REPLPanel) =
+      [ ("Enter", "execute")
+      ]
+    keyCmdsFor (Just WorldPanel) =
+      [ ("←↓↑→ / hjkl", "scroll")
+      , ("<>", "slower/faster")
+      ]
+    keyCmdsFor (Just InfoPanel)  =
+      []
+    keyCmdsFor _ = []
+
+drawKeyCmd :: (Text, Text) -> Widget Name
+drawKeyCmd (key, cmd) = txt $ T.concat [ "[", key, "] ", cmd ]
 
 drawWorld :: GameState -> Widget Name
 drawWorld g
@@ -271,7 +309,7 @@ handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . 
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
-  | otherwise                       = shutdown s
+handleEvent s (VtyEvent (V.EvKey (V.KChar 'q') [V.MCtrl])) = halt s
 handleEvent s ev =
   case focusGetCurrent (s ^. uiState . uiFocusRing) of
     Just REPLPanel  -> handleREPLEvent s ev
@@ -324,7 +362,8 @@ worldScrollDist = 8
 
 handleWorldEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 handleWorldEvent s (VtyEvent (V.EvKey k []))
-  | k `elem` [V.KUp, V.KDown, V.KLeft, V.KRight]
+  | k `elem` [ V.KUp, V.KDown, V.KLeft, V.KRight
+             , V.KChar 'h', V.KChar 'j', V.KChar 'k', V.KChar 'l' ]
   = scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
@@ -356,11 +395,15 @@ updateView s = do
       s & gameState . world %~ W.loadRegion (viewingRegion (s ^. gameState) size)
 
 keyToDir :: V.Key -> V2 Int
-keyToDir V.KUp    = north
-keyToDir V.KDown  = south
-keyToDir V.KRight = east
-keyToDir V.KLeft  = west
-keyToDir _        = V2 0 0
+keyToDir V.KUp         = north
+keyToDir V.KDown       = south
+keyToDir V.KRight      = east
+keyToDir V.KLeft       = west
+keyToDir (V.KChar 'h') = west
+keyToDir (V.KChar 'j') = south
+keyToDir (V.KChar 'k') = north
+keyToDir (V.KChar 'l') = east
+keyToDir _             = V2 0 0
 
 viewingRegion :: GameState -> (Int,Int) -> ((Int, Int), (Int, Int))
 viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
