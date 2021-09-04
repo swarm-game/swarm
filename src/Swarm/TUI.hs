@@ -9,8 +9,6 @@ import           Control.Arrow               ((&&&))
 import           Control.Concurrent.STM      (atomically)
 import           Control.Concurrent.STM.TVar
 import           Control.Lens
-import           Control.Monad               (when)
-import           Control.Monad.IO.Class      (liftIO)
 import           Data.Array                  (range)
 import           Data.Either                 (isRight)
 import           Data.List                   (sortOn)
@@ -32,6 +30,7 @@ import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List          as BL
 import qualified Graphics.Vty                as V
 
+import           Control.Monad.State
 import           Swarm.Game
 import qualified Swarm.Game.Entity           as E
 import           Swarm.Game.Robot            (installedDevices)
@@ -68,7 +67,10 @@ data UIState = UIState
   , _uiReplForm       :: Form Text Tick Name
   , _uiReplHistory    :: [REPLHistItem]
   , _uiReplHistIdx    :: Int
-  , _uiItemList       :: Maybe (BL.List Name (Count, Entity))
+  , _uiInventory      :: Maybe (Int, BL.List Name (Count, Entity))
+    -- ^ Stores the hash value of the focused robot entity (so we can
+    --   tell if its inventory changed) along with a list with the
+    --   items in the focused robot's inventory.
   , _uiError          :: Maybe (Widget Name)
   , _needsLoad        :: Bool
   , _lgTicksPerSecond :: TVar Int
@@ -99,7 +101,7 @@ initUIState = do
     , _uiReplForm       = initReplForm
     , _uiReplHistory    = mhist ? []
     , _uiReplHistIdx    = -1
-    , _uiItemList       = Nothing
+    , _uiInventory      = Nothing
     , _uiError          = Nothing
     , _needsLoad        = True
     , _lgTicksPerSecond = tv
@@ -125,15 +127,13 @@ drawUI :: AppState -> [Widget Name]
 drawUI s =
   [ drawDialog (s ^. uiState)
   , joinBorders $
-    vBox
-    [ hBox
-      [ panel highlightAttr fr InfoPanel $ drawInfoPanel s
-      , vBox
-        [ panel highlightAttr fr WorldPanel $ hLimitPercent 75 $ drawWorld (s ^. gameState)
-        , drawMenu (s ^. uiState)
-        ]
+    hBox
+    [ hLimitPercent 25 $ panel highlightAttr fr InfoPanel $ drawInfoPanel s
+    , vBox
+      [ panel highlightAttr fr WorldPanel $ drawWorld (s ^. gameState)
+      , drawMenu (s ^. uiState)
+      , panel highlightAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
       ]
-    , panel highlightAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
     ]
   ]
   where
@@ -211,7 +211,7 @@ drawInfoPanel s
   = vBox
     [ drawRobotInfo (s ^. gameState)
     , hBorder
-    , vLimitPercent 30 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
+    , vLimitPercent 50 $ padBottom Max $ drawMessages (s ^. gameState . messageQueue)
     ]
 
 drawMessages :: [Text] -> Widget Name
@@ -277,9 +277,20 @@ drawRepl s = vBox $
 -- Event handling
 
 handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
-handleEvent s (AppEvent Tick)                        = do
+
+-- XXX refactor using StateT AppState ?
+
+-- XXX regenerate inventory list if necessary (check currently focused
+-- robot entity hash against the one stored in the ui state)
+
+handleEvent s (AppEvent Tick) = do
+
+  -- execStateT handleTick s >>= continue
+  -- where
+  --   handleTick = do
+
   let g = s ^. gameState
-  g' <- liftIO $ gameStep g
+  g' <- liftIO $ execStateT gameStep g
   when (g' ^. updated) $ invalidateCacheEntry WorldCache
 
   let s' = s & gameState .~ g'

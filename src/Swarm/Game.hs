@@ -192,8 +192,8 @@ evalStepsPerTick = 100
 --   command and have a library of modules that you can create, edit,
 --   and run all from within the UI (the library could also be loaded
 --   from a file when the whole program starts up).
-gameStep :: GameState -> IO GameState
-gameStep = execStateT $ do
+gameStep :: (MonadState GameState m, MonadIO m) => m ()
+gameStep = do
 
   -- Reset the updated flag.  While stepping the robots, the flag will
   -- get set to true if anything changes that requires redrawing the
@@ -237,14 +237,14 @@ gameStep = execStateT $ do
 -- | Run a robot for one "big step", which may consist of up to
 --   'evalStepsPerTick' CEK machine steps and at most one command
 --   execution.
-bigStepRobot :: Robot -> StateT GameState IO (Maybe Robot)
+bigStepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m (Maybe Robot)
 bigStepRobot = bigStepRobotRec . (tickSteps .~ evalStepsPerTick)
 
 -- | Recursive helper function for 'bigStepRobot', which checks if the
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-bigStepRobotRec :: Robot -> StateT GameState IO (Maybe Robot)
+bigStepRobotRec :: (MonadState GameState m, MonadIO m) => Robot -> m (Maybe Robot)
 bigStepRobotRec r
   | not (isActive r) || r ^. tickSteps <= 0 = return (Just r)
   | otherwise           = do
@@ -255,7 +255,7 @@ bigStepRobotRec r
 --   and a new CEK machine state, decrement its @tickSteps@ and set
 --   its CEK machine to the new state.  This function always returns
 --   @Just@ a robot.
-step :: Robot -> CEK -> StateT GameState IO (Maybe Robot)
+step :: (MonadState GameState m, MonadIO m) => Robot -> CEK -> m (Maybe Robot)
 step r cek = do
 
   -- for debugging. Uncomment to get a sequence of CEK machine states
@@ -266,7 +266,7 @@ step r cek = do
 
 -- | Step to an updated robot and continuation, producing a unit-value
 --   output.  @stepUnit r k == step r (Out VUnit k)@.
-stepUnit :: Robot -> Cont -> StateT GameState IO (Maybe Robot)
+stepUnit :: (MonadState GameState m, MonadIO m) => Robot -> Cont -> m (Maybe Robot)
 stepUnit r k = step r $ Out VUnit k
 
 -- | The main CEK machine workhorse.  Given a robot, look at its CEK
@@ -274,7 +274,7 @@ stepUnit r k = step r $ Out VUnit k
 --   return a @Maybe Robot@ is that the robot could execute a 'Halt'
 --   instruction, making it disappear, which we signal by returning
 --   @Nothing@.
-stepRobot :: Robot -> StateT GameState IO (Maybe Robot)
+stepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m (Maybe Robot)
 stepRobot r = case r ^. machine of
 
   -- First a bunch of straightforward cases.  These are all
@@ -352,7 +352,7 @@ require r e fk sk = do
 --   between *evaluating* a function constant and *executing* a
 --   command constant, but it somehow feels better to have two
 --   different names for it anyway.
-evalConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
+evalConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m (Maybe Robot)
 evalConst = execConst
 
 -- XXX load this from a file and have it available in a map?
@@ -377,7 +377,7 @@ seedProgram thing = prog
 -- XXX rewrite nested pattern-matching code nicely using ideas from
 -- https://www.haskellforall.com/2021/05/the-trick-to-avoid-deeply-nested-error.html
 
-execConst :: Const -> [Value] -> Cont -> Robot -> StateT GameState IO (Maybe Robot)
+execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m (Maybe Robot)
 execConst Wait _ k r   = stepUnit r k
 execConst Halt _ _ _   = updated .= True >> return Nothing
 execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
