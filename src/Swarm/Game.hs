@@ -396,7 +396,7 @@ execConst Move _ k r   = do
       False -> stepUnit r k
 
       -- Otherwise, move forward.
-      _          -> do
+      True -> do
         updated .= True
         stepUnit (r & robotLocation %~ (^+^ (r ^. robotOrientation ? zero))) k
 
@@ -542,7 +542,7 @@ execConst Appear [VString s] k r = do
             & robotDisplay . orientationMap . ix west  .~ wc
         )
         k
-    _ -> do
+    _other -> do
       emitError r Appear [quote s, "is not a valid appearance string."]
       stepUnit r k
 execConst Appear args k _ = badConst Appear args k

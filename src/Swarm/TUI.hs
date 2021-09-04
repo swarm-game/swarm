@@ -185,7 +185,7 @@ drawMessages ms = Widget Fixed Fixed $ do
 drawInventory :: GameState -> Widget Name
 drawInventory g = case g ^. viewCenterRule of
   VCRobot r -> drawInventoryFor (g ^? robotMap . ix r . robotEntity)
-  _         -> padBottom Max $ str " "
+  _otherVCR -> padBottom Max $ str " "
 
 drawInventoryFor :: Maybe Entity -> Widget Name
 drawInventoryFor Nothing = padBottom Max $ str " "

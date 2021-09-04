@@ -23,6 +23,7 @@ module Swarm.Game.Value
 
   ) where
 
+import           Data.List             (foldl')
 import           Data.Map              (Map)
 import qualified Data.Map              as M
 import qualified Data.Set              as S
@@ -101,12 +102,14 @@ valueToTerm (VClo x t e)     =
     (\y v -> TLet y NONE (valueToTerm v))
     (TLam x NONE t)
     (M.restrictKeys e (S.delete x (fv t)))
-valueToTerm (VCApp c vs)     = foldl (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
+valueToTerm (VCApp c vs)     = foldl' (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
 valueToTerm (VDelay t _)     = TDelay t
 
 -- | An environment is a mapping from variable names to values.
 type Env = Map Var Value
+
+infix 9 !!!
 
 -- | Unsafely look up variables in an environment, with a slightly
 --   more informative error message than '(Data.Map.!)' to aid
