@@ -87,4 +87,8 @@ recipeList =
   [ Recipe
     [(1, E.tree)]
     [(2, E.branch), (1, E.log)]
+
+  , Recipe
+    [(1, E.log)]
+    [(4, E.wood)]
   ]

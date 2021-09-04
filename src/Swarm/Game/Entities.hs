@@ -29,7 +29,8 @@ import           Swarm.TUI.Attr
 
 entityCatalog :: Inventory
 entityCatalog = foldl' (flip insert) empty
-  [ tree, branch, log, pebbles, rock, mountain
+  [ tree, branch, log, wood
+  , pebbles, rock, mountain
   , flower, lambda
   , wave, bit False, bit True
   , treads, grabber
@@ -60,6 +61,13 @@ log = mkEntity
   (defaultEntityDisplay 'l' & displayAttr .~ woodAttr)
   "log"
   "A wooden log."
+  [Portable]
+
+wood :: Entity
+wood = mkEntity
+  (defaultEntityDisplay 'w' & displayAttr .~ woodAttr)
+  "wood"
+  "A wooden plank."
   [Portable]
 
 rock :: Entity
