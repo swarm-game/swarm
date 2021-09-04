@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Language.Capability
@@ -15,8 +17,10 @@ module Swarm.Language.Capability
   , requiredCaps
   ) where
 
+import           Data.Hashable         (Hashable)
 import           Data.Set              (Set)
 import qualified Data.Set              as S
+import           GHC.Generics          (Generic)
 import           Swarm.Language.Syntax
 
 -- | Various capabilities which robots can have.
@@ -38,7 +42,18 @@ data Capability
   | CArith    -- ^ Evaluate arithmetic operations
   | CEnv      -- ^ Store and look up definitions in an environment
   | CLam      -- ^ Interpret lambda abstractions
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
+
+  -- XXX we could make this a bit more refined, e.g.:
+  --   - distinguish between capabilities needed to *evaluate* vs *execute*
+  --   - do something more sophisticated for lambdas, let expressions, etc.
+  --
+  -- i.e. we could actually do abstract interpretation, keeping track
+  -- of an environment where each identifier maps to the capabilities
+  -- needed to execute it (because of eager evaluation, the
+  -- capabilities to evaluate it will already be incurred by the time
+  -- it ends up in the environment)
+
 
 -- | Analyze a program to see what capabilities may be needed to
 --   execute it. Note that this is necessarily a conservative
@@ -90,12 +105,3 @@ constCaps Force     = S.empty
 constCaps (Cmp _)   = S.singleton CCmp
 constCaps (Arith _) = S.singleton CArith
 
-  -- XXX we could make this a bit more refined, e.g.:
-  --   - distinguish between capabilities needed to *evaluate* vs *execute*
-  --   - do something more sophisticated for lambdas, let expressions, etc.
-  --
-  -- i.e. we could actually do abstract interpretation, keeping track
-  -- of an environment where each identifier maps to the capabilities
-  -- needed to execute it (because of eager evaluation, the
-  -- capabilities to evaluate it will already be incurred by the time
-  -- it ends up in the environment)

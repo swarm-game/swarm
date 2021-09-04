@@ -16,11 +16,12 @@ module Swarm.Game.Entities where
 
 import           Control.Lens
 import           Data.Bool
-import           Data.List          (foldl')
-import           Prelude            hiding (log)
+import           Data.List                 (foldl')
+import           Prelude                   hiding (log)
 
 import           Swarm.Game.Display
 import           Swarm.Game.Entity
+import           Swarm.Language.Capability
 import           Swarm.TUI.Attr
 
 ------------------------------------------------------------
@@ -145,18 +146,25 @@ elephant = mkEntity
 ------------------------------------------------------------
 
 treads :: Entity
-treads = mkEntity
-  (defaultEntityDisplay '%' & displayAttr .~ deviceAttr)
+treads = mkDevice '%'
   "treads"
   "Installing treads on a robot allows it to move (via the 'move' command) and turn (via the 'turn' command)."
-  [Portable]
+  [CMove, CTurn]
 
 grabber :: Entity
-grabber = mkEntity
-  (defaultEntityDisplay 'G' & displayAttr .~ deviceAttr)
+grabber = mkDevice '<'
   "grabber"
   "A grabber arm allows a robot to grab an item on its current cell (via the 'grab' command)."
-  [Portable]
+  [CGrab]
+
+solarPanels :: Entity
+solarPanels = mkDevice '#'
+  "solar panel"
+  "A solar panel powers a robot."
+  []
+
+-- entitiesByCapability :: Map Capability [Entity]
+-- entitiesByCapability = undefined
 
 -- XXX 3D printer device you need for Build
 

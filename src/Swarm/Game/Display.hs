@@ -34,6 +34,7 @@ module Swarm.Game.Display
   , defaultTerrainDisplay
   , defaultEntityDisplay
   , defaultRobotDisplay
+  , deviceDisplay
 
   ) where
 
@@ -125,3 +126,6 @@ defaultRobotDisplay = Display
   , _displayPriority = 10
   }
 
+-- | Construct a display for a device.
+deviceDisplay :: Char -> Display
+deviceDisplay c = defaultEntityDisplay c & displayAttr .~ deviceAttr

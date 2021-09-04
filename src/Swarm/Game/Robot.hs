@@ -32,13 +32,14 @@ module Swarm.Game.Robot
   , isActive, getResult, hasInstalled
   ) where
 
-import           Control.Lens       hiding (contains)
-import           Data.Maybe         (isNothing)
-import           Data.Text          (Text)
+import           Control.Lens        hiding (contains)
+import           Data.Maybe          (isNothing)
+import           Data.Text           (Text)
 import           Linear
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
+import           Swarm.Game.Entities
 import           Swarm.Game.Entity
 import           Swarm.Game.Value
 
@@ -144,7 +145,7 @@ baseRobot = Robot
       "base"
       "Your base of operations."
       []
-  , _installedDevices = empty
+  , _installedDevices = fromList [solarPanels]
   , _robotLocation = V2 0 0
   , _machine       = idleMachine
   , _tickSteps     = 0

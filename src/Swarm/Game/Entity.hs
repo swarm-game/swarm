@@ -29,12 +29,12 @@ module Swarm.Game.Entity
     EntityProperty(..)
 
     -- * Entities
-  , Entity, mkEntity
+  , Entity, mkEntity, mkDevice
   , displayEntity
 
     -- ** Lenses
   , entityDisplay, entityName, entityDescription, entityOrientation
-  , entityProperties, entityInventory, entityHash
+  , entityProperties, entityInventory, entityCapabilities, entityHash
   , hasProperty
 
     -- * Inventories
@@ -48,25 +48,26 @@ module Swarm.Game.Entity
   )
 where
 
-import           Brick              (Widget)
-import           Control.Lens       (Getter, Lens', lens, to, (^.))
-import           Data.Bifunctor     (second)
-import           Data.Function      (on)
+import           Brick                     (Widget)
+import           Control.Lens              (Getter, Lens', lens, to, (^.))
+import           Data.Bifunctor            (second)
+import           Data.Function             (on)
 import           Data.Hashable
-import           Data.IntMap        (IntMap)
-import qualified Data.IntMap        as IM
-import           Data.IntSet        (IntSet)
-import qualified Data.IntSet        as IS
-import           Data.List          (foldl')
-import           Data.Map           (Map)
-import qualified Data.Map           as M
-import           Data.Text          (Text)
-import qualified Data.Text          as T
-import           GHC.Generics       (Generic)
+import           Data.IntMap               (IntMap)
+import qualified Data.IntMap               as IM
+import           Data.IntSet               (IntSet)
+import qualified Data.IntSet               as IS
+import           Data.List                 (foldl')
+import           Data.Map                  (Map)
+import qualified Data.Map                  as M
+import           Data.Text                 (Text)
+import qualified Data.Text                 as T
+import           GHC.Generics              (Generic)
 import           Linear
-import           Prelude            hiding (lookup)
+import           Prelude                   hiding (lookup)
 
 import           Swarm.Game.Display
+import           Swarm.Language.Capability
 
 ------------------------------------------------------------
 -- Properties
@@ -122,23 +123,27 @@ data EntityProperty
 --   entities stored in the world that are the same will literally
 --   just be stored as pointers to the same shared record.
 data Entity = Entity
-  { _entityHash        :: Int              -- ^ A hash value computed
-                                           --   from the other fields
-  , _entityDisplay     :: Display          -- ^ The way this entity
-                                           --   should be displayed on
-                                           --   the world map.
-  , _entityName        :: Text             -- ^ The name of the
-                                           --   entity, used /e.g./ in
-                                           --   an inventory display.
-  , _entityDescription :: Text             -- ^ A longer-form description.
-  , _entityOrientation :: Maybe (V2 Int)   -- ^ The entity's
-                                           --   orientation (if it has
-                                           --   one).  For example,
-                                           --   when a robot moves, it
-                                           --   moves in the direction
-                                           --   of its orientation.
-  , _entityProperties  :: [EntityProperty] -- ^ Properties of the entity.
-  , _entityInventory   :: Inventory
+  { _entityHash         :: Int              -- ^ A hash value computed
+                                            --   from the other fields
+  , _entityDisplay      :: Display          -- ^ The way this entity
+                                            --   should be displayed on
+                                            --   the world map.
+  , _entityName         :: Text             -- ^ The name of the
+                                            --   entity, used /e.g./ in
+                                            --   an inventory display.
+  , _entityDescription  :: Text             -- ^ A longer-form description.
+  , _entityOrientation  :: Maybe (V2 Int)   -- ^ The entity's
+                                            --   orientation (if it has
+                                            --   one).  For example,
+                                            --   when a robot moves, it
+                                            --   moves in the direction
+                                            --   of its orientation.
+  , _entityProperties   :: [EntityProperty] -- ^ Properties of the entity.
+  , _entityCapabilities :: [Capability]     -- ^ Capabilities provided
+                                            --   by this entity.
+  , _entityInventory    :: Inventory        -- ^ Inventory of other
+                                            --   entities held by this
+                                            --   entity.
   }
 
   -- Note that an entity does not have a location, because the
@@ -150,12 +155,13 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm descr orient props inv)
+  hashWithSalt s (Entity _ disp nm descr orient props caps inv)
     = s `hashWithSalt` disp
         `hashWithSalt` nm
         `hashWithSalt` descr
         `hashWithSalt` orient
         `hashWithSalt` props
+        `hashWithSalt` caps
         `hashWithSalt` inv
 
 -- | Entities are compared by hash for efficiency.
@@ -170,15 +176,29 @@ instance Ord Entity where
 rehashEntity :: Entity -> Entity
 rehashEntity e = e { _entityHash = hash e }
 
--- | Create an entity with on orientation and an empty inventory
---   (automatically filling in the hash value).
+-- | Create an entity with no orientation, an empty inventory,
+--   providing no capabilities (automatically filling in the hash
+--   value).
 mkEntity
   :: Display          -- ^ Display
   -> Text             -- ^ Entity name
   -> Text             -- ^ Entity description
   -> [EntityProperty] -- ^ Properties
   -> Entity
-mkEntity disp nm descr props = rehashEntity $ Entity 0 disp nm descr Nothing props empty
+mkEntity disp nm descr props
+  = rehashEntity $ Entity 0 disp nm descr Nothing props [] empty
+
+-- | 'mkEntity' specialized for making devices: specify a character
+--   instead of general 'Display', specify a list of provided
+--   capabilities, and uses a default set of device properties.
+mkDevice
+  :: Char             -- ^ Display char
+  -> Text             -- ^ Device name
+  -> Text             -- ^ Device description
+  -> [Capability]     -- ^ Provided capabilities
+  -> Entity
+mkDevice c nm descr caps
+  = rehashEntity $ Entity 0 (deviceDisplay c) nm descr Nothing [Portable] caps empty
 
 ------------------------------------------------------------
 -- Entity lenses
@@ -221,6 +241,10 @@ entityProperties = hashedLens _entityProperties (\e x -> e { _entityProperties =
 -- | Test whether an entity has a certain property.
 hasProperty :: Entity -> EntityProperty -> Bool
 hasProperty e p = p `elem` (e ^. entityProperties)
+
+-- | The capabilities this entity provides when installed.
+entityCapabilities :: Lens' Entity [Capability]
+entityCapabilities = hashedLens _entityCapabilities (\e x -> e { _entityCapabilities = x })
 
 -- | The inventory of other entities carried by this entity.
 entityInventory :: Lens' Entity Inventory

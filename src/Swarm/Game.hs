@@ -578,7 +578,7 @@ execConst Build [VString name, c] k r = do
           (r ^. robotLocation)
           (r ^. robotOrientation ? east)
           (initMachineV c)
-          [E.treads, E.grabber]
+          [E.treads, E.grabber, E.solarPanels]
 
   newRobot' <- addRobot newRobot
   updated .= True
