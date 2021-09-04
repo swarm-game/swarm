@@ -17,6 +17,7 @@ import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
+import qualified Data.Vector                 as V
 import           Linear
 import           Text.Read                   (readMaybe)
 import           Witch                       (into)
@@ -54,6 +55,7 @@ data Name
   | REPLInput
   | WorldCache
   | WorldExtent
+  | InventoryList
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 ------------------------------------------------------------
@@ -220,9 +222,7 @@ drawMessages ms = Widget Fixed Fixed $ do
   render . vBox . map txt . reverse . take h $ ms
 
 drawRobotInfo :: GameState -> Widget Name
-drawRobotInfo g = case g ^. viewCenterRule of
-  VCRobot r -> drawRobotInfoFor (g ^? robotMap . ix r)
-  _otherVCR -> padBottom Max $ str " "
+drawRobotInfo = drawRobotInfoFor . focusedRobot
 
 drawRobotInfoFor :: Maybe Robot -> Widget Name
 drawRobotInfoFor Nothing = padBottom Max $ str " "
@@ -275,10 +275,6 @@ drawRepl s = vBox $
 -- Event handling
 
 handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
-
--- XXX regenerate inventory list if necessary (check currently focused
--- robot entity hash against the one stored in the ui state)
-
 handleEvent s (AppEvent Tick) = execStateT handleTick s >>= continue
   where
     handleTick :: StateT AppState (EventM Name) ()
@@ -290,6 +286,19 @@ handleEvent s (AppEvent Tick) = execStateT handleTick s >>= continue
       -- If things were updated, invalidate the world cache so it will be redrawn.
       g <- use gameState
       when (g ^. updated) $ lift (invalidateCacheEntry WorldCache)
+
+      -- Check if the inventory list needs to be updated.
+      listRobotHash    <- fmap fst <$> use (uiState . uiInventory)
+        -- The hash of the robot whose inventory is currently displayed (if any)
+
+      fr <- use (gameState . to focusedRobot)
+      let focusedRobotHash = view (robotEntity . entityHash) <$> fr
+        -- The hash of the focused robot (if any)
+
+      -- If the hashes don't match (either because which robot (or
+      -- whether any robot) is focused changed, or the focused robot's
+      -- inventory changed), regenerate the list.
+      when (listRobotHash /= focusedRobotHash) (zoom uiState $ populateInventoryList fr)
 
       -- Now check if the base finished running a program entered at the REPL.
       case g ^. replResult of
@@ -319,6 +328,12 @@ handleEvent s ev =
     Just REPLPanel  -> handleREPLEvent s ev
     Just WorldPanel -> handleWorldEvent s ev
     _               -> continueWithoutRedraw s
+
+populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
+populateInventoryList Nothing  = uiInventory .= Nothing
+populateInventoryList (Just r) = do
+  let lst = BL.list InventoryList (V.fromList (r ^. robotInventory . to elems)) 1
+  uiInventory .= Just (r ^. robotEntity . entityHash, lst)
 
 handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
 handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))

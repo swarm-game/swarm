@@ -43,8 +43,8 @@ module Swarm.Game
   , machine, tickSteps
 
     -- * Game state
-  , ViewCenterRule(..), updateViewCenter, manualViewCenterUpdate
-  , GameState(..), initGameState, viewCenterRule
+  , ViewCenterRule(..), _VCRobot, updateViewCenter, manualViewCenterUpdate
+  , GameState(..), initGameState, viewCenterRule, focusedRobot
 
     -- ** Lenses
 
@@ -97,6 +97,8 @@ data ViewCenterRule
   | VCRobot Text
   deriving (Eq, Ord, Show)
 
+makePrisms ''ViewCenterRule
+
 data GameMode
   = Classic
   | Creative
@@ -135,6 +137,11 @@ manualViewCenterUpdate update g = g
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
       VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
   & updateViewCenter
+
+focusedRobot :: GameState -> Maybe Robot
+focusedRobot g = do
+  focusedRobotName <- g ^? viewCenterRule . _VCRobot
+  g ^? robotMap . ix focusedRobotName
 
 ensureUniqueName :: MonadState GameState m => Robot -> m Robot
 ensureUniqueName newRobot = do
