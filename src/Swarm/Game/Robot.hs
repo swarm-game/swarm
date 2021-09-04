@@ -1,6 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Game.Robot
@@ -12,6 +9,9 @@
 -- A data type to represent robots.
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Swarm.Game.Robot
   ( -- * Robots
