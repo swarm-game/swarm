@@ -48,7 +48,7 @@ module Swarm.Game
 
     -- ** Lenses
 
-  , gameMode, robotMap, newRobots, world, viewCenter, updated, replResult
+  , gameMode, paused, robotMap, newRobots, world, viewCenter, updated, replResult
   , messageQueue
 
     -- * Convenience re-exports
@@ -106,6 +106,7 @@ data GameMode
 
 data GameState = GameState
   { _gameMode       :: GameMode
+  , _paused         :: Bool
   , _robotMap       :: Map Text Robot
   , _newRobots      :: [Robot]
   , _gensym         :: Int
@@ -166,6 +167,7 @@ initGameState :: IO GameState
 initGameState = return $
   GameState
   { _gameMode       = Classic
+  , _paused         = False
   , _robotMap       = M.singleton "base" baseRobot
   , _newRobots      = []
   , _gensym         = 0

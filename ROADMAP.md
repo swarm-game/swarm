@@ -1,8 +1,6 @@
 - Big projects
 
 - UI
-    - Small
-        - Pause button and single-stepping
     - Big
         - Visualize robot's currently executing program
         - Built-in module editor

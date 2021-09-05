@@ -132,7 +132,7 @@ drawUI s =
     [ hLimitPercent 25 $ panel highlightAttr fr InfoPanel $ drawInfoPanel s
     , vBox
       [ panel highlightAttr fr WorldPanel $ drawWorld (s ^. gameState)
-      , drawMenu (s ^. uiState)
+      , drawMenu (s ^. gameState . paused) (s ^. uiState)
       , panel highlightAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
       ]
     ]
@@ -151,14 +151,14 @@ drawDialog s = case s ^. uiError of
   Nothing -> emptyWidget
   Just d  -> renderDialog errorDialog d
 
-drawMenu :: UIState -> Widget Name
-drawMenu
+drawMenu :: Bool -> UIState -> Widget Name
+drawMenu isPaused
   = vLimit 1
   . hBox . map (padLeftRight 1 . drawKeyCmd)
   . (globalKeyCmds++) . keyCmdsFor . focusGetCurrent . view uiFocusRing
   where
     globalKeyCmds =
-      [ ("^Q", "quit")
+      [ ("^q", "quit")
       , ("Tab", "cycle panels")
       ]
     keyCmdsFor (Just REPLPanel) =
@@ -167,7 +167,10 @@ drawMenu
     keyCmdsFor (Just WorldPanel) =
       [ ("←↓↑→ / hjkl", "scroll")
       , ("<>", "slower/faster")
+      , ("p", if isPaused then "unpause" else "pause")
       ]
+      ++
+      [ ("s", "step") | isPaused ]
     keyCmdsFor (Just InfoPanel)  =
       [ ("↓↑/jk/Pg{Up,Dn}/Home/End", "navigate")
       -- , ("Enter", "craft")
@@ -296,46 +299,52 @@ drawRepl s = vBox $
 ------------------------------------------------------------
 -- Event handling
 
+runGameTick :: AppState -> EventM Name (Next AppState)
+runGameTick s = execStateT gameTick s >>= continue
+
+gameTick :: StateT AppState (EventM Name) ()
+gameTick = do
+
+  -- Run one step of the game
+  zoom gameState gameStep
+
+  -- If things were updated, invalidate the world cache so it will be redrawn.
+  g <- use gameState
+  when (g ^. updated) $ lift (invalidateCacheEntry WorldCache)
+
+  -- Check if the inventory list needs to be updated.
+  listRobotHash    <- fmap fst <$> use (uiState . uiInventory)
+    -- The hash of the robot whose inventory is currently displayed (if any)
+
+  fr <- use (gameState . to focusedRobot)
+  let focusedRobotHash = view (robotEntity . entityHash) <$> fr
+    -- The hash of the focused robot (if any)
+
+  -- If the hashes don't match (either because which robot (or
+  -- whether any robot) is focused changed, or the focused robot's
+  -- inventory changed), regenerate the list.
+  when (listRobotHash /= focusedRobotHash) (zoom uiState $ populateInventoryList fr)
+
+  -- Now check if the base finished running a program entered at the REPL.
+  case g ^. replResult of
+
+    -- It did, and the result was the unit value.  Just reset replResult.
+    Just (_, Just VUnit) -> gameState . replResult .= Nothing
+
+    -- It did, and returned some other value.  Pretty-print the
+    -- result as a REPL output, and reset the replResult.
+    Just (_ty, Just v) -> do
+      uiState . uiReplHistory %= (REPLOutput (into (prettyValue v)) :)
+      gameState . replResult .= Nothing
+
+    -- Otherwise, do nothing.
+    _ -> return ()
+
+
 handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
-handleEvent s (AppEvent Tick) = execStateT handleTick s >>= continue
-  where
-    handleTick :: StateT AppState (EventM Name) ()
-    handleTick = do
-
-      -- Run one step of the game
-      zoom gameState gameStep
-
-      -- If things were updated, invalidate the world cache so it will be redrawn.
-      g <- use gameState
-      when (g ^. updated) $ lift (invalidateCacheEntry WorldCache)
-
-      -- Check if the inventory list needs to be updated.
-      listRobotHash    <- fmap fst <$> use (uiState . uiInventory)
-        -- The hash of the robot whose inventory is currently displayed (if any)
-
-      fr <- use (gameState . to focusedRobot)
-      let focusedRobotHash = view (robotEntity . entityHash) <$> fr
-        -- The hash of the focused robot (if any)
-
-      -- If the hashes don't match (either because which robot (or
-      -- whether any robot) is focused changed, or the focused robot's
-      -- inventory changed), regenerate the list.
-      when (listRobotHash /= focusedRobotHash) (zoom uiState $ populateInventoryList fr)
-
-      -- Now check if the base finished running a program entered at the REPL.
-      case g ^. replResult of
-
-        -- It did, and the result was the unit value.  Just reset replResult.
-        Just (_, Just VUnit) -> gameState . replResult .= Nothing
-
-        -- It did, and returned some other value.  Pretty-print the
-        -- result as a REPL output, and reset the replResult.
-        Just (_ty, Just v) -> do
-          uiState . uiReplHistory %= (REPLOutput (into (prettyValue v)) :)
-          gameState . replResult .= Nothing
-
-        -- Otherwise, do nothing.
-        _ -> return ()
+handleEvent s (AppEvent Tick)
+  | s ^. gameState . paused = continueWithoutRedraw s
+  | otherwise               = runGameTick s
 
 handleEvent s (VtyEvent (V.EvResize _ _))            = do
   invalidateCacheEntry WorldCache
@@ -409,6 +418,11 @@ handleWorldEvent s (VtyEvent (V.EvKey k []))
   | k `elem` [ V.KUp, V.KDown, V.KLeft, V.KRight
              , V.KChar 'h', V.KChar 'j', V.KChar 'k', V.KChar 'l' ]
   = scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') []))
+  = continue (s & gameState . paused %~ not)
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 's') []))
+  | s ^. gameState . paused = runGameTick s
+  | otherwise               = continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
