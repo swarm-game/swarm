@@ -94,9 +94,6 @@
 
     - Big
         - Load seed program from a file in data dir!
-        - Implement craftable items / devices
-        - Add commands for giving/receiving inventory contents.
-        - Create world with biomes etc. using multiple noise sources
         - Implement a challenge mode
             - A challenge consists of
                 - A world
