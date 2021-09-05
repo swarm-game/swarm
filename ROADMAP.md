@@ -2,11 +2,9 @@
 
 - UI
     - Small
-        - Show information about the robot being currently viewed.
-            - Location, direction
-            - See their currently executing program somehow?
         - Pause button and single-stepping
     - Big
+        - Visualize robot's currently executing program
         - Built-in module editor
         - Implement world zooming.
         - Improve handling of ticks.

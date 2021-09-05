@@ -19,6 +19,7 @@ import           Data.Text                   (Text)
 import qualified Data.Text                   as T
 import qualified Data.Vector                 as V
 import           Linear
+import           Text.Printf
 import           Text.Read                   (readMaybe)
 import           Witch                       (into)
 
@@ -245,9 +246,14 @@ drawMessages ms = Widget Fixed Fixed $ do
 drawRobotInfo :: AppState -> Widget Name
 drawRobotInfo s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
   (Just r, Just (_, lst)) ->
+    let V2 x y = r ^. robotLocation in
     padBottom Max
     $ vBox
-    [ hCenter $ txt (r ^. robotName)
+    [ hCenter $ hBox
+        [ txt (r ^. robotName)
+        , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
+        , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
+        ]
     , padAll 1 (BL.renderList (const drawItem) isFocused lst)
     ]
   _ -> padBottom Max $ str " "
