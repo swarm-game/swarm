@@ -33,6 +33,7 @@ import qualified Graphics.Vty                as V
 
 import           Control.Monad.State
 import           Swarm.Game
+import           Swarm.Game.Recipes
 import           Swarm.Game.Robot            (installedDevices)
 import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
@@ -168,7 +169,7 @@ drawMenu
       ]
     keyCmdsFor (Just InfoPanel)  =
       [ ("↓↑/jk/Pg{Up,Dn}/Home/End", "navigate")
-      , ("Enter", "craft")
+      -- , ("Enter", "craft")
       ]
     keyCmdsFor _ = []
 
@@ -223,10 +224,16 @@ drawMessageBox s = case s ^. uiState . uiFocusRing . to focusGetCurrent of
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case mItem of
   Nothing    -> txt " "
-  Just (_,e) -> vBox . onTail (padTop (Pad 1)) . map txtWrap $ e ^. entityDescription
+  Just (_,e) -> vBox $
+    (map (padBottom (Pad 1) . txtWrap) $ e ^. entityDescription)
+    ++
+    explainRecipes e
   where
     mList = s ^? uiState . uiInventory . _Just . _2
     mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
+
+explainRecipes :: Entity -> [Widget Name]
+explainRecipes = map (txt . prettyRecipe) . recipesWith
 
 drawMessages :: [Text] -> Widget Name
 drawMessages [] = txt " "

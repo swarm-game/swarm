@@ -14,6 +14,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
 
@@ -24,7 +25,7 @@ import           Data.Bifunctor      (second)
 import           Data.IntMap         (IntMap)
 import qualified Data.IntMap         as IM
 import           Data.List           (foldl')
-import           Data.Maybe          (listToMaybe)
+import           Data.Maybe          (fromMaybe, listToMaybe)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Witch
@@ -49,21 +50,47 @@ data Recipe = Recipe
 
 makeLenses ''Recipe
 
+prettyRecipe :: Recipe -> Text
+prettyRecipe (Recipe ins outs) =
+  T.concat [ prettyIngredientList ins, " -> ", prettyIngredientList outs ]
+
 prettyIngredientList :: IngredientList -> Text
 prettyIngredientList = T.intercalate " + " . map prettyIngredient
   where
     prettyIngredient (n,e) = T.concat [ into @Text (show n), " ", number n (e ^. E.entityName) ]
 
--- | A map for quickly looking up which recipes can produce an entity
---   with a given hash value.  Built automatically from the 'recipeList'.
-recipeMap :: IntMap [Recipe]
-recipeMap = IM.fromListWith (++) (map (second (:[])) (concatMap outputs recipeList))
+buildRecipeMap :: Getter Recipe IngredientList -> IntMap [Recipe]
+buildRecipeMap select = IM.fromListWith (++) (map (second (:[])) (concatMap mk recipeList))
   where
-    outputs r = [(e ^. E.entityHash, r) | (_, e) <- r ^. recipeOutputs]
+    mk r = [(e ^. E.entityHash, r) | (_, e) <- r ^. select]
+
+-- | A map of recipes indexed by output ingredients. Built
+--   automatically from the 'recipeList'.
+outRecipeMap :: IntMap [Recipe]
+outRecipeMap = buildRecipeMap recipeOutputs
+
+-- | Get a list of all the recipes which have the given entity as an
+--   output.
+recipesFor :: Entity -> [Recipe]
+recipesFor e = fromMaybe [] $ IM.lookup (e ^. E.entityHash) outRecipeMap
 
 -- | Look up a recipe for crafting a specific entity.
 recipeFor :: Entity -> Maybe Recipe
-recipeFor e = IM.lookup (e ^. E.entityHash) recipeMap >>= listToMaybe
+recipeFor = listToMaybe . recipesFor
+
+-- | A map of recipes indexed by input ingredients. Built
+--   automatically from the 'recipeList'.
+inRecipeMap :: IntMap [Recipe]
+inRecipeMap = buildRecipeMap recipeInputs
+
+-- | Get a list of all the recipes which have the given entity as an input.
+recipesUsing :: Entity -> [Recipe]
+recipesUsing e = fromMaybe [] $ IM.lookup (e ^. E.entityHash) inRecipeMap
+
+-- | Get a list of all the recipes which have the given entity as either an input or output.
+--   The ones using the entity as an output are listed first.
+recipesWith :: Entity -> [Recipe]
+recipesWith e = recipesFor e ++ recipesUsing e
 
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
