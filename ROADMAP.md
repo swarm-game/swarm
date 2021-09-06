@@ -1,3 +1,11 @@
+exceptions, try
+  - so that we can make grab : cmd string, and fail when there's
+    nothing to grab
+unification for typechecking
+  - so that == can be polymorphic
+    - so that we can try grabbing something and then see if it's what
+      we expect?
+
 - Big projects
 
 - UI
@@ -6,6 +14,12 @@
         - Built-in module editor
         - Implement world zooming.
         - Improve handling of ticks.
+            - Just send ticks as fast as possible, and look at the
+              actual wall clock time to decide what to do ---
+              e.g. whether to wait a bit, or whether to try to do
+              multiple ticks between screen redraws if the screen
+              redrawing is taking too long, etc.  Hopefully this can
+              result in more consistent performance.
 
 - Language
     - Small
