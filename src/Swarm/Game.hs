@@ -629,7 +629,9 @@ execConst Run [VString fileName] k r = do
   case mf of
     Nothing -> emitError r Run ["File not found:", fileName] >> stepUnit r k
     Just f -> case processTerm (into @Text f) of
-      Left  _          -> emitError r Run ["Error while processing", fileName] >> stepUnit r k
+      Left  err        -> do
+        emitError r Run ["Error while processing", fileName, "\n", err]
+        stepUnit r k
       Right (t ::: ty) -> step r $ initMachine' t ty V.empty k
 
       -- Note, adding FExec to the stack above in the TyCmd case (done
