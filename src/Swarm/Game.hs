@@ -583,6 +583,9 @@ execConst IsHere [VString s] k r = do
     Just e  -> step r $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
 execConst IsHere args k _ = badConst IsHere args k
 
+execConst Not [VBool b] k r = step r $ Out (VBool (not b)) k
+execConst Not args k _ = badConst Not args k
+
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k
 

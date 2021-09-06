@@ -103,6 +103,7 @@ instance PrettyPrec Const where
   prettyPrec _ Appear    = "appear"
   prettyPrec _ IsHere    = "ishere"
   prettyPrec _ If        = "if"
+  prettyPrec _ Not       = "not"
   prettyPrec _ Fst       = "fst"
   prettyPrec _ Snd       = "snd"
   prettyPrec _ Force     = "force"

@@ -248,6 +248,7 @@ inferConst Say         = return $ TyString :->: TyCmd TyUnit
 inferConst View        = return $ TyString :->: TyCmd TyUnit
 inferConst Appear      = return $ TyString :->: TyCmd TyUnit
 inferConst IsHere      = return $ TyString :->: TyCmd TyBool
+inferConst Not         = return $ TyBool :->: TyBool
 inferConst (Cmp _)     = return $ TyInt :->: TyInt :->: TyBool
 inferConst (Arith Neg) = return $ TyInt :->: TyInt
 inferConst (Arith _)   = return $ TyInt :->: TyInt :->: TyInt

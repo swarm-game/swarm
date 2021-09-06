@@ -99,6 +99,7 @@ data Const
   | Fst               -- ^ First projection.
   | Snd               -- ^ Second projection.
   | Force             -- ^ Force a delayed evaluation.
+  | Not               -- ^ Logical negation.
   | Cmp CmpConst      -- ^ Comparison operators.
   | Arith ArithConst  -- ^ Arithmetic operators.
   deriving (Eq, Ord, Show)
@@ -123,7 +124,7 @@ arity c
   | c `elem` [ Wait, Noop, Halt, Move, Grab, Place, Give
              , Craft, GetX, GetY]                           = 0
   | c `elem` [ Return, Turn, Run, Random, Say, View, Appear, IsHere
-             , Fst, Snd, Force ]                            = 1
+             , Not, Fst, Snd, Force ]                       = 1
   | c == Build                                              = 2
   | otherwise                                               = 3
 
@@ -138,7 +139,7 @@ isCmd (Cmp _)   = False
 isCmd (Arith _) = False
 isCmd c = c `notElem` funList
   where
-    funList = [If, Force, Fst, Snd]
+    funList = [If, Force, Not, Fst, Snd]
 
 ------------------------------------------------------------
 -- Terms

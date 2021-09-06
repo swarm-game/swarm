@@ -59,7 +59,7 @@ reservedWords =
   , "build", "run", "getx", "gety"
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
-  , "let", "def", "end", "in", "if", "true", "false", "fst", "snd"
+  , "let", "def", "end", "in", "if", "true", "false", "not", "fst", "snd"
   ]
 
 -- | Skip spaces and comments.
@@ -176,6 +176,7 @@ parseConst =
   <|> Appear  <$ reserved "appear"
   <|> IsHere  <$ reserved "ishere"
   <|> If      <$ reserved "if"
+  <|> Not     <$ reserved "not"
   <|> Fst     <$ reserved "fst"
   <|> Snd     <$ reserved "snd"
 

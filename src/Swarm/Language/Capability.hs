@@ -101,6 +101,7 @@ constCaps View      = S.empty
 constCaps Appear    = S.singleton CAppear
 constCaps IsHere    = S.empty
 constCaps If        = S.singleton CCond
+constCaps Not       = S.empty
 constCaps Fst       = S.empty
 constCaps Snd       = S.empty
 constCaps Force     = S.empty
