@@ -1,9 +1,9 @@
-(def repeat : int -> cmd () -> cmd () = \n.\c.
+def repeat : int -> cmd () -> cmd () = \n.\c.
   if (n == 0)
     {}
     {c ; repeat (n-1) c}
-);
-(def gotoX : int -> cmd () = \tgt. {
+end;
+def gotoX : int -> cmd () = \tgt.
   cur <- getX;
   if (cur == tgt)
     {}
@@ -17,8 +17,8 @@
        {};
      gotoX tgt
     )
-});
-(def gotoY : int -> cmd () = \tgt. {
+end;
+def gotoY : int -> cmd () = \tgt.
   cur <- getY;
   if (cur == tgt)
     {}
@@ -32,9 +32,9 @@
        {};
      gotoY tgt
     )
-});
-(def goto : int -> int -> cmd () = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y);
-(def spawnfwd : cmd () -> cmd () = \c.
+end;
+def goto : int -> int -> cmd () = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
+def spawnfwd : cmd () -> cmd () = \c.
    move;
    b <- isHere "tree";
    if b
@@ -42,8 +42,8 @@
      {};
    turn back;
    move
-);
-(def clear : cmd () =
+end;
+def clear : cmd () =
   grab;
   repeat 4 {
     spawnfwd clear;
@@ -51,4 +51,4 @@
   };
   goto 0 0;
   give "base" "tree"
-)
+end

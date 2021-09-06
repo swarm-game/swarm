@@ -148,7 +148,7 @@ instance PrettyPrec Term where
     hsep $
       ["def", pretty x] ++
       maybe [] (\ty -> [":", ppr ty]) mty ++
-      ["=", ppr t1]
+      ["=", ppr t1, "end"]
   prettyPrec p (TBind Nothing _ t1 t2) = pparens (p > 0) $
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec p (TBind (Just x) _ t1 t2) = pparens (p > 0) $

@@ -59,7 +59,7 @@ reservedWords =
   , "build", "run", "getx", "gety"
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
-  , "let", "def", "in", "if", "true", "false", "fst", "snd"
+  , "let", "def", "end", "in", "if", "true", "false", "fst", "snd"
   ]
 
 -- | Skip spaces and comments.
@@ -197,7 +197,7 @@ parseTermAtom =
               <*> (reserved "in" *> parseTerm)
   <|> TDef    <$> (reserved "def" *> identifier)
               <*> optional (symbol ":" *> parseType)
-              <*> (symbol "=" *> parseTerm)
+              <*> (symbol "=" *> parseTerm <* reserved "end")
   <|> parens parseTerm
   <|> TConst Noop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm
