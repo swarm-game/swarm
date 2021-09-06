@@ -54,10 +54,6 @@ pparens :: Bool -> Doc ann -> Doc ann
 pparens True  = parens
 pparens False = id
 
-instance PrettyPrec V where
-  prettyPrec _ (V x 0) = pretty x
-  prettyPrec _ (V x n) = pretty x <> pretty n
-
 instance PrettyPrec BaseTy where
   prettyPrec _ BUnit   = "()"
   prettyPrec _ BInt    = "int"
@@ -66,7 +62,6 @@ instance PrettyPrec BaseTy where
   prettyPrec _ BBool   = "bool"
 
 instance PrettyPrec Type where
-  prettyPrec _ (TyVar v)      = ppr v
   prettyPrec _ (TyBase b)     = ppr b
   prettyPrec p (ty1 :*: ty2)  = pparens (p > 2) $
     prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2

@@ -13,7 +13,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Swarm.Language.Types
-  ( V(..), BaseTy(..), Type(.., TyCmd, TyUnit, TyInt, TyString, TyDir, TyBool), Var, Ctx
+  ( BaseTy(..), Type(.., TyCmd, TyUnit, TyInt, TyString, TyDir, TyBool), Var, Ctx
   ) where
 
 import           Control.Lens.Combinators (pattern Empty)
@@ -30,8 +30,7 @@ data BaseTy
 
 -- | A data type representing types in the Swarm programming language.
 data Type
-  = TyVar V            -- ^ Type variables.
-  | TyBase BaseTy      -- ^ Base types.
+  = TyBase BaseTy      -- ^ Base types.
   | TyCmd' Type Ctx    -- ^ Commands, with return type. Note that
                        --   commands form a monad.
   | Type :*: Type      -- ^ Product type.
@@ -53,11 +52,7 @@ pattern TyDir    = TyBase BDir
 pattern TyBool :: Type
 pattern TyBool   = TyBase BBool
 
-{-# COMPLETE TyVar, TyCmd', (:*:), (:->:), TyUnit, TyInt, TyString, TyDir, TyBool #-}
-
--- | Type variables.  The 'Var' is to remember a name (e.g. for
---   pretty-printing); the @Int@ is to ensure freshness.
-data V = V Var Int deriving (Eq, Ord, Show)
+{-# COMPLETE TyCmd', (:*:), (:->:), TyUnit, TyInt, TyString, TyDir, TyBool #-}
 
 infixr 1 :->:
 
