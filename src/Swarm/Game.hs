@@ -51,9 +51,6 @@ module Swarm.Game
   , gameMode, paused, robotMap, newRobots, world, viewCenter, updated, replResult
   , messageQueue
 
-    -- * Convenience re-exports
-
-  , module Swarm.Game.Entity
   )
   where
 
@@ -75,10 +72,10 @@ import           Witch
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import qualified Swarm.Game.Entities     as E
-import           Swarm.Game.Entity
+import           Swarm.Game.Entity       as E
 import           Swarm.Game.Recipes
 import           Swarm.Game.Robot
-import           Swarm.Game.Value
+import           Swarm.Game.Value        as V
 import qualified Swarm.Game.World        as W
 import           Swarm.Game.WorldGen     (findGoodOrigin, testWorld2)
 import           Swarm.Language.Pipeline
@@ -315,9 +312,13 @@ stepRobot r = case r ^. machine of
     let e' = addBinding x (VDelay t1 e') e   -- XXX do this without making a recursive
                                              -- (hence unprintable) env?
     in step r $ In t1 e' (FLet x t2 e : k)
+
+  In (TDef x _ t) e k               -> step r $ Out (VDef x t e) k
+
   In (TBind mx _ t1 t2) e k         -> step r $ In t1 e (FEvalBind mx t2 e : k)
   In (TDelay t) e k                 -> step r $ Out (VDelay t e) k
 
+  Out (VResult v e) []              -> step (r & robotEnv %~ V.union e) $ Out v []
   Out _ []                          -> return (Just r)
 
   Out v1 (FSnd t2 e : k)            -> step r $ In t2 e (FFst v1 : k)
@@ -329,15 +330,24 @@ stepRobot r = case r ^. machine of
     | otherwise                     -> step r $ Out (VCApp c (v2 : args)) k
   Out v2 (FApp (VClo x t e) : k)    -> step r $ In t (addBinding x v2 e) k
   Out v1 (FLet x t2 e : k)          -> step r $ In t2 (addBinding x v1 e) k
+  Out v  (FDef x : k)               -> step r $ Out (VResult VUnit (V.singleton x v)) k
   Out v1 (FEvalBind mx t2 e : k)    -> step r $ Out (VBind v1 mx t2 e) k
 
-  -- Special command applications that don't use up a tick (Noop and Return)
+  -- Special command applications that don't use up a tick (Noop, Return)
   Out (VCApp Noop _) (FExec : k)     -> stepUnit r k
   Out (VCApp Return [v]) (FExec : k) -> step r $ Out v k
 
   Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
+  Out (VDef x t e) (FExec : k)      ->
+    let e' = addBinding x (VDelay t e') e
+    in  step r $ In t e' (FDef x : k)
+
   Out (VBind c mx t2 e) (FExec : k) -> step r $ Out c (FExec : FExecBind mx t2 e : k)
+  Out (VResult v ve) (FExecBind mx t2 e : k) -> step r $ In t2 (ve `V.union` maybe id (`addBinding` v) mx e) (FExec : FUnionEnv ve : k)
   Out v (FExecBind mx t2 e : k)     -> step r $ In t2 (maybe id (`addBinding` v) mx e) (FExec : k)
+
+  Out (VResult v e2) (FUnionEnv e1 : k) -> step r $ Out (VResult v (e2 `V.union` e1)) k
+  Out v (FUnionEnv e : k)               -> step r $ Out (VResult v e) k
 
   cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
 
@@ -440,11 +450,11 @@ execConst Grab _ k r =
               -- Grow a new entity from a seed.
               let seedBot =
                     mkRobot "seed" (r ^. robotLocation) (V2 0 0)
-                      (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit))
+                      (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit) V.empty)
                       []
                       & robotDisplay .~
                         (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
-                      & robotInventory .~ singleton e
+                      & robotInventory .~ E.singleton e
               _ <- addRobot seedBot
               return ()
 
@@ -555,6 +565,16 @@ execConst Appear [VString s] k r = do
       emitError r Appear [quote s, "is not a valid appearance string."]
       stepUnit r k
 execConst Appear args k _ = badConst Appear args k
+
+execConst IsHere [VString s] k r = do
+  let V2 x y = r ^. robotLocation
+  me <- uses world (W.lookupEntity (-y, x))
+  -- XXX encapsulate the above into a function, used several timesInt32X8#
+
+  case me of
+    Nothing -> step r $ Out (VBool False) k
+    Just e  -> step r $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
+execConst IsHere args k _ = badConst IsHere args k
 
 execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
 execConst (Cmp c) args k _ = badConst (Cmp c) args k

@@ -33,6 +33,7 @@ module Swarm.Language.Parse
 
 import           Data.Bifunctor
 import           Data.Char
+import qualified Data.Map                       as M
 import           Data.Text                      (Text)
 import           Data.Void
 import           Witch
@@ -56,9 +57,9 @@ reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
   , "wait", "halt", "move", "turn", "grab", "place", "give"
   , "build", "run", "getx", "gety"
-  , "random", "say", "view", "appear"
+  , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
-  , "let", "in", "if", "true", "false", "fst", "snd"
+  , "let", "def", "in", "if", "true", "false", "fst", "snd"
   ]
 
 -- | Skip spaces and comments.
@@ -112,6 +113,9 @@ braces = between (symbol "{") (symbol "}")
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+brackets :: Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")
+
 --------------------------------------------------
 -- Parser
 
@@ -131,8 +135,14 @@ parseTypeAtom =
   <|> TyString <$ reserved "string"
   <|> TyDir    <$ reserved "dir"
   <|> TyBool   <$ reserved "bool"
-  <|> TyCmd    <$> (reserved "cmd" *> parseTypeAtom)
+  <|> TyCmd'   <$> (reserved "cmd" *> parseTypeAtom)
+               <*> (maybe M.empty M.fromList <$>
+                      optional (brackets (parseTyAnn `sepBy` symbol ","))
+                   )
   <|> parens parseType
+
+  where
+    parseTyAnn = (,) <$> identifier <*> (symbol ":" *> parseType)
 
 parseDirection :: Parser Direction
 parseDirection =
@@ -164,6 +174,7 @@ parseConst =
   <|> Say     <$ reserved "say"
   <|> View    <$ reserved "view"
   <|> Appear  <$ reserved "appear"
+  <|> IsHere  <$ reserved "ishere"
   <|> If      <$ reserved "if"
   <|> Fst     <$ reserved "fst"
   <|> Snd     <$ reserved "snd"
@@ -184,6 +195,9 @@ parseTermAtom =
               <*> optional (symbol ":" *> parseType)
               <*> (symbol "=" *> parseTerm)
               <*> (reserved "in" *> parseTerm)
+  <|> TDef    <$> (reserved "def" *> identifier)
+              <*> optional (symbol ":" *> parseType)
+              <*> (symbol "=" *> parseTerm)
   <|> parens parseTerm
   <|> TConst Noop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm

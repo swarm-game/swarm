@@ -34,12 +34,15 @@ import qualified Graphics.Vty                as V
 
 import           Control.Monad.State
 import           Swarm.Game
+import           Swarm.Game.Entity
 import           Swarm.Game.Recipes
-import           Swarm.Game.Robot            (installedDevices)
+import           Swarm.Game.Robot            (installedDevices, robotCtx,
+                                              robotEnv)
 import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax       (east, north, south, west)
+import           Swarm.Language.Types        (Type (TyCmd'))
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Panel
 import           Swarm.Util
@@ -271,7 +274,6 @@ drawRobotInfo s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInven
 --   = hBox . map (displayEntity . snd) . elems $ (r ^. installedDevices)
 
 drawItem :: (Int, Entity) -> Widget Name
-drawItem (1, e) = padRight Max $ drawLabelledEntityName e
 drawItem (n, e) = drawLabelledEntityName e <+> showCount n
   where
     showCount = padLeft Max . str . show
@@ -353,7 +355,7 @@ handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . 
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
-handleEvent s (VtyEvent (V.EvKey (V.KChar 'q') [V.MCtrl])) = halt s
+handleEvent s (VtyEvent (V.EvKey (V.KChar 'q') [V.MCtrl])) = shutdown s
 handleEvent s ev =
   case focusGetCurrent (s ^. uiState . uiFocusRing) of
     Just REPLPanel  -> handleREPLEvent s ev
@@ -374,26 +376,35 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))
   = continue $ s
       & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
-  = case processTerm entry of
+  = case processTerm' topCtx entry of
       Right (t ::: ty) ->
         continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
           & uiState . uiReplHistory %~ (REPLEntry True entry :)
           & uiState . uiReplHistIdx .~ (-1)
           & gameState . replResult ?~ (ty, Nothing)
-          & gameState . robotMap . ix "base" . machine .~ initMachine t ty
+          & gameState . robotMap . ix "base" %~ updateBase t ty
       Left err ->
         continue $ s
           & uiState . uiError ?~ txt err
   where
     entry = formState (s ^. uiState . uiReplForm)
+    topCtx = s ^. gameState . robotMap . ix "base" . robotCtx
+    topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+    updateBase t ty
+      = (machine .~ initMachine t ty topEnv)
+      . (case ty of
+           TyCmd' _ ctx -> robotCtx %~ M.union ctx
+           _            -> id
+        )
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp []))
   = continue $ s & uiState %~ adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
   = continue $ s & uiState %~ adjReplHistIndex (-)
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  let result = processTerm (formState f')
+  let topCtx = s ^. gameState . robotMap . ix "base" . robotCtx
+      result = processTerm' topCtx (formState f')
       f''    = setFieldValid (isRight result) REPLInput f'
   continue $ s & uiState . uiReplForm .~ f''
 
@@ -414,19 +425,27 @@ worldScrollDist :: Int
 worldScrollDist = 8
 
 handleWorldEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
+
+-- scrolling the world view
 handleWorldEvent s (VtyEvent (V.EvKey k []))
   | k `elem` [ V.KUp, V.KDown, V.KLeft, V.KRight
              , V.KChar 'h', V.KChar 'j', V.KChar 'k', V.KChar 'l' ]
   = scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
+
+-- pausing and stepping
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') []))
   = continue (s & gameState . paused %~ not)
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 's') []))
   | s ^. gameState . paused = runGameTick s
   | otherwise               = continueWithoutRedraw s
+
+-- speed controls
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
   = adjustTPS (-) s >> continueWithoutRedraw s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
   = adjustTPS (+) s >> continueWithoutRedraw s
+
+-- for testing only: toggle between classic & creative modes
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') []))
   = continueWithoutRedraw (s & gameState . gameMode %~ cycleEnum)
 

@@ -112,6 +112,16 @@ data Frame
     -- is evaluate @t2@ in the environment @e@ extended with a binding
     -- for @x@.
 
+  | FDef Var
+    -- ^ We were evaluating the body of a definition.  The next thing
+    --   we should do is return an environment binding the variable to
+    --   its value.
+
+  | FUnionEnv Env
+    -- ^ We were executing a command; next we should take any
+    --   environment it returned and union it with this one to produce
+    --   the result of a bind expression.
+
   | FEvalBind (Maybe Text) UTerm Env
     -- ^ If the top frame is of the form @FEvalBind mx c2 e@, we were
     -- /evaluating/ a term @c1@ from a bind expression @x <- c1 ; c2@
@@ -162,8 +172,9 @@ data CEK
 -- | Is the CEK machine in a final (finished) state?  If so, extract
 --   the final value.
 finalValue :: CEK -> Maybe Value
-finalValue (Out v []) = Just v
-finalValue _          = Nothing
+finalValue (Out (VResult _ _) _) = Nothing
+finalValue (Out v [])            = Just v
+finalValue _                     = Nothing
 
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
@@ -171,13 +182,13 @@ finalValue _          = Nothing
 --   typechecked term (to ensure no type or scope errors can cause a
 --   crash), but erases the term before putting it in the machine,
 --   since the types are not needed for evaluation.
-initMachine :: ATerm -> Type -> CEK
-initMachine t (TyCmd _) = In (erase t) emptyEnv [FExec]
-initMachine t _         = In (erase t) emptyEnv []
+initMachine :: ATerm -> Type -> Env -> CEK
+initMachine t (TyCmd' _ _) e = In (erase t) e [FExec]
+initMachine t _            e = In (erase t) e []
 
 -- | A machine which does nothing.
 idleMachine :: CEK
-idleMachine = initMachine (TConst Noop) (TyCmd TyUnit)
+idleMachine = initMachine (TConst Noop) (TyCmd TyUnit) empty
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CEK states.  Should really make a
@@ -201,8 +212,10 @@ prettyFrame (FFst v)                 = "(" ++ from (prettyValue v) ++ ", _)"
 prettyFrame (FArg t _)               = "_ " ++ prettyString t
 prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FEvalBind Nothing t _)    = "_ ; " ++ prettyString t
-prettyFrame (FEvalBind (Just x) t _)   = from x ++ " <- _ ; " ++ prettyString t
+prettyFrame (FDef x)                 = "def " ++ from x ++ " = _"
+prettyFrame (FUnionEnv _)            = "_ ∪ <Env>"
+prettyFrame (FEvalBind Nothing t _)  = "_ ; " ++ prettyString t
+prettyFrame (FEvalBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FExec                    = "exec _"
 prettyFrame (FExecBind Nothing t _)  = "_ ; " ++ prettyString t
 prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t

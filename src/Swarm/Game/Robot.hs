@@ -21,7 +21,7 @@ module Swarm.Game.Robot
     -- ** Lenses
   , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
   , installedDevices
-  , machine, tickSteps
+  , robotCtx, robotEnv, machine, tickSteps
 
     -- ** Create
 
@@ -32,16 +32,18 @@ module Swarm.Game.Robot
   , isActive, getResult, hasInstalled
   ) where
 
-import           Control.Lens        hiding (contains)
-import           Data.Maybe          (isNothing)
-import           Data.Text           (Text)
+import           Control.Lens         hiding (contains)
+import qualified Data.Map             as M
+import           Data.Maybe           (isNothing)
+import           Data.Text            (Text)
 import           Linear
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entities
 import           Swarm.Game.Entity
-import           Swarm.Game.Value
+import           Swarm.Game.Value     as V
+import           Swarm.Language.Types (Ctx)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -56,6 +58,12 @@ data Robot = Robot
 
   , _robotLocation    :: V2 Int
     -- ^ The location of the robot as (x,y).
+
+  , _robotCtx         :: Ctx
+    -- ^ Top-level type context.
+
+  , _robotEnv         :: Env
+    -- ^ Top-level environment of definitions.
 
   , _machine          :: CEK
     -- ^ The current state of the robot's CEK machine.
@@ -133,6 +141,8 @@ mkRobot name l d m devs = Robot
       & entityOrientation ?~ d
   , _installedDevices = fromList devs
   , _robotLocation = l
+  , _robotCtx      = M.empty
+  , _robotEnv      = V.empty
   , _machine       = m
   , _tickSteps     = 0
   }
@@ -147,6 +157,8 @@ baseRobot = Robot
       []
   , _installedDevices = fromList [solarPanels]
   , _robotLocation = V2 0 0
+  , _robotCtx      = M.empty
+  , _robotEnv      = V.empty
   , _machine       = idleMachine
   , _tickSteps     = 0
   }

@@ -20,7 +20,7 @@ module Swarm.Language.Typecheck
 
     -- * Context
 
-  , Ctx, lookupTy
+  , lookupTy
 
     -- * Bidirectional type checking / inference
 
@@ -38,7 +38,6 @@ module Swarm.Language.Typecheck
   ) where
 
 
-import           Data.Map              (Map)
 import qualified Data.Map              as M
 
 import           Swarm.Language.Syntax
@@ -87,9 +86,6 @@ data TypeErr
 
 ------------------------------------------------------------
 -- Type inference / checking
-
--- | A context is a mapping from variable names to their types.
-type Ctx = Map Var Type
 
 -- | Look up the type of a variable in the context.
 lookupTy :: Var -> Ctx -> Either TypeErr Type
@@ -198,21 +194,28 @@ infer ctx (TLet x (Just xTy) t1 t2) = do
   at2 ::: t2Ty <- infer (M.insert x xTy ctx) t2
   return $ TLet x (ID xTy) at1 at2 ::: t2Ty
 
+infer ctx (TDef x Nothing t1) = do
+  at1 ::: xTy <- infer ctx t1
+  return $ TDef x (ID xTy) at1 ::: TyCmd' TyUnit (M.singleton x xTy)
+infer ctx (TDef x (Just xTy) t1) = do
+  at1 <- check (M.insert x xTy ctx) t1 xTy
+  return $ TDef x (ID xTy) at1 ::: TyCmd' TyUnit (M.singleton x xTy)
+
 -- Bind.  Infer both commands and make sure they have command types.
 -- If the first one binds a variable, make sure to add it to the
 -- context when checking the second command.
 infer ctx (TBind mx _ c1 c2)        = do
   ac1 ::: ty1 <- infer ctx c1
-  a <- decomposeCmdTy c1 ty1
-  ac2 ::: cmdb <- infer (maybe id (`M.insert` a) mx ctx) c2
-  _ <- decomposeCmdTy c2 cmdb
-  return $ TBind mx (ID a) ac1 ac2 ::: cmdb
+  (a,ctx1) <- decomposeCmdTy c1 ty1
+  ac2 ::: cmdb <- infer (ctx1 `M.union` maybe id (`M.insert` a) mx ctx) c2
+  (b,ctx2) <- decomposeCmdTy c2 cmdb
+  return $ TBind mx (ID ty1) ac1 ac2 ::: TyCmd' b (ctx2 `M.union` ctx1)
 infer _ t = Left $ CantInfer t
 
 -- | Decompose a type that is supposed to be a command type.
-decomposeCmdTy :: Term -> Type -> Either TypeErr Type
-decomposeCmdTy _ (TyCmd resTy) = return resTy
-decomposeCmdTy t ty            = Left (NotCmdTy t ty)
+decomposeCmdTy :: Term -> Type -> Either TypeErr (Type, Ctx)
+decomposeCmdTy _ (TyCmd' resTy ctx) = return (resTy, ctx)
+decomposeCmdTy t ty                 = Left (NotCmdTy t ty)
 
 -- | Decompose a type that is supposed to be a function type.
 decomposeFunTy :: Term -> Type -> Either TypeErr (Type, Type)
@@ -244,6 +247,7 @@ inferConst Random      = return $ TyInt :->: TyCmd TyInt
 inferConst Say         = return $ TyString :->: TyCmd TyUnit
 inferConst View        = return $ TyString :->: TyCmd TyUnit
 inferConst Appear      = return $ TyString :->: TyCmd TyUnit
+inferConst IsHere      = return $ TyString :->: TyCmd TyBool
 inferConst (Cmp _)     = return $ TyInt :->: TyInt :->: TyBool
 inferConst (Arith Neg) = return $ TyInt :->: TyInt
 inferConst (Arith _)   = return $ TyInt :->: TyInt :->: TyInt
@@ -260,9 +264,6 @@ check ctx (TPair t1 t2) (ty1 :*: ty2) = do
   at2 <- check ctx t2 ty2
   return $ TPair at1 at2
 check _ t@TPair{} ty = Left $ NonPairTyExpected t ty
-check ctx (TApp _ (TConst Return) t) (TyCmd a) = do
-  at <- check ctx t a
-  return $ TApp (ID a) (TConst Return) at
 check _ t@(TApp _ (TConst Return) _) ty = Left $ NonCmdTyExpected t ty
 check ctx (TApp _ (TApp _ (TApp _ (TConst If) cond) thn) els) resTy = do
   acond <- check ctx cond TyBool
@@ -278,12 +279,6 @@ check ctx (TApp _ t1 t2) ty = do
   at2 ::: ty2 <- infer ctx t2
   at1 <- check ctx t1 (ty2 :->: ty)
   return $ TApp (ID ty2) at1 at2
-check ctx (TBind mx _ t1 t2) ty@(TyCmd _)  = do
-  at1 ::: ty1 <- infer ctx t1
-  a <- decomposeCmdTy t1 ty1
-  at2 <- check (maybe id (`M.insert` a) mx ctx) t2 ty
-  return $ TBind mx (ID a) at1 at2
-check _ t@TBind{} ty = Left $ NonCmdTyExpected t ty
 
 -- Fall-through case: switch into inference mode
 check ctx t ty          = do

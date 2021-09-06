@@ -118,4 +118,16 @@ recipeList =
   , Recipe
     [(1, E.log)]
     [(4, E.wood)]
+
+  , Recipe
+    [(6, E.wood)]
+    [(1, E.box)]
+
+  , Recipe
+    [(2, E.wood)]
+    [(1, E.gear)]
+
+  , Recipe
+    [(1, E.bit False), (1, E.bit True)]
+    [(1, E.drillBit)]
   ]

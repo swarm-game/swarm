@@ -34,7 +34,11 @@ entityCatalog = foldl' (flip insert) empty
   , pebbles, rock, mountain
   , flower, lambda
   , wave, bit False, bit True
-  , treads, grabber
+  , drillBit, box, gear
+
+  , linux
+
+  , treads, grabber, solarPanels, drill
 
   , flerb, elephant
   ]
@@ -116,8 +120,29 @@ wave = mkEntity
 bit :: Bool -> Entity
 bit b = mkEntity
   (defaultEntityDisplay (bool '0' '1' b))
-  (bool "zero bit" "one bit" b)
+  (bool "bit (0)" "bit (1)" b)
   ["A bit."]
+  [Portable]
+
+drillBit :: Entity
+drillBit  = mkEntity
+  (defaultEntityDisplay '!')
+  "drill bit"
+  ["A drill bit is an important component of a drill."]
+  [Portable]
+
+box :: Entity
+box = mkEntity
+  (defaultEntityDisplay '□' & displayAttr .~ woodAttr)
+  "box"
+  ["A wooden box.  It can hold things."]
+  [Portable]
+
+gear :: Entity
+gear = mkEntity
+  (defaultEntityDisplay '*' & displayAttr .~ woodAttr)
+  "gear"
+  ["A wooden gear."]
   [Portable]
 
 linux :: Entity
@@ -165,6 +190,12 @@ solarPanels :: Entity
 solarPanels = mkDevice '#'
   "solar panel"
   ["Solar panels provide power for a robot indefinitely."]
+  []
+
+drill :: Entity
+drill = mkDevice '!'
+  "drill"
+  ["A drill allows robots to drill through rocks and mountains."]
   []
 
 -- entitiesByCapability :: Map Capability [Entity]

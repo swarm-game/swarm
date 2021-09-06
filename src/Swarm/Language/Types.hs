@@ -10,7 +10,15 @@
 --
 -----------------------------------------------------------------------------
 
-module Swarm.Language.Types where
+{-# LANGUAGE PatternSynonyms #-}
+
+module Swarm.Language.Types
+  ( Type(.., TyCmd), Var, Ctx
+  ) where
+
+import           Control.Lens.Combinators (pattern Empty)
+import           Data.Map                 (Map)
+import           Data.Text                (Text)
 
 -- | A data type representing types in the Swarm programming language.
 data Type
@@ -19,10 +27,19 @@ data Type
   | TyString           -- ^ Unicode strings.
   | TyDir              -- ^ Directions.
   | TyBool             -- ^ Booleans.
-  | TyCmd Type         -- ^ Commands, with return type. Note that
+  | TyCmd' Type Ctx    -- ^ Commands, with return type. Note that
                        --   commands form a monad.
   | Type :*: Type      -- ^ Product type.
   | Type :->: Type     -- ^ Function type.
   deriving (Eq, Ord, Show)
 
 infixr 1 :->:
+
+pattern TyCmd :: Type -> Type
+pattern TyCmd ty = TyCmd' ty Empty
+
+-- | We use 'Text' values to represent variables.
+type Var = Text
+
+-- | A context is a mapping from variable names to their types.
+type Ctx = Map Var Type

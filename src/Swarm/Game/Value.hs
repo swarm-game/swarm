@@ -19,7 +19,7 @@ module Swarm.Game.Value
 
     -- * Environments
 
-  , Env, emptyEnv, (!!!), addBinding
+  , Env, empty, singleton, (!!!), union, addBinding
 
   ) where
 
@@ -57,7 +57,7 @@ data Value where
   -- | A /closure/, representing a lambda term along with an
   --   environment containing bindings for any free variables in the
   --   body of the lambda.
-  VClo    :: Text -> UTerm -> Env -> Value
+  VClo    :: Var -> UTerm -> Env -> Value
 
   -- | An application of a constant to some value arguments,
   --   potentially waiting for more arguments.  If a constant
@@ -68,6 +68,14 @@ data Value where
   --   which will cause it to execute.  Otherwise (e.g. 'If'), it is
   --   not a value, and will immediately reduce.
   VCApp   :: Const -> [Value] -> Value
+
+  -- | A definition, which is not evaluated until executed.
+  VDef :: Var -> UTerm -> Env -> Value
+
+  -- | The result of a command, consisting of the result of the
+  --   command as well as an environment of bindings from 'TDef'
+  --   commands.
+  VResult :: Value -> Env -> Value
 
   -- | A bind where the first component has been reduced to a value,
   --   /i.e./ @v ; c@ or @x <- v; c@.  We also store an 'Env' in which
@@ -103,6 +111,8 @@ valueToTerm (VClo x t e)     =
     (TLam x NONE t)
     (M.restrictKeys e (S.delete x (fv t)))
 valueToTerm (VCApp c vs)     = foldl' (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
+valueToTerm (VDef x t _)     = TDef x NONE t
+valueToTerm (VResult v _)    = valueToTerm v
 valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
 valueToTerm (VDelay t _)     = TDelay t
 
@@ -122,10 +132,17 @@ e !!! x = case M.lookup x e of
   Just v  -> v
 
 -- | The empty environment.
-emptyEnv :: Env
-emptyEnv = M.empty
+empty :: Env
+empty = M.empty
+
+singleton :: Var -> Value -> Env
+singleton = M.singleton
 
 -- | Extend an environment, adding a binding of the given variable name to
 --   the given value.
 addBinding :: Var -> Value -> Env -> Env
 addBinding = M.insert
+
+-- | Left-biased union.
+union :: Env -> Env -> Env
+union = M.union

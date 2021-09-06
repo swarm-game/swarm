@@ -12,10 +12,13 @@
 
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE PatternSynonyms      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE ViewPatterns         #-}
 
 module Swarm.Language.Pretty where
 
+import           Control.Lens.Combinators    (pattern Empty)
 import           Data.Bool                   (bool)
 import           Data.String                 (fromString)
 import           Data.Text                   (Text)
@@ -23,6 +26,7 @@ import           Prettyprinter
 import qualified Prettyprinter.Render.String as RS
 import qualified Prettyprinter.Render.Text   as RT
 
+import qualified Data.Map                    as M
 import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
@@ -58,9 +62,15 @@ instance PrettyPrec Type where
   prettyPrec _ TyBool         = "bool"
   prettyPrec p (ty1 :*: ty2)  = pparens (p > 2) $
     prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
-  prettyPrec p (TyCmd ty)     = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
-  prettyPrec p (ty1 :->: ty2) = pparens (p > 0) $
+  prettyPrec p (TyCmd' ty ctx) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty <+> ppr ctx
+  prettyPrec p (ty1 :->: ty2)    = pparens (p > 0) $
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
+
+instance PrettyPrec Ctx where
+  prettyPrec _ Empty            = emptyDoc
+  prettyPrec _ (M.assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
+    where
+      prettyBinding (x,ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
   prettyPrec _ Lft   = "left"
@@ -91,6 +101,7 @@ instance PrettyPrec Const where
   prettyPrec _ Say       = "say"
   prettyPrec _ View      = "view"
   prettyPrec _ Appear    = "appear"
+  prettyPrec _ IsHere    = "ishere"
   prettyPrec _ If        = "if"
   prettyPrec _ Fst       = "fst"
   prettyPrec _ Snd       = "snd"
@@ -129,10 +140,15 @@ instance PrettyPrec Term where
   prettyPrec p (TApp _ t1 t2)  = pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
   prettyPrec _ (TLet x mty t1 t2) =
-    sep $
+    hsep $
       ["let", pretty x] ++
       maybe [] (\ty -> [":", ppr ty]) mty ++
       ["=", ppr t1, "in", ppr t2]
+  prettyPrec _ (TDef x mty t1) =
+    hsep $
+      ["def", pretty x] ++
+      maybe [] (\ty -> [":", ppr ty]) mty ++
+      ["=", ppr t1]
   prettyPrec p (TBind Nothing _ t1 t2) = pparens (p > 0) $
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec p (TBind (Just x) _ t1 t2) = pparens (p > 0) $

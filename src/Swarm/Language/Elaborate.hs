@@ -36,9 +36,14 @@ elaborate = bottomUp rewrite
       = TApp resTy (TConst Force) (TApp resTy (TApp resTy (TApp condTy (TConst If) cond) (TDelay thn)) (TDelay els))
 
     -- Rewrite any recursive occurrences of x inside t1 to (force x).
-    -- When initerpreting t1, we will put a binding (x |-> delay t1)
+    -- When interpreting t1, we will put a binding (x |-> delay t1)
     -- in the context.
     rewrite _ (TLet x ty t1 t2) = TLet x ty (mapFree x (TApp ty (TConst Force)) t1) t2
+
+    -- Rewrite any recursive occurrences of x inside t1 to (force x).
+    -- When interpreting t1, we will put a binding (x |-> delay t1)
+    -- in the context.
+    rewrite _ (TDef x ty t1) = TDef x ty (mapFree x (TApp ty (TConst Force)) t1)
 
     -- Delay evaluation of the program argument to a 'Build' command,
     -- so it will be evaluated by the constructed robot instead of the one

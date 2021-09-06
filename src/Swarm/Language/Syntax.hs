@@ -93,6 +93,8 @@ data Const
   | Say               -- ^ Emit a message.
   | View              -- ^ View a certain robot.
   | Appear            -- ^ Set what characters are used for display.
+  | IsHere  -- XXX for testing, see if a specific entity is here
+            -- probably going to remove this later
   | If                -- ^ If-expressions.
   | Fst               -- ^ First projection.
   | Snd               -- ^ Second projection.
@@ -120,7 +122,7 @@ arity (Arith _)   = 2
 arity c
   | c `elem` [ Wait, Noop, Halt, Move, Grab, Place, Give
              , Craft, GetX, GetY]                           = 0
-  | c `elem` [ Return, Turn, Run, Random, Say, View, Appear
+  | c `elem` [ Return, Turn, Run, Random, Say, View, Appear, IsHere
              , Fst, Snd, Force ]                            = 1
   | c == Build                                              = 2
   | otherwise                                               = 3
@@ -140,9 +142,6 @@ isCmd c = c `notElem` funList
 
 ------------------------------------------------------------
 -- Terms
-
--- | We use 'Text' values to represent variables.
-type Var = Text
 
 -- | The 'Term'' type is parameterized by a functor that expresses how
 --   much type information we have, for a very lightweight way of
@@ -206,8 +205,12 @@ data Term' f
     --   annotation on the variable.
   | TLet Var (f Type) (Term' f) (Term' f)
 
+    -- | A (recursive) definition command, which binds a variable to a
+    --   value in subsequent commands.
+  | TDef Var (f Type) (Term' f)
+
     -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    --   The type annotation tells us the /result/ type of @c1@.
+    --   The type annotation tells us the type of @c1@.
   | TBind (Maybe Var) (f Type) (Term' f) (Term' f)
 
     -- | Delay evaluation of a term.  Swarm is an eager language, but
@@ -255,6 +258,7 @@ mapTerm' h (TPair t1 t2)      = TPair (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TLam x ty t)      = TLam x (h ty) (mapTerm' h t)
 mapTerm' h (TApp ty2 t1 t2)   = TApp (h ty2) (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TLet x ty t1 t2)  = TLet x (h ty) (mapTerm' h t1) (mapTerm' h t2)
+mapTerm' h (TDef x ty t)      = TDef x (h ty) (mapTerm' h t)
 mapTerm' h (TBind x ty t1 t2) = TBind x (h ty) (mapTerm' h t1) (mapTerm' h t2)
 mapTerm' h (TDelay t)         = TDelay (mapTerm' h t)
 
@@ -269,10 +273,12 @@ bottomUp f ty@(ty1 :*: ty2) (TPair t1 t2) = f ty (TPair (bottomUp f ty1 t1) (bot
 bottomUp f ty@(_ :->: ty2) (TLam x xTy t) = f ty (TLam x xTy (bottomUp f ty2 t))
 bottomUp f ty (TApp ity2@(ID ty2) t1 t2)
   = f ty (TApp ity2 (bottomUp f (ty2 :->: ty) t1) (bottomUp f ty2 t2))
+bottomUp f ty (TDef x xTy@(ID ty1) t)
+  = f ty (TDef x xTy (bottomUp f ty1 t))
 bottomUp f ty (TLet x xTy@(ID ty1) t1 t2)
   = f ty (TLet x xTy (bottomUp f ty1 t1) (bottomUp f ty t2))
-bottomUp f ty2 (TBind mx ia@(ID a) t1 t2)
-  = f ty2 (TBind mx ia (bottomUp f (TyCmd a) t1) (bottomUp f ty2 t2))
+bottomUp f ty2 (TBind mx ia@(ID cmda) t1 t2)
+  = f ty2 (TBind mx ia (bottomUp f cmda t1) (bottomUp f ty2 t2))
 bottomUp f ty (TDelay t) = f ty (TDelay (bottomUp f ty t))
 bottomUp f ty t = f ty t
 
@@ -283,6 +289,7 @@ fv (TPair t1 t2)            = fv t1 `S.union` fv t2
 fv (TLam x _ t)             = S.delete x (fv t)
 fv (TApp _ t1 t2)           = fv t1 `S.union` fv t2
 fv (TLet x _ t1 t2)         = S.delete x (fv t1 `S.union` fv t2)
+fv (TDef x _ t)             = S.delete x (fv t)
 fv (TBind (Just x) _ t1 t2) = fv t1 `S.union` S.delete x (fv t2)
 fv (TBind Nothing  _ t1 t2) = fv t1 `S.union` fv t2
 fv (TDelay t)               = fv t
@@ -301,6 +308,9 @@ mapFree x f (TApp ty t1 t2) = TApp ty (mapFree x f t1) (mapFree x f t2)
 mapFree x f t@(TLet y ty t1 t2)
   | x == y = t
   | otherwise = TLet y ty (mapFree x f t1) (mapFree x f t2)
+mapFree x f t@(TDef y ty t1)
+  | x == y = t
+  | otherwise = TDef y ty (mapFree x f t1)
 mapFree x f (TBind mx ty t1 t2)
   | Just y <- mx, x == y = TBind mx ty (mapFree x f t1) t2
   | otherwise = TBind mx ty (mapFree x f t1) (mapFree x f t2)

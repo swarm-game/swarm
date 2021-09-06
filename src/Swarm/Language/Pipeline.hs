@@ -14,16 +14,19 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
 
 module Swarm.Language.Pipeline
   ( processTerm
+  , processTerm'
   , processCmd
   ) where
 
 import           Data.Bifunctor           (first)
 import qualified Data.Map                 as M
 import           Data.Text                (Text)
+import qualified Data.Text                as T
 
 import           Swarm.Language.Elaborate
 import           Swarm.Language.Parse
@@ -33,15 +36,16 @@ import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
 import           Swarm.Util
 
--- | Like 'processTerm', but assume the program is supposed to have type
---   @cmd ()@ (/i.e./ we start off the type checker in checking mode
---   instead of inference mode).
+-- | Like 'processTerm', but assume the program is supposed to have a
+--   command type.
 processCmd :: Text -> Either Text ATerm
 processCmd txt = do
   t <- readTerm txt
-  let ty = TyCmd TyUnit
-  at <- first prettyText (check M.empty t ty)
-  return $ elaborate ty at
+  at ::: ty <- first prettyText (infer M.empty t)
+  case ty of
+    TyCmd' _ _ -> return $ elaborate ty at
+    _          -> Left $ T.concat
+      ["Expected a command, but ", prettyText t, " has type ", prettyText ty]
 
 -- | Given a 'Text' value representing a Swarm program,
 --
@@ -52,7 +56,12 @@ processCmd txt = do
 --   Return either the end result (an 'ATerm' paired with its 'Type'),
 --   or a pretty-printed error message.
 processTerm :: Text -> Either Text (ATerm ::: Type)
-processTerm txt = do
+processTerm = processTerm' M.empty
+
+-- | Like 'processTerm', but use an explicit starting context.
+processTerm' :: Ctx -> Text -> Either Text (ATerm ::: Type)
+processTerm' ctx txt = do
   t <- readTerm txt
-  at ::: ty <- first prettyText (infer M.empty t)
+  at ::: ty <- first prettyText (infer ctx t)
   return $ elaborate ty at ::: ty
+
