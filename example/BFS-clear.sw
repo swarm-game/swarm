@@ -3,6 +3,10 @@ def repeat : int -> cmd () -> cmd () = \n.\c.
     {}
     {c ; repeat (n-1) c}
 end;
+def while : cmd bool -> cmd () -> cmd () = \test.\c.
+  b <- test;
+  if b {c ; while test c} {}
+end;
 def gotoX : int -> cmd () = \tgt.
   cur <- getX;
   if (cur == tgt)
@@ -50,5 +54,6 @@ def clear : cmd () =
     turn left
   };
   goto 0 0;
-  give "base" "tree"
+  give "base" "tree";
+  halt
 end
