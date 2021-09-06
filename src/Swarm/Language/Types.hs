@@ -13,26 +13,47 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Swarm.Language.Types
-  ( V(..), Type(.., TyCmd), Var, Ctx
+  ( V(..), BaseTy(..), Type(.., TyCmd, TyUnit, TyInt, TyString, TyDir, TyBool), Var, Ctx
   ) where
 
 import           Control.Lens.Combinators (pattern Empty)
 import           Data.Map                 (Map)
 import           Data.Text                (Text)
 
+data BaseTy
+  = BUnit             -- ^ The unit type, with a single inhabitant.
+  | BInt              -- ^ Signed, arbitrary-size integers.
+  | BString           -- ^ Unicode strings.
+  | BDir              -- ^ Directions.
+  | BBool             -- ^ Booleans.
+  deriving (Eq, Ord, Show)
+
 -- | A data type representing types in the Swarm programming language.
 data Type
   = TyVar V            -- ^ Type variables.
-  | TyUnit             -- ^ The unit type, with a single inhabitant.
-  | TyInt              -- ^ Signed, arbitrary-size integers.
-  | TyString           -- ^ Unicode strings.
-  | TyDir              -- ^ Directions.
-  | TyBool             -- ^ Booleans.
+  | TyBase BaseTy      -- ^ Base types.
   | TyCmd' Type Ctx    -- ^ Commands, with return type. Note that
                        --   commands form a monad.
   | Type :*: Type      -- ^ Product type.
   | Type :->: Type     -- ^ Function type.
   deriving (Eq, Ord, Show)
+
+pattern TyUnit :: Type
+pattern TyUnit   = TyBase BUnit
+
+pattern TyInt :: Type
+pattern TyInt    = TyBase BInt
+
+pattern TyString :: Type
+pattern TyString = TyBase BString
+
+pattern TyDir :: Type
+pattern TyDir    = TyBase BDir
+
+pattern TyBool :: Type
+pattern TyBool   = TyBase BBool
+
+{-# COMPLETE TyVar, TyCmd', (:*:), (:->:), TyUnit, TyInt, TyString, TyDir, TyBool #-}
 
 -- | Type variables.  The 'Var' is to remember a name (e.g. for
 --   pretty-printing); the @Int@ is to ensure freshness.

@@ -58,13 +58,16 @@ instance PrettyPrec V where
   prettyPrec _ (V x 0) = pretty x
   prettyPrec _ (V x n) = pretty x <> pretty n
 
+instance PrettyPrec BaseTy where
+  prettyPrec _ BUnit   = "()"
+  prettyPrec _ BInt    = "int"
+  prettyPrec _ BDir    = "dir"
+  prettyPrec _ BString = "string"
+  prettyPrec _ BBool   = "bool"
+
 instance PrettyPrec Type where
   prettyPrec _ (TyVar v)      = ppr v
-  prettyPrec _ TyUnit         = "()"
-  prettyPrec _ TyInt          = "int"
-  prettyPrec _ TyDir          = "dir"
-  prettyPrec _ TyString       = "string"
-  prettyPrec _ TyBool         = "bool"
+  prettyPrec _ (TyBase b)     = ppr b
   prettyPrec p (ty1 :*: ty2)  = pparens (p > 2) $
     prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
   prettyPrec p (TyCmd' ty ctx) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty <+> ppr ctx
