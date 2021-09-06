@@ -6,7 +6,7 @@ robots to explore the world and collect resources, which in turn
 allows you to build upgraded robots that can run more interesting and
 complex programs.
 
-![](images/swarm.png)
+![](images/BFS-clearcut.png)
 
 The implementation is still in a very early stage, but planned
 features include:
