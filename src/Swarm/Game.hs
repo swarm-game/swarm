@@ -336,6 +336,10 @@ stepRobot r = case r ^. machine of
   Out v  (FDef x : k)               -> step r $ Out (VResult VUnit (V.singleton x v)) k
   Out v1 (FEvalBind mx t2 e : k)    -> step r $ Out (VBind v1 mx t2 e) k
 
+  -- XXX make GetX, GetY, IsHere not take a tick.  In general, sensing
+  -- shouldn't take up a tick.  Make a general function to identify
+  -- which commands do and don't take a tick.
+
   -- Special command applications that don't use up a tick (Noop, Return)
   Out (VCApp Noop _) (FExec : k)     -> stepUnit r k
   Out (VCApp Return [v]) (FExec : k) -> step r $ Out v k
