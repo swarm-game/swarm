@@ -14,9 +14,9 @@
 --
 -- Parser for the Swarm language.  Note, you probably don't want to
 -- use this directly, unless there is a good reason to parse a term
--- without also type checking it; use 'Swarm.Language.Pipeline.processTerm'
--- or 'Swarm.Language.Pipeline.processCmd' instead, which parse,
--- typecheck, and elaborate a term all at once.
+-- without also type checking it; use
+-- 'Swarm.Language.Pipeline.processTerm' instead, which parses,
+-- typechecks, and elaborate a term all at once.
 --
 -----------------------------------------------------------------------------
 

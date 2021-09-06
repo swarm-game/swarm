@@ -20,13 +20,11 @@
 module Swarm.Language.Pipeline
   ( processTerm
   , processTerm'
-  , processCmd
   ) where
 
 import           Data.Bifunctor           (first)
 import qualified Data.Map                 as M
 import           Data.Text                (Text)
-import qualified Data.Text                as T
 
 import           Swarm.Language.Elaborate
 import           Swarm.Language.Parse
@@ -35,17 +33,6 @@ import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
 import           Swarm.Util
-
--- | Like 'processTerm', but assume the program is supposed to have a
---   command type.
-processCmd :: Text -> Either Text ATerm
-processCmd txt = do
-  t <- readTerm txt
-  at ::: ty <- first prettyText (infer M.empty t)
-  case ty of
-    TyCmd' _ _ -> return $ elaborate ty at
-    _          -> Left $ T.concat
-      ["Expected a command, but ", prettyText t, " has type ", prettyText ty]
 
 -- | Given a 'Text' value representing a Swarm program,
 --

@@ -42,7 +42,6 @@ import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax       (east, north, south, west)
-import           Swarm.Language.Types        (Type (TyCmd'))
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Panel
 import           Swarm.Util
@@ -383,7 +382,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
           & uiState . uiReplHistory %~ (REPLEntry True entry :)
           & uiState . uiReplHistIdx .~ (-1)
           & gameState . replResult ?~ (ty, Nothing)
-          & gameState . robotMap . ix "base" %~ updateBase t ty
+          & gameState . robotMap . ix "base" . machine .~ initMachine t ty topEnv
       Left err ->
         continue $ s
           & uiState . uiError ?~ txt err
@@ -391,12 +390,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
     entry = formState (s ^. uiState . uiReplForm)
     topCtx = s ^. gameState . robotMap . ix "base" . robotCtx
     topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
-    updateBase t ty
-      = (machine .~ initMachine t ty topEnv)
-      . (case ty of
-           TyCmd' _ ctx -> robotCtx %~ M.union ctx
-           _            -> id
-        )
+
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp []))
   = continue $ s & uiState %~ adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))

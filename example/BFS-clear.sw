@@ -14,7 +14,8 @@
      new <- getX;
      if (new == cur)
        {turn south; move}
-       {}
+       {};
+     gotoX tgt
     )
 });
 (def gotoY : int -> cmd () = \tgt. {

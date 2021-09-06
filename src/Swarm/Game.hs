@@ -318,7 +318,10 @@ stepRobot r = case r ^. machine of
   In (TBind mx _ t1 t2) e k         -> step r $ In t1 e (FEvalBind mx t2 e : k)
   In (TDelay t) e k                 -> step r $ Out (VDelay t e) k
 
-  Out (VResult v e) []              -> step (r & robotEnv %~ V.union e) $ Out v []
+  Out (VResult v e) (FLoadEnv ctx : k) ->
+    step (r & robotEnv %~ V.union e & robotCtx %~ M.union ctx) $ Out v k
+  Out v (FLoadEnv _ : k)            -> step r $ Out v k
+
   Out _ []                          -> return (Just r)
 
   Out v1 (FSnd t2 e : k)            -> step r $ In t2 e (FFst v1 : k)
@@ -618,13 +621,15 @@ execConst Run [VString fileName] k r = do
   mf <- liftIO $ readFileMay (into fileName)
   case mf of
     Nothing -> emitError r Run ["File not found:", fileName] >> stepUnit r k
-    Just f -> case processCmd (into @Text f) of
-      Left  _ -> emitError r Run ["Error while processing", fileName] >> stepUnit r k
-      Right t -> step r $ In (erase t) M.empty (FExec : k)
-      -- Note, adding FExec to the stack above is correct.  run has the
-      --   type run : String -> Cmd (), i.e. executing (run s) for some
-      --   string s causes it to load *and immediately execute* the
-      --   program in the file.
+    Just f -> case processTerm (into @Text f) of
+      Left  _          -> emitError r Run ["Error while processing", fileName] >> stepUnit r k
+      Right (t ::: ty) -> step r $ initMachine' t ty V.empty k
+
+      -- Note, adding FExec to the stack above in the TyCmd case (done
+      -- automatically by the initMachine function) is correct.  run
+      -- has the type run : String -> Cmd (), i.e. executing (run s)
+      -- for some string s causes it to load *and immediately execute*
+      -- the program in the file.
       --
       -- If we instead had
       --

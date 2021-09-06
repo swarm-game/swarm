@@ -57,7 +57,7 @@ module Swarm.Game.CEK
 
     -- ** Construction
 
-  , initMachine, idleMachine
+  , initMachine, initMachine', idleMachine
 
     -- ** Extracting information
   , finalValue
@@ -67,13 +67,14 @@ module Swarm.Game.CEK
   ) where
 
 import           Data.List             (intercalate)
+import qualified Data.Map              as M
 import           Data.Text             (Text)
 import           Witch                 (from)
 
 import           Swarm.Game.Value
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
-import           Swarm.Language.Types  (Type (..))
+import           Swarm.Language.Types  (Ctx, Type (..))
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -121,6 +122,12 @@ data Frame
     -- ^ We were executing a command; next we should take any
     --   environment it returned and union it with this one to produce
     --   the result of a bind expression.
+
+  | FLoadEnv Ctx
+    -- ^ We were executing a command that might have definitions; next
+    --   we should take the resulting 'Env' and add it to the robot's
+    --   'robotEnv', along with adding this accompanying 'Ctx' to the
+    --   robot's 'robotCtx'.
 
   | FEvalBind (Maybe Text) UTerm Env
     -- ^ If the top frame is of the form @FEvalBind mx c2 e@, we were
@@ -172,9 +179,8 @@ data CEK
 -- | Is the CEK machine in a final (finished) state?  If so, extract
 --   the final value.
 finalValue :: CEK -> Maybe Value
-finalValue (Out (VResult _ _) _) = Nothing
-finalValue (Out v [])            = Just v
-finalValue _                     = Nothing
+finalValue (Out v []) = Just v
+finalValue _          = Nothing
 
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
@@ -183,8 +189,14 @@ finalValue _                     = Nothing
 --   crash), but erases the term before putting it in the machine,
 --   since the types are not needed for evaluation.
 initMachine :: ATerm -> Type -> Env -> CEK
-initMachine t (TyCmd' _ _) e = In (erase t) e [FExec]
-initMachine t _            e = In (erase t) e []
+initMachine at ty e = initMachine' at ty e []
+
+-- | Like 'initMachine', but also take a starting continuation.
+initMachine' :: ATerm -> Type -> Env -> Cont -> CEK
+initMachine' t (TyCmd' _ ctx) e k
+  | M.null ctx = In (erase t) e (FExec : k)
+  | otherwise  = In (erase t) e (FExec : FLoadEnv ctx : k)
+initMachine' t _              e k = In (erase t) e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK
@@ -214,6 +226,7 @@ prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
 prettyFrame (FDef x)                 = "def " ++ from x ++ " = _"
 prettyFrame (FUnionEnv _)            = "_ ∪ <Env>"
+prettyFrame (FLoadEnv _)             = "loadEnv"
 prettyFrame (FEvalBind Nothing t _)  = "_ ; " ++ prettyString t
 prettyFrame (FEvalBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FExec                    = "exec _"
