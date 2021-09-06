@@ -13,7 +13,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Swarm.Language.Types
-  ( Type(.., TyCmd), Var, Ctx
+  ( V(..), Type(.., TyCmd), Var, Ctx
   ) where
 
 import           Control.Lens.Combinators (pattern Empty)
@@ -22,7 +22,8 @@ import           Data.Text                (Text)
 
 -- | A data type representing types in the Swarm programming language.
 data Type
-  = TyUnit             -- ^ The unit type, with a single inhabitant.
+  = TyVar V            -- ^ Type variables.
+  | TyUnit             -- ^ The unit type, with a single inhabitant.
   | TyInt              -- ^ Signed, arbitrary-size integers.
   | TyString           -- ^ Unicode strings.
   | TyDir              -- ^ Directions.
@@ -32,6 +33,10 @@ data Type
   | Type :*: Type      -- ^ Product type.
   | Type :->: Type     -- ^ Function type.
   deriving (Eq, Ord, Show)
+
+-- | Type variables.  The 'Var' is to remember a name (e.g. for
+--   pretty-printing); the @Int@ is to ensure freshness.
+data V = V Var Int deriving (Eq, Ord, Show)
 
 infixr 1 :->:
 

@@ -54,7 +54,12 @@ pparens :: Bool -> Doc ann -> Doc ann
 pparens True  = parens
 pparens False = id
 
+instance PrettyPrec V where
+  prettyPrec _ (V x 0) = pretty x
+  prettyPrec _ (V x n) = pretty x <> pretty n
+
 instance PrettyPrec Type where
+  prettyPrec _ (TyVar v)      = ppr v
   prettyPrec _ TyUnit         = "()"
   prettyPrec _ TyInt          = "int"
   prettyPrec _ TyDir          = "dir"
