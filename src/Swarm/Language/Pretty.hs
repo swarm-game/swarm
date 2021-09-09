@@ -14,19 +14,24 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE PatternSynonyms      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns         #-}
 
 module Swarm.Language.Pretty where
 
 import           Control.Lens.Combinators    (pattern Empty)
 import           Data.Bool                   (bool)
+import           Data.Functor.Fixedpoint     (Fix, unFix)
+import qualified Data.Map                    as M
 import           Data.String                 (fromString)
 import           Data.Text                   (Text)
 import           Prettyprinter
 import qualified Prettyprinter.Render.String as RS
 import qualified Prettyprinter.Render.Text   as RT
 
-import qualified Data.Map                    as M
+import           Control.Unification
+import           Control.Unification.IntVar
+
 import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
@@ -54,19 +59,37 @@ pparens :: Bool -> Doc ann -> Doc ann
 pparens True  = parens
 pparens False = id
 
-instance PrettyPrec Type where
-  prettyPrec _ TyUnit         = "()"
-  prettyPrec _ TyInt          = "int"
-  prettyPrec _ TyDir          = "dir"
-  prettyPrec _ TyString       = "string"
-  prettyPrec _ TyBool         = "bool"
-  prettyPrec p (ty1 :*: ty2)  = pparens (p > 2) $
+instance PrettyPrec BaseTy where
+  prettyPrec _ BUnit   = "()"
+  prettyPrec _ BInt    = "int"
+  prettyPrec _ BDir    = "dir"
+  prettyPrec _ BString = "string"
+  prettyPrec _ BBool   = "bool"
+
+instance PrettyPrec IntVar where
+  prettyPrec _ = pretty . mkVarName "u"
+
+instance PrettyPrec (t (Fix t)) => PrettyPrec (Fix t) where
+  prettyPrec p = prettyPrec p . unFix
+
+instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) where
+  prettyPrec p (UTerm t) = prettyPrec p t
+  prettyPrec p (UVar v)  = prettyPrec p v
+
+instance PrettyPrec t => PrettyPrec (TypeF t) where
+  prettyPrec _ (TyBaseF b)     = ppr b
+  prettyPrec _ (TyVarF v)      = pretty v
+  prettyPrec p (TyProdF ty1 ty2)  = pparens (p > 2) $
     prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
-  prettyPrec p (TyCmd' ty ctx) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty <+> ppr ctx
-  prettyPrec p (ty1 :->: ty2)    = pparens (p > 0) $
+  prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
+  prettyPrec p (TyFunF ty1 ty2)    = pparens (p > 0) $
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
-instance PrettyPrec Ctx where
+instance PrettyPrec Polytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("forall" : map pretty xs) <> "." <+> ppr t
+
+instance PrettyPrec t => PrettyPrec (Ctx t) where
   prettyPrec _ Empty            = emptyDoc
   prettyPrec _ (M.assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
     where
@@ -138,7 +161,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
-  prettyPrec p (TApp _ t1 t2)  = pparens (p > 10) $
+  prettyPrec p (TApp t1 t2)  = pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
   prettyPrec _ (TLet x mty t1 t2) =
     hsep $
@@ -150,16 +173,10 @@ instance PrettyPrec Term where
       ["def", pretty x] ++
       maybe [] (\ty -> [":", ppr ty]) mty ++
       ["=", ppr t1, "end"]
-  prettyPrec p (TBind Nothing _ t1 t2) = pparens (p > 0) $
+  prettyPrec p (TBind Nothing t1 t2) = pparens (p > 0) $
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
-  prettyPrec p (TBind (Just x) _ t1 t2) = pparens (p > 0) $
+  prettyPrec p (TBind (Just x) t1 t2) = pparens (p > 0) $
     pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
-
-instance PrettyPrec ATerm where
-  prettyPrec p = prettyPrec p . mapTerm' (\(ID x) -> Just x)
-
-instance PrettyPrec UTerm where
-  prettyPrec p = prettyPrec p . mapTerm' (\NONE -> Nothing)
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (NotFunTy t ty) =
@@ -196,13 +213,15 @@ instance PrettyPrec TypeErr where
     [ "Expecting type", ppr ty
     , "but", ppr t, "is a pair."
     ]
-  prettyPrec _ (Mismatch t expected inferred) =
-    vsep
-      [ "Type mismatch when checking expression" <+> squotes (ppr t)
-      , "Expected type:" <+> ppr expected
-      , "Actual type:" <+> ppr inferred
-      ]
+
+  prettyPrec _ (Mismatch ty1 ty2) =
+    "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+
   prettyPrec _ (UnboundVar x) =
     "Unbound variable" <+> pretty x
-  prettyPrec _ (CantInfer t) =
-    "Can't infer the type of" <+> ppr t
+
+  prettyPrec _ (Infinite x uty) =
+    "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
+
+  prettyPrec _ (DefNotTopLevel t) =
+    "Definitions may only be at the top level:" <+> ppr t

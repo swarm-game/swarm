@@ -17,6 +17,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeOperators     #-}
 
 module Swarm.Game
   ( -- * Values
@@ -44,6 +45,7 @@ module Swarm.Game
 
     -- * Game state
   , ViewCenterRule(..), _VCRobot, updateViewCenter, manualViewCenterUpdate
+  , REPLResult(..)
   , GameState(..), initGameState, viewCenterRule, focusedRobot
 
     -- ** Lenses
@@ -101,6 +103,11 @@ data GameMode
   | Creative
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
+data REPLResult
+  = REPLDone
+  | REPLWorking Polytype (Maybe Value)
+  deriving (Eq, Show)
+
 data GameState = GameState
   { _gameMode       :: GameMode
   , _paused         :: Bool
@@ -111,7 +118,7 @@ data GameState = GameState
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter     :: V2 Int
   , _updated        :: Bool
-  , _replResult     :: Maybe (Type, Maybe Value)
+  , _replResult     :: REPLResult
   , _messageQueue   :: [Text]
   }
 
@@ -172,7 +179,7 @@ initGameState = return $
   , _viewCenterRule = VCRobot "base"
   , _viewCenter     = V2 0 0
   , _updated        = False
-  , _replResult     = Nothing
+  , _replResult     = REPLDone
   , _messageQueue   = []
   }
 
@@ -229,7 +236,11 @@ gameStep = do
   -- the result in the game state so it can be displayed by the REPL.
   mr <- use (robotMap . at "base")
   case mr of
-    Just r  -> unless (isActive r) $ replResult . _Just . _2 .= getResult r
+    Just r  -> do
+      res <- use replResult
+      case res of
+        REPLWorking ty Nothing -> replResult .= REPLWorking ty (getResult r)
+        _                      -> return ()
     Nothing -> return ()
 
   -- Get all the newly built robots and add them to the robot map.
@@ -305,7 +316,7 @@ stepRobot r = case r ^. machine of
 
   -- To evaluate an application, focus on the left-hand side and save
   -- the right-hand side for later.
-  In (TApp _ t1 t2) e k             -> step r $ In t1 e (FArg t2 e : k)
+  In (TApp t1 t2) e k               -> step r $ In t1 e (FArg t2 e : k)
 
   -- Evaluating let expressions is a little bit tricky. XXX write more
   In (TLet x _ t1 t2) e k           ->
@@ -315,7 +326,7 @@ stepRobot r = case r ^. machine of
 
   In (TDef x _ t) e k               -> step r $ Out (VDef x t e) k
 
-  In (TBind mx _ t1 t2) e k         -> step r $ In t1 e (FEvalBind mx t2 e : k)
+  In (TBind mx t1 t2) e k           -> step r $ In t1 e (FEvalBind mx t2 e : k)
   In (TDelay t) e k                 -> step r $ Out (VDelay t e) k
 
   Out (VResult v e) (FLoadEnv ctx : k) ->
@@ -383,10 +394,10 @@ evalConst = execConst
 
 -- XXX load this from a file and have it available in a map?
 --     Or make a quasiquoter?
-seedProgram :: Text -> ATerm
+seedProgram :: Text -> Term ::: TModule
 seedProgram thing = prog
   where
-    Right (prog ::: _) = processTerm . into @Text . unlines $
+    Right prog = processTerm . into @Text . unlines $
       [ "let repeat : int -> cmd () -> cmd () = \\n.\\c."
       , "  if (n == 0) {} {c ; repeat (n-1) c}"
       , "in {"
@@ -457,7 +468,7 @@ execConst Grab _ k r =
               -- Grow a new entity from a seed.
               let seedBot =
                     mkRobot "seed" (r ^. robotLocation) (V2 0 0)
-                      (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit) V.empty)
+                      (initMachine (seedProgram (e ^. entityName)) V.empty)
                       []
                       & robotDisplay .~
                         (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
@@ -576,7 +587,7 @@ execConst Appear args k _ = badConst Appear args k
 execConst IsHere [VString s] k r = do
   let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y, x))
-  -- XXX encapsulate the above into a function, used several timesInt32X8#
+  -- XXX encapsulate the above into a function, used several times
 
   case me of
     Nothing -> step r $ Out (VBool False) k
@@ -632,7 +643,7 @@ execConst Run [VString fileName] k r = do
       Left  err        -> do
         emitError r Run ["Error while processing", fileName, "\n", err]
         stepUnit r k
-      Right (t ::: ty) -> step r $ initMachine' t ty V.empty k
+      Right t -> step r $ initMachine' t V.empty k
 
       -- Note, adding FExec to the stack above in the TyCmd case (done
       -- automatically by the initMachine function) is correct.  run

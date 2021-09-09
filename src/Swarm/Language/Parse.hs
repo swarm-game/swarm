@@ -23,7 +23,7 @@
 module Swarm.Language.Parse
   ( -- * Parsers
 
-    parseType, parseTerm
+    parsePolytype, parseType, parseTerm
 
     -- * Utility functions
 
@@ -33,7 +33,7 @@ module Swarm.Language.Parse
 
 import           Data.Bifunctor
 import           Data.Char
-import qualified Data.Map                       as M
+import           Data.Maybe                     (fromMaybe)
 import           Data.Text                      (Text)
 import           Data.Void
 import           Witch
@@ -60,6 +60,7 @@ reservedWords =
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
   , "let", "def", "end", "in", "if", "true", "false", "not", "fst", "snd"
+  , "forall"
   ]
 
 -- | Skip spaces and comments.
@@ -113,13 +114,15 @@ braces = between (symbol "{") (symbol "}")
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
-brackets :: Parser a -> Parser a
-brackets = between (symbol "[") (symbol "]")
-
 --------------------------------------------------
 -- Parser
 
--- | Parse a Swarm language type.
+parsePolytype :: Parser Polytype
+parsePolytype = Forall
+  <$> (fromMaybe [] <$> optional (reserved "forall" *> many identifier <* symbol "."))
+  <*> parseType
+
+-- | Parse a Swarm language (mono)type.
 parseType :: Parser Type
 parseType = makeExprParser parseTypeAtom table
   where
@@ -131,18 +134,13 @@ parseType = makeExprParser parseTypeAtom table
 parseTypeAtom :: Parser Type
 parseTypeAtom =
       TyUnit   <$ symbol "()"
+  <|> TyVar    <$> identifier
   <|> TyInt    <$ reserved "int"
   <|> TyString <$ reserved "string"
   <|> TyDir    <$ reserved "dir"
   <|> TyBool   <$ reserved "bool"
-  <|> TyCmd'   <$> (reserved "cmd" *> parseTypeAtom)
-               <*> (maybe M.empty M.fromList <$>
-                      optional (brackets (parseTyAnn `sepBy` symbol ","))
-                   )
+  <|> TyCmd    <$> (reserved "cmd" *> parseTypeAtom)
   <|> parens parseType
-
-  where
-    parseTyAnn = (,) <$> identifier <*> (symbol ":" *> parseType)
 
 parseDirection :: Parser Direction
 parseDirection =
@@ -193,11 +191,11 @@ parseTermAtom =
               <*> optional (symbol ":" *> parseType)
               <*> (symbol "." *> parseTerm)
   <|> TLet    <$> (reserved "let" *> identifier)
-              <*> optional (symbol ":" *> parseType)
+              <*> optional (symbol ":" *> parsePolytype)
               <*> (symbol "=" *> parseTerm)
               <*> (reserved "in" *> parseTerm)
   <|> TDef    <$> (reserved "def" *> identifier)
-              <*> optional (symbol ":" *> parseType)
+              <*> optional (symbol ":" *> parsePolytype)
               <*> (symbol "=" *> parseTerm <* reserved "end")
   <|> parens parseTerm
   <|> TConst Noop <$ try (symbol "{" *> symbol "}")
@@ -213,13 +211,13 @@ mkBindChain stmts = case last stmts of
   BareTerm t -> return $ foldr mkBind t (init stmts)
 
   where
-    mkBind (BareTerm t1) t2 = TBind Nothing Nothing t1 t2
-    mkBind (Binder x t1) t2 = TBind (Just x) Nothing t1 t2
+    mkBind (BareTerm t1) t2 = TBind Nothing t1 t2
+    mkBind (Binder x t1) t2 = TBind (Just x) t1 t2
 
 data Stmt
   = BareTerm      Term
   | Binder   Text Term
-  deriving (Eq, Ord, Show)
+  deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =
@@ -233,9 +231,9 @@ parseExpr :: Parser Term
 parseExpr = makeExprParser parseTermAtom table
   where
     table =
-      [ [ InfixL (TApp Nothing <$ string "") ]
+      [ [ InfixL (TApp <$ string "") ]
       , [ InfixR (mkOp (Arith Exp) <$ symbol "^") ]
-      , [ Prefix (TApp Nothing (TConst (Arith Neg)) <$ symbol "-") ]
+      , [ Prefix (TApp (TConst (Arith Neg)) <$ symbol "-") ]
       , [ InfixL (mkOp (Arith Mul) <$ symbol "*")
         , InfixL (mkOp (Arith Div) <$ symbol "/")
         ]
@@ -254,7 +252,7 @@ parseExpr = makeExprParser parseTermAtom table
       ]
 
 mkOp :: Const -> Term -> Term -> Term
-mkOp c = TApp Nothing . TApp Nothing (TConst c)
+mkOp c = TApp . TApp (TConst c)
 
 --------------------------------------------------
 -- Utilities

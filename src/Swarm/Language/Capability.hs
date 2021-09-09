@@ -63,21 +63,21 @@ data Capability
 --   the analysis is safe in the sense that a robot with the indicated
 --   capabilities will always be able to run the given program no
 --   matter what.
-requiredCaps :: Term' f -> Set Capability
-requiredCaps TUnit             = S.empty
-requiredCaps (TConst c)        = constCaps c
-requiredCaps (TDir _)          = S.empty
-requiredCaps (TInt _)          = S.empty
-requiredCaps (TString _)       = S.empty
-requiredCaps (TBool _)         = S.empty
-requiredCaps (TVar _)          = S.empty
-requiredCaps (TPair t1 t2)     = requiredCaps t1 `S.union` requiredCaps t2
-requiredCaps (TLam _ _ t)      = S.insert CLam $ requiredCaps t
-requiredCaps (TApp _ t1 t2)    = requiredCaps t1 `S.union` requiredCaps t2
-requiredCaps (TLet _ _ t1 t2)  = S.insert CEnv $ requiredCaps t1 `S.union` requiredCaps t2
-requiredCaps (TDef _ _ t)      = S.insert CEnv $ requiredCaps t
-requiredCaps (TBind _ _ t1 t2) = requiredCaps t1 `S.union` requiredCaps t2
-requiredCaps (TDelay t)        = requiredCaps t
+requiredCaps :: Term -> Set Capability
+requiredCaps TUnit            = S.empty
+requiredCaps (TConst c)       = constCaps c
+requiredCaps (TDir _)         = S.empty
+requiredCaps (TInt _)         = S.empty
+requiredCaps (TString _)      = S.empty
+requiredCaps (TBool _)        = S.empty
+requiredCaps (TVar _)         = S.empty
+requiredCaps (TPair t1 t2)    = requiredCaps t1 `S.union` requiredCaps t2
+requiredCaps (TLam _ _ t)     = S.insert CLam $ requiredCaps t
+requiredCaps (TApp t1 t2)     = requiredCaps t1 `S.union` requiredCaps t2
+requiredCaps (TLet _ _ t1 t2) = S.insert CEnv $ requiredCaps t1 `S.union` requiredCaps t2
+requiredCaps (TDef _ _ t)     = S.insert CEnv $ requiredCaps t
+requiredCaps (TBind _ t1 t2)  = requiredCaps t1 `S.union` requiredCaps t2
+requiredCaps (TDelay t)       = requiredCaps t
 
 -- | Capabilities needed to evaluate/execute a constant.
 constCaps :: Const -> Set Capability

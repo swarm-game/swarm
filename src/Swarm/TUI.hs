@@ -9,6 +9,7 @@ import           Control.Arrow               ((&&&))
 import           Control.Concurrent.STM      (atomically)
 import           Control.Concurrent.STM.TVar
 import           Control.Lens
+import           Control.Monad.State
 import           Data.Array                  (range)
 import           Data.Either                 (isRight)
 import           Data.List                   (sortOn)
@@ -32,7 +33,6 @@ import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List          as BL
 import qualified Graphics.Vty                as V
 
-import           Control.Monad.State
 import           Swarm.Game
 import           Swarm.Game.Entity
 import           Swarm.Game.Recipes
@@ -41,7 +41,9 @@ import           Swarm.Game.Robot            (installedDevices, robotCtx,
 import           Swarm.Game.Terrain          (displayTerrain)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
+import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax       (east, north, south, west)
+import           Swarm.Language.Types
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Panel
 import           Swarm.Util
@@ -330,16 +332,21 @@ gameTick = do
   case g ^. replResult of
 
     -- It did, and the result was the unit value.  Just reset replResult.
-    Just (_, Just VUnit) -> gameState . replResult .= Nothing
+    REPLWorking _ (Just VUnit) -> gameState . replResult .= REPLDone
 
     -- It did, and returned some other value.  Pretty-print the
-    -- result as a REPL output, and reset the replResult.
-    Just (_ty, Just v) -> do
-      uiState . uiReplHistory %= (REPLOutput (into (prettyValue v)) :)
-      gameState . replResult .= Nothing
+    -- result as a REPL output, with its type, and reset the replResult.
+    REPLWorking pty (Just v) -> do
+      let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
+      uiState . uiReplHistory %= (REPLOutput out :)
+      gameState . replResult .= REPLDone
 
     -- Otherwise, do nothing.
     _ -> return ()
+
+stripCmd :: Polytype -> Polytype
+stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
+stripCmd pty                    = pty
 
 
 handleEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
@@ -376,13 +383,13 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))
       & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
   = case processTerm' topCtx entry of
-      Right (t ::: ty) ->
+      Right t@(_ ::: Module ty _) ->
         continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
           & uiState . uiReplHistory %~ (REPLEntry True entry :)
           & uiState . uiReplHistIdx .~ (-1)
-          & gameState . replResult ?~ (ty, Nothing)
-          & gameState . robotMap . ix "base" . machine .~ initMachine t ty topEnv
+          & gameState . replResult .~ REPLWorking ty Nothing
+          & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
       Left err ->
         continue $ s
           & uiState . uiError ?~ txt err

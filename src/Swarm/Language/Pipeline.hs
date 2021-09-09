@@ -40,15 +40,15 @@ import           Swarm.Util
 --   2. Typecheck it (see "Swarm.Language.Typecheck")
 --   3. Elaborate it (see "Swarm.Language.Elaborate")
 --
---   Return either the end result (an 'ATerm' paired with its 'Type'),
---   or a pretty-printed error message.
-processTerm :: Text -> Either Text (ATerm ::: Type)
+--   Return either the end result (a 'Term' paired with its type), or a pretty-printed
+--   error message.
+processTerm :: Text -> Either Text (Term ::: TModule)
 processTerm = processTerm' M.empty
 
 -- | Like 'processTerm', but use an explicit starting context.
-processTerm' :: Ctx -> Text -> Either Text (ATerm ::: Type)
+processTerm' :: TCtx -> Text -> Either Text (Term ::: TModule)
 processTerm' ctx txt = do
   t <- readTerm txt
-  at ::: ty <- first prettyText (infer ctx t)
-  return $ elaborate ty at ::: ty
+  ty <- first prettyText (inferTop' ctx t)
+  return $ elaborate t ::: ty
 
