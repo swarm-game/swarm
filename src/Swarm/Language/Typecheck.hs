@@ -6,7 +6,7 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Type checking and inference for the Swarm language.
+-- Type inference for the Swarm language.
 --
 -----------------------------------------------------------------------------
 
@@ -33,11 +33,8 @@ module Swarm.Language.Typecheck
 
     -- * Bidirectional type checking / inference
 
-    -- ** Inference
-  , inferTop, infer, inferConst
-
-    -- ** Checking
-  , check, checkEqual, checkConst
+    -- ** Type inference
+  , inferTop, inferTop', inferModule, infer, inferConst, check
 
     -- ** Decomposition utilities
 
@@ -70,27 +67,29 @@ import           Swarm.Language.Types
 ------------------------------------------------------------
 -- Inference monad
 
-type Infer = ReaderT Ctx (ExceptT TypeErr (IntBindingT TypeF Identity))
+type Infer = ReaderT UCtx (ExceptT TypeErr (IntBindingT TypeF Identity))
 
-runInfer :: Infer a -> Either TypeErr a
+runInfer :: Infer UModule -> Either TypeErr TModule
 runInfer = runInfer' M.empty
 
-runInfer' :: Ctx -> Infer a -> Either TypeErr a
+runInfer' :: TCtx -> Infer UModule -> Either TypeErr TModule
 runInfer' ctx =
-  flip runReaderT ctx >>>
+  (>>= applyBindings) >>>
+  (>>= \(Module uty uctx) -> Module <$> (fromU <$> generalize uty) <*> pure (fromU uctx)) >>>
+  flip runReaderT (toU ctx) >>>
   runExceptT >>>
   evalIntBindingT >>>
   runIdentity
 
-lookup :: Var -> Infer Type
+lookup :: Var -> Infer UType
 lookup x = do
   ctx <- ask
-  maybe (throwError $ UnboundVar x) return (M.lookup x ctx)
+  maybe (throwError $ UnboundVar x) instantiate (M.lookup x ctx)
 
-withBinding :: MonadReader Ctx m => Var -> Type -> m a -> m a
+withBinding :: MonadReader UCtx m => Var -> UPolytype -> m a -> m a
 withBinding x ty = local (M.insert x ty)
 
-withBindings :: MonadReader Ctx m => Ctx -> m a -> m a
+withBindings :: MonadReader UCtx m => UCtx -> m a -> m a
 withBindings ctx = local (M.union ctx)
 
 ------------------------------------------------------------
@@ -116,7 +115,7 @@ instance FreeVars UType where
 instance FreeVars t => FreeVars (Poly t) where
   freeVars (Forall xs t) = (\\ S.fromList (map Left xs)) <$> freeVars t
 
-instance FreeVars Ctx where
+instance FreeVars UCtx where
   freeVars = fmap S.unions . mapM freeVars . M.elems
 
 fresh :: Infer UType
@@ -133,11 +132,23 @@ substU m = ucata
 ------------------------------------------------------------
 -- Lifted stuff from unification-fd
 
-(=:=) :: UType -> UType -> Infer UType
-s =:= t = lift $ s U.=:= t
+(=:=) :: UType -> UType -> Infer ()
+s =:= t = void (lift $ s U.=:= t)
 
-applyBindings :: UType -> Infer UType
-applyBindings = lift . U.applyBindings
+class HasBindings u where
+  applyBindings :: u -> Infer u
+
+instance HasBindings UType where
+  applyBindings = lift . U.applyBindings
+
+instance HasBindings UPolytype where
+  applyBindings (Forall xs u) = Forall xs <$> applyBindings u
+
+instance HasBindings UCtx where
+  applyBindings = mapM applyBindings
+
+instance HasBindings UModule where
+  applyBindings (Module uty uctx) = Module <$> applyBindings uty <*> applyBindings uctx
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -164,12 +175,6 @@ generalize uty = do
   let fvs = S.toList $ tmfvs \\ ctxfvs
       xs  = map (either id (mkVarName "a")) fvs
   return $ Forall xs (substU (M.fromList (zip fvs (map UTyVar xs))) uty')
-
-toUPolytype :: Polytype -> UPolytype
-toUPolytype = fmap unfreeze
-
-fromUPolytype :: UPolytype -> Polytype
-fromUPolytype = fmap (fromJust . freeze)
 
 ------------------------------------------------------------
 -- Type errors
@@ -201,95 +206,83 @@ data TypeErr
   --   context to have some other type.
   | NonPairTyExpected Term Type
 
-  -- | The given term was expected to have a certain type, but has a
-  -- different type instead.
-  | Mismatch Term {- expected -} Type {- inferred -} Type
-
   -- | An undefined variable was encountered.
   | UnboundVar Var
 
-  -- | Tried to infer the type of a term which we cannot infer.
-  | CantInfer Term
-
   | Infinite IntVar UType
-  | UMismatch (TypeF UType) (TypeF UType)
+
+  -- | The given term was expected to have a certain type, but has a
+  -- different type instead.
+  | Mismatch (TypeF UType) (TypeF UType)
+
+  | DefNotTopLevel Term
 
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
-  mismatchFailure = UMismatch
+  mismatchFailure = Mismatch
 
 ------------------------------------------------------------
 -- Type inference / checking
 
-inferTop :: Term -> Either TypeErr Type
-inferTop = runInfer . infer
+inferTop :: Term -> Either TypeErr TModule
+inferTop = runInfer . inferModule
 
--- | Try to infer the type of a term under a given context, either
---   returning a type error, or the type of the term.
-infer :: Term -> Infer Type
+inferTop' :: TCtx -> Term -> Either TypeErr TModule
+inferTop' ctx = runInfer' ctx . inferModule
 
--- Some simple cases.
-infer   TUnit                     = return TyUnit
+-- | Infer the signature of a top-level module containing definitions.
+inferModule :: Term -> Infer UModule
+inferModule (TDef x Nothing t1) = do
+  ty <- infer t1
+  pty <- generalize ty
+  return $ Module (UTyCmd UTyUnit) (M.singleton x pty)
+inferModule (TDef x (Just pty) t1) = do
+  let upty = toU pty
+  uty <- skolemize upty
+  withBinding x upty $ check t1 uty
+  return $ Module (UTyCmd UTyUnit) (M.singleton x upty)
+inferModule (TBind mx c1 c2) = do
+  Module cmda ctx1 <- inferModule c1
+  a <- decomposeCmdTy c1 cmda
+  withBindings ctx1 $ maybe id (`withBinding` Forall [] a) mx $ do
+    Module cmdb ctx2 <- inferModule c2
+    b <- decomposeCmdTy c2 cmdb
+    return $ Module (UTyCmd b) (ctx2 `M.union` ctx1)
+inferModule t = trivMod <$> infer t
+
+-- | Try to infer the type of a term under a given context.
+infer :: Term -> Infer UType
+
+infer   TUnit                     = return UTyUnit
 infer   (TConst c)                = inferConst c
-infer   (TDir _)                  = return TyDir
-infer   (TInt _)                  = return TyInt
-infer   (TString _)               = return TyString
-infer   (TBool _)                 = return TyBool
+infer   (TDir _)                  = return UTyDir
+infer   (TInt _)                  = return UTyInt
+infer   (TString _)               = return UTyString
+infer   (TBool _)                 = return UTyBool
 
 -- To infer the type of a pair, just infer both components.
-infer (TPair t1 t2)             = (:*:) <$> infer t1 <*> infer t2
-
--- To infer the type of (return t), infer (t :: a) and then yield (cmd
--- a).  Note that right now we cannot just deal with return in
--- inferConst, because the type of return would have to be
--- polymorphic, and we don't (yet) have polymorphism in the type
--- system.
-infer (TApp (TConst Return) t) = Cmd <$> infer t
-
--- To infer the type of (if b t1 t2):
-infer (TApp (TApp (TApp (TConst If) cond) thn) els) = do
-
-  -- Make sure b has type bool
-  check cond TyBool
-
-  -- Infer the types of the branches and make sure they are equal
-  thnTy <- infer thn
-  elsTy <- infer els
-  checkEqual thn thnTy elsTy
-
-  return thnTy
-
--- fst
-infer (TApp (TConst Fst) t) = do
-
-  -- Infer the type of t and make sure it's a pair type
-  ty <- infer t
-  (ty1, _) <- decomposePairTy t ty
-
-  -- Return the type of the first component
-  return ty1
-
--- snd is similar.
-infer (TApp (TConst Snd) t) = do
-  ty <- infer t
-  (_, ty2) <- decomposePairTy t ty
-  return ty2
+infer (TPair t1 t2)               = UTyProd <$> infer t1 <*> infer t2
 
 -- delay t has the same type as t.
-infer (TDelay t)                = infer t
-
--- force t has the same type as t.
-infer (TApp (TConst Force) t) = infer t
+infer (TDelay t)                  = infer t
 
 -- Just look up variables in the context.
-infer (TVar x)                = lookup x
+infer (TVar x)                    = lookup x
 
--- We can infer the type of a lambda if the type of the argument is
--- provided.  Just infer the body under an extended context and return
+-- To infer the type of a lambda if the type of the argument is
+-- provided, just infer the body under an extended context and return
 -- the appropriate function type.
 infer (TLam x (Just argTy) t)   = do
-  resTy <- withBinding x argTy $ infer t
-  return $ argTy :->: resTy
+  let uargTy = toU argTy
+  resTy <- withBinding x (Forall [] uargTy) $ infer t
+  return $ UTyFun uargTy resTy
+
+-- If the type of the argument is not provided, create a fresh
+-- unification variable for it and proceed.
+infer (TLam x Nothing t) = do
+  argTy <- fresh
+  resTy <- withBinding x (Forall [] argTy) $ infer t
+  return $ UTyFun argTy resTy
 
 -- To infer the type of an application:
 infer (TApp f x)              = do
@@ -305,116 +298,88 @@ infer (TApp f x)              = do
 -- We can infer the type of a let whether a type has been provided for
 -- the variable or not.
 infer (TLet x Nothing t1 t2)    = do
-  xTy <- infer t1
-  withBinding  x xTy $ infer t2
-infer (TLet x (Just xTy) t1 t2) = do
-  withBinding  x xTy $ check t1 xTy
-  withBinding  x xTy $ infer t2
+  upty <- generalize =<< infer t1
+  withBinding  x upty $ infer t2
+infer (TLet x (Just pty) t1 t2) = do
+  let upty = toU pty
+  uty <- skolemize upty
+  withBinding x upty $ do
+    check t1 uty
+    infer t2
 
-infer (TDef x Nothing t1) = do
-  xTy <- infer t1
-  return $ TyCmd TyUnit (M.singleton x xTy)
-infer (TDef x (Just xTy) t1) = do
-  withBinding  x xTy $ check t1 xTy
-  return $ TyCmd TyUnit (M.singleton x xTy)
+infer t@(TDef _ _ _) = throwError $ DefNotTopLevel t
 
--- Bind.  Infer both commands and make sure they have command types.
--- If the first one binds a variable, make sure to add it to the
--- context when checking the second command.
-infer (TBind mx c1 c2)        = do
+infer (TBind mx c1 c2) = do
   ty1 <- infer c1
-  (a,ctx1) <- decomposeCmdTy c1 ty1
-  withBindings ctx1 $ maybe id (`withBinding` a) mx $ do
-    cmdb <- infer c2
-    (b,ctx2) <- decomposeCmdTy c2 cmdb
-    return $ TyCmd b (ctx2 `M.union` ctx1)
-infer t = throwError $ CantInfer t
+  a <- decomposeCmdTy c1 ty1
+  ty2 <- case mx of
+    Nothing -> infer c2
+    Just x  -> withBinding x (Forall [] a) $ infer c2
+  _ <- decomposeCmdTy c2 ty2
+  return ty2
 
 -- | Decompose a type that is supposed to be a command type.
-decomposeCmdTy :: MonadError TypeErr m => Term -> Type -> m (Type, Ctx)
-decomposeCmdTy _ (TyCmd resTy ctx) = return (resTy, ctx)
-decomposeCmdTy t ty                = throwError $ NotCmdTy t ty
+decomposeCmdTy :: Term -> UType -> Infer UType
+decomposeCmdTy _ (UTyCmd a) = return a
+decomposeCmdTy _ ty = do
+  a <- fresh
+  ty =:= UTyCmd a
+  return a
 
 -- | Decompose a type that is supposed to be a function type.
-decomposeFunTy :: MonadError TypeErr m => Term -> Type -> m (Type, Type)
-decomposeFunTy _ (ty1 :->: ty2) = return (ty1, ty2)
-decomposeFunTy t ty             = throwError $ NotFunTy t ty
+decomposeFunTy :: Term -> UType -> Infer (UType, UType)
+decomposeFunTy _ (UTyFun ty1 ty2) = return (ty1, ty2)
+decomposeFunTy _ ty             = do
+  ty1 <- fresh
+  ty2 <- fresh
+  ty =:= UTyFun ty1 ty2
+  return (ty1, ty2)
 
 -- | Decompose a type that is supposed to be a pair type.
-decomposePairTy :: MonadError TypeErr m => Term -> Type -> m (Type, Type)
-decomposePairTy _ (ty1 :*: ty2) = return (ty1, ty2)
-decomposePairTy t ty            = throwError $ NotPairTy t ty
+decomposePairTy :: Term -> UType -> Infer (UType, UType)
+decomposePairTy _ (UTyProd ty1 ty2) = return (ty1, ty2)
+decomposePairTy _ ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  ty =:= UTyProd ty1 ty2
+  return (ty1, ty2)
 
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded or polymorphic) must be checked.
-inferConst :: MonadError TypeErr m => Const -> m Type
-inferConst Wait        = return $ Cmd TyUnit
-inferConst Halt        = return $ Cmd TyUnit
-inferConst Noop        = return $ Cmd TyUnit
-inferConst Move        = return $ Cmd TyUnit
-inferConst Turn        = return $ TyDir :->: Cmd TyUnit
-inferConst Grab        = return $ Cmd TyUnit
-inferConst Place       = return $ TyString :->: Cmd TyUnit
-inferConst Give        = return $ TyString :->: TyString :->: Cmd TyUnit
-inferConst Craft       = return $ TyString :->: Cmd TyUnit
-inferConst Build       = return $ TyString :->: Cmd TyUnit :->: Cmd TyString
-inferConst Run         = return $ TyString :->: Cmd TyUnit
-inferConst GetX        = return $ Cmd TyInt
-inferConst GetY        = return $ Cmd TyInt
-inferConst Random      = return $ TyInt :->: Cmd TyInt
-inferConst Say         = return $ TyString :->: Cmd TyUnit
-inferConst View        = return $ TyString :->: Cmd TyUnit
-inferConst Appear      = return $ TyString :->: Cmd TyUnit
-inferConst IsHere      = return $ TyString :->: Cmd TyBool
-inferConst Not         = return $ TyBool :->: TyBool
-inferConst (Cmp _)     = return $ TyInt :->: TyInt :->: TyBool
-inferConst (Arith Neg) = return $ TyInt :->: TyInt
-inferConst (Arith _)   = return $ TyInt :->: TyInt :->: TyInt
-
-inferConst c           = throwError $ CantInfer (TConst c)
+inferConst :: Const -> Infer UType
+inferConst Wait        = return $ UTyCmd UTyUnit
+inferConst Halt        = return $ UTyCmd UTyUnit
+inferConst Noop        = return $ UTyCmd UTyUnit
+inferConst Return      = instantiate $ Forall ["a"] (UTyFun "a" (UTyCmd "a"))
+inferConst If          = instantiate $
+  Forall ["a"] (UTyFun UTyBool (UTyFun "a" (UTyFun "a" "a")))
+inferConst Fst         = instantiate $ Forall ["a","b"] (UTyFun (UTyProd "a" "b") "a")
+inferConst Snd         = instantiate $ Forall ["a","b"] (UTyFun (UTyProd "a" "b") "b")
+inferConst Force       = instantiate $ Forall ["a"] "a"
+inferConst Move        = return $ UTyCmd UTyUnit
+inferConst Turn        = return $ UTyFun UTyDir (UTyCmd UTyUnit)
+inferConst Grab        = return $ UTyCmd UTyUnit
+inferConst Place       = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Give        = return $ UTyFun UTyString (UTyFun UTyString (UTyCmd UTyUnit))
+inferConst Craft       = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Build       =
+  instantiate $ Forall ["a"] (UTyFun UTyString (UTyFun (UTyCmd "a") (UTyCmd UTyString)))
+inferConst Run         = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst GetX        = return $ UTyCmd UTyInt
+inferConst GetY        = return $ UTyCmd UTyInt
+inferConst Random      = return $ UTyFun UTyInt (UTyCmd UTyInt)
+inferConst Say         = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst View        = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Appear      = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst IsHere      = return $ UTyFun UTyString (UTyCmd UTyBool)
+inferConst Not         = return $ UTyFun UTyBool UTyBool
+inferConst (Cmp _)     = return $ UTyFun UTyInt (UTyFun UTyInt UTyBool)
+inferConst (Arith Neg) = return $ UTyFun UTyInt UTyInt
+inferConst (Arith _)   = return $ UTyFun UTyInt (UTyFun UTyInt UTyInt)
 
 -- | @check t ty@ checks that @t@ has type @ty@.
-check :: Term -> Type -> Infer ()
-check (TConst c) ty = checkConst c ty
-check (TPair t1 t2) (ty1 :*: ty2) = do
-  check t1 ty1
-  check t2 ty2
-check t@TPair{} ty = throwError $ NonPairTyExpected t ty
-check t@(TApp (TConst Return) _) ty = throwError $ NonCmdTyExpected t ty
-check (TApp (TApp (TApp (TConst If) cond) thn) els) resTy = do
-  check cond TyBool
-  check thn resTy
-  check els resTy
-check t@(TLam x Nothing body) ty = do
-  (ty1, ty2) <- decomposeFunTy t ty
-  withBinding  x ty1 $ check body ty2
-check (TApp t1 t2) ty = do
-  ty2 <- infer t2
-  check t1 (ty2 :->: ty)
-
--- Fall-through case: switch into inference mode
-check t ty          = infer t >>= checkEqual t ty
-
--- | Ensure that two types are equal.
-checkEqual :: MonadError TypeErr m => Term -> Type -> Type -> m ()
-checkEqual t ty ty'
-  | ty == ty' = return ()
-  | otherwise = throwError $ Mismatch t ty ty'
-
--- | Check that a constant can have a given type.
-checkConst :: MonadError TypeErr m => Const -> Type -> m ()
-
--- This would be neat (overloaded constants) (would it though?), but
--- type inference falls over a bit.  To make this work we would have
--- to bite the bullet and (1) do a full-fledged constraint-solving
--- version of the type checker with unification variables etc, (2)
--- annotate subterms with their types, probably by encoding terms via
--- a two-level type and adding a type annotation at every node, so
--- that (3) elaboration can take type information into account.
-
--- checkConst Build (Cmd TyUnit :->: Cmd TyUnit) = return ()
--- checkConst Build (TyString     :->: Cmd TyUnit) = return ()
--- checkConst Build ty = throwError $ BadBuildTy ty
-
--- Fall-through case
-checkConst c ty = inferConst c >>= checkEqual (TConst c) ty
+check :: Term -> UType -> Infer ()
+check t ty = do
+  ty' <- infer t
+  _ <- ty =:= ty'
+  return ()

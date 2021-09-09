@@ -42,13 +42,13 @@ import           Swarm.Util
 --
 --   Return either the end result (a 'Term' paired with its type), or a pretty-printed
 --   error message.
-processTerm :: Text -> Either Text (Term ::: Type)
+processTerm :: Text -> Either Text (Term ::: TModule)
 processTerm = processTerm' M.empty
 
 -- | Like 'processTerm', but use an explicit starting context.
-processTerm' :: Ctx -> Text -> Either Text (Term ::: Type)
+processTerm' :: TCtx -> Text -> Either Text (Term ::: TModule)
 processTerm' ctx txt = do
   t <- readTerm txt
-  ty <- first prettyText (runInfer' ctx $ infer t)
+  ty <- first prettyText (inferTop' ctx t)
   return $ elaborate t ::: ty
 

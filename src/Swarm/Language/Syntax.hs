@@ -178,11 +178,11 @@ data Term
 
     -- | A __recursive__ let expression, with or without a type
     --   annotation on the variable.
-  | TLet Var (Maybe Type) Term Term
+  | TLet Var (Maybe Polytype) Term Term
 
     -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands.
-  | TDef Var (Maybe Type) Term
+  | TDef Var (Maybe Polytype) Term
 
     -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     --   The type annotation tells us the type of @c1@.
@@ -198,8 +198,7 @@ data Term
   | TDelay Term
   deriving (Eq, Show)
 
--- | Rewrite a term using a bottom-up traversal.  Giving the rewriting
---   function access to the type of each subtree.
+-- | Rewrite a term using a bottom-up traversal.
 bottomUp :: (Term -> Term) -> Term -> Term
 bottomUp f (TPair t1 t2) = f (TPair (bottomUp f t1) (bottomUp f t2))
 bottomUp f (TLam x xTy t) = f (TLam x xTy (bottomUp f t))

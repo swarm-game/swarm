@@ -33,7 +33,6 @@ module Swarm.Language.Parse
 
 import           Data.Bifunctor
 import           Data.Char
-import qualified Data.Map                       as M
 import           Data.Maybe                     (fromMaybe)
 import           Data.Text                      (Text)
 import           Data.Void
@@ -115,9 +114,6 @@ braces = between (symbol "{") (symbol "}")
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
-brackets :: Parser a -> Parser a
-brackets = between (symbol "[") (symbol "]")
-
 --------------------------------------------------
 -- Parser
 
@@ -138,18 +134,13 @@ parseType = makeExprParser parseTypeAtom table
 parseTypeAtom :: Parser Type
 parseTypeAtom =
       TyUnit   <$ symbol "()"
+  <|> TyVar    <$> identifier
   <|> TyInt    <$ reserved "int"
   <|> TyString <$ reserved "string"
   <|> TyDir    <$ reserved "dir"
   <|> TyBool   <$ reserved "bool"
   <|> TyCmd    <$> (reserved "cmd" *> parseTypeAtom)
-               <*> (maybe M.empty M.fromList <$>
-                      optional (brackets (parseTyAnn `sepBy` symbol ","))
-                   )
   <|> parens parseType
-
-  where
-    parseTyAnn = (,) <$> identifier <*> (symbol ":" *> parseType)
 
 parseDirection :: Parser Direction
 parseDirection =
@@ -200,11 +191,11 @@ parseTermAtom =
               <*> optional (symbol ":" *> parseType)
               <*> (symbol "." *> parseTerm)
   <|> TLet    <$> (reserved "let" *> identifier)
-              <*> optional (symbol ":" *> parseType)
+              <*> optional (symbol ":" *> parsePolytype)
               <*> (symbol "=" *> parseTerm)
               <*> (reserved "in" *> parseTerm)
   <|> TDef    <$> (reserved "def" *> identifier)
-              <*> optional (symbol ":" *> parseType)
+              <*> optional (symbol ":" *> parsePolytype)
               <*> (symbol "=" *> parseTerm <* reserved "end")
   <|> parens parseTerm
   <|> TConst Noop <$ try (symbol "{" *> symbol "}")

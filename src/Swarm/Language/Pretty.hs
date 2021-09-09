@@ -81,7 +81,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
   prettyPrec _ (TyVarF v)      = pretty v
   prettyPrec p (TyProdF ty1 ty2)  = pparens (p > 2) $
     prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
-  prettyPrec p (TyCmdF ty ctx) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty <+> ppr ctx
+  prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec p (TyFunF ty1 ty2)    = pparens (p > 0) $
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
@@ -89,7 +89,7 @@ instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("forall" : map pretty xs) <> "." <+> ppr t
 
-instance PrettyPrec Ctx where
+instance PrettyPrec t => PrettyPrec (Ctx t) where
   prettyPrec _ Empty            = emptyDoc
   prettyPrec _ (M.assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
     where
@@ -213,19 +213,15 @@ instance PrettyPrec TypeErr where
     [ "Expecting type", ppr ty
     , "but", ppr t, "is a pair."
     ]
-  prettyPrec _ (Mismatch t expected inferred) =
-    vsep
-      [ "Type mismatch when checking expression" <+> squotes (ppr t)
-      , "Expected type:" <+> ppr expected
-      , "Actual type:" <+> ppr inferred
-      ]
+
+  prettyPrec _ (Mismatch ty1 ty2) =
+    "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+
   prettyPrec _ (UnboundVar x) =
     "Unbound variable" <+> pretty x
-  prettyPrec _ (CantInfer t) =
-    "Can't infer the type of" <+> ppr t
 
   prettyPrec _ (Infinite x uty) =
     "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
 
-  prettyPrec _ (UMismatch ty1 ty2) =
-    "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+  prettyPrec _ (DefNotTopLevel t) =
+    "Definitions may only be at the top level:" <+> ppr t

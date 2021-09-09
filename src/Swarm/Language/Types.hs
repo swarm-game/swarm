@@ -10,36 +10,46 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveFoldable    #-}
-{-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE PatternSynonyms   #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveFoldable        #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveTraversable     #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 module Swarm.Language.Types
-  ( BaseTy(..), TypeF(..), Type, UType, Poly(..), Polytype, UPolytype
+  ( BaseTy(..), Var, Ctx, TCtx, UCtx, emptyCtx
+
+  , TypeF(..), Type, UType, Poly(..), Polytype, UPolytype
+  , Module(..), TModule, UModule, trivMod
+
+  , WithU(..)
+
   , pattern TyBase, pattern TyVar
   , pattern TyUnit, pattern TyInt, pattern TyString, pattern TyDir, pattern TyBool
   , pattern (:*:), pattern (:->:)
-  , pattern TyCmd, pattern Cmd
+  , pattern TyCmd
 
   , pattern UTyBase, pattern UTyVar
   , pattern UTyUnit, pattern UTyInt, pattern UTyString, pattern UTyDir, pattern UTyBool
   , pattern UTyProd, pattern UTyFun
   , pattern UTyCmd
 
-  , Var, Ctx
-
   , ucata, mkVarName
   ) where
 
-import           Control.Lens.Combinators   (pattern Empty)
 import           Control.Unification
 import           Control.Unification.IntVar
 import           Data.Functor.Fixedpoint
 import           Data.Map                   (Map)
+import qualified Data.Map                   as M
+import           Data.Maybe                 (fromJust)
+import           Data.String                (IsString (..))
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           GHC.Generics               (Generic1)
@@ -51,25 +61,65 @@ data BaseTy
   | BString           -- ^ Unicode strings.
   | BDir              -- ^ Directions.
   | BBool             -- ^ Booleans.
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
+
+-- | We use 'Text' values to represent variables.
+type Var = Text
 
 -- | A data type representing types in the Swarm programming language.
 data TypeF t
   = TyBaseF BaseTy -- ^ Base types.
   | TyVarF Var     -- ^ Type variables.
-  | TyCmdF t Ctx   -- ^ Commands, with return type and output context
-                   --   (from 'Def' commands). Note that commands form a
-                   --   monad.
+  | TyCmdF t       -- ^ Commands, with return type.  Note that
+                   --   commands form a monad.
   | TyProdF t t    -- ^ Product type.
   | TyFunF t t     -- ^ Function type.
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic1, Unifiable)
 
+-- | A context is a mapping from variable names to things.
+type Ctx t = Map Var t
+type TCtx = Ctx Polytype
+type UCtx = Ctx UPolytype
+
+emptyCtx :: Ctx t
+emptyCtx = M.empty
+
 type Type = Fix TypeF
 type UType = UTerm TypeF IntVar
 
-data Poly t = Forall [Var] t deriving (Show, Functor)
+instance IsString Type where
+  fromString x = TyVar (from @String x)
+
+instance IsString UType where
+  fromString x = UTyVar (from @String x)
+
+data Poly t = Forall [Var] t deriving (Show, Eq, Functor)
 type Polytype = Poly Type
 type UPolytype = Poly UType
+
+data Module s t = Module { moduleTy :: s, moduleCtx :: Ctx t }
+  deriving (Show, Eq, Functor)
+
+trivMod :: s -> Module s t
+trivMod t = Module t emptyCtx
+
+type TModule = Module Polytype Polytype
+type UModule = Module UType UPolytype
+
+class WithU t where
+  type U t :: *
+  toU   :: t -> U t
+  fromU :: U t -> t
+
+instance WithU Type where
+  type U Type = UType
+  toU = unfreeze
+  fromU = fromJust . freeze
+
+instance (WithU t, Functor f) => WithU (f t) where
+  type U (f t) = f (U t)
+  toU = fmap toU
+  fromU = fmap fromU
 
 pattern TyBase :: BaseTy -> Type
 pattern TyBase b = Fix (TyBaseF b)
@@ -102,13 +152,8 @@ infixr 1 :->:
 pattern (:->:) :: Type -> Type -> Type
 pattern ty1 :->: ty2 = Fix (TyFunF ty1 ty2)
 
-pattern TyCmd :: Type -> Ctx -> Type
-pattern TyCmd ty1 ctx = Fix (TyCmdF ty1 ctx)
-
-pattern Cmd :: Type -> Type
-pattern Cmd ty = Fix (TyCmdF ty Empty)
-
-{-# COMPLETE TyCmd, (:*:), (:->:), TyBase #-}
+pattern TyCmd :: Type -> Type
+pattern TyCmd ty1 = Fix (TyCmdF ty1)
 
 pattern UTyBase :: BaseTy -> UType
 pattern UTyBase b = UTerm (TyBaseF b)
@@ -137,15 +182,8 @@ pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)
 pattern UTyFun :: UType -> UType -> UType
 pattern UTyFun ty1 ty2 = UTerm (TyFunF ty1 ty2)
 
-pattern UTyCmd :: UType -> Ctx -> UType
-pattern UTyCmd ty1 ctx = UTerm (TyCmdF ty1 ctx)
-
--- | We use 'Text' values to represent variables.
-type Var = Text
-
--- | A context is a mapping from variable names to their types.
-type Ctx = Map Var Type
-
+pattern UTyCmd :: UType -> UType
+pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
 ------------------------------------------------------------
 -- Some utilities
 

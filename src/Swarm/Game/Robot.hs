@@ -43,7 +43,7 @@ import           Swarm.Game.Display
 import           Swarm.Game.Entities
 import           Swarm.Game.Entity
 import           Swarm.Game.Value     as V
-import           Swarm.Language.Types (Ctx)
+import           Swarm.Language.Types (TCtx)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -59,7 +59,7 @@ data Robot = Robot
   , _robotLocation    :: V2 Int
     -- ^ The location of the robot as (x,y).
 
-  , _robotCtx         :: Ctx
+  , _robotCtx         :: TCtx
     -- ^ Top-level type context.
 
   , _robotEnv         :: Env

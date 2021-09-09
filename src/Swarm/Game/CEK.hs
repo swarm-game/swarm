@@ -48,6 +48,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeOperators   #-}
 
 module Swarm.Game.CEK
   ( -- * Frames and continuations
@@ -77,6 +78,7 @@ import           Swarm.Game.Value
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
+import           Swarm.Util
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -125,7 +127,7 @@ data Frame
     --   environment it returned and union it with this one to produce
     --   the result of a bind expression.
 
-  | FLoadEnv Ctx
+  | FLoadEnv TCtx
     -- ^ We were executing a command that might have definitions; next
     --   we should take the resulting 'Env' and add it to the robot's
     --   'robotEnv', along with adding this accompanying 'Ctx' to the
@@ -187,19 +189,19 @@ finalValue _          = Nothing
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
 --   whether it has a command type or not.
-initMachine :: Term -> Type -> Env -> CEK
-initMachine at ty e = initMachine' at ty e []
+initMachine :: Term ::: TModule -> Env -> CEK
+initMachine t e = initMachine' t e []
 
 -- | Like 'initMachine', but also take a starting continuation.
-initMachine' :: Term -> Type -> Env -> Cont -> CEK
-initMachine' t (TyCmd _ ctx) e k
+initMachine' :: Term ::: TModule -> Env -> Cont -> CEK
+initMachine' (t ::: Module (Forall _ (TyCmd _)) ctx) e k
   | M.null ctx = In t e (FExec : k)
   | otherwise  = In t e (FExec : FLoadEnv ctx : k)
-initMachine' t _ e k = In t e k
+initMachine' (t ::: _) e k = In t e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK
-idleMachine = initMachine (TConst Noop) (Cmd TyUnit) empty
+idleMachine = initMachine (TConst Noop ::: trivMod (Forall [] (TyCmd TyUnit))) empty
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CEK states.  Should really make a
