@@ -12,8 +12,8 @@ The implementation is still in a very early stage, but planned
 features include:
 
 * 2D, infinite, procedurally generated worlds
-* Simple yet powerful programming language based on the lambda
-  calculus + recursion, with a command monad for describing
+* Simple yet powerful programming language based on the polymorphic
+  lambda calculus + recursion, with a command monad for describing
   first-class imperative actions
 * In-game tutorial
 * Multiple game modes:
