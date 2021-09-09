@@ -10,8 +10,12 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveFunctor   #-}
-{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE PatternSynonyms   #-}
 
 module Swarm.Language.Types
   ( BaseTy(..), TypeF(..), Type, UType, Poly(..), Polytype, UPolytype
@@ -30,6 +34,7 @@ import           Control.Unification.IntVar
 import           Data.Functor.Fixedpoint
 import           Data.Map                   (Map)
 import           Data.Text                  (Text)
+import           GHC.Generics               (Generic1)
 
 data BaseTy
   = BUnit             -- ^ The unit type, with a single inhabitant.
@@ -48,7 +53,7 @@ data TypeF t
                    --   monad.
   | TyProdF t t    -- ^ Product type.
   | TyFunF t t     -- ^ Function type.
-  deriving (Eq, Show)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Generic1, Unifiable)
 
 type Type = Fix TypeF
 type UType = UTerm TypeF IntVar

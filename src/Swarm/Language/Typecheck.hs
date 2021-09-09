@@ -10,10 +10,17 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DeriveFunctor        #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+  -- For 'Ord IntVar' instance
 
 module Swarm.Language.Typecheck
   ( -- * Type errors
@@ -39,30 +46,38 @@ module Swarm.Language.Typecheck
   ) where
 
 
-import           Control.Category      ((>>>))
+import           Control.Category           ((>>>))
 import           Control.Monad.Except
 import           Control.Monad.Reader
+import           Data.Foldable              (fold)
 import           Data.Functor.Identity
-import qualified Data.Map              as M
+import qualified Data.Map                   as M
 import           Data.Maybe
-import           Prelude               hiding (lookup)
+import           Data.Set                   (Set, (\\))
+import qualified Data.Set                   as S
+import           Prelude                    hiding (lookup)
 
--- import           Control.Unification.IntVar
+import           Control.Unification
+import           Control.Unification.IntVar
 
+import           Data.Functor.Fixedpoint    (cata)
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 
 ------------------------------------------------------------
 -- Inference monad
 
-type Infer = ReaderT Ctx (ExceptT TypeErr Identity)
-                          {- (IntBindingT TypeF Identity)) -}
+type Infer = ReaderT Ctx (ExceptT TypeErr (IntBindingT TypeF Identity))
 
 runInfer :: Infer a -> Either TypeErr a
 runInfer = runInfer' M.empty
 
 runInfer' :: Ctx -> Infer a -> Either TypeErr a
-runInfer' ctx = flip runReaderT ctx >>> runExceptT >>> runIdentity
+runInfer' ctx =
+  flip runReaderT ctx >>>
+  runExceptT >>>
+  evalIntBindingT >>>
+  runIdentity
 
 lookup :: Var -> Infer Type
 lookup x = do
@@ -74,6 +89,31 @@ withBinding x ty = local (M.insert x ty)
 
 withBindings :: MonadReader Ctx m => Ctx -> m a -> m a
 withBindings ctx = local (M.union ctx)
+
+------------------------------------------------------------
+-- Free variables
+
+deriving instance Ord IntVar
+
+class FreeVars a where
+  freeVars :: a -> Infer (Set (Either Var IntVar))
+
+instance FreeVars Type where
+  freeVars = return . cata (\case {TyVarF x -> S.singleton (Left x); f -> fold f})
+
+instance FreeVars UType where
+  freeVars ut = do
+    fuvs <- fmap (S.fromList . map Right) . lift . lift $ getFreeVars ut
+    let ftvs = ucata (const S.empty)
+                     (\case {TyVarF x -> S.singleton (Left x); f -> fold f})
+                     ut
+    return $ fuvs `S.union` ftvs
+
+instance FreeVars t => FreeVars (Poly t) where
+  freeVars (Forall xs t) = (\\ S.fromList (map Left xs)) <$> freeVars t
+
+instance FreeVars Ctx where
+  freeVars = fmap S.unions . mapM freeVars . M.elems
 
 ------------------------------------------------------------
 -- Type errors
