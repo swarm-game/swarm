@@ -10,16 +10,17 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveFunctor        #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
   -- For 'Ord IntVar' instance
 
 module Swarm.Language.Typecheck
@@ -57,7 +58,8 @@ import           Data.Set                   (Set, (\\))
 import qualified Data.Set                   as S
 import           Prelude                    hiding (lookup)
 
-import           Control.Unification
+import           Control.Unification        hiding (applyBindings, (=:=))
+import qualified Control.Unification        as U
 import           Control.Unification.IntVar
 
 import           Data.Functor.Fixedpoint    (cata)
@@ -116,6 +118,21 @@ instance FreeVars Ctx where
   freeVars = fmap S.unions . mapM freeVars . M.elems
 
 ------------------------------------------------------------
+-- Fresh variables
+
+fresh :: Infer UType
+fresh = UVar <$> lift (lift freeVar)
+
+------------------------------------------------------------
+-- Lifted stuff from unification-fd
+
+(=:=) :: UType -> UType -> Infer UType
+s =:= t = lift $ s U.=:= t
+
+applyBindings :: UType -> Infer UType
+applyBindings = lift . U.applyBindings
+
+------------------------------------------------------------
 -- Type errors
 
 -- | Errors that can occur during type checking.  The idea is that
@@ -154,6 +171,13 @@ data TypeErr
 
   -- | Tried to infer the type of a term which we cannot infer.
   | CantInfer Term
+
+  | Infinite IntVar UType
+  | UMismatch (TypeF UType) (TypeF UType)
+
+instance Fallible TypeF IntVar TypeErr where
+  occursFailure = Infinite
+  mismatchFailure = UMismatch
 
 ------------------------------------------------------------
 -- Type inference / checking

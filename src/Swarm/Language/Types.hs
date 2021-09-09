@@ -16,6 +16,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE PatternSynonyms   #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module Swarm.Language.Types
   ( BaseTy(..), TypeF(..), Type, UType, Poly(..), Polytype, UPolytype
@@ -25,7 +26,7 @@ module Swarm.Language.Types
   , pattern TyCmd, pattern Cmd
   , Var, Ctx
 
-  , ucata
+  , ucata, mkVarName
   ) where
 
 import           Control.Lens.Combinators   (pattern Empty)
@@ -34,7 +35,9 @@ import           Control.Unification.IntVar
 import           Data.Functor.Fixedpoint
 import           Data.Map                   (Map)
 import           Data.Text                  (Text)
+import qualified Data.Text                  as T
 import           GHC.Generics               (Generic1)
+import           Witch
 
 data BaseTy
   = BUnit             -- ^ The unit type, with a single inhabitant.
@@ -113,3 +116,6 @@ type Ctx = Map Var Type
 ucata :: Functor t => (v -> a) -> (t a -> a) -> UTerm t v -> a
 ucata f _ (UVar v)  = f v
 ucata f g (UTerm t) = g (fmap (ucata f g) t)
+
+mkVarName :: Text -> IntVar -> Var
+mkVarName nm (IntVar v) = T.append nm (from @String (show (v + (maxBound :: Int) + 1)))
