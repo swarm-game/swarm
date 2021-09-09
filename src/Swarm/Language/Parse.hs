@@ -213,8 +213,8 @@ mkBindChain stmts = case last stmts of
   BareTerm t -> return $ foldr mkBind t (init stmts)
 
   where
-    mkBind (BareTerm t1) t2 = TBind Nothing Nothing t1 t2
-    mkBind (Binder x t1) t2 = TBind (Just x) Nothing t1 t2
+    mkBind (BareTerm t1) t2 = TBind Nothing t1 t2
+    mkBind (Binder x t1) t2 = TBind (Just x) t1 t2
 
 data Stmt
   = BareTerm      Term
@@ -233,9 +233,9 @@ parseExpr :: Parser Term
 parseExpr = makeExprParser parseTermAtom table
   where
     table =
-      [ [ InfixL (TApp Nothing <$ string "") ]
+      [ [ InfixL (TApp <$ string "") ]
       , [ InfixR (mkOp (Arith Exp) <$ symbol "^") ]
-      , [ Prefix (TApp Nothing (TConst (Arith Neg)) <$ symbol "-") ]
+      , [ Prefix (TApp (TConst (Arith Neg)) <$ symbol "-") ]
       , [ InfixL (mkOp (Arith Mul) <$ symbol "*")
         , InfixL (mkOp (Arith Div) <$ symbol "/")
         ]
@@ -254,7 +254,7 @@ parseExpr = makeExprParser parseTermAtom table
       ]
 
 mkOp :: Const -> Term -> Term -> Term
-mkOp c = TApp Nothing . TApp Nothing (TConst c)
+mkOp c = TApp . TApp (TConst c)
 
 --------------------------------------------------
 -- Utilities

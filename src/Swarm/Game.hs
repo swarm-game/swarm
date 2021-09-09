@@ -305,7 +305,7 @@ stepRobot r = case r ^. machine of
 
   -- To evaluate an application, focus on the left-hand side and save
   -- the right-hand side for later.
-  In (TApp _ t1 t2) e k             -> step r $ In t1 e (FArg t2 e : k)
+  In (TApp t1 t2) e k               -> step r $ In t1 e (FArg t2 e : k)
 
   -- Evaluating let expressions is a little bit tricky. XXX write more
   In (TLet x _ t1 t2) e k           ->
@@ -315,7 +315,7 @@ stepRobot r = case r ^. machine of
 
   In (TDef x _ t) e k               -> step r $ Out (VDef x t e) k
 
-  In (TBind mx _ t1 t2) e k         -> step r $ In t1 e (FEvalBind mx t2 e : k)
+  In (TBind mx t1 t2) e k           -> step r $ In t1 e (FEvalBind mx t2 e : k)
   In (TDelay t) e k                 -> step r $ Out (VDelay t e) k
 
   Out (VResult v e) (FLoadEnv ctx : k) ->
@@ -383,7 +383,7 @@ evalConst = execConst
 
 -- XXX load this from a file and have it available in a map?
 --     Or make a quasiquoter?
-seedProgram :: Text -> ATerm
+seedProgram :: Text -> Term
 seedProgram thing = prog
   where
     Right (prog ::: _) = processTerm . into @Text . unlines $

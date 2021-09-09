@@ -57,7 +57,7 @@ data Value where
   -- | A /closure/, representing a lambda term along with an
   --   environment containing bindings for any free variables in the
   --   body of the lambda.
-  VClo    :: Var -> UTerm -> Env -> Value
+  VClo    :: Var -> Term -> Env -> Value
 
   -- | An application of a constant to some value arguments,
   --   potentially waiting for more arguments.  If a constant
@@ -70,7 +70,7 @@ data Value where
   VCApp   :: Const -> [Value] -> Value
 
   -- | A definition, which is not evaluated until executed.
-  VDef :: Var -> UTerm -> Env -> Value
+  VDef :: Var -> Term -> Env -> Value
 
   -- | The result of a command, consisting of the result of the
   --   command as well as an environment of bindings from 'TDef'
@@ -80,7 +80,7 @@ data Value where
   -- | A bind where the first component has been reduced to a value,
   --   /i.e./ @v ; c@ or @x <- v; c@.  We also store an 'Env' in which
   --   to interpret the second component of the bind.
-  VBind   :: Value -> Maybe Var -> UTerm -> Env -> Value
+  VBind   :: Value -> Maybe Var -> Term -> Env -> Value
 
   -- | A delayed term, along with its environment. If a term would
   --   otherwise be evaluated but we don't want it to be (/e.g./ as in
@@ -88,8 +88,8 @@ data Value where
   --   can stick a 'TDelay' on it, which turns it into a value.
   --   Delayed terms won't be evaluated until 'Force' is applied to
   --   them.
-  VDelay  :: UTerm -> Env -> Value
-  deriving (Eq, Ord, Show)
+  VDelay  :: Term -> Env -> Value
+  deriving (Eq, Show)
 
 -- XXX write a more principled pretty-printer, i.e. actually make a
 -- PrettyPrec instance
@@ -98,7 +98,7 @@ prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
 
 -- | Inject a value back into an unannotated term.
-valueToTerm :: Value -> UTerm
+valueToTerm :: Value -> Term
 valueToTerm VUnit            = TUnit
 valueToTerm (VInt n)         = TInt n
 valueToTerm (VString s)      = TString s
@@ -107,13 +107,13 @@ valueToTerm (VBool b)        = TBool b
 valueToTerm (VPair v1 v2)    = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e)     =
   M.foldrWithKey
-    (\y v -> TLet y NONE (valueToTerm v))
-    (TLam x NONE t)
+    (\y v -> TLet y Nothing (valueToTerm v))
+    (TLam x Nothing t)
     (M.restrictKeys e (S.delete x (fv t)))
-valueToTerm (VCApp c vs)     = foldl' (TApp NONE) (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VDef x t _)     = TDef x NONE t
+valueToTerm (VCApp c vs)     = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
+valueToTerm (VDef x t _)     = TDef x Nothing t
 valueToTerm (VResult v _)    = valueToTerm v
-valueToTerm (VBind v mx t _) = TBind mx NONE (valueToTerm v) t
+valueToTerm (VBind v mx t _) = TBind mx (valueToTerm v) t
 valueToTerm (VDelay t _)     = TDelay t
 
 -- | An environment is a mapping from variable names to values.

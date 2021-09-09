@@ -42,13 +42,13 @@ import           Swarm.Util
 --
 --   Return either the end result (an 'ATerm' paired with its 'Type'),
 --   or a pretty-printed error message.
-processTerm :: Text -> Either Text (ATerm ::: Type)
+processTerm :: Text -> Either Text (Term ::: Type)
 processTerm = processTerm' M.empty
 
 -- | Like 'processTerm', but use an explicit starting context.
-processTerm' :: Ctx -> Text -> Either Text (ATerm ::: Type)
+processTerm' :: Ctx -> Text -> Either Text (Term ::: Type)
 processTerm' ctx txt = do
   t <- readTerm txt
   at ::: ty <- first prettyText (infer ctx t)
-  return $ elaborate ty at ::: ty
+  return $ elaborate at ::: ty
 

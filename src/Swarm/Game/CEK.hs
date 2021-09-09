@@ -19,7 +19,7 @@
 -- Essentially, a CEK machine state has three components:
 --
 -- - The __C__ontrol is the thing we are currently focused on:
---   either a 'UTerm' to evaluate, or a 'Value' that we have
+--   either a 'Term' to evaluate, or a 'Value' that we have
 --   just finished evaluating.
 -- - The __E__nvironment ('Env') is a mapping from variables that might
 --   occur free in the Control to their values.
@@ -86,7 +86,7 @@ import           Swarm.Language.Types
 --   what to do next after we finish evaluating the currently focused
 --   term.
 data Frame
-   = FSnd UTerm Env
+   = FSnd Term Env
      -- ^ We were evaluating the first component of a pair; next, we
      --   should evaluate the second component which was saved in this
      --   frame (and push a 'FFst' frame on the stack to save the first component).
@@ -96,7 +96,7 @@ data Frame
      --   we should combine it with the value of the first component saved
      --   in this frame to construct a fully evaluated pair.
 
-   | FArg UTerm Env
+   | FArg Term Env
     -- ^ @FArg t e@ says that we were evaluating the left-hand side of
     -- an application, so the next thing we should do is evaluate the
     -- term @t@ (the right-hand side, /i.e./ argument of the
@@ -108,7 +108,7 @@ data Frame
     -- an application; once we are done, we should pass the resulting
     -- value as an argument to @v@.
 
-  | FLet Var UTerm Env
+  | FLet Var Term Env
     -- ^ @FLet x t2 e@ says that we were evaluating a term @t1@ in an
     -- expression of the form @let x = t1 in t2@, that is, we were
     -- evaluating the definition of @x@; the next thing we should do
@@ -131,7 +131,7 @@ data Frame
     --   'robotEnv', along with adding this accompanying 'Ctx' to the
     --   robot's 'robotCtx'.
 
-  | FEvalBind (Maybe Text) UTerm Env
+  | FEvalBind (Maybe Text) Term Env
     -- ^ If the top frame is of the form @FEvalBind mx c2 e@, we were
     -- /evaluating/ a term @c1@ from a bind expression @x <- c1 ; c2@
     -- (or without the @x@, if @mx@ is @Nothing@); once finished, we
@@ -141,7 +141,7 @@ data Frame
     -- ^ An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
 
-  | FExecBind (Maybe Text) UTerm Env
+  | FExecBind (Maybe Text) Term Env
     -- ^ This looks very similar to 'FEvalBind', but it means we are
     -- in the process of /executing/ the first component of a bind;
     -- once done, we should also execute the second component in the
@@ -159,11 +159,11 @@ type Cont = [Frame]
 --   bunch of things and get rid of the second state, but I find it
 --   much more natural and elegant this way.
 data CEK
-  = In UTerm Env Cont
+  = In Term Env Cont
     -- ^ When we are on our way "in/down" into a term, we have a
     --   currently focused term to evaluate in the environment, and a
     --   continuation.  In this mode we generally pattern-match on the
-    --   'UTerm' to decide what to do next.
+    --   'Term' to decide what to do next.
 
   | Out Value Cont
     -- ^ Once we finish evaluating a term, we end up with a 'Value'
@@ -186,19 +186,16 @@ finalValue _          = Nothing
 
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
---   whether it has a command type or not.  It requires a fully
---   typechecked term (to ensure no type or scope errors can cause a
---   crash), but erases the term before putting it in the machine,
---   since the types are not needed for evaluation.
-initMachine :: ATerm -> Type -> Env -> CEK
+--   whether it has a command type or not.
+initMachine :: Term -> Type -> Env -> CEK
 initMachine at ty e = initMachine' at ty e []
 
 -- | Like 'initMachine', but also take a starting continuation.
-initMachine' :: ATerm -> Type -> Env -> Cont -> CEK
+initMachine' :: Term -> Type -> Env -> Cont -> CEK
 initMachine' t (TyCmd _ ctx) e k
-  | M.null ctx = In (erase t) e (FExec : k)
-  | otherwise  = In (erase t) e (FExec : FLoadEnv ctx : k)
-initMachine' t _              e k = In (erase t) e k
+  | M.null ctx = In t e (FExec : k)
+  | otherwise  = In t e (FExec : FLoadEnv ctx : k)
+initMachine' t _ e k = In t e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK

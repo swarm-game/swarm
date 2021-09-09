@@ -141,7 +141,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
-  prettyPrec p (TApp _ t1 t2)  = pparens (p > 10) $
+  prettyPrec p (TApp t1 t2)  = pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
   prettyPrec _ (TLet x mty t1 t2) =
     hsep $
@@ -153,16 +153,10 @@ instance PrettyPrec Term where
       ["def", pretty x] ++
       maybe [] (\ty -> [":", ppr ty]) mty ++
       ["=", ppr t1, "end"]
-  prettyPrec p (TBind Nothing _ t1 t2) = pparens (p > 0) $
+  prettyPrec p (TBind Nothing t1 t2) = pparens (p > 0) $
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
-  prettyPrec p (TBind (Just x) _ t1 t2) = pparens (p > 0) $
+  prettyPrec p (TBind (Just x) t1 t2) = pparens (p > 0) $
     pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
-
-instance PrettyPrec ATerm where
-  prettyPrec p = prettyPrec p . mapTerm' (\(ID x) -> Just x)
-
-instance PrettyPrec UTerm where
-  prettyPrec p = prettyPrec p . mapTerm' (\NONE -> Nothing)
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (NotFunTy t ty) =
