@@ -48,7 +48,6 @@ import qualified Data.Map              as M
 
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
-import           Swarm.Util
 
 ------------------------------------------------------------
 -- Inference monad
@@ -112,121 +111,107 @@ lookupTy x ctx = maybe (Left (UnboundVar x)) return (M.lookup x ctx)
 
 -- | Try to infer the type of a term under a given context, either
 --   returning a type error, or the type of the term.
-infer :: Ctx -> Term -> Either TypeErr (Term ::: Type)
+infer :: Ctx -> Term -> Either TypeErr Type
 
 -- Some simple cases.
-infer _   TUnit                     = return $ TUnit ::: TyUnit
-infer _   (TConst c)                = (TConst c :::) <$> inferConst c
-infer _   (TDir d)                  = return $ TDir d ::: TyDir
-infer _   (TInt n)                  = return $ TInt n ::: TyInt
-infer _   (TString s)               = return $ TString s ::: TyString
-infer _   (TBool b)                 = return $ TBool b ::: TyBool
+infer _   TUnit                     = return TyUnit
+infer _   (TConst c)                = inferConst c
+infer _   (TDir _)                  = return TyDir
+infer _   (TInt _)                  = return TyInt
+infer _   (TString _)               = return TyString
+infer _   (TBool _)                 = return TyBool
 
 -- To infer the type of a pair, just infer both components.
-infer ctx (TPair t1 t2)             = do
-  at1 ::: ty1 <- infer ctx t1
-  at2 ::: ty2 <- infer ctx t2
-  return $ TPair at1 at2 ::: (ty1 :*: ty2)
+infer ctx (TPair t1 t2)             = (:*:) <$> infer ctx t1 <*> infer ctx t2
 
--- To infer the type of (return t), infer (t :: a) and then yield
--- (return t :: cmd a).  Note that right now we cannot just deal with
--- return in inferConst, because the type of return would have to be
+-- To infer the type of (return t), infer (t :: a) and then yield (cmd
+-- a).  Note that right now we cannot just deal with return in
+-- inferConst, because the type of return would have to be
 -- polymorphic, and we don't (yet) have polymorphism in the type
 -- system.
-infer ctx (TApp (TConst Return) t) = do
-  at ::: ty <- infer ctx t
-  return $ TApp (TConst Return) at ::: TyCmd ty M.empty
+infer ctx (TApp (TConst Return) t) = Cmd <$> infer ctx t
 
 -- To infer the type of (if b t1 t2):
 infer ctx (TApp (TApp (TApp (TConst If) cond) thn) els) = do
 
   -- Make sure b has type bool
-  acond <- check ctx cond TyBool
+  check ctx cond TyBool
 
   -- Infer the types of the branches and make sure they are equal
-  athn ::: thnTy <- infer ctx thn
-  aels ::: elsTy <- infer ctx els
+  thnTy <- infer ctx thn
+  elsTy <- infer ctx els
   checkEqual thn thnTy elsTy
 
-  return $
-    TApp (TApp (TApp (TConst If) acond) athn) aels ::: thnTy
+  return thnTy
 
 -- fst
 infer ctx (TApp (TConst Fst) t) = do
 
   -- Infer the type of t and make sure it's a pair type
-  at ::: ty <- infer ctx t
+  ty <- infer ctx t
   (ty1, _) <- decomposePairTy t ty
 
   -- Return the type of the first component
-  return $ TApp (TConst Fst) at ::: ty1
+  return ty1
 
 -- snd is similar.
 infer ctx (TApp (TConst Snd) t) = do
-  at ::: ty <- infer ctx t
+  ty <- infer ctx t
   (_, ty2) <- decomposePairTy t ty
-  return $ TApp (TConst Snd) at ::: ty2
+  return ty2
 
 -- delay t has the same type as t.
-infer ctx (TDelay x)                = do
-  t ::: ty <- infer ctx x
-  return $ TDelay t ::: ty
+infer ctx (TDelay t)                = infer ctx t
 
 -- force t has the same type as t.
-infer ctx (TApp (TConst Force) t) = do
-  at ::: ty <- infer ctx t
-  return $ TApp (TConst Force) at ::: ty
+infer ctx (TApp (TConst Force) t) = infer ctx t
 
 -- Just look up variables in the context.
-infer ctx (TVar x)                = do
-  ty <- lookupTy x ctx
-  return $ TVar x ::: ty
+infer ctx (TVar x)                = lookupTy x ctx
 
 -- We can infer the type of a lambda if the type of the argument is
 -- provided.  Just infer the body under an extended context and return
 -- the appropriate function type.
 infer ctx (TLam x (Just argTy) t)   = do
-  at ::: resTy <- infer (M.insert x argTy ctx) t
-  return $ TLam x (Just argTy) at ::: (argTy :->: resTy)
+  resTy <- infer (M.insert x argTy ctx) t
+  return $ argTy :->: resTy
 
 -- To infer the type of an application:
 infer ctx (TApp f x)              = do
 
   -- Infer the type of the left-hand side and make sure it has a function type.
-  (af ::: fTy) <- infer ctx f
+  fTy <- infer ctx f
   (ty1, ty2) <- decomposeFunTy f fTy
 
   -- Then check that the argument has the right type.
-  ax <- check ctx x ty1
-  return $ TApp af ax ::: ty2
+  check ctx x ty1
+  return ty2
 
 -- We can infer the type of a let whether a type has been provided for
 -- the variable or not.
 infer ctx (TLet x Nothing t1 t2)    = do
-  at1 ::: xTy <- infer ctx t1
-  at2 ::: t2Ty <- infer (M.insert x xTy ctx) t2
-  return $ TLet x Nothing at1 at2 ::: t2Ty
+  xTy <- infer ctx t1
+  infer (M.insert x xTy ctx) t2
 infer ctx (TLet x (Just xTy) t1 t2) = do
-  at1 <- check (M.insert x xTy ctx) t1 xTy
-  at2 ::: t2Ty <- infer (M.insert x xTy ctx) t2
-  return $ TLet x (Just xTy) at1 at2 ::: t2Ty
+  check (M.insert x xTy ctx) t1 xTy
+  infer (M.insert x xTy ctx) t2
 
 infer ctx (TDef x Nothing t1) = do
-  at1 ::: xTy <- infer ctx t1
-  return $ TDef x Nothing at1 ::: TyCmd TyUnit (M.singleton x xTy)
+  xTy <- infer ctx t1
+  return $ TyCmd TyUnit (M.singleton x xTy)
 infer ctx (TDef x (Just xTy) t1) = do
-  at1 <- check (M.insert x xTy ctx) t1 xTy
-  return $ TDef x (Just xTy) at1 ::: TyCmd TyUnit (M.singleton x xTy)
+  check (M.insert x xTy ctx) t1 xTy
+  return $ TyCmd TyUnit (M.singleton x xTy)
 
 -- Bind.  Infer both commands and make sure they have command types.
 -- If the first one binds a variable, make sure to add it to the
 -- context when checking the second command.
 infer ctx (TBind mx c1 c2)        = do
-  ac1 ::: ty1 <- infer ctx c1
+  ty1 <- infer ctx c1
   (a,ctx1) <- decomposeCmdTy c1 ty1
-  ac2 ::: cmdb <- infer (ctx1 `M.union` maybe id (`M.insert` a) mx ctx) c2
+  cmdb <- infer (ctx1 `M.union` maybe id (`M.insert` a) mx ctx) c2
   (b,ctx2) <- decomposeCmdTy c2 cmdb
-  return $ TBind mx ac1 ac2 ::: TyCmd b (ctx2 `M.union` ctx1)
+  return $ TyCmd b (ctx2 `M.union` ctx1)
 infer _ t = Left $ CantInfer t
 
 -- | Decompose a type that is supposed to be a command type.
@@ -275,34 +260,26 @@ inferConst c           = Left $ CantInfer (TConst c)
 -- | @check ctx t ty@ checks that @t@ has type @ty@ under context
 --   @ctx@, returning either a type error or a fully type-annotated
 --   term.
-check :: Ctx -> Term -> Type -> Either TypeErr Term
-check _ (TConst c) ty = checkConst c ty >> return (TConst c)
+check :: Ctx -> Term -> Type -> Either TypeErr ()
+check _ (TConst c) ty = checkConst c ty
 check ctx (TPair t1 t2) (ty1 :*: ty2) = do
-  at1 <- check ctx t1 ty1
-  at2 <- check ctx t2 ty2
-  return $ TPair at1 at2
+  check ctx t1 ty1
+  check ctx t2 ty2
 check _ t@TPair{} ty = Left $ NonPairTyExpected t ty
 check _ t@(TApp (TConst Return) _) ty = Left $ NonCmdTyExpected t ty
 check ctx (TApp (TApp (TApp (TConst If) cond) thn) els) resTy = do
-  acond <- check ctx cond TyBool
-  athn  <- check ctx thn resTy
-  aels  <- check ctx els resTy
-  return $
-    TApp (TApp (TApp (TConst If) acond) athn) aels
+  check ctx cond TyBool
+  check ctx thn resTy
+  check ctx els resTy
 check ctx t@(TLam x Nothing body) ty = do
   (ty1, ty2) <- decomposeFunTy t ty
-  abody <- check (M.insert x ty1 ctx) body ty2
-  return $ TLam x Nothing abody
+  check (M.insert x ty1 ctx) body ty2
 check ctx (TApp t1 t2) ty = do
-  at2 ::: ty2 <- infer ctx t2
-  at1 <- check ctx t1 (ty2 :->: ty)
-  return $ TApp at1 at2
+  ty2 <- infer ctx t2
+  check ctx t1 (ty2 :->: ty)
 
 -- Fall-through case: switch into inference mode
-check ctx t ty          = do
-  at ::: ty' <- infer ctx t
-  checkEqual t ty ty'
-  return at
+check ctx t ty          = infer ctx t >>= checkEqual t ty
 
 -- | Ensure that two types are equal.
 checkEqual :: Term -> Type -> Type -> Either TypeErr ()
