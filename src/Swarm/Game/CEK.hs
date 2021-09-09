@@ -148,7 +148,7 @@ data Frame
     -- given environment (extended by binding the variable, if there
     -- is one, to the output of the first command).
 
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show)
 
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
@@ -176,7 +176,7 @@ data CEK
     --   with variables to evaluate at the moment, and we maintain the
     --   invariant that any unevaluated terms buried inside a 'Value'
     --   or 'Cont' must carry along their environment with them.
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show)
 
 -- | Is the CEK machine in a final (finished) state?  If so, extract
 --   the final value.

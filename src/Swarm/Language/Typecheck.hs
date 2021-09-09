@@ -11,6 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators     #-}
 
@@ -40,9 +41,27 @@ module Swarm.Language.Typecheck
 
 import qualified Data.Map              as M
 
+-- import           Control.Monad.Except
+-- import           Control.Monad.Reader
+-- import           Control.Unification.IntVar
+-- import           Data.Functor.Identity
+
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.Util
+
+------------------------------------------------------------
+-- Inference monad
+
+-- type Infer = ReaderT Ctx (ExceptT TypeErr (IntBindingT TypeF Identity))
+
+-- lookup :: Var -> Infer UType
+-- lookup x = do
+--   ctx <- ask
+--   maybe (throwError $ UnboundVar x) instantiate (M.lookup x ctx)
+
+-- withBinding :: MonadReader Ctx m => Var -> UPolytype -> m a -> m a
+-- withBinding x ty = local (M.insert x ty)
 
 ------------------------------------------------------------
 -- Type errors

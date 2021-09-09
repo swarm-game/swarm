@@ -219,7 +219,7 @@ mkBindChain stmts = case last stmts of
 data Stmt
   = BareTerm      Term
   | Binder   Text Term
-  deriving (Eq, Ord, Show)
+  deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =

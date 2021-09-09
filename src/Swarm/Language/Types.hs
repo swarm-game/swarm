@@ -20,6 +20,8 @@ module Swarm.Language.Types
   , pattern (:*:), pattern (:->:)
   , pattern TyCmd, pattern Cmd
   , Var, Ctx
+
+  , ucata
   ) where
 
 import           Control.Lens.Combinators   (pattern Empty)
@@ -35,7 +37,7 @@ data BaseTy
   | BString           -- ^ Unicode strings.
   | BDir              -- ^ Directions.
   | BBool             -- ^ Booleans.
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show)
 
 -- | A data type representing types in the Swarm programming language.
 data TypeF t
@@ -46,12 +48,12 @@ data TypeF t
                    --   monad.
   | TyProdF t t    -- ^ Product type.
   | TyFunF t t     -- ^ Function type.
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show)
 
 type Type = Fix TypeF
 type UType = UTerm TypeF IntVar
 
-data Poly t = Forall [Var] t deriving (Functor)
+data Poly t = Forall [Var] t deriving (Show, Functor)
 type Polytype = Poly Type
 type UPolytype = Poly UType
 
@@ -99,3 +101,10 @@ type Var = Text
 
 -- | A context is a mapping from variable names to their types.
 type Ctx = Map Var Type
+
+------------------------------------------------------------
+-- Some utilities
+
+ucata :: Functor t => (v -> a) -> (t a -> a) -> UTerm t v -> a
+ucata f _ (UVar v)  = f v
+ucata f g (UTerm t) = g (fmap (ucata f g) t)
