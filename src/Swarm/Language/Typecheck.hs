@@ -301,10 +301,13 @@ checkEqual t ty ty'
 -- | Check that a constant can have a given type.
 checkConst :: MonadError TypeErr m => Const -> Type -> m ()
 
--- This would be neat (overloaded constants), but type inference falls
--- over a bit.  To make this work we would have to bite the bullet and
--- do a full-fledged constraint-solving version of the type checker
--- with unification variables etc.
+-- This would be neat (overloaded constants) (would it though?), but
+-- type inference falls over a bit.  To make this work we would have
+-- to bite the bullet and (1) do a full-fledged constraint-solving
+-- version of the type checker with unification variables etc, (2)
+-- annotate subterms with their types, probably by encoding terms via
+-- a two-level type and adding a type annotation at every node, so
+-- that (3) elaboration can take type information into account.
 
 -- checkConst Build (Cmd TyUnit :->: Cmd TyUnit) = return ()
 -- checkConst Build (TyString     :->: Cmd TyUnit) = return ()
