@@ -49,6 +49,6 @@ processTerm = processTerm' M.empty
 processTerm' :: Ctx -> Text -> Either Text (Term ::: Type)
 processTerm' ctx txt = do
   t <- readTerm txt
-  ty <- first prettyText (infer ctx t)
+  ty <- first prettyText (runInfer' ctx $ infer t)
   return $ elaborate t ::: ty
 
