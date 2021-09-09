@@ -52,6 +52,7 @@ import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Data.Foldable              (fold)
 import           Data.Functor.Identity
+import           Data.Map                   (Map)
 import qualified Data.Map                   as M
 import           Data.Maybe
 import           Data.Set                   (Set, (\\))
@@ -93,7 +94,8 @@ withBindings :: MonadReader Ctx m => Ctx -> m a -> m a
 withBindings ctx = local (M.union ctx)
 
 ------------------------------------------------------------
--- Free variables
+-- Dealing with variables: free variables, fresh variables,
+-- substitution
 
 deriving instance Ord IntVar
 
@@ -117,11 +119,16 @@ instance FreeVars t => FreeVars (Poly t) where
 instance FreeVars Ctx where
   freeVars = fmap S.unions . mapM freeVars . M.elems
 
-------------------------------------------------------------
--- Fresh variables
-
 fresh :: Infer UType
 fresh = UVar <$> lift (lift freeVar)
+
+substU :: Map (Either Var IntVar) UType -> UType -> UType
+substU m = ucata
+  (\v -> fromMaybe (UVar v) (M.lookup (Right v) m))
+  (\case
+      TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
+      f        -> UTerm f
+  )
 
 ------------------------------------------------------------
 -- Lifted stuff from unification-fd
@@ -131,6 +138,16 @@ s =:= t = lift $ s U.=:= t
 
 applyBindings :: UType -> Infer UType
 applyBindings = lift . U.applyBindings
+
+------------------------------------------------------------
+-- Converting between mono- and polytypes
+
+instantiate :: UPolytype -> Infer UType
+instantiate (Forall xs uty) = do
+  xs' <- mapM (const fresh) xs
+  return $ substU (M.fromList (zip (map Left xs) xs')) uty
+
+
 
 ------------------------------------------------------------
 -- Type errors

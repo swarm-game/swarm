@@ -24,6 +24,12 @@ module Swarm.Language.Types
   , pattern TyUnit, pattern TyInt, pattern TyString, pattern TyDir, pattern TyBool
   , pattern (:*:), pattern (:->:)
   , pattern TyCmd, pattern Cmd
+
+  , pattern UTyBase, pattern UTyVar
+  , pattern UTyUnit, pattern UTyInt, pattern UTyString, pattern UTyDir, pattern UTyBool
+  , pattern UTyProd, pattern UTyFun
+  , pattern UTyCmd
+
   , Var, Ctx
 
   , ucata, mkVarName
@@ -103,6 +109,36 @@ pattern Cmd :: Type -> Type
 pattern Cmd ty = Fix (TyCmdF ty Empty)
 
 {-# COMPLETE TyCmd, (:*:), (:->:), TyBase #-}
+
+pattern UTyBase :: BaseTy -> UType
+pattern UTyBase b = UTerm (TyBaseF b)
+
+pattern UTyVar :: Var -> UType
+pattern UTyVar v = UTerm (TyVarF v)
+
+pattern UTyUnit :: UType
+pattern UTyUnit   = UTerm (TyBaseF BUnit)
+
+pattern UTyInt :: UType
+pattern UTyInt    = UTerm (TyBaseF BInt)
+
+pattern UTyString :: UType
+pattern UTyString = UTerm (TyBaseF BString)
+
+pattern UTyDir :: UType
+pattern UTyDir    = UTerm (TyBaseF BDir)
+
+pattern UTyBool :: UType
+pattern UTyBool   = UTerm (TyBaseF BBool)
+
+pattern UTyProd :: UType -> UType -> UType
+pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)
+
+pattern UTyFun :: UType -> UType -> UType
+pattern UTyFun ty1 ty2 = UTerm (TyFunF ty1 ty2)
+
+pattern UTyCmd :: UType -> Ctx -> UType
+pattern UTyCmd ty1 ctx = UTerm (TyCmdF ty1 ctx)
 
 -- | We use 'Text' values to represent variables.
 type Var = Text
