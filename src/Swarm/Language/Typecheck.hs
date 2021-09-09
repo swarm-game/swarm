@@ -147,7 +147,29 @@ instantiate (Forall xs uty) = do
   xs' <- mapM (const fresh) xs
   return $ substU (M.fromList (zip (map Left xs) xs')) uty
 
+skolemize :: UPolytype -> Infer UType
+skolemize (Forall xs uty) = do
+  xs' <- mapM (const fresh) xs
+  return $ substU (M.fromList (zip (map Left xs) (map toSkolem xs'))) uty
+  where
+    toSkolem (UVar v) = UTyVar (mkVarName "s" v)
+    toSkolem x        = error $ "Impossible! Non-UVar in skolemize.toSkolem: " ++ show x
 
+generalize :: UType -> Infer UPolytype
+generalize uty = do
+  uty' <- applyBindings uty
+  ctx <- ask
+  tmfvs  <- freeVars uty'
+  ctxfvs <- freeVars ctx
+  let fvs = S.toList $ tmfvs \\ ctxfvs
+      xs  = map (either id (mkVarName "a")) fvs
+  return $ Forall xs (substU (M.fromList (zip fvs (map UTyVar xs))) uty')
+
+toUPolytype :: Polytype -> UPolytype
+toUPolytype = fmap unfreeze
+
+fromUPolytype :: UPolytype -> Polytype
+fromUPolytype = fmap (fromJust . freeze)
 
 ------------------------------------------------------------
 -- Type errors
