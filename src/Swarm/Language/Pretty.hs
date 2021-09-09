@@ -69,6 +69,10 @@ instance PrettyPrec Type where
   prettyPrec p (ty1 :->: ty2)    = pparens (p > 0) $
     prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
+instance PrettyPrec Polytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("forall" : map pretty xs) <> "." <+> ppr t
+
 instance PrettyPrec Ctx where
   prettyPrec _ Empty            = emptyDoc
   prettyPrec _ (M.assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))

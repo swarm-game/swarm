@@ -23,7 +23,7 @@
 module Swarm.Language.Parse
   ( -- * Parsers
 
-    parseType, parseTerm
+    parsePolytype, parseType, parseTerm
 
     -- * Utility functions
 
@@ -34,6 +34,7 @@ module Swarm.Language.Parse
 import           Data.Bifunctor
 import           Data.Char
 import qualified Data.Map                       as M
+import           Data.Maybe                     (fromMaybe)
 import           Data.Text                      (Text)
 import           Data.Void
 import           Witch
@@ -60,6 +61,7 @@ reservedWords =
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
   , "let", "def", "end", "in", "if", "true", "false", "not", "fst", "snd"
+  , "forall"
   ]
 
 -- | Skip spaces and comments.
@@ -119,7 +121,12 @@ brackets = between (symbol "[") (symbol "]")
 --------------------------------------------------
 -- Parser
 
--- | Parse a Swarm language type.
+parsePolytype :: Parser Polytype
+parsePolytype = Forall
+  <$> (fromMaybe [] <$> optional (reserved "forall" *> many identifier <* symbol "."))
+  <*> parseType
+
+-- | Parse a Swarm language (mono)type.
 parseType :: Parser Type
 parseType = makeExprParser parseTypeAtom table
   where

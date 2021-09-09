@@ -14,7 +14,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Swarm.Language.Types
-  ( BaseTy(..), TypeF(..), Type, UType, Polytype, UPolytype
+  ( BaseTy(..), TypeF(..), Type, UType, Poly(..), Polytype, UPolytype
   , pattern TyBase, pattern TyVar
   , pattern TyUnit, pattern TyInt, pattern TyString, pattern TyDir, pattern TyBool
   , pattern (:*:), pattern (:->:)
