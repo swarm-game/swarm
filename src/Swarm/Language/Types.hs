@@ -10,11 +10,12 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE DeriveFunctor   #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 module Swarm.Language.Types
-  ( BaseTy(..), TypeF(..), Type, UType
-  , pattern TyBase
+  ( BaseTy(..), TypeF(..), Type, UType, Polytype, UPolytype
+  , pattern TyBase, pattern TyVar
   , pattern TyUnit, pattern TyInt, pattern TyString, pattern TyDir, pattern TyBool
   , pattern (:*:), pattern (:->:)
   , pattern TyCmd, pattern Cmd
@@ -39,6 +40,7 @@ data BaseTy
 -- | A data type representing types in the Swarm programming language.
 data TypeF t
   = TyBaseF BaseTy -- ^ Base types.
+  | TyVarF Var     -- ^ Type variables.
   | TyCmdF t Ctx   -- ^ Commands, with return type and output context
                    --   (from 'Def' commands). Note that commands form a
                    --   monad.
@@ -49,8 +51,15 @@ data TypeF t
 type Type = Fix TypeF
 type UType = UTerm TypeF IntVar
 
+data Poly t = Forall [Var] t deriving (Functor)
+type Polytype = Poly Type
+type UPolytype = Poly UType
+
 pattern TyBase :: BaseTy -> Type
 pattern TyBase b = Fix (TyBaseF b)
+
+pattern TyVar :: Var -> Type
+pattern TyVar v = Fix (TyVarF v)
 
 pattern TyUnit :: Type
 pattern TyUnit   = Fix (TyBaseF BUnit)
@@ -66,6 +75,8 @@ pattern TyDir    = Fix (TyBaseF BDir)
 
 pattern TyBool :: Type
 pattern TyBool   = Fix (TyBaseF BBool)
+
+infixl 6 :*:
 
 pattern (:*:) :: Type -> Type -> Type
 pattern ty1 :*: ty2 = Fix (TyProdF ty1 ty2)
