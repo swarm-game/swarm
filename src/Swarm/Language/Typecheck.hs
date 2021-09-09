@@ -118,7 +118,7 @@ infer ctx (TPair t1 t2)             = do
 -- system.
 infer ctx (TApp _ (TConst Return) t) = do
   at ::: ty <- infer ctx t
-  return $ TApp (ID ty) (TConst Return) at ::: TyCmd ty
+  return $ TApp (ID ty) (TConst Return) at ::: TyCmd ty M.empty
 
 -- To infer the type of (if b t1 t2):
 infer ctx (TApp _ (TApp _ (TApp _ (TConst If) cond) thn) els) = do
@@ -196,10 +196,10 @@ infer ctx (TLet x (Just xTy) t1 t2) = do
 
 infer ctx (TDef x Nothing t1) = do
   at1 ::: xTy <- infer ctx t1
-  return $ TDef x (ID xTy) at1 ::: TyCmd' TyUnit (M.singleton x xTy)
+  return $ TDef x (ID xTy) at1 ::: TyCmd TyUnit (M.singleton x xTy)
 infer ctx (TDef x (Just xTy) t1) = do
   at1 <- check (M.insert x xTy ctx) t1 xTy
-  return $ TDef x (ID xTy) at1 ::: TyCmd' TyUnit (M.singleton x xTy)
+  return $ TDef x (ID xTy) at1 ::: TyCmd TyUnit (M.singleton x xTy)
 
 -- Bind.  Infer both commands and make sure they have command types.
 -- If the first one binds a variable, make sure to add it to the
@@ -209,13 +209,13 @@ infer ctx (TBind mx _ c1 c2)        = do
   (a,ctx1) <- decomposeCmdTy c1 ty1
   ac2 ::: cmdb <- infer (ctx1 `M.union` maybe id (`M.insert` a) mx ctx) c2
   (b,ctx2) <- decomposeCmdTy c2 cmdb
-  return $ TBind mx (ID ty1) ac1 ac2 ::: TyCmd' b (ctx2 `M.union` ctx1)
+  return $ TBind mx (ID ty1) ac1 ac2 ::: TyCmd b (ctx2 `M.union` ctx1)
 infer _ t = Left $ CantInfer t
 
 -- | Decompose a type that is supposed to be a command type.
 decomposeCmdTy :: Term -> Type -> Either TypeErr (Type, Ctx)
-decomposeCmdTy _ (TyCmd' resTy ctx) = return (resTy, ctx)
-decomposeCmdTy t ty                 = Left (NotCmdTy t ty)
+decomposeCmdTy _ (TyCmd resTy ctx) = return (resTy, ctx)
+decomposeCmdTy t ty                = Left (NotCmdTy t ty)
 
 -- | Decompose a type that is supposed to be a function type.
 decomposeFunTy :: Term -> Type -> Either TypeErr (Type, Type)
@@ -230,24 +230,24 @@ decomposePairTy t ty            = Left (NotPairTy t ty)
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded or polymorphic) must be checked.
 inferConst :: Const -> Either TypeErr Type
-inferConst Wait        = return $ TyCmd TyUnit
-inferConst Halt        = return $ TyCmd TyUnit
-inferConst Noop        = return $ TyCmd TyUnit
-inferConst Move        = return $ TyCmd TyUnit
-inferConst Turn        = return $ TyDir :->: TyCmd TyUnit
-inferConst Grab        = return $ TyCmd TyUnit
-inferConst Place       = return $ TyString :->: TyCmd TyUnit
-inferConst Give        = return $ TyString :->: TyString :->: TyCmd TyUnit
-inferConst Craft       = return $ TyString :->: TyCmd TyUnit
-inferConst Build       = return $ TyString :->: TyCmd TyUnit :->: TyCmd TyString
-inferConst Run         = return $ TyString :->: TyCmd TyUnit
-inferConst GetX        = return $ TyCmd TyInt
-inferConst GetY        = return $ TyCmd TyInt
-inferConst Random      = return $ TyInt :->: TyCmd TyInt
-inferConst Say         = return $ TyString :->: TyCmd TyUnit
-inferConst View        = return $ TyString :->: TyCmd TyUnit
-inferConst Appear      = return $ TyString :->: TyCmd TyUnit
-inferConst IsHere      = return $ TyString :->: TyCmd TyBool
+inferConst Wait        = return $ Cmd TyUnit
+inferConst Halt        = return $ Cmd TyUnit
+inferConst Noop        = return $ Cmd TyUnit
+inferConst Move        = return $ Cmd TyUnit
+inferConst Turn        = return $ TyDir :->: Cmd TyUnit
+inferConst Grab        = return $ Cmd TyUnit
+inferConst Place       = return $ TyString :->: Cmd TyUnit
+inferConst Give        = return $ TyString :->: TyString :->: Cmd TyUnit
+inferConst Craft       = return $ TyString :->: Cmd TyUnit
+inferConst Build       = return $ TyString :->: Cmd TyUnit :->: Cmd TyString
+inferConst Run         = return $ TyString :->: Cmd TyUnit
+inferConst GetX        = return $ Cmd TyInt
+inferConst GetY        = return $ Cmd TyInt
+inferConst Random      = return $ TyInt :->: Cmd TyInt
+inferConst Say         = return $ TyString :->: Cmd TyUnit
+inferConst View        = return $ TyString :->: Cmd TyUnit
+inferConst Appear      = return $ TyString :->: Cmd TyUnit
+inferConst IsHere      = return $ TyString :->: Cmd TyBool
 inferConst Not         = return $ TyBool :->: TyBool
 inferConst (Cmp _)     = return $ TyInt :->: TyInt :->: TyBool
 inferConst (Arith Neg) = return $ TyInt :->: TyInt
@@ -301,8 +301,8 @@ checkConst :: Const -> Type -> Either TypeErr ()
 -- do a full-fledged constraint-solving version of the type checker
 -- with unification variables etc.
 
--- checkConst Build (TyCmd TyUnit :->: TyCmd TyUnit) = return ()
--- checkConst Build (TyString     :->: TyCmd TyUnit) = return ()
+-- checkConst Build (Cmd TyUnit :->: Cmd TyUnit) = return ()
+-- checkConst Build (TyString     :->: Cmd TyUnit) = return ()
 -- checkConst Build ty = Left $ BadBuildTy ty
 
 -- Fall-through case

@@ -135,7 +135,7 @@ parseTypeAtom =
   <|> TyString <$ reserved "string"
   <|> TyDir    <$ reserved "dir"
   <|> TyBool   <$ reserved "bool"
-  <|> TyCmd'   <$> (reserved "cmd" *> parseTypeAtom)
+  <|> TyCmd    <$> (reserved "cmd" *> parseTypeAtom)
                <*> (maybe M.empty M.fromList <$>
                       optional (brackets (parseTyAnn `sepBy` symbol ","))
                    )

@@ -457,7 +457,7 @@ execConst Grab _ k r =
               -- Grow a new entity from a seed.
               let seedBot =
                     mkRobot "seed" (r ^. robotLocation) (V2 0 0)
-                      (initMachine (seedProgram (e ^. entityName)) (TyCmd TyUnit) V.empty)
+                      (initMachine (seedProgram (e ^. entityName)) (Cmd TyUnit) V.empty)
                       []
                       & robotDisplay .~
                         (defaultEntityDisplay '.' & displayAttr .~ plantAttr)

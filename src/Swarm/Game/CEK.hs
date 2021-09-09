@@ -47,6 +47,8 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE PatternSynonyms #-}
+
 module Swarm.Game.CEK
   ( -- * Frames and continuations
     Frame(..), Cont
@@ -74,7 +76,7 @@ import           Witch                 (from)
 import           Swarm.Game.Value
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
-import           Swarm.Language.Types  (Ctx, Type (..))
+import           Swarm.Language.Types
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -193,14 +195,14 @@ initMachine at ty e = initMachine' at ty e []
 
 -- | Like 'initMachine', but also take a starting continuation.
 initMachine' :: ATerm -> Type -> Env -> Cont -> CEK
-initMachine' t (TyCmd' _ ctx) e k
+initMachine' t (TyCmd _ ctx) e k
   | M.null ctx = In (erase t) e (FExec : k)
   | otherwise  = In (erase t) e (FExec : FLoadEnv ctx : k)
 initMachine' t _              e k = In (erase t) e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK
-idleMachine = initMachine (TConst Noop) (TyCmd TyUnit) empty
+idleMachine = initMachine (TConst Noop) (Cmd TyUnit) empty
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CEK states.  Should really make a
