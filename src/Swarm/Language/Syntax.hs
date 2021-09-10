@@ -70,11 +70,14 @@ west  = V2 (-1) 0
 
 -- | Constants, representing various built-in functions and commands.
 data Const
+
+  -- Trivial actions
   = Wait              -- ^ Wait for one time step without doing anything.
   | Noop              -- ^ Do nothing.  This is different than 'Wait'
                       --   in that it does not take up a time step.
   | Halt              -- ^ Self-destruct.
-  | Return            -- ^ Return for the cmd monad.
+
+  -- Basic actions
   | Move              -- ^ Move forward one step.
   | Turn              -- ^ Turn in some direction.
   | Grab              -- ^ Grab an item from the current location.
@@ -82,22 +85,31 @@ data Const
   | Give              -- ^ Give an item to another robot at the current location.
   | Craft             -- ^ Craft an item.
   | Build             -- ^ Construct a new robot.
-  | Run               -- ^ Run a program loaded from a file.
-  | GetX              -- ^ Get the current x-coordinate.
-  | GetY              -- ^ Get the current y-coordinate.
-  | Random            -- ^ Get a uniformly random integer.
   | Say               -- ^ Emit a message.
   | View              -- ^ View a certain robot.
   | Appear            -- ^ Set what characters are used for display.
+
+  -- Sensing / generation
+  | GetX              -- ^ Get the current x-coordinate.
+  | GetY              -- ^ Get the current y-coordinate.
   | IsHere  -- XXX for testing, see if a specific entity is here
             -- probably going to remove this later
+  | Random            -- ^ Get a uniformly random integer.
+
+  -- Modules
+  | Run               -- ^ Run a program loaded from a file.
+
+  -- Arithmetic
+  | Not               -- ^ Logical negation.
+  | Cmp CmpConst      -- ^ Comparison operators.
+  | Arith ArithConst  -- ^ Arithmetic operators.
+
+  -- Language built-ins
   | If                -- ^ If-expressions.
   | Fst               -- ^ First projection.
   | Snd               -- ^ Second projection.
   | Force             -- ^ Force a delayed evaluation.
-  | Not               -- ^ Logical negation.
-  | Cmp CmpConst      -- ^ Comparison operators.
-  | Arith ArithConst  -- ^ Arithmetic operators.
+  | Return            -- ^ Return for the cmd monad.
   deriving (Eq, Ord, Show)
 
 -- | Comparison operator constants.
