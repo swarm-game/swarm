@@ -14,6 +14,7 @@
 {-# LANGUAGE BlockArguments    #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE GADTs             #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
@@ -294,8 +295,11 @@ stepUnit r k = step r $ Out VUnit k
 stepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m (Maybe Robot)
 stepRobot r = case r ^. machine of
 
-  -- First a bunch of straightforward cases.  These are all
-  -- immediately turned into values.
+  ------------------------------------------------------------
+  -- Evaluation
+
+  -- First some straightforward cases.  These all immediately turn
+  -- into values.
   In TUnit _ k                      -> stepUnit r k
   In (TDir d) _ k                   -> step r $ Out (VDir d) k
   In (TInt n) _ k                   -> step r $ Out (VInt n) k
@@ -310,64 +314,129 @@ stepRobot r = case r ^. machine of
 
   -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e k              -> step r $ In t1 e (FSnd t2 e : k)
+  -- Once that's done, evaluate the second component.
+  Out v1 (FSnd t2 e : k)            -> step r $ In t2 e (FFst v1 : k)
+  -- Finally, put the results together into a pair value.
+  Out v2 (FFst v1 : k)              -> step r $ Out (VPair v1 v2) k
 
-  -- Lambdas just immediately turn into closures.
+  -- Lambdas immediately turn into closures.
   In (TLam x _ t) e k               -> step r $ Out (VClo x t e) k
 
-  -- To evaluate an application, focus on the left-hand side and save
-  -- the right-hand side for later.
+  -- To evaluate an application, start by focusing on the left-hand
+  -- side and saving the argument for later.
   In (TApp t1 t2) e k               -> step r $ In t1 e (FArg t2 e : k)
+  -- Once that's done, switch to evaluating the argument.
+  Out v1 (FArg t2 e : k)            -> step r $ In t2 e (FApp v1 : k)
+  -- We can evaluate an application of a closure in the usual way.
+  Out v2 (FApp (VClo x t e) : k)    -> step r $ In t (addBinding x v2 e) k
+  -- We can also evaluate an application of a constant by collecting
+  -- arguments, eventually dispatching to evalConst for function
+  -- constants.
+  Out v2 (FApp (VCApp c args) : k)
+    | not (isCmd c) &&
+      arity c == length args + 1    -> evalConst c (reverse (v2 : args)) k r
+    | otherwise                     -> step r $ Out (VCApp c (v2 : args)) k
+  cek@(Out _ (FApp _ : _))         ->
+    error $ "Panic! Bad machine state in stepRobot, FApp of non-function: " ++ show cek
 
-  -- Evaluating let expressions is a little bit tricky. XXX write more
+  -- Evaluating let expressions is a little bit tricky. We start by
+  -- focusing on the let-bound expression. But since it is allowed to
+  -- be recursive, we have to set up a recursive environment in which
+  -- to evaluate it.  Note how we wrap the expression in VDelay; the
+  -- elaboration step wrapped all recursive references in a
+  -- corresponding @Force@.
   In (TLet x _ t1 t2) e k           ->
     let e' = addBinding x (VDelay t1 e') e   -- XXX do this without making a recursive
                                              -- (hence unprintable) env?
     in step r $ In t1 e' (FLet x t2 e : k)
 
+  -- Once we've finished with the let-binding, we switch to evaluating
+  -- the body in a suitably extended environment.
+  Out v1 (FLet x t2 e : k)          -> step r $ In t2 (addBinding x v1 e) k
+
+  -- Definitions immediately turn into VDef values, awaiting execution.
   In (TDef x _ t) e k               -> step r $ Out (VDef x t e) k
 
+  -- To evaluate a bind expression, we evaluate the first command.
   In (TBind mx t1 t2) e k           -> step r $ In t1 e (FEvalBind mx t2 e : k)
-  In (TDelay t) e k                 -> step r $ Out (VDelay t e) k
-
-  Out (VResult v e) (FLoadEnv ctx : k) ->
-    step (r & robotEnv %~ V.union e & robotCtx %~ M.union ctx) $ Out v k
-  Out v (FLoadEnv _ : k)            -> step r $ Out v k
-
-  Out _ []                          -> return (Just r)
-
-  Out v1 (FSnd t2 e : k)            -> step r $ In t2 e (FFst v1 : k)
-  Out v2 (FFst v1 : k)              -> step r $ Out (VPair v1 v2) k
-  Out v1 (FArg t2 e : k)            -> step r $ In t2 e (FApp v1 : k)
-  Out v2 (FApp (VCApp c args) : k)
-    | not (isCmd c) &&
-      arity c == length args + 1    -> evalConst c (reverse (v2 : args)) k r
-    | otherwise                     -> step r $ Out (VCApp c (v2 : args)) k
-  Out v2 (FApp (VClo x t e) : k)    -> step r $ In t (addBinding x v2 e) k
-  Out v1 (FLet x t2 e : k)          -> step r $ In t2 (addBinding x v1 e) k
-  Out v  (FDef x : k)               -> step r $ Out (VResult VUnit (V.singleton x v)) k
+  -- Once we're done evaluating (NOT executing!) the first command to a value,
+  -- we put it back in a VBind value to await execution.
   Out v1 (FEvalBind mx t2 e : k)    -> step r $ Out (VBind v1 mx t2 e) k
 
-  -- XXX make GetX, GetY, IsHere not take a tick.  In general, sensing
-  -- shouldn't take up a tick.  Make a general function to identify
-  -- which commands do and don't take a tick.
+  -- Delay expressions immediately turn into VDelay values, awaiting
+  -- application of 'Force'.
+  In (TDelay t) e k                  -> step r $ Out (VDelay t e) k
 
-  -- Special command applications that don't use up a tick (Noop, Return)
-  Out (VCApp Noop _) (FExec : k)     -> stepUnit r k
-  Out (VCApp Return [v]) (FExec : k) -> step r $ Out v k
+  ------------------------------------------------------------
+  -- Execution
 
-  Out (VCApp c args) (FExec : k)    -> execConst c (reverse args) k (r & tickSteps .~ 0)
-  Out (VDef x t e) (FExec : k)      ->
+  -- To execute a definition, we focu son evaluating the body in a
+  -- recursive environment (similar to let), and remember that the
+  -- result should be bound to the given name.
+  Out (VDef x t e) (FExec : k)       ->
     let e' = addBinding x (VDelay t e') e
     in  step r $ In t e' (FDef x : k)
+  -- Once we are done evaluating the body of a definition, we return a
+  -- special VResult value, which packages up the return value from
+  -- the @def@ command itself (@unit@) together with the resulting
+  -- environment (the variable bound to the value).
+  Out v  (FDef x : k)                -> step r $ Out (VResult VUnit (V.singleton x v)) k
 
-  Out (VBind c mx t2 e) (FExec : k) -> step r $ Out c (FExec : FExecBind mx t2 e : k)
-  Out (VResult v ve) (FExecBind mx t2 e : k) -> step r $ In t2 (ve `V.union` maybe id (`addBinding` v) mx e) (FExec : FUnionEnv ve : k)
-  Out v (FExecBind mx t2 e : k)     -> step r $ In t2 (maybe id (`addBinding` v) mx e) (FExec : k)
+  -- To execute a constant application, delegate to the 'execConst'
+  -- function.  Set tickSteps to 0 if the command is supposed to take
+  -- a tick, so the robot won't take any more steps this tick.
+  Out (VCApp c args) (FExec : k)     ->
+    execConst c (reverse args) k (r & if takesTick c then tickSteps .~ 0 else id)
 
+  -- To execute a bind expression, execute the first command, and
+  -- remember the second for execution later.
+  Out (VBind c mx t2 e) (FExec : k)  -> step r $ Out c (FExec : FExecBind mx t2 e : k)
+  -- If first command completes with a value along with an environment
+  -- resulting from definition commands, switch to evaluating the
+  -- second command of the bind.  Extend the environment with both the
+  -- definition environment resulting from the first command, as well
+  -- as a binding for the result (if the bind was of the form @x <-
+  -- c1; c2@).  Remember that we must execute the second command once
+  -- it has been evaluated, then union any resulting definition
+  -- environment with the definition environment from the first
+  -- command.
+  Out (VResult v ve) (FExecBind mx t2 e : k) ->
+    step r $ In t2 (ve `V.union` maybe id (`addBinding` v) mx e) (FExec : FUnionEnv ve : k)
+  -- On the other hand, if the first command completes with a simple value,
+  -- we do something similar, but don't have to worry about the environment.
+  Out v (FExecBind mx t2 e : k) ->
+    step r $ In t2 (maybe id (`addBinding` v) mx e) (FExec : k)
+  -- If a command completes with a value and definition environment,
+  -- and the next continuation frame contains a previous environment
+  -- to union with, then pass the unioned environments along in
+  -- another VResult.
   Out (VResult v e2) (FUnionEnv e1 : k) -> step r $ Out (VResult v (e2 `V.union` e1)) k
+  -- Or, if a command completes with no environment, but there is a
+  -- previous environment to union with, just use that environment.
   Out v (FUnionEnv e : k)               -> step r $ Out (VResult v e) k
 
-  cek -> error $ "Panic! Bad machine state in stepRobot: " ++ show cek
+  -- If the top of the continuation stack contains a 'FLoadEnv' frame,
+  -- it means we are supposed to load up the resulting definition
+  -- environment and type context into the robot's top-level
+  -- environment and type context, so they will be available to future
+  -- programs.
+  Out (VResult v e) (FLoadEnv ctx : k) ->
+    step (r & robotEnv %~ V.union e & robotCtx %~ M.union ctx) $ Out v k
+  Out v (FLoadEnv _ : k)             -> step r $ Out v k
+
+  cek@(Out (VResult _ _) _) ->
+    error $ "Panic! Bad machine state in stepRobot: no appropriate stack frame to catch a VResult: " ++ show cek
+
+  cek@(Out _ (FExec : _)) ->
+    error $ "Panic! Bad machine state in stepRobot: FExec frame with non-executable value: " ++ show cek
+
+  -- Finally, if there's nothing left to do, just return without
+  -- taking a step at all.
+  Out _ []                          -> return (Just r)
+
+-- | Determine whether a constant should take up a tick or not when executed.
+takesTick :: Const -> Bool
+takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, IsHere])
 
 emitError :: MonadState GameState m => Robot -> Const -> [Text] -> m ()
 emitError r c parts = emitMessage (formatError r c parts)
@@ -415,11 +484,12 @@ seedProgram thing = prog
 -- https://www.haskellforall.com/2021/05/the-trick-to-avoid-deeply-nested-error.html
 
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m (Maybe Robot)
-execConst Wait _ k r   = stepUnit r k
-execConst Halt _ _ _   = updated .= True >> return Nothing
-execConst Return _ _ _ = error "execConst Return should have been handled already in stepRobot!"
-execConst Noop _ _ _   = error "execConst Noop should have been handled already in stepRobot!"
-execConst Move _ k r   = do
+execConst Noop _ k r     = stepUnit r k
+execConst Return [v] k r = step r $ Out v k
+execConst Return vs k _  = badConst Return vs k
+execConst Wait _ k r     = stepUnit r k
+execConst Halt _ _ _     = updated .= True >> return Nothing
+execConst Move _ k r     = do
   let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
   me <- uses world (W.lookupEntity (-y,x))
   require r E.treads
@@ -597,8 +667,11 @@ execConst IsHere args k _ = badConst IsHere args k
 execConst Not [VBool b] k r = step r $ Out (VBool (not b)) k
 execConst Not args k _ = badConst Not args k
 
-execConst (Cmp c) [VInt n1, VInt n2] k r = step r $ Out (VBool (evalCmp c n1 n2)) k
-execConst (Cmp c) args k _ = badConst (Cmp c) args k
+execConst (Cmp c) [v1, v2] k r =
+  case evalCmp c v1 v2 of
+    Nothing -> step r $ Out (VBool False) k  --- XXX raise an exception!
+    Just b  -> step r $ Out (VBool b) k
+execConst (Cmp c) args k _     = badConst (Cmp c) args k
 
 execConst (Arith Neg) [VInt n] k r = step r $ Out (VInt (-n)) k
 execConst (Arith c) [VInt n1, VInt n2] k r = step r $ Out (VInt (evalArith c n1 n2)) k
@@ -670,13 +743,34 @@ badConst :: Const -> [Value] -> Cont -> a
 badConst c args k = error $
   "Panic! Bad application of execConst " ++ show c ++ " " ++ show args ++ " " ++ show k
 
-evalCmp :: CmpConst -> Integer -> Integer -> Bool
-evalCmp CmpEq  = (==)
-evalCmp CmpNeq = (/=)
-evalCmp CmpLt  = (<)
-evalCmp CmpGt  = (>)
-evalCmp CmpLeq = (<=)
-evalCmp CmpGeq = (>=)
+evalCmp :: CmpConst -> Value -> Value -> Maybe Bool
+evalCmp c v1 v2 = decideCmp c <$> compareValues v1 v2
+
+decideCmp :: CmpConst -> Ordering -> Bool
+decideCmp = \case
+  CmpEq  -> (== EQ)
+  CmpNeq -> (/= EQ)
+  CmpLt  -> (== LT)
+  CmpGt  -> (== GT)
+  CmpLeq -> (/= GT)
+  CmpGeq -> (/= LT)
+
+compareValues :: Value -> Value -> Maybe Ordering
+compareValues = \case
+  VUnit         -> \case {VUnit      -> Just EQ             ; _ -> Nothing}
+  VInt n1       -> \case {VInt n2    -> Just (compare n1 n2); _ -> Nothing}
+  VString t1    -> \case {VString t2 -> Just (compare t1 t2); _ -> Nothing}
+  VDir d1       -> \case {VDir d2    -> Just (compare d1 d2); _ -> Nothing}
+  VBool b1      -> \case {VBool b2   -> Just (compare b1 b2); _ -> Nothing}
+  VPair v11 v12 -> \case { VPair v21 v22 -> compareValues v11 v21 <> compareValues v12 v22
+                         ; _ -> Nothing
+                         }
+  VClo{}        -> const Nothing
+  VCApp{}       -> const Nothing
+  VDef{}        -> const Nothing
+  VResult{}     -> const Nothing
+  VBind{}       -> const Nothing
+  VDelay{}      -> const Nothing
 
 evalArith :: ArithConst -> Integer -> Integer -> Integer
 evalArith Neg = error "evalArith Neg: should have been handled already"

@@ -307,7 +307,7 @@ infer (TLet x (Just pty) t1 t2) = do
     check t1 uty
     infer t2
 
-infer t@(TDef _ _ _) = throwError $ DefNotTopLevel t
+infer t@TDef {} = throwError $ DefNotTopLevel t
 
 infer (TBind mx c1 c2) = do
   ty1 <- infer c1
@@ -373,7 +373,7 @@ inferConst View        = return $ UTyFun UTyString (UTyCmd UTyUnit)
 inferConst Appear      = return $ UTyFun UTyString (UTyCmd UTyUnit)
 inferConst IsHere      = return $ UTyFun UTyString (UTyCmd UTyBool)
 inferConst Not         = return $ UTyFun UTyBool UTyBool
-inferConst (Cmp _)     = return $ UTyFun UTyInt (UTyFun UTyInt UTyBool)
+inferConst (Cmp _)     = instantiate $ Forall ["a"] (UTyFun "a" (UTyFun "a" UTyBool))
 inferConst (Arith Neg) = return $ UTyFun UTyInt UTyInt
 inferConst (Arith _)   = return $ UTyFun UTyInt (UTyFun UTyInt UTyInt)
 
