@@ -60,7 +60,7 @@ reservedWords =
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
   , "let", "def", "end", "in", "if", "true", "false", "not", "fst", "snd"
-  , "forall"
+  , "forall", "try", "raise"
   ]
 
 -- | Skip spaces and comments.
@@ -177,6 +177,8 @@ parseConst =
   <|> Not     <$ reserved "not"
   <|> Fst     <$ reserved "fst"
   <|> Snd     <$ reserved "snd"
+  <|> Try     <$ reserved "try"
+  <|> Raise   <$ reserved "raise"
 
 parseTermAtom :: Parser Term
 parseTermAtom =

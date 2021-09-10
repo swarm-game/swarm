@@ -381,6 +381,9 @@ inferConst Fst         = instantiate $ Forall ["a","b"] (UTyFun (UTyProd "a" "b"
 inferConst Snd         = instantiate $ Forall ["a","b"] (UTyFun (UTyProd "a" "b") "b")
 inferConst Force       = instantiate $ Forall ["a"] "a"
 inferConst Return      = instantiate $ Forall ["a"] (UTyFun "a" (UTyCmd "a"))
+inferConst Try         = instantiate $ Forall ["a"] (UTyFun "a" (UTyFun "a" "a"))
+inferConst Raise       = instantiate $ Forall ["a"] (UTyFun UTyString "a")
+
 -- | @check t ty@ checks that @t@ has type @ty@.
 check :: Term -> UType -> Infer ()
 check t ty = do

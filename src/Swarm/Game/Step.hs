@@ -206,6 +206,13 @@ stepRobot r = case r ^. machine of
   -- the body in a suitably extended environment.
   Out v1 (FLet x t2 e : k)          -> step r $ In t2 (addBinding x v1 e) k
 
+  -- If we were running a try block but evaluation completed normally,
+  Out v (FTry _ _ : k)              -> step r $ Out v k
+
+  Out (VString s) (FRaise : k)                -> step r $ Up (User s) k
+  cek@(Out _ (FRaise : k)) ->
+    error $ "Panic! Bad machine state in stepRobot, FRaise of non-string: " ++ show cek
+
   -- Definitions immediately turn into VDef values, awaiting execution.
   In (TDef x _ t) e k               -> step r $ Out (VDef x t e) k
 

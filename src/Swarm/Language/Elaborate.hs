@@ -34,6 +34,15 @@ elaborate = bottomUp rewrite
     rewrite (TApp (TApp (TApp (TConst If) cond) thn) els)
       = TApp (TConst Force) (TApp (TApp (TApp (TConst If) cond) (TDelay thn)) (TDelay els))
 
+    -- try e catch ---> try (delay e) (delay catch)
+    --
+    -- Clearly we want to delay evaluation of the catch block.  But we
+    -- also want to delay evaluation of the first block, so that try
+    -- can put an appropriate frame on the stack before starting to
+    -- evaluate it (in case it raises an exception).
+    rewrite (TApp (TApp (TConst Try) thn) els)
+      = TApp (TApp (TConst Try) (TDelay thn)) (TDelay els)
+
     -- Rewrite any recursive occurrences of x inside t1 to (force x).
     -- When interpreting t1, we will put a binding (x |-> delay t1)
     -- in the context.

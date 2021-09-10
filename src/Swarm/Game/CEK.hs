@@ -51,8 +51,11 @@
 {-# LANGUAGE TypeOperators   #-}
 
 module Swarm.Game.CEK
-  ( -- * Frames and continuations
-    Frame(..), Cont
+  ( -- * Exceptions
+    Exn(..)
+
+    -- * Frames and continuations
+  , Frame(..), Cont
 
     -- * CEK machine states
 
@@ -79,6 +82,24 @@ import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.Util
+
+------------------------------------------------------------
+-- Exceptions
+------------------------------------------------------------
+
+data Exn
+    -- | Something went very wrong.  This is a bug in Swarm and cannot
+    --   be caught by a @try@ block (but at least it will not crash
+    --   the entire UI).
+  = Fatal Text
+
+    -- | A command failed in some way (/e.g./ a 'Move' command could
+    --   not move, or a 'Grab' command found nothing to grab, /etc./).
+  | CmdFailed Const Text
+
+    -- | The user program explicitly called 'Raise'.
+  | User Text
+  deriving (Eq, Show)
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -116,6 +137,14 @@ data Frame
     -- evaluating the definition of @x@; the next thing we should do
     -- is evaluate @t2@ in the environment @e@ extended with a binding
     -- for @x@.
+
+  | FTry Term Env
+    -- ^ We are executing inside a 'Try' block.  If an exception is
+    --   raised, we will evaluate the stored term (the "catch" block).
+
+  | FRaise
+    -- ^ We are going to raise an exception with the string resulting
+    --   from evaluation.
 
   | FDef Var
     -- ^ We were evaluating the body of a definition.  The next thing
@@ -178,6 +207,12 @@ data CEK
     --   with variables to evaluate at the moment, and we maintain the
     --   invariant that any unevaluated terms buried inside a 'Value'
     --   or 'Cont' must carry along their environment with them.
+
+  | Up Exn Cont
+    -- ^ An exception has been raised.  Keep unwinding the
+    --   continuation stack (until finding an enclosing 'try' in the
+    --   case of a command failure or a user-generated exception, or
+    --   until the stack is empty in the case of a fatal exception).
   deriving (Eq, Show)
 
 -- | Is the CEK machine in a final (finished) state?  If so, extract
@@ -215,6 +250,14 @@ prettyCEK (In c _ k) = unlines
 prettyCEK (Out v k) = unlines
   [ "◀ " ++ from (prettyValue v)
   , "  " ++ prettyCont k ]
+prettyCEK (Up e k) = unlines
+  [ "! " ++ prettyExn e
+  , "  " ++ prettyCont k ]
+
+prettyExn :: Exn -> String
+prettyExn (Fatal txt)       = "Fatal: " ++ from txt
+prettyExn (CmdFailed c txt) = show c ++ ": " ++ from txt
+prettyExn (User txt)        = "Exception: " ++ from txt
 
 prettyCont :: Cont -> String
 prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
@@ -225,6 +268,8 @@ prettyFrame (FFst v)                 = "(" ++ from (prettyValue v) ++ ", _)"
 prettyFrame (FArg t _)               = "_ " ++ prettyString t
 prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
+prettyFrame (FTry t _)               = "try _ (" ++ prettyString t ++ ")"
+prettyFrame FRaise                   = "raise _"
 prettyFrame (FDef x)                 = "def " ++ from x ++ " = _"
 prettyFrame (FUnionEnv _)            = "_ ∪ <Env>"
 prettyFrame (FLoadEnv _)             = "loadEnv"

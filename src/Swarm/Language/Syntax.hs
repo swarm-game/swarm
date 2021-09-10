@@ -110,6 +110,9 @@ data Const
   | Snd               -- ^ Second projection.
   | Force             -- ^ Force a delayed evaluation.
   | Return            -- ^ Return for the cmd monad.
+  | Try               -- ^ Try/catch block
+  | Raise             -- ^ Raise an exception
+
   deriving (Eq, Ord, Show)
 
 -- | Comparison operator constants.
