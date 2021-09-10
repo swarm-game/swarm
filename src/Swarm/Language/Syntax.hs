@@ -92,7 +92,7 @@ data Const
   -- Sensing / generation
   | GetX              -- ^ Get the current x-coordinate.
   | GetY              -- ^ Get the current y-coordinate.
-  | IsHere  -- XXX for testing, see if a specific entity is here
+  | Ishere  -- XXX for testing, see if a specific entity is here
             -- probably going to remove this later
   | Random            -- ^ Get a uniformly random integer.
 
@@ -125,16 +125,38 @@ data ArithConst = Neg | Add | Sub | Mul | Div | Exp
 --   'Swarm.Game.Value.VCApp') until it has enough, then dispatch the constant's
 --   behavior.
 arity :: Const -> Int
-arity (Cmp _)     = 2
-arity (Arith Neg) = 1
-arity (Arith _)   = 2
-arity c
-  | c `elem` [ Wait, Noop, Halt, Move, Grab, Place, Give
-             , Craft, GetX, GetY]                           = 0
-  | c `elem` [ Return, Turn, Run, Random, Say, View, Appear, IsHere
-             , Not, Fst, Snd, Force ]                       = 1
-  | c == Build                                              = 2
-  | otherwise                                               = 3
+arity Wait      = 0
+arity Noop      = 0
+arity Halt      = 0
+arity Move      = 0
+arity Turn      = 1
+arity Grab      = 0
+arity Place     = 1
+arity Give      = 2
+arity Craft     = 1
+arity Build     = 2
+arity Say       = 1
+arity View      = 1
+arity Appear    = 1
+arity GetX      = 0
+arity GetY      = 0
+arity Ishere    = 1
+arity Random    = 1
+arity Run       = 1
+arity Not       = 1
+arity (Cmp _)   = 2
+arity (Arith _) = 2
+arity If        = 3
+arity Fst       = 1
+arity Snd       = 1
+arity Force     = 1
+arity Return    = 1
+arity Try       = 2
+arity Raise     = 1
+  -- It would be more compact to represent the above by testing
+  -- whether the constants are in certain sets, but this way the
+  -- compiler warns us about incomplete pattern match if we add more
+  -- constants.
 
 -- | Some constants are commands, which means a fully saturated
 --   application of those constants counts as a value, and should not

@@ -84,7 +84,7 @@ constCaps :: Const -> Set Capability
 constCaps Wait      = S.empty
 constCaps Noop      = S.empty
 constCaps Halt      = S.empty
-constCaps Return    = S.empty
+
 constCaps Move      = S.singleton CMove
 constCaps Turn      = S.singleton CTurn
 constCaps Grab      = S.singleton CGrab
@@ -92,19 +92,25 @@ constCaps Place     = S.singleton CPlace
 constCaps Give      = S.singleton CGive
 constCaps Craft     = S.singleton CCraft
 constCaps Build     = S.singleton CBuild
-constCaps Run       = S.empty
-constCaps GetX      = S.singleton CSenseLoc
-constCaps GetY      = S.singleton CSenseLoc
-constCaps Random    = S.singleton CRandom
 constCaps Say       = S.singleton CSay
 constCaps View      = S.empty
 constCaps Appear    = S.singleton CAppear
-constCaps IsHere    = S.empty
-constCaps If        = S.singleton CCond
+
+constCaps GetX      = S.singleton CSenseLoc
+constCaps GetY      = S.singleton CSenseLoc
+constCaps Ishere    = S.empty
+constCaps Random    = S.singleton CRandom
+
+constCaps Run       = S.empty
+
 constCaps Not       = S.empty
-constCaps Fst       = S.empty
-constCaps Snd       = S.empty
-constCaps Force     = S.empty
 constCaps (Cmp _)   = S.singleton CCmp
 constCaps (Arith _) = S.singleton CArith
 
+constCaps If        = S.singleton CCond
+constCaps Fst       = S.empty
+constCaps Snd       = S.empty
+constCaps Force     = S.empty
+constCaps Return    = S.empty
+constCaps Try       = S.empty
+constCaps Raise     = S.empty

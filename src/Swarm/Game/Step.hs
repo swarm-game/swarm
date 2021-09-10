@@ -222,7 +222,7 @@ stepRobot r = case r ^. machine of
   ------------------------------------------------------------
   -- Execution
 
-  -- To execute a definition, we focu son evaluating the body in a
+  -- To execute a definition, we focus on evaluating the body in a
   -- recursive environment (similar to let), and remember that the
   -- result should be bound to the given name.
   Out (VDef x t e) (FExec : k)       ->
@@ -288,7 +288,7 @@ stepRobot r = case r ^. machine of
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, IsHere])
+takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere])
 
 -- | Emit a formatted error message.
 emitError :: MonadState GameState m => Robot -> Const -> [Text] -> m ()
@@ -513,7 +513,7 @@ execConst Appear [VString s] k r = do
       stepUnit r k
 execConst Appear args k _ = badConst Appear args k
 
-execConst IsHere [VString s] k r = do
+execConst Ishere [VString s] k r = do
   let V2 x y = r ^. robotLocation
   me <- uses world (W.lookupEntity (-y, x))
   -- XXX encapsulate the above into a function, used several times
@@ -521,7 +521,7 @@ execConst IsHere [VString s] k r = do
   case me of
     Nothing -> step r $ Out (VBool False) k
     Just e  -> step r $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
-execConst IsHere args k _ = badConst IsHere args k
+execConst Ishere args k _ = badConst Ishere args k
 
 execConst Not [VBool b] k r = step r $ Out (VBool (not b)) k
 execConst Not args k _ = badConst Not args k

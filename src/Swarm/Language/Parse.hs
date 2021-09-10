@@ -172,7 +172,7 @@ parseConst =
   <|> Say     <$ reserved "say"
   <|> View    <$ reserved "view"
   <|> Appear  <$ reserved "appear"
-  <|> IsHere  <$ reserved "ishere"
+  <|> Ishere  <$ reserved "ishere"
   <|> If      <$ reserved "if"
   <|> Not     <$ reserved "not"
   <|> Fst     <$ reserved "fst"

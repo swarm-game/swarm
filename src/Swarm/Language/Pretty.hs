@@ -16,6 +16,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns         #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Swarm.Language.Pretty where
 
@@ -35,6 +36,8 @@ import           Control.Unification.IntVar
 import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
+import qualified Data.Text as T
+import Witch
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -106,32 +109,10 @@ instance PrettyPrec Direction where
   prettyPrec _ West  = "west"
 
 instance PrettyPrec Const where
-  prettyPrec _ Wait      = "wait"
-  prettyPrec _ Halt      = "halt"
-  prettyPrec _ Return    = "return"
   prettyPrec _ Noop      = "{}"
-  prettyPrec _ Move      = "move"
-  prettyPrec _ Turn      = "turn"
-  prettyPrec _ Grab      = "grab"
-  prettyPrec _ Place     = "place"
-  prettyPrec _ Give      = "give"
-  prettyPrec _ Craft     = "craft"
-  prettyPrec _ Build     = "build"
-  prettyPrec _ Run       = "run"
-  prettyPrec _ GetX      = "getX"
-  prettyPrec _ GetY      = "getY"
-  prettyPrec _ Random    = "random"
-  prettyPrec _ Say       = "say"
-  prettyPrec _ View      = "view"
-  prettyPrec _ Appear    = "appear"
-  prettyPrec _ IsHere    = "ishere"
-  prettyPrec _ If        = "if"
-  prettyPrec _ Not       = "not"
-  prettyPrec _ Fst       = "fst"
-  prettyPrec _ Snd       = "snd"
-  prettyPrec _ Force     = "force"
   prettyPrec p (Cmp c)   = prettyPrec p c
   prettyPrec p (Arith c) = prettyPrec p c
+  prettyPrec _ c         = pretty $ T.toTitle (from (show c))
 
 instance PrettyPrec CmpConst where
   prettyPrec _ CmpEq  = "=="
