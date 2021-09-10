@@ -627,7 +627,8 @@ compareValues = \case
   VString t1    -> \case {VString t2 -> Just (compare t1 t2); _ -> Nothing}
   VDir d1       -> \case {VDir d2    -> Just (compare d1 d2); _ -> Nothing}
   VBool b1      -> \case {VBool b2   -> Just (compare b1 b2); _ -> Nothing}
-  VPair v11 v12 -> \case { VPair v21 v22 -> compareValues v11 v21 <> compareValues v12 v22
+  VPair v11 v12 -> \case { VPair v21 v22
+                           -> (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
                          ; _ -> Nothing
                          }
   VClo{}        -> const Nothing
