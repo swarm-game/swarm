@@ -638,6 +638,7 @@ compareValues = \case
   VBind{}       -> const Nothing
   VDelay{}      -> const Nothing
 
+-- | Evaluate the application of an arithmetic operator.
 evalArith :: ArithConst -> Integer -> Integer -> Integer
 evalArith Neg = error "evalArith Neg: should have been handled already"
 evalArith Add = (+)
