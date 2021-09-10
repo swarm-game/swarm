@@ -290,9 +290,12 @@ stepRobot r = case r ^. machine of
 takesTick :: Const -> Bool
 takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, IsHere])
 
+-- | Emit a formatted error message.
 emitError :: MonadState GameState m => Robot -> Const -> [Text] -> m ()
 emitError r c parts = emitMessage (formatError r c parts)
 
+-- | Create a standard formatted error containing the robot name and
+--   the name of the command that caused the error.
 formatError :: Robot -> Const -> [Text] -> Text
 formatError r c = T.unwords . (colon (r ^. robotName) :) . (colon (prettyText c) :)
   where
@@ -335,12 +338,16 @@ seedProgram thing = prog
 -- XXX rewrite nested pattern-matching code nicely using ideas from
 -- https://www.haskellforall.com/2021/05/the-trick-to-avoid-deeply-nested-error.html
 
+-- | Interpret the execution (or evaluation) of a constant application
+--   to some values.
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m (Maybe Robot)
+
 execConst Noop _ k r     = stepUnit r k
 execConst Return [v] k r = step r $ Out v k
 execConst Return vs k _  = badConst Return vs k
 execConst Wait _ k r     = stepUnit r k
 execConst Halt _ _ _     = updated .= True >> return Nothing
+
 execConst Move _ k r     = do
   let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
   me <- uses world (W.lookupEntity (-y,x))
@@ -595,9 +602,13 @@ badConst :: Const -> [Value] -> Cont -> a
 badConst c args k = error $
   "Panic! Bad application of execConst " ++ show c ++ " " ++ show args ++ " " ++ show k
 
+-- | Evaluate the application of a comparison operator.  Returns
+--   @Nothing@ if the application does not make sense.
 evalCmp :: CmpConst -> Value -> Value -> Maybe Bool
 evalCmp c v1 v2 = decideCmp c <$> compareValues v1 v2
 
+-- | Decide the result of a comparison operator, given the 'Ordering'
+--   resulting from comparing two values.
 decideCmp :: CmpConst -> Ordering -> Bool
 decideCmp = \case
   CmpEq  -> (== EQ)
@@ -607,6 +618,8 @@ decideCmp = \case
   CmpLeq -> (/= GT)
   CmpGeq -> (/= LT)
 
+-- | Compare two values, returning an 'Ordering' if they can be
+--   compared, or @Nothing@ if they cannot.
 compareValues :: Value -> Value -> Maybe Ordering
 compareValues = \case
   VUnit         -> \case {VUnit      -> Just EQ             ; _ -> Nothing}
