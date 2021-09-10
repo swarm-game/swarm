@@ -33,12 +33,15 @@ import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List          as BL
 import qualified Graphics.Vty                as V
 
-import           Swarm.Game
+import           Swarm.Game.CEK              (idleMachine, initMachine)
+import           Swarm.Game.Display
 import           Swarm.Game.Entity
 import           Swarm.Game.Recipes
-import           Swarm.Game.Robot            (installedDevices, robotCtx,
-                                              robotEnv)
+import           Swarm.Game.Robot
+import           Swarm.Game.State
+import           Swarm.Game.Step             (gameStep)
 import           Swarm.Game.Terrain          (displayTerrain)
+import           Swarm.Game.Value            (Value (VUnit), prettyValue)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
@@ -233,7 +236,7 @@ explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case mItem of
   Nothing    -> txt " "
   Just (_,e) -> vBox $
-    (map (padBottom (Pad 1) . txtWrap) $ e ^. entityDescription)
+    map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription)
     ++
     explainRecipes e
   where

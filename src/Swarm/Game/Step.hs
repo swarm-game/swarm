@@ -1,199 +1,51 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Swarm.Game
+-- Module      :  Swarm.Game.Step
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- The implementation of the Swarm game itself, as separate from the UI.
--- XXX
+-- Facilities for stepping the robot CEK machines, *i.e.* the actual
+-- interpreter for the Swarm language.
 --
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE BlockArguments    #-}
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TypeOperators     #-}
 
-module Swarm.Game
-  ( -- * Values
-
-    Value(..), prettyValue
-
-    -- * Constructing CEK machine states
-
-  , initMachine, idleMachine
-
-    -- * Running the game
-
-  , gameStep
-
-    -- * Displays
-
-  , Display, lookupDisplay, displayAttr, displayPriority
-
-    -- * Robots
-
-  , Robot, isActive
-  , robotEntity
-  , robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
-  , machine, tickSteps
-
-    -- * Game state
-  , ViewCenterRule(..), _VCRobot, updateViewCenter, manualViewCenterUpdate
-  , REPLResult(..)
-  , GameState(..), initGameState, viewCenterRule, focusedRobot
-
-    -- ** Lenses
-
-  , gameMode, paused, robotMap, newRobots, world, viewCenter, updated, replResult
-  , messageQueue
-
-  )
-  where
+module Swarm.Game.Step where
 
 import           Control.Arrow           ((&&&))
-import           Control.Lens            hiding (Const, contains, from, parts)
+import           Control.Lens            hiding (Const, from, parts)
 import           Control.Monad.State
-import           Data.Bifunctor          (first)
-import           Data.Map                (Map)
 import qualified Data.Map                as M
-import           Data.Maybe              (fromMaybe, listToMaybe)
+import           Data.Maybe              (listToMaybe)
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import           Linear
 import           System.Random           (randomRIO)
 import           Witch
 
--- import           Data.Hash.Murmur
-
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import qualified Swarm.Game.Entities     as E
+import           Swarm.Game.Entities     as E
 import           Swarm.Game.Entity       as E
 import           Swarm.Game.Recipes
 import           Swarm.Game.Robot
+import           Swarm.Game.State
 import           Swarm.Game.Value        as V
 import qualified Swarm.Game.World        as W
-import           Swarm.Game.WorldGen     (findGoodOrigin, testWorld2)
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.TUI.Attr
 import           Swarm.Util
-
-------------------------------------------------------------
--- Game state data types
-------------------------------------------------------------
-
-data ViewCenterRule
-  = VCLocation (V2 Int)
-  | VCRobot Text
-  deriving (Eq, Ord, Show)
-
-makePrisms ''ViewCenterRule
-
-data GameMode
-  = Classic
-  | Creative
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
-data REPLResult
-  = REPLDone
-  | REPLWorking Polytype (Maybe Value)
-  deriving (Eq, Show)
-
-data GameState = GameState
-  { _gameMode       :: GameMode
-  , _paused         :: Bool
-  , _robotMap       :: Map Text Robot
-  , _newRobots      :: [Robot]
-  , _gensym         :: Int
-  , _world          :: W.TileCachingWorld Int Entity
-  , _viewCenterRule :: ViewCenterRule
-  , _viewCenter     :: V2 Int
-  , _updated        :: Bool
-  , _replResult     :: REPLResult
-  , _messageQueue   :: [Text]
-  }
-
-makeLenses ''GameState
-
-applyViewCenterRule :: ViewCenterRule -> Map Text Robot -> Maybe (V2 Int)
-applyViewCenterRule (VCLocation l) _ = Just l
-applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
-
-updateViewCenter :: GameState -> GameState
-updateViewCenter g = g
-  & viewCenter .~ newViewCenter
-  & (if newViewCenter /= oldViewCenter then updated .~ True else id)
-  where
-    oldViewCenter = g ^. viewCenter
-    newViewCenter = fromMaybe oldViewCenter (applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap))
-
-manualViewCenterUpdate :: (V2 Int -> V2 Int) -> GameState -> GameState
-manualViewCenterUpdate update g = g
-  & case g ^. viewCenterRule of
-      VCLocation l -> viewCenterRule .~ VCLocation (update l)
-      VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
-  & updateViewCenter
-
-focusedRobot :: GameState -> Maybe Robot
-focusedRobot g = do
-  focusedRobotName <- g ^? viewCenterRule . _VCRobot
-  g ^? robotMap . ix focusedRobotName
-
-ensureUniqueName :: MonadState GameState m => Robot -> m Robot
-ensureUniqueName newRobot = do
-  -- See if another robot already has the same name...
-  let name = newRobot ^. robotName
-  collision <- uses robotMap (M.member name)
-  case collision of
-    -- If so, add a suffix to make the name unique.
-    True -> do
-      tag <- gensym <+= 1
-      let name' = name `T.append` into @Text (show tag)
-      return $ newRobot & robotName .~ name'
-    False -> return newRobot
-
-addRobot :: MonadState GameState m => Robot -> m Robot
-addRobot r = do
-  r' <- ensureUniqueName r
-  newRobots %= (r' :)
-  return r'
-
-initGameState :: IO GameState
-initGameState = return $
-  GameState
-  { _gameMode       = Classic
-  , _paused         = False
-  , _robotMap       = M.singleton "base" baseRobot
-  , _newRobots      = []
-  , _gensym         = 0
-  , _world          = W.newWorld . fmap (first fromEnum) . findGoodOrigin $ testWorld2
-  , _viewCenterRule = VCRobot "base"
-  , _viewCenter     = V2 0 0
-  , _updated        = False
-  , _replResult     = REPLDone
-  , _messageQueue   = []
-  }
-
-maxMessageQueueSize :: Int
-maxMessageQueueSize = 1000
-
-emitMessage :: MonadState GameState m => Text -> m ()
-emitMessage msg = do
-  q <- use messageQueue
-  messageQueue %= (msg:) . (if length q >= maxMessageQueueSize then init else id)
-
-------------------------------------------------------------
--- CEK machine
 
 -- | The maximum number of CEK machine evaluation steps each robot is
 --   allowed during a single game tick.
@@ -682,7 +534,7 @@ execConst Force args k _ = badConst Force args k
 
   -- Note, if should evaluate the branches lazily, but since
   -- evaluation is eager, by the time we get here thn and els have
-  -- already been fully evaluated --- what ves?  The answer is that
+  -- already been fully evaluated --- what gives?  The answer is that
   -- we rely on elaboration to add 'lazy' wrappers around the branches
   -- (and a 'force' wrapper around the entire if).
 execConst If [VBool True , thn, _] k r = step r $ Out thn k

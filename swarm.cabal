@@ -39,13 +39,14 @@ library
                       Swarm.Language.Typecheck
                       Swarm.Language.Elaborate
                       Swarm.Language.Pipeline
-                      Swarm.Game
                       Swarm.Game.CEK
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Entities
                       Swarm.Game.Recipes
                       Swarm.Game.Robot
+                      Swarm.Game.State
+                      Swarm.Game.Step
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
