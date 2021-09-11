@@ -43,7 +43,6 @@ import           Swarm.Game.State
 import           Swarm.Game.Value        as V
 import qualified Swarm.Game.World        as W
 import           Swarm.Language.Pipeline
-import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.TUI.Attr
@@ -327,16 +326,9 @@ stepCEK cek = case cek of
 takesTick :: Const -> Bool
 takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere])
 
--- | Emit a formatted error message.
-emitError :: MonadState GameState m => Const -> [Text] -> ExceptT Exn (StateT Robot m) ()
-emitError c parts = get >>= \r -> lift . lift $ emitMessage (formatError r c parts)
-
--- | Create a standard formatted error containing the robot name and
---   the name of the command that caused the error.
-formatError :: Robot -> Const -> [Text] -> Text
-formatError r c = T.unwords . (colon (r ^. robotName) :) . (colon (prettyText c) :)
-  where
-    colon = flip T.append ":"
+-- | Raise an exception with a formatted error message.
+raise :: MonadState GameState m => Const -> [Text] -> ExceptT Exn (StateT Robot m) a
+raise c parts = throwError (CmdFailed c (T.unwords parts))
 
 -- | Require that a robot has a given device installed, OR we are in
 --   creative mode.  Run the first (failure) continuation if not, and
@@ -405,7 +397,7 @@ execConst Move _ k     = do
   let nextLoc = loc ^+^ (orient ? zero)
   me <- entityAt nextLoc
   require E.treads
-    (emitError Move ["You need treads to move."] >> return (Out VUnit k))
+    (raise Move ["You need treads to move."])
     case maybe True (not . (`hasProperty` Unwalkable)) me of
 
       -- There's something there, and we can't walk on it.
@@ -422,22 +414,20 @@ execConst Move _ k     = do
 
 execConst Grab _ k =
   require E.grabber
-    (emitError Grab ["You need a grabber device to grab things."] >> return (Out VUnit k))
+    (raise Grab ["You need a grabber device to grab things."])
     do
       loc <- use robotLocation
       me <- entityAt loc
       case me of
 
         -- No entity here.
-        Nothing -> emitError Grab ["There is nothing here to grab."] >> return (Out VUnit k)
+        Nothing -> raise Grab ["There is nothing here to grab."]
 
         -- There is an entity here...
         Just e -> case e `hasProperty` Portable of
 
           -- ...but it can't be picked up.
-          False -> do
-            emitError Grab ["The", e ^. entityName, "here can't be grabbed."]
-            return $ Out VUnit k
+          False -> raise Grab ["The", e ^. entityName, "here can't be grabbed."]
 
           -- ...and it can be picked up.
           True -> do
@@ -464,7 +454,7 @@ execConst Grab _ k =
 
 execConst Turn [VDir d] k = do
   require E.treads
-    (emitError Turn ["You need treads to turn."] >> return (Out VUnit k))
+    (raise Turn ["You need treads to turn."])
     do
       robotOrientation . _Just %= applyTurn d
       flagRedraw
@@ -478,9 +468,9 @@ execConst Place [VString s] k = do
   loc <- use robotLocation
   me <- entityAt loc
   case me of
-    Just _  -> emitError Place ["There is already an entity here."] >> return (Out VUnit k)
+    Just _  -> raise Place ["There is already an entity here."]
     Nothing -> case lookupByName s inv of
-      []    -> emitError Place ["You don't have", indefinite s, "to place."] >> return (Out VUnit k)
+      []    -> raise Place ["You don't have", indefinite s, "to place."]
       (e:_) -> do
         updateEntityAt loc (const (Just e))
         robotInventory %= delete e
@@ -498,12 +488,8 @@ execConst Give [VString otherName, VString itemName] k = do
       lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
       robotInventory %= delete item
       return $ Out VUnit k
-    (Nothing, _) -> do
-      emitError Give ["There is no robot named", otherName, "here." ]
-      return $ Out VUnit k
-    (_, Nothing) -> do
-      emitError Give ["You don't have", indefinite itemName, "to give." ]
-      return $ Out VUnit k
+    (Nothing, _) -> raise Give ["There is no robot named", otherName, "here." ]
+    (_, Nothing) -> raise Give ["You don't have", indefinite itemName, "to give." ]
 
 execConst Give args k = badConst Give args k
 
@@ -511,16 +497,11 @@ execConst Give args k = badConst Give args k
 execConst Craft [VString name] k = do
   inv <- use robotInventory
   case listToMaybe $ lookupByName name E.entityCatalog of
-    Nothing -> emitError Craft ["I've never heard of", indefiniteQ name, "."] >> return (Out VUnit k)
+    Nothing -> raise Craft ["I've never heard of", indefiniteQ name, "."]
     Just e  -> case recipeFor e of
-      Nothing -> do
-        emitError Craft ["There is no known recipe for crafting", indefinite name, "."]
-        return $ Out VUnit k
+      Nothing -> raise Craft ["There is no known recipe for crafting", indefinite name, "."]
       Just recipe -> case craft recipe inv of
-        -- XXX describe the missing ingredients
-        Left missing -> do
-          emitError Craft ["Missing ingredients:", prettyIngredientList missing]
-          return $ Out VUnit k
+        Left missing -> raise Craft ["Missing ingredients:", prettyIngredientList missing]
         Right inv'    -> do
           robotInventory .= inv'
           return $ Out VUnit k
@@ -549,7 +530,7 @@ execConst Say args k = badConst Say args k
 execConst View [VString s] k = do
   mr <- lift . lift $ use (robotMap . at s)
   case mr of
-    Nothing -> emitError View [ "There is no robot named ", s, " to view." ]
+    Nothing -> raise View [ "There is no robot named ", s, " to view." ]
     Just _  -> lift . lift $ viewCenterRule .= VCRobot s
   return $ Out VUnit k
 execConst View args k = badConst View args k
@@ -570,9 +551,8 @@ execConst Appear [VString s] k = do
       robotDisplay . orientationMap . ix west  .= wc
       return $ Out VUnit k
 
-    _other -> do
-      emitError Appear [quote s, "is not a valid appearance string."]
-      return $ Out VUnit k
+    _other -> raise Appear [quote s, "is not a valid appearance string."]
+
 execConst Appear args k = badConst Appear args k
 
 execConst Ishere [VString s] k = do
@@ -638,12 +618,10 @@ execConst Build args k = badConst Build args k
 execConst Run [VString fileName] k = do
   mf <- liftIO $ readFileMay (into fileName)
   case mf of
-    Nothing -> emitError Run ["File not found:", fileName] >> return (Out VUnit k)
+    Nothing -> raise Run ["File not found:", fileName]
     Just f -> case processTerm (into @Text f) of
-      Left  err        -> do
-        emitError Run ["Error while processing", fileName, "\n", err]
-        return $ Out VUnit k
-      Right t -> return $ initMachine' t V.empty k
+      Left  err -> raise Run ["Error while processing", fileName, "\n", err]
+      Right t   -> return $ initMachine' t V.empty k
 
       -- Note, adding FExec to the stack above in the TyCmd case (done
       -- automatically by the initMachine function) is correct.  run
