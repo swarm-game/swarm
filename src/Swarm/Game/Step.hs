@@ -22,6 +22,7 @@ module Swarm.Game.Step where
 
 import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, from, parts)
+import           Control.Monad.Except
 import           Control.Monad.State
 import qualified Data.Map                as M
 import           Data.Maybe              (listToMaybe)
@@ -112,18 +113,18 @@ gameStep = do
 ------------------------------------------------------------
 
 -- | Set a flag telling the UI that the world needs to be redrawn.
-flagRedraw :: MonadState GameState m => StateT s m ()
-flagRedraw = lift $ updated .= True
+flagRedraw :: MonadState GameState m => ExceptT Exn (StateT s m) ()
+flagRedraw = lift . lift $ updated .= True
 
 -- | Get the entity (if any) at a given location.
-entityAt :: MonadState GameState m => V2 Int -> StateT Robot m (Maybe Entity)
-entityAt (V2 x y) = lift (uses world (W.lookupEntity (-y,x)))
+entityAt :: MonadState GameState m => V2 Int -> ExceptT Exn (StateT Robot m) (Maybe Entity)
+entityAt (V2 x y) = lift . lift $ uses world (W.lookupEntity (-y,x))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt
   :: MonadState GameState m
-  => V2 Int -> (Maybe Entity -> Maybe Entity) -> StateT Robot m ()
-updateEntityAt (V2 x y) upd = lift $ world %= W.update (-y,x) upd
+  => V2 Int -> (Maybe Entity -> Maybe Entity) -> ExceptT Exn (StateT Robot m) ()
+updateEntityAt (V2 x y) upd = lift . lift $ world %= W.update (-y,x) upd
 
 ------------------------------------------------------------
 -- Stepping robots
@@ -155,6 +156,15 @@ stepRobot r = do
 --   machine state and figure out a single next step.
 stepCEK :: (MonadState GameState m, MonadIO m) => CEK -> StateT Robot m CEK
 stepCEK cek = case cek of
+
+  -- It's a little unsatisfactory the way we handle having both Robot
+  -- and GameState in different states (by having one be concrete and
+  -- the other accessible via 'lift').  Having them both be capability
+  -- constraints is what we really want, but it's not possible to do
+  -- that with mtl.  Ultimately we may want to switch to an effects
+  -- library.  I am hesitant to use polysemy because of performance
+  -- issues.  Perhaps fused-effects would work.  I really want to use
+  -- 'eff' but seems like it's not ready yet.
 
   ------------------------------------------------------------
   -- Evaluation
@@ -246,7 +256,10 @@ stepCEK cek = case cek of
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) (FExec : k)     -> do
     when (takesTick c) $ tickSteps .= 0
-    execConst c (reverse args) k
+    res <- runExceptT (execConst c (reverse args) k)
+    case res of
+      Left exn   -> return $ Up exn k
+      Right cek' -> return cek'
 
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
@@ -315,8 +328,8 @@ takesTick :: Const -> Bool
 takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere])
 
 -- | Emit a formatted error message.
-emitError :: MonadState GameState m => Const -> [Text] -> StateT Robot m ()
-emitError c parts = get >>= \r -> lift (emitMessage (formatError r c parts))
+emitError :: MonadState GameState m => Const -> [Text] -> ExceptT Exn (StateT Robot m) ()
+emitError c parts = get >>= \r -> lift . lift $ emitMessage (formatError r c parts)
 
 -- | Create a standard formatted error containing the robot name and
 --   the name of the command that caused the error.
@@ -328,9 +341,9 @@ formatError r c = T.unwords . (colon (r ^. robotName) :) . (colon (prettyText c)
 -- | Require that a robot has a given device installed, OR we are in
 --   creative mode.  Run the first (failure) continuation if not, and
 --   the second (success) continuation if so.
-require :: MonadState GameState m => Entity -> StateT Robot m a -> StateT Robot m a -> StateT Robot m a
+require :: MonadState GameState m => Entity -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a
 require e fk sk = do
-  mode <- lift $ use gameMode
+  mode <- lift . lift $ use gameMode
   r <- get
   if mode == Creative || r `hasInstalled` e then sk else fk
 
@@ -339,7 +352,17 @@ require e fk sk = do
 --   command constant, but it somehow feels better to have two
 --   different names for it anyway.
 evalConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> StateT Robot m CEK
-evalConst = execConst
+evalConst c vs k = do
+  res <- runExceptT $ execConst c vs k
+  case res of
+    Left exn   -> do
+      let msg = T.unlines
+            [ "evalConst shouldn't be able to throw an exception:"
+            , formatExn exn
+            ]
+      return $ Up (Fatal msg) k
+    Right cek' -> return cek'
+
 
 -- XXX load this from a file and have it available in a map?
 --     Or make a quasiquoter?
@@ -365,7 +388,7 @@ seedProgram thing = prog
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
-execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> StateT Robot m CEK
+execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
 
 execConst Noop _ k     = return $ Out VUnit k
 execConst Return [v] k = return $ Out v k
@@ -432,7 +455,7 @@ execConst Grab _ k =
                       & robotDisplay .~
                         (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
                       & robotInventory .~ E.singleton e
-              _ <- lift $ addRobot seedBot
+              _ <- lift . lift $ addRobot seedBot
               return ()
 
             -- Add the picked up item to the robot's inventory
@@ -468,11 +491,11 @@ execConst Place args k = badConst Place args k
 -- XXX need a device to give --- but it should be available from the beginning
 execConst Give [VString otherName, VString itemName] k = do
   r <- get
-  mother <- lift $ use (robotMap . at otherName)
+  mother <- lift . lift $ use (robotMap . at otherName)
   let mitem = listToMaybe . lookupByName itemName $ (r ^. robotInventory)
   case (mother, mitem) of
     (Just _, Just item) -> do
-      lift $ robotMap . at otherName . _Just . robotInventory %= insert item
+      lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
       robotInventory %= delete item
       return $ Out VUnit k
     (Nothing, _) -> do
@@ -519,15 +542,15 @@ execConst Random args k = badConst Random args k
 
 execConst Say [VString s] k = do
   rn <- use robotName
-  lift $ emitMessage (T.concat [rn, ": ", s])
+  lift . lift $ emitMessage (T.concat [rn, ": ", s])
   return $ Out VUnit k
 execConst Say args k = badConst Say args k
 
 execConst View [VString s] k = do
-  mr <- lift $ use (robotMap . at s)
+  mr <- lift . lift $ use (robotMap . at s)
   case mr of
     Nothing -> emitError View [ "There is no robot named ", s, " to view." ]
-    Just _  -> lift $ viewCenterRule .= VCRobot s
+    Just _  -> lift . lift $ viewCenterRule .= VCRobot s
   return $ Out VUnit k
 execConst View args k = badConst View args k
 
@@ -553,9 +576,8 @@ execConst Appear [VString s] k = do
 execConst Appear args k = badConst Appear args k
 
 execConst Ishere [VString s] k = do
-  V2 x y <-use robotLocation
-  me <- lift $ uses world (W.lookupEntity (-y, x))
-  -- XXX encapsulate the above into a function, used several times
+  loc <-use robotLocation
+  me <- entityAt loc
 
   case me of
     Nothing -> return $ Out (VBool False) k
@@ -608,7 +630,7 @@ execConst Build [VString name, VDelay c e] k = do
           (In c e [FExec])  -- XXX require cap for env that gets shared here?
           [E.treads, E.grabber, E.solarPanels]
 
-  newRobot' <- lift $ addRobot newRobot
+  newRobot' <- lift . lift $ addRobot newRobot
   flagRedraw
   return $ Out (VString (newRobot' ^. robotName)) k
 execConst Build args k = badConst Build args k
