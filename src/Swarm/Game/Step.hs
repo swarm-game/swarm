@@ -107,6 +107,28 @@ gameStep = do
   -- Possible update the view center.
   modify updateViewCenter
 
+------------------------------------------------------------
+-- Some utility functions
+------------------------------------------------------------
+
+-- | Set a flag telling the UI that the world needs to be redrawn.
+flagRedraw :: MonadState GameState m => StateT s m ()
+flagRedraw = lift $ updated .= True
+
+-- | Get the entity (if any) at a given location.
+entityAt :: MonadState GameState m => V2 Int -> StateT Robot m (Maybe Entity)
+entityAt (V2 x y) = lift (uses world (W.lookupEntity (-y,x)))
+
+-- | Modify the entity (if any) at a given location.
+updateEntityAt
+  :: MonadState GameState m
+  => V2 Int -> (Maybe Entity -> Maybe Entity) -> StateT Robot m ()
+updateEntityAt (V2 x y) upd = lift $ world %= W.update (-y,x) upd
+
+------------------------------------------------------------
+-- Stepping robots
+------------------------------------------------------------
+
 -- | Run a robot for one "big step", which may consist of up to
 --   'evalStepsPerTick' CEK machine steps and at most one command
 --   execution.
@@ -350,14 +372,15 @@ execConst Return [v] k = return $ Out v k
 execConst Return vs k  = badConst Return vs k
 execConst Wait _ k     = return $ Out VUnit k
 execConst Halt _ k     = do
-  lift $ updated .= True
   selfDestruct .= True
+  flagRedraw
   return $ Out VUnit k
 
 execConst Move _ k     = do
-  r <- get
-  let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
-  me <- lift $ uses world (W.lookupEntity (-y,x))
+  loc <- use robotLocation
+  orient <- use robotOrientation
+  let nextLoc = loc ^+^ (orient ? zero)
+  me <- entityAt nextLoc
   require E.treads
     (emitError Move ["You need treads to move."] >> return (Out VUnit k))
     case maybe True (not . (`hasProperty` Unwalkable)) me of
@@ -370,17 +393,16 @@ execConst Move _ k     = do
 
       -- Otherwise, move forward.
       True -> do
-        lift $ updated .= True
-        robotLocation %= (^+^ (r ^. robotOrientation ? zero))
+        robotLocation .= nextLoc
+        flagRedraw
         return $ Out VUnit k
 
 execConst Grab _ k =
   require E.grabber
     (emitError Grab ["You need a grabber device to grab things."] >> return (Out VUnit k))
     do
-      r <- get
-      let V2 x y = r ^. robotLocation
-      me <- lift (uses world (W.lookupEntity (-y,x)))
+      loc <- use robotLocation
+      me <- entityAt loc
       case me of
 
         -- No entity here.
@@ -397,15 +419,14 @@ execConst Grab _ k =
           -- ...and it can be picked up.
           True -> do
             -- Remove the entity from the world.
-            lift $ do
-              updated .= True
-              world %= W.update (-y,x) (const Nothing)
+            updateEntityAt loc (const Nothing)
+            flagRedraw
 
             when (e `hasProperty` Growable) $ do
 
               -- Grow a new entity from a seed.
               let seedBot =
-                    mkRobot "seed" (r ^. robotLocation) (V2 0 0)
+                    mkRobot "seed" loc (V2 0 0)
                       (initMachine (seedProgram (e ^. entityName)) V.empty)
                       []
                       & robotDisplay .~
@@ -422,26 +443,25 @@ execConst Turn [VDir d] k = do
   require E.treads
     (emitError Turn ["You need treads to turn."] >> return (Out VUnit k))
     do
-      lift $ updated .= True
       robotOrientation . _Just %= applyTurn d
+      flagRedraw
       return $ Out VUnit k
 
 execConst Turn args k = badConst Turn args k
 
 -- XXX do we need a device to do placement?
 execConst Place [VString s] k = do
-  r <- get
-  let V2 x y = r ^. robotLocation
-  me <- lift $ uses world (W.lookupEntity (-y, x))
+  inv <- use robotInventory
+  loc <- use robotLocation
+  me <- entityAt loc
   case me of
     Just _  -> emitError Place ["There is already an entity here."] >> return (Out VUnit k)
-    Nothing -> case lookupByName s (r ^. robotInventory) of
+    Nothing -> case lookupByName s inv of
       []    -> emitError Place ["You don't have", indefinite s, "to place."] >> return (Out VUnit k)
       (e:_) -> do
-        lift $ do
-          updated .= True
-          world %= W.update (-y, x) (const (Just e))
+        updateEntityAt loc (const (Just e))
         robotInventory %= delete e
+        flagRedraw
         return $ Out VUnit k
 execConst Place args k = badConst Place args k
 
@@ -512,7 +532,7 @@ execConst View [VString s] k = do
 execConst View args k = badConst View args k
 
 execConst Appear [VString s] k = do
-  lift $ updated .= True
+  flagRedraw
   case into @String s of
     [c] -> do
       robotDisplay . defaultChar .= c
@@ -589,7 +609,7 @@ execConst Build [VString name, VDelay c e] k = do
           [E.treads, E.grabber, E.solarPanels]
 
   newRobot' <- lift $ addRobot newRobot
-  lift $ updated .= True
+  flagRedraw
   return $ Out (VString (newRobot' ^. robotName)) k
 execConst Build args k = badConst Build args k
 
