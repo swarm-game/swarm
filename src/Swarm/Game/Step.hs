@@ -6,7 +6,7 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Facilities for stepping the robot CEK machines, *i.e.* the actual
+-- Facilities for stepping the robot CEK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
 --
 -----------------------------------------------------------------------------
@@ -84,7 +84,9 @@ gameStep = do
       Nothing -> return ()
       Just curRobot -> do
         curRobot' <- bigStepRobot curRobot
-        robotMap %= M.update (const curRobot') rn
+        case curRobot' ^. selfDestruct of
+          True  -> robotMap %= M.delete rn
+          False -> robotMap %= M.insert rn curRobot'
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL.
@@ -108,44 +110,39 @@ gameStep = do
 -- | Run a robot for one "big step", which may consist of up to
 --   'evalStepsPerTick' CEK machine steps and at most one command
 --   execution.
-bigStepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m (Maybe Robot)
+bigStepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
 bigStepRobot = bigStepRobotRec . (tickSteps .~ evalStepsPerTick)
 
 -- | Recursive helper function for 'bigStepRobot', which checks if the
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-bigStepRobotRec :: (MonadState GameState m, MonadIO m) => Robot -> m (Maybe Robot)
+bigStepRobotRec :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
 bigStepRobotRec r
-  | not (isActive r) || r ^. tickSteps <= 0 = return (Just r)
-  | otherwise           = do
-      r' <- stepRobot r
-      maybe (return Nothing) bigStepRobotRec r'
+  | not (isActive r) || r ^. tickSteps <= 0 = return r
+  | otherwise           = stepRobot r >>= bigStepRobotRec
 
 -- | Helper function for accomplishing a single step: given a robot
 --   and a new CEK machine state, decrement its @tickSteps@ and set
 --   its CEK machine to the new state.  This function always returns
 --   @Just@ a robot.
-step :: (MonadState GameState m, MonadIO m) => Robot -> CEK -> m (Maybe Robot)
+step :: (MonadState GameState m, MonadIO m) => Robot -> CEK -> m Robot
 step r cek = do
 
   -- for debugging. Uncomment to get a sequence of CEK machine states
   -- printed to an output file.
   -- liftIO $ appendFile "out.txt" (prettyCEK (r ^. machine))
 
-  return . Just $ r & tickSteps -~ 1 & machine .~ cek
+  return $ r & tickSteps -~ 1 & machine .~ cek
 
 -- | Step to an updated robot and continuation, producing a unit-value
 --   output.  @stepUnit r k == step r (Out VUnit k)@.
-stepUnit :: (MonadState GameState m, MonadIO m) => Robot -> Cont -> m (Maybe Robot)
+stepUnit :: (MonadState GameState m, MonadIO m) => Robot -> Cont -> m Robot
 stepUnit r k = step r $ Out VUnit k
 
 -- | The main CEK machine workhorse.  Given a robot, look at its CEK
---   machine state and figure out a single next step. The reason we
---   return a @Maybe Robot@ is that the robot could execute a 'Halt'
---   instruction, making it disappear, which we signal by returning
---   @Nothing@.
-stepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m (Maybe Robot)
+--   machine state and figure out a single next step.
+stepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
 stepRobot r = case r ^. machine of
 
   ------------------------------------------------------------
@@ -297,7 +294,7 @@ stepRobot r = case r ^. machine of
 
   -- Finally, if we're done evaluating and the continuation stack is
   -- empty, return the robot unchanged.
-  Out _ []                          -> return (Just r)
+  Out _ []                          -> return r
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
@@ -326,7 +323,7 @@ require r e fk sk = do
 --   between *evaluating* a function constant and *executing* a
 --   command constant, but it somehow feels better to have two
 --   different names for it anyway.
-evalConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m (Maybe Robot)
+evalConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m Robot
 evalConst = execConst
 
 -- XXX load this from a file and have it available in a map?
@@ -353,13 +350,13 @@ seedProgram thing = prog
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
-execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m (Maybe Robot)
+execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> Robot -> m Robot
 
 execConst Noop _ k r     = stepUnit r k
 execConst Return [v] k r = step r $ Out v k
 execConst Return vs k _  = badConst Return vs k
 execConst Wait _ k r     = stepUnit r k
-execConst Halt _ _ _     = updated .= True >> return Nothing
+execConst Halt _ k r     = updated .= True >> stepUnit (r & selfDestruct .~ True) k
 
 execConst Move _ k r     = do
   let V2 x y = (r ^. robotLocation) ^+^ (r ^. robotOrientation ? zero)
