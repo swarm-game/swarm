@@ -77,29 +77,12 @@ import qualified Data.Map              as M
 import           Data.Text             (Text)
 import           Witch                 (from)
 
+import           Swarm.Game.Exception
 import           Swarm.Game.Value
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.Util
-
-------------------------------------------------------------
--- Exceptions
-------------------------------------------------------------
-
-data Exn
-    -- | Something went very wrong.  This is a bug in Swarm and cannot
-    --   be caught by a @try@ block (but at least it will not crash
-    --   the entire UI).
-  = Fatal Text
-
-    -- | A command failed in some way (/e.g./ a 'Move' command could
-    --   not move, or a 'Grab' command found nothing to grab, /etc./).
-  | CmdFailed Const Text
-
-    -- | The user program explicitly called 'Raise'.
-  | User Text
-  deriving (Eq, Show)
 
 ------------------------------------------------------------
 -- Frames and continuations

@@ -35,6 +35,7 @@ import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entities     as E
 import           Swarm.Game.Entity       as E
+import           Swarm.Game.Exception    (formatExn)
 import           Swarm.Game.Recipes
 import           Swarm.Game.Robot
 import           Swarm.Game.State
@@ -206,10 +207,6 @@ stepRobot r = case r ^. machine of
   -- the body in a suitably extended environment.
   Out v1 (FLet x t2 e : k)          -> step r $ In t2 (addBinding x v1 e) k
 
-  -- If we were running a try block but evaluation completed normally,
-  -- just ignore the try block and continue.
-  Out v (FTry _ _ : k)              -> step r $ Out v k
-
   -- Definitions immediately turn into VDef values, awaiting execution.
   In (TDef x _ t) e k               -> step r $ Out (VDef x t e) k
 
@@ -275,16 +272,22 @@ stepRobot r = case r ^. machine of
   -- environment and type context into the robot's top-level
   -- environment and type context, so they will be available to future
   -- programs.
-  Out (VResult v e) (FLoadEnv ctx : k) ->
+  Out (VResult v e) (FLoadEnv ctx : k)  ->
     step (r & robotEnv %~ V.union e & robotCtx %~ M.union ctx) $ Out v k
-  Out v (FLoadEnv _ : k)             -> step r $ Out v k
+  Out v (FLoadEnv _ : k)                -> step r $ Out v k
 
-  -- Exception handling.  First, if we are raising an exception up the
-  -- continuation stack and come to a Try frame, execute the associated
-  -- catch block.
-  Up _ (FTry t e : k) -> step r $ In t e (FExec : k)
+  -- Exception handling.
+  -- First, if we were running a try block but evaluation completed normally,
+  -- just ignore the try block and continue.
+  Out v (FTry _ _ : k)                  -> step r $ Out v k
+  -- If we are raising an exception up the continuation stack and come
+  -- to a Try frame, execute the associated catch block.
+  Up _ (FTry t e : k)                   -> step r $ In t e (FExec : k)
   -- Otherwise, keep popping from the continuation stack.
-  Up exn (_ : k)      -> step r $ Up exn k
+  Up exn (_ : k)                        -> step r $ Up exn k
+  -- If an exception rises all the way to the top level without being
+  -- handled, turn it into an error message via the 'say' command.
+  Up  exn []                            -> step r $ In (TApp (TConst Say) (TString (formatExn exn))) V.empty [FExec]
 
   cek@(Out (VResult _ _) _) ->
     error $ "Panic! Bad machine state in stepRobot: no appropriate stack frame to catch a VResult: " ++ show cek
@@ -292,9 +295,8 @@ stepRobot r = case r ^. machine of
   cek@(Out _ (FExec : _)) ->
     error $ "Panic! Bad machine state in stepRobot: FExec frame with non-executable value: " ++ show cek
 
-  -- Finally, if there's nothing left to do, just return without
-  -- taking a step at all.
-  Up  _ []                          -> return (Just r)
+  -- Finally, if we're done evaluating and the continuation stack is
+  -- empty, return the robot unchanged.
   Out _ []                          -> return (Just r)
 
 -- | Determine whether a constant should take up a tick or not when executed.
