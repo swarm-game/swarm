@@ -207,20 +207,15 @@ stepRobot r = case r ^. machine of
   Out v1 (FLet x t2 e : k)          -> step r $ In t2 (addBinding x v1 e) k
 
   -- If we were running a try block but evaluation completed normally,
+  -- just ignore the try block and continue.
   Out v (FTry _ _ : k)              -> step r $ Out v k
-
-  Out (VString s) (FRaise : k)                -> step r $ Up (User s) k
-  cek@(Out _ (FRaise : k)) ->
-    error $ "Panic! Bad machine state in stepRobot, FRaise of non-string: " ++ show cek
 
   -- Definitions immediately turn into VDef values, awaiting execution.
   In (TDef x _ t) e k               -> step r $ Out (VDef x t e) k
 
-  -- To evaluate a bind expression, we evaluate the first command.
-  In (TBind mx t1 t2) e k           -> step r $ In t1 e (FEvalBind mx t2 e : k)
-  -- Once we're done evaluating (NOT executing!) the first command to a value,
-  -- we put it back in a VBind value to await execution.
-  Out v1 (FEvalBind mx t2 e : k)    -> step r $ Out (VBind v1 mx t2 e) k
+  -- Bind expressions don't evaluate: just package it up as a value
+  -- until such time as it is to be executed.
+  In (TBind mx t1 t2) e k           -> step r $ Out (VBind mx t1 t2 e) k
 
   -- Delay expressions immediately turn into VDelay values, awaiting
   -- application of 'Force'.
@@ -247,9 +242,9 @@ stepRobot r = case r ^. machine of
   Out (VCApp c args) (FExec : k)     ->
     execConst c (reverse args) k (r & if takesTick c then tickSteps .~ 0 else id)
 
-  -- To execute a bind expression, execute the first command, and
-  -- remember the second for execution later.
-  Out (VBind c mx t2 e) (FExec : k)  -> step r $ Out c (FExec : FExecBind mx t2 e : k)
+  -- To execute a bind expression, evaluate and execute the first
+  -- command, and remember the second for execution later.
+  Out (VBind mx c1 c2 e) (FExec : k)  -> step r $ In c1 e (FExec : FBind mx c2 e : k)
   -- If first command completes with a value along with an environment
   -- resulting from definition commands, switch to evaluating the
   -- second command of the bind.  Extend the environment with both the
@@ -259,16 +254,17 @@ stepRobot r = case r ^. machine of
   -- it has been evaluated, then union any resulting definition
   -- environment with the definition environment from the first
   -- command.
-  Out (VResult v ve) (FExecBind mx t2 e : k) ->
+  Out (VResult v ve) (FBind mx t2 e : k) ->
     step r $ In t2 (ve `V.union` maybe id (`addBinding` v) mx e) (FExec : FUnionEnv ve : k)
   -- On the other hand, if the first command completes with a simple value,
   -- we do something similar, but don't have to worry about the environment.
-  Out v (FExecBind mx t2 e : k) ->
+  Out v (FBind mx t2 e : k) ->
     step r $ In t2 (maybe id (`addBinding` v) mx e) (FExec : k)
   -- If a command completes with a value and definition environment,
   -- and the next continuation frame contains a previous environment
   -- to union with, then pass the unioned environments along in
   -- another VResult.
+
   Out (VResult v e2) (FUnionEnv e1 : k) -> step r $ Out (VResult v (e2 `V.union` e1)) k
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.
@@ -283,6 +279,13 @@ stepRobot r = case r ^. machine of
     step (r & robotEnv %~ V.union e & robotCtx %~ M.union ctx) $ Out v k
   Out v (FLoadEnv _ : k)             -> step r $ Out v k
 
+  -- Exception handling.  First, if we are raising an exception up the
+  -- continuation stack and come to a Try frame, execute the associated
+  -- catch block.
+  Up _ (FTry t e : k) -> step r $ In t e (FExec : k)
+  -- Otherwise, keep popping from the continuation stack.
+  Up exn (_ : k)      -> step r $ Up exn k
+
   cek@(Out (VResult _ _) _) ->
     error $ "Panic! Bad machine state in stepRobot: no appropriate stack frame to catch a VResult: " ++ show cek
 
@@ -291,6 +294,7 @@ stepRobot r = case r ^. machine of
 
   -- Finally, if there's nothing left to do, just return without
   -- taking a step at all.
+  Up  _ []                          -> return (Just r)
   Out _ []                          -> return (Just r)
 
 -- | Determine whether a constant should take up a tick or not when executed.
@@ -559,6 +563,12 @@ execConst Fst [VPair v _] k r = step r $ Out v k
 execConst Fst args k _        = badConst Fst args k
 execConst Snd [VPair _ v] k r = step r $ Out v k
 execConst Snd args k _        = badConst Snd args k
+
+execConst Try [VDelay t1 e1, VDelay t2 e2] k r = step r $ In t1 e1 (FExec : FTry t2 e2 : k)
+execConst Try args k _        = badConst Try args k
+
+execConst Raise [VString s] k r = step r $ Up (User s) k
+execConst Raise args k _        = badConst Raise args k
 
 execConst Build [VString name, VDelay c e] k r = do
   let newRobot =

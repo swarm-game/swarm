@@ -142,10 +142,6 @@ data Frame
     -- ^ We are executing inside a 'Try' block.  If an exception is
     --   raised, we will evaluate the stored term (the "catch" block).
 
-  | FRaise
-    -- ^ We are going to raise an exception with the string resulting
-    --   from evaluation.
-
   | FDef Var
     -- ^ We were evaluating the body of a definition.  The next thing
     --   we should do is return an environment binding the variable to
@@ -162,22 +158,15 @@ data Frame
     --   'robotEnv', along with adding this accompanying 'Ctx' to the
     --   robot's 'robotCtx'.
 
-  | FEvalBind (Maybe Text) Term Env
-    -- ^ If the top frame is of the form @FEvalBind mx c2 e@, we were
-    -- /evaluating/ a term @c1@ from a bind expression @x <- c1 ; c2@
-    -- (or without the @x@, if @mx@ is @Nothing@); once finished, we
-    -- should simply package it up into a value using @VBind@.
-
   | FExec
     -- ^ An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
 
-  | FExecBind (Maybe Text) Term Env
-    -- ^ This looks very similar to 'FEvalBind', but it means we are
-    -- in the process of /executing/ the first component of a bind;
-    -- once done, we should also execute the second component in the
-    -- given environment (extended by binding the variable, if there
-    -- is one, to the output of the first command).
+  | FBind (Maybe Text) Term Env
+    -- ^ We are in the process of executing the first component of a
+    --   bind; once done, we should also execute the second component
+    --   in the given environment (extended by binding the variable,
+    --   if there is one, to the output of the first command).
 
   deriving (Eq, Show)
 
@@ -263,18 +252,15 @@ prettyCont :: Cont -> String
 prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
 
 prettyFrame :: Frame -> String
-prettyFrame (FSnd t _)               = "(_, " ++ prettyString t ++ ")"
-prettyFrame (FFst v)                 = "(" ++ from (prettyValue v) ++ ", _)"
-prettyFrame (FArg t _)               = "_ " ++ prettyString t
-prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
-prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FTry t _)               = "try _ (" ++ prettyString t ++ ")"
-prettyFrame FRaise                   = "raise _"
-prettyFrame (FDef x)                 = "def " ++ from x ++ " = _"
-prettyFrame (FUnionEnv _)            = "_ ∪ <Env>"
-prettyFrame (FLoadEnv _)             = "loadEnv"
-prettyFrame (FEvalBind Nothing t _)  = "_ ; " ++ prettyString t
-prettyFrame (FEvalBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
-prettyFrame FExec                    = "exec _"
-prettyFrame (FExecBind Nothing t _)  = "_ ; " ++ prettyString t
-prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
+prettyFrame (FSnd t _)           = "(_, " ++ prettyString t ++ ")"
+prettyFrame (FFst v)             = "(" ++ from (prettyValue v) ++ ", _)"
+prettyFrame (FArg t _)           = "_ " ++ prettyString t
+prettyFrame (FApp v)             = prettyString (valueToTerm v) ++ " _"
+prettyFrame (FLet x t _)         = "let " ++ from x ++ " = _ in " ++ prettyString t
+prettyFrame (FTry t _)           = "try _ (" ++ prettyString t ++ ")"
+prettyFrame (FDef x)             = "def " ++ from x ++ " = _"
+prettyFrame (FUnionEnv _)        = "_ ∪ <Env>"
+prettyFrame (FLoadEnv _)         = "loadEnv"
+prettyFrame FExec                = "exec _"
+prettyFrame (FBind Nothing t _)  = "_ ; " ++ prettyString t
+prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t

@@ -77,10 +77,10 @@ data Value where
   --   commands.
   VResult :: Value -> Env -> Value
 
-  -- | A bind where the first component has been reduced to a value,
-  --   /i.e./ @v ; c@ or @x <- v; c@.  We also store an 'Env' in which
-  --   to interpret the second component of the bind.
-  VBind   :: Value -> Maybe Var -> Term -> Env -> Value
+  -- | An unevaluated bind expression, waiting to be executed, of the
+  --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
+  --   in which to interpret the commands.
+  VBind   :: Maybe Var -> Term -> Term -> Env -> Value
 
   -- | A delayed term, along with its environment. If a term would
   --   otherwise be evaluated but we don't want it to be (/e.g./ as in
@@ -113,7 +113,7 @@ valueToTerm (VClo x t e)     =
 valueToTerm (VCApp c vs)     = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VDef x t _)     = TDef x Nothing t
 valueToTerm (VResult v _)    = valueToTerm v
-valueToTerm (VBind v mx t _) = TBind mx (valueToTerm v) t
+valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _)     = TDelay t
 
 -- | An environment is a mapping from variable names to values.
