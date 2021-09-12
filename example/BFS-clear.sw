@@ -14,11 +14,7 @@ def gotoX : int -> cmd () = \tgt.
     (if (cur < tgt)
        {turn east}
        {turn west};
-     move;
-     new <- getX;
-     if (new == cur)
-       {turn south; move}
-       {};
+     try move {turn south; move};
      gotoX tgt
     )
 end;
@@ -29,23 +25,21 @@ def gotoY : int -> cmd () = \tgt.
     (if (cur < tgt)
        {turn north}
        {turn south};
-     move;
-     new <- getY;
-     if (new == cur)
-       {turn east; move}
-       {};
+     try move {turn east; move};
      gotoY tgt
     )
 end;
 def goto : int -> int -> cmd () = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
 def spawnfwd : cmd () -> cmd () = \c.
-   move;
-   b <- isHere "tree";
-   if b
-     { build "s" c; return () }
-     {};
-   turn back;
-   move
+   try {
+     move;
+     b <- isHere "tree";
+     if b
+       { build "s" c; return () }
+       {};
+     turn back;
+     move
+   } { turn back }
 end;
 def clear : cmd () =
   grab;
