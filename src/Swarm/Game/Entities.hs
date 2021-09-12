@@ -29,7 +29,10 @@ import           Swarm.TUI.Attr
 ------------------------------------------------------------
 
 entityCatalog :: Inventory
-entityCatalog = foldl' (flip insert) empty
+entityCatalog = foldl' (flip insert) empty entityList
+
+entityList :: [Entity]
+entityList =
   [ tree, branch, log, wood
   , pebbles, rock, mountain
   , flower, lambda
