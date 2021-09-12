@@ -333,17 +333,26 @@ stepCEK cek = case cek of
   Out v (FLoadEnv _ : k)                -> return $ Out v k
 
   -- Exception handling.
+
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
   Out v (FTry _ _ : k)                  -> return $ Out v k
-  -- If we are raising an exception up the continuation stack and come
-  -- to a Try frame, execute the associated catch block.
-  Up _ (FTry t e : k)                   -> return $ In t e (FExec : k)
-  -- Otherwise, keep popping from the continuation stack.
-  Up exn (_ : k)                        -> return $ Up exn k
+
   -- If an exception rises all the way to the top level without being
   -- handled, turn it into an error message via the 'say' command.
   Up  exn []                            -> return $ In (TApp (TConst Say) (TString (formatExn exn))) V.empty [FExec]
+
+  -- Fatal errors can't be caught; just throw away the continuation
+  -- stack.
+  Up exn@Fatal{} _                      -> return $ Up exn []
+
+  -- Otherwise, if we are raising an exception up the continuation
+  -- stack and come to a Try frame, execute the associated catch
+  -- block.
+  Up _ (FTry t e : k)                   -> return $ In t e (FExec : k)
+
+  -- Otherwise, keep popping from the continuation stack.
+  Up exn (_ : k)                        -> return $ Up exn k
 
   Out (VResult _ _) _ ->
     error $ "Panic! Bad machine state in stepRobot: no appropriate stack frame to catch a VResult: " ++ show cek
