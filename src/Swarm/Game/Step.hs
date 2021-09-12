@@ -143,13 +143,12 @@ Right a `isRightOr` _ = return a
 Left b `isRightOr` f  = throwError (f b)
 
 -- | Require that a robot has a given device installed, OR we are in
---   creative mode.  Run the first (failure) continuation if not, and
---   the second (success) continuation if so.
-require :: MonadState GameState m => Entity -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a
-require e fk sk = do
+--   creative mode.
+isInstalledOr :: MonadState GameState m => Entity -> Exn -> ExceptT Exn (StateT Robot m) ()
+isInstalledOr ent exn = do
   mode <- lift . lift $ use gameMode
   r <- get
-  if mode == Creative || r `hasInstalled` e then sk else fk
+  unless (mode == Creative || r `hasInstalled` ent) $ throwError exn
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -414,58 +413,57 @@ execConst Move _ k     = do
   orient <- use robotOrientation
   let nextLoc = loc ^+^ (orient ? zero)
   me <- entityAt nextLoc
-  require E.treads
-    (raise Move ["You need treads to move."])
-    do
-      -- Make sure nothing is in the way.
-      maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
-        cmdExn Move ["There is a", fromJust me ^. entityName, "in the way!"]
 
-      robotLocation .= nextLoc
-      flagRedraw
-      return $ Out VUnit k
+  -- Make sure the robot has treads installed.
+  E.treads `isInstalledOr` cmdExn Move ["You need treads to move."]
 
-execConst Grab _ k =
-  require E.grabber
-    (raise Grab ["You need a grabber device to grab things."])
-    do
-      loc <- use robotLocation
+  -- Make sure nothing is in the way.
+  maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
+    cmdExn Move ["There is a", fromJust me ^. entityName, "in the way!"]
 
-      -- Ensure there is an entity here.
-      e <- entityAt loc >>= (`isJustOr` cmdExn Grab ["There is nothing here to grab."])
+  robotLocation .= nextLoc
+  flagRedraw
+  return $ Out VUnit k
 
-      -- Ensure it can be picked up.
-      (e `hasProperty` Portable) `holdsOr`
-        cmdExn Grab ["The", e ^. entityName, "here can't be grabbed."]
+execConst Grab _ k = do
 
-      -- Remove the entity from the world.
-      updateEntityAt loc (const Nothing)
-      flagRedraw
+  E.grabber `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
 
-      when (e `hasProperty` Growable) $ do
+  -- Ensure there is an entity here.
+  loc <- use robotLocation
+  e <- entityAt loc >>= (`isJustOr` cmdExn Grab ["There is nothing here to grab."])
 
-        -- Grow a new entity from a seed.
-        let seedBot =
-              mkRobot "seed" loc (V2 0 0)
-                (initMachine (seedProgram (e ^. entityName)) V.empty)
-                []
-                & robotDisplay .~
-                  (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
-                & robotInventory .~ E.singleton e
-        _ <- lift . lift $ addRobot seedBot
-        return ()
+  -- Ensure it can be picked up.
+  (e `hasProperty` Portable) `holdsOr`
+    cmdExn Grab ["The", e ^. entityName, "here can't be grabbed."]
 
-      -- Add the picked up item to the robot's inventory
-      robotInventory %= insert e
-      return $ Out VUnit k
+  -- Remove the entity from the world.
+  updateEntityAt loc (const Nothing)
+  flagRedraw
+
+  when (e `hasProperty` Growable) $ do
+
+    -- Grow a new entity from a seed.
+    let seedBot =
+          mkRobot "seed" loc (V2 0 0)
+            (initMachine (seedProgram (e ^. entityName)) V.empty)
+            []
+            & robotDisplay .~
+              (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
+            & robotInventory .~ E.singleton e
+    _ <- lift . lift $ addRobot seedBot
+    return ()
+
+  -- Add the picked up item to the robot's inventory
+  robotInventory %= insert e
+  return $ Out VUnit k
 
 execConst Turn [VDir d] k = do
-  require E.treads
-    (raise Turn ["You need treads to turn."])
-    do
-      robotOrientation . _Just %= applyTurn d
-      flagRedraw
-      return $ Out VUnit k
+  E.treads `isInstalledOr` cmdExn Turn ["You need treads to turn."]
+
+  robotOrientation . _Just %= applyTurn d
+  flagRedraw
+  return $ Out VUnit k
 
 execConst Turn args k = badConst Turn args k
 
