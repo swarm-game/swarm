@@ -239,8 +239,12 @@ stepCEK cek = case cek of
     | not (isCmd c) &&
       arity c == length args + 1    -> evalConst c (reverse (v2 : args)) k
     | otherwise                     -> return $ Out (VCApp c (v2 : args)) k
-  Out _ (FApp _ : _)                ->
-    error $ "Panic! Bad machine state in stepRobot, FApp of non-function: " ++ show cek
+  Out _ (FApp _ : k) -> do
+    let msg = T.unlines
+          [ "Bad machine state in stepRobot: FApp of non-function"
+          , from (show cek)
+          ]
+    return $ Up (Fatal msg) k
 
   -- Evaluating let expressions is a little bit tricky. We start by
   -- focusing on the let-bound expression. But since it is allowed to
@@ -354,11 +358,19 @@ stepCEK cek = case cek of
   -- Otherwise, keep popping from the continuation stack.
   Up exn (_ : k)                        -> return $ Up exn k
 
-  Out (VResult _ _) _ ->
-    error $ "Panic! Bad machine state in stepRobot: no appropriate stack frame to catch a VResult: " ++ show cek
+  Out (VResult _ _) k -> do
+    let msg = T.unlines
+          [ "Bad machine state in stepRobot: no appropriate stack frame to catch a VResult"
+          , from (show cek)
+          ]
+    return $ Up (Fatal msg) k
 
-  Out _ (FExec : _) ->
-    error $ "Panic! Bad machine state in stepRobot: FExec frame with non-executable value: " ++ show cek
+  Out _ (FExec : k) -> do
+    let msg = T.unlines
+          [ "Bad machine state in stepRobot: FExec frame with non-executable value"
+          , from (show cek)
+          ]
+    return $ Up (Fatal msg) k
 
   -- Finally, if we're done evaluating and the continuation stack is
   -- empty, return the machine unchanged.
@@ -655,7 +667,7 @@ execConst Run args k = badConst Run args k
 badConst :: Monad m => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) a
 badConst c args k = throwError $ Fatal $
   T.unwords
-  [ "Panic! Bad application of execConst"
+  [ "Bad application of execConst"
   , from (show c)
   , from (show args)
   , from (show k)
