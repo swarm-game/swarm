@@ -14,12 +14,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Swarm.TUI.Attr where
 
 import           Brick
 import           Brick.Forms
 import           Brick.Widgets.List
 import qualified Graphics.Vty       as V
+
+import           Data.Yaml
+import           Witch              (from)
 
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap
@@ -74,3 +79,9 @@ baseAttr      = "baseAttr"
 deviceAttr    = "deviceAttr"
 highlightAttr = "highlightAttr"
 defAttr       = "defAttr"
+
+instance ToJSON AttrName where
+  toJSON = toJSON . head . attrNameComponents
+
+instance FromJSON AttrName where
+  parseJSON = withText "AttrName" (pure . attrName . from)

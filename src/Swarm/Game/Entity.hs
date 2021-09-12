@@ -17,12 +17,14 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RankNTypes         #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE TypeFamilies       #-}
 
 module Swarm.Game.Entity
   ( -- * Properties
@@ -66,8 +68,11 @@ import           GHC.Generics              (Generic)
 import           Linear
 import           Prelude                   hiding (lookup)
 
+import           Data.Yaml
+
 import           Swarm.Game.Display
 import           Swarm.Language.Capability
+import           Swarm.Language.Syntax     (toDirection)
 
 ------------------------------------------------------------
 -- Properties
@@ -77,7 +82,7 @@ data EntityProperty
   = Unwalkable     -- ^ Robots can't move onto a cell containing this entity.
   | Portable       -- ^ Robots can pick this up (via 'grab').
   | Growable       -- ^ Regrows from a seed after it is grabbed.
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, ToJSON, FromJSON)
 
 ------------------------------------------------------------
 -- Entity
@@ -175,6 +180,16 @@ instance Eq Entity where
 instance Ord Entity where
   compare = compare `on` _entityHash
 
+-- instance FromJSON Entity where
+--   parseJSON = withObject "Entity" $ \v -> Entity
+--     <$> pure 0
+--     <*> pure undefined
+--     <*> v .: "name"
+--     <*> v .: "description"
+--     <*> pure (Just east)
+--     <*> pure [Portable]
+--     <*>
+
 -- | Recompute an entity's hash value.
 rehashEntity :: Entity -> Entity
 rehashEntity e = e { _entityHash = hash e }
@@ -255,7 +270,7 @@ entityInventory = hashedLens _entityInventory (\e x -> e { _entityInventory = x 
 
 -- | Display an entity as a single character.
 displayEntity :: Entity -> Widget n
-displayEntity e = displayWidget (e ^. entityOrientation) (e ^. entityDisplay)
+displayEntity e = displayWidget ((e ^. entityOrientation) >>= toDirection) (e ^. entityDisplay)
 
 ------------------------------------------------------------
 -- Inventory

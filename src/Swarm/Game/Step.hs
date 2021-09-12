@@ -583,10 +583,10 @@ execConst Appear [VString s] k = do
 
     [c,nc,ec,sc,wc] -> do
       robotDisplay . defaultChar .= c
-      robotDisplay . orientationMap . ix north .= nc
-      robotDisplay . orientationMap . ix east  .= ec
-      robotDisplay . orientationMap . ix south .= sc
-      robotDisplay . orientationMap . ix west  .= wc
+      robotDisplay . orientationMap . ix North .= nc
+      robotDisplay . orientationMap . ix East  .= ec
+      robotDisplay . orientationMap . ix South .= sc
+      robotDisplay . orientationMap . ix West  .= wc
       return $ Out VUnit k
 
     _other -> raise Appear [quote s, "is not a valid appearance string."]

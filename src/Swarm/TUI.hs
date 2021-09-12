@@ -45,7 +45,8 @@ import           Swarm.Game.Value            (Value (VUnit), prettyValue)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
-import           Swarm.Language.Syntax       (east, north, south, west)
+import           Swarm.Language.Syntax       (east, north, south, toDirection,
+                                              west)
 import           Swarm.Language.Types
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Panel
@@ -210,8 +211,8 @@ drawWorld g
       = M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
       . M.elems $ g ^. robotMap
     drawLoc (row,col) = case M.lookup (V2 col (-row)) robotsByLoc of
-      Just r  -> withAttr (r ^. robotDisplay . displayAttr)
-                 $ str [lookupDisplay (r ^. robotOrientation) (r ^. robotDisplay)]
+      Just r  -> withAttr (r ^. robotDisplay . displayAttr) $
+        str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
       Nothing -> drawCell (row,col) (g ^. world)
 
 drawCell :: W.Worldly w Int Entity => (Int, Int) -> w -> Widget Name

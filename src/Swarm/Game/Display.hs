@@ -44,7 +44,8 @@ import           Data.Hashable
 import           Data.Map              (Map)
 import qualified Data.Map              as M
 import           GHC.Generics          (Generic)
-import           Linear
+
+import           Data.Yaml
 
 import           Swarm.Language.Syntax
 import           Swarm.TUI.Attr
@@ -63,7 +64,7 @@ data Display = Display
     --   optionally associates different display characters with
     --   different orientations.  If an orientation is not in the map,
     --   the '_defaultChar' will be used.
-  , _orientationMap  :: Map (V2 Int) Char
+  , _orientationMap  :: Map Direction Char
 
     -- | The attribute to use for display.
   , _displayAttr     :: AttrName
@@ -72,7 +73,7 @@ data Display = Display
     --   on top of lower.
   , _displayPriority :: Priority
   }
-  deriving (Eq, Ord, Show, Generic, Hashable)
+  deriving (Eq, Ord, Show, Generic, Hashable, FromJSON, ToJSON)
 
 -- Some orphan instances we need to be able to derive a Hashable
 -- instance for Display
@@ -84,13 +85,13 @@ makeLenses ''Display
 
 -- | Look up the character that should be used for a display, possibly
 --   given an orientation as input.
-lookupDisplay :: Maybe (V2 Int) -> Display -> Char
+lookupDisplay :: Maybe Direction -> Display -> Char
 lookupDisplay Nothing disp  = disp ^. defaultChar
 lookupDisplay (Just v) disp = M.lookup v (disp ^. orientationMap) ? (disp ^. defaultChar)
 
 -- | Given the (optional) orientation of an entity and its display,
 --   return a widget showing the entity.
-displayWidget :: Maybe (V2 Int) -> Display -> Widget n
+displayWidget :: Maybe Direction -> Display -> Widget n
 displayWidget orient disp = withAttr (disp ^. displayAttr) $ str [lookupDisplay orient disp]
 
 -- | The default way to display some terrain using the given character
@@ -117,10 +118,10 @@ defaultRobotDisplay :: Display
 defaultRobotDisplay = Display
   { _defaultChar     = '■'
   , _orientationMap  = M.fromList
-      [ (east,  '▶')
-      , (west,  '◀')
-      , (south, '▼')
-      , (north, '▲')
+      [ (East,  '▶')
+      , (West,  '◀')
+      , (South, '▼')
+      , (North, '▲')
       ]
   , _displayAttr     = robotAttr
   , _displayPriority = 10

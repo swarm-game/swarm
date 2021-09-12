@@ -10,6 +10,8 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE PatternSynonyms      #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE StandaloneDeriving   #-}
@@ -18,7 +20,7 @@
 module Swarm.Language.Syntax
   ( -- * Constants
 
-    Direction(..), applyTurn, north, south, east, west
+    Direction(..), applyTurn, toDirection, fromDirection, north, south, east, west
   , Const(..), CmpConst(..), ArithConst(..)
 
   , arity, isCmd
@@ -37,6 +39,10 @@ import qualified Data.Set             as S
 import           Data.Text
 import           Linear
 
+import           Data.Aeson.Types
+import           Data.Hashable        (Hashable)
+import           GHC.Generics         (Generic)
+
 import           Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -46,7 +52,13 @@ import           Swarm.Language.Types
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
 data Direction = Lft | Rgt | Back | Fwd | North | South | East | West
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON, FromJSON)
+
+instance ToJSONKey Direction where
+  toJSONKey = genericToJSONKey defaultJSONKeyOptions
+
+instance FromJSONKey Direction where
+  fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
 
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given vector or by turning to an absolute
@@ -60,6 +72,22 @@ applyTurn North _       = north
 applyTurn South _       = south
 applyTurn East _        = east
 applyTurn West _        = west
+
+toDirection :: V2 Int -> Maybe Direction
+toDirection v    = case v of
+  V2 0 1    -> Just North
+  V2 0 (-1) -> Just South
+  V2 1 0    -> Just East
+  V2 (-1) 0 -> Just West
+  _         -> Nothing
+
+fromDirection :: Direction -> V2 Int
+fromDirection d = case d of
+  North -> north
+  South -> south
+  East  -> east
+  West  -> west
+  _     -> V2 0 0
 
 -- | The cardinal directions.
 north, south, east, west :: V2 Int
