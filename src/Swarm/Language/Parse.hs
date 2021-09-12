@@ -60,7 +60,7 @@ reservedWords =
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
   , "let", "def", "end", "in", "if", "true", "false", "not", "fst", "snd"
-  , "forall"
+  , "forall", "try", "raise"
   ]
 
 -- | Skip spaces and comments.
@@ -177,6 +177,8 @@ parseConst =
   <|> Not     <$ reserved "not"
   <|> Fst     <$ reserved "fst"
   <|> Snd     <$ reserved "snd"
+  <|> Try     <$ reserved "try"
+  <|> Raise   <$ reserved "raise"
 
 parseTermAtom :: Parser Term
 parseTermAtom =
@@ -233,7 +235,7 @@ parseExpr = makeExprParser parseTermAtom table
     table =
       [ [ InfixL (TApp <$ string "") ]
       , [ InfixR (mkOp (Arith Exp) <$ symbol "^") ]
-      , [ Prefix (TApp (TConst (Arith Neg)) <$ symbol "-") ]
+      , [ Prefix (TApp (TConst Neg) <$ symbol "-") ]
       , [ InfixL (mkOp (Arith Mul) <$ symbol "*")
         , InfixL (mkOp (Arith Div) <$ symbol "/")
         ]

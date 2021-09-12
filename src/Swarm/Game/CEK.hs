@@ -51,8 +51,11 @@
 {-# LANGUAGE TypeOperators   #-}
 
 module Swarm.Game.CEK
-  ( -- * Frames and continuations
-    Frame(..), Cont
+  ( -- * Exceptions
+    Exn(..)
+
+    -- * Frames and continuations
+  , Frame(..), Cont
 
     -- * CEK machine states
 
@@ -74,6 +77,7 @@ import qualified Data.Map              as M
 import           Data.Text             (Text)
 import           Witch                 (from)
 
+import           Swarm.Game.Exception
 import           Swarm.Game.Value
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
@@ -117,6 +121,10 @@ data Frame
     -- is evaluate @t2@ in the environment @e@ extended with a binding
     -- for @x@.
 
+  | FTry Term Env
+    -- ^ We are executing inside a 'Try' block.  If an exception is
+    --   raised, we will evaluate the stored term (the "catch" block).
+
   | FDef Var
     -- ^ We were evaluating the body of a definition.  The next thing
     --   we should do is return an environment binding the variable to
@@ -133,22 +141,15 @@ data Frame
     --   'robotEnv', along with adding this accompanying 'Ctx' to the
     --   robot's 'robotCtx'.
 
-  | FEvalBind (Maybe Text) Term Env
-    -- ^ If the top frame is of the form @FEvalBind mx c2 e@, we were
-    -- /evaluating/ a term @c1@ from a bind expression @x <- c1 ; c2@
-    -- (or without the @x@, if @mx@ is @Nothing@); once finished, we
-    -- should simply package it up into a value using @VBind@.
-
   | FExec
     -- ^ An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
 
-  | FExecBind (Maybe Text) Term Env
-    -- ^ This looks very similar to 'FEvalBind', but it means we are
-    -- in the process of /executing/ the first component of a bind;
-    -- once done, we should also execute the second component in the
-    -- given environment (extended by binding the variable, if there
-    -- is one, to the output of the first command).
+  | FBind (Maybe Text) Term Env
+    -- ^ We are in the process of executing the first component of a
+    --   bind; once done, we should also execute the second component
+    --   in the given environment (extended by binding the variable,
+    --   if there is one, to the output of the first command).
 
   deriving (Eq, Show)
 
@@ -178,6 +179,12 @@ data CEK
     --   with variables to evaluate at the moment, and we maintain the
     --   invariant that any unevaluated terms buried inside a 'Value'
     --   or 'Cont' must carry along their environment with them.
+
+  | Up Exn Cont
+    -- ^ An exception has been raised.  Keep unwinding the
+    --   continuation stack (until finding an enclosing 'try' in the
+    --   case of a command failure or a user-generated exception, or
+    --   until the stack is empty in the case of a fatal exception).
   deriving (Eq, Show)
 
 -- | Is the CEK machine in a final (finished) state?  If so, extract
@@ -215,21 +222,28 @@ prettyCEK (In c _ k) = unlines
 prettyCEK (Out v k) = unlines
   [ "◀ " ++ from (prettyValue v)
   , "  " ++ prettyCont k ]
+prettyCEK (Up e k) = unlines
+  [ "! " ++ prettyExn e
+  , "  " ++ prettyCont k ]
+
+prettyExn :: Exn -> String
+prettyExn (Fatal txt)       = "Fatal: " ++ from txt
+prettyExn (CmdFailed c txt) = show c ++ ": " ++ from txt
+prettyExn (User txt)        = "Exception: " ++ from txt
 
 prettyCont :: Cont -> String
 prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
 
 prettyFrame :: Frame -> String
-prettyFrame (FSnd t _)               = "(_, " ++ prettyString t ++ ")"
-prettyFrame (FFst v)                 = "(" ++ from (prettyValue v) ++ ", _)"
-prettyFrame (FArg t _)               = "_ " ++ prettyString t
-prettyFrame (FApp v)                 = prettyString (valueToTerm v) ++ " _"
-prettyFrame (FLet x t _)             = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FDef x)                 = "def " ++ from x ++ " = _"
-prettyFrame (FUnionEnv _)            = "_ ∪ <Env>"
-prettyFrame (FLoadEnv _)             = "loadEnv"
-prettyFrame (FEvalBind Nothing t _)  = "_ ; " ++ prettyString t
-prettyFrame (FEvalBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
-prettyFrame FExec                    = "exec _"
-prettyFrame (FExecBind Nothing t _)  = "_ ; " ++ prettyString t
-prettyFrame (FExecBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
+prettyFrame (FSnd t _)           = "(_, " ++ prettyString t ++ ")"
+prettyFrame (FFst v)             = "(" ++ from (prettyValue v) ++ ", _)"
+prettyFrame (FArg t _)           = "_ " ++ prettyString t
+prettyFrame (FApp v)             = prettyString (valueToTerm v) ++ " _"
+prettyFrame (FLet x t _)         = "let " ++ from x ++ " = _ in " ++ prettyString t
+prettyFrame (FTry t _)           = "try _ (" ++ prettyString t ++ ")"
+prettyFrame (FDef x)             = "def " ++ from x ++ " = _"
+prettyFrame (FUnionEnv _)        = "_ ∪ <Env>"
+prettyFrame (FLoadEnv _)         = "loadEnv"
+prettyFrame FExec                = "exec _"
+prettyFrame (FBind Nothing t _)  = "_ ; " ++ prettyString t
+prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t

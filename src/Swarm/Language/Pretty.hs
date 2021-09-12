@@ -13,10 +13,10 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE PatternSynonyms      #-}
+{-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns         #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Swarm.Language.Pretty where
 
@@ -33,11 +33,11 @@ import qualified Prettyprinter.Render.Text   as RT
 import           Control.Unification
 import           Control.Unification.IntVar
 
+import qualified Data.Text                   as T
 import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
-import qualified Data.Text as T
-import Witch
+import           Witch
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -112,7 +112,8 @@ instance PrettyPrec Const where
   prettyPrec _ Noop      = "{}"
   prettyPrec p (Cmp c)   = prettyPrec p c
   prettyPrec p (Arith c) = prettyPrec p c
-  prettyPrec _ c         = pretty $ T.toTitle (from (show c))
+  prettyPrec _ Neg       = "-"
+  prettyPrec _ c         = pretty $ T.toLower (from (show c))
 
 instance PrettyPrec CmpConst where
   prettyPrec _ CmpEq  = "=="
@@ -123,7 +124,6 @@ instance PrettyPrec CmpConst where
   prettyPrec _ CmpGeq = ">="
 
 instance PrettyPrec ArithConst where
-  prettyPrec _ Neg = "-"
   prettyPrec _ Add = "+"
   prettyPrec _ Sub = "-"
   prettyPrec _ Mul = "*"

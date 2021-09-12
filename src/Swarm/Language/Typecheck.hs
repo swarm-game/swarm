@@ -254,7 +254,7 @@ inferModule t = trivMod <$> infer t
 infer :: Term -> Infer UType
 
 infer   TUnit                     = return UTyUnit
-infer   (TConst c)                = inferConst c
+infer   (TConst c)                = instantiate $ inferConst c
 infer   (TDir _)                  = return UTyDir
 infer   (TInt _)                  = return UTyInt
 infer   (TString _)               = return UTyString
@@ -346,41 +346,43 @@ decomposePairTy _ ty = do
 
 -- | The types of some constants can be inferred.  Others (e.g. those
 --   that are overloaded or polymorphic) must be checked.
-inferConst :: Const -> Infer UType
-inferConst Wait        = return $ UTyCmd UTyUnit
-inferConst Noop        = return $ UTyCmd UTyUnit
-inferConst Halt        = return $ UTyCmd UTyUnit
+inferConst :: Const -> UPolytype
+inferConst Wait        = Forall [] $ UTyCmd UTyUnit
+inferConst Noop        = Forall [] $ UTyCmd UTyUnit
+inferConst Halt        = Forall [] $ UTyCmd UTyUnit
 
-inferConst Move        = return $ UTyCmd UTyUnit
-inferConst Turn        = return $ UTyFun UTyDir (UTyCmd UTyUnit)
-inferConst Grab        = return $ UTyCmd UTyUnit
-inferConst Place       = return $ UTyFun UTyString (UTyCmd UTyUnit)
-inferConst Give        = return $ UTyFun UTyString (UTyFun UTyString (UTyCmd UTyUnit))
-inferConst Craft       = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Move        = Forall [] $ UTyCmd UTyUnit
+inferConst Turn        = Forall [] $ UTyFun UTyDir (UTyCmd UTyUnit)
+inferConst Grab        = Forall [] $ UTyCmd UTyUnit
+inferConst Place       = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Give        = Forall [] $ UTyFun UTyString (UTyFun UTyString (UTyCmd UTyUnit))
+inferConst Craft       = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
 inferConst Build       =
-  instantiate $ Forall ["a"] (UTyFun UTyString (UTyFun (UTyCmd "a") (UTyCmd UTyString)))
-inferConst Say         = return $ UTyFun UTyString (UTyCmd UTyUnit)
-inferConst View        = return $ UTyFun UTyString (UTyCmd UTyUnit)
-inferConst Appear      = return $ UTyFun UTyString (UTyCmd UTyUnit)
+  Forall ["a"] $ UTyFun UTyString (UTyFun (UTyCmd "a") (UTyCmd UTyString))
+inferConst Say         = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst View        = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Appear      = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
 
-inferConst GetX        = return $ UTyCmd UTyInt
-inferConst GetY        = return $ UTyCmd UTyInt
-inferConst Ishere      = return $ UTyFun UTyString (UTyCmd UTyBool)
-inferConst Random      = return $ UTyFun UTyInt (UTyCmd UTyInt)
+inferConst GetX        = Forall [] $ UTyCmd UTyInt
+inferConst GetY        = Forall [] $ UTyCmd UTyInt
+inferConst Ishere      = Forall [] $ UTyFun UTyString (UTyCmd UTyBool)
+inferConst Random      = Forall [] $ UTyFun UTyInt (UTyCmd UTyInt)
 
-inferConst Run         = return $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Run         = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
 
-inferConst Not         = return $ UTyFun UTyBool UTyBool
-inferConst (Cmp _)     = instantiate $ Forall ["a"] (UTyFun "a" (UTyFun "a" UTyBool))
-inferConst (Arith Neg) = return $ UTyFun UTyInt UTyInt
-inferConst (Arith _)   = return $ UTyFun UTyInt (UTyFun UTyInt UTyInt)
+inferConst Not         = Forall [] $ UTyFun UTyBool UTyBool
+inferConst (Cmp _)     = Forall ["a"] (UTyFun "a" (UTyFun "a" UTyBool))
+inferConst Neg         = Forall [] $ UTyFun UTyInt UTyInt
+inferConst (Arith _)   = Forall [] $ UTyFun UTyInt (UTyFun UTyInt UTyInt)
 
-inferConst If          = instantiate $
-  Forall ["a"] (UTyFun UTyBool (UTyFun "a" (UTyFun "a" "a")))
-inferConst Fst         = instantiate $ Forall ["a","b"] (UTyFun (UTyProd "a" "b") "a")
-inferConst Snd         = instantiate $ Forall ["a","b"] (UTyFun (UTyProd "a" "b") "b")
-inferConst Force       = instantiate $ Forall ["a"] "a"
-inferConst Return      = instantiate $ Forall ["a"] (UTyFun "a" (UTyCmd "a"))
+inferConst If          = Forall ["a"] $ UTyFun UTyBool (UTyFun "a" (UTyFun "a" "a"))
+inferConst Fst         = Forall ["a","b"] $ UTyFun (UTyProd "a" "b") "a"
+inferConst Snd         = Forall ["a","b"] $ UTyFun (UTyProd "a" "b") "b"
+inferConst Force       = Forall ["a"] $ UTyFun "a" "a"
+inferConst Return      = Forall ["a"] $ UTyFun "a" (UTyCmd "a")
+inferConst Try         = Forall ["a"] $ UTyFun (UTyCmd "a") (UTyFun (UTyCmd "a") (UTyCmd "a"))
+inferConst Raise       = Forall ["a"] $ UTyFun UTyString (UTyCmd "a")
+
 -- | @check t ty@ checks that @t@ has type @ty@.
 check :: Term -> UType -> Infer ()
 check t ty = do

@@ -21,7 +21,7 @@ module Swarm.Game.Robot
     -- ** Lenses
   , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
   , installedDevices
-  , robotCtx, robotEnv, machine, tickSteps
+  , robotCtx, robotEnv, machine, selfDestruct, tickSteps
 
     -- ** Create
 
@@ -67,6 +67,9 @@ data Robot = Robot
 
   , _machine          :: CEK
     -- ^ The current state of the robot's CEK machine.
+
+  , _selfDestruct     :: Bool
+    -- ^ Whether the robot wants to self-destruct.
 
   , _tickSteps        :: Int
     -- ^ The need for 'tickSteps' is a bit technical, and I hope I can
@@ -144,6 +147,7 @@ mkRobot name l d m devs = Robot
   , _robotCtx      = M.empty
   , _robotEnv      = V.empty
   , _machine       = m
+  , _selfDestruct  = False
   , _tickSteps     = 0
   }
 
@@ -160,6 +164,7 @@ baseRobot = Robot
   , _robotCtx      = M.empty
   , _robotEnv      = V.empty
   , _machine       = idleMachine
+  , _selfDestruct  = False
   , _tickSteps     = 0
   }
 
