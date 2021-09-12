@@ -10,9 +10,10 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveAnyClass  #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
   -- Orphan Hashable instances needed to derive Hashable Display
@@ -39,13 +40,13 @@ module Swarm.Game.Display
   ) where
 
 import           Brick                 (AttrName, Widget, str, withAttr)
-import           Control.Lens          hiding (Const, from)
+import           Control.Lens          hiding (Const, from, (.=))
 import           Data.Hashable
 import           Data.Map              (Map)
 import qualified Data.Map              as M
-import           GHC.Generics          (Generic)
 
 import           Data.Yaml
+import           GHC.Generics          (Generic)
 
 import           Swarm.Language.Syntax
 import           Swarm.TUI.Attr
@@ -54,6 +55,12 @@ import           Swarm.Util
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
 type Priority = Int
+
+-- Some orphan instances we need to be able to derive a Hashable
+-- instance for Display
+instance (Hashable k, Hashable v) => Hashable (Map k v) where
+  hashWithSalt = hashUsing M.assocs
+instance Hashable AttrName
 
 -- | A record explaining how to display an entity in the TUI.
 data Display = Display
@@ -73,15 +80,26 @@ data Display = Display
     --   on top of lower.
   , _displayPriority :: Priority
   }
-  deriving (Eq, Ord, Show, Generic, Hashable, FromJSON, ToJSON)
-
--- Some orphan instances we need to be able to derive a Hashable
--- instance for Display
-instance (Hashable k, Hashable v) => Hashable (Map k v) where
-  hashWithSalt = hashUsing M.assocs
-instance Hashable AttrName
+  deriving (Eq, Ord, Show, Generic, Hashable)
 
 makeLenses ''Display
+
+instance FromJSON Display where
+  parseJSON = withObject "Display" $ \v -> Display
+    <$> v .:  "char"
+    <*> v .:? "orientationMap" .!= M.empty
+    <*> v .:? "attr"           .!= entityAttr
+    <*> v .:? "priority"       .!= 1
+
+instance ToJSON Display where
+  toJSON d = object $
+    [ "char"           .= (d ^. defaultChar)
+    , "attr"           .= (d ^. displayAttr)
+    , "priority"       .= (d ^. displayPriority)
+    ]
+    ++
+    [ "orientationMap" .= (d ^. orientationMap) | not (M.null (d ^. orientationMap)) ]
+
 
 -- | Look up the character that should be used for a display, possibly
 --   given an orientation as input.

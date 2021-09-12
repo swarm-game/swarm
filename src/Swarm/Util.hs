@@ -24,6 +24,8 @@ module Swarm.Util where
 import           Data.Maybe            (fromMaybe)
 import           Data.Text             (Text)
 import qualified Data.Text             as T
+import           Data.Yaml
+import           Linear                (V2)
 import qualified NLP.Minimorph.English as MM
 import           NLP.Minimorph.Util    ((<+>))
 import           System.Directory      (doesFileExist)
@@ -94,3 +96,9 @@ number _ = plural
 -- | Surround some text in double quotes.
 quote :: Text -> Text
 quote t = T.concat ["\"", t, "\""]
+
+------------------------------------------------------------
+-- Some orphan instances
+
+deriving instance ToJSON (V2 Int)
+deriving instance FromJSON (V2 Int)

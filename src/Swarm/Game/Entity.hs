@@ -53,6 +53,7 @@ where
 import           Brick                     (Widget)
 import           Control.Lens              (Getter, Lens', lens, to, (^.))
 import           Data.Bifunctor            (second)
+import           Data.Char                 (toLower)
 import           Data.Function             (on)
 import           Data.Hashable
 import           Data.IntMap               (IntMap)
@@ -62,11 +63,14 @@ import qualified Data.IntSet               as IS
 import           Data.List                 (foldl')
 import           Data.Map                  (Map)
 import qualified Data.Map                  as M
+import           Data.Maybe                (isJust)
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           GHC.Generics              (Generic)
 import           Linear
 import           Prelude                   hiding (lookup)
+import           Text.Read                 (readMaybe)
+import           Witch
 
 import           Data.Yaml
 
@@ -82,7 +86,18 @@ data EntityProperty
   = Unwalkable     -- ^ Robots can't move onto a cell containing this entity.
   | Portable       -- ^ Robots can pick this up (via 'grab').
   | Growable       -- ^ Regrows from a seed after it is grabbed.
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
+
+instance ToJSON EntityProperty where
+  toJSON = String . from . map toLower . show
+
+instance FromJSON EntityProperty where
+  parseJSON = withText "EntityProperty" tryRead
+    where
+      tryRead :: Text -> Parser EntityProperty
+      tryRead t = case readMaybe . from . T.toTitle $ t of
+        Just c  -> return c
+        Nothing -> fail $ "Unknown entity property " ++ from t
 
 ------------------------------------------------------------
 -- Entity
@@ -180,15 +195,32 @@ instance Eq Entity where
 instance Ord Entity where
   compare = compare `on` _entityHash
 
--- instance FromJSON Entity where
---   parseJSON = withObject "Entity" $ \v -> Entity
---     <$> pure 0
---     <*> pure undefined
---     <*> v .: "name"
---     <*> v .: "description"
---     <*> pure (Just east)
---     <*> pure [Portable]
---     <*>
+instance FromJSON Entity where
+  parseJSON = withObject "Entity" $ \v -> rehashEntity <$>
+    (Entity
+    <$> pure 0
+    <*> v .: "display"
+    <*> v .: "name"
+    <*> v .: "description"
+    <*> v .:? "orientation"
+    <*> v .:? "properties"   .!= []
+    <*> v .:? "capabilities" .!= []
+    <*> pure empty
+    )
+
+instance ToJSON Entity where
+  toJSON e = object $
+    [ "display"      .= (e ^. entityDisplay)
+    , "name"         .= (e ^. entityName)
+    , "description"  .= (e ^. entityDescription)
+    ]
+    ++
+    [ "orientation"  .= (e ^. entityOrientation) | isJust (e ^. entityOrientation) ]
+    ++
+    [ "properties"   .= (e ^. entityProperties) | not . null $ e ^. entityProperties ]
+    ++
+    [ "capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities ]
+
 
 -- | Recompute an entity's hash value.
 rehashEntity :: Entity -> Entity
