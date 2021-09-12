@@ -25,7 +25,7 @@ import           Control.Lens            hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
 import qualified Data.Map                as M
-import           Data.Maybe              (fromJust, listToMaybe)
+import           Data.Maybe              (fromJust, isNothing, listToMaybe)
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import           Linear
@@ -482,7 +482,8 @@ execConst Place [VString s] k = do
   loc <- use robotLocation
 
   -- Make sure there's nothing already here
-  _ <- entityAt loc >>= (`isJustOr` cmdExn Place ["There is already an entity here."])
+  nothingHere <- isNothing <$> entityAt loc
+  nothingHere `holdsOr` cmdExn Place ["There is already an entity here."]
 
   -- Make sure the robot has the thing in its inventory
   e <- listToMaybe (lookupByName s inv) `isJustOr`
