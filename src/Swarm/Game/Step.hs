@@ -25,7 +25,7 @@ import           Control.Lens            hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
 import qualified Data.Map                as M
-import           Data.Maybe              (listToMaybe)
+import           Data.Maybe              (fromJust, listToMaybe)
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import           Linear
@@ -124,6 +124,40 @@ updateEntityAt
   :: MonadState GameState m
   => V2 Int -> (Maybe Entity -> Maybe Entity) -> ExceptT Exn (StateT Robot m) ()
 updateEntityAt (V2 x y) upd = lift . lift $ world %= W.update (-y,x) upd
+
+-- | Get the robot with a given name (if any).
+robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)
+robotNamed nm = lift . lift $ use (robotMap . at nm)
+
+-- | Require that a Boolean value is @True@, or throw an exception.
+holdsOr :: MonadError e m => Bool -> e -> m ()
+holdsOr b e = unless b $ throwError e
+
+-- | Require that a 'Maybe' value is 'Just', or throw an exception.
+isJustOr :: MonadError e m => Maybe a -> e -> m a
+Just a  `isJustOr` _ = return a
+Nothing `isJustOr` e = throwError e
+
+isRightOr :: MonadError e m => Either b a -> (b -> e) -> m a
+Right a `isRightOr` _ = return a
+Left b `isRightOr` f  = throwError (f b)
+
+-- | Require that a robot has a given device installed, OR we are in
+--   creative mode.  Run the first (failure) continuation if not, and
+--   the second (success) continuation if so.
+require :: MonadState GameState m => Entity -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a
+require e fk sk = do
+  mode <- lift . lift $ use gameMode
+  r <- get
+  if mode == Creative || r `hasInstalled` e then sk else fk
+
+-- | Create an exception about a command failing.
+cmdExn :: Const -> [Text] -> Exn
+cmdExn c parts = CmdFailed c (T.unwords parts)
+
+-- | Raise an exception about a command failing with a formatted error message.
+raise :: MonadState GameState m => Const -> [Text] -> ExceptT Exn (StateT Robot m) a
+raise c parts = throwError (cmdExn c parts)
 
 ------------------------------------------------------------
 -- Stepping robots
@@ -326,19 +360,6 @@ stepCEK cek = case cek of
 takesTick :: Const -> Bool
 takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere])
 
--- | Raise an exception with a formatted error message.
-raise :: MonadState GameState m => Const -> [Text] -> ExceptT Exn (StateT Robot m) a
-raise c parts = throwError (CmdFailed c (T.unwords parts))
-
--- | Require that a robot has a given device installed, OR we are in
---   creative mode.  Run the first (failure) continuation if not, and
---   the second (success) continuation if so.
-require :: MonadState GameState m => Entity -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a -> ExceptT Exn (StateT Robot m) a
-require e fk sk = do
-  mode <- lift . lift $ use gameMode
-  r <- get
-  if mode == Creative || r `hasInstalled` e then sk else fk
-
 -- | At the level of the CEK machine there's no particular difference
 --   between *evaluating* a function constant and *executing* a
 --   command constant, but it somehow feels better to have two
@@ -375,9 +396,6 @@ seedProgram thing = prog
       , "}"
       ]
 
--- XXX rewrite nested pattern-matching code nicely using ideas from
--- https://www.haskellforall.com/2021/05/the-trick-to-avoid-deeply-nested-error.html
-
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
@@ -398,59 +416,48 @@ execConst Move _ k     = do
   me <- entityAt nextLoc
   require E.treads
     (raise Move ["You need treads to move."])
-    case maybe True (not . (`hasProperty` Unwalkable)) me of
+    do
+      -- Make sure nothing is in the way.
+      maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
+        cmdExn Move ["There is a", fromJust me ^. entityName, "in the way!"]
 
-      -- There's something there, and we can't walk on it.
-      -- It seems like it would be super annoying for this to generate
-      -- an error message or throw an exception!  We just consider this
-      -- normal operation of the Move instruction when a robot is blocked.
-      False -> return $ Out VUnit k
-
-      -- Otherwise, move forward.
-      True -> do
-        robotLocation .= nextLoc
-        flagRedraw
-        return $ Out VUnit k
+      robotLocation .= nextLoc
+      flagRedraw
+      return $ Out VUnit k
 
 execConst Grab _ k =
   require E.grabber
     (raise Grab ["You need a grabber device to grab things."])
     do
       loc <- use robotLocation
-      me <- entityAt loc
-      case me of
 
-        -- No entity here.
-        Nothing -> raise Grab ["There is nothing here to grab."]
+      -- Ensure there is an entity here.
+      e <- entityAt loc >>= (`isJustOr` cmdExn Grab ["There is nothing here to grab."])
 
-        -- There is an entity here...
-        Just e -> case e `hasProperty` Portable of
+      -- Ensure it can be picked up.
+      (e `hasProperty` Portable) `holdsOr`
+        cmdExn Grab ["The", e ^. entityName, "here can't be grabbed."]
 
-          -- ...but it can't be picked up.
-          False -> raise Grab ["The", e ^. entityName, "here can't be grabbed."]
+      -- Remove the entity from the world.
+      updateEntityAt loc (const Nothing)
+      flagRedraw
 
-          -- ...and it can be picked up.
-          True -> do
-            -- Remove the entity from the world.
-            updateEntityAt loc (const Nothing)
-            flagRedraw
+      when (e `hasProperty` Growable) $ do
 
-            when (e `hasProperty` Growable) $ do
+        -- Grow a new entity from a seed.
+        let seedBot =
+              mkRobot "seed" loc (V2 0 0)
+                (initMachine (seedProgram (e ^. entityName)) V.empty)
+                []
+                & robotDisplay .~
+                  (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
+                & robotInventory .~ E.singleton e
+        _ <- lift . lift $ addRobot seedBot
+        return ()
 
-              -- Grow a new entity from a seed.
-              let seedBot =
-                    mkRobot "seed" loc (V2 0 0)
-                      (initMachine (seedProgram (e ^. entityName)) V.empty)
-                      []
-                      & robotDisplay .~
-                        (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
-                      & robotInventory .~ E.singleton e
-              _ <- lift . lift $ addRobot seedBot
-              return ()
-
-            -- Add the picked up item to the robot's inventory
-            robotInventory %= insert e
-            return $ Out VUnit k
+      -- Add the picked up item to the robot's inventory
+      robotInventory %= insert e
+      return $ Out VUnit k
 
 execConst Turn [VDir d] k = do
   require E.treads
@@ -466,45 +473,56 @@ execConst Turn args k = badConst Turn args k
 execConst Place [VString s] k = do
   inv <- use robotInventory
   loc <- use robotLocation
-  me <- entityAt loc
-  case me of
-    Just _  -> raise Place ["There is already an entity here."]
-    Nothing -> case lookupByName s inv of
-      []    -> raise Place ["You don't have", indefinite s, "to place."]
-      (e:_) -> do
-        updateEntityAt loc (const (Just e))
-        robotInventory %= delete e
-        flagRedraw
-        return $ Out VUnit k
+
+  -- Make sure there's nothing already here
+  _ <- entityAt loc >>= (`isJustOr` cmdExn Place ["There is already an entity here."])
+
+  -- Make sure the robot has the thing in its inventory
+  e <- listToMaybe (lookupByName s inv) `isJustOr`
+    cmdExn Place ["You don't have", indefinite s, "to place."]
+
+  -- Place the entity and remove it from the inventory
+  updateEntityAt loc (const (Just e))
+  robotInventory %= delete e
+
+  flagRedraw
+  return $ Out VUnit k
+
 execConst Place args k = badConst Place args k
 
 -- XXX need a device to give --- but it should be available from the beginning
 execConst Give [VString otherName, VString itemName] k = do
-  r <- get
-  mother <- lift . lift $ use (robotMap . at otherName)
-  let mitem = listToMaybe . lookupByName itemName $ (r ^. robotInventory)
-  case (mother, mitem) of
-    (Just _, Just item) -> do
-      lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
-      robotInventory %= delete item
-      return $ Out VUnit k
-    (Nothing, _) -> raise Give ["There is no robot named", otherName, "here." ]
-    (_, Nothing) -> raise Give ["You don't have", indefinite itemName, "to give." ]
+
+  -- Make sure the other robot is here
+  _ <- robotNamed otherName >>=
+    (`isJustOr` cmdExn Give ["There is no robot named", otherName, "here." ])
+
+  -- Make sure we have the required item
+  inv <- use robotInventory
+  item <- (listToMaybe . lookupByName itemName $ inv) `isJustOr`
+    cmdExn Give ["You don't have", indefinite itemName, "to give." ]
+
+  -- Make the exchange
+  lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
+  robotInventory %= delete item
+  return $ Out VUnit k
 
 execConst Give args k = badConst Give args k
 
 -- XXX do we need a device to craft?
 execConst Craft [VString name] k = do
   inv <- use robotInventory
-  case listToMaybe $ lookupByName name E.entityCatalog of
-    Nothing -> raise Craft ["I've never heard of", indefiniteQ name, "."]
-    Just e  -> case recipeFor e of
-      Nothing -> raise Craft ["There is no known recipe for crafting", indefinite name, "."]
-      Just recipe -> case craft recipe inv of
-        Left missing -> raise Craft ["Missing ingredients:", prettyIngredientList missing]
-        Right inv'    -> do
-          robotInventory .= inv'
-          return $ Out VUnit k
+  e <- listToMaybe (lookupByName name E.entityCatalog) `isJustOr`
+    cmdExn Craft ["I've never heard of", indefiniteQ name, "."]
+
+  recipe <- recipeFor e `isJustOr`
+    cmdExn Craft ["There is no known recipe for crafting", indefinite name, "."]
+
+  inv' <-  craft recipe inv `isRightOr` \missing ->
+    cmdExn Craft ["Missing ingredients:", prettyIngredientList missing]
+
+  robotInventory .= inv'
+  return $ Out VUnit k
 
 execConst Craft args k = badConst Craft args k
 
@@ -528,10 +546,10 @@ execConst Say [VString s] k = do
 execConst Say args k = badConst Say args k
 
 execConst View [VString s] k = do
-  mr <- lift . lift $ use (robotMap . at s)
-  case mr of
-    Nothing -> raise View [ "There is no robot named ", s, " to view." ]
-    Just _  -> lift . lift $ viewCenterRule .= VCRobot s
+  _ <- robotNamed s >>=
+    (`isJustOr` cmdExn View [ "There is no robot named ", s, " to view." ])
+
+  lift . lift $ viewCenterRule .= VCRobot s
   return $ Out VUnit k
 execConst View args k = badConst View args k
 
@@ -558,7 +576,6 @@ execConst Appear args k = badConst Appear args k
 execConst Ishere [VString s] k = do
   loc <-use robotLocation
   me <- entityAt loc
-
   case me of
     Nothing -> return $ Out (VBool False) k
     Just e  -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
@@ -569,7 +586,7 @@ execConst Not args k = badConst Not args k
 
 execConst (Cmp c) [v1, v2] k =
   case evalCmp c v1 v2 of
-    Nothing -> return $ Out (VBool False) k  --- XXX raise an exception!
+    Nothing -> return $ Out (VBool False) k  --- XXX random result?
     Just b  -> return $ Out (VBool b) k
 execConst (Cmp c) args k     = badConst (Cmp c) args k
 
@@ -617,36 +634,24 @@ execConst Build args k = badConst Build args k
 
 execConst Run [VString fileName] k = do
   mf <- liftIO $ readFileMay (into fileName)
-  case mf of
-    Nothing -> raise Run ["File not found:", fileName]
-    Just f -> case processTerm (into @Text f) of
-      Left  err -> raise Run ["Error while processing", fileName, "\n", err]
-      Right t   -> return $ initMachine' t V.empty k
 
-      -- Note, adding FExec to the stack above in the TyCmd case (done
-      -- automatically by the initMachine function) is correct.  run
-      -- has the type run : String -> Cmd (), i.e. executing (run s)
-      -- for some string s causes it to load *and immediately execute*
-      -- the program in the file.
-      --
-      -- If we instead had
-      --
-      --   load : String -> Cmd (Cmd ())
-      --
-      -- (which could indeed be useful, once commands have return values
-      -- and Bind does more than just sequencing) then the code would be
-      -- the same as for run, EXCEPT that we would NOT add the FExec to
-      -- the stack above.  The fact that there are two FExec frames
-      -- involved in executing 'run' (one to execute the run command
-      -- itself, and one to execute the thing it loads) corresponds to
-      -- the fact that it is equivalent to (in pseudo-Haskell syntax)
-      -- 'join . load'.
+  f <- mf `isJustOr` cmdExn Run ["File not found:", fileName]
+
+  t <- processTerm (into @Text f)`isRightOr` \err ->
+    cmdExn Run ["Error in", fileName, "\n", err]
+
+  return $ initMachine' t V.empty k
 
 execConst Run args k = badConst Run args k
 
-badConst :: Const -> [Value] -> Cont -> a
-badConst c args k = error $
-  "Panic! Bad application of execConst " ++ show c ++ " " ++ show args ++ " " ++ show k
+badConst :: Monad m => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) a
+badConst c args k = throwError $ Fatal $
+  T.unwords
+  [ "Panic! Bad application of execConst"
+  , from (show c)
+  , from (show args)
+  , from (show k)
+  ]
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
@@ -684,11 +689,18 @@ compareValues = \case
   VBind{}       -> const Nothing
   VDelay{}      -> const Nothing
 
+-- XXX Split Arith into binary + unary so we don't have to have silly
+-- special cases like this
+
 -- | Evaluate the application of an arithmetic operator.
 evalArith :: ArithConst -> Integer -> Integer -> Integer
 evalArith Neg = error "evalArith Neg: should have been handled already"
 evalArith Add = (+)
 evalArith Sub = (-)
 evalArith Mul = (*)
-evalArith Div = div
+evalArith Div = safeDiv
 evalArith Exp = (^)
+
+safeDiv :: Integer -> Integer -> Integer
+safeDiv _ 0 = 42
+safeDiv a b = a `div` b
