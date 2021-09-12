@@ -112,6 +112,7 @@ instance PrettyPrec Const where
   prettyPrec _ Noop      = "{}"
   prettyPrec p (Cmp c)   = prettyPrec p c
   prettyPrec p (Arith c) = prettyPrec p c
+  prettyPrec _ Neg       = "-"
   prettyPrec _ c         = pretty $ T.toLower (from (show c))
 
 instance PrettyPrec CmpConst where
@@ -123,7 +124,6 @@ instance PrettyPrec CmpConst where
   prettyPrec _ CmpGeq = ">="
 
 instance PrettyPrec ArithConst where
-  prettyPrec _ Neg = "-"
   prettyPrec _ Add = "+"
   prettyPrec _ Sub = "-"
   prettyPrec _ Mul = "*"

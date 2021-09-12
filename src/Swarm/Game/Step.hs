@@ -610,7 +610,8 @@ execConst (Cmp c) [v1, v2] k =
     Just b  -> return $ Out (VBool b) k
 execConst (Cmp c) args k     = badConst (Cmp c) args k
 
-execConst (Arith Neg) [VInt n] k = return $ Out (VInt (-n)) k
+execConst Neg [VInt n] k = return $ Out (VInt (-n)) k
+execConst Neg args k = badConst Neg args k
 execConst (Arith c) [VInt n1, VInt n2] k = return $ Out (VInt (evalArith c n1 n2)) k
 execConst (Arith c) args k = badConst (Arith c) args k
 
@@ -709,18 +710,19 @@ compareValues = \case
   VBind{}       -> const Nothing
   VDelay{}      -> const Nothing
 
--- XXX Split Arith into binary + unary so we don't have to have silly
--- special cases like this
-
 -- | Evaluate the application of an arithmetic operator.
 evalArith :: ArithConst -> Integer -> Integer -> Integer
-evalArith Neg = error "evalArith Neg: should have been handled already"
 evalArith Add = (+)
 evalArith Sub = (-)
 evalArith Mul = (*)
 evalArith Div = safeDiv
-evalArith Exp = (^)
+evalArith Exp = safeExp
 
 safeDiv :: Integer -> Integer -> Integer
 safeDiv _ 0 = 42
 safeDiv a b = a `div` b
+
+safeExp :: Integer -> Integer -> Integer
+safeExp a b
+  | b < 0     = 42
+  | otherwise = a^b

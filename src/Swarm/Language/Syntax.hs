@@ -101,8 +101,9 @@ data Const
 
   -- Arithmetic
   | Not               -- ^ Logical negation.
-  | Cmp CmpConst      -- ^ Comparison operators.
-  | Arith ArithConst  -- ^ Arithmetic operators.
+  | Cmp CmpConst      -- ^ Binary comparison operators.
+  | Neg               -- ^ Arithmetic negation.
+  | Arith ArithConst  -- ^ Binary arithmetic operators.
 
   -- Language built-ins
   | If                -- ^ If-expressions.
@@ -120,7 +121,7 @@ data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
   deriving (Eq, Ord, Show)
 
 -- | Arithmetic operator constants.
-data ArithConst = Neg | Add | Sub | Mul | Div | Exp
+data ArithConst = Add | Sub | Mul | Div | Exp
   deriving (Eq, Ord, Show)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
@@ -148,6 +149,7 @@ arity Random    = 1
 arity Run       = 1
 arity Not       = 1
 arity (Cmp _)   = 2
+arity Neg       = 1
 arity (Arith _) = 2
 arity If        = 3
 arity Fst       = 1
@@ -172,7 +174,7 @@ isCmd (Cmp _)   = False
 isCmd (Arith _) = False
 isCmd c = c `notElem` funList
   where
-    funList = [If, Force, Not, Fst, Snd]
+    funList = [If, Force, Not, Neg, Fst, Snd]
 
 ------------------------------------------------------------
 -- Terms

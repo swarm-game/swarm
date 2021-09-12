@@ -372,7 +372,7 @@ inferConst Run         = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
 
 inferConst Not         = Forall [] $ UTyFun UTyBool UTyBool
 inferConst (Cmp _)     = Forall ["a"] (UTyFun "a" (UTyFun "a" UTyBool))
-inferConst (Arith Neg) = Forall [] $ UTyFun UTyInt UTyInt
+inferConst Neg         = Forall [] $ UTyFun UTyInt UTyInt
 inferConst (Arith _)   = Forall [] $ UTyFun UTyInt (UTyFun UTyInt UTyInt)
 
 inferConst If          = Forall ["a"] $ UTyFun UTyBool (UTyFun "a" (UTyFun "a" "a"))

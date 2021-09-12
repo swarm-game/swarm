@@ -105,6 +105,7 @@ constCaps Run       = S.empty
 
 constCaps Not       = S.empty
 constCaps (Cmp _)   = S.singleton CCmp
+constCaps Neg       = S.singleton CArith
 constCaps (Arith _) = S.singleton CArith
 
 constCaps If        = S.singleton CCond
