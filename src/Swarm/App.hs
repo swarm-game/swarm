@@ -24,6 +24,7 @@ import           Brick
 import           Brick.BChan
 import qualified Graphics.Vty                as V
 
+import           Swarm.Game.Entity
 import           Swarm.TUI
 import           Swarm.TUI.Attr
 
@@ -42,18 +43,24 @@ app = App
 appMain :: IO ()
 appMain = do
 
-  s <- initAppState
+  -- XXX flatten this error handling
+  mes <- loadEntities
+  case mes of
+    Left err -> print err
+    Right es -> do
 
-  chan <- newBChan 10
-  let tpsTV = s ^. uiState . lgTicksPerSecond
-  _ <- forkIO $ forever $ do
-    writeBChan chan Tick
-    lgTPS <- readTVarIO tpsTV
-    let delay
-          | lgTPS < 0 = 1_000_000 * (1 `shiftL` (-lgTPS))
-          | otherwise = 1_000_000 `div` (1 `shiftL` lgTPS)
-    threadDelay delay
+      s <- initAppState es
 
-  let buildVty = V.mkVty V.defaultConfig
-  initialVty <- buildVty
-  void $ customMain initialVty buildVty (Just chan) app s
+      chan <- newBChan 10
+      let tpsTV = s ^. uiState . lgTicksPerSecond
+      _ <- forkIO $ forever $ do
+        writeBChan chan Tick
+        lgTPS <- readTVarIO tpsTV
+        let delay
+              | lgTPS < 0 = 1_000_000 * (1 `shiftL` (-lgTPS))
+              | otherwise = 1_000_000 `div` (1 `shiftL` lgTPS)
+        threadDelay delay
+
+      let buildVty = V.mkVty V.defaultConfig
+      initialVty <- buildVty
+      void $ customMain initialVty buildVty (Just chan) app s

@@ -24,6 +24,7 @@ import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
+import           Data.Map                ((!))
 import qualified Data.Map                as M
 import           Data.Maybe              (fromJust, isNothing, listToMaybe)
 import           Data.Text               (Text)
@@ -34,7 +35,6 @@ import           Witch
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entities     as E
 import           Swarm.Game.Entity       as E
 import           Swarm.Game.Exception    (formatExn)
 import           Swarm.Game.Recipes
@@ -144,10 +144,14 @@ Left b `isRightOr` f  = throwError (f b)
 
 -- | Require that a robot has a given device installed, OR we are in
 --   creative mode.
-isInstalledOr :: MonadState GameState m => Entity -> Exn -> ExceptT Exn (StateT Robot m) ()
-isInstalledOr ent exn = do
+isInstalledOr :: MonadState GameState m => Text -> Exn -> ExceptT Exn (StateT Robot m) ()
+isInstalledOr nm exn = do
   mode <- lift . lift $ use gameMode
   r <- get
+  em <- lift . lift $ use entityMap
+
+  ent <- M.lookup nm em `isJustOr` Fatal (T.append "isInstalledOr: Unknown entity " nm)
+
   unless (mode == Creative || r `hasInstalled` ent) $ throwError exn
 
 -- | Create an exception about a command failing.
@@ -436,7 +440,7 @@ execConst Move _ k     = do
   me <- entityAt nextLoc
 
   -- Make sure the robot has treads installed.
-  E.treads `isInstalledOr` cmdExn Move ["You need treads to move."]
+  "treads" `isInstalledOr` cmdExn Move ["You need treads to move."]
 
   -- Make sure nothing is in the way.
   maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
@@ -448,7 +452,7 @@ execConst Move _ k     = do
 
 execConst Grab _ k = do
 
-  E.grabber `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
+  "grabber" `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
 
   -- Ensure there is an entity here.
   loc <- use robotLocation
@@ -480,7 +484,7 @@ execConst Grab _ k = do
   return $ Out VUnit k
 
 execConst Turn [VDir d] k = do
-  E.treads `isInstalledOr` cmdExn Turn ["You need treads to turn."]
+  "treads" `isInstalledOr` cmdExn Turn ["You need treads to turn."]
 
   robotOrientation . _Just %= applyTurn d
   flagRedraw
@@ -532,7 +536,8 @@ execConst Give args k = badConst Give args k
 -- XXX do we need a device to craft?
 execConst Craft [VString name] k = do
   inv <- use robotInventory
-  e <- listToMaybe (lookupByName name E.entityCatalog) `isJustOr`
+  em <- lift . lift $ use entityMap
+  e <- M.lookup name em `isJustOr`
     cmdExn Craft ["I've never heard of", indefiniteQ name, "."]
 
   recipe <- recipeFor e `isJustOr`
@@ -640,13 +645,14 @@ execConst Raise args k        = badConst Raise args k
 
 execConst Build [VString name, VDelay c e] k = do
   r <- get
+  em <- lift . lift $ use entityMap
   let newRobot =
         mkRobot
           name
           (r ^. robotLocation)
           (r ^. robotOrientation ? east)
           (In c e [FExec])  -- XXX require cap for env that gets shared here?
-          [E.treads, E.grabber, E.solarPanels]
+          [em!"treads", em!"grabber", em!"solar panel"]  -- XXX Don't use !
 
   newRobot' <- lift . lift $ addRobot newRobot
   flagRedraw

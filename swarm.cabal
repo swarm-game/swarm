@@ -20,6 +20,8 @@ copyright:          Brent Yorgey 2021
 category:           Game
 tested-with:        GHC ==8.10.4 || ==9.0.1
 extra-source-files: CHANGELOG.md
+data-dir:           data/
+data-files:         *.yaml
 
 source-repository head
     type:     git
@@ -42,7 +44,6 @@ library
                       Swarm.Game.CEK
                       Swarm.Game.Display
                       Swarm.Game.Entity
-                      Swarm.Game.Entities
                       Swarm.Game.Exception
                       Swarm.Game.Recipes
                       Swarm.Game.Robot
@@ -57,6 +58,8 @@ library
                       Swarm.TUI.Panel
                       Swarm.App
                       Swarm.Util
+    other-modules:    Paths_swarm
+    autogen-modules:  Paths_swarm
 
     build-depends:    base                          >= 4.14 && < 4.16,
                       aeson                         >= 1.5 && < 1.6,

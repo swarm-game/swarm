@@ -39,6 +39,9 @@ module Swarm.Game.Entity
   , entityProperties, entityInventory, entityCapabilities, entityHash
   , hasProperty
 
+    -- ** Loading
+  , loadEntities
+
     -- * Inventories
 
   , Inventory, Count
@@ -51,7 +54,8 @@ module Swarm.Game.Entity
 where
 
 import           Brick                     (Widget)
-import           Control.Lens              (Getter, Lens', lens, to, (^.))
+import           Control.Arrow             ((&&&))
+import           Control.Lens              (Getter, Lens', lens, to, view, (^.))
 import           Data.Bifunctor            (second)
 import           Data.Char                 (toLower)
 import           Data.Function             (on)
@@ -77,6 +81,8 @@ import           Data.Yaml
 import           Swarm.Game.Display
 import           Swarm.Language.Capability
 import           Swarm.Language.Syntax     (toDirection)
+
+import           Paths_swarm
 
 ------------------------------------------------------------
 -- Properties
@@ -195,33 +201,6 @@ instance Eq Entity where
 instance Ord Entity where
   compare = compare `on` _entityHash
 
-instance FromJSON Entity where
-  parseJSON = withObject "Entity" $ \v -> rehashEntity <$>
-    (Entity
-    <$> pure 0
-    <*> v .: "display"
-    <*> v .: "name"
-    <*> v .: "description"
-    <*> v .:? "orientation"
-    <*> v .:? "properties"   .!= []
-    <*> v .:? "capabilities" .!= []
-    <*> pure empty
-    )
-
-instance ToJSON Entity where
-  toJSON e = object $
-    [ "display"      .= (e ^. entityDisplay)
-    , "name"         .= (e ^. entityName)
-    , "description"  .= (e ^. entityDescription)
-    ]
-    ++
-    [ "orientation"  .= (e ^. entityOrientation) | isJust (e ^. entityOrientation) ]
-    ++
-    [ "properties"   .= (e ^. entityProperties) | not . null $ e ^. entityProperties ]
-    ++
-    [ "capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities ]
-
-
 -- | Recompute an entity's hash value.
 rehashEntity :: Entity -> Entity
 rehashEntity e = e { _entityHash = hash e }
@@ -249,6 +228,44 @@ mkDevice
   -> Entity
 mkDevice c nm descr caps
   = rehashEntity $ Entity 0 (deviceDisplay c) nm descr Nothing [Portable] caps empty
+
+------------------------------------------------------------
+-- Serialization
+------------------------------------------------------------
+
+instance FromJSON Entity where
+  parseJSON = withObject "Entity" $ \v -> rehashEntity <$>
+    (Entity
+    <$> pure 0
+    <*> v .: "display"
+    <*> v .: "name"
+    <*> v .: "description"
+    <*> v .:? "orientation"
+    <*> v .:? "properties"   .!= []
+    <*> v .:? "capabilities" .!= []
+    <*> pure empty
+    )
+
+instance ToJSON Entity where
+  toJSON e = object $
+    [ "display"      .= (e ^. entityDisplay)
+    , "name"         .= (e ^. entityName)
+    , "description"  .= (e ^. entityDescription)
+    ]
+    ++
+    [ "orientation"  .= (e ^. entityOrientation) | isJust (e ^. entityOrientation) ]
+    ++
+    [ "properties"   .= (e ^. entityProperties) | not . null $ e ^. entityProperties ]
+    ++
+    [ "capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities ]
+
+loadEntities :: IO (Either ParseException (Map Text Entity))
+loadEntities = do
+  fileName <- getDataFileName "entities.yaml"
+  fmap buildEntityMap <$> decodeFileEither fileName
+
+buildEntityMap :: [Entity] -> Map Text Entity
+buildEntityMap = M.fromList . map (view entityName &&& id)
 
 ------------------------------------------------------------
 -- Entity lenses

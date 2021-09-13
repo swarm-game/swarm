@@ -21,18 +21,17 @@
 module Swarm.Game.Recipes where
 
 import           Control.Lens
-import           Data.Bifunctor      (second)
-import           Data.IntMap         (IntMap)
-import qualified Data.IntMap         as IM
-import           Data.List           (foldl')
-import           Data.Maybe          (fromMaybe, listToMaybe)
-import           Data.Text           (Text)
-import qualified Data.Text           as T
+import           Data.Bifunctor    (second)
+import           Data.IntMap       (IntMap)
+import qualified Data.IntMap       as IM
+import           Data.List         (foldl')
+import           Data.Maybe        (fromMaybe, listToMaybe)
+import           Data.Text         (Text)
+import qualified Data.Text         as T
 import           Witch
 
-import qualified Swarm.Game.Entities as E
-import           Swarm.Game.Entity   (Count, Entity, Inventory)
-import qualified Swarm.Game.Entity   as E
+import           Swarm.Game.Entity (Count, Entity, Inventory)
+import qualified Swarm.Game.Entity as E
 import           Swarm.Util
 
 -- | An ingredient list is a list of entities with multiplicity.
@@ -110,24 +109,24 @@ craft r@(Recipe ins outs) inv = case missingIngredientsFor inv r of
 
 -- | A big old list of all the recipes in the game.
 recipeList :: [Recipe]
-recipeList =
-  [ Recipe
-    [(1, E.tree)]
-    [(2, E.branch), (1, E.log)]
+recipeList = []
+  -- [ Recipe
+  --   [(1, E.tree)]
+  --   [(2, E.branch), (1, E.log)]
 
-  , Recipe
-    [(1, E.log)]
-    [(4, E.wood)]
+  -- , Recipe
+  --   [(1, E.log)]
+  --   [(4, E.wood)]
 
-  , Recipe
-    [(6, E.wood)]
-    [(1, E.box)]
+  -- , Recipe
+  --   [(6, E.wood)]
+  --   [(1, E.box)]
 
-  , Recipe
-    [(2, E.wood)]
-    [(1, E.gear)]
+  -- , Recipe
+  --   [(2, E.wood)]
+  --   [(1, E.gear)]
 
-  , Recipe
-    [(1, E.bit False), (1, E.bit True)]
-    [(1, E.drillBit)]
-  ]
+  -- , Recipe
+  --   [(1, E.bit False), (1, E.bit True)]
+  --   [(1, E.drillBit)]
+  -- ]

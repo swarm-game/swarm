@@ -21,7 +21,7 @@ module Swarm.Game.State where
 import           Control.Lens
 import           Control.Monad.State
 import           Data.Bifunctor       (first)
-import           Data.Map             (Map)
+import           Data.Map             (Map, (!))
 import qualified Data.Map             as M
 import           Data.Maybe           (fromMaybe)
 import           Data.Text            (Text)
@@ -59,6 +59,7 @@ data GameState = GameState
   , _robotMap       :: Map Text Robot
   , _newRobots      :: [Robot]
   , _gensym         :: Int
+  , _entityMap      :: Map Text Entity
   , _world          :: W.TileCachingWorld Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter     :: V2 Int
@@ -112,21 +113,26 @@ addRobot r = do
   newRobots %= (r' :)
   return r'
 
-initGameState :: IO GameState
-initGameState = return $
+initGameState :: Map Text Entity -> IO GameState
+initGameState em = return $
   GameState
   { _gameMode       = Classic
   , _paused         = False
-  , _robotMap       = M.singleton "base" baseRobot
+  , _robotMap       = M.singleton "base" (baseRobot [em!"solar panel"])  -- XXX !
   , _newRobots      = []
   , _gensym         = 0
-  , _world          = W.newWorld . fmap (first fromEnum) . findGoodOrigin $ testWorld2
+  , _entityMap      = em
+  , _world          = W.newWorld . (fmap . fmap) lkup . fmap (first fromEnum) . findGoodOrigin $ testWorld2
   , _viewCenterRule = VCRobot "base"
   , _viewCenter     = V2 0 0
   , _updated        = False
   , _replResult     = REPLDone
   , _messageQueue   = []
   }
+  where
+    lkup :: Maybe Text -> Maybe Entity
+    lkup Nothing  = Nothing
+    lkup (Just t) = M.lookup t em
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000

@@ -14,6 +14,7 @@ import           Data.Array                  (range)
 import           Data.Either                 (isRight)
 import           Data.List                   (sortOn)
 import           Data.List.Split             (chunksOf)
+import           Data.Map                    (Map)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
@@ -126,8 +127,8 @@ data AppState = AppState
 
 makeLenses ''AppState
 
-initAppState :: IO AppState
-initAppState = AppState <$> initGameState <*> initUIState
+initAppState :: Map Text Entity -> IO AppState
+initAppState es = AppState <$> initGameState es <*> initUIState
 
 ------------------------------------------------------------
 -- UI drawing
