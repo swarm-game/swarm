@@ -137,7 +137,8 @@ initGameState = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
-  let baseDevices = mapMaybe (`M.lookup` entities) ["solar panel", "3D printer"]
+  let baseDeviceNames = ["solar panel", "3D printer", "dictionary"]
+      baseDevices = mapMaybe (`M.lookup` entities) baseDeviceNames
 
   return $ GameState
     { _gameMode       = Classic
