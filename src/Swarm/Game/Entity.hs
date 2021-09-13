@@ -56,7 +56,8 @@ where
 import           Brick                     (Widget)
 import           Control.Arrow             ((&&&))
 import           Control.Lens              (Getter, Lens', lens, to, view, (^.))
-import           Data.Bifunctor            (second)
+import           Control.Monad.IO.Class
+import           Data.Bifunctor            (bimap, second)
 import           Data.Char                 (toLower)
 import           Data.Function             (on)
 import           Data.Hashable
@@ -259,10 +260,10 @@ instance ToJSON Entity where
     ++
     [ "capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities ]
 
-loadEntities :: IO (Either ParseException (Map Text Entity))
-loadEntities = do
+loadEntities :: MonadIO m => m (Either Text (Map Text Entity))
+loadEntities = liftIO $ do
   fileName <- getDataFileName "entities.yaml"
-  fmap buildEntityMap <$> decodeFileEither fileName
+  bimap (from . prettyPrintParseException) buildEntityMap <$> decodeFileEither fileName
 
 buildEntityMap :: [Entity] -> Map Text Entity
 buildEntityMap = M.fromList . map (view entityName &&& id)

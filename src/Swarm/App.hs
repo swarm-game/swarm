@@ -17,14 +17,14 @@ module Swarm.App where
 import           Control.Concurrent          (forkIO, threadDelay)
 import           Control.Concurrent.STM.TVar
 import           Control.Lens                ((^.))
-import           Control.Monad               (forever, void)
 import           Data.Bits                   (shiftL)
 
 import           Brick
 import           Brick.BChan
 import qualified Graphics.Vty                as V
 
-import           Swarm.Game.Entity
+import           Control.Monad.Except
+import qualified Data.Text.IO                as T
 import           Swarm.TUI
 import           Swarm.TUI.Attr
 
@@ -42,14 +42,10 @@ app = App
 --   some communication channels, and runs the UI.
 appMain :: IO ()
 appMain = do
-
-  -- XXX flatten this error handling
-  mes <- loadEntities
-  case mes of
-    Left err -> print err
-    Right es -> do
-
-      s <- initAppState es
+  res <- runExceptT initAppState
+  case res of
+    Left errMsg -> T.putStrLn errMsg
+    Right s -> do
 
       chan <- newBChan 10
       let tpsTV = s ^. uiState . lgTicksPerSecond

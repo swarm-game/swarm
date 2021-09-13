@@ -14,7 +14,6 @@ import           Data.Array                  (range)
 import           Data.Either                 (isRight)
 import           Data.List                   (sortOn)
 import           Data.List.Split             (chunksOf)
-import           Data.Map                    (Map)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
 import           Data.Text                   (Text)
@@ -34,6 +33,7 @@ import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List          as BL
 import qualified Graphics.Vty                as V
 
+import           Control.Monad.Except
 import           Swarm.Game.CEK              (idleMachine, initMachine)
 import           Swarm.Game.Display
 import           Swarm.Game.Entity
@@ -103,8 +103,8 @@ initReplForm = newForm
 initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 3    -- 2^3 = 8 ticks per second
 
-initUIState :: IO UIState
-initUIState = do
+initUIState :: ExceptT Text IO UIState
+initUIState = liftIO $ do
   tv <- newTVarIO initLgTicksPerSecond
   mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
   return $ UIState
@@ -127,8 +127,8 @@ data AppState = AppState
 
 makeLenses ''AppState
 
-initAppState :: Map Text Entity -> IO AppState
-initAppState es = AppState <$> initGameState es <*> initUIState
+initAppState :: ExceptT Text IO AppState
+initAppState = AppState <$> initGameState <*> initUIState
 
 ------------------------------------------------------------
 -- UI drawing
@@ -245,8 +245,13 @@ explainFocusedItem s = case mItem of
     mList = s ^? uiState . uiInventory . _Just . _2
     mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
 
-explainRecipes :: Entity -> [Widget Name]
-explainRecipes = map (txt . prettyRecipe) . recipesWith
+    explainRecipes :: Entity -> [Widget Name]
+    explainRecipes = map (txt . prettyRecipe) . recipesWith
+
+    recipesWith :: Entity -> [Recipe Entity]
+    recipesWith e = recipesFor (s ^. gameState . recipesOut) e
+               ++ recipesFor (s ^. gameState . recipesIn) e
+
 
 drawMessages :: [Text] -> Widget Name
 drawMessages [] = txt " "

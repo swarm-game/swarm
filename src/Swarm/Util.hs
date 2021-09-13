@@ -21,14 +21,17 @@
 
 module Swarm.Util where
 
-import           Data.Maybe            (fromMaybe)
-import           Data.Text             (Text)
-import qualified Data.Text             as T
+import           Control.Monad             (unless)
+import           Control.Monad.Error.Class
+import           Data.Either.Validation
+import           Data.Maybe                (fromMaybe)
+import           Data.Text                 (Text)
+import qualified Data.Text                 as T
 import           Data.Yaml
-import           Linear                (V2)
-import qualified NLP.Minimorph.English as MM
-import           NLP.Minimorph.Util    ((<+>))
-import           System.Directory      (doesFileExist)
+import           Linear                    (V2)
+import qualified NLP.Minimorph.English     as MM
+import           NLP.Minimorph.Util        ((<+>))
+import           System.Directory          (doesFileExist)
 
 
 infixr 1 ?
@@ -102,3 +105,27 @@ quote t = T.concat ["\"", t, "\""]
 
 deriving instance ToJSON (V2 Int)
 deriving instance FromJSON (V2 Int)
+
+------------------------------------------------------------
+-- Validation utilities
+
+-- | Require that a Boolean value is @True@, or throw an exception.
+holdsOr :: MonadError e m => Bool -> e -> m ()
+holdsOr b e = unless b $ throwError e
+
+-- | Require that a 'Maybe' value is 'Just', or throw an exception.
+isJustOr :: MonadError e m => Maybe a -> e -> m a
+Just a  `isJustOr` _ = return a
+Nothing `isJustOr` e = throwError e
+
+-- | Require that an 'Either' value is 'Right', or throw an exception
+--   based on the value in the 'Left'.
+isRightOr :: MonadError e m => Either b a -> (b -> e) -> m a
+Right a `isRightOr` _ = return a
+Left b `isRightOr` f  = throwError (f b)
+
+-- | Require that a 'Validation' value is 'Success', or throw an exception
+--   based on the value in the 'Failure'.
+isSuccessOr :: MonadError e m => Validation b a -> (b -> e) -> m a
+Success a `isSuccessOr` _ = return a
+Failure b `isSuccessOr` f = throwError (f b)

@@ -129,19 +129,6 @@ updateEntityAt (V2 x y) upd = lift . lift $ world %= W.update (-y,x) upd
 robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)
 robotNamed nm = lift . lift $ use (robotMap . at nm)
 
--- | Require that a Boolean value is @True@, or throw an exception.
-holdsOr :: MonadError e m => Bool -> e -> m ()
-holdsOr b e = unless b $ throwError e
-
--- | Require that a 'Maybe' value is 'Just', or throw an exception.
-isJustOr :: MonadError e m => Maybe a -> e -> m a
-Just a  `isJustOr` _ = return a
-Nothing `isJustOr` e = throwError e
-
-isRightOr :: MonadError e m => Either b a -> (b -> e) -> m a
-Right a `isRightOr` _ = return a
-Left b `isRightOr` f  = throwError (f b)
-
 -- | Require that a robot has a given device installed, OR we are in
 --   creative mode.
 isInstalledOr :: MonadState GameState m => Text -> Exn -> ExceptT Exn (StateT Robot m) ()
@@ -192,6 +179,7 @@ stepRobot r = do
 --   machine state and figure out a single next step.
 stepCEK :: (MonadState GameState m, MonadIO m) => CEK -> StateT Robot m CEK
 stepCEK cek = case cek of
+  -- (liftIO $ appendFile "out.txt" (prettyCEK cek)) >>
 
   -- It's a little unsatisfactory the way we handle having both Robot
   -- and GameState in different states (by having one be concrete and
@@ -382,7 +370,7 @@ stepCEK cek = case cek of
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere])
+takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere, Try, Random])
 
 -- | At the level of the CEK machine there's no particular difference
 --   between *evaluating* a function constant and *executing* a
@@ -540,7 +528,9 @@ execConst Craft [VString name] k = do
   e <- M.lookup name em `isJustOr`
     cmdExn Craft ["I've never heard of", indefiniteQ name, "."]
 
-  recipe <- recipeFor e `isJustOr`
+  outRs <- lift . lift $ use recipesOut
+
+  recipe <- recipeFor outRs e `isJustOr`
     cmdExn Craft ["There is no known recipe for crafting", indefinite name, "."]
 
   inv' <-  craft recipe inv `isRightOr` \missing ->
