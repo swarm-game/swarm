@@ -16,11 +16,11 @@
 module Swarm.Game.Robot
   ( -- * Robots
 
-    Robot(..)
+    Robot
 
     -- ** Lenses
   , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
-  , installedDevices
+  , installedDevices, robotCapabilities
   , robotCtx, robotEnv, machine, selfDestruct, tickSteps
 
     -- ** Create
@@ -32,45 +32,52 @@ module Swarm.Game.Robot
   , isActive, getResult, hasInstalled
   ) where
 
-import           Control.Lens         hiding (contains)
-import qualified Data.Map             as M
-import           Data.Maybe           (isNothing)
-import           Data.Text            (Text)
+import           Control.Lens              hiding (contains)
+import qualified Data.Map                  as M
+import           Data.Maybe                (isNothing)
+import           Data.Set                  (Set)
+import           Data.Text                 (Text)
 import           Linear
 
+import           Data.Set.Lens             (setOf)
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entity
-import           Swarm.Game.Value     as V
-import           Swarm.Language.Types (TCtx)
+import           Swarm.Game.Value          as V
+import           Swarm.Language.Capability
+import           Swarm.Language.Types      (TCtx)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
-  { _robotEntity      :: Entity
+  { _robotEntity       :: Entity
     -- ^ An entity record storing the robot's name, display,
     --   inventory, and so on.
 
-  , _installedDevices :: Inventory
+  , _installedDevices  :: Inventory
     -- ^ A special inventory of devices the robot has "installed" (and
     --   thus can use).
 
-  , _robotLocation    :: V2 Int
+  , _robotCapabilities :: Set Capability
+    -- ^ A cached view of the capabilities this robot has.
+    --   Automatically generated from '_installedDevices'.
+
+  , _robotLocation     :: V2 Int
     -- ^ The location of the robot as (x,y).
 
-  , _robotCtx         :: TCtx
+  , _robotCtx          :: TCtx
     -- ^ Top-level type context.
 
-  , _robotEnv         :: Env
+  , _robotEnv          :: Env
     -- ^ Top-level environment of definitions.
 
-  , _machine          :: CEK
+  , _machine           :: CEK
     -- ^ The current state of the robot's CEK machine.
 
-  , _selfDestruct     :: Bool
+  , _selfDestruct      :: Bool
     -- ^ Whether the robot wants to self-destruct.
 
-  , _tickSteps        :: Int
+  , _tickSteps         :: Int
     -- ^ The need for 'tickSteps' is a bit technical, and I hope I can
     --   eventually find a different, better way to accomplish it.
     --   Ideally, we would want each robot to execute a single
@@ -111,7 +118,11 @@ data Robot = Robot
   }
   deriving (Show)
 
-makeLenses ''Robot
+let exclude = ['_robotCapabilities, '_installedDevices] in
+  makeLensesWith
+    (lensRules & lensField . mapped . mapped %~ \fn n ->
+       if n `elem` exclude then [] else fn n)
+    ''Robot
 
 robotName :: Lens' Robot Text
 robotName = robotEntity . entityName
@@ -124,6 +135,24 @@ robotOrientation = robotEntity . entityOrientation
 
 robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
+
+installedDevices :: Lens' Robot Inventory
+installedDevices = lens _installedDevices setInstalled
+  where
+    setInstalled r inst =
+      r { _installedDevices  = inst
+        , _robotCapabilities = inventoryCapabilities inst
+        }
+
+inventoryCapabilities :: Inventory -> Set Capability
+inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
+
+-- | Get the set of capabilities this robot possesses.  This is only a
+--   getter, not a lens, because it is automatically generated from
+--   the 'installedDevices'.  The only way to change a robot's
+--   capabilities is to modify its 'installedDevices'.
+robotCapabilities :: Getter Robot (Set Capability)
+robotCapabilities = to _robotCapabilities
 
 -- | Create a robot.
 mkRobot
@@ -141,7 +170,8 @@ mkRobot name l d m devs = Robot
       ["A generic robot."]
       []
       & entityOrientation ?~ d
-  , _installedDevices = fromList devs
+  , _installedDevices = inst
+  , _robotCapabilities = inventoryCapabilities inst
   , _robotLocation = l
   , _robotCtx      = M.empty
   , _robotEnv      = V.empty
@@ -149,6 +179,8 @@ mkRobot name l d m devs = Robot
   , _selfDestruct  = False
   , _tickSteps     = 0
   }
+  where
+    inst = fromList devs
 
 -- | The initial robot representing your "base".
 baseRobot :: [Entity] -> Robot
@@ -158,7 +190,8 @@ baseRobot devs = Robot
       "base"
       ["Your base of operations."]
       []
-  , _installedDevices = fromList devs
+  , _installedDevices = inst
+  , _robotCapabilities = inventoryCapabilities inst
   , _robotLocation = V2 0 0
   , _robotCtx      = M.empty
   , _robotEnv      = V.empty
@@ -166,6 +199,8 @@ baseRobot devs = Robot
   , _selfDestruct  = False
   , _tickSteps     = 0
   }
+  where
+    inst = fromList devs
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
