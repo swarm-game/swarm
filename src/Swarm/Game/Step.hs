@@ -510,7 +510,7 @@ execConst c vs k = do
                 (initMachine (seedProgram (e ^. entityName)) V.empty)
                 []
                 & robotDisplay .~
-                  (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
+                  (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
                 & robotInventory .~ E.singleton e
         _ <- lift . lift $ addRobot seedBot
         return ()
