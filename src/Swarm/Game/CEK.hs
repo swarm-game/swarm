@@ -121,9 +121,9 @@ data Frame
     -- is evaluate @t2@ in the environment @e@ extended with a binding
     -- for @x@.
 
-  | FTry Term Env
+  | FTry Value
     -- ^ We are executing inside a 'Try' block.  If an exception is
-    --   raised, we will evaluate the stored term (the "catch" block).
+    --   raised, we will execute the stored term (the "catch" block).
 
   | FDef Var
     -- ^ We were evaluating the body of a definition.  The next thing
@@ -246,7 +246,7 @@ prettyFrame (FFst v)             = "(" ++ from (prettyValue v) ++ ", _)"
 prettyFrame (FArg t _)           = "_ " ++ prettyString t
 prettyFrame (FApp v)             = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)         = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FTry t _)           = "try _ (" ++ prettyString t ++ ")"
+prettyFrame (FTry c)             = "try _ (" ++ from (prettyValue c) ++ ")"
 prettyFrame (FDef x)             = "def " ++ from x ++ " = _"
 prettyFrame (FUnionEnv _)        = "_ ∪ <Env>"
 prettyFrame (FLoadEnv _)         = "loadEnv"

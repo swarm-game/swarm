@@ -344,7 +344,7 @@ stepCEK cek = case cek of
 
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
-  Out v (FTry _ _ : k)                  -> return $ Out v k
+  Out v (FTry _ : k)                    -> return $ Out v k
 
   -- If an exception rises all the way to the top level without being
   -- handled, turn it into an error message via the 'say' command.
@@ -357,7 +357,7 @@ stepCEK cek = case cek of
   -- Otherwise, if we are raising an exception up the continuation
   -- stack and come to a Try frame, execute the associated catch
   -- block.
-  Up _ (FTry t e : k)                   -> return $ In t e (FExec : k)
+  Up _ (FTry c : k  )                   -> return $ Out c (FExec : k)
 
   -- Otherwise, keep popping from the continuation stack.
   Up exn (_ : k)                        -> return $ Up exn k
@@ -637,7 +637,7 @@ execConst Fst args k        = badConst Fst args k
 execConst Snd [VPair _ v] k = return $ Out v k
 execConst Snd args k        = badConst Snd args k
 
-execConst Try [VDelay t1 e1, VDelay t2 e2] k = return $ In t1 e1 (FExec : FTry t2 e2 : k)
+execConst Try [c1, c2] k    = return $ Out c1 (FExec : FTry c2 : k)
 execConst Try args k        = badConst Try args k
 
 execConst Raise [VString s] k = return $ Up (User s) k
@@ -673,11 +673,9 @@ execConst Run args k = badConst Run args k
 
 badConst :: Monad m => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) a
 badConst c args k = throwError $ Fatal $
-  T.unwords
-  [ "Bad application of execConst"
-  , from (show c)
-  , from (show args)
-  , from (show k)
+  T.unlines
+  [ "Bad application of execConst:"
+  , from (prettyCEK (Out (VCApp c args) k))
   ]
 
 -- | Evaluate the application of a comparison operator.  Returns
