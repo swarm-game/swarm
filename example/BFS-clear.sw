@@ -50,4 +50,5 @@ def clear : cmd () =
   goto 0 0;
   give "base" "tree";
   halt
-end
+end;
+def start : cmd string = build "h" {turn west; repeat 7 move; clear} end
