@@ -26,8 +26,14 @@ data Exn
     --   the entire UI).
   = Fatal Text
 
-    -- | A command failed in some way (/e.g./ a 'Move' command could
-    --   not move, or a 'Grab' command found nothing to grab, /etc./).
+    -- | A robot tried to do something for which it does not have the
+    --   required device/capability.  This cannot be caught by a @try@
+    --   block.
+  | Incapable Const
+
+    -- | A command failed in some "normal" way (/e.g./ a 'Move'
+    --   command could not move, or a 'Grab' command found nothing to
+    --   grab, /etc./).
   | CmdFailed Const Text
 
     -- | The user program explicitly called 'Raise'.
@@ -39,5 +45,7 @@ formatExn (Fatal t) = T.unlines
   [ T.append "fatal error: " t
   , "Please report this as a bug at https://github.com/byorgey/swarm/issues ."
   ]
+formatExn (Incapable c)   = T.concat
+  [ "not capable of using '", prettyText c, "'" ]
 formatExn (CmdFailed c t) = T.concat [prettyText c, ": ", t]
 formatExn (User t)        = T.concat ["user exception: ", t]

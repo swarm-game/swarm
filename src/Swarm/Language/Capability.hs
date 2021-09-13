@@ -43,7 +43,6 @@ data Capability
   | CBuild    -- ^ Execute the 'Build' command
   | CSenseloc -- ^ Execute the 'GetX' and 'GetY' commands
   | CRandom   -- ^ Execute the 'Random' command
-  | CSay      -- ^ Execute the 'Say' command
   | CAppear   -- ^ Execute the 'Appear' command
 
   | CCond     -- ^ Evaluate conditional expressions
@@ -111,7 +110,11 @@ constCaps Place     = S.singleton CPlace
 constCaps Give      = S.singleton CGive
 constCaps Craft     = S.singleton CCraft
 constCaps Build     = S.singleton CBuild
-constCaps Say       = S.singleton CSay
+
+-- It's important that no capability is required for 'say', because
+-- this is how exceptions get reported.
+constCaps Say       = S.empty
+
 constCaps View      = S.empty
 constCaps Appear    = S.singleton CAppear
 

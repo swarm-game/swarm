@@ -229,13 +229,8 @@ prettyCEK (Out v k) = unlines
   [ "◀ " ++ from (prettyValue v)
   , "  " ++ prettyCont k ]
 prettyCEK (Up e k) = unlines
-  [ "! " ++ prettyExn e
+  [ "! " ++ from (formatExn e)
   , "  " ++ prettyCont k ]
-
-prettyExn :: Exn -> String
-prettyExn (Fatal txt)       = "Fatal: " ++ from txt
-prettyExn (CmdFailed c txt) = show c ++ ": " ++ from txt
-prettyExn (User txt)        = "Exception: " ++ from txt
 
 prettyCont :: Cont -> String
 prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame

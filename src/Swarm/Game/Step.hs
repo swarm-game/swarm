@@ -20,29 +20,31 @@
 
 module Swarm.Game.Step where
 
-import           Control.Arrow           ((&&&))
-import           Control.Lens            hiding (Const, from, parts)
+import           Control.Arrow             ((&&&))
+import           Control.Lens              hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
-import           Data.Map                ((!))
-import qualified Data.Map                as M
-import           Data.Maybe              (fromJust, isNothing, listToMaybe)
-import           Data.Text               (Text)
-import qualified Data.Text               as T
+import           Data.Bool                 (bool)
+import           Data.Map                  ((!))
+import qualified Data.Map                  as M
+import           Data.Maybe                (fromJust, isNothing, listToMaybe)
+import qualified Data.Set                  as S
+import           Data.Text                 (Text)
+import qualified Data.Text                 as T
 import           Linear
-import           System.Random           (randomRIO)
+import           System.Random             (randomRIO)
 import           Witch
 
-import           Data.Bool               (bool)
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entity       as E
-import           Swarm.Game.Exception    (formatExn)
+import           Swarm.Game.Entity         as E
+import           Swarm.Game.Exception      (formatExn)
 import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
-import           Swarm.Game.Value        as V
-import qualified Swarm.Game.World        as W
+import           Swarm.Game.Value          as V
+import qualified Swarm.Game.World          as W
+import           Swarm.Language.Capability (requiredCaps)
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
@@ -130,17 +132,14 @@ updateEntityAt (V2 x y) upd = lift . lift $ world %= W.update (-y,x) upd
 robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)
 robotNamed nm = lift . lift $ use (robotMap . at nm)
 
--- | Require that a robot has a given device installed, OR we are in
---   creative mode.
-isInstalledOr :: MonadState GameState m => Text -> Exn -> ExceptT Exn (StateT Robot m) ()
-isInstalledOr nm exn = do
+-- | Ensure that a robot is capable of executing a certain constant
+--   (either because it has a device which gives it that capability,
+--   OR we are in creative mode).
+canExecuteOr :: MonadState GameState m => Const -> Exn -> ExceptT Exn (StateT Robot m) ()
+canExecuteOr c exn = do
   mode <- lift . lift $ use gameMode
-  r <- get
-  em <- lift . lift $ use entityMap
-
-  ent <- M.lookup nm em `isJustOr` Fatal (T.append "isInstalledOr: Unknown entity " nm)
-
-  unless (mode == Creative || r `hasInstalled` ent) $ throwError exn
+  caps <- use robotCapabilities
+  (mode == Creative || requiredCaps (TConst c) `S.isSubsetOf` caps) `holdsOr` exn
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -232,12 +231,7 @@ stepCEK cek = case cek of
     | not (isCmd c) &&
       arity c == length args + 1    -> evalConst c (reverse (v2 : args)) k
     | otherwise                     -> return $ Out (VCApp c (v2 : args)) k
-  Out _ (FApp _ : k) -> do
-    let msg = T.unlines
-          [ "Bad machine state in stepRobot: FApp of non-function"
-          , from (show cek)
-          ]
-    return $ Up (Fatal msg) k
+  Out _ (FApp _ : _) -> badMachineState "FApp of non-function"
 
   -- Evaluating let expressions is a little bit tricky. We start by
   -- focusing on the let-bound expression. But since it is allowed to
@@ -329,7 +323,16 @@ stepCEK cek = case cek of
     return $ Out v k
   Out v (FLoadEnv _ : k)                -> return $ Out v k
 
-  -- Exception handling.
+  -- Any other type of value wiwth an FExec frame is an error (should
+  -- never happen).
+  Out _ (FExec : _) -> badMachineState "FExec frame with non-executable value"
+
+  -- Any other frame with a VResult is an error (should never happen).
+  Out (VResult _ _) _ -> badMachineState "no appropriate stack frame to catch a VResult"
+
+  ------------------------------------------------------------
+  -- Exception handling
+  ------------------------------------------------------------
 
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
@@ -337,11 +340,25 @@ stepCEK cek = case cek of
 
   -- If an exception rises all the way to the top level without being
   -- handled, turn it into an error message via the 'say' command.
+  -- Note that (for now at least) the 'say' command requires no
+  -- capabilities, so this cannot generate an infinite loop. However,
+  -- in the future we might differentiate between a 'log' command
+  -- (which appends to an internal message queue, visible only via
+  -- 'view'), and might require a logging device, and a 'say' command
+  -- which broadcasts to other (nearby?) robots.
+
+  -- NOTE, if this is changed to go via e.g. a Log command that
+  -- requires a capability, make sure to check for that capability
+  -- here and silently discard the message if the robot can't do
+  -- logging!  Otherwise trying to exceute the Log command will
+  -- generate another exception, which will be logged, which will
+  -- generate an exception, ... etc.
   Up  exn []                            -> return $ In (TApp (TConst Say) (TString (formatExn exn))) V.empty [FExec]
 
-  -- Fatal errors can't be caught; just throw away the continuation
-  -- stack.
+  -- Fatal errors and capability errors can't be caught; just throw
+  -- away the continuation stack.
   Up exn@Fatal{} _                      -> return $ Up exn []
+  Up exn@Incapable{} _                  -> return $ Up exn []
 
   -- Otherwise, if we are raising an exception up the continuation
   -- stack and come to a Try frame, execute the associated catch
@@ -351,39 +368,39 @@ stepCEK cek = case cek of
   -- Otherwise, keep popping from the continuation stack.
   Up exn (_ : k)                        -> return $ Up exn k
 
-  Out (VResult _ _) k -> do
-    let msg = T.unlines
-          [ "Bad machine state in stepRobot: no appropriate stack frame to catch a VResult"
-          , from (show cek)
-          ]
-    return $ Up (Fatal msg) k
-
-  Out _ (FExec : k) -> do
-    let msg = T.unlines
-          [ "Bad machine state in stepRobot: FExec frame with non-executable value"
-          , from (show cek)
-          ]
-    return $ Up (Fatal msg) k
-
   -- Finally, if we're done evaluating and the continuation stack is
   -- empty, return the machine unchanged.
   done@(Out _ [])                        -> return done
+
+  where
+    badMachineState msg =
+      let msg' = T.unlines
+            [ T.append "Bad machine state in stepRobot: " msg
+            , from (show cek)
+            ]
+      in return $ Up (Fatal msg') []
+
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
 takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere, Try, Random])
 
--- | At the level of the CEK machine there's no particular difference
+-- | At the level of the CEK machine, the only difference bewteen
 --   between *evaluating* a function constant and *executing* a
---   command constant, but it somehow feels better to have two
---   different names for it anyway.
+--   command constant is what kind of exceptions can be thrown.  When
+--   evaluating, the only thing that could throw an exception is
+--   trying to use a function constant without the proper capability
+--   (for example, trying to use `if` without having a conditional
+--   device).  Any other exceptions constitute a bug.
 evalConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> StateT Robot m CEK
 evalConst c vs k = do
   res <- runExceptT $ execConst c vs k
   case res of
-    Left exn   -> do
+    Left exn@Fatal{}     -> return $ Up exn k
+    Left exn@Incapable{} -> return $ Up exn k
+    Left exn -> do
       let msg = T.unlines
-            [ "evalConst shouldn't be able to throw an exception:"
+            [ "evalConst shouldn't be able to throw this kind of exception:"
             , formatExn exn
             ]
       return $ Up (Fatal msg) k
@@ -414,8 +431,10 @@ seedProgram thing = prog
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
 
 execConst c vs k = do
-  return ()  -- XXX check capabilities
+  -- First, ensure the robot is capable of executing/evaluating this constant
+  c `canExecuteOr` Incapable c
 
+  -- Now proceed to actually carry out the operation.
   case c of
     Noop   -> return $ Out VUnit k
     Return -> case vs of
