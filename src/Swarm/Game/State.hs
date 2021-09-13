@@ -23,9 +23,9 @@ import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bifunctor       (first)
 import           Data.IntMap          (IntMap)
-import           Data.Map             (Map, (!))
+import           Data.Map             (Map)
 import qualified Data.Map             as M
-import           Data.Maybe           (fromMaybe)
+import           Data.Maybe           (fromMaybe, mapMaybe)
 import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           Linear
@@ -137,10 +137,12 @@ initGameState = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
+  let baseDevices = mapMaybe (`M.lookup` entities) ["solar panel", "3D printer"]
+
   return $ GameState
     { _gameMode       = Classic
     , _paused         = False
-    , _robotMap       = M.singleton "base" (baseRobot [entities!"solar panel"])  -- XXX !
+    , _robotMap       = M.singleton "base" (baseRobot baseDevices)
     , _newRobots      = []
     , _gensym         = 0
     , _entityMap      = entities

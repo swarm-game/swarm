@@ -187,6 +187,28 @@
   - A drill allows robots to drill through rocks and mountains.
   properties: [portable]
 
+- name: 3D printer
+  display:
+    attr: device
+    char: '3'
+  description:
+  - A 3D printer gives you the capability of printing more robots! You
+    can access the 3D printer via the 'build' command.
+  - 'Example:'
+  - '  build "fred" {move; grab; turn back; move; give "base"
+    "tree"}'
+  - |
+    builds a robot named "fred" to get the tree on the cell to the
+    east (if there is one) and bring it back to you. Note that if there is already a
+    robot named "fred", the new robot will be given a similar but
+    unique name.  The 'build' command always returns the name of the
+    newly constructed robot. For example,
+  - '  name <- build "fred" {move}; view name'
+  - |
+    builds a robot and then views it (no matter what it ends up being named).
+
+  properties: [portable]
+  capabilities: [build]
 ############################################################
 ### Test entities ##########################################
 ############################################################
