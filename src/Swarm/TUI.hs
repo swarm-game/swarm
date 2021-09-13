@@ -141,7 +141,10 @@ drawUI s =
     [ hLimitPercent 25 $ panel highlightAttr fr InfoPanel $ drawInfoPanel s
     , vBox
       [ panel highlightAttr fr WorldPanel $ drawWorld (s ^. gameState)
-      , drawMenu (s ^. gameState . paused) (s ^. uiState)
+      , drawMenu
+          (s ^. gameState . paused)
+          ((s ^. gameState . viewCenterRule) == VCRobot "base")
+          (s ^. uiState)
       , panel highlightAttr fr REPLPanel $ vLimit replHeight $ padBottom Max $ padLeftRight 1 $ drawRepl s
       ]
     ]
@@ -160,8 +163,8 @@ drawDialog s = case s ^. uiError of
   Nothing -> emptyWidget
   Just d  -> renderDialog errorDialog d
 
-drawMenu :: Bool -> UIState -> Widget Name
-drawMenu isPaused
+drawMenu :: Bool -> Bool -> UIState -> Widget Name
+drawMenu isPaused viewingBase
   = vLimit 1
   . hBox . map (padLeftRight 1 . drawKeyCmd)
   . (globalKeyCmds++) . keyCmdsFor . focusGetCurrent . view uiFocusRing
@@ -180,6 +183,9 @@ drawMenu isPaused
       ]
       ++
       [ ("s", "step") | isPaused ]
+      ++
+      [ ("c", "recenter") | not viewingBase ]
+
     keyCmdsFor (Just InfoPanel)  =
       [ ("↓↑/jk/Pg{Up,Dn}/Home/End", "navigate")
       -- , ("Enter", "craft")
@@ -442,6 +448,10 @@ handleWorldEvent s (VtyEvent (V.EvKey k []))
   | k `elem` [ V.KUp, V.KDown, V.KLeft, V.KRight
              , V.KChar 'h', V.KChar 'j', V.KChar 'k', V.KChar 'l' ]
   = scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
+  invalidateCacheEntry WorldCache
+  continue $ s & gameState . viewCenterRule .~ VCRobot "base"
+               & gameState %~ updateViewCenter
 
 -- pausing and stepping
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') []))
