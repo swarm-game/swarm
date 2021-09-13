@@ -26,18 +26,20 @@ import           Data.Functor.Fixedpoint     (Fix, unFix)
 import qualified Data.Map                    as M
 import           Data.String                 (fromString)
 import           Data.Text                   (Text)
+import qualified Data.Text                   as T
 import           Prettyprinter
 import qualified Prettyprinter.Render.String as RS
 import qualified Prettyprinter.Render.Text   as RT
+import           Witch
 
 import           Control.Unification
 import           Control.Unification.IntVar
 
-import qualified Data.Text                   as T
+import           Swarm.Language.Capability
 import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
-import           Witch
+
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -107,6 +109,9 @@ instance PrettyPrec Direction where
   prettyPrec _ South = "south"
   prettyPrec _ East  = "east"
   prettyPrec _ West  = "west"
+
+instance PrettyPrec Capability where
+  prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))
 
 instance PrettyPrec Const where
   prettyPrec _ Noop      = "{}"

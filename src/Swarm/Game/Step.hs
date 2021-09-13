@@ -135,11 +135,21 @@ robotNamed nm = lift . lift $ use (robotMap . at nm)
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
 --   OR we are in creative mode).
-canExecuteOr :: MonadState GameState m => Const -> Exn -> ExceptT Exn (StateT Robot m) ()
-canExecuteOr c exn = do
+ensureCanExecute :: MonadState GameState m => Const -> ExceptT Exn (StateT Robot m) ()
+ensureCanExecute c = do
+  mode <- lift . lift $ use gameMode
+  robotCaps <- use robotCapabilities
+  let missingCaps = requiredCaps (TConst c) `S.difference` robotCaps
+  (mode == Creative || S.null missingCaps) `holdsOr`
+    Incapable missingCaps (TConst c)
+
+-- | Ensure that either a robot has a given capability, OR we are in creative
+--   mode.
+hasCapabilityOr :: MonadState GameState m => Capability -> Exn -> ExceptT Exn (StateT Robot m) ()
+hasCapabilityOr cap exn = do
   mode <- lift . lift $ use gameMode
   caps <- use robotCapabilities
-  (mode == Creative || requiredCaps (TConst c) `S.isSubsetOf` caps) `holdsOr` exn
+  (mode == Creative || cap `S.member` caps) `holdsOr` exn
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -148,6 +158,16 @@ cmdExn c parts = CmdFailed c (T.unwords parts)
 -- | Raise an exception about a command failing with a formatted error message.
 raise :: MonadState GameState m => Const -> [Text] -> ExceptT Exn (StateT Robot m) a
 raise c parts = throwError (cmdExn c parts)
+
+-- | Run a subcomputation that might throw an exception in a context
+--   where we are returning a CEK machine; any exception will be
+--   turned into an 'Up' state.
+withExceptions :: Monad m => Cont -> ExceptT Exn (StateT Robot m) CEK -> StateT Robot m CEK
+withExceptions k m = do
+  res <- runExceptT m
+  case res of
+    Left exn -> return $ Up exn k
+    Right a  -> return a
 
 ------------------------------------------------------------
 -- Stepping robots
@@ -249,7 +269,9 @@ stepCEK cek = case cek of
   Out v1 (FLet x t2 e : k)          -> return $ In t2 (addBinding x v1 e) k
 
   -- Definitions immediately turn into VDef values, awaiting execution.
-  In (TDef x _ t) e k               -> return $ Out (VDef x t e) k
+  In tm@(TDef x _ t) e k -> withExceptions k $ do
+    CEnv `hasCapabilityOr` Incapable (S.singleton CEnv) tm
+    return $ Out (VDef x t e) k
 
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
@@ -265,9 +287,10 @@ stepCEK cek = case cek of
   -- To execute a definition, we focus on evaluating the body in a
   -- recursive environment (similar to let), and remember that the
   -- result should be bound to the given name.
-  Out (VDef x t e) (FExec : k)       ->
+  Out (VDef x t e) (FExec : k)       -> do
     let e' = addBinding x (VDelay t e') e
-    in  return $ In t e' (FDef x : k)
+    return $ In t e' (FDef x : k)
+
   -- Once we are done evaluating the body of a definition, we return a
   -- special VResult value, which packages up the return value from
   -- the @def@ command itself (@unit@) together with the resulting
@@ -432,7 +455,7 @@ execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> 
 
 execConst c vs k = do
   -- First, ensure the robot is capable of executing/evaluating this constant
-  c `canExecuteOr` Incapable c
+  ensureCanExecute c
 
   -- Now proceed to actually carry out the operation.
   case c of

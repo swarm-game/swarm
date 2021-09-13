@@ -80,9 +80,9 @@ indefinite :: Text -> Text
 indefinite w = MM.indefiniteDet w <+> w
 
 -- | Prepend a noun with the proper indefinite article, and surround
---   the noun in double quotes.
+--   the noun in single quotes.
 indefiniteQ :: Text -> Text
-indefiniteQ w = MM.indefiniteDet w <+> quote w
+indefiniteQ w = MM.indefiniteDet w <+> squote w
 
 -- | Pluralize a noun.
 plural :: Text -> Text
@@ -95,6 +95,10 @@ plural = MM.defaultNounPlural
 number :: Int -> Text -> Text
 number 1 = id
 number _ = plural
+
+-- | Surround some text in single quotes
+squote :: Text -> Text
+squote t = T.concat ["'", t, "'"]
 
 -- | Surround some text in double quotes.
 quote :: Text -> Text
