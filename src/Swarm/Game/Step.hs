@@ -33,6 +33,7 @@ import           Linear
 import           System.Random           (randomRIO)
 import           Witch
 
+import           Data.Bool               (bool)
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entity       as E
@@ -412,261 +413,284 @@ seedProgram thing = prog
 --   to some values.
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
 
-execConst Noop _ k     = return $ Out VUnit k
-execConst Return [v] k = return $ Out v k
-execConst Return vs k  = badConst Return vs k
-execConst Wait _ k     = return $ Out VUnit k
-execConst Halt _ k     = do
-  selfDestruct .= True
-  flagRedraw
-  return $ Out VUnit k
+execConst c vs k = do
+  return ()  -- XXX check capabilities
 
-execConst Move _ k     = do
-  loc <- use robotLocation
-  orient <- use robotOrientation
-  let nextLoc = loc ^+^ (orient ? zero)
-  me <- entityAt nextLoc
-
-  -- Make sure the robot has treads installed.
-  "treads" `isInstalledOr` cmdExn Move ["You need treads to move."]
-
-  -- Make sure nothing is in the way.
-  maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
-    cmdExn Move ["There is a", fromJust me ^. entityName, "in the way!"]
-
-  robotLocation .= nextLoc
-  flagRedraw
-  return $ Out VUnit k
-
-execConst Grab _ k = do
-
-  "grabber" `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
-
-  -- Ensure there is an entity here.
-  loc <- use robotLocation
-  e <- entityAt loc >>= (`isJustOr` cmdExn Grab ["There is nothing here to grab."])
-
-  -- Ensure it can be picked up.
-  (e `hasProperty` Portable) `holdsOr`
-    cmdExn Grab ["The", e ^. entityName, "here can't be grabbed."]
-
-  -- Remove the entity from the world.
-  updateEntityAt loc (const Nothing)
-  flagRedraw
-
-  when (e `hasProperty` Growable) $ do
-
-    -- Grow a new entity from a seed.
-    let seedBot =
-          mkRobot "seed" loc (V2 0 0)
-            (initMachine (seedProgram (e ^. entityName)) V.empty)
-            []
-            & robotDisplay .~
-              (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
-            & robotInventory .~ E.singleton e
-    _ <- lift . lift $ addRobot seedBot
-    return ()
-
-  -- Add the picked up item to the robot's inventory
-  robotInventory %= insert e
-  return $ Out VUnit k
-
-execConst Turn [VDir d] k = do
-  "treads" `isInstalledOr` cmdExn Turn ["You need treads to turn."]
-
-  robotOrientation . _Just %= applyTurn d
-  flagRedraw
-  return $ Out VUnit k
-
-execConst Turn args k = badConst Turn args k
-
--- XXX do we need a device to do placement?
-execConst Place [VString s] k = do
-  inv <- use robotInventory
-  loc <- use robotLocation
-
-  -- Make sure there's nothing already here
-  nothingHere <- isNothing <$> entityAt loc
-  nothingHere `holdsOr` cmdExn Place ["There is already an entity here."]
-
-  -- Make sure the robot has the thing in its inventory
-  e <- listToMaybe (lookupByName s inv) `isJustOr`
-    cmdExn Place ["You don't have", indefinite s, "to place."]
-
-  -- Place the entity and remove it from the inventory
-  updateEntityAt loc (const (Just e))
-  robotInventory %= delete e
-
-  flagRedraw
-  return $ Out VUnit k
-
-execConst Place args k = badConst Place args k
-
--- XXX need a device to give --- but it should be available from the beginning
-execConst Give [VString otherName, VString itemName] k = do
-
-  -- Make sure the other robot is here
-  _ <- robotNamed otherName >>=
-    (`isJustOr` cmdExn Give ["There is no robot named", otherName, "here." ])
-
-  -- Make sure we have the required item
-  inv <- use robotInventory
-  item <- (listToMaybe . lookupByName itemName $ inv) `isJustOr`
-    cmdExn Give ["You don't have", indefinite itemName, "to give." ]
-
-  -- Make the exchange
-  lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
-  robotInventory %= delete item
-  return $ Out VUnit k
-
-execConst Give args k = badConst Give args k
-
--- XXX do we need a device to craft?
-execConst Craft [VString name] k = do
-  inv <- use robotInventory
-  em <- lift . lift $ use entityMap
-  e <- M.lookup name em `isJustOr`
-    cmdExn Craft ["I've never heard of", indefiniteQ name, "."]
-
-  outRs <- lift . lift $ use recipesOut
-
-  recipe <- recipeFor outRs e `isJustOr`
-    cmdExn Craft ["There is no known recipe for crafting", indefinite name, "."]
-
-  inv' <-  craft recipe inv `isRightOr` \missing ->
-    cmdExn Craft ["Missing ingredients:", prettyIngredientList missing]
-
-  robotInventory .= inv'
-  return $ Out VUnit k
-
-execConst Craft args k = badConst Craft args k
-
-
-execConst GetX _ k = do
-  V2 x _ <- use robotLocation
-  return $ Out (VInt (fromIntegral x)) k
-execConst GetY _ k = do
-  V2 _ y <- use robotLocation
-  return $ Out (VInt (fromIntegral y)) k
-
-execConst Random [VInt hi] k = do
-  n <- randomRIO (0, hi-1)
-  return $ Out (VInt n) k
-execConst Random args k = badConst Random args k
-
-execConst Say [VString s] k = do
-  rn <- use robotName
-  lift . lift $ emitMessage (T.concat [rn, ": ", s])
-  return $ Out VUnit k
-execConst Say args k = badConst Say args k
-
-execConst View [VString s] k = do
-  _ <- robotNamed s >>=
-    (`isJustOr` cmdExn View [ "There is no robot named ", s, " to view." ])
-
-  lift . lift $ viewCenterRule .= VCRobot s
-  return $ Out VUnit k
-execConst View args k = badConst View args k
-
-execConst Appear [VString s] k = do
-  flagRedraw
-  case into @String s of
-    [c] -> do
-      robotDisplay . defaultChar .= c
-      robotDisplay . orientationMap .= M.empty
+  case c of
+    Noop   -> return $ Out VUnit k
+    Return -> case vs of
+      [v] -> return $ Out v k
+      _   -> badConst
+    Wait -> return $ Out VUnit k
+    Halt -> do
+      selfDestruct .= True
+      flagRedraw
       return $ Out VUnit k
 
-    [c,nc,ec,sc,wc] -> do
-      robotDisplay . defaultChar .= c
-      robotDisplay . orientationMap . ix North .= nc
-      robotDisplay . orientationMap . ix East  .= ec
-      robotDisplay . orientationMap . ix South .= sc
-      robotDisplay . orientationMap . ix West  .= wc
+    Move -> do
+      loc <- use robotLocation
+      orient <- use robotOrientation
+      let nextLoc = loc ^+^ (orient ? zero)
+      me <- entityAt nextLoc
+
+      -- -- Make sure the robot has treads installed.
+      -- "treads" `isInstalledOr` cmdExn Move ["You need treads to move."]
+
+      -- Make sure nothing is in the way.
+      maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
+        cmdExn Move ["There is a", fromJust me ^. entityName, "in the way!"]
+
+      robotLocation .= nextLoc
+      flagRedraw
       return $ Out VUnit k
 
-    _other -> raise Appear [quote s, "is not a valid appearance string."]
+    Grab -> do
 
-execConst Appear args k = badConst Appear args k
+      -- "grabber" `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
 
-execConst Ishere [VString s] k = do
-  loc <-use robotLocation
-  me <- entityAt loc
-  case me of
-    Nothing -> return $ Out (VBool False) k
-    Just e  -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
-execConst Ishere args k = badConst Ishere args k
+      -- Ensure there is an entity here.
+      loc <- use robotLocation
+      e <- entityAt loc >>= (`isJustOr` cmdExn Grab ["There is nothing here to grab."])
 
-execConst Not [VBool b] k = return $ Out (VBool (not b)) k
-execConst Not args k = badConst Not args k
+      -- Ensure it can be picked up.
+      (e `hasProperty` Portable) `holdsOr`
+        cmdExn Grab ["The", e ^. entityName, "here can't be grabbed."]
 
-execConst (Cmp c) [v1, v2] k =
-  case evalCmp c v1 v2 of
-    Nothing -> return $ Out (VBool False) k  --- XXX random result?
-    Just b  -> return $ Out (VBool b) k
-execConst (Cmp c) args k     = badConst (Cmp c) args k
+      -- Remove the entity from the world.
+      updateEntityAt loc (const Nothing)
+      flagRedraw
 
-execConst Neg [VInt n] k = return $ Out (VInt (-n)) k
-execConst Neg args k = badConst Neg args k
-execConst (Arith c) [VInt n1, VInt n2] k = return $ Out (VInt (evalArith c n1 n2)) k
-execConst (Arith c) args k = badConst (Arith c) args k
+      when (e `hasProperty` Growable) $ do
 
-execConst Force [VDelay t e] k = return $ In t e k
-execConst Force args k = badConst Force args k
+        -- Grow a new entity from a seed.
+        let seedBot =
+              mkRobot "seed" loc (V2 0 0)
+                (initMachine (seedProgram (e ^. entityName)) V.empty)
+                []
+                & robotDisplay .~
+                  (defaultEntityDisplay '.' & displayAttr .~ plantAttr)
+                & robotInventory .~ E.singleton e
+        _ <- lift . lift $ addRobot seedBot
+        return ()
 
-  -- Note, if should evaluate the branches lazily, but since
-  -- evaluation is eager, by the time we get here thn and els have
-  -- already been fully evaluated --- what gives?  The answer is that
-  -- we rely on elaboration to add 'lazy' wrappers around the branches
-  -- (and a 'force' wrapper around the entire if).
-execConst If [VBool True , thn, _] k = return $ Out thn k
-execConst If [VBool False, _, els] k = return $ Out els k
-execConst If args k = badConst If args k
+      -- Add the picked up item to the robot's inventory
+      robotInventory %= insert e
+      return $ Out VUnit k
 
-execConst Fst [VPair v _] k = return $ Out v k
-execConst Fst args k        = badConst Fst args k
-execConst Snd [VPair _ v] k = return $ Out v k
-execConst Snd args k        = badConst Snd args k
+    Turn -> case vs of
+      [VDir d] -> do
+        -- "treads" `isInstalledOr` cmdExn Turn ["You need treads to turn."]
 
-execConst Try [c1, c2] k    = return $ Out c1 (FExec : FTry c2 : k)
-execConst Try args k        = badConst Try args k
+        robotOrientation . _Just %= applyTurn d
+        flagRedraw
+        return $ Out VUnit k
+      _ -> badConst
 
-execConst Raise [VString s] k = return $ Up (User s) k
-execConst Raise args k        = badConst Raise args k
+  -- XXX do we need a device to do placement?
+    Place -> case vs of
+      [VString s] -> do
+        inv <- use robotInventory
+        loc <- use robotLocation
 
-execConst Build [VString name, VDelay c e] k = do
-  r <- get
-  em <- lift . lift $ use entityMap
-  let newRobot =
-        mkRobot
-          name
-          (r ^. robotLocation)
-          (r ^. robotOrientation ? east)
-          (In c e [FExec])  -- XXX require cap for env that gets shared here?
-          [em!"treads", em!"grabber", em!"solar panel"]  -- XXX Don't use !
+        -- Make sure there's nothing already here
+        nothingHere <- isNothing <$> entityAt loc
+        nothingHere `holdsOr` cmdExn Place ["There is already an entity here."]
 
-  newRobot' <- lift . lift $ addRobot newRobot
-  flagRedraw
-  return $ Out (VString (newRobot' ^. robotName)) k
-execConst Build args k = badConst Build args k
+        -- Make sure the robot has the thing in its inventory
+        e <- listToMaybe (lookupByName s inv) `isJustOr`
+          cmdExn Place ["You don't have", indefinite s, "to place."]
 
-execConst Run [VString fileName] k = do
-  mf <- liftIO $ readFileMay (into fileName)
+        -- Place the entity and remove it from the inventory
+        updateEntityAt loc (const (Just e))
+        robotInventory %= delete e
 
-  f <- mf `isJustOr` cmdExn Run ["File not found:", fileName]
+        flagRedraw
+        return $ Out VUnit k
 
-  t <- processTerm (into @Text f)`isRightOr` \err ->
-    cmdExn Run ["Error in", fileName, "\n", err]
+      _ -> badConst
 
-  return $ initMachine' t V.empty k
+  -- XXX need a device to give --- but it should be available from the beginning
+    Give -> case vs of
+      [VString otherName, VString itemName] -> do
 
-execConst Run args k = badConst Run args k
+        -- Make sure the other robot is here
+        _ <- robotNamed otherName >>=
+          (`isJustOr` cmdExn Give ["There is no robot named", otherName, "here." ])
 
-badConst :: Monad m => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) a
-badConst c args k = throwError $ Fatal $
-  T.unlines
-  [ "Bad application of execConst:"
-  , from (prettyCEK (Out (VCApp c args) k))
-  ]
+        -- Make sure we have the required item
+        inv <- use robotInventory
+        item <- (listToMaybe . lookupByName itemName $ inv) `isJustOr`
+          cmdExn Give ["You don't have", indefinite itemName, "to give." ]
+
+        -- Make the exchange
+        lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
+        robotInventory %= delete item
+        return $ Out VUnit k
+
+      _ -> badConst
+
+  -- XXX do we need a device to craft?
+    Craft -> case vs of
+      [VString name] -> do
+        inv <- use robotInventory
+        em <- lift . lift $ use entityMap
+        e <- M.lookup name em `isJustOr`
+          cmdExn Craft ["I've never heard of", indefiniteQ name, "."]
+
+        outRs <- lift . lift $ use recipesOut
+
+        recipe <- recipeFor outRs e `isJustOr`
+          cmdExn Craft ["There is no known recipe for crafting", indefinite name, "."]
+
+        inv' <-  craft recipe inv `isRightOr` \missing ->
+          cmdExn Craft ["Missing ingredients:", prettyIngredientList missing]
+
+        robotInventory .= inv'
+        return $ Out VUnit k
+
+      _ -> badConst
+
+    GetX -> do
+      V2 x _ <- use robotLocation
+      return $ Out (VInt (fromIntegral x)) k
+    GetY -> do
+      V2 _ y <- use robotLocation
+      return $ Out (VInt (fromIntegral y)) k
+
+    Random -> case vs of
+      [VInt hi] -> do
+        n <- randomRIO (0, hi-1)
+        return $ Out (VInt n) k
+      _ -> badConst
+
+    Say -> case vs of
+      [VString s] -> do
+        rn <- use robotName
+        lift . lift $ emitMessage (T.concat [rn, ": ", s])
+        return $ Out VUnit k
+      _ -> badConst
+
+    View -> case vs of
+      [VString s] -> do
+        _ <- robotNamed s >>=
+          (`isJustOr` cmdExn View [ "There is no robot named ", s, " to view." ])
+
+        lift . lift $ viewCenterRule .= VCRobot s
+        return $ Out VUnit k
+      _ -> badConst
+
+    Appear -> case vs of
+      [VString s] -> do
+        flagRedraw
+        case into @String s of
+          [dc] -> do
+            robotDisplay . defaultChar .= dc
+            robotDisplay . orientationMap .= M.empty
+            return $ Out VUnit k
+
+          [dc,nc,ec,sc,wc] -> do
+            robotDisplay . defaultChar .= dc
+            robotDisplay . orientationMap . ix North .= nc
+            robotDisplay . orientationMap . ix East  .= ec
+            robotDisplay . orientationMap . ix South .= sc
+            robotDisplay . orientationMap . ix West  .= wc
+            return $ Out VUnit k
+
+          _other -> raise Appear [quote s, "is not a valid appearance string."]
+
+      _ -> badConst
+
+    Ishere -> case vs of
+      [VString s] -> do
+        loc <-use robotLocation
+        me <- entityAt loc
+        case me of
+          Nothing -> return $ Out (VBool False) k
+          Just e  -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
+      _ -> badConst
+
+    Not -> case vs of
+      [VBool b] -> return $ Out (VBool (not b)) k
+      _         -> badConst
+
+    Cmp cop -> case vs of
+      [v1, v2] ->
+        case evalCmp cop v1 v2 of
+          Nothing -> return $ Out (VBool False) k  --- XXX random result?
+          Just b  -> return $ Out (VBool b) k
+      _ -> badConst
+
+    Neg -> case vs of
+      [VInt n] -> return $ Out (VInt (-n)) k
+      _        -> badConst
+    Arith aop -> case vs of
+      [VInt n1, VInt n2] -> return $ Out (VInt (evalArith aop n1 n2)) k
+      _                  -> badConst
+
+    Force -> case vs of
+      [VDelay t e] -> return $ In t e k
+      _            -> badConst
+
+    -- Note, if should evaluate the branches lazily, but since
+    -- evaluation is eager, by the time we get here thn and els have
+    -- already been fully evaluated --- what gives?  The answer is that
+    -- we rely on elaboration to add 'lazy' wrappers around the branches
+    -- (and a 'force' wrapper around the entire if).
+    If -> case vs of
+      [VBool b , thn, els] -> return $ Out (bool els thn b) k
+      _                    -> badConst
+
+    Fst -> case vs of
+      [VPair v _] -> return $ Out v k
+      _           -> badConst
+    Snd -> case vs of
+      [VPair _ v] -> return $ Out v k
+      _           -> badConst
+
+    Try -> case vs of
+      [c1, c2] -> return $ Out c1 (FExec : FTry c2 : k)
+      _        -> badConst
+
+    Raise -> case vs of
+      [VString s] -> return $ Up (User s) k
+      _           -> badConst
+
+    Build -> case vs of
+      [VString name, VDelay cmd e] -> do
+        r <- get
+        em <- lift . lift $ use entityMap
+        let newRobot =
+              mkRobot
+                name
+                (r ^. robotLocation)
+                (r ^. robotOrientation ? east)
+                (In cmd e [FExec])  -- XXX require cap for env that gets shared here?
+                [em!"treads", em!"grabber", em!"solar panel"]  -- XXX Don't use !
+
+        newRobot' <- lift . lift $ addRobot newRobot
+        flagRedraw
+        return $ Out (VString (newRobot' ^. robotName)) k
+      _ -> badConst
+
+    Run -> case vs of
+      [VString fileName] -> do
+        mf <- liftIO $ readFileMay (into fileName)
+
+        f <- mf `isJustOr` cmdExn Run ["File not found:", fileName]
+
+        t <- processTerm (into @Text f)`isRightOr` \err ->
+          cmdExn Run ["Error in", fileName, "\n", err]
+
+        return $ initMachine' t V.empty k
+
+      _ -> badConst
+
+  where
+    badConst = throwError $ Fatal $
+      T.unlines
+      [ "Bad application of execConst:"
+      , from (prettyCEK (Out (VCApp c vs) k))
+      ]
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
