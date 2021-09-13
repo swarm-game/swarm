@@ -44,11 +44,10 @@ import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Value          as V
 import qualified Swarm.Game.World          as W
-import           Swarm.Language.Capability (requiredCaps)
+import           Swarm.Language.Capability
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
-import           Swarm.TUI.Attr
 import           Swarm.Util
 
 -- | The maximum number of CEK machine evaluation steps each robot is
