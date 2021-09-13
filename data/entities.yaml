@@ -1,6 +1,5 @@
 - name: tree
   display:
-    priority: 1
     attr: plant
     char: 'T'
   description:
@@ -9,7 +8,6 @@
 
 - name: branch
   display:
-    priority: 1
     attr: wood
     char: 'y'
   description:
@@ -18,7 +16,6 @@
 
 - name: log
   display:
-    priority: 1
     attr: wood
     char: 'l'
   description:
@@ -27,7 +24,6 @@
 
 - name: wood
   display:
-    priority: 1
     attr: wood
     char: 'w'
   description:
@@ -36,7 +32,6 @@
 
 - name: pebbles
   display:
-    priority: 1
     attr: entity
     char: ':'
   description:
@@ -45,7 +40,6 @@
 
 - name: rock
   display:
-    priority: 1
     attr: rock
     char: '@'
   description:
@@ -54,7 +48,6 @@
 
 - name: mountain
   display:
-    priority: 1
     attr: snow
     char: '∧'
   description:
@@ -63,7 +56,6 @@
 
 - name: flower
   display:
-    priority: 1
     attr: flower
     char: '*'
   description:
@@ -72,7 +64,6 @@
 
 - name: lambda
   display:
-    priority: 1
     attr: flower
     char: 'λ'
   description:
@@ -81,7 +72,6 @@
 
 - name: wave
   display:
-    priority: 1
     attr: water
     char: '~'
   description:
@@ -89,7 +79,6 @@
 
 - name: bit (0)
   display:
-    priority: 1
     attr: entity
     char: '0'
   description:
@@ -98,7 +87,6 @@
 
 - name: bit (1)
   display:
-    priority: 1
     attr: entity
     char: '1'
   description:
@@ -107,7 +95,6 @@
 
 - name: drill bit
   display:
-    priority: 1
     attr: entity
     char: '!'
   description:
@@ -116,7 +103,6 @@
 
 - name: box
   display:
-    priority: 1
     attr: wood
     char: '□'
   description:
@@ -125,7 +111,6 @@
 
 - name: gear
   display:
-    priority: 1
     attr: wood
     char: '*'
   description:
@@ -134,7 +119,6 @@
 
 - name: Linux
   display:
-    priority: 1
     attr: entity
     char: 'L'
   description:
@@ -147,40 +131,41 @@
 
 - name: treads
   display:
-    priority: 1
     attr: device
     char: '%'
   description:
   - Installing treads on a robot allows it to move (via the 'move' command) and turn
     (via the 'turn' command).
-  - 'Example: {move; turn left; move; turn north}'
+  - 'Example:'
+  - '  move; turn left; move; turn north'
   capabilities: [move, turn]
   properties: [portable]
 
 - name: grabber
   display:
-    priority: 1
     attr: device
     char: '<'
   description:
   - A grabber arm allows a robot to grab an item on its current cell, via the 'grab'
     command.
-  - 'Example: {grab "tree"}'
+  - The 'grab' command takes no arguments; it simply grabs whatever is
+    available.  It raises an exception if run in a cell that does not
+    contain an item.
   capabilities: [grab]
   properties: [portable]
 
 - name: solar panel
   display:
-    priority: 1
     attr: device
     char: '#'
   description:
-  - Solar panels provide power for a robot indefinitely.
+  - An extremely efficient alien solar panel, capable of generating sufficient power
+    from ambient starlight alone. A robot powered by one of these can operate any time,
+    including on cloudy days and at night.
   properties: [portable]
 
 - name: drill
   display:
-    priority: 1
     attr: device
     char: '!'
   description:
@@ -209,13 +194,13 @@
 
   properties: [portable]
   capabilities: [build]
+
 ############################################################
 ### Test entities ##########################################
 ############################################################
 
 - name: flerb
   display:
-    priority: 1
     attr: entity
     char: '&'
   description:
@@ -225,7 +210,6 @@
 
 - name: elephant
   display:
-    priority: 1
     attr: rock
     char: 'E'
   description:
