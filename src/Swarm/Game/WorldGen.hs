@@ -71,7 +71,7 @@ testWorld2 ix@(r,c)
       | h `mod` 10 == 0  = (GrassT, Just "flower")
       | otherwise        = (GrassT, Nothing)
     genBiome Small Soft Artificial
-      | h `mod` 10 == 0  = (GrassT, Just (T.concat ["bit ", from (show ((r+c) `mod` 2))]))
+      | h `mod` 10 == 0  = (GrassT, Just (T.concat ["bit (", from (show ((r+c) `mod` 2)), ")"]))
       | otherwise        = (GrassT, Nothing)
     genBiome Big Soft Artificial
       | h `mod` 5000 == 0   = (DirtT, Just "linux")
