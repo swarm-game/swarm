@@ -45,7 +45,7 @@ library
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception
-                      Swarm.Game.Recipes
+                      Swarm.Game.Recipe
                       Swarm.Game.Robot
                       Swarm.Game.State
                       Swarm.Game.Step

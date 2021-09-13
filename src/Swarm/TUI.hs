@@ -37,7 +37,7 @@ import qualified Graphics.Vty                as V
 import           Swarm.Game.CEK              (idleMachine, initMachine)
 import           Swarm.Game.Display
 import           Swarm.Game.Entity
-import           Swarm.Game.Recipes
+import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Step             (gameStep)

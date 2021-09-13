@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Swarm.Game.Recipes
+-- Module      :  Swarm.Game.Recipe
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -18,7 +18,7 @@
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module Swarm.Game.Recipes where
+module Swarm.Game.Recipe where
 
 import           Control.Lens
 import           Data.Bifunctor    (second)

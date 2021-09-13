@@ -37,7 +37,7 @@ import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entity       as E
 import           Swarm.Game.Exception    (formatExn)
-import           Swarm.Game.Recipes
+import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Value        as V
