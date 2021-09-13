@@ -91,7 +91,7 @@
     char: '1'
   description:
   - A bit.
-  properties: [portable]
+  properties: [portable, growable]
 
 - name: drill bit
   display:
@@ -194,6 +194,25 @@
 
   properties: [portable]
   capabilities: [build]
+
+- name: dictionary
+  display:
+    attr: device
+    char: 'D'
+
+  description:
+  - |
+    A dictionary allows a robot to remember definitions and reuse them
+    later.  You can access this ability with either a 'def' command,
+    which creates a name for an expression or command that is
+    available from then on, or with a 'let' expression, which names an
+    expression or command locally within another expression.
+  - '  def m2 : cmd () = move; move end'
+  - '  let x : int = 3 in x^2 + 2*x + 1'
+  - The type annotations in 'def' and 'let' are optional.
+
+  properties: [portable]
+  capabilities: [env]
 
 ############################################################
 ### Test entities ##########################################

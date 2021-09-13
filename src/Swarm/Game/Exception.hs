@@ -14,11 +14,15 @@
 
 module Swarm.Game.Exception where
 
-import           Data.Text             (Text)
-import qualified Data.Text             as T
+import           Data.Set                  (Set)
+import qualified Data.Set                  as S
+import           Data.Text                 (Text)
+import qualified Data.Text                 as T
 
-import           Swarm.Language.Pretty (prettyText)
+import           Swarm.Language.Capability
+import           Swarm.Language.Pretty     (prettyText)
 import           Swarm.Language.Syntax
+import           Swarm.Util
 
 data Exn
     -- | Something went very wrong.  This is a bug in Swarm and cannot
@@ -26,10 +30,10 @@ data Exn
     --   the entire UI).
   = Fatal Text
 
-    -- | A robot tried to do something for which it does not have the
-    --   required device/capability.  This cannot be caught by a @try@
-    --   block.
-  | Incapable Const
+    -- | A robot tried to do something for which it does not have some
+    --   of the required capabilities.  This cannot be caught by a
+    --   @try@ block.
+  | Incapable (Set Capability) Term
 
     -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
@@ -45,7 +49,15 @@ formatExn (Fatal t) = T.unlines
   [ T.append "fatal error: " t
   , "Please report this as a bug at https://github.com/byorgey/swarm/issues ."
   ]
-formatExn (Incapable c)   = T.concat
-  [ "not capable of using '", prettyText c, "'" ]
+formatExn (Incapable caps tm)   = T.unlines
+  [ T.concat
+    [ "missing ", number (S.size caps) "capability", " "
+    , squote (prettyCaps caps), " needed to execute:"
+    ]
+  , prettyText tm
+  ]
 formatExn (CmdFailed c t) = T.concat [prettyText c, ": ", t]
 formatExn (User t)        = T.concat ["user exception: ", t]
+
+prettyCaps :: Set Capability -> Text
+prettyCaps s = T.intercalate ", " (map prettyText (S.toList s))
