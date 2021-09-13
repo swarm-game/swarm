@@ -17,12 +17,14 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RankNTypes         #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE TypeFamilies       #-}
 
 module Swarm.Game.Entity
   ( -- * Properties
@@ -37,6 +39,9 @@ module Swarm.Game.Entity
   , entityProperties, entityInventory, entityCapabilities, entityHash
   , hasProperty
 
+    -- ** Loading
+  , loadEntities
+
     -- * Inventories
 
   , Inventory, Count
@@ -49,8 +54,11 @@ module Swarm.Game.Entity
 where
 
 import           Brick                     (Widget)
-import           Control.Lens              (Getter, Lens', lens, to, (^.))
-import           Data.Bifunctor            (second)
+import           Control.Arrow             ((&&&))
+import           Control.Lens              (Getter, Lens', lens, to, view, (^.))
+import           Control.Monad.IO.Class
+import           Data.Bifunctor            (bimap, second)
+import           Data.Char                 (toLower)
 import           Data.Function             (on)
 import           Data.Hashable
 import           Data.IntMap               (IntMap)
@@ -60,14 +68,22 @@ import qualified Data.IntSet               as IS
 import           Data.List                 (foldl')
 import           Data.Map                  (Map)
 import qualified Data.Map                  as M
+import           Data.Maybe                (isJust)
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           GHC.Generics              (Generic)
 import           Linear
 import           Prelude                   hiding (lookup)
+import           Text.Read                 (readMaybe)
+import           Witch
+
+import           Data.Yaml
 
 import           Swarm.Game.Display
 import           Swarm.Language.Capability
+import           Swarm.Language.Syntax     (toDirection)
+
+import           Paths_swarm
 
 ------------------------------------------------------------
 -- Properties
@@ -78,6 +94,17 @@ data EntityProperty
   | Portable       -- ^ Robots can pick this up (via 'grab').
   | Growable       -- ^ Regrows from a seed after it is grabbed.
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
+
+instance ToJSON EntityProperty where
+  toJSON = String . from . map toLower . show
+
+instance FromJSON EntityProperty where
+  parseJSON = withText "EntityProperty" tryRead
+    where
+      tryRead :: Text -> Parser EntityProperty
+      tryRead t = case readMaybe . from . T.toTitle $ t of
+        Just c  -> return c
+        Nothing -> fail $ "Unknown entity property " ++ from t
 
 ------------------------------------------------------------
 -- Entity
@@ -204,6 +231,44 @@ mkDevice c nm descr caps
   = rehashEntity $ Entity 0 (deviceDisplay c) nm descr Nothing [Portable] caps empty
 
 ------------------------------------------------------------
+-- Serialization
+------------------------------------------------------------
+
+instance FromJSON Entity where
+  parseJSON = withObject "Entity" $ \v -> rehashEntity <$>
+    (Entity
+    <$> pure 0
+    <*> v .: "display"
+    <*> v .: "name"
+    <*> v .: "description"
+    <*> v .:? "orientation"
+    <*> v .:? "properties"   .!= []
+    <*> v .:? "capabilities" .!= []
+    <*> pure empty
+    )
+
+instance ToJSON Entity where
+  toJSON e = object $
+    [ "display"      .= (e ^. entityDisplay)
+    , "name"         .= (e ^. entityName)
+    , "description"  .= (e ^. entityDescription)
+    ]
+    ++
+    [ "orientation"  .= (e ^. entityOrientation) | isJust (e ^. entityOrientation) ]
+    ++
+    [ "properties"   .= (e ^. entityProperties) | not . null $ e ^. entityProperties ]
+    ++
+    [ "capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities ]
+
+loadEntities :: MonadIO m => m (Either Text (Map Text Entity))
+loadEntities = liftIO $ do
+  fileName <- getDataFileName "entities.yaml"
+  bimap (from . prettyPrintParseException) buildEntityMap <$> decodeFileEither fileName
+
+buildEntityMap :: [Entity] -> Map Text Entity
+buildEntityMap = M.fromList . map (view entityName &&& id)
+
+------------------------------------------------------------
 -- Entity lenses
 ------------------------------------------------------------
 
@@ -255,7 +320,7 @@ entityInventory = hashedLens _entityInventory (\e x -> e { _entityInventory = x 
 
 -- | Display an entity as a single character.
 displayEntity :: Entity -> Widget n
-displayEntity e = displayWidget (e ^. entityOrientation) (e ^. entityDisplay)
+displayEntity e = displayWidget ((e ^. entityOrientation) >>= toDirection) (e ^. entityDisplay)
 
 ------------------------------------------------------------
 -- Inventory

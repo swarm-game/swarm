@@ -24,6 +24,7 @@ import           Control.Arrow           ((&&&))
 import           Control.Lens            hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
+import           Data.Map                ((!))
 import qualified Data.Map                as M
 import           Data.Maybe              (fromJust, isNothing, listToMaybe)
 import           Data.Text               (Text)
@@ -34,10 +35,9 @@ import           Witch
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entities     as E
 import           Swarm.Game.Entity       as E
 import           Swarm.Game.Exception    (formatExn)
-import           Swarm.Game.Recipes
+import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Value        as V
@@ -129,25 +129,16 @@ updateEntityAt (V2 x y) upd = lift . lift $ world %= W.update (-y,x) upd
 robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)
 robotNamed nm = lift . lift $ use (robotMap . at nm)
 
--- | Require that a Boolean value is @True@, or throw an exception.
-holdsOr :: MonadError e m => Bool -> e -> m ()
-holdsOr b e = unless b $ throwError e
-
--- | Require that a 'Maybe' value is 'Just', or throw an exception.
-isJustOr :: MonadError e m => Maybe a -> e -> m a
-Just a  `isJustOr` _ = return a
-Nothing `isJustOr` e = throwError e
-
-isRightOr :: MonadError e m => Either b a -> (b -> e) -> m a
-Right a `isRightOr` _ = return a
-Left b `isRightOr` f  = throwError (f b)
-
 -- | Require that a robot has a given device installed, OR we are in
 --   creative mode.
-isInstalledOr :: MonadState GameState m => Entity -> Exn -> ExceptT Exn (StateT Robot m) ()
-isInstalledOr ent exn = do
+isInstalledOr :: MonadState GameState m => Text -> Exn -> ExceptT Exn (StateT Robot m) ()
+isInstalledOr nm exn = do
   mode <- lift . lift $ use gameMode
   r <- get
+  em <- lift . lift $ use entityMap
+
+  ent <- M.lookup nm em `isJustOr` Fatal (T.append "isInstalledOr: Unknown entity " nm)
+
   unless (mode == Creative || r `hasInstalled` ent) $ throwError exn
 
 -- | Create an exception about a command failing.
@@ -188,6 +179,7 @@ stepRobot r = do
 --   machine state and figure out a single next step.
 stepCEK :: (MonadState GameState m, MonadIO m) => CEK -> StateT Robot m CEK
 stepCEK cek = case cek of
+  -- (liftIO $ appendFile "out.txt" (prettyCEK cek)) >>
 
   -- It's a little unsatisfactory the way we handle having both Robot
   -- and GameState in different states (by having one be concrete and
@@ -340,7 +332,7 @@ stepCEK cek = case cek of
 
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
-  Out v (FTry _ _ : k)                  -> return $ Out v k
+  Out v (FTry _ : k)                    -> return $ Out v k
 
   -- If an exception rises all the way to the top level without being
   -- handled, turn it into an error message via the 'say' command.
@@ -353,7 +345,7 @@ stepCEK cek = case cek of
   -- Otherwise, if we are raising an exception up the continuation
   -- stack and come to a Try frame, execute the associated catch
   -- block.
-  Up _ (FTry t e : k)                   -> return $ In t e (FExec : k)
+  Up _ (FTry c : k  )                   -> return $ Out c (FExec : k)
 
   -- Otherwise, keep popping from the continuation stack.
   Up exn (_ : k)                        -> return $ Up exn k
@@ -378,7 +370,7 @@ stepCEK cek = case cek of
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere])
+takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Ishere, Try, Random])
 
 -- | At the level of the CEK machine there's no particular difference
 --   between *evaluating* a function constant and *executing* a
@@ -436,7 +428,7 @@ execConst Move _ k     = do
   me <- entityAt nextLoc
 
   -- Make sure the robot has treads installed.
-  E.treads `isInstalledOr` cmdExn Move ["You need treads to move."]
+  "treads" `isInstalledOr` cmdExn Move ["You need treads to move."]
 
   -- Make sure nothing is in the way.
   maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
@@ -448,7 +440,7 @@ execConst Move _ k     = do
 
 execConst Grab _ k = do
 
-  E.grabber `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
+  "grabber" `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
 
   -- Ensure there is an entity here.
   loc <- use robotLocation
@@ -480,7 +472,7 @@ execConst Grab _ k = do
   return $ Out VUnit k
 
 execConst Turn [VDir d] k = do
-  E.treads `isInstalledOr` cmdExn Turn ["You need treads to turn."]
+  "treads" `isInstalledOr` cmdExn Turn ["You need treads to turn."]
 
   robotOrientation . _Just %= applyTurn d
   flagRedraw
@@ -532,10 +524,13 @@ execConst Give args k = badConst Give args k
 -- XXX do we need a device to craft?
 execConst Craft [VString name] k = do
   inv <- use robotInventory
-  e <- listToMaybe (lookupByName name E.entityCatalog) `isJustOr`
+  em <- lift . lift $ use entityMap
+  e <- M.lookup name em `isJustOr`
     cmdExn Craft ["I've never heard of", indefiniteQ name, "."]
 
-  recipe <- recipeFor e `isJustOr`
+  outRs <- lift . lift $ use recipesOut
+
+  recipe <- recipeFor outRs e `isJustOr`
     cmdExn Craft ["There is no known recipe for crafting", indefinite name, "."]
 
   inv' <-  craft recipe inv `isRightOr` \missing ->
@@ -583,10 +578,10 @@ execConst Appear [VString s] k = do
 
     [c,nc,ec,sc,wc] -> do
       robotDisplay . defaultChar .= c
-      robotDisplay . orientationMap . ix north .= nc
-      robotDisplay . orientationMap . ix east  .= ec
-      robotDisplay . orientationMap . ix south .= sc
-      robotDisplay . orientationMap . ix west  .= wc
+      robotDisplay . orientationMap . ix North .= nc
+      robotDisplay . orientationMap . ix East  .= ec
+      robotDisplay . orientationMap . ix South .= sc
+      robotDisplay . orientationMap . ix West  .= wc
       return $ Out VUnit k
 
     _other -> raise Appear [quote s, "is not a valid appearance string."]
@@ -632,7 +627,7 @@ execConst Fst args k        = badConst Fst args k
 execConst Snd [VPair _ v] k = return $ Out v k
 execConst Snd args k        = badConst Snd args k
 
-execConst Try [VDelay t1 e1, VDelay t2 e2] k = return $ In t1 e1 (FExec : FTry t2 e2 : k)
+execConst Try [c1, c2] k    = return $ Out c1 (FExec : FTry c2 : k)
 execConst Try args k        = badConst Try args k
 
 execConst Raise [VString s] k = return $ Up (User s) k
@@ -640,13 +635,14 @@ execConst Raise args k        = badConst Raise args k
 
 execConst Build [VString name, VDelay c e] k = do
   r <- get
+  em <- lift . lift $ use entityMap
   let newRobot =
         mkRobot
           name
           (r ^. robotLocation)
           (r ^. robotOrientation ? east)
           (In c e [FExec])  -- XXX require cap for env that gets shared here?
-          [E.treads, E.grabber, E.solarPanels]
+          [em!"treads", em!"grabber", em!"solar panel"]  -- XXX Don't use !
 
   newRobot' <- lift . lift $ addRobot newRobot
   flagRedraw
@@ -667,11 +663,9 @@ execConst Run args k = badConst Run args k
 
 badConst :: Monad m => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) a
 badConst c args k = throwError $ Fatal $
-  T.unwords
-  [ "Bad application of execConst"
-  , from (show c)
-  , from (show args)
-  , from (show k)
+  T.unlines
+  [ "Bad application of execConst:"
+  , from (prettyCEK (Out (VCApp c args) k))
   ]
 
 -- | Evaluate the application of a comparison operator.  Returns

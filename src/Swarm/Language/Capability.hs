@@ -20,8 +20,17 @@ module Swarm.Language.Capability
 import           Data.Hashable         (Hashable)
 import           Data.Set              (Set)
 import qualified Data.Set              as S
+import           Data.Text             (Text)
+import qualified Data.Text             as T
+
+import           Data.Yaml
 import           GHC.Generics          (Generic)
+
+import           Data.Char             (toLower)
 import           Swarm.Language.Syntax
+import           Text.Read             (readMaybe)
+import           Witch                 (from)
+
 
 -- | Various capabilities which robots can have.
 data Capability
@@ -32,7 +41,7 @@ data Capability
   | CGive     -- ^ Execute the 'Give' command
   | CCraft    -- ^ Execute the 'Craft' command
   | CBuild    -- ^ Execute the 'Build' command
-  | CSenseLoc -- ^ Execute the 'GetX' and 'GetY' commands
+  | CSenseloc -- ^ Execute the 'GetX' and 'GetY' commands
   | CRandom   -- ^ Execute the 'Random' command
   | CSay      -- ^ Execute the 'Say' command
   | CAppear   -- ^ Execute the 'Appear' command
@@ -44,6 +53,17 @@ data Capability
   | CLam      -- ^ Interpret lambda abstractions
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
+instance ToJSON Capability where
+  toJSON = String . from . map toLower . drop 1 . show
+
+instance FromJSON Capability where
+  parseJSON = withText "Capability" tryRead
+    where
+      tryRead :: Text -> Parser Capability
+      tryRead t = case readMaybe . from . T.cons 'C' . T.toTitle $ t of
+        Just c  -> return c
+        Nothing -> fail $ "Unknown capability " ++ from t
+
   -- XXX we could make this a bit more refined, e.g.:
   --   - distinguish between capabilities needed to *evaluate* vs *execute*
   --   - do something more sophisticated for lambdas, let expressions, etc.
@@ -53,7 +73,6 @@ data Capability
   -- needed to execute it (because of eager evaluation, the
   -- capabilities to evaluate it will already be incurred by the time
   -- it ends up in the environment)
-
 
 -- | Analyze a program to see what capabilities may be needed to
 --   execute it. Note that this is necessarily a conservative
@@ -96,8 +115,8 @@ constCaps Say       = S.singleton CSay
 constCaps View      = S.empty
 constCaps Appear    = S.singleton CAppear
 
-constCaps GetX      = S.singleton CSenseLoc
-constCaps GetY      = S.singleton CSenseLoc
+constCaps GetX      = S.singleton CSenseloc
+constCaps GetY      = S.singleton CSenseloc
 constCaps Ishere    = S.empty
 constCaps Random    = S.singleton CRandom
 

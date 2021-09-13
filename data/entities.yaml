@@ -1,0 +1,212 @@
+- name: tree
+  display:
+    priority: 1
+    attr: plant
+    char: 'T'
+  description:
+  - A tree.
+  properties: [portable, growable]
+
+- name: branch
+  display:
+    priority: 1
+    attr: wood
+    char: 'y'
+  description:
+  - A branch from a tree.
+  properties: [portable]
+
+- name: log
+  display:
+    priority: 1
+    attr: wood
+    char: 'l'
+  description:
+  - A wooden log, obtained by harvesting a tree.
+  properties: [portable]
+
+- name: wood
+  display:
+    priority: 1
+    attr: wood
+    char: 'w'
+  description:
+  - A wooden plank.
+  properties: [portable]
+
+- name: pebbles
+  display:
+    priority: 1
+    attr: entity
+    char: ':'
+  description:
+  - Some pebbles.
+  properties: [portable]
+
+- name: rock
+  display:
+    priority: 1
+    attr: rock
+    char: '@'
+  description:
+  - A rock.
+  properties: [unwalkable]
+
+- name: mountain
+  display:
+    priority: 1
+    attr: snow
+    char: '∧'
+  description:
+  - A mountain.
+  properties: [unwalkable]
+
+- name: flower
+  display:
+    priority: 1
+    attr: flower
+    char: '*'
+  description:
+  - A flower.
+  properties: [portable, growable]
+
+- name: lambda
+  display:
+    priority: 1
+    attr: flower
+    char: 'λ'
+  description:
+  - A lambda.
+  properties: [portable]
+
+- name: wave
+  display:
+    priority: 1
+    attr: water
+    char: '~'
+  description:
+  - A wave on the surface of the water.
+
+- name: bit (0)
+  display:
+    priority: 1
+    attr: entity
+    char: '0'
+  description:
+  - A bit.
+  properties: [portable]
+
+- name: bit (1)
+  display:
+    priority: 1
+    attr: entity
+    char: '1'
+  description:
+  - A bit.
+  properties: [portable]
+
+- name: drill bit
+  display:
+    priority: 1
+    attr: entity
+    char: '!'
+  description:
+  - A drill bit is an important component of a drill.
+  properties: [portable]
+
+- name: box
+  display:
+    priority: 1
+    attr: wood
+    char: '□'
+  description:
+  - A wooden box.  It can hold things.
+  properties: [portable]
+
+- name: gear
+  display:
+    priority: 1
+    attr: wood
+    char: '*'
+  description:
+  - A wooden gear.
+  properties: [portable]
+
+- name: Linux
+  display:
+    priority: 1
+    attr: entity
+    char: 'L'
+  description:
+  - A copy of the Linux operating system.
+  properties: [portable]
+
+############################################################
+### Devices ################################################
+############################################################
+
+- name: treads
+  display:
+    priority: 1
+    attr: device
+    char: '%'
+  description:
+  - Installing treads on a robot allows it to move (via the 'move' command) and turn
+    (via the 'turn' command).
+  - 'Example: {move; turn left; move; turn north}'
+  capabilities: [move, turn]
+  properties: [portable]
+
+- name: grabber
+  display:
+    priority: 1
+    attr: device
+    char: '<'
+  description:
+  - A grabber arm allows a robot to grab an item on its current cell, via the 'grab'
+    command.
+  - 'Example: {grab "tree"}'
+  capabilities: [grab]
+  properties: [portable]
+
+- name: solar panel
+  display:
+    priority: 1
+    attr: device
+    char: '#'
+  description:
+  - Solar panels provide power for a robot indefinitely.
+  properties: [portable]
+
+- name: drill
+  display:
+    priority: 1
+    attr: device
+    char: '!'
+  description:
+  - A drill allows robots to drill through rocks and mountains.
+  properties: [portable]
+
+############################################################
+### Test entities ##########################################
+############################################################
+
+- name: flerb
+  display:
+    priority: 1
+    attr: entity
+    char: '&'
+  description:
+  - It is a flerb.
+  - What is a flerb, you ask? No one knows.
+  properties: [portable, growable]
+
+- name: elephant
+  display:
+    priority: 1
+    attr: rock
+    char: 'E'
+  description:
+  - An elephant.
+  - It is very big.
+  properties: [unwalkable]

@@ -10,28 +10,32 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module Swarm.Game.WorldGen where
 
 import           Data.Bool
 import           Data.Enumeration
 import           Data.Hash.Murmur
+import           Data.List            (find)
+import           Data.Text            (Text)
+import qualified Data.Text            as T
 import           Numeric.Noise.Perlin
 import           Witch
 
-import           Data.List            (find)
-import qualified Swarm.Game.Entities  as E
-import           Swarm.Game.Entity    (Entity)
+-- import qualified Swarm.Game.Entities  as E
+-- import           Swarm.Game.Entity    (Entity)
 import           Swarm.Game.Terrain
 import           Swarm.Game.World
 
 
 -- | A simple test world I used for a while during early development.
-testWorld1 :: WorldFun TerrainType Entity
-testWorld1 (-5, 3) = (StoneT, Just E.flerb)
-testWorld1 (2, -1) = (GrassT, Just E.elephant)
+testWorld1 :: WorldFun TerrainType Text
+testWorld1 (-5, 3) = (StoneT, Just "flerb")
+testWorld1 (2, -1) = (GrassT, Just "elephant")
 testWorld1 (i,j)
-  | noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0 = (DirtT, Just E.tree)
-  | noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0 = (StoneT, Just E.rock)
+  | noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0 = (DirtT, Just "tree")
+  | noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0 = (StoneT, Just "rock")
   | otherwise = (GrassT, Nothing)
   where
     pn1, pn2 :: Perlin
@@ -43,7 +47,7 @@ data Hardness = Soft    | Hard       deriving (Eq, Ord, Show, Read)
 data Origin   = Natural | Artificial deriving (Eq, Ord, Show, Read)
 
 -- | A more featureful test world.
-testWorld2 :: WorldFun TerrainType Entity
+testWorld2 :: WorldFun TerrainType Text
 testWorld2 ix@(r,c)
   = genBiome
     (bool Small Big (sample ix pn0 > 0))
@@ -53,28 +57,28 @@ testWorld2 ix@(r,c)
     h = murmur3 0 (into (show ix))
 
     genBiome Big Hard Natural
-      | sample ix cl0 > 0.7  = (StoneT, Just E.mountain)
-      | h `mod` 30 == 0      = (StoneT, Just E.rock)
-      | sample ix cl0 > 0    = (DirtT, Just E.tree)
+      | sample ix cl0 > 0.7  = (StoneT, Just "mountain")
+      | h `mod` 30 == 0      = (StoneT, Just "rock")
+      | sample ix cl0 > 0    = (DirtT, Just "tree")
       | otherwise            = (GrassT, Nothing)
     genBiome Small Hard Natural
-      | h `mod` 30  == 0  = (StoneT, Just E.pebbles)
+      | h `mod` 30  == 0  = (StoneT, Just "pebbles")
       | otherwise         = (StoneT, Nothing)
     genBiome Big Soft Natural
-      | even (r+c) = (WaterT, Just E.wave)
+      | even (r+c) = (WaterT, Just "wave")
       | otherwise  = (WaterT, Nothing)
     genBiome Small Soft Natural
-      | h `mod` 10 == 0  = (GrassT, Just E.flower)
+      | h `mod` 10 == 0  = (GrassT, Just "flower")
       | otherwise        = (GrassT, Nothing)
     genBiome Small Soft Artificial
-      | h `mod` 10 == 0  = (GrassT, Just (E.bit (even (r+c))))
+      | h `mod` 10 == 0  = (GrassT, Just (T.concat ["bit ", from (show ((r+c) `mod` 2))]))
       | otherwise        = (GrassT, Nothing)
     genBiome Big Soft Artificial
-      | h `mod` 5000 == 0   = (DirtT, Just E.linux)
+      | h `mod` 5000 == 0   = (DirtT, Just "linux")
       | sample ix cl0 > 0.5 = (GrassT, Nothing)
       | otherwise           = (DirtT, Nothing)
     genBiome Small Hard Artificial
-      | h `mod` 120 == 1  = (StoneT, Just E.lambda)
+      | h `mod` 120 == 1  = (StoneT, Just "lambda")
       | otherwise = (StoneT, Nothing)
     genBiome Big Hard Artificial
       | sample ix cl0 > 0.8 = (IceT, Nothing)
@@ -94,10 +98,10 @@ testWorld2 ix@(r,c)
 
     cl0 = clumps 0
 
-findGoodOrigin :: WorldFun t Entity -> WorldFun t Entity
+findGoodOrigin :: WorldFun t Text -> WorldFun t Text
 findGoodOrigin f = \(r,c) -> f (r + fromIntegral rOffset, c + fromIntegral cOffset)
   where
     int' :: Enumeration Int
     int' = fromIntegral <$> int
     Just (rOffset, cOffset) = find isTree (enumerate (int' >< int'))
-    isTree = (== Just E.tree) . snd . f
+    isTree = (== Just "tree") . snd . f

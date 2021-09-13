@@ -1,0 +1,26 @@
+- in:
+  - [1, tree]
+  out:
+  - [2, branch]
+  - [1, log]
+
+- in:
+  - [1, log]
+  out:
+  - [4, wood]
+
+- in:
+  - [6, wood]
+  out:
+  - [1, box]
+
+- in:
+  - [2, wood]
+  out:
+  - [1, gear]
+
+- in:
+  - [1, bit (0)]
+  - [1, bit (1)]
+  out:
+  - [1, drill bit]

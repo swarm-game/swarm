@@ -121,9 +121,9 @@ data Frame
     -- is evaluate @t2@ in the environment @e@ extended with a binding
     -- for @x@.
 
-  | FTry Term Env
+  | FTry Value
     -- ^ We are executing inside a 'Try' block.  If an exception is
-    --   raised, we will evaluate the stored term (the "catch" block).
+    --   raised, we will execute the stored term (the "catch" block).
 
   | FDef Var
     -- ^ We were evaluating the body of a definition.  The next thing
@@ -157,10 +157,16 @@ data Frame
 type Cont = [Frame]
 
 -- | The overall state of a CEK machine, which can actually be one of
---   two kinds of states. The CEK machine is named after the first
+--   three kinds of states. The CEK machine is named after the first
 --   kind of state, and it would probably be possible to inline a
 --   bunch of things and get rid of the second state, but I find it
---   much more natural and elegant this way.
+--   much more natural and elegant this way.  Most tutorial
+--   presentations of CEK machines only have one kind of state, but
+--   then again, most tutorial presentations only deal with the bare
+--   lambda calculus, so one can tell whether a term is a value just
+--   by seeing whether it is syntactically a lambda.  I learned this
+--   approach from Harper's Practical Foundations of Programming
+--   Languages.
 data CEK
   = In Term Env Cont
     -- ^ When we are on our way "in/down" into a term, we have a
@@ -170,7 +176,7 @@ data CEK
 
   | Out Value Cont
     -- ^ Once we finish evaluating a term, we end up with a 'Value'
-    --   and we switch into "out/up" mode, bringing the value back up
+    --   and we switch into "out" mode, bringing the value back up
     --   out of the depths to the context that was expecting it.  In
     --   this mode we generally pattern-match on the 'Cont' to decide
     --   what to do next.
@@ -240,7 +246,7 @@ prettyFrame (FFst v)             = "(" ++ from (prettyValue v) ++ ", _)"
 prettyFrame (FArg t _)           = "_ " ++ prettyString t
 prettyFrame (FApp v)             = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)         = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FTry t _)           = "try _ (" ++ prettyString t ++ ")"
+prettyFrame (FTry c)             = "try _ (" ++ from (prettyValue c) ++ ")"
 prettyFrame (FDef x)             = "def " ++ from x ++ " = _"
 prettyFrame (FUnionEnv _)        = "_ ∪ <Env>"
 prettyFrame (FLoadEnv _)         = "loadEnv"

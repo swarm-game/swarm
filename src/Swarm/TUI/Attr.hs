@@ -14,12 +14,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Swarm.TUI.Attr where
 
 import           Brick
 import           Brick.Forms
 import           Brick.Widgets.List
 import qualified Graphics.Vty       as V
+
+import           Data.Yaml
+import           Witch              (from)
 
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap
@@ -58,19 +63,25 @@ robotAttr, entityAttr, plantAttr, flowerAttr, snowAttr, rockAttr, baseAttr,
   woodAttr, deviceAttr,
   dirtAttr, grassAttr, stoneAttr, waterAttr, iceAttr,
   highlightAttr, defAttr :: AttrName
-dirtAttr      = "dirtAttr"
-grassAttr     = "grassAttr"
-stoneAttr     = "stoneAttr"
-waterAttr     = "waterAttr"
-iceAttr       = "iceAttr"
-robotAttr     = "robotAttr"
-entityAttr    = "entityAttr"
-plantAttr     = "plantAttr"
-flowerAttr    = "flowerAttr"
-snowAttr      = "snowAttr"
-rockAttr      = "rockAttr"
-woodAttr      = "woodAttr"
-baseAttr      = "baseAttr"
-deviceAttr    = "deviceAttr"
-highlightAttr = "highlightAttr"
-defAttr       = "defAttr"
+dirtAttr      = "dirt"
+grassAttr     = "grass"
+stoneAttr     = "stone"
+waterAttr     = "water"
+iceAttr       = "ice"
+robotAttr     = "robot"
+entityAttr    = "entity"
+plantAttr     = "plant"
+flowerAttr    = "flower"
+snowAttr      = "snow"
+rockAttr      = "rock"
+woodAttr      = "wood"
+baseAttr      = "base"
+deviceAttr    = "device"
+highlightAttr = "highlight"
+defAttr       = "def"
+
+instance ToJSON AttrName where
+  toJSON = toJSON . head . attrNameComponents
+
+instance FromJSON AttrName where
+  parseJSON = withText "AttrName" (pure . attrName . from)

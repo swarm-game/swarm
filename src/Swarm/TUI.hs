@@ -33,10 +33,11 @@ import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List          as BL
 import qualified Graphics.Vty                as V
 
+import           Control.Monad.Except
 import           Swarm.Game.CEK              (idleMachine, initMachine)
 import           Swarm.Game.Display
 import           Swarm.Game.Entity
-import           Swarm.Game.Recipes
+import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Step             (gameStep)
@@ -45,7 +46,8 @@ import           Swarm.Game.Value            (Value (VUnit), prettyValue)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
-import           Swarm.Language.Syntax       (east, north, south, west)
+import           Swarm.Language.Syntax       (east, north, south, toDirection,
+                                              west)
 import           Swarm.Language.Types
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Panel
@@ -101,8 +103,8 @@ initReplForm = newForm
 initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 3    -- 2^3 = 8 ticks per second
 
-initUIState :: IO UIState
-initUIState = do
+initUIState :: ExceptT Text IO UIState
+initUIState = liftIO $ do
   tv <- newTVarIO initLgTicksPerSecond
   mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
   return $ UIState
@@ -125,7 +127,7 @@ data AppState = AppState
 
 makeLenses ''AppState
 
-initAppState :: IO AppState
+initAppState :: ExceptT Text IO AppState
 initAppState = AppState <$> initGameState <*> initUIState
 
 ------------------------------------------------------------
@@ -210,8 +212,8 @@ drawWorld g
       = M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
       . M.elems $ g ^. robotMap
     drawLoc (row,col) = case M.lookup (V2 col (-row)) robotsByLoc of
-      Just r  -> withAttr (r ^. robotDisplay . displayAttr)
-                 $ str [lookupDisplay (r ^. robotOrientation) (r ^. robotDisplay)]
+      Just r  -> withAttr (r ^. robotDisplay . displayAttr) $
+        str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
       Nothing -> drawCell (row,col) (g ^. world)
 
 drawCell :: W.Worldly w Int Entity => (Int, Int) -> w -> Widget Name
@@ -243,8 +245,13 @@ explainFocusedItem s = case mItem of
     mList = s ^? uiState . uiInventory . _Just . _2
     mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
 
-explainRecipes :: Entity -> [Widget Name]
-explainRecipes = map (txt . prettyRecipe) . recipesWith
+    explainRecipes :: Entity -> [Widget Name]
+    explainRecipes = map (txt . prettyRecipe) . recipesWith
+
+    recipesWith :: Entity -> [Recipe Entity]
+    recipesWith e = recipesFor (s ^. gameState . recipesOut) e
+               ++ recipesFor (s ^. gameState . recipesIn) e
+
 
 drawMessages :: [Text] -> Widget Name
 drawMessages [] = txt " "

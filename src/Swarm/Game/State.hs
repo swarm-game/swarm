@@ -19,9 +19,11 @@
 module Swarm.Game.State where
 
 import           Control.Lens
+import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bifunctor       (first)
-import           Data.Map             (Map)
+import           Data.IntMap          (IntMap)
+import           Data.Map             (Map, (!))
 import qualified Data.Map             as M
 import           Data.Maybe           (fromMaybe)
 import           Data.Text            (Text)
@@ -30,11 +32,13 @@ import           Linear
 import           Witch
 
 import           Swarm.Game.Entity
+import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.Value
 import qualified Swarm.Game.World     as W
 import           Swarm.Game.WorldGen  (findGoodOrigin, testWorld2)
 import           Swarm.Language.Types
+import           Swarm.Util
 
 data ViewCenterRule
   = VCLocation (V2 Int)
@@ -59,6 +63,9 @@ data GameState = GameState
   , _robotMap       :: Map Text Robot
   , _newRobots      :: [Robot]
   , _gensym         :: Int
+  , _entityMap      :: Map Text Entity
+  , _recipesOut     :: IntMap [Recipe Entity]
+  , _recipesIn      :: IntMap [Recipe Entity]
   , _world          :: W.TileCachingWorld Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter     :: V2 Int
@@ -112,21 +119,45 @@ addRobot r = do
   newRobots %= (r' :)
   return r'
 
-initGameState :: IO GameState
-initGameState = return $
-  GameState
-  { _gameMode       = Classic
-  , _paused         = False
-  , _robotMap       = M.singleton "base" baseRobot
-  , _newRobots      = []
-  , _gensym         = 0
-  , _world          = W.newWorld . fmap (first fromEnum) . findGoodOrigin $ testWorld2
-  , _viewCenterRule = VCRobot "base"
-  , _viewCenter     = V2 0 0
-  , _updated        = False
-  , _replResult     = REPLDone
-  , _messageQueue   = []
-  }
+  -- res <- runExceptT $ do
+  --   liftIO $ putStrLn "Loading entities..."
+  --   es <- loadEntities >>= (`isRightOr` id)
+  --   liftIO $ putStrLn "Loading recipes..."
+  --   rs <- loadRecipes es >>= (`isRightOr` id)
+
+  -- case res of
+  --   Left errMsg -> T.putStrLn errMsg
+  --   Right ()    -> return ()
+
+
+initGameState :: ExceptT Text IO GameState
+initGameState = do
+  liftIO $ putStrLn "Loading entities..."
+  entities <- loadEntities >>= (`isRightOr` id)
+  liftIO $ putStrLn "Loading recipes..."
+  recipes <- loadRecipes entities >>= (`isRightOr` id)
+
+  return $ GameState
+    { _gameMode       = Classic
+    , _paused         = False
+    , _robotMap       = M.singleton "base" (baseRobot [entities!"solar panel"])  -- XXX !
+    , _newRobots      = []
+    , _gensym         = 0
+    , _entityMap      = entities
+    , _recipesOut     = outRecipeMap recipes
+    , _recipesIn      = inRecipeMap recipes
+    , _world          =
+      W.newWorld . fmap ((lkup entities <$>) . first fromEnum) . findGoodOrigin $ testWorld2
+    , _viewCenterRule = VCRobot "base"
+    , _viewCenter     = V2 0 0
+    , _updated        = False
+    , _replResult     = REPLDone
+    , _messageQueue   = []
+    }
+  where
+    lkup :: Map Text Entity -> Maybe Text -> Maybe Entity
+    lkup _  Nothing  = Nothing
+    lkup em (Just t) = M.lookup t em
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000

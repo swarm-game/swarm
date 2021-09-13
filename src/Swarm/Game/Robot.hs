@@ -40,7 +40,6 @@ import           Linear
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entities
 import           Swarm.Game.Entity
 import           Swarm.Game.Value     as V
 import           Swarm.Language.Types (TCtx)
@@ -152,14 +151,14 @@ mkRobot name l d m devs = Robot
   }
 
 -- | The initial robot representing your "base".
-baseRobot :: Robot
-baseRobot = Robot
+baseRobot :: [Entity] -> Robot
+baseRobot devs = Robot
   { _robotEntity = mkEntity
       defaultRobotDisplay
       "base"
       ["Your base of operations."]
       []
-  , _installedDevices = fromList [solarPanels]
+  , _installedDevices = fromList devs
   , _robotLocation = V2 0 0
   , _robotCtx      = M.empty
   , _robotEnv      = V.empty
