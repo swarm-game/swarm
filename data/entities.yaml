@@ -273,6 +273,19 @@
   properties: [portable]
   capabilities: [env]
 
+- name: branch predictor
+  display:
+    attr: device
+    char: 'y'
+  description:
+  - |
+    A branch predictor is a device which allows a robot to interpret
+    conditional expressions.  The syntax for a conditional expression
+    is 'if' followed by three arguments: a boolean test and then
+    two expressions of the same type.
+  properties: [portable]
+  capabilities: [cond]
+
 ############################################################
 ### Test entities ##########################################
 ############################################################
