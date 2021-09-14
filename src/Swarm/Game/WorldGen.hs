@@ -81,7 +81,7 @@ testWorld2 ix@(r,c)
       | h `mod` 120 == 1  = (StoneT, Just "lambda")
       | otherwise = (StoneT, Nothing)
     genBiome Big Hard Artificial
-      | sample ix cl0 > 0.8 = (IceT, Nothing)
+      | sample ix cl0 > 0.9 = (StoneT, Just "copper")
       | otherwise           = (StoneT, Nothing)
 
     sample (i,j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)

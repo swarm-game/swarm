@@ -37,6 +37,7 @@ swarmAttrMap = attrMap V.defAttr
   , (rockAttr,      fg (V.rgbColor @Int 80 80 80))
   , (woodAttr,      fg (V.rgbColor @Int 139 69 19))
   , (flowerAttr,    fg (V.rgbColor @Int 200 0 200))
+  , (copperAttr,    fg V.yellow)
   , (snowAttr,      fg V.white)
   , (deviceAttr,    fg V.yellow `V.withStyle` V.bold)
 
@@ -59,7 +60,7 @@ swarmAttrMap = attrMap V.defAttr
   ]
 
 -- | Some defined attribute names used in the Swarm TUI.
-robotAttr, entityAttr, plantAttr, flowerAttr, snowAttr, rockAttr, baseAttr,
+robotAttr, entityAttr, plantAttr, flowerAttr, copperAttr, snowAttr, rockAttr, baseAttr,
   woodAttr, deviceAttr,
   dirtAttr, grassAttr, stoneAttr, waterAttr, iceAttr,
   highlightAttr, defAttr :: AttrName
@@ -72,6 +73,7 @@ robotAttr     = "robot"
 entityAttr    = "entity"
 plantAttr     = "plant"
 flowerAttr    = "flower"
+copperAttr    = "copper"
 snowAttr      = "snow"
 rockAttr      = "rock"
 woodAttr      = "wood"

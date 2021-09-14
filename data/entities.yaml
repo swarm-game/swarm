@@ -54,6 +54,16 @@
   - A mountain.
   properties: [unwalkable]
 
+- name: copper
+  display:
+    attr: copper
+    char: 'C'
+  description:
+  - Raw copper ore.  It is extremely useful for making wires, pipes, and other metal things.
+    Often, in locations where copper can be found on the surface, additional copper can
+    be found by drilling beneath the surface.
+  properties: [portable]
+
 - name: flower
   display:
     attr: flower
