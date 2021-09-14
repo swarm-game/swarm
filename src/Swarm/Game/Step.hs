@@ -25,6 +25,8 @@ import           Control.Lens              hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool                 (bool)
+import           Data.Either               (rights)
+import           Data.List                 (find)
 import           Data.Map                  ((!))
 import qualified Data.Map                  as M
 import           Data.Maybe                (fromJust, isNothing, listToMaybe)
@@ -133,13 +135,14 @@ robotNamed nm = lift . lift $ use (robotMap . at nm)
 
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
---   OR we are in creative mode).
+--   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: MonadState GameState m => Const -> ExceptT Exn (StateT Robot m) ()
 ensureCanExecute c = do
   mode <- lift . lift $ use gameMode
+  sys <- use systemRobot
   robotCaps <- use robotCapabilities
   let missingCaps = requiredCaps (TConst c) `S.difference` robotCaps
-  (mode == Creative || S.null missingCaps) `holdsOr`
+  (sys || mode == Creative || S.null missingCaps) `holdsOr`
     Incapable missingCaps (TConst c)
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
@@ -147,8 +150,9 @@ ensureCanExecute c = do
 hasCapabilityOr :: MonadState GameState m => Capability -> Exn -> ExceptT Exn (StateT Robot m) ()
 hasCapabilityOr cap exn = do
   mode <- lift . lift $ use gameMode
+  sys  <- use systemRobot
   caps <- use robotCapabilities
-  (mode == Creative || cap `S.member` caps) `holdsOr` exn
+  (sys || mode == Creative || cap `S.member` caps) `holdsOr` exn
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -511,6 +515,7 @@ execConst c vs k = do
                 & robotDisplay .~
                   (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
                 & robotInventory .~ E.singleton e
+                & systemRobot .~ True
         _ <- lift . lift $ addRobot seedBot
         return ()
 
@@ -550,13 +555,17 @@ execConst c vs k = do
 
       _ -> badConst
 
-  -- XXX need a device to give --- but it should be available from the beginning
     Give -> case vs of
       [VString otherName, VString itemName] -> do
 
-        -- Make sure the other robot is here
-        _ <- robotNamed otherName >>=
-          (`isJustOr` cmdExn Give ["There is no robot named", otherName, "here." ])
+        -- Make sure the other robot exists
+        other <- robotNamed otherName >>=
+          (`isJustOr` cmdExn Give ["There is no robot named", otherName, "."])
+
+        -- Make sure it is in the same location
+        loc <- use robotLocation
+        (other ^. robotLocation == loc) `holdsOr`
+          cmdExn Give ["The robot named", otherName, "is not here."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
@@ -570,21 +579,28 @@ execConst c vs k = do
 
       _ -> badConst
 
-  -- XXX do we need a device to craft?
-    Craft -> case vs of
+    Make -> case vs of
       [VString name] -> do
         inv <- use robotInventory
         em <- lift . lift $ use entityMap
         e <- M.lookup name em `isJustOr`
-          cmdExn Craft ["I've never heard of", indefiniteQ name, "."]
+          cmdExn Make ["I've never heard of", indefiniteQ name, "."]
 
         outRs <- lift . lift $ use recipesOut
 
-        recipe <- recipeFor outRs e `isJustOr`
-          cmdExn Craft ["There is no known recipe for crafting", indefinite name, "."]
+        -- Only consider recipes where the number of things we are trying to make
+        -- is greater in the outputs than in the inputs.  This prevents us from doing
+        -- silly things like making copper pipes when the user says "make furnace".
+        let recipes = filter increase (recipesFor outRs e)
+            increase (Recipe ins outs) = countIn outs > countIn ins
+            countIn xs = maybe 0 fst (find ((==e) . snd) xs)
+        not (null recipes) `holdsOr`
+          cmdExn Make ["There is no known recipe for making", indefinite name, "."]
 
-        inv' <-  craft recipe inv `isRightOr` \missing ->
-          cmdExn Craft ["Missing ingredients:", prettyIngredientList missing]
+        -- Now try each recipe and take the first one that we have the
+        -- ingredients for.
+        inv' <- listToMaybe (rights (map (make inv) recipes)) `isJustOr`
+          cmdExn Make ["You don't have the ingredients to make", indefinite name, "."]
 
         robotInventory .= inv'
         return $ Out VUnit k

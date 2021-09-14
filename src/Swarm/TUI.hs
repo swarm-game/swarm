@@ -16,6 +16,7 @@ import           Data.List                   (sortOn)
 import           Data.List.Split             (chunksOf)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (isJust)
+import qualified Data.Set                    as S
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
 import qualified Data.Vector                 as V
@@ -255,9 +256,13 @@ explainFocusedItem s = case mItem of
     explainRecipes = map (txt . prettyRecipe) . recipesWith
 
     recipesWith :: Entity -> [Recipe Entity]
-    recipesWith e = recipesFor (s ^. gameState . recipesOut) e
-               ++ recipesFor (s ^. gameState . recipesIn) e
-
+    recipesWith e = S.toList . S.fromList $
+         recipesFor (s ^. gameState . recipesOut) e
+      ++ recipesFor (s ^. gameState . recipesIn) e
+      -- We remove duplicates by converting to and from a Set,
+      -- because some recipes can have an item as both an input and an
+      -- output (e.g. some recipes that require a furnace); those
+      -- recipes would show up twice above.
 
 drawMessages :: [Text] -> Widget Name
 drawMessages [] = txt " "

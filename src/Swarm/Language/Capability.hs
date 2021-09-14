@@ -39,7 +39,7 @@ data Capability
   | CGrab     -- ^ Execute the 'Grab' command
   | CPlace    -- ^ Execute the 'Place' command
   | CGive     -- ^ Execute the 'Give' command
-  | CCraft    -- ^ Execute the 'Craft' command
+  | CMake     -- ^ Execute the 'Make' command
   | CBuild    -- ^ Execute the 'Build' command
   | CSenseloc -- ^ Execute the 'GetX' and 'GetY' commands
   | CRandom   -- ^ Execute the 'Random' command
@@ -108,7 +108,7 @@ constCaps Turn      = S.singleton CTurn
 constCaps Grab      = S.singleton CGrab
 constCaps Place     = S.singleton CPlace
 constCaps Give      = S.singleton CGive
-constCaps Craft     = S.singleton CCraft
+constCaps Make      = S.singleton CMake
 constCaps Build     = S.singleton CBuild
 
 -- It's important that no capability is required for 'say', because

@@ -356,7 +356,7 @@ inferConst Turn        = Forall [] $ UTyFun UTyDir (UTyCmd UTyUnit)
 inferConst Grab        = Forall [] $ UTyCmd UTyUnit
 inferConst Place       = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
 inferConst Give        = Forall [] $ UTyFun UTyString (UTyFun UTyString (UTyCmd UTyUnit))
-inferConst Craft       = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
+inferConst Make        = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
 inferConst Build       =
   Forall ["a"] $ UTyFun UTyString (UTyFun (UTyCmd "a") (UTyCmd UTyString))
 inferConst Say         = Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)

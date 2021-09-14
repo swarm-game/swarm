@@ -6,7 +6,7 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- A recipe represents some kind of crafting process for transforming
+-- A recipe represents some kind of process for transforming
 -- some input entities into some output entities.
 --
 -----------------------------------------------------------------------------
@@ -28,7 +28,7 @@ import           Data.IntMap            (IntMap)
 import qualified Data.IntMap            as IM
 import           Data.List              (foldl')
 import           Data.Map               (Map)
-import           Data.Maybe             (fromMaybe, listToMaybe)
+import           Data.Maybe             (fromMaybe)
 import           Data.Text              (Text)
 import qualified Data.Text              as T
 import           Witch
@@ -50,7 +50,7 @@ type IngredientList e = [(Count, e)]
 
 -- | A recipe is just a list of input entities and a list of output
 --   entities (both with multiplicity).  The idea is that it
---   represents some kind of \"crafting\" process where the inputs are
+--   represents some kind of process where the inputs are
 --   transformed into the outputs.
 data Recipe e = Recipe
   { _recipeInputs  :: IngredientList e
@@ -112,10 +112,6 @@ outRecipeMap = buildRecipeMap recipeOutputs
 recipesFor :: IntMap [Recipe Entity] -> Entity -> [Recipe Entity]
 recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. E.entityHash) rm
 
--- | Look up a recipe for crafting a specific entity.
-recipeFor :: IntMap [Recipe Entity] -> Entity -> Maybe (Recipe Entity)
-recipeFor rm = listToMaybe . recipesFor rm
-
 -- | Build a map of recipes indexed by input ingredients.
 inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 inRecipeMap = buildRecipeMap recipeInputs
@@ -132,12 +128,12 @@ missingIngredientsFor :: Inventory -> Recipe Entity -> [(Count, Entity)]
 missingIngredientsFor inv (Recipe ins _)
   = filter ((>0) . fst) $ map (\(n,e) -> (n - E.lookup e inv, e)) ins
 
--- | Try to craft a recipe, deleting the recipe's inputs from the
+-- | Try to make a recipe, deleting the recipe's inputs from the
 --   inventory and adding the outputs. Return either a description of
 --   which items are lacking, if the inventory does not contain
 --   sufficient inputs, or an updated inventory if it was successful.
-craft :: Recipe Entity -> Inventory -> Either [(Count, Entity)] Inventory
-craft r@(Recipe ins outs) inv = case missingIngredientsFor inv r of
+make :: Inventory -> Recipe Entity -> Either [(Count, Entity)] Inventory
+make inv r@(Recipe ins outs) = case missingIngredientsFor inv r of
   []      -> Right $
     foldl' (flip (uncurry E.insertCount)) (foldl' (flip (uncurry E.deleteCount)) inv ins) outs
   missing -> Left missing

@@ -55,7 +55,7 @@ type Parser = Parsec Void Text
 reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
-  , "wait", "halt", "move", "turn", "grab", "place", "give"
+  , "wait", "halt", "move", "turn", "grab", "place", "give", "make"
   , "build", "run", "getx", "gety"
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
@@ -163,7 +163,7 @@ parseConst =
   <|> Grab    <$ reserved "grab"
   <|> Place   <$ reserved "place"
   <|> Give    <$ reserved "give"
-  <|> Craft   <$ reserved "craft"
+  <|> Make    <$ reserved "make"
   <|> Build   <$ reserved "build"
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"

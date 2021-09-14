@@ -10,6 +10,12 @@
   - [4, wood]
 
 - in:
+  - [1, wood]
+  - [2, branch]
+  out:
+  - [1, workbench]
+
+- in:
   - [6, wood]
   out:
   - [1, box]
@@ -24,3 +30,30 @@
   - [1, bit (1)]
   out:
   - [1, drill bit]
+
+- in:
+  - [5, rock]
+  out:
+  - [1, furnace]
+
+- in:
+  - [1, copper ore]
+  - [1, log]
+  - [1, furnace]
+  out:
+  - [10, copper wire]
+  - [1, furnace]
+
+- in:
+  - [1, copper ore]
+  - [1, log]
+  - [1, furnace]
+  out:
+  - [2, copper pipe]
+  - [1, furnace]
+
+- in:
+  - [32, gear]
+  - [32, copper wire]
+  out:
+  - [1, motor]

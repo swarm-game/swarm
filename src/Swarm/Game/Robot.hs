@@ -21,7 +21,7 @@ module Swarm.Game.Robot
     -- ** Lenses
   , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
   , installedDevices, robotCapabilities
-  , robotCtx, robotEnv, machine, selfDestruct, tickSteps
+  , robotCtx, robotEnv, machine, systemRobot, selfDestruct, tickSteps
 
     -- ** Create
 
@@ -73,6 +73,11 @@ data Robot = Robot
 
   , _machine           :: CEK
     -- ^ The current state of the robot's CEK machine.
+
+  , _systemRobot       :: Bool
+    -- ^ Whether this is a system robot, i.e. one created by the
+    --   system rather than by the user.  System robots are not limited
+    --   by capability constraints.
 
   , _selfDestruct      :: Bool
     -- ^ Whether the robot wants to self-destruct.
@@ -176,6 +181,7 @@ mkRobot name l d m devs = Robot
   , _robotCtx      = M.empty
   , _robotEnv      = V.empty
   , _machine       = m
+  , _systemRobot   = False
   , _selfDestruct  = False
   , _tickSteps     = 0
   }
@@ -196,6 +202,7 @@ baseRobot devs = Robot
   , _robotCtx      = M.empty
   , _robotEnv      = V.empty
   , _machine       = idleMachine
+  , _systemRobot   = False
   , _selfDestruct  = False
   , _tickSteps     = 0
   }

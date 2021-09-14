@@ -58,11 +58,11 @@ testWorld2 ix@(r,c)
 
     genBiome Big Hard Natural
       | sample ix cl0 > 0.7  = (StoneT, Just "mountain")
-      | h `mod` 30 == 0      = (StoneT, Just "rock")
+      | h `mod` 30 == 0      = (StoneT, Just "boulder")
       | sample ix cl0 > 0    = (DirtT, Just "tree")
       | otherwise            = (GrassT, Nothing)
     genBiome Small Hard Natural
-      | h `mod` 30  == 0  = (StoneT, Just "pebbles")
+      | h `mod` 10  == 0  = (StoneT, Just "rock")
       | otherwise         = (StoneT, Nothing)
     genBiome Big Soft Natural
       | even (r+c) = (WaterT, Just "wave")
@@ -81,7 +81,7 @@ testWorld2 ix@(r,c)
       | h `mod` 120 == 1  = (StoneT, Just "lambda")
       | otherwise = (StoneT, Nothing)
     genBiome Big Hard Artificial
-      | sample ix cl0 > 0.9 = (StoneT, Just "copper")
+      | sample ix cl0 > 0.9 = (StoneT, Just "copper ore")
       | otherwise           = (StoneT, Nothing)
 
     sample (i,j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)

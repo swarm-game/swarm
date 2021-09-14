@@ -30,15 +30,25 @@
   - A wooden plank.
   properties: [portable]
 
-- name: pebbles
+- name: workbench
   display:
-    attr: entity
-    char: ':'
+    attr: wood
+    char: 'π'
   description:
-  - Some pebbles.
+  - A plain wooden workbench, providing space for you to make other
+    things using the 'make' command.
   properties: [portable]
+  capabilities: [make]
 
 - name: rock
+  display:
+    attr: rock
+    char: 'o'
+  description:
+  - A small rock.
+  properties: [portable]
+
+- name: boulder
   display:
     attr: rock
     char: '@'
@@ -54,7 +64,7 @@
   - A mountain.
   properties: [unwalkable]
 
-- name: copper
+- name: copper ore
   display:
     attr: copper
     char: 'C'
@@ -62,6 +72,41 @@
   - Raw copper ore.  It is extremely useful for making wires, pipes, and other metal things.
     Often, in locations where copper can be found on the surface, additional copper can
     be found by drilling beneath the surface.
+  properties: [portable]
+
+- name: copper wire
+  display:
+    attr: copper
+    char: '-'
+  description:
+  - Copper wire is very good at conducting electricity and useful for
+    making various types of circuits and machines.
+  properties: [portable]
+
+- name: copper pipe
+  display:
+    attr: copper
+    char: 'I'
+  description:
+  - A pipe made out of a thin sheet of copper.  Great for transmitting
+    water or steam.
+  properties: [portable]
+
+- name: furnace
+  display:
+    attr: fire
+    char: '#'
+  description:
+  - A furnace can be used to turn metal ore into various useful products.
+  properties: [portable]
+
+- name: motor
+  display:
+    attr: entity
+    char: 'M'
+  description:
+  - A motor is useful for making devices that can turn when electric
+    current is applied.
   properties: [portable]
 
 - name: flower
