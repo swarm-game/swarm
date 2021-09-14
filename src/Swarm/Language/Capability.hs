@@ -34,22 +34,24 @@ import           Witch                 (from)
 
 -- | Various capabilities which robots can have.
 data Capability
-  = CMove     -- ^ Execute the 'Move' command
-  | CTurn     -- ^ Execute the 'Turn' command
-  | CGrab     -- ^ Execute the 'Grab' command
-  | CPlace    -- ^ Execute the 'Place' command
-  | CGive     -- ^ Execute the 'Give' command
-  | CMake     -- ^ Execute the 'Make' command
-  | CBuild    -- ^ Execute the 'Build' command
-  | CSenseloc -- ^ Execute the 'GetX' and 'GetY' commands
-  | CRandom   -- ^ Execute the 'Random' command
-  | CAppear   -- ^ Execute the 'Appear' command
+  = CMove      -- ^ Execute the 'Move' command
+  | CTurn      -- ^ Execute the 'Turn' command
+  | CGrab      -- ^ Execute the 'Grab' command
+  | CPlace     -- ^ Execute the 'Place' command
+  | CGive      -- ^ Execute the 'Give' command
+  | CMake      -- ^ Execute the 'Make' command
+  | CBuild     -- ^ Execute the 'Build' command
+  | CSenseloc  -- ^ Execute the 'GetX' and 'GetY' commands
+  | CRandom    -- ^ Execute the 'Random' command
+  | CAppear    -- ^ Execute the 'Appear' command
 
-  | CCond     -- ^ Evaluate conditional expressions
-  | CCmp      -- ^ Evaluate comparison operations
-  | CArith    -- ^ Evaluate arithmetic operations
-  | CEnv      -- ^ Store and look up definitions in an environment
-  | CLam      -- ^ Interpret lambda abstractions
+  | CCond      -- ^ Evaluate conditional expressions
+  | CCompare   -- ^ Evaluate comparison operations
+  | CArith     -- ^ Evaluate arithmetic operations
+  | CEnv       -- ^ Store and look up definitions in an environment
+  | CLambda    -- ^ Interpret lambda abstractions
+
+  | CRecursion -- ^ Enable recursive definitions
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON Capability where
@@ -90,10 +92,11 @@ requiredCaps (TString _)      = S.empty
 requiredCaps (TBool _)        = S.empty
 requiredCaps (TVar _)         = S.singleton CEnv
 requiredCaps (TPair t1 t2)    = requiredCaps t1 `S.union` requiredCaps t2
-requiredCaps (TLam _ _ t)     = S.insert CLam $ requiredCaps t
+requiredCaps (TLam _ _ t)     = S.insert CLambda $ requiredCaps t
 requiredCaps (TApp t1 t2)     = requiredCaps t1 `S.union` requiredCaps t2
 requiredCaps (TLet _ _ t1 t2) = S.insert CEnv $ requiredCaps t1 `S.union` requiredCaps t2
 requiredCaps (TDef _ _ t)     = S.insert CEnv $ requiredCaps t
+  -- XXX check if CRecursion is needed in the above two
 requiredCaps (TBind _ t1 t2)  = requiredCaps t1 `S.union` requiredCaps t2
 requiredCaps (TDelay t)       = requiredCaps t
 
@@ -126,7 +129,7 @@ constCaps Random    = S.singleton CRandom
 constCaps Run       = S.empty
 
 constCaps Not       = S.empty
-constCaps (Cmp _)   = S.singleton CCmp
+constCaps (Cmp _)   = S.singleton CCompare
 constCaps Neg       = S.singleton CArith
 constCaps (Arith _) = S.singleton CArith
 
