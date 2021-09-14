@@ -157,11 +157,13 @@
     char: '<'
   description:
   - A grabber arm allows a robot to grab an item on its current cell, via the 'grab'
-    command.
+    command, or give an item to another robot on the same cell.
   - The 'grab' command takes no arguments; it simply grabs whatever is
     available.  It raises an exception if run in a cell that does not
     contain an item.
-  capabilities: [grab]
+  - "The 'give' command takes two arguments: the name of the robot to
+    give an item to, and the name of the item to give."
+  capabilities: [grab, give]
   properties: [portable]
 
 - name: solar panel
