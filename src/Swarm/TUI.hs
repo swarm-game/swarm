@@ -188,7 +188,7 @@ drawMenu isPaused viewingBase
 
     keyCmdsFor (Just InfoPanel)  =
       [ ("↓↑/jk/Pg{Up,Dn}/Home/End", "navigate")
-      -- , ("Enter", "craft")
+      , ("Enter", "make")
       ]
     keyCmdsFor _ = []
 
@@ -521,6 +521,21 @@ adjustTPS (+/-) s =
   liftIO $ atomically $ modifyTVar (s ^. uiState . lgTicksPerSecond) (+/- 1)
 
 handleInfoPanelEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
+handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
+  let mList = s ^? uiState . uiInventory . _Just . _2
+  case mList >>= BL.listSelectedElement of
+    Nothing -> continueWithoutRedraw s
+    Just (_, (_, e)) -> do
+      let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+          mkTy   = Forall [] $ TyCmd TyUnit
+          mkProg = TApp (TConst Make) (TString (e ^. entityName))
+          mkMod  = mkProg ::: Module mkTy M.empty
+      case isActive <$> (s ^. gameState . robotMap . at "base") of
+        Just False -> continue $ s
+          & gameState . replResult .~ REPLWorking mkTy Nothing
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkMod topEnv
+        _          -> continueWithoutRedraw s
+
 handleInfoPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList of
