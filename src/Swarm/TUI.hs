@@ -45,6 +45,7 @@ import           Swarm.Game.Step             (gameStep)
 import           Swarm.Game.Terrain          (displayTerrain)
 import           Swarm.Game.Value            (Value (VUnit), prettyValue)
 import qualified Swarm.Game.World            as W
+import           Swarm.Language.Capability
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
@@ -406,8 +407,8 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))
   = continue $ s
       & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
-  = case processTerm' topCtx entry of
-      Right t@(_ ::: Module ty _) ->
+  = case processTerm' topCtx topCapCtx entry of
+      Right t@(ProcessedTerm _ (Module ty _) _ _) ->
         continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
           & uiState . uiReplHistory %~ (REPLEntry True entry :)
@@ -417,31 +418,38 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
       Left err ->
         continue $ s
           & uiState . uiError ?~ txt err
+
+      -- XXX check that we have the capabilities needed to run the
+      -- program before even starting?
   where
     entry = formState (s ^. uiState . uiReplForm)
-    topCtx = s ^. gameState . robotMap . ix "base" . robotCtx
+    (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
     topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
 
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp []))
-  = continue $ s & uiState %~ adjReplHistIndex (+)
+  = continue $ s & adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
-  = continue $ s & uiState %~ adjReplHistIndex (-)
+  = continue $ s & adjReplHistIndex (-)
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  let topCtx = s ^. gameState . robotMap . ix "base" . robotCtx
-      result = processTerm' topCtx (formState f')
-      f''    = setFieldValid (isRight result) REPLInput f'
-  continue $ s & uiState . uiReplForm .~ f''
-  -- XXX do the above checks when changing the REPL input via up/down
-  -- keys below.  Abstract it out so we just have one function to update it.
+  continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
 
-adjReplHistIndex :: (Int -> Int -> Int) -> UIState -> UIState
-adjReplHistIndex (+/-) s =
-  s & uiReplHistIdx .~ newIndex
-    & if newIndex /= curIndex then uiReplForm %~ updateFormState newEntry else id
+validateREPLForm :: AppState -> AppState
+validateREPLForm s = s & uiState . uiReplForm %~ validate
   where
-    entries = [e | REPLEntry _ e <- s ^. uiReplHistory]
-    curIndex = s ^. uiReplHistIdx
+    (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
+    validate f = setFieldValid (isRight result) REPLInput f
+      where
+        result = processTerm' topCtx topCapCtx (formState f)
+
+adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState
+adjReplHistIndex (+/-) s =
+  s & uiState . uiReplHistIdx .~ newIndex
+    & (if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id)
+    & validateREPLForm
+  where
+    entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
+    curIndex = s ^. uiState . uiReplHistIdx
     histLen  = length entries
     newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
     newEntry
@@ -533,11 +541,11 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
       let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
           mkTy   = Forall [] $ TyCmd TyUnit
           mkProg = TApp (TConst Make) (TString (e ^. entityName))
-          mkMod  = mkProg ::: Module mkTy M.empty
+          mkPT   = ProcessedTerm mkProg (Module mkTy M.empty) (S.singleton CMake) M.empty
       case isActive <$> (s ^. gameState . robotMap . at "base") of
         Just False -> continue $ s
           & gameState . replResult .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkMod topEnv
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
         _          -> continueWithoutRedraw s
 
 handleInfoPanelEvent s (VtyEvent ev) = do

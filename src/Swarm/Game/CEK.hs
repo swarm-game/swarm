@@ -72,17 +72,19 @@ module Swarm.Game.CEK
   , prettyFrame, prettyCont, prettyCEK
   ) where
 
-import           Data.List             (intercalate)
-import qualified Data.Map              as M
-import           Data.Text             (Text)
-import           Witch                 (from)
+import           Data.List                 (intercalate)
+import qualified Data.Map                  as M
+import qualified Data.Set                  as S
+import           Data.Text                 (Text)
+import           Witch                     (from)
 
 import           Swarm.Game.Exception
 import           Swarm.Game.Value
+import           Swarm.Language.Capability (CapCtx)
+import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
-import           Swarm.Util
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -135,11 +137,11 @@ data Frame
     --   environment it returned and union it with this one to produce
     --   the result of a bind expression.
 
-  | FLoadEnv TCtx
+  | FLoadEnv TCtx CapCtx
     -- ^ We were executing a command that might have definitions; next
     --   we should take the resulting 'Env' and add it to the robot's
-    --   'robotEnv', along with adding this accompanying 'Ctx' to the
-    --   robot's 'robotCtx'.
+    --   'robotEnv', along with adding this accompanying 'Ctx' and
+    --   'CapCtx' to the robot's 'robotCtx'.
 
   | FExec
     -- ^ An @FExec@ frame means the focused value is a command, which
@@ -202,19 +204,25 @@ finalValue _          = Nothing
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
 --   whether it has a command type or not.
-initMachine :: Term ::: TModule -> Env -> CEK
+initMachine :: ProcessedTerm -> Env -> CEK
 initMachine t e = initMachine' t e []
 
 -- | Like 'initMachine', but also take a starting continuation.
-initMachine' :: Term ::: TModule -> Env -> Cont -> CEK
-initMachine' (t ::: Module (Forall _ (TyCmd _)) ctx) e k
+initMachine' :: ProcessedTerm -> Env -> Cont -> CEK
+initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e k
   | M.null ctx = In t e (FExec : k)
-  | otherwise  = In t e (FExec : FLoadEnv ctx : k)
-initMachine' (t ::: _) e k = In t e k
+  | otherwise  = In t e (FExec : FLoadEnv ctx capCtx : k)
+initMachine' (ProcessedTerm t _ _ _) e k = In t e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK
-idleMachine = initMachine (TConst Noop ::: trivMod (Forall [] (TyCmd TyUnit))) empty
+idleMachine = initMachine trivialTerm empty
+  where
+    trivialTerm = ProcessedTerm
+      (TConst Noop)
+      (trivMod (Forall [] (TyCmd TyUnit)))
+      S.empty
+      M.empty
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CEK states.  Should really make a
@@ -243,8 +251,8 @@ prettyFrame (FApp v)             = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)         = "let " ++ from x ++ " = _ in " ++ prettyString t
 prettyFrame (FTry c)             = "try _ (" ++ from (prettyValue c) ++ ")"
 prettyFrame (FDef x)             = "def " ++ from x ++ " = _"
-prettyFrame (FUnionEnv _)        = "_ ∪ <Env>"
-prettyFrame (FLoadEnv _)         = "loadEnv"
+prettyFrame FUnionEnv{}          = "_ ∪ <Env>"
+prettyFrame FLoadEnv{}           = "loadEnv"
 prettyFrame FExec                = "exec _"
 prettyFrame (FBind Nothing t _)  = "_ ; " ++ prettyString t
 prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t

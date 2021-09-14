@@ -41,8 +41,8 @@ elaborate = bottomUp rewrite
 
     -- Rewrite any recursive occurrences of x inside t1 to (force x).
     -- When interpreting t1, we will put a binding (x |-> delay t1)
-    -- in the context.
-    rewrite (TDef x ty t1) = TDef x ty (mapFree x (TApp (TConst Force)) t1)
+    -- in the context.  Also, delay evaluation of the body itself.
+    rewrite (TDef x ty t1) = TDef x ty (TDelay (mapFree x (TApp (TConst Force)) t1))
 
     -- Delay evaluation of the program argument to a 'Build' command,
     -- so it will be evaluated by the constructed robot instead of the one

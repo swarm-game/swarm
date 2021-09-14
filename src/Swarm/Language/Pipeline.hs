@@ -18,37 +18,46 @@
 {-# LANGUAGE TypeOperators     #-}
 
 module Swarm.Language.Pipeline
-  ( processTerm
+  ( ProcessedTerm(..)
+  , processTerm
   , processTerm'
   ) where
 
-import           Data.Bifunctor           (first)
-import qualified Data.Map                 as M
-import           Data.Text                (Text)
+import           Data.Bifunctor            (first)
+import qualified Data.Map                  as M
+import           Data.Set                  (Set)
+import           Data.Text                 (Text)
 
+import           Swarm.Language.Capability
 import           Swarm.Language.Elaborate
 import           Swarm.Language.Parse
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
-import           Swarm.Util
+
+data ProcessedTerm = ProcessedTerm
+  Term              -- ^ The elaborated term
+  TModule           -- ^ The type of the term (and of embedded definitions)
+  (Set Capability)  -- ^ Capabilities required by the term
+  CapCtx            -- ^ Capability context for definitions embedded in the term
 
 -- | Given a 'Text' value representing a Swarm program,
 --
 --   1. Parse it (see "Swarm.Language.Parse")
 --   2. Typecheck it (see "Swarm.Language.Typecheck")
 --   3. Elaborate it (see "Swarm.Language.Elaborate")
+--   4. Check what capabilities it requires (see "Swarm.Language.Capability")
 --
---   Return either the end result (a 'Term' paired with its type), or a pretty-printed
---   error message.
-processTerm :: Text -> Either Text (Term ::: TModule)
-processTerm = processTerm' M.empty
+--   Return either the end result or a pretty-printed error message.
+processTerm :: Text -> Either Text ProcessedTerm
+processTerm = processTerm' M.empty M.empty
 
--- | Like 'processTerm', but use an explicit starting context.
-processTerm' :: TCtx -> Text -> Either Text (Term ::: TModule)
-processTerm' ctx txt = do
+-- | Like 'processTerm', but use explicit starting contexts.
+processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm
+processTerm' ctx capCtx txt = do
   t <- readTerm txt
   ty <- first prettyText (inferTop' ctx t)
-  return $ elaborate t ::: ty
+  let (caps, capCtx') = requiredCaps capCtx t
+  return $ ProcessedTerm (elaborate t) ty caps capCtx'
 

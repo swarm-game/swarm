@@ -20,16 +20,16 @@
 
 module Swarm.Game.Step where
 
-import           Control.Arrow             ((&&&))
+import           Control.Arrow             ((&&&), (***))
 import           Control.Lens              hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool                 (bool)
 import           Data.Either               (rights)
 import           Data.List                 (find)
-import           Data.Map                  ((!))
 import qualified Data.Map                  as M
-import           Data.Maybe                (fromJust, isNothing, listToMaybe)
+import           Data.Maybe                (fromJust, isNothing, listToMaybe,
+                                            mapMaybe)
 import qualified Data.Set                  as S
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
@@ -49,7 +49,6 @@ import qualified Swarm.Game.World          as W
 import           Swarm.Language.Capability
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax
-import           Swarm.Language.Types
 import           Swarm.Util
 
 -- | The maximum number of CEK machine evaluation steps each robot is
@@ -141,7 +140,7 @@ ensureCanExecute c = do
   mode <- lift . lift $ use gameMode
   sys <- use systemRobot
   robotCaps <- use robotCapabilities
-  let missingCaps = requiredCaps (TConst c) `S.difference` robotCaps
+  let missingCaps = constCaps c `S.difference` robotCaps
   (sys || mode == Creative || S.null missingCaps) `holdsOr`
     Incapable missingCaps (TConst c)
 
@@ -300,6 +299,16 @@ stepCEK cek = case cek of
   -- environment (the variable bound to the value).
   Out v  (FDef x : k)                -> return $ Out (VResult VUnit (V.singleton x v)) k
 
+  -- Executing a delayed computation also serves to force it.  This is
+  -- particularly needed in the case of definitions: we wrap the body
+  -- of definitions in 'TDelay' so they won't be evaluated at all
+  -- until execution time (enabling e.g. the base to *define* things
+  -- using conditionals even if it can't evaluate them); but we can't
+  -- do the trick of wrapping all references to the definition in
+  -- 'Force'---like we do for let-expressions---since we don't know
+  -- all the future references to it.
+  Out (VDelay t e) (FExec : k)       -> return $ In t e (FExec : k)
+
   -- To execute a constant application, delegate to the 'execConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
@@ -343,11 +352,11 @@ stepCEK cek = case cek of
   -- environment and type context into the robot's top-level
   -- environment and type context, so they will be available to future
   -- programs.
-  Out (VResult v e) (FLoadEnv ctx : k)  -> do
+  Out (VResult v e) (FLoadEnv ctx cctx : k)  -> do
     robotEnv %= V.union e
-    robotCtx %= M.union ctx
+    robotCtx %= (M.union ctx *** M.union cctx)
     return $ Out v k
-  Out v (FLoadEnv _ : k)                -> return $ Out v k
+  Out v (FLoadEnv{} : k)                -> return $ Out v k
 
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
@@ -435,7 +444,7 @@ evalConst c vs k = do
 
 -- XXX load this from a file and have it available in a map?
 --     Or make a quasiquoter?
-seedProgram :: Text -> Term ::: TModule
+seedProgram :: Text -> ProcessedTerm
 seedProgram thing = prog
   where
     Right prog = processTerm . into @Text . unlines $
@@ -716,17 +725,60 @@ execConst c vs k = do
       [VString name, VDelay cmd e] -> do
         r <- get
         em <- lift . lift $ use entityMap
+
+        let
+            -- Standard devices that are always installed.
+            stdDeviceList = ["treads", "grabber", "solar panel"]
+            stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
+
+            -- Find out what capabilities are required by the program that will
+            -- be run on the newly constructed robot, and what devices would
+            -- provide those capabilities.
+            (caps, _capCtx) = requiredCaps (snd (r ^. robotCtx)) cmd
+            capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
+
+            -- Note that _capCtx must be empty: at least at the
+            -- moment, definitions are only allowed at the top level,
+            -- so there can't be any inside the argument to build.
+            -- (Though perhaps there is an argument that this ought to
+            -- be relaxed specifically in the case of 'Build'.)
+
+            -- The devices that need to be installed on the new robot is the union
+            -- of these two sets.
+            devices = stdDevices `S.union` capDevices
+
+            -- A device is OK to install if it is a standard device, or we have one
+            -- in our inventory.
+            deviceOK d = d `S.member` stdDevices || (r ^. robotInventory) `E.contains` d
+
+            missingDevices = S.filter (not . deviceOK) capDevices
+
+        -- Make sure we're not missing any required devices.
+        S.null missingDevices `holdsOr`
+          cmdExn Build
+            [ "this would require installing devices you don't have:\n"
+            , T.intercalate ", " (map (^. entityName) (S.toList missingDevices))
+            ]
+
+        -- Construct the new robot.
         let newRobot =
               mkRobot
                 name
                 (r ^. robotLocation)
                 (r ^. robotOrientation ? east)
-                (In cmd e [FExec])  -- XXX require cap for env that gets shared here?
-                [em!"treads", em!"grabber", em!"solar panel"]  -- XXX Don't use !
+                (In cmd e [FExec])
+                (S.toList devices)
 
+        -- Add the new robot to the world.
         newRobot' <- lift . lift $ addRobot newRobot
+
+        -- Remove from the inventory any devices which were installed on the new robot.
+        forM_ (devices `S.difference` stdDevices) $ \d -> robotInventory %= delete d
+
+        -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
         return $ Out (VString (newRobot' ^. robotName)) k
+
       _ -> badConst
 
     Run -> case vs of

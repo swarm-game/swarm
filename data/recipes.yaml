@@ -16,6 +16,11 @@
   - [1, workbench]
 
 - in:
+  - [2, branch]
+  out:
+  - [1, branch predictor]
+
+- in:
   - [6, board]
   out:
   - [1, box]

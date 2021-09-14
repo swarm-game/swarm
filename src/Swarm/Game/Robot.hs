@@ -65,8 +65,8 @@ data Robot = Robot
   , _robotLocation     :: V2 Int
     -- ^ The location of the robot as (x,y).
 
-  , _robotCtx          :: TCtx
-    -- ^ Top-level type context.
+  , _robotCtx          :: (TCtx, CapCtx)
+    -- ^ Top-level type and capability contexts.
 
   , _robotEnv          :: Env
     -- ^ Top-level environment of definitions.
@@ -178,7 +178,7 @@ mkRobot name l d m devs = Robot
   , _installedDevices = inst
   , _robotCapabilities = inventoryCapabilities inst
   , _robotLocation = l
-  , _robotCtx      = M.empty
+  , _robotCtx      = (M.empty, M.empty)
   , _robotEnv      = V.empty
   , _machine       = m
   , _systemRobot   = False
@@ -199,7 +199,7 @@ baseRobot devs = Robot
   , _installedDevices = inst
   , _robotCapabilities = inventoryCapabilities inst
   , _robotLocation = V2 0 0
-  , _robotCtx      = M.empty
+  , _robotCtx      = (M.empty, M.empty)
   , _robotEnv      = V.empty
   , _machine       = idleMachine
   , _systemRobot   = False
