@@ -392,9 +392,13 @@ handleEvent s ev =
 populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
 populateInventoryList Nothing  = uiInventory .= Nothing
 populateInventoryList (Just r) = do
-  let itemList = sortOn (view entityName . snd) . elems
+  -- Attempt to keep the index of the selected item the same when we
+  -- rebuild the inventory list. Doesn't seem to work.
+  mList <- preuse (uiInventory . _Just . _2)
+  let idx = fromMaybe 1 (mList >>= view BL.listSelectedL)
+      itemList = sortOn (view entityName . snd) . elems
       items = (r ^. robotInventory . to itemList) ++ (r ^. installedDevices . to itemList)
-      lst = BL.list InventoryList (V.fromList items) 1
+      lst = BL.list InventoryList (V.fromList items) idx
   uiInventory .= Just (r ^. robotEntity . entityHash, lst)
 
 handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
