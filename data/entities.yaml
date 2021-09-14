@@ -166,6 +166,8 @@
   capabilities: [grab, give]
   properties: [portable]
 
+# XXX Another idea: give base a grabber; allow grabber to grab + place; but require another device for "give".
+
 - name: solar panel
   display:
     attr: device
