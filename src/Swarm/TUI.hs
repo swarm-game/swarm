@@ -15,7 +15,7 @@ import           Data.Either                 (isRight)
 import           Data.List                   (sortOn)
 import           Data.List.Split             (chunksOf)
 import qualified Data.Map                    as M
-import           Data.Maybe                  (isJust)
+import           Data.Maybe                  (fromMaybe, isJust)
 import qualified Data.Set                    as S
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
@@ -47,8 +47,7 @@ import           Swarm.Game.Value            (Value (VUnit), prettyValue)
 import qualified Swarm.Game.World            as W
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
-import           Swarm.Language.Syntax       (east, north, south, toDirection,
-                                              west)
+import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Panel

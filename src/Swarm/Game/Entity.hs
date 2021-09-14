@@ -24,6 +24,7 @@
 {-# LANGUAGE RankNTypes         #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE TupleSections      #-}
 {-# LANGUAGE TypeFamilies       #-}
 
 module Swarm.Game.Entity
@@ -39,7 +40,9 @@ module Swarm.Game.Entity
   , entityProperties, entityInventory, entityCapabilities, entityHash
   , hasProperty
 
-    -- ** Loading
+    -- ** Entity map
+  , EntityMap
+  , lookupEntityName, deviceForCap
   , loadEntities
 
     -- * Inventories
@@ -219,6 +222,27 @@ mkEntity disp nm descr props
   = rehashEntity $ Entity 0 disp nm descr Nothing props [] empty
 
 ------------------------------------------------------------
+-- Entity map
+------------------------------------------------------------
+
+data EntityMap = EntityMap
+  { entitiesByName :: Map Text Entity
+  , entitiesByCap  :: Map Capability Entity
+  }
+
+lookupEntityName :: Text -> EntityMap -> Maybe Entity
+lookupEntityName nm = M.lookup nm . entitiesByName
+
+deviceForCap :: Capability -> EntityMap -> Maybe Entity
+deviceForCap cap = M.lookup cap . entitiesByCap
+
+buildEntityMap :: [Entity] -> EntityMap
+buildEntityMap es = EntityMap
+  { entitiesByName = M.fromList . map (view entityName &&& id) $ es
+  , entitiesByCap  = M.fromList . concatMap (\e -> map (,e) (e ^. entityCapabilities)) $ es
+  }
+
+------------------------------------------------------------
 -- Serialization
 ------------------------------------------------------------
 
@@ -250,13 +274,10 @@ instance ToJSON Entity where
     ++
     [ "capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities ]
 
-loadEntities :: MonadIO m => m (Either Text (Map Text Entity))
+loadEntities :: MonadIO m => m (Either Text EntityMap)
 loadEntities = liftIO $ do
   fileName <- getDataFileName "entities.yaml"
   bimap (from . prettyPrintParseException) buildEntityMap <$> decodeFileEither fileName
-
-buildEntityMap :: [Entity] -> Map Text Entity
-buildEntityMap = M.fromList . map (view entityName &&& id)
 
 ------------------------------------------------------------
 -- Entity lenses

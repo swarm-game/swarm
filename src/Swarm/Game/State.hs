@@ -63,7 +63,7 @@ data GameState = GameState
   , _robotMap       :: Map Text Robot
   , _newRobots      :: [Robot]
   , _gensym         :: Int
-  , _entityMap      :: Map Text Entity
+  , _entityMap      :: EntityMap
   , _recipesOut     :: IntMap [Recipe Entity]
   , _recipesIn      :: IntMap [Recipe Entity]
   , _world          :: W.TileCachingWorld Int Entity
@@ -138,7 +138,7 @@ initGameState = do
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
   let baseDeviceNames = ["solar panel", "3D printer", "dictionary", "workbench"]
-      baseDevices = mapMaybe (`M.lookup` entities) baseDeviceNames
+      baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
 
   return $ GameState
     { _gameMode       = Classic
@@ -158,9 +158,9 @@ initGameState = do
     , _messageQueue   = []
     }
   where
-    lkup :: Map Text Entity -> Maybe Text -> Maybe Entity
+    lkup :: EntityMap -> Maybe Text -> Maybe Entity
     lkup _  Nothing  = Nothing
-    lkup em (Just t) = M.lookup t em
+    lkup em (Just t) = lookupEntityName t em
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000

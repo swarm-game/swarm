@@ -22,12 +22,12 @@
 module Swarm.Game.Recipe where
 
 import           Control.Lens           hiding (from, (.=))
+import           Control.Monad.Except
 import           Data.Bifunctor         (second)
 import           Data.Either.Validation
 import           Data.IntMap            (IntMap)
 import qualified Data.IntMap            as IM
 import           Data.List              (foldl')
-import           Data.Map               (Map)
 import           Data.Maybe             (fromMaybe)
 import           Data.Text              (Text)
 import qualified Data.Text              as T
@@ -35,11 +35,8 @@ import           Witch
 
 import           Data.Yaml
 
-import           Control.Monad.Except
-import qualified Data.Map               as M
 import           Paths_swarm
-import           Swarm.Game.Entity      (Count, Entity, Inventory)
-import qualified Swarm.Game.Entity      as E
+import           Swarm.Game.Entity      as E
 import           Swarm.Util
 
 -- | An ingredient list is a list of entities with multiplicity.  It
@@ -74,10 +71,10 @@ instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
     Recipe <$> v .: "in" <*> v .: "out"
 
-resolveRecipes :: Map Text Entity -> [Recipe Text] -> Validation [Text] [Recipe Entity]
-resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (M.lookup t em))
+resolveRecipes :: EntityMap -> [Recipe Text] -> Validation [Text] [Recipe Entity]
+resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (lookupEntityName t em))
 
-loadRecipes :: MonadIO m => Map Text Entity -> m (Either Text [Recipe Entity])
+loadRecipes :: MonadIO m => EntityMap -> m (Either Text [Recipe Entity])
 loadRecipes em = runExceptT $ do
     fileName <- liftIO $ getDataFileName "recipes.yaml"
     res <- liftIO $ decodeFileEither @[Recipe Text] fileName
@@ -94,7 +91,7 @@ prettyRecipe (Recipe ins outs) =
 prettyIngredientList :: IngredientList Entity -> Text
 prettyIngredientList = T.intercalate " + " . map prettyIngredient
   where
-    prettyIngredient (n,e) = T.concat [ into @Text (show n), " ", number n (e ^. E.entityName) ]
+    prettyIngredient (n,e) = T.concat [ into @Text (show n), " ", number n (e ^. entityName) ]
 
 buildRecipeMap
   :: Getter (Recipe Entity) (IngredientList Entity)
@@ -102,7 +99,7 @@ buildRecipeMap
 buildRecipeMap select recipeList =
   IM.fromListWith (++) (map (second (:[])) (concatMap mk recipeList))
   where
-    mk r = [(e ^. E.entityHash, r) | (_, e) <- r ^. select]
+    mk r = [(e ^. entityHash, r) | (_, e) <- r ^. select]
 
 -- | Create a map of recipes indexed by output ingredients.
 outRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
@@ -110,7 +107,7 @@ outRecipeMap = buildRecipeMap recipeOutputs
 
 -- | Get a list of all the recipes for the given entity.
 recipesFor :: IntMap [Recipe Entity] -> Entity -> [Recipe Entity]
-recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. E.entityHash) rm
+recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
 
 -- | Build a map of recipes indexed by input ingredients.
 inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
@@ -135,5 +132,5 @@ missingIngredientsFor inv (Recipe ins _)
 make :: Inventory -> Recipe Entity -> Either [(Count, Entity)] Inventory
 make inv r@(Recipe ins outs) = case missingIngredientsFor inv r of
   []      -> Right $
-    foldl' (flip (uncurry E.insertCount)) (foldl' (flip (uncurry E.deleteCount)) inv ins) outs
+    foldl' (flip (uncurry insertCount)) (foldl' (flip (uncurry deleteCount)) inv ins) outs
   missing -> Left missing

@@ -583,7 +583,7 @@ execConst c vs k = do
       [VString name] -> do
         inv <- use robotInventory
         em <- lift . lift $ use entityMap
-        e <- M.lookup name em `isJustOr`
+        e <- lookupEntityName name em `isJustOr`
           cmdExn Make ["I've never heard of", indefiniteQ name, "."]
 
         outRs <- lift . lift $ use recipesOut
