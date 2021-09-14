@@ -240,12 +240,14 @@ instance FromJSON Entity where
     <$> pure 0
     <*> v .: "display"
     <*> v .: "name"
-    <*> v .: "description"
+    <*> (map reflow <$> (v .: "description"))
     <*> v .:? "orientation"
     <*> v .:? "properties"   .!= []
     <*> v .:? "capabilities" .!= []
     <*> pure empty
     )
+    where
+      reflow = T.unwords . T.words
 
 instance ToJSON Entity where
   toJSON e = object $
