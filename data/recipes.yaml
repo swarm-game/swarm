@@ -7,21 +7,21 @@
 - in:
   - [1, log]
   out:
-  - [4, wood]
+  - [4, board]
 
 - in:
-  - [1, wood]
+  - [1, board]
   - [2, branch]
   out:
   - [1, workbench]
 
 - in:
-  - [6, wood]
+  - [6, board]
   out:
   - [1, box]
 
 - in:
-  - [2, wood]
+  - [2, board]
   out:
   - [1, gear]
 
@@ -57,3 +57,8 @@
   - [32, copper wire]
   out:
   - [1, motor]
+
+- in:
+  - [2, copper wire]
+  out:
+  - [1, strange loop]

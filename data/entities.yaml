@@ -22,12 +22,12 @@
   - A wooden log, obtained by harvesting a tree.
   properties: [portable]
 
-- name: wood
+- name: board
   display:
     attr: wood
     char: 'w'
   description:
-  - A wooden plank.
+  - A wooden board.
   properties: [portable]
 
 - name: workbench
@@ -77,11 +77,21 @@
 - name: copper wire
   display:
     attr: copper
-    char: '-'
+    char: '|'
   description:
   - Copper wire is very good at conducting electricity and useful for
     making various types of circuits and machines.
   properties: [portable]
+
+- name: strange loop
+  display:
+    attr: copper
+    char: '8'
+  description:
+  - Two copper wires twisted together in a strange shape that loops
+    back on itself. It must be useful for something...
+  properties: [portable]
+  capabilities: [recursion]
 
 - name: copper pipe
   display:
