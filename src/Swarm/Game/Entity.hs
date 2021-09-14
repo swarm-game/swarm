@@ -31,7 +31,7 @@ module Swarm.Game.Entity
     EntityProperty(..)
 
     -- * Entities
-  , Entity, mkEntity, mkDevice
+  , Entity, mkEntity
   , displayEntity
 
     -- ** Lenses
@@ -217,18 +217,6 @@ mkEntity
   -> Entity
 mkEntity disp nm descr props
   = rehashEntity $ Entity 0 disp nm descr Nothing props [] empty
-
--- | 'mkEntity' specialized for making devices: specify a character
---   instead of general 'Display', specify a list of provided
---   capabilities, and uses a default set of device properties.
-mkDevice
-  :: Char             -- ^ Display char
-  -> Text             -- ^ Device name
-  -> [Text]           -- ^ Device description
-  -> [Capability]     -- ^ Provided capabilities
-  -> Entity
-mkDevice c nm descr caps
-  = rehashEntity $ Entity 0 (deviceDisplay c) nm descr Nothing [Portable] caps empty
 
 ------------------------------------------------------------
 -- Serialization
