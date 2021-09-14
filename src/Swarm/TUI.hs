@@ -424,6 +424,8 @@ handleREPLEvent s ev = do
       result = processTerm' topCtx (formState f')
       f''    = setFieldValid (isRight result) REPLInput f'
   continue $ s & uiState . uiReplForm .~ f''
+  -- XXX do the above checks when changing the REPL input via up/down
+  -- keys below.  Abstract it out so we just have one function to update it.
 
 adjReplHistIndex :: (Int -> Int -> Int) -> UIState -> UIState
 adjReplHistIndex (+/-) s =
