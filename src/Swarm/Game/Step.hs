@@ -452,7 +452,7 @@ seedProgram thing = prog
       , "  r <- random 500;"
       , "  repeat (r + 100) wait;"
       , "  place \"" ++ from @Text thing ++ "\";"
-      , "  halt"
+      , "  selfdestruct"
       , "}"
       ]
 
