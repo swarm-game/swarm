@@ -99,7 +99,7 @@ gameStep = do
       res <- use replResult
       case res of
         REPLWorking ty Nothing -> replResult .= REPLWorking ty (getResult r)
-        _                      -> return ()
+        _otherREPLState        -> return ()
     Nothing -> return ()
 
   -- Get all the newly built robots and add them to the robot map.
@@ -483,20 +483,18 @@ execConst c vs k = do
       let nextLoc = loc ^+^ (orient ? zero)
       me <- entityAt nextLoc
 
-      -- -- Make sure the robot has treads installed.
-      -- "treads" `isInstalledOr` cmdExn Move ["You need treads to move."]
-
       -- Make sure nothing is in the way.
-      maybe True (not . (`hasProperty` Unwalkable)) me `holdsOr`
-        cmdExn Move ["There is a", fromJust me ^. entityName, "in the way!"]
+      case me of
+        Nothing -> return ()
+        Just e ->
+          (not . (`hasProperty` Unwalkable)) e `holdsOr`
+            cmdExn Move ["There is a", e ^. entityName, "in the way!"]
 
       robotLocation .= nextLoc
       flagRedraw
       return $ Out VUnit k
 
     Grab -> do
-
-      -- "grabber" `isInstalledOr` cmdExn Grab ["You need a grabber device to grab things."]
 
       -- Ensure there is an entity here.
       loc <- use robotLocation

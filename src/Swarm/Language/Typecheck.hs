@@ -132,6 +132,7 @@ substU m = ucata
 ------------------------------------------------------------
 -- Lifted stuff from unification-fd
 
+infix 4 =:=
 (=:=) :: UType -> UType -> Infer ()
 s =:= t = void (lift $ s U.=:= t)
 
