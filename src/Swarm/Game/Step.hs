@@ -28,8 +28,7 @@ import           Data.Bool                 (bool)
 import           Data.Either               (rights)
 import           Data.List                 (find)
 import qualified Data.Map                  as M
-import           Data.Maybe                (fromJust, isNothing, listToMaybe,
-                                            mapMaybe)
+import           Data.Maybe                (isNothing, listToMaybe, mapMaybe)
 import qualified Data.Set                  as S
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
