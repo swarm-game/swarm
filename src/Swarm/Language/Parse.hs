@@ -85,7 +85,7 @@ symbol = L.symbol sc
 --   prefix of a longer variable name, and allowing the parser to
 --   backtrack if it fails.
 reserved :: Text -> Parser ()
-reserved w = (lexeme . try) $ string' w *> notFollowedBy alphaNumChar
+reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char '_')
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores and not starting with a
