@@ -61,8 +61,8 @@ evalStepsPerTick = 100
 --   command and have a library of modules that you can create, edit,
 --   and run all from within the UI (the library could also be loaded
 --   from a file when the whole program starts up).
-gameStep :: (MonadState GameState m, MonadIO m) => m ()
-gameStep = do
+gameTick :: (MonadState GameState m, MonadIO m) => m ()
+gameTick = do
 
   -- Reset the updated flag.  While stepping the robots, the flag will
   -- get set to true if anything changes that requires redrawing the
@@ -85,7 +85,7 @@ gameStep = do
     case mr of
       Nothing -> return ()
       Just curRobot -> do
-        curRobot' <- bigStepRobot curRobot
+        curRobot' <- tickRobot curRobot
         case curRobot' ^. selfDestruct of
           True  -> robotMap %= M.delete rn
           False -> robotMap %= M.insert rn curRobot'
@@ -182,20 +182,20 @@ withExceptions k m = do
 -- Stepping robots
 ------------------------------------------------------------
 
--- | Run a robot for one "big step", which may consist of up to
+-- | Run a robot for one tick, which may consist of up to
 --   'evalStepsPerTick' CEK machine steps and at most one command
 --   execution.
-bigStepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
-bigStepRobot = bigStepRobotRec . (tickSteps .~ evalStepsPerTick)
+tickRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
+tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
 
--- | Recursive helper function for 'bigStepRobot', which checks if the
+-- | Recursive helper function for 'tickRobot', which checks if the
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-bigStepRobotRec :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
-bigStepRobotRec r
+tickRobotRec :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
+tickRobotRec r
   | not (isActive r) || r ^. tickSteps <= 0 = return r
-  | otherwise           = stepRobot r >>= bigStepRobotRec
+  | otherwise           = stepRobot r >>= tickRobotRec
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CEK machine for one step.
