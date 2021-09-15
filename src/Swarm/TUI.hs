@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Swarm.TUI where
 
@@ -12,7 +13,7 @@ import           Control.Lens
 import           Control.Monad.State
 import           Data.Array                  (range)
 import           Data.Either                 (isRight)
-import           Data.List                   (sortOn)
+import           Data.List                   (sortOn, findIndex)
 import           Data.List.Split             (chunksOf)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (fromMaybe, isJust)
@@ -28,7 +29,7 @@ import           Witch                       (into)
 import           Brick                       hiding (Direction)
 import           Brick.Focus
 import           Brick.Forms
-import           Brick.Widgets.Border        (hBorder)
+import           Brick.Widgets.Border        (hBorder, hBorderWithLabel)
 import           Brick.Widgets.Center        (center, hCenter)
 import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List          as BL
@@ -75,12 +76,21 @@ data Name
 data REPLHistItem = REPLEntry Bool Text | REPLOutput Text
   deriving (Eq, Ord, Show, Read)
 
+data InventoryEntry = InventoryEntry
+  { _ieCount     :: Count       -- ^ How many of these do we have?
+  , _ieEntity    :: Entity      -- ^ The thing
+  , _ieSeparator :: Maybe Text  -- ^ Whether there should be a labelled separator
+                                --   right before this item in the list
+  }
+
+makeLenses ''InventoryEntry
+
 data UIState = UIState
   { _uiFocusRing      :: FocusRing Name
   , _uiReplForm       :: Form Text Tick Name
   , _uiReplHistory    :: [REPLHistItem]
   , _uiReplHistIdx    :: Int
-  , _uiInventory      :: Maybe (Int, BL.List Name (Count, Entity))
+  , _uiInventory      :: Maybe (Int, BL.List Name InventoryEntry)
     -- ^ Stores the hash value of the focused robot entity (so we can
     --   tell if its inventory changed) along with a list with the
     --   items in the focused robot's inventory.
@@ -243,8 +253,8 @@ drawMessageBox s = case s ^. uiState . uiFocusRing . to focusGetCurrent of
 
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case mItem of
-  Nothing    -> txt " "
-  Just (_,e) -> vBox $
+  Nothing                   -> txt " "
+  Just (view ieEntity -> e) -> vBox $
     map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription)
     ++
     explainRecipes e
@@ -288,17 +298,13 @@ drawRobotInfo s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInven
   where
     isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just InfoPanel
 
--- drawInventory :: Inventory -> Widget Name
--- drawInventory = vBox . map drawItem . sortOn (view entityName . snd) . E.elems
-
--- drawInstalledDevices :: Robot -> Widget Name
--- drawInstalledDevices r
---   = hBox . map (displayEntity . snd) . elems $ (r ^. installedDevices)
-
-drawItem :: (Int, Entity) -> Widget Name
-drawItem (n, e) = drawLabelledEntityName e <+> showCount n
+drawItem :: InventoryEntry -> Widget Name
+drawItem (InventoryEntry n e label) = case label of
+  Nothing -> renderedItem
+  Just l -> vBox [ forceAttr sepAttr (hBorderWithLabel (txt l)), renderedItem ]
   where
     showCount = padLeft Max . str . show
+    renderedItem = drawLabelledEntityName e <+> showCount n
 
 drawLabelledEntityName :: Entity -> Widget Name
 drawLabelledEntityName e = hBox
@@ -393,13 +399,31 @@ handleEvent s ev =
 populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
 populateInventoryList Nothing  = uiInventory .= Nothing
 populateInventoryList (Just r) = do
-  -- Attempt to keep the index of the selected item the same when we
-  -- rebuild the inventory list. Doesn't seem to work.
   mList <- preuse (uiInventory . _Just . _2)
-  let idx = fromMaybe 1 (mList >>= view BL.listSelectedL)
-      itemList = sortOn (view entityName . snd) . elems
-      items = (r ^. robotInventory . to itemList) ++ (r ^. installedDevices . to itemList)
-      lst = BL.list InventoryList (V.fromList items) idx
+  let mkInvEntry (n,e) = InventoryEntry n e Nothing
+      itemList label
+        = (_head . ieSeparator ?~ label)
+        . map mkInvEntry
+        . sortOn (view entityName . snd)
+        . elems
+      items = (r ^. robotInventory . to (itemList "Inventory"))
+           ++ (r ^. installedDevices . to (itemList "Installed devices"))
+
+      -- Attempt to keep the selected element steady.
+      sel = mList >>= BL.listSelectedElement  -- Get the currently selected element+index.
+      idx = case sel of
+        -- If there is no currently selected element, just focus on index 0.
+        Nothing -> 0
+        -- Otherwise, try to find the same entity in the list and focus on that;
+        -- if it's not there, keep the index the same.
+        Just (selIdx, view ieEntity -> e) ->
+          fromMaybe selIdx (findIndex ((==e) . view ieEntity) items)
+
+      -- Create the new list, focused at the desired index.
+      lst = BL.listMoveTo idx $ BL.list InventoryList (V.fromList items) 1
+
+  -- Finally, populate the newly created list in the UI, and remember
+  -- the hash of the current robot.
   uiInventory .= Just (r ^. robotEntity . entityHash, lst)
 
 handleREPLEvent :: AppState -> BrickEvent Name Tick -> EventM Name (Next AppState)
@@ -537,7 +561,7 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList >>= BL.listSelectedElement of
     Nothing -> continueWithoutRedraw s
-    Just (_, (_, e)) -> do
+    Just (_, view ieEntity -> e) -> do
       let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
           mkTy   = Forall [] $ TyCmd TyUnit
           mkProg = TApp (TConst Make) (TString (e ^. entityName))

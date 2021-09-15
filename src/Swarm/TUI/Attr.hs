@@ -55,6 +55,7 @@ swarmAttrMap = attrMap V.defAttr
   , (focusedFormInputAttr, V.defAttr)
 
   , (listSelectedFocusedAttr, bg V.blue)
+  , (sepAttr, V.white `on` V.black)
 
   -- Default attribute
   , (defAttr, V.defAttr)
@@ -64,7 +65,7 @@ swarmAttrMap = attrMap V.defAttr
 robotAttr, entityAttr, plantAttr, flowerAttr, copperAttr, snowAttr, rockAttr, baseAttr,
   fireAttr, woodAttr, deviceAttr,
   dirtAttr, grassAttr, stoneAttr, waterAttr, iceAttr,
-  highlightAttr, defAttr :: AttrName
+  highlightAttr, sepAttr, defAttr :: AttrName
 dirtAttr      = "dirt"
 grassAttr     = "grass"
 stoneAttr     = "stone"
@@ -82,6 +83,7 @@ woodAttr      = "wood"
 baseAttr      = "base"
 deviceAttr    = "device"
 highlightAttr = "highlight"
+sepAttr       = "sep"
 defAttr       = "def"
 
 instance ToJSON AttrName where
