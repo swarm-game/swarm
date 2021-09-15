@@ -37,6 +37,13 @@
   - [1, drill bit]
 
 - in:
+  - [1, box]
+  - [1, drill bit]
+  - [1, motor]
+  out:
+  - [1, drill]
+
+- in:
   - [5, rock]
   out:
   - [1, furnace]
@@ -59,7 +66,7 @@
 
 - in:
   - [32, gear]
-  - [32, copper wire]
+  - [6, copper wire]
   out:
   - [1, motor]
 
