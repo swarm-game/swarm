@@ -23,6 +23,7 @@ import           Data.Map              (Map)
 import qualified Data.Map              as M
 import           Data.Set              (Set)
 import qualified Data.Set              as S
+import           Data.Set.Lens         (setOf)
 import           Data.Text             (Text)
 import qualified Data.Text             as T
 
@@ -92,7 +93,7 @@ requiredCaps ctx tm = case tm of
   -- the body of the definition.  However, we also return a map
   -- which associates the defined name to the capabilities it requires.
   TDef x _ t ->
-    let bodyCaps = (if x `S.member` fv t then S.insert CRecursion else id) (requiredCaps' ctx t)
+    let bodyCaps = (if x `S.member` setOf fv t then S.insert CRecursion else id) (requiredCaps' ctx t)
     in (S.singleton CEnv, M.singleton x bodyCaps)
     -- Note that you can MAKE a recursive definition with only CEnv,
     -- but RUNNING it requires CRecursion.
@@ -167,7 +168,7 @@ requiredCaps' ctx = go
       -- Similarly, for a let, we assume that the let-bound expression
       -- will be used at least once in the body.
       TLet x _ t1 t2 ->
-        (if x `S.member` fv t1 then S.insert CRecursion else id)
+        (if x `S.member` setOf fv t1 then S.insert CRecursion else id)
         $ S.insert CEnv $ go t1 `S.union` go t2
 
       -- Everything else is straightforward.

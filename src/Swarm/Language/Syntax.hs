@@ -12,6 +12,7 @@
 
 {-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE PatternSynonyms      #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE StandaloneDeriving   #-}
@@ -30,11 +31,11 @@ module Swarm.Language.Syntax
 
     -- * Term traversal
 
-  , bottomUp, fv, mapFree
+  , bottomUp, fvT, fv, mapFree1
 
   ) where
 
-import           Data.Set             (Set)
+import           Control.Lens         (Traversal', (%~))
 import qualified Data.Set             as S
 import           Data.Text
 import           Linear
@@ -280,37 +281,55 @@ bottomUp f (TBind mx t1 t2)
 bottomUp f (TDelay t) = f (TDelay (bottomUp f t))
 bottomUp f t = f t
 
--- | The free variables of a term.
-fv :: Term -> Set Var
-fv (TVar x)               = S.singleton x
-fv (TPair t1 t2)          = fv t1 `S.union` fv t2
-fv (TLam x _ t)           = S.delete x (fv t)
-fv (TApp t1 t2)           = fv t1 `S.union` fv t2
-fv (TLet x _ t1 t2)       = S.delete x (fv t1 `S.union` fv t2)
-fv (TDef x _ t)           = S.delete x (fv t)
-fv (TBind (Just x) t1 t2) = fv t1 `S.union` S.delete x (fv t2)
-fv (TBind Nothing  t1 t2) = fv t1 `S.union` fv t2
-fv (TDelay t)             = fv t
-fv _                      = S.empty
+-- | Traversal over those subterms which are free variables.
+fvT :: Traversal' Term Term
+fvT f = go S.empty
+  where
+    go bound t = case t of
+      TUnit -> pure t
+      TConst{} -> pure t
+      TDir{} -> pure t
+      TInt{} -> pure t
+      TString{} -> pure t
+      TBool{} -> pure t
+      TVar x
+        | x `S.member` bound -> pure t
+        | otherwise          -> f (TVar x)
+      TLam x ty t1 -> TLam x ty <$> go (S.insert x bound) t1
+      TApp t1 t2  -> TApp <$> go bound t1 <*> go bound t2
+      TLet x ty t1 t2 ->
+        let bound' = S.insert x bound
+        in  TLet x ty <$> go bound' t1 <*> go bound' t2
+      TPair t1 t2 -> TPair <$> go bound t1 <*> go bound t2
+      TDef x ty t1 -> TDef x ty <$> go (S.insert x bound) t1
+      TBind mx t1 t2 ->
+        TBind mx <$> go bound t1 <*> go (maybe id S.insert mx bound) t2
+      TDelay t1 -> TDelay <$> go bound t1
 
--- | Apply a function to all the free occurrences of a variable.
-mapFree :: Var -> (Term -> Term) -> Term -> Term
-mapFree x f (TVar y)
-  | x == y    = f (TVar y)
-  | otherwise = TVar y
-mapFree x f (TPair t1 t2) = TPair (mapFree x f t1) (mapFree x f t2)
-mapFree x f t@(TLam y ty body)
-  | x == y = t
-  | otherwise = TLam y ty (mapFree x f body)
-mapFree x f (TApp t1 t2) = TApp (mapFree x f t1) (mapFree x f t2)
-mapFree x f t@(TLet y ty t1 t2)
-  | x == y = t
-  | otherwise = TLet y ty (mapFree x f t1) (mapFree x f t2)
-mapFree x f t@(TDef y ty t1)
-  | x == y = t
-  | otherwise = TDef y ty (mapFree x f t1)
-mapFree x f (TBind mx t1 t2)
-  | Just y <- mx, x == y = TBind mx (mapFree x f t1) t2
-  | otherwise = TBind mx (mapFree x f t1) (mapFree x f t2)
-mapFree x f (TDelay t) = TDelay (mapFree x f t)
-mapFree _ _ t = t
+-- | Traversal over the free variables in a term.
+fv :: Traversal' Term Var
+fv = fvT . (\f -> \case { TVar x -> TVar <$> f x ; t -> pure t })
+
+-- | Apply a function to all free occurrences of a particular variable.
+mapFree1 :: Var -> (Term -> Term) -> Term -> Term
+mapFree1 x f = fvT %~ (\t -> if t == TVar x then f t else t)
+
+-- mapFree x f (TVar y)
+--   | x == y    = f (TVar y)
+--   | otherwise = TVar y
+-- mapFree x f (TPair t1 t2) = TPair (mapFree x f t1) (mapFree x f t2)
+-- mapFree x f t@(TLam y ty body)
+--   | x == y = t
+--   | otherwise = TLam y ty (mapFree x f body)
+-- mapFree x f (TApp t1 t2) = TApp (mapFree x f t1) (mapFree x f t2)
+-- mapFree x f t@(TLet y ty t1 t2)
+--   | x == y = t
+--   | otherwise = TLet y ty (mapFree x f t1) (mapFree x f t2)
+-- mapFree x f t@(TDef y ty t1)
+--   | x == y = t
+--   | otherwise = TDef y ty (mapFree x f t1)
+-- mapFree x f (TBind mx t1 t2)
+--   | Just y <- mx, x == y = TBind mx (mapFree x f t1) t2
+--   | otherwise = TBind mx (mapFree x f t1) (mapFree x f t2)
+-- mapFree x f (TDelay t) = TDelay (mapFree x f t)
+-- mapFree _ _ t = t

@@ -127,11 +127,6 @@ data Frame
     -- ^ We are executing inside a 'Try' block.  If an exception is
     --   raised, we will execute the stored term (the "catch" block).
 
-  | FDef Var
-    -- ^ We were evaluating the body of a definition.  The next thing
-    --   we should do is return an environment binding the variable to
-    --   its value.
-
   | FUnionEnv Env
     -- ^ We were executing a command; next we should take any
     --   environment it returned and union it with this one to produce
@@ -250,7 +245,6 @@ prettyFrame (FArg t _)           = "_ " ++ prettyString t
 prettyFrame (FApp v)             = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _)         = "let " ++ from x ++ " = _ in " ++ prettyString t
 prettyFrame (FTry c)             = "try _ (" ++ from (prettyValue c) ++ ")"
-prettyFrame (FDef x)             = "def " ++ from x ++ " = _"
 prettyFrame FUnionEnv{}          = "_ ∪ <Env>"
 prettyFrame FLoadEnv{}           = "loadEnv"
 prettyFrame FExec                = "exec _"

@@ -27,6 +27,7 @@ import           Data.List             (foldl')
 import           Data.Map              (Map)
 import qualified Data.Map              as M
 import qualified Data.Set              as S
+import           Data.Set.Lens         (setOf)
 import           Data.Text             (Text)
 
 import           Swarm.Language.Pretty (prettyText)
@@ -109,7 +110,7 @@ valueToTerm (VClo x t e)     =
   M.foldrWithKey
     (\y v -> TLet y Nothing (valueToTerm v))
     (TLam x Nothing t)
-    (M.restrictKeys e (S.delete x (fv t)))
+    (M.restrictKeys e (S.delete x (setOf fv t)))
 valueToTerm (VCApp c vs)     = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VDef x t _)     = TDef x Nothing t
 valueToTerm (VResult v _)    = valueToTerm v

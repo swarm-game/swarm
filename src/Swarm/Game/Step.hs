@@ -286,28 +286,25 @@ stepCEK cek = case cek of
   ------------------------------------------------------------
   -- Execution
 
-  -- To execute a definition, we focus on evaluating the body in a
-  -- recursive environment (similar to let), and remember that the
-  -- result should be bound to the given name.
-  Out (VDef x t e) (FExec : k)       -> do
-    let e' = addBinding x (VDelay t e') e
-    return $ In t e' (FDef x : k)
-
-  -- Once we are done evaluating the body of a definition, we return a
+  -- To execute a definition, we set up a recursive environment for
+  -- it, and immediately turn the body into a delayed value, so it
+  -- will not even be evaluated until it is called.  We return a
   -- special VResult value, which packages up the return value from
   -- the @def@ command itself (@unit@) together with the resulting
-  -- environment (the variable bound to the value).
-  Out v  (FDef x : k)                -> return $ Out (VResult VUnit (V.singleton x v)) k
+  -- environment (the variable bound to the delayed value).
+  Out (VDef x t e) (FExec : k)       -> do
+    let e' = addBinding x (VDelay t e') e
+    return $ Out (VResult VUnit (V.singleton x (VDelay t e'))) k
 
-  -- Executing a delayed computation also serves to force it.  This is
-  -- particularly needed in the case of definitions: we wrap the body
-  -- of definitions in 'TDelay' so they won't be evaluated at all
-  -- until execution time (enabling e.g. the base to *define* things
-  -- using conditionals even if it can't evaluate them); but we can't
-  -- do the trick of wrapping all references to the definition in
-  -- 'Force'---like we do for let-expressions---since we don't know
-  -- all the future references to it.
-  Out (VDelay t e) (FExec : k)       -> return $ In t e (FExec : k)
+  -- -- Executing a delayed computation also serves to force it.  This is
+  -- -- particularly needed in the case of definitions: we wrap the body
+  -- -- of definitions in 'TDelay' so they won't be evaluated at all
+  -- -- until execution time (enabling e.g. the base to *define* things
+  -- -- using conditionals even if it can't evaluate them); but we can't
+  -- -- do the trick of wrapping all references to the definition in
+  -- -- 'Force'---like we do for let-expressions---since we don't know
+  -- -- all the future references to it.
+  -- Out (VDelay t e) (FExec : k)       -> return $ In t e (FExec : k)
 
   -- To execute a constant application, delegate to the 'execConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
