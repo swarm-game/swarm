@@ -67,3 +67,9 @@
   - [2, copper wire]
   out:
   - [1, strange loop]
+
+- in:
+  - [5, lambda]
+  - [1, cup of water]
+  out:
+  - [1, curry]

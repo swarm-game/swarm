@@ -132,7 +132,20 @@
     attr: flower
     char: 'λ'
   description:
-  - A lambda.
+  - A wild lambda.  They are somewhat rare, but regrow when picked.  Lambdas
+    are delicious when cooked into curry.
+  - Lambdas can also be used to create functions. For example,
+  - '  def thrice : cmd () -> cmd () = \c. c;c;c end'
+  - defines the function 'thrice' which repeats a command three times.
+  properties: [portable, growable]
+  capabilities: [lambda]
+
+- name: curry
+  display:
+    attr: flower
+    char: 'C'
+  description:
+  - Delicious curry cooked from wild lambdas.
   properties: [portable]
 
 - name: wave
@@ -142,13 +155,21 @@
   description:
   - A wave on the surface of the water.
 
+- name: cup of water
+  display:
+    attr: water
+    char: 'U'
+  description:
+  - A cup full of water.
+  properties: [portable]
+
 - name: bit (0)
   display:
     attr: entity
     char: '0'
   description:
   - A bit.
-  properties: [portable]
+  properties: [portable, growable]
 
 - name: bit (1)
   display:
