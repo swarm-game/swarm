@@ -413,7 +413,7 @@ stepCEK cek = case cek of
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Halt, Noop, Return, GetX, GetY, Blocked, Ishere, Try, Random])
+takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, GetX, GetY, Blocked, Ishere, Try, Random])
 
 -- | At the level of the CEK machine, the only difference bewteen
 --   between *evaluating* a function constant and *executing* a
@@ -461,7 +461,7 @@ seedProgram thing = prog
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
 
 execConst c vs k = do
-  -- First, ensure the robot is capable of executing/evaluating this constant
+  -- First, ensure the robot is capable of executing/evaluating this constant.
   ensureCanExecute c
 
   -- Now proceed to actually carry out the operation.
@@ -471,7 +471,7 @@ execConst c vs k = do
       [v] -> return $ Out v k
       _   -> badConst
     Wait -> return $ Out VUnit k
-    Halt -> do
+    Selfdestruct -> do
       selfDestruct .= True
       flagRedraw
       return $ Out VUnit k

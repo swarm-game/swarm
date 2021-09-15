@@ -104,7 +104,7 @@ data Const
   = Wait              -- ^ Wait for one time step without doing anything.
   | Noop              -- ^ Do nothing.  This is different than 'Wait'
                       --   in that it does not take up a time step.
-  | Halt              -- ^ Self-destruct.
+  | Selfdestruct      -- ^ Self-destruct.
 
   -- Basic actions
   | Move              -- ^ Move forward one step.
@@ -159,36 +159,36 @@ data ArithConst = Add | Sub | Mul | Div | Exp
 --   'Swarm.Game.Value.VCApp') until it has enough, then dispatch the constant's
 --   behavior.
 arity :: Const -> Int
-arity Wait      = 0
-arity Noop      = 0
-arity Halt      = 0
-arity Move      = 0
-arity Turn      = 1
-arity Grab      = 0
-arity Place     = 1
-arity Give      = 2
-arity Make      = 1
-arity Build     = 2
-arity Say       = 1
-arity View      = 1
-arity Appear    = 1
-arity GetX      = 0
-arity GetY      = 0
-arity Blocked   = 0
-arity Ishere    = 1
-arity Random    = 1
-arity Run       = 1
-arity Not       = 1
-arity (Cmp _)   = 2
-arity Neg       = 1
-arity (Arith _) = 2
-arity If        = 3
-arity Fst       = 1
-arity Snd       = 1
-arity Force     = 1
-arity Return    = 1
-arity Try       = 2
-arity Raise     = 1
+arity Wait         = 0
+arity Noop         = 0
+arity Selfdestruct = 0
+arity Move         = 0
+arity Turn         = 1
+arity Grab         = 0
+arity Place        = 1
+arity Give         = 2
+arity Make         = 1
+arity Build        = 2
+arity Say          = 1
+arity View         = 1
+arity Appear       = 1
+arity GetX         = 0
+arity GetY         = 0
+arity Blocked      = 0
+arity Ishere       = 1
+arity Random       = 1
+arity Run          = 1
+arity Not          = 1
+arity (Cmp _)      = 2
+arity Neg          = 1
+arity (Arith _)    = 2
+arity If           = 3
+arity Fst          = 1
+arity Snd          = 1
+arity Force        = 1
+arity Return       = 1
+arity Try          = 2
+arity Raise        = 1
   -- It would be more compact to represent the above by testing
   -- whether the constants are in certain sets, but this way the
   -- compiler warns us about incomplete pattern match if we add more

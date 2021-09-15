@@ -350,7 +350,7 @@ inferConst :: Const -> UPolytype
 inferConst c = case c of
   Wait -> Forall [] $ UTyCmd UTyUnit
   Noop -> Forall [] $ UTyCmd UTyUnit
-  Halt -> Forall [] $ UTyCmd UTyUnit
+  Selfdestruct -> Forall [] $ UTyCmd UTyUnit
 
   Move -> Forall [] $ UTyCmd UTyUnit
   Turn -> Forall [] $ UTyFun UTyDir (UTyCmd UTyUnit)

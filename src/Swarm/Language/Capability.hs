@@ -184,43 +184,43 @@ requiredCaps' ctx = go
 
 -- | Capabilities needed to evaluate/execute a constant.
 constCaps :: Const -> Set Capability
-constCaps Wait      = S.empty
-constCaps Noop      = S.empty
-constCaps Halt      = S.empty
+constCaps Wait         = S.empty
+constCaps Noop         = S.empty
+constCaps Selfdestruct = S.empty
 
-constCaps Move      = S.singleton CMove
-constCaps Turn      = S.singleton CTurn
-constCaps Grab      = S.singleton CGrab
-constCaps Place     = S.singleton CPlace
-constCaps Give      = S.singleton CGive
-constCaps Make      = S.singleton CMake
-constCaps Build     = S.singleton CBuild
+constCaps Move         = S.singleton CMove
+constCaps Turn         = S.singleton CTurn
+constCaps Grab         = S.singleton CGrab
+constCaps Place        = S.singleton CPlace
+constCaps Give         = S.singleton CGive
+constCaps Make         = S.singleton CMake
+constCaps Build        = S.singleton CBuild
   -- XXX need to do something more sophisticated for Build?
 
 -- It's important that no capability is required for 'say', because
 -- this is how exceptions get reported.
-constCaps Say       = S.empty
+constCaps Say          = S.empty
 
-constCaps View      = S.empty
-constCaps Appear    = S.singleton CAppear
+constCaps View         = S.empty
+constCaps Appear       = S.singleton CAppear
 
-constCaps GetX      = S.singleton CSenseloc
-constCaps GetY      = S.singleton CSenseloc
-constCaps Blocked   = S.singleton CSensefront
-constCaps Ishere    = S.empty
-constCaps Random    = S.singleton CRandom
+constCaps GetX         = S.singleton CSenseloc
+constCaps GetY         = S.singleton CSenseloc
+constCaps Blocked      = S.singleton CSensefront
+constCaps Ishere       = S.empty
+constCaps Random       = S.singleton CRandom
 
-constCaps Run       = S.empty
+constCaps Run          = S.empty
 
-constCaps Not       = S.empty
-constCaps (Cmp _)   = S.singleton CCompare
-constCaps Neg       = S.singleton CArith
-constCaps (Arith _) = S.singleton CArith
+constCaps Not          = S.empty
+constCaps (Cmp _)      = S.singleton CCompare
+constCaps Neg          = S.singleton CArith
+constCaps (Arith _)    = S.singleton CArith
 
-constCaps If        = S.singleton CCond
-constCaps Fst       = S.empty
-constCaps Snd       = S.empty
-constCaps Force     = S.empty
-constCaps Return    = S.empty
-constCaps Try       = S.empty
-constCaps Raise     = S.empty
+constCaps If           = S.singleton CCond
+constCaps Fst          = S.empty
+constCaps Snd          = S.empty
+constCaps Force        = S.empty
+constCaps Return       = S.empty
+constCaps Try          = S.empty
+constCaps Raise        = S.empty

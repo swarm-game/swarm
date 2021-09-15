@@ -55,7 +55,7 @@ type Parser = Parsec Void Text
 reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west"
-  , "wait", "halt", "move", "turn", "grab", "place", "give", "make"
+  , "wait", "selfdestruct", "move", "turn", "grab", "place", "give", "make"
   , "build", "run", "getx", "gety"
   , "random", "say", "view", "appear", "ishere"
   , "int", "string", "dir", "bool", "cmd"
@@ -156,7 +156,7 @@ parseDirection =
 parseConst :: Parser Const
 parseConst =
       Wait    <$ reserved "wait"
-  <|> Halt    <$ reserved "halt"
+  <|> Selfdestruct <$ reserved "selfdestruct"
   <|> Return  <$ reserved "return"
   <|> Move    <$ reserved "move"
   <|> Turn    <$ reserved "turn"
