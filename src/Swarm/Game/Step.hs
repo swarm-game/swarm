@@ -408,10 +408,9 @@ stepCEK cek = case cek of
     badMachineState msg =
       let msg' = T.unlines
             [ T.append "Bad machine state in stepRobot: " msg
-            , from (show cek)
+            , from (prettyCEK cek)
             ]
       in return $ Up (Fatal msg') []
-
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
