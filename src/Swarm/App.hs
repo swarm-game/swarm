@@ -14,22 +14,19 @@
 
 module Swarm.App where
 
-import           Control.Concurrent          (forkIO, threadDelay)
-import           Control.Concurrent.STM.TVar
-import           Control.Lens                ((^.))
-import           Data.Bits                   (shiftL)
+import           Control.Concurrent   (forkIO)
 
 import           Brick
 import           Brick.BChan
-import qualified Graphics.Vty                as V
+import qualified Graphics.Vty         as V
 
 import           Control.Monad.Except
-import qualified Data.Text.IO                as T
+import qualified Data.Text.IO         as T
 import           Swarm.TUI
 import           Swarm.TUI.Attr
 
 -- | The definition of the app used by the @brick@ library.
-app :: App AppState Tick Name
+app :: App AppState AppEvent Name
 app = App
   { appDraw         = drawUI
   , appChooseCursor = showFirstCursor
@@ -47,15 +44,21 @@ appMain = do
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
 
-      chan <- newBChan 10
-      let tpsTV = s ^. uiState . lgTicksPerSecond
-      _ <- forkIO $ forever $ do
-        writeBChan chan Tick
-        lgTPS <- readTVarIO tpsTV
-        let delay
-              | lgTPS < 0 = 1_000_000 * (1 `shiftL` (-lgTPS))
-              | otherwise = 1_000_000 `div` (1 `shiftL` lgTPS)
-        threadDelay delay
+      -- Just send Frame events as fast as possible.  The game is
+      -- responsible for figuring out how many steps to take each
+      -- frame to achieve the desired speed, regardless of the frame
+      -- rate.
+      --
+      -- 5 is the size of the bounded channel; when it gets that big,
+      -- any writes to it will block.  Probably 1 would work fine,
+      -- though it seems like it could be good to have a bit of buffer
+      -- just so the app never has to wait for the thread to wake up
+      -- and do another write.
+
+      chan <- newBChan 5
+      _ <- forkIO $ forever $ writeBChan chan Frame
+
+      -- Run the app.
 
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty

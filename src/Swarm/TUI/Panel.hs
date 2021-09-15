@@ -28,7 +28,8 @@ import           Brick.Widgets.Border
 
 import           Control.Lens
 
-data Panel n = Panel { _panelName :: n, _panelContent :: Widget n }
+data Panel n = Panel
+  { _panelName :: n, _panelLabel :: Maybe (Widget n), _panelContent :: Widget n }
 
 makeLenses ''Panel
 
@@ -41,12 +42,16 @@ drawPanel attr fr = withFocusRing fr drawPanel'
     drawPanel' :: Bool -> Panel n -> Widget n
     drawPanel' focused p
       = (if focused then overrideAttr borderAttr attr else id)
-      $ border (p ^. panelContent)
+      $ case p ^. panelLabel of
+          Nothing -> border (p ^. panelContent)
+          Just l  -> borderWithLabel l (p ^. panelContent)
 
 -- | Create a panel.
-panel :: Eq n => AttrName -- ^ Border attribute to use when the panel is focused.
+panel :: Eq n
+  => AttrName             -- ^ Border attribute to use when the panel is focused.
   -> FocusRing n          -- ^ Focus ring the panel should be part of.
   -> n                    -- ^ The name of the panel. Must be unique.
+  -> Maybe (Widget n)     -- ^ The (optional) label to use.
   -> Widget n             -- ^ The content of the panel.
   -> Widget n
-panel attr fr nm w = drawPanel attr fr (Panel nm w)
+panel attr fr nm lab w = drawPanel attr fr (Panel nm lab w)
