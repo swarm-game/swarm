@@ -722,6 +722,7 @@ execConst c vs k = do
       [VString name, VDelay cmd e] -> do
         r <- get
         em <- lift . lift $ use entityMap
+        mode <- lift . lift $ use gameMode
 
         let
             -- Standard devices that are always installed.
@@ -751,7 +752,7 @@ execConst c vs k = do
             missingDevices = S.filter (not . deviceOK) capDevices
 
         -- Make sure we're not missing any required devices.
-        S.null missingDevices `holdsOr`
+        (mode == Creative || S.null missingDevices) `holdsOr`
           cmdExn Build
             [ "this would require installing devices you don't have:\n"
             , T.intercalate ", " (map (^. entityName) (S.toList missingDevices))
@@ -769,8 +770,11 @@ execConst c vs k = do
         -- Add the new robot to the world.
         newRobot' <- lift . lift $ addRobot newRobot
 
-        -- Remove from the inventory any devices which were installed on the new robot.
-        forM_ (devices `S.difference` stdDevices) $ \d -> robotInventory %= delete d
+        -- Remove from the inventory any devices which were installed on the new robot,
+        -- if not in creative mode.
+        unless (mode == Creative) $
+          forM_ (devices `S.difference` stdDevices) $ \d ->
+            robotInventory %= delete d
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
