@@ -728,7 +728,7 @@ execConst c vs k = do
 
         let
             -- Standard devices that are always installed.
-            stdDeviceList = ["treads", "grabber", "solar panel"]
+            stdDeviceList = ["treads", "grabber", "solar panel", "detonator"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
 
             -- Find out what capabilities are required by the program that will

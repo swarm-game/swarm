@@ -41,6 +41,7 @@ import           Witch                 (from)
 data Capability
   = CMove      -- ^ Execute the 'Move' command
   | CTurn      -- ^ Execute the 'Turn' command
+  | CSelfdestruct  -- ^ Execute the 'Selfdestruct' command
   | CGrab      -- ^ Execute the 'Grab' command
   | CPlace     -- ^ Execute the 'Place' command
   | CGive      -- ^ Execute the 'Give' command
@@ -186,7 +187,7 @@ requiredCaps' ctx = go
 constCaps :: Const -> Set Capability
 constCaps Wait         = S.empty
 constCaps Noop         = S.empty
-constCaps Selfdestruct = S.empty
+constCaps Selfdestruct = S.singleton CSelfdestruct
 
 constCaps Move         = S.singleton CMove
 constCaps Turn         = S.singleton CTurn
