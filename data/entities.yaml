@@ -317,6 +317,15 @@
   properties: [portable]
   capabilities: [cond]
 
+- name: rangefinder
+  display:
+    attr: device
+    char: '>'
+  description:
+  - A laser rangefinder.  This is a placeholder for now.
+  properties: [portable]
+  capabilities: [sensefront]
+
 ############################################################
 ### Test entities ##########################################
 ############################################################

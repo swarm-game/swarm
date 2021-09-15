@@ -121,6 +121,7 @@ data Const
   -- Sensing / generation
   | GetX              -- ^ Get the current x-coordinate.
   | GetY              -- ^ Get the current y-coordinate.
+  | Blocked           -- ^ See if we can move forward or not.
   | Ishere  -- XXX for testing, see if a specific entity is here
             -- probably going to remove this later
   | Random            -- ^ Get a uniformly random integer.
@@ -173,6 +174,7 @@ arity View      = 1
 arity Appear    = 1
 arity GetX      = 0
 arity GetY      = 0
+arity Blocked   = 0
 arity Ishere    = 1
 arity Random    = 1
 arity Run       = 1

@@ -47,6 +47,7 @@ data Capability
   | CMake      -- ^ Execute the 'Make' command
   | CBuild     -- ^ Execute the 'Build' command
   | CSenseloc  -- ^ Execute the 'GetX' and 'GetY' commands
+  | CSensefront -- ^ Execute the 'Blocked' command
   | CRandom    -- ^ Execute the 'Random' command
   | CAppear    -- ^ Execute the 'Appear' command
 
@@ -205,6 +206,7 @@ constCaps Appear    = S.singleton CAppear
 
 constCaps GetX      = S.singleton CSenseloc
 constCaps GetY      = S.singleton CSenseloc
+constCaps Blocked   = S.singleton CSensefront
 constCaps Ishere    = S.empty
 constCaps Random    = S.singleton CRandom
 

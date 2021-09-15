@@ -364,6 +364,7 @@ inferConst c = case c of
 
   GetX -> Forall [] $ UTyCmd UTyInt
   GetY -> Forall [] $ UTyCmd UTyInt
+  Blocked -> Forall [] $ UTyCmd UTyBool
   Ishere -> Forall [] $ UTyFun UTyString (UTyCmd UTyBool)
   Random -> Forall [] $ UTyFun UTyInt (UTyCmd UTyInt)
 

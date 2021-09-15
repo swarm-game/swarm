@@ -73,3 +73,8 @@
   - [1, cup of water]
   out:
   - [1, curry]
+
+- in:
+  - [1, tree]
+  out:
+  - [1, rangefinder]

@@ -168,6 +168,7 @@ parseConst =
   <|> Run     <$ reserved "run"
   <|> GetX    <$ reserved "getx"
   <|> GetY    <$ reserved "gety"
+  <|> Blocked <$ reserved "blocked"
   <|> Random  <$ reserved "random"
   <|> Say     <$ reserved "say"
   <|> View    <$ reserved "view"
