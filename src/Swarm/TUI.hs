@@ -117,7 +117,7 @@ initReplForm = newForm
   ""
 
 initLgTicksPerSecond :: Int
-initLgTicksPerSecond = 1
+initLgTicksPerSecond = 3
 
 initUIState :: ExceptT Text IO UIState
 initUIState = liftIO $ do
