@@ -1,0 +1,5 @@
+check =
+  [ {type = "Exclude", id = "STAN-0213", scope = "all"}
+  , {type = "Exclude", id = "STAN-0101", scope = "all"}
+  , {type = "Exclude", id = "STAN-0103", scope = "all"}
+  ]
