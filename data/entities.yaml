@@ -232,17 +232,21 @@
     attr: device
     char: '<'
   description:
-  - A grabber arm allows a robot to grab an item on its current cell, via the 'grab'
-    command, or give an item to another robot on the same cell.
+  - A grabber arm allows a robot to manipulate items via the 'grab',
+    'place', and 'give' commands.
   - The 'grab' command takes no arguments; it simply grabs whatever is
     available.  It raises an exception if run in a cell that does not
     contain an item.
+  - The 'place' command takes one argument, the name of the item to
+    place.  The item is removed from the robot's inventory and placed
+    in the robot's current cell (which must be empty).  Raises an
+    exception if the operation fails.
   - "The 'give' command takes two arguments: the name of the robot to
-    give an item to, and the name of the item to give."
-  capabilities: [grab, give]
-  properties: [portable]
+    give an item to (which can be at most 1 cell away), and the name
+    of the item to give. Raises an exception if the operation fails."
 
-# XXX Another idea: give base a grabber; allow grabber to grab + place; but require another device for "give".
+  capabilities: [grab, give, place]
+  properties: [portable]
 
 - name: solar panel
   display:

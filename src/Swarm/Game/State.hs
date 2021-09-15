@@ -137,7 +137,7 @@ initGameState = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
-  let baseDeviceNames = ["solar panel", "3D printer", "dictionary", "workbench"]
+  let baseDeviceNames = ["solar panel", "3D printer", "dictionary", "workbench", "grabber"]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
 
   return $ GameState

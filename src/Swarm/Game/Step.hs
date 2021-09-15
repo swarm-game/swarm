@@ -131,6 +131,14 @@ updateEntityAt (V2 x y) upd = lift . lift $ world %= W.update (-y,x) upd
 robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)
 robotNamed nm = lift . lift $ use (robotMap . at nm)
 
+-- | Manhattan distance between world locations.
+manhattan :: V2 Int -> V2 Int -> Int
+manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+
+------------------------------------------------------------
+-- Exceptions and validation
+------------------------------------------------------------
+
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
@@ -566,8 +574,8 @@ execConst c vs k = do
 
         -- Make sure it is in the same location
         loc <- use robotLocation
-        (other ^. robotLocation == loc) `holdsOr`
-          cmdExn Give ["The robot named", otherName, "is not here."]
+        ((other ^. robotLocation) `manhattan` loc <= 1) `holdsOr`
+          cmdExn Give ["The robot named", otherName, "is not close enough."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
