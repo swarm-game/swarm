@@ -313,23 +313,3 @@ fv = fvT . (\f -> \case { TVar x -> TVar <$> f x ; t -> pure t })
 -- | Apply a function to all free occurrences of a particular variable.
 mapFree1 :: Var -> (Term -> Term) -> Term -> Term
 mapFree1 x f = fvT %~ (\t -> if t == TVar x then f t else t)
-
--- mapFree x f (TVar y)
---   | x == y    = f (TVar y)
---   | otherwise = TVar y
--- mapFree x f (TPair t1 t2) = TPair (mapFree x f t1) (mapFree x f t2)
--- mapFree x f t@(TLam y ty body)
---   | x == y = t
---   | otherwise = TLam y ty (mapFree x f body)
--- mapFree x f (TApp t1 t2) = TApp (mapFree x f t1) (mapFree x f t2)
--- mapFree x f t@(TLet y ty t1 t2)
---   | x == y = t
---   | otherwise = TLet y ty (mapFree x f t1) (mapFree x f t2)
--- mapFree x f t@(TDef y ty t1)
---   | x == y = t
---   | otherwise = TDef y ty (mapFree x f t1)
--- mapFree x f (TBind mx t1 t2)
---   | Just y <- mx, x == y = TBind mx (mapFree x f t1) t2
---   | otherwise = TBind mx (mapFree x f t1) (mapFree x f t2)
--- mapFree x f (TDelay t) = TDelay (mapFree x f t)
--- mapFree _ _ t = t
