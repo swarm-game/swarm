@@ -736,6 +736,8 @@ execConst c vs k = do
 
         let
             -- Standard devices that are always installed.
+            -- XXX in the future, make a way to build these and just start the base
+            -- out with a large supply of each?
             stdDeviceList = ["treads", "grabber", "solar panel", "detonator"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
 
