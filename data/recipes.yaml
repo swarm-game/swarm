@@ -85,3 +85,9 @@
   - [1, tree]
   out:
   - [1, rangefinder]
+
+- in:
+  - [8, bit (0)]
+  - [8, bit (1)]
+  out:
+  - [1, counter]

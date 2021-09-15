@@ -203,6 +203,14 @@
   - A wooden gear.
   properties: [portable]
 
+- name: counter
+  display:
+    attr: device
+    char: 'C'
+  description:
+  - An 8-bit counter.
+  properties: [portable]
+
 - name: Linux
   display:
     attr: entity
