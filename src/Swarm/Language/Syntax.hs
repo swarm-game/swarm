@@ -6,7 +6,7 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Abstract syntax for the Swarm programming language.
+-- Abstract syntax for terms of the Swarm programming language.
 --
 -----------------------------------------------------------------------------
 
@@ -19,9 +19,11 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Swarm.Language.Syntax
-  ( -- * Constants
+  ( -- * Directions
 
     Direction(..), applyTurn, toDirection, fromDirection, north, south, east, west
+
+    -- * Constants
   , Const(..), CmpConst(..), ArithConst(..)
 
   , arity, isCmd
@@ -74,6 +76,9 @@ applyTurn South _       = south
 applyTurn East _        = east
 applyTurn West _        = west
 
+-- | Possibly convert a vector into a 'Direction'---that is, if the
+--   vector happens to be a unit vector in one of the cardinal
+--   directions.
 toDirection :: V2 Int -> Maybe Direction
 toDirection v    = case v of
   V2 0 1    -> Just North
@@ -82,6 +87,9 @@ toDirection v    = case v of
   V2 (-1) 0 -> Just West
   _         -> Nothing
 
+-- | Convert a 'Direction' into a corresponding vector.  Note that
+--   this only does something reasonable for 'North', 'South', 'East',
+--   and 'West'---other 'Direction's return the zero vector.
 fromDirection :: Direction -> V2 Int
 fromDirection d = case d of
   North -> north
@@ -90,11 +98,20 @@ fromDirection d = case d of
   West  -> west
   _     -> V2 0 0
 
--- | The cardinal directions.
-north, south, east, west :: V2 Int
+-- | The cardinal direction north = @V2 0 1@.
+north :: V2 Int
 north = V2 0 1
+
+-- | The cardinal direction south = @V2 0 (-1)@.
+south :: V2 Int
 south = V2 0 (-1)
+
+-- | The cardinal direction east = @V2 1 0@.
+east :: V2 Int
 east  = V2 1 0
+
+-- | The cardinal direction west = @V2 (-1) 0@.
+west :: V2 Int
 west  = V2 (-1) 0
 
 -- | Constants, representing various built-in functions and commands.
@@ -122,8 +139,7 @@ data Const
   | GetX              -- ^ Get the current x-coordinate.
   | GetY              -- ^ Get the current y-coordinate.
   | Blocked           -- ^ See if we can move forward or not.
-  | Ishere  -- XXX for testing, see if a specific entity is here
-            -- probably going to remove this later
+  | Ishere            -- ^ See if a specific entity is here. (This may be removed.)
   | Random            -- ^ Get a uniformly random integer.
 
   -- Modules
@@ -219,7 +235,7 @@ data Term
     -- | A constant.
   | TConst Const
 
-    -- | A direction.
+    -- | A direction literal.
   | TDir Direction
 
     -- | An integer literal.
@@ -241,12 +257,10 @@ data Term
     --   binder.
   | TLam Var (Maybe Type) Term
 
-    -- | Application, possibly with a type annotation telling us the
-    --   type of the argument, which would otherwise be impossible to
-    --   figure out from the overall result type.
+    -- | Function application.
   | TApp Term Term
 
-    -- | A __recursive__ let expression, with or without a type
+    -- | A (recursive) let expression, with or without a type
     --   annotation on the variable.
   | TLet Var (Maybe Polytype) Term Term
 
@@ -255,20 +269,21 @@ data Term
   | TDef Var (Maybe Polytype) Term
 
     -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    --   The type annotation tells us the type of @c1@.
   | TBind (Maybe Var) Term Term
 
     -- | Delay evaluation of a term.  Swarm is an eager language, but
     --   in some cases (e.g. for @if@ statements and recursive
     --   bindings) we need to delay evaluation.  The counterpart to
     --   @delay@ is @force@, where @force (delay t) = t@.  Note that
-    --   @force@ is just a constant, whereas 'TDelay' has to be a
+    --   'Force' is just a constant, whereas 'TDelay' has to be a
     --   special syntactic form so its argument can get special
     --   treatment during evaluation.
   | TDelay Term
   deriving (Eq, Show)
 
--- | Rewrite a term using a bottom-up traversal.
+-- | Rewrite a term using a bottom-up traversal, applying the given
+--   function at each subterm.  This is used in
+--   "Swarm.Language.Elaborate".
 bottomUp :: (Term -> Term) -> Term -> Term
 bottomUp f (TPair t1 t2) = f (TPair (bottomUp f t1) (bottomUp f t2))
 bottomUp f (TLam x xTy t) = f (TLam x xTy (bottomUp f t))
@@ -283,7 +298,8 @@ bottomUp f (TBind mx t1 t2)
 bottomUp f (TDelay t) = f (TDelay (bottomUp f t))
 bottomUp f t = f t
 
--- | Traversal over those subterms which are free variables.
+-- | Traversal over those subterms of a term which represent free
+--   variables.
 fvT :: Traversal' Term Term
 fvT f = go S.empty
   where
@@ -308,7 +324,9 @@ fvT f = go S.empty
         TBind mx <$> go bound t1 <*> go (maybe id S.insert mx bound) t2
       TDelay t1 -> TDelay <$> go bound t1
 
--- | Traversal over the free variables in a term.
+-- | Traversal over the free variables of a term.  Note that if you
+--   want to get the set of all free variables, you can do so via
+--   @'Data.Set.Lens.setOf' 'fv'@.
 fv :: Traversal' Term Var
 fv = fvT . (\f -> \case { TVar x -> TVar <$> f x ; t -> pure t })
 
