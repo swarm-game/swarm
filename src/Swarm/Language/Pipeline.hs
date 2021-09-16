@@ -7,10 +7,10 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Some convenient functions for putting together the whole Swarm
--- language processing pipeline: parsing, type checking, and
--- elaboration.  If you want to simply turn some raw text representing
--- a Swarm program into something useful, this is probably the module
--- you want.
+-- language processing pipeline: parsing, type checking, capability
+-- checking, and elaboration.  If you want to simply turn some raw
+-- text representing a Swarm program into something useful, this is
+-- probably the module you want.
 --
 -----------------------------------------------------------------------------
 
@@ -36,11 +36,13 @@ import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
 
+-- | A record containing the results of the language processing
+--   pipeline.  Put a 'Term' in, and get one of these out.
 data ProcessedTerm = ProcessedTerm
   Term              -- ^ The elaborated term
-  TModule           -- ^ The type of the term (and of embedded definitions)
+  TModule           -- ^ The type of the term (and of any embedded definitions)
   (Set Capability)  -- ^ Capabilities required by the term
-  CapCtx            -- ^ Capability context for definitions embedded in the term
+  CapCtx            -- ^ Capability context for any definitions embedded in the term
 
 -- | Given a 'Text' value representing a Swarm program,
 --

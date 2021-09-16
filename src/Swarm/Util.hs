@@ -19,7 +19,20 @@
 --
 -----------------------------------------------------------------------------
 
-module Swarm.Util where
+module Swarm.Util
+  ( -- * Miscellaneous utilities
+
+    (?), maxOn, readFileMay
+
+    -- * English language utilities
+
+  , quote, squote, indefinite, indefiniteQ, plural, number
+
+    -- * Validation utilities
+
+  , holdsOr, isJustOr, isRightOr, isSuccessOr
+  )
+  where
 
 import           Control.Monad             (unless)
 import           Control.Monad.Error.Class
@@ -52,9 +65,10 @@ maxOn f x y
 
 -- | Safely attempt to read a file, returning @Nothing@ if the file
 --   does not exist.  \"Safely\" should be read in scare quotes here,
---   since /e.g./ we do nothing to guard against the possibility of a race
---   condition where the file is deleted after the existence check but
---   before trying to read it.  But seriously, who does that?
+--   since /e.g./ we do nothing to guard against the possibility of a
+--   race condition where the file is deleted after the existence
+--   check but before trying to read it.  But it's not like we're
+--   worried about security or anything here.
 readFileMay :: FilePath -> IO (Maybe String)
 readFileMay file = do
   b <- doesFileExist file
@@ -81,12 +95,13 @@ plural = MM.defaultNounPlural
   -- in the future, if we discover specific nouns that it gets wrong,
   -- we can add a lookup table.
 
--- | XXX
+-- | Either pluralize a noun or not, depending on the value of the
+--   number.
 number :: Int -> Text -> Text
 number 1 = id
 number _ = plural
 
--- | Surround some text in single quotes
+-- | Surround some text in single quotes.
 squote :: Text -> Text
 squote t = T.concat ["'", t, "'"]
 

@@ -157,6 +157,9 @@ parseDirection =
   <|> East   <$ reserved "east"
   <|> West   <$ reserved "west"
 
+-- XXX I wish there was a better way to do this that would warn us to
+-- add a new case to the parser whenever we add a new constructor to
+-- 'Const'.
 parseConst :: Parser Const
 parseConst =
       Wait    <$ reserved "wait"
