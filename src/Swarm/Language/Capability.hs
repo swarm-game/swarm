@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Language.Capability
@@ -8,9 +6,15 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Capabilities needed to evaluate and execute programs.
+-- Capabilities needed to evaluate and execute programs.  If you're
+-- curious about how this works and/or thinking about creating some
+-- additional capabilities, you're encouraged to read the extensive
+-- comments in the source code.
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 
 module Swarm.Language.Capability
   ( Capability(..), CapCtx
@@ -36,29 +40,26 @@ import           Swarm.Language.Syntax
 import           Text.Read             (readMaybe)
 import           Witch                 (from)
 
-
 -- | Various capabilities which robots can have.
 data Capability
-  = CMove      -- ^ Execute the 'Move' command
-  | CTurn      -- ^ Execute the 'Turn' command
-  | CSelfdestruct  -- ^ Execute the 'Selfdestruct' command
-  | CGrab      -- ^ Execute the 'Grab' command
-  | CPlace     -- ^ Execute the 'Place' command
-  | CGive      -- ^ Execute the 'Give' command
-  | CMake      -- ^ Execute the 'Make' command
-  | CBuild     -- ^ Execute the 'Build' command
-  | CSenseloc  -- ^ Execute the 'GetX' and 'GetY' commands
-  | CSensefront -- ^ Execute the 'Blocked' command
-  | CRandom    -- ^ Execute the 'Random' command
-  | CAppear    -- ^ Execute the 'Appear' command
-
-  | CCond      -- ^ Evaluate conditional expressions
-  | CCompare   -- ^ Evaluate comparison operations
-  | CArith     -- ^ Evaluate arithmetic operations
-  | CEnv       -- ^ Store and look up definitions in an environment
-  | CLambda    -- ^ Interpret lambda abstractions
-
-  | CRecursion -- ^ Enable recursive definitions
+  = CMove         -- ^ Execute the 'Move' command
+  | CTurn         -- ^ Execute the 'Turn' command
+  | CSelfdestruct -- ^ Execute the 'Selfdestruct' command
+  | CGrab         -- ^ Execute the 'Grab' command
+  | CPlace        -- ^ Execute the 'Place' command
+  | CGive         -- ^ Execute the 'Give' command
+  | CMake         -- ^ Execute the 'Make' command
+  | CBuild        -- ^ Execute the 'Build' command
+  | CSenseloc     -- ^ Execute the 'GetX' and 'GetY' commands
+  | CSensefront   -- ^ Execute the 'Blocked' command
+  | CRandom       -- ^ Execute the 'Random' command
+  | CAppear       -- ^ Execute the 'Appear' command
+  | CCond         -- ^ Evaluate conditional expressions
+  | CCompare      -- ^ Evaluate comparison operations
+  | CArith        -- ^ Evaluate arithmetic operations
+  | CEnv          -- ^ Store and look up definitions in an environment
+  | CLambda       -- ^ Interpret lambda abstractions
+  | CRecursion    -- ^ Enable recursive definitions
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON Capability where
@@ -72,17 +73,20 @@ instance FromJSON Capability where
         Just c  -> return c
         Nothing -> fail $ "Unknown capability " ++ from t
 
+-- | A capability context records the capabilities required by the
+--   definitions bound to variables.
 type CapCtx = Map Var (Set Capability)
 
 -- | Analyze a program to see what capabilities may be needed to
---   execute it. Also returns a mapping from any variables (declared
---   via 'TDef') to the capabilities needed by their definitions.
+--   execute it. Also return a capability context mapping from any
+--   variables declared via 'TDef' to the capabilities needed by
+--   their definitions.
 --
 --   Note that this is necessarily a conservative analysis, especially
 --   if the program contains conditional expressions.  Some
 --   capabilities may end up not being actually needed if certain
---   commands end up not being executed.  However, the analysis is
---   safe in the sense that a robot with the indicated capabilities
+--   commands end up not being executed.  However, the analysis should
+--   be safe in the sense that a robot with the indicated capabilities
 --   will always be able to run the given program.
 requiredCaps :: CapCtx -> Term -> (Set Capability, CapCtx)
 requiredCaps ctx tm = case tm of
@@ -92,13 +96,13 @@ requiredCaps ctx tm = case tm of
 
   -- To make a definition requires the env capability.  Note that the
   -- act of MAKING the definition does not require the capabilities of
-  -- the body of the definition.  However, we also return a map
-  -- which associates the defined name to the capabilities it requires.
+  -- the body of the definition (including the possibility of the
+  -- recursion capability, if the definition is recursive).  However,
+  -- we also return a map which associates the defined name to the
+  -- capabilities it requires.
   TDef x _ t ->
     let bodyCaps = (if x `S.member` setOf fv t then S.insert CRecursion else id) (requiredCaps' ctx t)
     in (S.singleton CEnv, M.singleton x bodyCaps)
-    -- Note that you can MAKE a recursive definition with only CEnv,
-    -- but RUNNING it requires CRecursion.
 
   TBind _ t1 t2 ->
 
@@ -121,7 +125,8 @@ requiredCaps ctx tm = case tm of
   _ -> (requiredCaps' ctx tm, M.empty)
 
 -- | Infer the capabilities required to execute/evaluate a term in a
---   given context, where the term is guaranteed not to have 'TDef'.
+--   given context, where the term is guaranteed not to contain any
+--   'TDef'.
 --
 --   For function application and let-expressions, we assume that the
 --   argument (respectively let-bound expression) is used at least
@@ -135,12 +140,18 @@ requiredCaps' :: CapCtx -> Term -> Set Capability
 requiredCaps' ctx = go
   where
     go tm = case tm of
+
+      -- Some primitive literals that don't require any special
+      -- capability.
       TUnit          -> S.empty
-      TConst c       -> constCaps c
       TDir _         -> S.empty
       TInt _         -> S.empty
       TString _      -> S.empty
       TBool _        -> S.empty
+
+      -- Look up the capabilities required by a function/command
+      -- constants using 'constCaps'.
+      TConst c       -> constCaps c
 
       -- Note that a variable might not show up in the context, and
       -- that's OK.  In particular, only variables bound by 'TDef' go
@@ -183,45 +194,63 @@ requiredCaps' ctx = go
       -- so simply returning S.empty is safe.
       TDef{}         -> S.empty
 
--- | Capabilities needed to evaluate/execute a constant.
+-- | Capabilities needed to evaluate or execute a constant.
 constCaps :: Const -> Set Capability
+
+-- Some built-in constants that don't require any special capability.
 constCaps Wait         = S.empty
 constCaps Noop         = S.empty
-constCaps Selfdestruct = S.singleton CSelfdestruct
+constCaps Force        = S.empty
+constCaps Return       = S.empty
 
+-- It's important that no capability is required for 'say', because
+-- this is how exceptions get reported.  Requiring a capability for
+-- 'say' that a robot does not have will cause an infinite loop of
+-- throwing a capability exception and reporting it via 'say'.  If we
+-- later decide we do want to require a capability for 'say', we would
+-- have to include a special case in the interpreter to silently
+-- swallow exceptions if the robot doesn't have that capability.
+constCaps Say          = S.empty
+
+-- Some straightforward ones.
+constCaps Selfdestruct = S.singleton CSelfdestruct
 constCaps Move         = S.singleton CMove
 constCaps Turn         = S.singleton CTurn
 constCaps Grab         = S.singleton CGrab
 constCaps Place        = S.singleton CPlace
 constCaps Give         = S.singleton CGive
 constCaps Make         = S.singleton CMake
+constCaps If           = S.singleton CCond
+
+-- Build definitely requires a CBuild capability (provided by a 3D
+-- printer).  However, it's possible we should do something more
+-- sophisticated here.  After all, the argument to build won't be run
+-- by the robot running the build command.  This is partly taken care
+-- of already by the way we interpret the build command in the
+-- interpreter.  However, I suspect things currently start to go
+-- haywire if you try to build a robot that builds other robots.
 constCaps Build        = S.singleton CBuild
-  -- XXX need to do something more sophisticated for Build?
 
--- It's important that no capability is required for 'say', because
--- this is how exceptions get reported.
-constCaps Say          = S.empty
-
-constCaps View         = S.empty
-constCaps Appear       = S.singleton CAppear
-
-constCaps GetX         = S.singleton CSenseloc
+-- Some additional straightforward ones, which however currently
+-- cannot be used in classic mode since there is no craftable item
+-- which conveys their capability.
+constCaps Appear       = S.singleton CAppear       -- paint?
+constCaps GetX         = S.singleton CSenseloc     -- GPS?
 constCaps GetY         = S.singleton CSenseloc
-constCaps Blocked      = S.singleton CSensefront
-constCaps Ishere       = S.empty
-constCaps Random       = S.singleton CRandom
-
-constCaps Run          = S.empty
-
-constCaps Not          = S.empty
-constCaps (Cmp _)      = S.singleton CCompare
-constCaps Neg          = S.singleton CArith
+constCaps Blocked      = S.singleton CSensefront   -- rangefinder?
+constCaps Random       = S.singleton CRandom       -- randomness device (with bitcoins)?
+constCaps (Cmp _)      = S.singleton CCompare      -- comparator?
+constCaps Neg          = S.singleton CArith        -- ALU?
 constCaps (Arith _)    = S.singleton CArith
 
-constCaps If           = S.singleton CCond
-constCaps Fst          = S.empty
+-- Some more constants which *ought* to have their own capability but
+-- currently don't.
+constCaps View         = S.empty                -- XXX this should also require something.
+constCaps Ishere       = S.empty                -- XXX this should require a capability.
+constCaps Run          = S.empty                -- XXX this should also require a capability
+                                                -- which the base starts out with.
+constCaps Not          = S.empty                -- XXX some kind of boolean logic cap?
+constCaps Fst          = S.empty                -- XXX should require cap for pairs
 constCaps Snd          = S.empty
-constCaps Force        = S.empty
-constCaps Return       = S.empty
-constCaps Try          = S.empty
-constCaps Raise        = S.empty
+constCaps Try          = S.empty                -- XXX these definitely need to require
+constCaps Raise        = S.empty                -- something.
