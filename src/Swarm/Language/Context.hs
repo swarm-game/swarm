@@ -45,8 +45,8 @@ instance AsEmpty (Ctx t) where
   _Empty = prism (const empty) isEmpty
     where
       isEmpty (Ctx c)
-        | M.null c = Left (Ctx c)
-        | otherwise = Right ()
+        | M.null c = Right ()
+        | otherwise = Left (Ctx c)
 
 -- | The empty context.
 empty :: Ctx t
