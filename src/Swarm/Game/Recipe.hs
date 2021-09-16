@@ -113,12 +113,6 @@ recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
 inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 inRecipeMap = buildRecipeMap recipeInputs
 
--- -- -- | Get a list of all the recipes which have the given entity as either an input or output.
--- -- --   The ones using the entity as an output are listed first.
--- recipesWith :: Entity -> [Recipe Entity]
--- recipesWith = undefined
--- -- recipesWith e = recipesFor e ++ recipesUsing e
-
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
 missingIngredientsFor :: Inventory -> Recipe Entity -> [(Count, Entity)]
