@@ -1,19 +1,22 @@
 {-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeApplications   #-}
-{-# LANGUAGE ViewPatterns       #-}
 
 module Swarm.TUI where
 
 import           Control.Arrow             ((&&&))
 import           Control.Lens
+import           Control.Lens.Extras       (is)
+import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Array                (range)
 import           Data.Bits
 import           Data.Either               (isRight)
-import           Data.List                 (findIndex, sortOn)
+import           Data.Foldable             (toList)
+import           Data.List                 (find, findIndex, sortOn)
 import           Data.List.Split           (chunksOf)
 import qualified Data.Map                  as M
 import           Data.Maybe                (fromMaybe, isJust)
@@ -36,7 +39,6 @@ import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List        as BL
 import qualified Graphics.Vty              as V
 
-import           Control.Monad.Except
 import           Swarm.Game.CEK            (idleMachine, initMachine)
 import           Swarm.Game.Display
 import           Swarm.Game.Entity         hiding (empty)
@@ -78,14 +80,13 @@ data Name
 data REPLHistItem = REPLEntry Bool Text | REPLOutput Text
   deriving (Eq, Ord, Show, Read)
 
-data InventoryEntry = InventoryEntry
-  { _ieCount     :: Count       -- ^ How many of these do we have?
-  , _ieEntity    :: Entity      -- ^ The thing
-  , _ieSeparator :: Maybe Text  -- ^ Whether there should be a labelled separator
-                                --   right before this item in the list
-  }
+-- | An entry in the inventory list displayed in the info panel.  We
+--   can either have an entity with a count, or a labelled separator.
+data InventoryEntry
+  = Separator Text
+  | InventoryEntry Count Entity
 
-makeLenses ''InventoryEntry
+makePrisms ''InventoryEntry
 
 data UIState = UIState
   { _uiFocusRing      :: FocusRing Name
@@ -280,7 +281,8 @@ drawMessageBox s = case s ^. uiState . uiFocusRing . to focusGetCurrent of
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case mItem of
   Nothing                   -> txt " "
-  Just (view ieEntity -> e) -> vBox $
+  Just (Separator _)        -> txt " "
+  Just (InventoryEntry _ e) -> vBox $
     map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription)
     ++
     explainRecipes e
@@ -325,12 +327,10 @@ drawRobotInfo s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInven
     isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just InfoPanel
 
 drawItem :: InventoryEntry -> Widget Name
-drawItem (InventoryEntry n e label) = case label of
-  Nothing -> renderedItem
-  Just l  -> vBox [ forceAttr sepAttr (hBorderWithLabel (txt l)), renderedItem ]
+drawItem (Separator l) = forceAttr sepAttr (hBorderWithLabel (txt l))
+drawItem (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
   where
     showCount = padLeft Max . str . show
-    renderedItem = drawLabelledEntityName e <+> showCount n
 
 drawLabelledEntityName :: Entity -> Widget Name
 drawLabelledEntityName e = hBox
@@ -497,9 +497,9 @@ populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
 populateInventoryList Nothing  = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
-  let mkInvEntry (n,e) = InventoryEntry n e Nothing
+  let mkInvEntry (n,e) = InventoryEntry n e
       itemList label
-        = (_head . ieSeparator ?~ label)
+        = (\case { [] -> []; xs -> Separator label : xs })
         . map mkInvEntry
         . sortOn (view entityName . snd)
         . elems
@@ -509,12 +509,14 @@ populateInventoryList (Just r) = do
       -- Attempt to keep the selected element steady.
       sel = mList >>= BL.listSelectedElement  -- Get the currently selected element+index.
       idx = case sel of
-        -- If there is no currently selected element, just focus on index 0.
-        Nothing -> 0
+        -- If there is no currently selected element, just focus on
+        -- index 1 (not 0, to avoid the separator).
+        Nothing -> 1
         -- Otherwise, try to find the same entity in the list and focus on that;
         -- if it's not there, keep the index the same.
-        Just (selIdx, view ieEntity -> e) ->
-          fromMaybe selIdx (findIndex ((==e) . view ieEntity) items)
+        Just (selIdx, InventoryEntry _ e) ->
+          fromMaybe selIdx (findIndex ((== Just e) . preview (_InventoryEntry . _2)) items)
+        Just (selIdx, _) -> selIdx
 
       -- Create the new list, focused at the desired index.
       lst = BL.listMoveTo idx $ BL.list InventoryList (V.fromList items) 1
@@ -666,7 +668,8 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList >>= BL.listSelectedElement of
     Nothing -> continueWithoutRedraw s
-    Just (_, view ieEntity -> e) -> do
+    Just (_, Separator _) -> continueWithoutRedraw s
+    Just (_, InventoryEntry _ e) -> do
       let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
           mkTy   = Forall [] $ TyCmd TyUnit
           mkProg = TApp (TConst Make) (TString (e ^. entityName))
@@ -682,7 +685,8 @@ handleInfoPanelEvent s (VtyEvent ev) = do
   case mList of
     Nothing -> continueWithoutRedraw s
     Just l  -> do
-      l' <- BL.handleListEventVi BL.handleListEvent ev l
+      l' <- {- BL.handleListEventVi -}
+        handleListEventWithSeparators ev (is _Separator) l
       let s' = s & uiState . uiInventory . _Just . _2 .~ l'
       continue s'
 handleInfoPanelEvent s _ = continueWithoutRedraw s
@@ -700,3 +704,68 @@ shutdown s = do
 
     isEntry REPLEntry{} = True
     isEntry _           = False
+
+------------------------------------------------------------
+-- Special modified version of handleListEvent to deal with skipping
+-- over separators.
+
+-- XXX clean this up and maybe split it out somewhere.
+
+-- | Handle a list event, taking an extra predicate to identify which
+--   list elements are separators; separators will be
+--   skipped if possible.
+handleListEventWithSeparators
+  :: (Foldable t, BL.Splittable t, Ord n)
+  => V.Event
+  -> (e -> Bool)  -- ^ Is this a separator?
+  -> BL.GenericList n t e
+  -> EventM n (BL.GenericList n t e)
+handleListEventWithSeparators e isSep theList =
+  case e of
+    V.EvKey V.KUp []   -> return $ listFindByStrategy bwdExclusive isItem theList
+    V.EvKey V.KDown [] -> return $ listFindByStrategy fwdExclusive isItem theList
+    V.EvKey V.KHome [] ->
+      return $ listFindByStrategy fwdInclusive isItem
+             $ BL.listMoveToBeginning theList
+    V.EvKey V.KEnd []      ->
+      return $ listFindByStrategy bwdInclusive isItem
+             $ BL.listMoveTo (length (BL.listElements theList) - 1) theList
+    V.EvKey V.KPageDown [] ->
+      listFindByStrategy bwdInclusive isItem <$> BL.listMovePageDown theList
+    V.EvKey V.KPageUp []   ->
+      listFindByStrategy fwdInclusive isItem <$> BL.listMovePageUp theList
+    _                      -> return theList
+  where
+    isItem = not . isSep
+
+data FindDir = FindFwd | FindBwd deriving (Eq, Ord, Show, Enum)
+data FindStart = IncludeCurrent | ExcludeCurrent deriving (Eq, Ord, Show, Enum)
+
+data FindStrategy = FindStrategy FindDir FindStart
+
+fwdInclusive, fwdExclusive, bwdInclusive, bwdExclusive :: FindStrategy
+fwdInclusive = FindStrategy FindFwd IncludeCurrent
+fwdExclusive = FindStrategy FindFwd ExcludeCurrent
+bwdInclusive = FindStrategy FindBwd IncludeCurrent
+bwdExclusive = FindStrategy FindBwd ExcludeCurrent
+
+-- | Starting from the currently selected element, attempt to find and
+--   select the next element matching the predicate. How the search
+--   proceeds depends on the 'FindStrategy': the 'FindDir' says
+--   whether to search forward or backward from the selected element,
+--   and the 'FindStarts' says whether the currently selected element
+--   should be included in the search or not.
+listFindByStrategy
+  :: (Foldable t, BL.Splittable t)
+  => FindStrategy
+  -> (e -> Bool)
+  -> BL.GenericList n t e
+  -> BL.GenericList n t e
+listFindByStrategy (FindStrategy dir cur) test l =
+    let adj = fromEnum dir `xor` fromEnum cur  -- XXX really dirty hack
+        start = maybe 0 (+adj) (l ^. BL.listSelectedL)
+        (h, t) = BL.splitAt start (l ^. BL.listElementsL)
+        headResult = find (test . snd) . reverse . zip [0..]     . toList $ h
+        tailResult = find (test . snd)           . zip [start..] . toList $ t
+        result = case dir of {FindFwd -> tailResult; FindBwd -> headResult}
+    in maybe id (set BL.listSelectedL . Just . fst) result l
