@@ -336,7 +336,7 @@ stepCEK cek = case cek of
   -- environment with the definition environment from the first
   -- command.
   Out (VResult v ve) (FBind mx t2 e : k) ->
-    return $ In t2 (ve `V.union` maybe id (`addBinding` v) mx e) (FExec : FUnionEnv ve : k)
+    return $ In t2 (maybe id (`addBinding` v) mx . V.union ve $ e) (FExec : FUnionEnv ve : k)
   -- On the other hand, if the first command completes with a simple value,
   -- we do something similar, but don't have to worry about the environment.
   Out v (FBind mx t2 e : k) ->
