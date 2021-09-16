@@ -54,6 +54,9 @@ import           Swarm.Util
 ------------------------------------------------------------
 -- Worldly type class
 
+-- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
+-- (exactly one per cell) and entities of type @e@ (at most one per
+-- cell).
 type WorldFun t e = (Int,Int) -> (t, Maybe e)
 
 -- | A class to abstract over different world implementations.  We
@@ -95,10 +98,11 @@ class Worldly w t e | w -> t e where
 
 -- | A 'SimpleWorld' just stores the world function and a map with
 --   changed locations.  It does not do any fancy caching; in
---   particular the 'loadRegion' function does nothing.  The 'lookup'
---   function first just looks up the location in the map of changed
---   locations, and if it's not there it simply runs the function to
---   find out what character should be there.
+--   particular the 'loadRegion' function does nothing.  The
+--   'lookupTerrain' and 'lookupEntity' functions first just look up
+--   the location in the map of changed locations, and if it's not
+--   there it simply runs the function to find out what character
+--   should be there.
 data SimpleWorld t e = SimpleWorld
   (WorldFun t e)                 -- ^ World generation function
   (M.Map (Int,Int) (Maybe e))    -- ^ Map of locations that have a different entity
