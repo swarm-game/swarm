@@ -320,15 +320,17 @@ drawRobotInfo s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInven
         , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
         , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
         ]
-    , padAll 1 (BL.renderList (const drawItem) isFocused lst)
+    , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) isFocused lst)
     ]
   _ -> padBottom Max $ str " "
   where
     isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just InfoPanel
 
-drawItem :: InventoryEntry -> Widget Name
-drawItem (Separator l) = forceAttr sepAttr (hBorderWithLabel (txt l))
-drawItem (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
+drawItem :: Maybe Int -> Int -> Bool -> InventoryEntry -> Widget Name
+drawItem sel i _ (Separator l)
+  -- Make sure a separator right before the focused element is visible
+  = forceAttr sepAttr ((if sel == Just (i+1) then visible else id) $ hBorderWithLabel (txt l))
+drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
   where
     showCount = padLeft Max . str . show
 
