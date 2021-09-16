@@ -79,7 +79,7 @@ import           Data.Text                 (Text)
 import           Witch                     (from)
 
 import           Swarm.Game.Exception
-import           Swarm.Game.Value
+import           Swarm.Game.Value          as V
 import           Swarm.Language.Capability (CapCtx)
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
@@ -211,7 +211,7 @@ initMachine' (ProcessedTerm t _ _ _) e k = In t e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK
-idleMachine = initMachine trivialTerm empty
+idleMachine = initMachine trivialTerm V.empty
   where
     trivialTerm = ProcessedTerm
       (TConst Noop)
