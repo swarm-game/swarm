@@ -39,12 +39,9 @@ module Swarm.Language.Typecheck
     , substU, (=:=), HasBindings(..)
     , instantiate, skolemize, generalize
 
-    -- * Bidirectional type checking / inference
+    -- * Type inferen
 
-    -- ** Type inference
   , inferTop, inferModule, infer, inferConst, check
-
-    -- ** Decomposition utilities
 
   , decomposeCmdTy
   , decomposeFunTy
@@ -114,7 +111,8 @@ withBindings ctx = local (M.union ctx)
 -- substitution
 
 -- | @unification-fd@ does not provide an 'Ord' instance for 'IntVar',
---   so we must provide our own.
+--   so we must provide our own, in order to be able to store
+--   'IntVar's in a 'Set'.
 deriving instance Ord IntVar
 
 -- | A class for getting the free variables (unification or type
@@ -256,7 +254,9 @@ instance Fallible TypeF IntVar TypeErr where
 ------------------------------------------------------------
 -- Type inference / checking
 
--- |
+-- | Top-level type inference function: given a context of definition
+--   types and a top-level term, either return a type error or its
+--   type as a 'TModule'.
 inferTop :: TCtx -> Term -> Either TypeErr TModule
 inferTop ctx = runInfer ctx . inferModule
 
