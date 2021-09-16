@@ -178,9 +178,9 @@ type UPolytype = Poly UType
 
 -- | A module generally represents the result of performing type
 --   inference on a top-level expression, which in particular can
---   contain definitions ('TDef').  A module contains the overall type
---   of the expression, as well as the context giving the types of any
---   defined variables.
+--   contain definitions ('Swarm.Language.Syntax.TDef').  A module
+--   contains the overall type of the expression, as well as the
+--   context giving the types of any defined variables.
 data Module s t = Module { moduleTy :: s, moduleCtx :: Ctx t }
   deriving (Show, Eq, Functor)
 
@@ -193,7 +193,7 @@ type TModule = Module Polytype Polytype
 --   intermediate stage during the type inference process.  We get a
 --   'UType' (/not/ a 'UPolytype') for the expression, which may
 --   contain some free unification or type variables, as well as a
---   context of 'UPolytypes' for any defined variables.
+--   context of 'UPolytype's for any defined variables.
 type UModule = Module UType UPolytype
 
 -- | The trivial module for a given @s@, with the empty context.
