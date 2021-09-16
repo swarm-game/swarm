@@ -57,7 +57,7 @@ processTerm = processTerm' M.empty M.empty
 processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm
 processTerm' ctx capCtx txt = do
   t <- readTerm txt
-  ty <- first prettyText (inferTop' ctx t)
+  ty <- first prettyText (inferTop ctx t)
   let (caps, capCtx') = requiredCaps capCtx t
   return $ ProcessedTerm (elaborate t) ty caps capCtx'
 

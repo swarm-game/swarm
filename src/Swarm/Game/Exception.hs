@@ -47,7 +47,7 @@ data Exn
 formatExn :: Exn -> Text
 formatExn (Fatal t) = T.unlines
   [ T.append "fatal error: " t
-  , "Please report this as a bug at https://github.com/byorgey/swarm/issues ."
+  , "Please report this as a bug at https://github.com/byorgey/swarm/issues/new ."
   ]
 formatExn (Incapable caps tm)   = T.unlines
   [ T.concat

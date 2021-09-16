@@ -343,9 +343,9 @@ stepCEK cek = case cek of
 
   -- If the top of the continuation stack contains a 'FLoadEnv' frame,
   -- it means we are supposed to load up the resulting definition
-  -- environment and type context into the robot's top-level
-  -- environment and type context, so they will be available to future
-  -- programs.
+  -- environment and type and capability contexts into the robot's
+  -- top-level environment and contexts, so they will be available to
+  -- future programs.
   Out (VResult v e) (FLoadEnv ctx cctx : k)  -> do
     robotEnv %= V.union e
     robotCtx %= (M.union ctx *** M.union cctx)

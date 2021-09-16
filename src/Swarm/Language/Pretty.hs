@@ -165,41 +165,6 @@ instance PrettyPrec Term where
     pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
 
 instance PrettyPrec TypeErr where
-  prettyPrec _ (NotFunTy t ty) =
-    sep
-    [ "Expecting a function type, but"
-    , ppr t
-    , "has type"
-    , ppr ty
-    , "instead."
-    ]
-  prettyPrec _ (NotPairTy t ty) =
-    sep
-    [ "Expecting a pair type, but"
-    , ppr t
-    , "has type"
-    , ppr ty
-    , "instead."
-    ]
-  prettyPrec _ (NotCmdTy t ty) =
-    sep
-    [ "Expecting a command type, but"
-    , ppr t
-    , "has type"
-    , ppr ty
-    , "instead."
-    ]
-  prettyPrec _ (NonCmdTyExpected t ty) =
-    sep
-    [ "Expecting type", ppr ty
-    , "but", ppr t, "is a command."
-    ]
-  prettyPrec _ (NonPairTyExpected t ty) =
-    sep
-    [ "Expecting type", ppr ty
-    , "but", ppr t, "is a pair."
-    ]
-
   prettyPrec _ (Mismatch ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
 
