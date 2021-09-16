@@ -303,16 +303,6 @@ stepCEK cek = case cek of
     let e' = addBinding x (VDelay t e') e
     return $ Out (VResult VUnit (V.singleton x (VDelay t e'))) k
 
-  -- -- Executing a delayed computation also serves to force it.  This is
-  -- -- particularly needed in the case of definitions: we wrap the body
-  -- -- of definitions in 'TDelay' so they won't be evaluated at all
-  -- -- until execution time (enabling e.g. the base to *define* things
-  -- -- using conditionals even if it can't evaluate them); but we can't
-  -- -- do the trick of wrapping all references to the definition in
-  -- -- 'Force'---like we do for let-expressions---since we don't know
-  -- -- all the future references to it.
-  -- Out (VDelay t e) (FExec : k)       -> return $ In t e (FExec : k)
-
   -- To execute a constant application, delegate to the 'execConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
