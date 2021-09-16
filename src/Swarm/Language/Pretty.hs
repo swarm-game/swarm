@@ -23,7 +23,6 @@ module Swarm.Language.Pretty where
 import           Control.Lens.Combinators    (pattern Empty)
 import           Data.Bool                   (bool)
 import           Data.Functor.Fixedpoint     (Fix, unFix)
-import qualified Data.Map                    as M
 import           Data.String                 (fromString)
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
@@ -36,6 +35,7 @@ import           Control.Unification
 import           Control.Unification.IntVar
 
 import           Swarm.Language.Capability
+import           Swarm.Language.Context
 import           Swarm.Language.Syntax
 import           Swarm.Language.Typecheck
 import           Swarm.Language.Types
@@ -95,8 +95,8 @@ instance PrettyPrec Polytype where
   prettyPrec _ (Forall xs t) = hsep ("forall" : map pretty xs) <> "." <+> ppr t
 
 instance PrettyPrec t => PrettyPrec (Ctx t) where
-  prettyPrec _ Empty            = emptyDoc
-  prettyPrec _ (M.assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
+  prettyPrec _ Empty          = emptyDoc
+  prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
     where
       prettyBinding (x,ty) = pretty x <> ":" <+> ppr ty
 

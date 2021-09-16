@@ -72,8 +72,8 @@ module Swarm.Game.CEK
   , prettyFrame, prettyCont, prettyCEK
   ) where
 
+import           Control.Lens.Combinators  (pattern Empty)
 import           Data.List                 (intercalate)
-import qualified Data.Map                  as M
 import qualified Data.Set                  as S
 import           Data.Text                 (Text)
 import           Witch                     (from)
@@ -81,6 +81,7 @@ import           Witch                     (from)
 import           Swarm.Game.Exception
 import           Swarm.Game.Value          as V
 import           Swarm.Language.Capability (CapCtx)
+import           Swarm.Language.Context
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
@@ -205,19 +206,20 @@ initMachine t e = initMachine' t e []
 -- | Like 'initMachine', but also take a starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Cont -> CEK
 initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e k
-  | M.null ctx = In t e (FExec : k)
-  | otherwise  = In t e (FExec : FLoadEnv ctx capCtx : k)
+  = case ctx of
+      Empty -> In t e (FExec : k)
+      _     -> In t e (FExec : FLoadEnv ctx capCtx : k)
 initMachine' (ProcessedTerm t _ _ _) e k = In t e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK
-idleMachine = initMachine trivialTerm V.empty
+idleMachine = initMachine trivialTerm empty
   where
     trivialTerm = ProcessedTerm
       (TConst Noop)
       (trivMod (Forall [] (TyCmd TyUnit)))
       S.empty
-      M.empty
+      empty
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CEK states.  Should really make a

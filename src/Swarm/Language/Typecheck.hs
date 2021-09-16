@@ -31,7 +31,7 @@ module Swarm.Language.Typecheck
 
     -- * Inference monad
 
-  , Infer, runInfer, lookup, withBinding, withBindings
+  , Infer, runInfer, lookup
   , fresh
 
     -- * Unification
@@ -63,8 +63,10 @@ import           Prelude                    hiding (lookup)
 import           Control.Unification        hiding (applyBindings, (=:=))
 import qualified Control.Unification        as U
 import           Control.Unification.IntVar
-
 import           Data.Functor.Fixedpoint    (cata)
+
+import           Swarm.Language.Context     hiding (lookup)
+import qualified Swarm.Language.Context     as Ctx
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 
@@ -95,16 +97,7 @@ runInfer ctx =
 lookup :: Var -> Infer UType
 lookup x = do
   ctx <- ask
-  maybe (throwError $ UnboundVar x) instantiate (M.lookup x ctx)
-
--- | Locally extend the context with an additional binding.
-withBinding :: MonadReader UCtx m => Var -> UPolytype -> m a -> m a
-withBinding x ty = local (M.insert x ty)
-
--- | Locally extend the context with an additional context of
---   bindings.
-withBindings :: MonadReader UCtx m => UCtx -> m a -> m a
-withBindings ctx = local (M.union ctx)
+  maybe (throwError $ UnboundVar x) instantiate (Ctx.lookup x ctx)
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -141,7 +134,7 @@ instance FreeVars t => FreeVars (Poly t) where
 
 -- | We can get the free variables in any polytype in a context.
 instance FreeVars UCtx where
-  freeVars = fmap S.unions . mapM freeVars . M.elems
+  freeVars = fmap S.unions . mapM freeVars . M.elems . unCtx
 
 -- | Generate a fresh unification variable.
 fresh :: Infer UType
@@ -270,7 +263,7 @@ inferModule = \case
   TDef x Nothing t1 -> do
     ty <- infer t1
     pty <- generalize ty
-    return $ Module (UTyCmd UTyUnit) (M.singleton x pty)
+    return $ Module (UTyCmd UTyUnit) (singleton x pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
@@ -278,7 +271,7 @@ inferModule = \case
     let upty = toU pty
     uty <- skolemize upty
     withBinding x upty $ check t1 uty
-    return $ Module (UTyCmd UTyUnit) (M.singleton x upty)
+    return $ Module (UTyCmd UTyUnit) (singleton x upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
@@ -305,9 +298,9 @@ inferModule = \case
       -- accepted with type int.
       _ <- decomposeCmdTy cmdb
 
-      -- M.union is left-biased, so ctx2 `M.union` ctx1 means later
+      -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
       -- definitions will shadow previous ones.
-      return $ Module cmdb (ctx2 `M.union` ctx1)
+      return $ Module cmdb (ctx1 `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.

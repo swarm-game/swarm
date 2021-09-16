@@ -33,7 +33,8 @@ common stan-config
 
 library
     import:           stan-config
-    exposed-modules:  Swarm.Language.Types
+    exposed-modules:  Swarm.Language.Context
+                      Swarm.Language.Types
                       Swarm.Language.Syntax
                       Swarm.Language.Capability
                       Swarm.Language.Parse

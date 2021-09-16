@@ -24,11 +24,11 @@ module Swarm.Language.Pipeline
   ) where
 
 import           Data.Bifunctor            (first)
-import qualified Data.Map                  as M
 import           Data.Set                  (Set)
 import           Data.Text                 (Text)
 
 import           Swarm.Language.Capability
+import           Swarm.Language.Context
 import           Swarm.Language.Elaborate
 import           Swarm.Language.Parse
 import           Swarm.Language.Pretty
@@ -51,7 +51,7 @@ data ProcessedTerm = ProcessedTerm
 --
 --   Return either the end result or a pretty-printed error message.
 processTerm :: Text -> Either Text ProcessedTerm
-processTerm = processTerm' M.empty M.empty
+processTerm = processTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm

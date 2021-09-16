@@ -22,23 +22,23 @@ module Swarm.Language.Capability
   , constCaps
   ) where
 
-import           Data.Hashable         (Hashable)
-import           Data.Map              (Map)
-import qualified Data.Map              as M
-import           Data.Set              (Set)
-import qualified Data.Set              as S
-import           Data.Set.Lens         (setOf)
-import           Data.Text             (Text)
-import qualified Data.Text             as T
+import           Data.Char              (toLower)
+import           Data.Hashable          (Hashable)
+import           Data.Maybe             (fromMaybe)
+import           Data.Set               (Set)
+import qualified Data.Set               as S
+import           Data.Set.Lens          (setOf)
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import           Prelude                hiding (lookup)
+import           Text.Read              (readMaybe)
+import           Witch                  (from)
 
 import           Data.Yaml
-import           GHC.Generics          (Generic)
+import           GHC.Generics           (Generic)
 
-import           Data.Char             (toLower)
-import           Data.Maybe            (fromMaybe)
+import           Swarm.Language.Context
 import           Swarm.Language.Syntax
-import           Text.Read             (readMaybe)
-import           Witch                 (from)
 
 -- | Various capabilities which robots can have.
 data Capability
@@ -75,7 +75,7 @@ instance FromJSON Capability where
 
 -- | A capability context records the capabilities required by the
 --   definitions bound to variables.
-type CapCtx = Map Var (Set Capability)
+type CapCtx = Ctx (Set Capability)
 
 -- | Analyze a program to see what capabilities may be needed to
 --   execute it. Also return a capability context mapping from any
@@ -102,7 +102,7 @@ requiredCaps ctx tm = case tm of
   -- capabilities it requires.
   TDef x _ t ->
     let bodyCaps = (if x `S.member` setOf fv t then S.insert CRecursion else id) (requiredCaps' ctx t)
-    in (S.singleton CEnv, M.singleton x bodyCaps)
+    in (S.singleton CEnv, singleton x bodyCaps)
 
   TBind _ t1 t2 ->
 
@@ -114,15 +114,15 @@ requiredCaps ctx tm = case tm of
         -- Now see what capabilities are required for the second
         -- command; use an extended context since it may refer to
         -- things defined in the first command.
-        ctx'          = M.union ctx1 ctx
+        ctx'          = ctx `union` ctx1
         (caps2, ctx2) = requiredCaps ctx' t2
 
         -- Finally return the union of everything.
-    in  (caps1 `S.union` caps2, M.union ctx2 ctx')
+    in  (caps1 `S.union` caps2, ctx' `union` ctx2)
 
   -- Any other term can't bind variables with 'TDef', so we no longer
   -- need to worry about tracking a returned context.
-  _ -> (requiredCaps' ctx tm, M.empty)
+  _ -> (requiredCaps' ctx tm, empty)
 
 -- | Infer the capabilities required to execute/evaluate a term in a
 --   given context, where the term is guaranteed not to contain any
@@ -157,7 +157,7 @@ requiredCaps' ctx = go
       -- that's OK.  In particular, only variables bound by 'TDef' go
       -- in the context; variables bound by a lambda or let will not
       -- be there.
-      TVar x         -> fromMaybe S.empty (M.lookup x ctx)
+      TVar x         -> fromMaybe S.empty (lookup x ctx)
 
       -- A lambda expression requires the 'CLambda' capability, and
       -- also all the capabilities of the body.  We assume that the

@@ -19,20 +19,19 @@ module Swarm.Game.Value
 
     -- * Environments
 
-  , Env, empty, singleton, (!!!), union, addBinding
+  , Env
 
   ) where
 
-import           Data.List             (foldl')
-import           Data.Map              (Map)
-import qualified Data.Map              as M
-import qualified Data.Set              as S
-import           Data.Set.Lens         (setOf)
-import           Data.Text             (Text)
+import           Data.List              (foldl')
+import qualified Data.Map               as M
+import qualified Data.Set               as S
+import           Data.Set.Lens          (setOf)
+import           Data.Text              (Text)
 
-import           Swarm.Language.Pretty (prettyText)
+import           Swarm.Language.Context
+import           Swarm.Language.Pretty  (prettyText)
 import           Swarm.Language.Syntax
-import           Witch                 (from)
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -98,7 +97,7 @@ data Value where
 prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
 
--- | Inject a value back into an unannotated term.
+-- | Inject a value back into a term.
 valueToTerm :: Value -> Term
 valueToTerm VUnit            = TUnit
 valueToTerm (VInt n)         = TInt n
@@ -110,7 +109,7 @@ valueToTerm (VClo x t e)     =
   M.foldrWithKey
     (\y v -> TLet y Nothing (valueToTerm v))
     (TLam x Nothing t)
-    (M.restrictKeys e (S.delete x (setOf fv t)))
+    (M.restrictKeys (unCtx e) (S.delete x (setOf fv t)))
 valueToTerm (VCApp c vs)     = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VDef x t _)     = TDef x Nothing t
 valueToTerm (VResult v _)    = valueToTerm v
@@ -118,32 +117,4 @@ valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _)     = TDelay t
 
 -- | An environment is a mapping from variable names to values.
-type Env = Map Var Value
-
-infix 9 !!!
-
--- | Unsafely look up variables in an environment, with a slightly
---   more informative error message than '(Data.Map.!)' to aid
---   debugging just in case something goes wrong.  But in theory, if
---   the type checker is doing its job and there are no bugs, a lookup
---   error will never happen.
-(!!!) :: Env -> Var -> Value
-e !!! x = case M.lookup x e of
-  Nothing -> error $ from x ++ " is not a key in the environment!"
-  Just v  -> v
-
--- | The empty environment.
-empty :: Env
-empty = M.empty
-
-singleton :: Var -> Value -> Env
-singleton = M.singleton
-
--- | Extend an environment, adding a binding of the given variable name to
---   the given value.
-addBinding :: Var -> Value -> Env -> Env
-addBinding = M.insert
-
--- | Left-biased union.
-union :: Env -> Env -> Env
-union = M.union
+type Env = Ctx Value

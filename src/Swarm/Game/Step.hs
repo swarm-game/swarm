@@ -33,19 +33,22 @@ import qualified Data.Set                  as S
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Linear
+import           Prelude                   hiding (lookup)
 import           System.Random             (randomRIO)
 import           Witch
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entity         as E
+import           Swarm.Game.Entity         hiding (empty, lookup, singleton)
+import qualified Swarm.Game.Entity         as E
 import           Swarm.Game.Exception      (formatExn)
 import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
-import           Swarm.Game.Value          as V
+import           Swarm.Game.Value
 import qualified Swarm.Game.World          as W
 import           Swarm.Language.Capability
+import           Swarm.Language.Context
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax
 import           Swarm.Util
@@ -234,7 +237,10 @@ stepCEK cek = case cek of
   In (TConst c) _ k                 -> return $ Out (VCApp c []) k
 
   -- To evaluate a variable, just look it up in the context.
-  In (TVar x) e k                   -> return $ Out (e !!! x) k
+  In (TVar x) e k                   -> withExceptions k $ do
+    v <- lookup x e `isJustOr`
+      Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
+    return $ Out v k
 
   -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e k              -> return $ In t1 e (FSnd t2 e : k)
@@ -301,7 +307,7 @@ stepCEK cek = case cek of
   -- environment (the variable bound to the delayed value).
   Out (VDef x t e) (FExec : k)       -> do
     let e' = addBinding x (VDelay t e') e
-    return $ Out (VResult VUnit (V.singleton x (VDelay t e'))) k
+    return $ Out (VResult VUnit (singleton x (VDelay t e'))) k
 
   -- To execute a constant application, delegate to the 'execConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
@@ -326,7 +332,7 @@ stepCEK cek = case cek of
   -- environment with the definition environment from the first
   -- command.
   Out (VResult v ve) (FBind mx t2 e : k) ->
-    return $ In t2 (maybe id (`addBinding` v) mx . V.union ve $ e) (FExec : FUnionEnv ve : k)
+    return $ In t2 (maybe id (`addBinding` v) mx . (`union` ve) $ e) (FExec : FUnionEnv ve : k)
   -- On the other hand, if the first command completes with a simple value,
   -- we do something similar, but don't have to worry about the environment.
   Out v (FBind mx t2 e : k) ->
@@ -336,7 +342,7 @@ stepCEK cek = case cek of
   -- to union with, then pass the unioned environments along in
   -- another VResult.
 
-  Out (VResult v e2) (FUnionEnv e1 : k) -> return $ Out (VResult v (e2 `V.union` e1)) k
+  Out (VResult v e2) (FUnionEnv e1 : k) -> return $ Out (VResult v (e1 `union` e2)) k
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.
   Out v (FUnionEnv e : k)               -> return $ Out (VResult v e) k
@@ -347,8 +353,8 @@ stepCEK cek = case cek of
   -- top-level environment and contexts, so they will be available to
   -- future programs.
   Out (VResult v e) (FLoadEnv ctx cctx : k)  -> do
-    robotEnv %= V.union e
-    robotCtx %= (M.union ctx *** M.union cctx)
+    robotEnv %= (`union` e)
+    robotCtx %= ((`union` ctx) *** (`union` cctx))
     return $ Out v k
   Out v (FLoadEnv{} : k)                -> return $ Out v k
 
@@ -382,7 +388,7 @@ stepCEK cek = case cek of
   -- logging!  Otherwise trying to exceute the Log command will
   -- generate another exception, which will be logged, which will
   -- generate an exception, ... etc.
-  Up  exn []                            -> return $ In (TApp (TConst Say) (TString (formatExn exn))) V.empty [FExec]
+  Up  exn []                            -> return $ In (TApp (TConst Say) (TString (formatExn exn))) empty [FExec]
 
   -- Fatal errors and capability errors can't be caught; just throw
   -- away the continuation stack.
@@ -510,7 +516,7 @@ execConst c vs k = do
         -- Grow a new entity from a seed.
         let seedBot =
               mkRobot "seed" loc (V2 0 0)
-                (initMachine (seedProgram (e ^. entityName)) V.empty)
+                (initMachine (seedProgram (e ^. entityName)) empty)
                 []
                 & robotDisplay .~
                   (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
@@ -793,7 +799,7 @@ execConst c vs k = do
         t <- processTerm (into @Text f)`isRightOr` \err ->
           cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ initMachine' t V.empty k
+        return $ initMachine' t empty k
 
       _ -> badConst
 

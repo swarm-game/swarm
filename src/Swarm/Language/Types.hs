@@ -50,7 +50,7 @@ module Swarm.Language.Types
   , Poly(..), Polytype, UPolytype
 
     -- * Contexts
-  , Ctx, TCtx, UCtx, empty
+  , TCtx, UCtx
 
     -- * Modules
   , Module(..), TModule, UModule, trivMod
@@ -63,14 +63,14 @@ module Swarm.Language.Types
 import           Control.Unification
 import           Control.Unification.IntVar
 import           Data.Functor.Fixedpoint
-import           Data.Map                   (Map)
-import qualified Data.Map                   as M
 import           Data.Maybe                 (fromJust)
 import           Data.String                (IsString (..))
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           GHC.Generics               (Generic1)
 import           Witch
+
+import           Swarm.Language.Context
 
 ------------------------------------------------------------
 -- Types
@@ -84,9 +84,6 @@ data BaseTy
   | BDir              -- ^ Directions.
   | BBool             -- ^ Booleans.
   deriving (Eq, Ord, Show)
-
--- | We use 'Text' values to represent variables.
-type Var = Text
 
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
@@ -141,9 +138,6 @@ instance IsString UType where
 -- Contexts
 ------------------------------------------------------------
 
--- | A context is a mapping from variable names to things.
-type Ctx t = Map Var t
-
 -- | A @TCtx@ is a mapping from variables to polytypes.  We generally
 --   get one of these at the end of the type inference process.
 type TCtx = Ctx Polytype
@@ -152,10 +146,6 @@ type TCtx = Ctx Polytype
 --   unification variables.  We generally have one of these while we
 --   are in the midst of the type inference process.
 type UCtx = Ctx UPolytype
-
--- | The empty context.
-empty :: Ctx t
-empty = M.empty
 
 ------------------------------------------------------------
 -- Polytypes

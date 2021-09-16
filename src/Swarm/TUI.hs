@@ -39,7 +39,7 @@ import qualified Graphics.Vty              as V
 import           Control.Monad.Except
 import           Swarm.Game.CEK            (idleMachine, initMachine)
 import           Swarm.Game.Display
-import           Swarm.Game.Entity
+import           Swarm.Game.Entity         hiding (empty)
 import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
@@ -48,6 +48,7 @@ import           Swarm.Game.Terrain        (displayTerrain)
 import           Swarm.Game.Value          (Value (VUnit), prettyValue)
 import qualified Swarm.Game.World          as W
 import           Swarm.Language.Capability
+import           Swarm.Language.Context
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
@@ -669,7 +670,7 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
       let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
           mkTy   = Forall [] $ TyCmd TyUnit
           mkProg = TApp (TConst Make) (TString (e ^. entityName))
-          mkPT   = ProcessedTerm mkProg (Module mkTy M.empty) (S.singleton CMake) M.empty
+          mkPT   = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
       case isActive <$> (s ^. gameState . robotMap . at "base") of
         Just False -> continue $ s
           & gameState . replResult .~ REPLWorking mkTy Nothing

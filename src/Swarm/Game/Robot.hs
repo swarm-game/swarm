@@ -33,7 +33,6 @@ module Swarm.Game.Robot
   ) where
 
 import           Control.Lens              hiding (contains)
-import qualified Data.Map                  as M
 import           Data.Maybe                (isNothing)
 import           Data.Set                  (Set)
 import           Data.Text                 (Text)
@@ -42,9 +41,10 @@ import           Linear
 import           Data.Set.Lens             (setOf)
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entity
+import           Swarm.Game.Entity         hiding (empty)
 import           Swarm.Game.Value          as V
 import           Swarm.Language.Capability
+import           Swarm.Language.Context
 import           Swarm.Language.Types      (TCtx)
 
 -- | A value of type 'Robot' is a record representing the state of a
@@ -178,8 +178,8 @@ mkRobot name l d m devs = Robot
   , _installedDevices = inst
   , _robotCapabilities = inventoryCapabilities inst
   , _robotLocation = l
-  , _robotCtx      = (M.empty, M.empty)
-  , _robotEnv      = V.empty
+  , _robotCtx      = (empty, empty)
+  , _robotEnv      = empty
   , _machine       = m
   , _systemRobot   = False
   , _selfDestruct  = False
@@ -199,8 +199,8 @@ baseRobot devs = Robot
   , _installedDevices = inst
   , _robotCapabilities = inventoryCapabilities inst
   , _robotLocation = V2 0 0
-  , _robotCtx      = (M.empty, M.empty)
-  , _robotEnv      = V.empty
+  , _robotCtx      = (empty, empty)
+  , _robotEnv      = empty
   , _machine       = idleMachine
   , _systemRobot   = False
   , _selfDestruct  = False
