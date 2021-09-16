@@ -224,6 +224,7 @@
 ############################################################
 
 - name: treads
+  plural: treads
   display:
     attr: device
     char: '%'

@@ -36,7 +36,8 @@ module Swarm.Game.Entity
   , displayEntity
 
     -- ** Lenses
-  , entityDisplay, entityName, entityDescription, entityOrientation
+  , entityDisplay, entityName, entityPlural, entityNameFor
+  , entityDescription, entityOrientation
   , entityProperties, entityInventory, entityCapabilities, entityHash
   , hasProperty
 
@@ -87,6 +88,7 @@ import           Swarm.Language.Capability
 import           Swarm.Language.Syntax     (toDirection)
 
 import           Paths_swarm
+import           Swarm.Util                (plural)
 
 ------------------------------------------------------------
 -- Properties
@@ -161,6 +163,14 @@ data Entity = Entity
   , _entityName         :: Text             -- ^ The name of the
                                             --   entity, used /e.g./ in
                                             --   an inventory display.
+  , _entityPlural       :: Maybe Text       -- ^ The plural of the
+                                            --   entity name, in case
+                                            --   it is irregular.  If
+                                            --   this field is
+                                            --   @Nothing@, default
+                                            --   pluralization
+                                            --   heuristics will be
+                                            --   used (see 'plural').
   , _entityDescription  :: [Text]           -- ^ A longer-form
                                             --   description. Each
                                             --   'Text' value is one
@@ -188,9 +198,10 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm descr orient props caps inv)
+  hashWithSalt s (Entity _ disp nm pl descr orient props caps inv)
     = s `hashWithSalt` disp
         `hashWithSalt` nm
+        `hashWithSalt` pl
         `hashWithSalt` descr
         `hashWithSalt` orient
         `hashWithSalt` props
@@ -219,7 +230,7 @@ mkEntity
   -> [EntityProperty] -- ^ Properties
   -> Entity
 mkEntity disp nm descr props
-  = rehashEntity $ Entity 0 disp nm descr Nothing props [] empty
+  = rehashEntity $ Entity 0 disp nm Nothing descr Nothing props [] empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -252,6 +263,7 @@ instance FromJSON Entity where
     <$> pure 0
     <*> v .: "display"
     <*> v .: "name"
+    <*> v .:? "plural"
     <*> (map reflow <$> (v .: "description"))
     <*> v .:? "orientation"
     <*> v .:? "properties"   .!= []
@@ -267,6 +279,8 @@ instance ToJSON Entity where
     , "name"         .= (e ^. entityName)
     , "description"  .= (e ^. entityDescription)
     ]
+    ++
+    [ "plural"       .= (e ^. entityPlural) | isJust (e ^. entityPlural) ]
     ++
     [ "orientation"  .= (e ^. entityOrientation) | isJust (e ^. entityOrientation) ]
     ++
@@ -304,6 +318,22 @@ entityDisplay = hashedLens _entityDisplay (\e x -> e { _entityDisplay = x })
 -- | The name of the entity.
 entityName :: Lens' Entity Text
 entityName = hashedLens _entityName (\e x -> e { _entityName = x })
+
+-- | The irregular plural version of the entity's name, if there is
+--   one.
+entityPlural :: Lens' Entity (Maybe Text)
+entityPlural = hashedLens _entityPlural (\e x -> e { _entityPlural = x })
+
+-- | Get a version of the entity's name appropriate to the
+--   number---the singular name for 1, and a plural name for any other
+--   number.  The plural name is obtained either by looking it up if
+--   irregular, or by applying standard heuristics otherwise.
+entityNameFor :: Int -> Getter Entity Text
+entityNameFor 1 = entityName
+entityNameFor _ = to $ \e ->
+  case e ^. entityPlural of
+    Just pl -> pl
+    Nothing -> plural (e ^. entityName)
 
 -- | A longer, free-form description of the entity.
 entityDescription :: Lens' Entity [Text]

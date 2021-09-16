@@ -91,7 +91,7 @@ prettyRecipe (Recipe ins outs) =
 prettyIngredientList :: IngredientList Entity -> Text
 prettyIngredientList = T.intercalate " + " . map prettyIngredient
   where
-    prettyIngredient (n,e) = T.concat [ into @Text (show n), " ", number n (e ^. entityName) ]
+    prettyIngredient (n,e) = T.concat [ into @Text (show n), " ", e ^. entityNameFor n ]
 
 buildRecipeMap
   :: Getter (Recipe Entity) (IngredientList Entity)
