@@ -117,9 +117,13 @@ parens = between (symbol "(") (symbol ")")
 --------------------------------------------------
 -- Parser
 
+-- | Parse a Swarm language polytype, which starts with an optional
+--   quanitifation (@forall@ followed by one or more variables and a
+--   period) followed by a type.  Note that anything accepted by
+--   'parseType' is also accepted by 'parsePolytype'.
 parsePolytype :: Parser Polytype
 parsePolytype = Forall
-  <$> (fromMaybe [] <$> optional (reserved "forall" *> many identifier <* symbol "."))
+  <$> (fromMaybe [] <$> optional (reserved "forall" *> some identifier <* symbol "."))
   <*> parseType
 
 -- | Parse a Swarm language (mono)type.
