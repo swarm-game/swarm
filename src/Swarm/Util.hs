@@ -26,7 +26,7 @@ module Swarm.Util
 
     -- * English language utilities
 
-  , quote, squote, indefinite, indefiniteQ, plural, number
+  , quote, squote, commaList, indefinite, indefiniteQ, plural, number
 
     -- * Validation utilities
 
@@ -108,6 +108,13 @@ squote t = T.concat ["'", t, "'"]
 -- | Surround some text in double quotes.
 quote :: Text -> Text
 quote t = T.concat ["\"", t, "\""]
+
+-- | Make a list of things with commas and the word "and".
+commaList :: [Text] -> Text
+commaList []    = ""
+commaList [t]   = t
+commaList [s,t] = T.unwords [s, "and", t]
+commaList ts    = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
 
 ------------------------------------------------------------
 -- Some orphan instances

@@ -12,7 +12,11 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.Game.Exception where
+module Swarm.Game.Exception
+  ( Exn(..)
+  , formatExn
+  )
+  where
 
 import           Data.Set                  (Set)
 import qualified Data.Set                  as S
@@ -24,6 +28,7 @@ import           Swarm.Language.Pretty     (prettyText)
 import           Swarm.Language.Syntax
 import           Swarm.Util
 
+-- | The type of exceptions that can be thrown by robot programs.
 data Exn
     -- | Something went very wrong.  This is a bug in Swarm and cannot
     --   be caught by a @try@ block (but at least it will not crash
@@ -44,6 +49,7 @@ data Exn
   | User Text
   deriving (Eq, Show)
 
+-- | Pretty-print an exception for displaying to the user.
 formatExn :: Exn -> Text
 formatExn (Fatal t) = T.unlines
   [ T.append "fatal error: " t
@@ -52,12 +58,9 @@ formatExn (Fatal t) = T.unlines
 formatExn (Incapable caps tm)   = T.unlines
   [ T.concat
     [ "missing ", number (S.size caps) "capability", " "
-    , squote (prettyCaps caps), " needed to execute:"
+    , (commaList . map (squote . prettyText) .  S.toList) caps, " needed to execute:"
     ]
   , prettyText tm
   ]
 formatExn (CmdFailed c t) = T.concat [prettyText c, ": ", t]
 formatExn (User t)        = T.concat ["user exception: ", t]
-
-prettyCaps :: Set Capability -> Text
-prettyCaps s = T.intercalate ", " (map prettyText (S.toList s))

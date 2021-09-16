@@ -763,7 +763,7 @@ execConst c vs k = do
         (mode == Creative || S.null missingDevices) `holdsOr`
           cmdExn Build
             [ "this would require installing devices you don't have:\n"
-            , T.intercalate ", " (map (^. entityName) (S.toList missingDevices))
+            , commaList (map (^. entityName) (S.toList missingDevices))
             ]
 
         -- Construct the new robot.
