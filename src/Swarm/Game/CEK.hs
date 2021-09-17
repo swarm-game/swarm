@@ -133,8 +133,8 @@ data Frame
   | FLoadEnv TCtx CapCtx
     -- ^ We were executing a command that might have definitions; next
     --   we should take the resulting 'Env' and add it to the robot's
-    --   'robotEnv', along with adding this accompanying 'Ctx' and
-    --   'CapCtx' to the robot's 'robotCtx'.
+    --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
+    --   'CapCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
 
   | FExec
     -- ^ An @FExec@ frame means the focused value is a command, which
@@ -183,7 +183,7 @@ data CEK
 
   | Up Exn Cont
     -- ^ An exception has been raised.  Keep unwinding the
-    --   continuation stack (until finding an enclosing 'try' in the
+    --   continuation stack (until finding an enclosing 'Try' in the
     --   case of a command failure or a user-generated exception, or
     --   until the stack is empty in the case of a fatal exception).
   deriving (Eq, Show)
@@ -223,6 +223,8 @@ idleMachine = initMachine trivialTerm empty
 -- nicer version of this code...
 ------------------------------------------------------------
 
+-- | Very poor pretty-printing of CEK machine states, really just for
+--   debugging. At some point we should make a nicer version.
 prettyCEK :: CEK -> String
 prettyCEK (In c _ k) = unlines
   [ "▶ " ++ prettyString c
@@ -234,9 +236,11 @@ prettyCEK (Up e k) = unlines
   [ "! " ++ from (formatExn e)
   , "  " ++ prettyCont k ]
 
+-- | Poor pretty-printing of continuations.
 prettyCont :: Cont -> String
 prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
 
+-- | Poor pretty-printing of frames.
 prettyFrame :: Frame -> String
 prettyFrame (FSnd t _)           = "(_, " ++ prettyString t ++ ")"
 prettyFrame (FFst v)             = "(" ++ from (prettyValue v) ++ ", _)"
