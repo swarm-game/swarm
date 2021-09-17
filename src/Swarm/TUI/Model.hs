@@ -219,7 +219,7 @@ initUIState = liftIO $ do
 -- App state (= UI state + game state)
 ------------------------------------------------------------
 
--- | The 'AppState' just stores together the game state and UI state.
+-- | The 'Swarm.TUI.Model.AppState' just stores together the game state and UI state.
 data AppState = AppState
   { _gameState :: GameState
   , _uiState   :: UIState
@@ -233,7 +233,7 @@ gameState :: Lens' AppState GameState
 -- | The 'UIState' record.
 uiState :: Lens' AppState UIState
 
--- | Initialize the 'AppState'.
+-- | Initialize the 'Swarm.TUI.Model.AppState'.
 initAppState :: ExceptT Text IO AppState
 initAppState = AppState <$> initGameState <*> initUIState
 
