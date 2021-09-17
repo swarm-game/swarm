@@ -437,9 +437,10 @@ runGameTick = zoom gameState gameTick
 updateUI :: StateT AppState (EventM Name) ()
 updateUI = do
 
-  -- If things were updated, invalidate the world cache so it will be redrawn.
+  -- If the game state indicates a redraw is needed, invalidate the
+  -- world cache so it will be redrawn.
   g <- use gameState
-  when (g ^. updated) $ lift (invalidateCacheEntry WorldCache)
+  when (g ^. needsRedraw) $ lift (invalidateCacheEntry WorldCache)
 
   -- Check if the inventory list needs to be updated.
   listRobotHash    <- fmap fst <$> use (uiState . uiInventory)
@@ -455,17 +456,17 @@ updateUI = do
   when (listRobotHash /= focusedRobotHash) (zoom uiState $ populateInventoryList fr)
 
   -- Now check if the base finished running a program entered at the REPL.
-  case g ^. replResult of
+  case g ^. replStatus of
 
-    -- It did, and the result was the unit value.  Just reset replResult.
-    REPLWorking _ (Just VUnit) -> gameState . replResult .= REPLDone
+    -- It did, and the result was the unit value.  Just reset replStatus.
+    REPLWorking _ (Just VUnit) -> gameState . replStatus .= REPLDone
 
     -- It did, and returned some other value.  Pretty-print the
-    -- result as a REPL output, with its type, and reset the replResult.
+    -- result as a REPL output, with its type, and reset the replStatus.
     REPLWorking pty (Just v) -> do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
       uiState . uiReplHistory %= (REPLOutput out :)
-      gameState . replResult .= REPLDone
+      gameState . replStatus .= REPLDone
 
     -- Otherwise, do nothing.
     _ -> return ()
@@ -538,7 +539,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
           & uiState . uiReplForm    %~ updateFormState ""
           & uiState . uiReplHistory %~ (REPLEntry True entry :)
           & uiState . uiReplHistIdx .~ (-1)
-          & gameState . replResult .~ REPLWorking ty Nothing
+          & gameState . replStatus .~ REPLWorking ty Nothing
           & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
       Left err ->
         continue $ s
@@ -594,7 +595,7 @@ handleWorldEvent s (VtyEvent (V.EvKey k []))
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
   invalidateCacheEntry WorldCache
   continue $ s & gameState . viewCenterRule .~ VCRobot "base"
-               & gameState %~ updateViewCenter
+               & gameState %~ recalcViewCenter
 
 -- pausing and stepping
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') [])) = do
@@ -633,7 +634,7 @@ cycleEnum e
 
 scrollView :: AppState -> (V2 Int -> V2 Int) -> EventM Name AppState
 scrollView s update =
-  updateView $ s & gameState %~ manualViewCenterUpdate update
+  updateView $ s & gameState %~ modifyViewCenter update
 
 updateView :: AppState -> EventM Name AppState
 updateView s = do
@@ -678,7 +679,7 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
           mkPT   = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
       case isActive <$> (s ^. gameState . robotMap . at "base") of
         Just False -> continue $ s
-          & gameState . replResult .~ REPLWorking mkTy Nothing
+          & gameState . replStatus .~ REPLWorking mkTy Nothing
           & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
         _          -> continueWithoutRedraw s
 

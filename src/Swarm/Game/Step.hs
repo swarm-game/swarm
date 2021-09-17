@@ -67,10 +67,10 @@ evalStepsPerTick = 100
 gameTick :: (MonadState GameState m, MonadIO m) => m ()
 gameTick = do
 
-  -- Reset the updated flag.  While stepping the robots, the flag will
+  -- Reset the needsRedraw flag.  While stepping the robots, the flag will
   -- get set to true if anything changes that requires redrawing the
   -- world (e.g. a robot moving or disappearing).
-  updated .= False
+  needsRedraw .= False
 
   -- Note, it is tempting to do the below in one line with some clever
   -- lens combinator, but it's not possible.  We want to do an
@@ -98,10 +98,10 @@ gameTick = do
   mr <- use (robotMap . at "base")
   case mr of
     Just r  -> do
-      res <- use replResult
+      res <- use replStatus
       case res of
-        REPLWorking ty Nothing -> replResult .= REPLWorking ty (getResult r)
-        _otherREPLState        -> return ()
+        REPLWorking ty Nothing -> replStatus .= REPLWorking ty (getResult r)
+        _otherREPLStatus       -> return ()
     Nothing -> return ()
 
   -- Get all the newly built robots and add them to the robot map.
@@ -110,7 +110,7 @@ gameTick = do
   newRobots .= []
 
   -- Possible update the view center.
-  modify updateViewCenter
+  modify recalcViewCenter
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -118,7 +118,7 @@ gameTick = do
 
 -- | Set a flag telling the UI that the world needs to be redrawn.
 flagRedraw :: MonadState GameState m => ExceptT Exn (StateT s m) ()
-flagRedraw = lift . lift $ updated .= True
+flagRedraw = lift . lift $ needsRedraw .= True
 
 -- | Get the entity (if any) at a given location.
 entityAt :: MonadState GameState m => V2 Int -> ExceptT Exn (StateT Robot m) (Maybe Entity)
