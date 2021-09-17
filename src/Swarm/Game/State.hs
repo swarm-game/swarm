@@ -94,7 +94,8 @@ data REPLStatus
   deriving (Eq, Show)
 
 -- | The main record holding the state for the game itself (as
---   distinct from the UI).
+--   distinct from the UI).  See the lenses below for access to its
+--   fields.
 data GameState = GameState
   { _gameMode       :: GameMode
   , _paused         :: Bool
@@ -210,6 +211,8 @@ ensureUniqueName newRobot = do
   newName <- uniquifyRobotName name Nothing
   return $ newRobot & robotName .~ newName
 
+-- | Given a robot name, possibly add a numeric suffix to the end to
+--   ensure it is unique.
 uniquifyRobotName :: MonadState GameState m => Text -> Maybe Int -> m Text
 uniquifyRobotName name tag = do
   let name' = name `T.append` maybe "" (into @Text . show) tag
@@ -265,6 +268,7 @@ initGameState = do
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
+-- | Add a message to the message queue.
 emitMessage :: MonadState GameState m => Text -> m ()
 emitMessage msg = do
   q <- use messageQueue

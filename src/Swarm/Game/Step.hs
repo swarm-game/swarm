@@ -438,6 +438,8 @@ evalConst c vs k = do
 
 -- XXX load this from a file and have it available in a map?
 --     Or make a quasiquoter?
+
+-- | A program to run a "seed" robot that regrows a harvested entity.
 seedProgram :: Text -> ProcessedTerm
 seedProgram thing = prog
   where
