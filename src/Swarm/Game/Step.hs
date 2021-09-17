@@ -20,7 +20,7 @@
 
 module Swarm.Game.Step where
 
-import           Control.Arrow             ((&&&), (***))
+import           Control.Arrow             ((***))
 import           Control.Lens              hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
@@ -104,12 +104,7 @@ gameTick = do
         _otherREPLStatus       -> return ()
     Nothing -> return ()
 
-  -- Get all the newly built robots and add them to the robot map.
-  new <- use newRobots
-  robotMap %= M.union (M.fromList $ map (view robotName &&& id) new)
-  newRobots .= []
-
-  -- Possible update the view center.
+  -- Possibly update the view center.
   modify recalcViewCenter
 
 ------------------------------------------------------------

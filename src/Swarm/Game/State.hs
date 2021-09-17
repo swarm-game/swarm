@@ -25,7 +25,7 @@ module Swarm.Game.State
 
     -- ** GameState fields
 
-  , gameMode, paused, robotMap, newRobots, gensym
+  , gameMode, paused, robotMap, gensym
   , entityMap, recipesOut, recipesIn, world
   , viewCenterRule, viewCenter
   , needsRedraw, replStatus, messageQueue
@@ -99,7 +99,6 @@ data GameState = GameState
   { _gameMode       :: GameMode
   , _paused         :: Bool
   , _robotMap       :: Map Text Robot
-  , _newRobots      :: [Robot]
   , _gensym         :: Int
   , _entityMap      :: EntityMap
   , _recipesOut     :: IntMap [Recipe Entity]
@@ -128,9 +127,6 @@ paused :: Lens' GameState Bool
 
 -- | All the robots that currently exist in the game, indexed by name.
 robotMap :: Lens' GameState (Map Text Robot)
-
--- | A temporary place to hold any new robots created during a tick. XXX get rid of this?
-newRobots :: Lens' GameState [Robot]
 
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
@@ -224,12 +220,17 @@ uniquifyRobotName name tag = do
       uniquifyRobotName name (Just tag')
     False -> return name'
 
+-- | Add a robot to the game state, possibly updating its name to
+--   ensure it is unique, and return the (possibly modified) robot.
 addRobot :: MonadState GameState m => Robot -> m Robot
 addRobot r = do
   r' <- ensureUniqueName r
-  newRobots %= (r' :)
+  robotMap %= M.insert (r' ^. robotName) r'
+
   return r'
 
+-- | Create an initial game state record, first loading entities and
+--   recipies from disk.
 initGameState :: ExceptT Text IO GameState
 initGameState = do
   liftIO $ putStrLn "Loading entities..."
@@ -244,7 +245,6 @@ initGameState = do
     { _gameMode       = Classic
     , _paused         = False
     , _robotMap       = M.singleton "base" (baseRobot baseDevices)
-    , _newRobots      = []
     , _gensym         = 0
     , _entityMap      = entities
     , _recipesOut     = outRecipeMap recipes
