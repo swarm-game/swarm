@@ -30,11 +30,12 @@ module Swarm.Game.State
   , viewCenterRule, viewCenter
   , needsRedraw, replStatus, messageQueue
 
-    -- * Utilities for modifying the game state
+    -- * Utilities
 
   , applyViewCenterRule
   , recalcViewCenter
   , modifyViewCenter
+  , viewingRegion
 
   , focusedRobot
   , ensureUniqueName
@@ -54,7 +55,7 @@ import           Data.Maybe           (fromMaybe, mapMaybe)
 import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           Linear
-import           Witch
+import           Witch                (into)
 
 import           Swarm.Game.Entity
 import           Swarm.Game.Recipe
@@ -195,6 +196,16 @@ modifyViewCenter update g = g
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
       VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
   & recalcViewCenter
+
+-- | Given a width and height, compute the region, centered on the
+--   'viewCenter', that should currently be in view.
+viewingRegion :: GameState -> (Int,Int) -> ((Int, Int), (Int, Int))
+viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
+  where
+    V2 cx cy = g ^. viewCenter
+    (rmin,rmax) = over both (+ (-cy - h`div`2)) (0, h-1)
+    (cmin,cmax) = over both (+ (cx - w`div`2)) (0, w-1)
+
 
 -- | Find out which robot is currently specified by the
 --   'viewCenterRule', if any.

@@ -57,8 +57,9 @@ library
                       Swarm.TUI
                       Swarm.TUI.Attr
                       Swarm.TUI.List
-                      Swarm.TUI.Model
                       Swarm.TUI.Panel
+                      Swarm.TUI.Model
+                      Swarm.TUI.View
                       Swarm.App
                       Swarm.Util
     other-modules:    Paths_swarm

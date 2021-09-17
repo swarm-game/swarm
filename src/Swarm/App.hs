@@ -25,6 +25,7 @@ import qualified Data.Text.IO         as T
 import           Swarm.TUI
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Model
+import           Swarm.TUI.View
 
 -- | The definition of the app used by the @brick@ library.
 app :: App AppState AppEvent Name
