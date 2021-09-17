@@ -41,7 +41,7 @@ import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entity         hiding (empty, lookup, singleton)
 import qualified Swarm.Game.Entity         as E
-import           Swarm.Game.Exception      (formatExn)
+import           Swarm.Game.Exception
 import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State

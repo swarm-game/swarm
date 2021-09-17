@@ -51,11 +51,8 @@
 {-# LANGUAGE TypeOperators   #-}
 
 module Swarm.Game.CEK
-  ( -- * Exceptions
-    Exn(..)
-
-    -- * Frames and continuations
-  , Frame(..), Cont
+  ( -- * Frames and continuations
+    Frame(..), Cont
 
     -- * CEK machine states
 
