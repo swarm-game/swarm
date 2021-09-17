@@ -56,6 +56,8 @@ library
                       Swarm.Game.WorldGen
                       Swarm.TUI
                       Swarm.TUI.Attr
+                      Swarm.TUI.List
+                      Swarm.TUI.Model
                       Swarm.TUI.Panel
                       Swarm.App
                       Swarm.Util

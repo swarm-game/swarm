@@ -15,8 +15,7 @@ import           Control.Monad.State
 import           Data.Array                (range)
 import           Data.Bits
 import           Data.Either               (isRight)
-import           Data.Foldable             (toList)
-import           Data.List                 (find, findIndex, sortOn)
+import           Data.List                 (findIndex, sortOn)
 import           Data.List.Split           (chunksOf)
 import qualified Data.Map                  as M
 import           Data.Maybe                (fromMaybe, isJust)
@@ -27,7 +26,6 @@ import qualified Data.Vector               as V
 import           Linear
 import           System.Clock
 import           Text.Printf
-import           Text.Read                 (readMaybe)
 import           Witch                     (into)
 
 import           Brick                     hiding (Direction)
@@ -56,100 +54,10 @@ import           Swarm.Language.Pretty
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 import           Swarm.TUI.Attr
+import           Swarm.TUI.List
+import           Swarm.TUI.Model
 import           Swarm.TUI.Panel
 import           Swarm.Util
-
-------------------------------------------------------------
--- Custom UI label types
-
-data AppEvent = Frame
-
-data Name
-  = REPLPanel
-  | WorldPanel
-  | InfoPanel
-  | REPLInput
-  | WorldCache
-  | WorldExtent
-  | InventoryList
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
-------------------------------------------------------------
--- UI state
-
-data REPLHistItem = REPLEntry Bool Text | REPLOutput Text
-  deriving (Eq, Ord, Show, Read)
-
--- | An entry in the inventory list displayed in the info panel.  We
---   can either have an entity with a count, or a labelled separator.
-data InventoryEntry
-  = Separator Text
-  | InventoryEntry Count Entity
-
-makePrisms ''InventoryEntry
-
-data UIState = UIState
-  { _uiFocusRing      :: FocusRing Name
-  , _uiReplForm       :: Form Text AppEvent Name
-  , _uiReplHistory    :: [REPLHistItem]
-  , _uiReplHistIdx    :: Int
-  , _uiInventory      :: Maybe (Int, BL.List Name InventoryEntry)
-    -- ^ Stores the hash value of the focused robot entity (so we can
-    --   tell if its inventory changed) along with a list with the
-    --   items in the focused robot's inventory.
-  , _uiError          :: Maybe (Widget Name)
-  , _lgTicksPerSecond :: Int
-  , _ticksPerFrame    :: Int
-  , _lastFrameTime    :: TimeSpec    -- ^ Last time we got a Frame event.
-  , _accumulatedTime  :: TimeSpec    -- ^ Amount of accumulated real time
-    -- See https://gafferongames.com/post/fix_your_timestep/
-  }
-
-makeLenses ''UIState
-
-initFocusRing :: FocusRing Name
-initFocusRing = focusRing [REPLPanel, InfoPanel, WorldPanel]
-
-replPrompt :: Text
-replPrompt = "> "
-
-initReplForm :: Form Text AppEvent Name
-initReplForm = newForm
-  [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
-  ""
-
-initLgTicksPerSecond :: Int
-initLgTicksPerSecond = 3
-
-initUIState :: ExceptT Text IO UIState
-initUIState = liftIO $ do
-  mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
-  startTime <- getTime Monotonic
-  return $ UIState
-    { _uiFocusRing      = initFocusRing
-    , _uiReplForm       = initReplForm
-    , _uiReplHistory    = mhist ? []
-    , _uiReplHistIdx    = -1
-    , _uiInventory      = Nothing
-    , _uiError          = Nothing
-    , _lgTicksPerSecond = initLgTicksPerSecond
-    , _lastFrameTime    = startTime
-    , _accumulatedTime  = 0
-    , _ticksPerFrame    = 0
-    }
-
-------------------------------------------------------------
--- App state (= UI state + game state)
-
-data AppState = AppState
-  { _gameState :: GameState
-  , _uiState   :: UIState
-  }
-
-makeLenses ''AppState
-
-initAppState :: ExceptT Text IO AppState
-initAppState = AppState <$> initGameState <*> initUIState
 
 ------------------------------------------------------------
 -- UI drawing
@@ -707,69 +615,3 @@ shutdown s = do
 
     isEntry REPLEntry{} = True
     isEntry _           = False
-
-------------------------------------------------------------
--- Special modified version of handleListEvent to deal with skipping
--- over separators.
-
--- XXX clean this up and maybe split it out somewhere.
-
--- | Handle a list event, taking an extra predicate to identify which
---   list elements are separators; separators will be
---   skipped if possible.
-handleListEventWithSeparators
-  :: (Foldable t, BL.Splittable t, Ord n)
-  => V.Event
-  -> (e -> Bool)  -- ^ Is this a separator?
-  -> BL.GenericList n t e
-  -> EventM n (BL.GenericList n t e)
-handleListEventWithSeparators e isSep theList =
-  case e of
-    V.EvKey V.KUp []   -> return $ listFindByStrategy bwdExclusive isItem theList
-    V.EvKey V.KDown [] -> return $ listFindByStrategy fwdExclusive isItem theList
-    V.EvKey V.KHome [] ->
-      return $ listFindByStrategy fwdInclusive isItem
-             $ BL.listMoveToBeginning theList
-    V.EvKey V.KEnd []      ->
-      return $ listFindByStrategy bwdInclusive isItem
-             -- work around https://github.com/jtdaugherty/brick/issues/337 for now
-             $ BL.listMoveTo (max 0 $ length (BL.listElements theList) - 1) theList
-    V.EvKey V.KPageDown [] ->
-      listFindByStrategy bwdInclusive isItem <$> BL.listMovePageDown theList
-    V.EvKey V.KPageUp []   ->
-      listFindByStrategy fwdInclusive isItem <$> BL.listMovePageUp theList
-    _                      -> return theList
-  where
-    isItem = not . isSep
-
-data FindDir = FindFwd | FindBwd deriving (Eq, Ord, Show, Enum)
-data FindStart = IncludeCurrent | ExcludeCurrent deriving (Eq, Ord, Show, Enum)
-
-data FindStrategy = FindStrategy FindDir FindStart
-
-fwdInclusive, fwdExclusive, bwdInclusive, bwdExclusive :: FindStrategy
-fwdInclusive = FindStrategy FindFwd IncludeCurrent
-fwdExclusive = FindStrategy FindFwd ExcludeCurrent
-bwdInclusive = FindStrategy FindBwd IncludeCurrent
-bwdExclusive = FindStrategy FindBwd ExcludeCurrent
-
--- | Starting from the currently selected element, attempt to find and
---   select the next element matching the predicate. How the search
---   proceeds depends on the 'FindStrategy': the 'FindDir' says
---   whether to search forward or backward from the selected element,
---   and the 'FindStarts' says whether the currently selected element
---   should be included in the search or not.
-listFindByStrategy
-  :: (Foldable t, BL.Splittable t)
-  => FindStrategy
-  -> (e -> Bool)
-  -> BL.GenericList n t e
-  -> BL.GenericList n t e
-listFindByStrategy (FindStrategy dir cur) test l =
-    let adj = fromEnum dir `xor` fromEnum cur  -- XXX really dirty hack
-        start = maybe 0 (+adj) (l ^. BL.listSelectedL)
-        (h, t) = BL.splitAt start (l ^. BL.listElementsL)
-        headResult = find (test . snd) . reverse . zip [0..]     . toList $ h
-        tailResult = find (test . snd)           . zip [start..] . toList $ t
-        result = case dir of {FindFwd -> tailResult; FindBwd -> headResult}
-    in maybe id (set BL.listSelectedL . Just . fst) result l
