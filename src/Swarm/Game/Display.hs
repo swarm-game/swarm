@@ -22,9 +22,9 @@ module Swarm.Game.Display
   (
     -- * The display record
     Priority
-  , Display(..)
+  , Display
 
-    -- ** Lenses
+    -- ** Fields
   , defaultChar, orientationMap, displayAttr, displayPriority
 
     -- ** Lookup
@@ -35,7 +35,6 @@ module Swarm.Game.Display
   , defaultTerrainDisplay
   , defaultEntityDisplay
   , defaultRobotDisplay
-  , deviceDisplay
 
   ) where
 
@@ -64,25 +63,30 @@ instance Hashable AttrName
 
 -- | A record explaining how to display an entity in the TUI.
 data Display = Display
-  { -- | The default character to use for display.
-    _defaultChar     :: Char
-
-    -- | For robots or other entities that have an orientation, this map
-    --   optionally associates different display characters with
-    --   different orientations.  If an orientation is not in the map,
-    --   the '_defaultChar' will be used.
+  { _defaultChar     :: Char
   , _orientationMap  :: Map Direction Char
-
-    -- | The attribute to use for display.
   , _displayAttr     :: AttrName
-
-    -- | This entity's display priority. Higher priorities are drawn
-    --   on top of lower.
   , _displayPriority :: Priority
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
 
-makeLenses ''Display
+makeLensesWith (lensRules & generateSignatures .~ False) ''Display
+
+-- | The default character to use for display.
+defaultChar :: Lens' Display Char
+
+-- | For robots or other entities that have an orientation, this map
+--   optionally associates different display characters with
+--   different orientations.  If an orientation is not in the map,
+--   the 'defaultChar' will be used.
+orientationMap :: Lens' Display (Map Direction Char)
+
+-- | The attribute to use for display.
+displayAttr :: Lens' Display AttrName
+
+-- | This entity's display priority. Higher priorities are drawn
+--   on top of lower.
+displayPriority :: Lens' Display Priority
 
 instance FromJSON Display where
   parseJSON = withObject "Display" $ \v -> Display
@@ -144,7 +148,3 @@ defaultRobotDisplay = Display
   , _displayAttr     = robotAttr
   , _displayPriority = 10
   }
-
--- | Construct a display for a device.
-deviceDisplay :: Char -> Display
-deviceDisplay c = defaultEntityDisplay c & displayAttr .~ deviceAttr
