@@ -19,7 +19,19 @@
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module Swarm.Game.Recipe where
+module Swarm.Game.Recipe
+  ( -- * Ingredient lists and recipes
+
+    IngredientList, Recipe(..), recipeInputs, recipeOutputs
+  , prettyRecipe
+
+    -- * Loading recipes
+  , loadRecipes, outRecipeMap, inRecipeMap
+
+    -- * Looking up recipes
+  , recipesFor, make
+
+  ) where
 
 import           Control.Lens           hiding (from, (.=))
 import           Control.Monad.Except
@@ -55,7 +67,13 @@ data Recipe e = Recipe
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-makeLenses ''Recipe
+makeLensesWith (lensRules & generateSignatures .~ False) ''Recipe
+
+-- | The inputs to a recipe.
+recipeInputs :: Lens' (Recipe e) (IngredientList e)
+
+-- | The outputs from a recipe.
+recipeOutputs :: Lens' (Recipe e) (IngredientList e)
 
 ------------------------------------------------------------
 -- Serializing
@@ -71,9 +89,14 @@ instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
     Recipe <$> v .: "in" <*> v .: "out"
 
+-- | Given an 'EntityMap', turn a list of recipes containing /names/
+--   of entities into a list of recipes containing actual 'Entity'
+--   records; or.
 resolveRecipes :: EntityMap -> [Recipe Text] -> Validation [Text] [Recipe Entity]
 resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (lookupEntityName t em))
 
+-- | Given an already loaded 'EntityMap', try to load a list of
+--   recipes from the data file @recipes.yaml@.
 loadRecipes :: MonadIO m => EntityMap -> m (Either Text [Recipe Entity])
 loadRecipes em = runExceptT $ do
     fileName <- liftIO $ getDataFileName "recipes.yaml"
@@ -84,15 +107,18 @@ loadRecipes em = runExceptT $ do
 
 ------------------------------------------------------------
 
+-- | Pretty-print a recipe in the form @input1 + input2 -> output1 + output2@.
 prettyRecipe :: Recipe Entity -> Text
 prettyRecipe (Recipe ins outs) =
   T.concat [ prettyIngredientList ins, " -> ", prettyIngredientList outs ]
 
+-- | Pretty-print an ingredient list in the form @n1 input1 + n2 input2 + ...@
 prettyIngredientList :: IngredientList Entity -> Text
 prettyIngredientList = T.intercalate " + " . map prettyIngredient
   where
     prettyIngredient (n,e) = T.concat [ into @Text (show n), " ", e ^. entityNameFor n ]
 
+-- | Build a map of recipes either by inputs or outputs.
 buildRecipeMap
   :: Getter (Recipe Entity) (IngredientList Entity)
   -> [Recipe Entity] -> IntMap [Recipe Entity]
@@ -101,11 +127,14 @@ buildRecipeMap select recipeList =
   where
     mk r = [(e ^. entityHash, r) | (_, e) <- r ^. select]
 
--- | Create a map of recipes indexed by output ingredients.
+-- | Build a map of recipes indexed by output ingredients.
 outRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 outRecipeMap = buildRecipeMap recipeOutputs
 
--- | Get a list of all the recipes for the given entity.
+-- | Get a list of all the recipes for the given entity.  Look up an
+--   entity in either an 'inRecipeMap' or 'outRecipeMap' depending on
+--   whether you want to know recipes that consume or produce the
+--   given entity, respectively.
 recipesFor :: IntMap [Recipe Entity] -> Entity -> [Recipe Entity]
 recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
 
