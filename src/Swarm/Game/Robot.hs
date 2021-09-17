@@ -29,7 +29,7 @@ module Swarm.Game.Robot
 
     -- ** Query
 
-  , isActive, getResult, hasInstalled
+  , isActive, getResult
   ) where
 
 import           Control.Lens              hiding (contains)
@@ -51,96 +51,68 @@ import           Swarm.Language.Types      (TCtx)
 --   single robot.
 data Robot = Robot
   { _robotEntity       :: Entity
-    -- ^ An entity record storing the robot's name, display,
-    --   inventory, and so on.
-
   , _installedDevices  :: Inventory
-    -- ^ A special inventory of devices the robot has "installed" (and
-    --   thus can use).
-
   , _robotCapabilities :: Set Capability
     -- ^ A cached view of the capabilities this robot has.
     --   Automatically generated from '_installedDevices'.
 
   , _robotLocation     :: V2 Int
-    -- ^ The location of the robot as (x,y).
-
   , _robotCtx          :: (TCtx, CapCtx)
-    -- ^ Top-level type and capability contexts.
-
   , _robotEnv          :: Env
-    -- ^ Top-level environment of definitions.
-
   , _machine           :: CEK
-    -- ^ The current state of the robot's CEK machine.
-
   , _systemRobot       :: Bool
-    -- ^ Whether this is a system robot, i.e. one created by the
-    --   system rather than by the user.  System robots are not limited
-    --   by capability constraints.
-
   , _selfDestruct      :: Bool
-    -- ^ Whether the robot wants to self-destruct.
-
   , _tickSteps         :: Int
-    -- ^ The need for 'tickSteps' is a bit technical, and I hope I can
-    --   eventually find a different, better way to accomplish it.
-    --   Ideally, we would want each robot to execute a single
-    --   /command/ at every game tick, so that /e.g./ two robots
-    --   executing @move;move;move@ and @repeat 3 move@ (given a
-    --   suitable definition of @repeat@) will move in lockstep.
-    --   However, the second robot actually has to do more computation
-    --   than the first (it has to look up the definition of @repeat@,
-    --   reduce its application to the number 3, etc.), so its CEK
-    --   machine will take more steps.  It won't do to simply let each
-    --   robot run until executing a command---because robot programs
-    --   can involve arbitrary recursion, it is very easy to write a
-    --   program that evaluates forever without ever executing a
-    --   command, which in this scenario would completely freeze the
-    --   UI. (It also wouldn't help to ensure all programs are
-    --   terminating---it would still be possible to effectively do
-    --   the same thing by making a program that takes a very, very
-    --   long time to terminate.)  So instead, we allocate each robot
-    --   a certain maximum number of computation steps per tick
-    --   (defined in 'evalStepsPerTick'), and it suspends computation
-    --   when it either executes a command or reaches the maximum
-    --   number of steps, whichever comes first.
-    --
-    --   It seems like this really isn't something the robot should be
-    --   keeping track of itself, but that seemed the most technically
-    --   convenient way to do it at the time.  The robot needs some
-    --   way to signal when it has executed a command, which it
-    --   currently does by setting tickSteps to zero.  However, that
-    --   has the disadvantage that when tickSteps becomes zero, we
-    --   can't tell whether that happened because the robot ran out of
-    --   steps, or because it executed a command and set it to zero
-    --   manually.
-    --
-    --   Perhaps instead, each robot should keep a counter saying how
-    --   many commands it has executed.  The loop stepping the robot
-    --   can tell when the counter increments.
-
   }
   deriving (Show)
 
 let exclude = ['_robotCapabilities, '_installedDevices] in
   makeLensesWith
-    (lensRules & lensField . mapped . mapped %~ \fn n ->
-       if n `elem` exclude then [] else fn n)
+    (lensRules
+       & generateSignatures .~ False
+       & lensField . mapped . mapped %~ \fn n ->
+         if n `elem` exclude then [] else fn n)
     ''Robot
 
+-- | Robots are not entities, but they have almost all the
+--   characteristics of one (or perhaps we could think of robots as
+--   very special sorts of entities), so for convenience each robot
+--   carries an 'Entity' record to store all the information it has in
+--   common with any 'Entity'.
+--
+--   Note there are various lenses provided for convenience that
+--   directly reference fields inside this record; for example, one
+--   can use 'robotName' instead of writing @'robotEntity'
+--   . 'entityName'@.
+robotEntity :: Lens' Robot Entity
+
+-- | The name of a robot.  Note that unlike entities, robot names are
+--   expected to be globally unique
 robotName :: Lens' Robot Text
 robotName = robotEntity . entityName
 
+-- | The 'Display' of a robot.
 robotDisplay :: Lens' Robot Display
 robotDisplay = robotEntity . entityDisplay
 
+-- | The robot's current location, represented as (x,y).
+robotLocation :: Lens' Robot (V2 Int)
+
+-- | Which way the robot is currently facing.
 robotOrientation :: Lens' Robot (Maybe (V2 Int))
 robotOrientation = robotEntity . entityOrientation
 
+-- | The robot's inventory.
 robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
 
+-- | A separate inventory for "installed devices", which provide the
+--   robot with certain capabilities.
+--
+--   Note that every time the inventory of installed devices is
+--   modified, this lens recomputes a cached set of the capabilities
+--   the installed devices provide, to speed up subsequent lookups to
+--   see whether the robot has a certain capability (see 'robotCapabilities')
 installedDevices :: Lens' Robot Inventory
 installedDevices = lens _installedDevices setInstalled
   where
@@ -149,6 +121,8 @@ installedDevices = lens _installedDevices setInstalled
         , _robotCapabilities = inventoryCapabilities inst
         }
 
+-- | Recompute the set of capabilities provided by the inventory of
+--   installed devices.
 inventoryCapabilities :: Inventory -> Set Capability
 inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
 
@@ -158,6 +132,62 @@ inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . t
 --   capabilities is to modify its 'installedDevices'.
 robotCapabilities :: Getter Robot (Set Capability)
 robotCapabilities = to _robotCapabilities
+
+-- | The type and capability contexts describing the robot's currently
+--   stored definitions.
+robotCtx :: Lens' Robot (TCtx, CapCtx)
+
+-- | The robot's environment of stored definitions.
+robotEnv :: Lens' Robot Env
+
+-- | The robot's current CEK machine state.
+machine :: Lens' Robot CEK
+
+-- | Is this robot a "system robot"?  System robots are generated by
+--   the system (as opposed to created by the user) and are not
+--   subject to the usual capability restrictions.
+systemRobot :: Lens' Robot Bool
+
+-- | Does this robot wish to self destruct?
+selfDestruct :: Lens' Robot Bool
+
+-- | The need for 'tickSteps' is a bit technical, and I hope I can
+--   eventually find a different, better way to accomplish it.
+--   Ideally, we would want each robot to execute a single
+--   /command/ at every game tick, so that /e.g./ two robots
+--   executing @move;move;move@ and @repeat 3 move@ (given a
+--   suitable definition of @repeat@) will move in lockstep.
+--   However, the second robot actually has to do more computation
+--   than the first (it has to look up the definition of @repeat@,
+--   reduce its application to the number 3, etc.), so its CEK
+--   machine will take more steps.  It won't do to simply let each
+--   robot run until executing a command---because robot programs
+--   can involve arbitrary recursion, it is very easy to write a
+--   program that evaluates forever without ever executing a
+--   command, which in this scenario would completely freeze the
+--   UI. (It also wouldn't help to ensure all programs are
+--   terminating---it would still be possible to effectively do
+--   the same thing by making a program that takes a very, very
+--   long time to terminate.)  So instead, we allocate each robot
+--   a certain maximum number of computation steps per tick
+--   (defined in 'Swarm.Game.Step.evalStepsPerTick'), and it
+--   suspends computation when it either executes a command or
+--   reaches the maximum number of steps, whichever comes first.
+--
+--   It seems like this really isn't something the robot should be
+--   keeping track of itself, but that seemed the most technically
+--   convenient way to do it at the time.  The robot needs some
+--   way to signal when it has executed a command, which it
+--   currently does by setting tickSteps to zero.  However, that
+--   has the disadvantage that when tickSteps becomes zero, we
+--   can't tell whether that happened because the robot ran out of
+--   steps, or because it executed a command and set it to zero
+--   manually.
+--
+--   Perhaps instead, each robot should keep a counter saying how
+--   many commands it has executed.  The loop stepping the robot
+--   can tell when the counter increments.
+tickSteps :: Lens' Robot Int
 
 -- | Create a robot.
 mkRobot
@@ -216,7 +246,3 @@ isActive = isNothing . getResult
 -- | Get the result of the robot's computation if it is finished.
 getResult :: Robot -> Maybe Value
 getResult = finalValue . view machine
-
--- | Check whether a robot has a specific device installed.
-hasInstalled :: Robot -> Entity -> Bool
-hasInstalled r = ((r ^. installedDevices) `contains`)

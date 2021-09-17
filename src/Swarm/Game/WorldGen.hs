@@ -23,11 +23,8 @@ import qualified Data.Text            as T
 import           Numeric.Noise.Perlin
 import           Witch
 
--- import qualified Swarm.Game.Entities  as E
--- import           Swarm.Game.Entity    (Entity)
 import           Swarm.Game.Terrain
 import           Swarm.Game.World
-
 
 -- | A simple test world I used for a while during early development.
 testWorld1 :: WorldFun TerrainType Text
@@ -98,6 +95,7 @@ testWorld2 ix@(r,c)
 
     cl0 = clumps 0
 
+-- | Offset the world so the base starts on a tree.
 findGoodOrigin :: WorldFun t Text -> WorldFun t Text
 findGoodOrigin f = \(r,c) -> f (r + fromIntegral rOffset, c + fromIntegral cOffset)
   where

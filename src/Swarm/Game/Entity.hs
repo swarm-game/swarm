@@ -36,23 +36,33 @@ module Swarm.Game.Entity
   , displayEntity
 
     -- ** Lenses
+    -- $lenses
   , entityDisplay, entityName, entityPlural, entityNameFor
   , entityDescription, entityOrientation
-  , entityProperties, entityInventory, entityCapabilities, entityHash
-  , hasProperty
+  , entityProperties, hasProperty, entityCapabilities
+  , entityInventory
+  , entityHash
 
     -- ** Entity map
   , EntityMap
-  , lookupEntityName, deviceForCap
   , loadEntities
+  , lookupEntityName, deviceForCap
 
     -- * Inventories
 
   , Inventory, Count
-  , empty, singleton, fromList, insert, insertCount
-  , lookup, lookupByName, contains
+
+    -- ** Construction
+
+  , empty, singleton, fromList
+
+    -- ** Lookup
+
+  , lookup, lookupByName, contains, elems
+
+    -- ** Modification
+  , insert, insertCount
   , delete, deleteCount, deleteAll
-  , elems
 
   )
 where
@@ -94,9 +104,11 @@ import           Swarm.Util                (plural)
 -- Properties
 ------------------------------------------------------------
 
+-- | Various properties that an entity can have, which affect how
+--   robots can interact with it.
 data EntityProperty
   = Unwalkable     -- ^ Robots can't move onto a cell containing this entity.
-  | Portable       -- ^ Robots can pick this up (via 'grab').
+  | Portable       -- ^ Robots can pick this up (via 'Swarm.Language.Syntax.Grab').
   | Growable       -- ^ Regrows from a seed after it is grabbed.
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
@@ -118,7 +130,7 @@ instance FromJSON EntityProperty where
 -- | A record to hold information about an entity.
 --
 --   The constructor for 'Entity' is intentionally not exported.  To
---   construct one, use the 'mkEntity' function.
+--   construct one manually, use the 'mkEntity' function.
 --
 --   There are two main constraints on the way entities are stored:
 --
@@ -236,17 +248,26 @@ mkEntity disp nm descr props
 -- Entity map
 ------------------------------------------------------------
 
+-- | An 'EntityMap' is a data structure containing all the loaded
+--   entities, allowing them to be looked up either by name or by what
+--   capabilities they provide (if any).
 data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
   , entitiesByCap  :: Map Capability Entity
   }
 
+-- | Find an entity with the given name.
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
 lookupEntityName nm = M.lookup nm . entitiesByName
 
+-- | Find an entity which is a device that provides the given
+--   capability.
 deviceForCap :: Capability -> EntityMap -> Maybe Entity
 deviceForCap cap = M.lookup cap . entitiesByCap
 
+-- | Build an 'EntityMap' from a list of entities.  The idea is that
+--   this will be called once at startup, when loading the entities
+--   from a file; see 'loadEntities'.
 buildEntityMap :: [Entity] -> EntityMap
 buildEntityMap es = EntityMap
   { entitiesByName = M.fromList . map (view entityName &&& id) $ es
@@ -288,6 +309,8 @@ instance ToJSON Entity where
     ++
     [ "capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities ]
 
+-- | Load entities from a data file called @entities.yaml@, producing
+--   either an 'EntityMap' or a pretty-printed parse error.
 loadEntities :: MonadIO m => m (Either Text EntityMap)
 loadEntities = liftIO $ do
   fileName <- getDataFileName "entities.yaml"
@@ -297,6 +320,7 @@ loadEntities = liftIO $ do
 -- Entity lenses
 ------------------------------------------------------------
 
+-- $lenses
 -- Our own custom lenses which properly recompute the cached hash
 -- value each time something gets updated.
 
@@ -335,7 +359,8 @@ entityNameFor _ = to $ \e ->
     Just pl -> pl
     Nothing -> plural (e ^. entityName)
 
--- | A longer, free-form description of the entity.
+-- | A longer, free-form description of the entity.  Each 'Text' value
+--   represents a paragraph.
 entityDescription :: Lens' Entity [Text]
 entityDescription = hashedLens _entityDescription (\e x -> e { _entityDescription = x })
 
@@ -367,6 +392,8 @@ displayEntity e = displayWidget ((e ^. entityOrientation) >>= toDirection) (e ^.
 -- Inventory
 ------------------------------------------------------------
 
+-- | A convenient synonym to remind us when an 'Int' is supposed to
+--   represent /how many/ of something we have.
 type Count = Int
 
 -- | An inventory is really just a bag/multiset of entities.  That is,
@@ -384,6 +411,17 @@ instance Hashable Inventory where
   -- Don't look at Entity records themselves --- just hash their keys,
   -- which are already a hash.
   hashWithSalt = hashUsing (map (second fst) . IM.assocs . counts)
+
+-- | Look up an entity in an inventory, returning the number of copies
+--   contained.
+lookup :: Entity -> Inventory -> Count
+lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
+
+-- | Look up an entity by name in an inventory, returning a list of
+--   matching entities.
+lookupByName :: Text -> Inventory -> [Entity]
+lookupByName name (Inventory cs byN)
+  = maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
 
 -- | The empty inventory.
 empty :: Inventory
@@ -410,17 +448,6 @@ insertCount cnt e (Inventory cs byN)
   = Inventory
       (IM.insertWith (\(m,_) (n,_) -> (m+n,e)) (e ^. entityHash) (cnt,e) cs)
       (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
-
--- | Look up an entity in an inventory, returning the number of copies
---   contained.
-lookup :: Entity -> Inventory -> Count
-lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
-
--- | Look up an entity by name in an inventory, returning a list of
---   matching entities.
-lookupByName :: Text -> Inventory -> [Entity]
-lookupByName name (Inventory cs byN)
-  = maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
 
 -- | Check whether an inventory contains a given entity.
 contains :: Inventory -> Entity -> Bool
