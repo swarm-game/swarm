@@ -66,6 +66,9 @@ data Robot = Robot
   }
   deriving (Show)
 
+-- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
+-- for the approach used here with lenses.
+
 let exclude = ['_robotCapabilities, '_installedDevices] in
   makeLensesWith
     (lensRules

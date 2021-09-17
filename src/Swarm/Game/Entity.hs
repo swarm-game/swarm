@@ -322,7 +322,9 @@ loadEntities = liftIO $ do
 
 -- $lenses
 -- Our own custom lenses which properly recompute the cached hash
--- value each time something gets updated.
+-- value each time something gets updated.  See
+-- https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
+-- for the approach used here.
 
 -- | Make a lens for Entity that recomputes the hash after setting.
 hashedLens :: (Entity -> a) -> (Entity -> a -> Entity) -> Lens' Entity a
