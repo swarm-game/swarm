@@ -846,7 +846,13 @@ compareValues = \case
   VBind{}       -> const Nothing
   VDelay{}      -> const Nothing
 
--- | Evaluate the application of an arithmetic operator.
+-- | Evaluate the application of an arithmetic operator.  Note, we
+--   want to maintain the invariant that only executing commands can
+--   throw exceptions, not evaluating pure expressions; hence,
+--   dividing by zero and exponentiating by a negative number have to
+--   return some value even though they aren't sensible.  At the
+--   moment, they return 42.  In the future it might be fun if they
+--   return some kind of random result.
 evalArith :: ArithConst -> Integer -> Integer -> Integer
 evalArith Add = (+)
 evalArith Sub = (-)
@@ -854,10 +860,12 @@ evalArith Mul = (*)
 evalArith Div = safeDiv
 evalArith Exp = safeExp
 
+-- | Perform an integer division, but return 42 for division by zero.
 safeDiv :: Integer -> Integer -> Integer
 safeDiv _ 0 = 42
 safeDiv a b = a `div` b
 
+-- | Perform exponentiation, but return 42 if the power is negative.
 safeExp :: Integer -> Integer -> Integer
 safeExp a b
   | b < 0     = 42
