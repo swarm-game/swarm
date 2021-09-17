@@ -102,16 +102,19 @@ focusedRobot g = do
 
 ensureUniqueName :: MonadState GameState m => Robot -> m Robot
 ensureUniqueName newRobot = do
-  -- See if another robot already has the same name...
   let name = newRobot ^. robotName
-  collision <- uses robotMap (M.member name)
+  newName <- uniquifyRobotName name Nothing
+  return $ newRobot & robotName .~ newName
+
+uniquifyRobotName :: MonadState GameState m => Text -> Maybe Int -> m Text
+uniquifyRobotName name tag = do
+  let name' = name `T.append` maybe "" (into @Text . show) tag
+  collision <- uses robotMap (M.member name')
   case collision of
-    -- If so, add a suffix to make the name unique.
     True -> do
-      tag <- gensym <+= 1
-      let name' = name `T.append` into @Text (show tag)
-      return $ newRobot & robotName .~ name'
-    False -> return newRobot
+      tag' <- gensym <+= 1
+      uniquifyRobotName name (Just tag')
+    False -> return name'
 
 addRobot :: MonadState GameState m => Robot -> m Robot
 addRobot r = do
