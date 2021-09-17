@@ -22,8 +22,8 @@ import qualified Graphics.Vty         as V
 
 import           Control.Monad.Except
 import qualified Data.Text.IO         as T
-import           Swarm.TUI
 import           Swarm.TUI.Attr
+import           Swarm.TUI.Controller
 import           Swarm.TUI.Model
 import           Swarm.TUI.View
 

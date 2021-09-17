@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeApplications   #-}
 
-module Swarm.TUI where
+module Swarm.TUI.Controller where
 
 import           Control.Lens
 import           Control.Lens.Extras       (is)

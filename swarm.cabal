@@ -54,12 +54,12 @@ library
                       Swarm.Game.Value
                       Swarm.Game.World
                       Swarm.Game.WorldGen
-                      Swarm.TUI
                       Swarm.TUI.Attr
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
                       Swarm.TUI.View
+                      Swarm.TUI.Controller
                       Swarm.App
                       Swarm.Util
     other-modules:    Paths_swarm
