@@ -104,7 +104,7 @@ handleEvent s ev =
     _               -> continueWithoutRedraw s
 
 -- | Shut down the application.  Currently all it does is write out
---   the updated REPL history to a `.swarm_history` file.
+--   the updated REPL history to a @.swarm_history@ file.
 shutdown :: AppState -> EventM Name (Next AppState)
 shutdown s = do
   let s'   = s & uiState . uiReplHistory . traverse %~ markOld
@@ -123,7 +123,7 @@ shutdown s = do
 -- Handling Frame events
 ------------------------------------------------------------
 
--- | Run the game for a single /frame/ (i.e. screen redraw), then
+-- | Run the game for a single /frame/ (/i.e./ screen redraw), then
 --   update the UI.  Depending on how long it is taking to draw each
 --   frame, and how many ticks per second we are trying to achieve,
 --   this may involve stepping the game any number of ticks (including
@@ -131,7 +131,7 @@ shutdown s = do
 runFrameUI :: AppState -> EventM Name (Next AppState)
 runFrameUI s = execStateT (runFrame >> updateUI) s >>= continue
 
--- | Run the game for a single /frame/.
+-- | Run the game for a single frame, without updating the UI.
 runFrame :: StateT AppState (EventM Name) ()
 runFrame = do
 
@@ -196,7 +196,7 @@ runGameTickUI s = execStateT (runGameTick >> updateUI) s >>= continue
 runGameTick :: StateT AppState (EventM Name) ()
 runGameTick = zoom gameState gameTick
 
--- | Update the UI.  This function should be used after running the
+-- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
 updateUI :: StateT AppState (EventM Name) ()
 updateUI = do
