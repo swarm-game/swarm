@@ -22,7 +22,7 @@
 module Swarm.Util
   ( -- * Miscellaneous utilities
 
-    (?), maxOn, readFileMay
+    (?), maxOn, readFileMay, cycleEnum
 
     -- * English language utilities
 
@@ -75,6 +75,13 @@ readFileMay file = do
   case b of
     False -> return Nothing
     True  -> Just <$> readFile file
+
+-- | Take the successor of an 'Enum' type, wrapping around when it
+--   reaches the end.
+cycleEnum :: (Eq e, Enum e, Bounded e) => e -> e
+cycleEnum e
+  | e == maxBound = minBound
+  | otherwise     = succ e
 
 --------------------------------------------------
 -- Some language-y stuff

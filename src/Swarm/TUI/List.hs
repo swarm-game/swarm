@@ -6,8 +6,8 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- A special modified version of 'handleListEvent' to deal with skipping
--- over separators.
+-- A special modified version of 'Brick.Widgets.List.handleListEvent'
+-- to deal with skipping over separators.
 --
 -----------------------------------------------------------------------------
 

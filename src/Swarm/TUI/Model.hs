@@ -10,6 +10,8 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeApplications  #-}
@@ -40,17 +42,28 @@ module Swarm.TUI.Model
   , initLgTicksPerSecond
   , initUIState
 
+    -- ** Updating
+
+  , populateInventoryList
+
     -- * App state
   , AppState
     -- ** Fields
   , gameState, uiState
     -- ** Initialization
   , initAppState
+
+    -- * XXX
+
   ) where
 
 import           Control.Lens
 import           Control.Monad.Except
+import           Control.Monad.State
+import           Data.List            (findIndex, sortOn)
+import           Data.Maybe           (fromMaybe)
 import           Data.Text            (Text)
+import qualified Data.Vector          as V
 import           System.Clock
 import           Text.Read            (readMaybe)
 
@@ -60,6 +73,7 @@ import           Brick.Forms
 import qualified Brick.Widgets.List   as BL
 
 import           Swarm.Game.Entity
+import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Util
 
@@ -216,6 +230,44 @@ initUIState = liftIO $ do
     }
 
 ------------------------------------------------------------
+-- Functions for updating the UI state
+------------------------------------------------------------
+
+-- | Given the focused robot, populate the UI inventory list in the info
+--   panel with information about its inventory.
+populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
+populateInventoryList Nothing  = uiInventory .= Nothing
+populateInventoryList (Just r) = do
+  mList <- preuse (uiInventory . _Just . _2)
+  let mkInvEntry (n,e) = InventoryEntry n e
+      itemList label
+        = (\case { [] -> []; xs -> Separator label : xs })
+        . map mkInvEntry
+        . sortOn (view entityName . snd)
+        . elems
+      items = (r ^. robotInventory . to (itemList "Inventory"))
+           ++ (r ^. installedDevices . to (itemList "Installed devices"))
+
+      -- Attempt to keep the selected element steady.
+      sel = mList >>= BL.listSelectedElement  -- Get the currently selected element+index.
+      idx = case sel of
+        -- If there is no currently selected element, just focus on
+        -- index 1 (not 0, to avoid the separator).
+        Nothing -> 1
+        -- Otherwise, try to find the same entity in the list and focus on that;
+        -- if it's not there, keep the index the same.
+        Just (selIdx, InventoryEntry _ e) ->
+          fromMaybe selIdx (findIndex ((== Just e) . preview (_InventoryEntry . _2)) items)
+        Just (selIdx, _) -> selIdx
+
+      -- Create the new list, focused at the desired index.
+      lst = BL.listMoveTo idx $ BL.list InventoryList (V.fromList items) 1
+
+  -- Finally, populate the newly created list in the UI, and remember
+  -- the hash of the current robot.
+  uiInventory .= Just (r ^. robotEntity . entityHash, lst)
+
+------------------------------------------------------------
 -- App state (= UI state + game state)
 ------------------------------------------------------------
 
@@ -237,3 +289,6 @@ uiState :: Lens' AppState UIState
 initAppState :: ExceptT Text IO AppState
 initAppState = AppState <$> initGameState <*> initUIState
 
+
+------------------------------------------------------------
+--
