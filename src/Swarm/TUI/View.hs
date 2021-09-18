@@ -112,7 +112,7 @@ drawTPS s = hBox [tpsInfo, txt " ", tpfInfo]
       | l >= 0    = hBox [str (show n), txt " ", txt (number n "tick"), txt " / s"]
       | otherwise = hBox [txt "1 tick / ", str (show n), txt " s"]
 
-    tpfInfo = hBox [txt "(", str (show (s ^. uiState . ticksPerFrame)), txt " ticks/frame)"]
+    tpfInfo = hBox [txt "(", str (printf "%0.1f" (s ^. uiState . ticksPerFrame)), txt " ticks/frame)"]
 
     l = s ^. uiState . lgTicksPerSecond
     n = 2^abs l

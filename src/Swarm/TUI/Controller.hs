@@ -25,7 +25,7 @@ module Swarm.TUI.Controller
 
     -- ** Handling 'Frame' events
 
-  , runFrameUI, runFrame, frameTicks
+  , runFrameUI, runFrame, runFrameTicks
   , runGameTickUI, runGameTick
   , updateUI
 
@@ -163,16 +163,14 @@ runFrame = do
         | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
         | otherwise  = oneSecond * (1 `shiftL` abs lgTPS)
 
-  -- Reset the tick counter for the current frame
-  uiState . ticksPerFrame .= 0
-
   -- Now do as many ticks as we need to catch up.
-  frameTicks (fromNanoSecs dt)
+  runFrameTicks (fromNanoSecs dt)
+  zoom uiState rememberFrameTicks
 
 -- | Do zero or more ticks, with each tick notionally taking the given
 --   timestep, until we have used up all available accumulated time.
-frameTicks :: TimeSpec -> StateT AppState (EventM Name) ()
-frameTicks dt = do
+runFrameTicks :: TimeSpec -> StateT AppState (EventM Name) ()
+runFrameTicks dt = do
   a <- use (uiState . accumulatedTime)
 
   -- Is there still time left?
@@ -181,9 +179,9 @@ frameTicks dt = do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
-    uiState . ticksPerFrame += 1
+    uiState . frameTicks += 1
     uiState . accumulatedTime -= dt
-    frameTicks dt
+    runFrameTicks dt
 
 -- | Run the game for a single tick, and update the UI.
 runGameTickUI :: AppState -> EventM Name (Next AppState)

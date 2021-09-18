@@ -32,7 +32,7 @@ module Swarm.TUI.Model
 
   , uiFocusRing, uiReplForm, uiReplHistory, uiReplHistIdx
   , uiInventory, uiError, lgTicksPerSecond
-  , lastFrameTime, accumulatedTime, ticksPerFrame
+  , lastFrameTime, accumulatedTime, frameTicks, frameTickHist, ticksPerFrame
 
     -- ** Initialization
 
@@ -45,6 +45,7 @@ module Swarm.TUI.Model
     -- ** Updating
 
   , populateInventoryList
+  , rememberFrameTicks
 
     -- * App state
   , AppState
@@ -139,7 +140,8 @@ data UIState = UIState
   , _uiInventory      :: Maybe (Int, BL.List Name InventoryEntry)
   , _uiError          :: Maybe (Widget Name)
   , _lgTicksPerSecond :: Int
-  , _ticksPerFrame    :: Int
+  , _frameTicks       :: Int
+  , _frameTickHist    :: [Int]
   , _lastFrameTime    :: TimeSpec
   , _accumulatedTime  :: TimeSpec
   }
@@ -178,7 +180,21 @@ uiError :: Lens' UIState (Maybe (Widget Name))
 lgTicksPerSecond :: Lens' UIState Int
 
 -- | A counter used to track how many ticks happen in a single frame.
-ticksPerFrame :: Lens' UIState Int
+frameTicks :: Lens' UIState Int
+
+-- | How many ticks have happened in each of the last few frames.
+frameTickHist :: Lens' UIState [Int]
+
+-- | Compute the average number of ticks per frame over the last few
+--   frames.
+ticksPerFrame :: Getter UIState Double
+ticksPerFrame = to getTicksPerFrame
+  where
+    getTicksPerFrame uiState =
+      let hist = uiState ^. frameTickHist
+      in  case hist of
+            [] -> 0
+            _  -> fromIntegral (sum hist) / fromIntegral (length hist)
 
 -- | The time of the last 'Frame' event.
 lastFrameTime :: Lens' UIState TimeSpec
@@ -226,7 +242,8 @@ initUIState = liftIO $ do
     , _lgTicksPerSecond = initLgTicksPerSecond
     , _lastFrameTime    = startTime
     , _accumulatedTime  = 0
-    , _ticksPerFrame    = 0
+    , _frameTicks       = 0
+    , _frameTickHist    = []
     }
 
 ------------------------------------------------------------
@@ -266,6 +283,19 @@ populateInventoryList (Just r) = do
   -- Finally, populate the newly created list in the UI, and remember
   -- the hash of the current robot.
   uiInventory .= Just (r ^. robotEntity . entityHash, lst)
+
+frameTickHistSize :: Int
+frameTickHistSize = 5
+
+-- | Take the current value in the 'frameTicks' counter and prepend it
+--   to the 'frameTickHist', also dropping the least recent frame tick
+--   count from the history if it has reached a maximum size.  Then
+--   reset the 'frameTicks' counter to zero.
+rememberFrameTicks :: MonadState UIState m => m ()
+rememberFrameTicks = do
+  ft <- use frameTicks
+  frameTickHist %= (take frameTickHistSize . (ft:))
+  frameTicks .= 0
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)
