@@ -191,13 +191,13 @@ drawWorld g
     robotsByLoc
       = M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
       . M.elems $ g ^. robotMap
-    drawLoc (row,col) = case M.lookup (V2 col (-row)) robotsByLoc of
+    drawLoc coords = case M.lookup (W.coordsToLoc coords) robotsByLoc of
       Just r  -> withAttr (r ^. robotDisplay . displayAttr) $
         str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
-      Nothing -> drawCell (row,col) (g ^. world)
+      Nothing -> drawCell coords (g ^. world)
 
 -- | Draw a single cell of the world.
-drawCell :: (Int, Int) -> W.World Int Entity -> Widget Name
+drawCell :: W.Coords -> W.World Int Entity -> Widget Name
 drawCell i w = case W.lookupEntity i w of
   Just e  -> displayEntity e
   Nothing -> displayTerrain (toEnum (W.lookupTerrain i w))

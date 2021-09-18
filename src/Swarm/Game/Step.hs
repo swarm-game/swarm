@@ -117,13 +117,13 @@ flagRedraw = lift . lift $ needsRedraw .= True
 
 -- | Get the entity (if any) at a given location.
 entityAt :: MonadState GameState m => V2 Int -> ExceptT Exn (StateT Robot m) (Maybe Entity)
-entityAt (V2 x y) = lift . lift $ uses world (W.lookupEntity (-y,x))
+entityAt loc = lift . lift $ uses world (W.lookupEntity (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt
   :: MonadState GameState m
   => V2 Int -> (Maybe Entity -> Maybe Entity) -> ExceptT Exn (StateT Robot m) ()
-updateEntityAt (V2 x y) upd = lift . lift $ world %= W.update (-y,x) upd
+updateEntityAt loc upd = lift . lift $ world %= W.update (W.locToCoords loc) upd
 
 -- | Get the robot with a given name (if any).
 robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)

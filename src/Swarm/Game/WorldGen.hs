@@ -28,9 +28,9 @@ import           Swarm.Game.World
 
 -- | A simple test world I used for a while during early development.
 testWorld1 :: WorldFun TerrainType Text
-testWorld1 (-5, 3) = (StoneT, Just "flerb")
-testWorld1 (2, -1) = (GrassT, Just "elephant")
-testWorld1 (i,j)
+testWorld1 (Coords (-5, 3)) = (StoneT, Just "flerb")
+testWorld1 (Coords (2, -1)) = (GrassT, Just "elephant")
+testWorld1 (Coords (i,j))
   | noiseValue pn1 (fromIntegral i, fromIntegral j, 0) > 0 = (DirtT, Just "tree")
   | noiseValue pn2 (fromIntegral i, fromIntegral j, 0) > 0 = (StoneT, Just "rock")
   | otherwise = (GrassT, Nothing)
@@ -45,7 +45,7 @@ data Origin   = Natural | Artificial deriving (Eq, Ord, Show, Read)
 
 -- | A more featureful test world.
 testWorld2 :: WorldFun TerrainType Text
-testWorld2 ix@(r,c)
+testWorld2 (Coords ix@(r,c))
   = genBiome
     (bool Small Big (sample ix pn0 > 0))
     (bool Soft Hard (sample ix pn1 > 0))
@@ -97,9 +97,9 @@ testWorld2 ix@(r,c)
 
 -- | Offset the world so the base starts on a tree.
 findGoodOrigin :: WorldFun t Text -> WorldFun t Text
-findGoodOrigin f = \(r,c) -> f (r + fromIntegral rOffset, c + fromIntegral cOffset)
+findGoodOrigin f = \(Coords (r,c)) -> f (Coords (r + fromIntegral rOffset, c + fromIntegral cOffset))
   where
     int' :: Enumeration Int
     int' = fromIntegral <$> int
     Just (rOffset, cOffset) = find isTree (enumerate (int' >< int'))
-    isTree = (== Just "tree") . snd . f
+    isTree = (== Just "tree") . snd . f . Coords

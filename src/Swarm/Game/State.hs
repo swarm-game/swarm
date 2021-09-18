@@ -199,8 +199,8 @@ modifyViewCenter update g = g
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int,Int) -> ((Int, Int), (Int, Int))
-viewingRegion g (w,h) = ((rmin,cmin), (rmax,cmax))
+viewingRegion :: GameState -> (Int,Int) -> (W.Coords, W.Coords)
+viewingRegion g (w,h) = (W.Coords (rmin,cmin), W.Coords (rmax,cmax))
   where
     V2 cx cy = g ^. viewCenter
     (rmin,rmax) = over both (+ (-cy - h`div`2)) (0, h-1)
