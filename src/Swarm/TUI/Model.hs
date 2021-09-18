@@ -70,7 +70,7 @@ import           Swarm.Util
 -- $uilabel These types are used as parameters to various @brick@
 -- types.
 
--- | 'AppEvent' represents a type for custom event types our app can
+-- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
 --   receive.  At the moment, we only have one custom event, but it's
 --   very important: a separate thread sends 'Frame' events as fast as
 --   it can, telling the TUI to render a new frame.
@@ -219,7 +219,7 @@ initUIState = liftIO $ do
 -- App state (= UI state + game state)
 ------------------------------------------------------------
 
--- | The 'Swarm.TUI.Model.AppState' just stores together the game state and UI state.
+-- | The 'AppState' just stores together the game state and UI state.
 data AppState = AppState
   { _gameState :: GameState
   , _uiState   :: UIState
@@ -233,7 +233,7 @@ gameState :: Lens' AppState GameState
 -- | The 'UIState' record.
 uiState :: Lens' AppState UIState
 
--- | Initialize the 'Swarm.TUI.Model.AppState'.
+-- | Initialize the 'AppState'.
 initAppState :: ExceptT Text IO AppState
 initAppState = AppState <$> initGameState <*> initUIState
 
