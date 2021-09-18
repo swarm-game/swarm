@@ -105,7 +105,7 @@ data GameState = GameState
   , _entityMap      :: EntityMap
   , _recipesOut     :: IntMap [Recipe Entity]
   , _recipesIn      :: IntMap [Recipe Entity]
-  , _world          :: W.TileCachingWorld Int Entity
+  , _world          :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter     :: V2 Int
   , _needsRedraw    :: Bool
@@ -144,7 +144,7 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').
-world :: Lens' GameState (W.TileCachingWorld Int Entity)
+world :: Lens' GameState (W.World Int Entity)
 
 -- | The current rule for determining the center of the world view.
 viewCenterRule :: Lens' GameState ViewCenterRule

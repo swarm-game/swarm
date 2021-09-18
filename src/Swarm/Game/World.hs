@@ -26,17 +26,12 @@
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TemplateHaskell        #-}
 
 module Swarm.Game.World
-  ( -- * The @Worldly@ type class
-
-    WorldFun
-  , Worldly(..)
-
-    -- * World implementations
-
-  , SimpleWorld, TileCachingWorld
-
+  ( WorldFun, World
+  , newWorld, lookupTerrain, lookupEntity
+  , update, loadRegion
   ) where
 
 import           Control.Arrow      ((&&&))
@@ -59,62 +54,10 @@ import           Swarm.Util
 -- cell).
 type WorldFun t e = (Int,Int) -> (t, Maybe e)
 
--- | A class to abstract over different world implementations.  We
---   really only need one world implementation at a time, but it's
---   helpful to think about what operations a world needs to support,
---   and to be able to play with swapping in different implementations
---   to see how it affects performance.
-class Worldly w t e | w -> t e where
-
-  -- | Create a new world from a function that defines what is at
-  --   every location: a terrain value, and possibly an entity.
-  newWorld   :: WorldFun t e -> w
-
-  -- | Look up the terrain character at given (row, column)
-  --   coordinates.  Note that this does /not/ return an updated
-  --   world, since it would be difficult to manage all the updates.
-  --   Instead, the 'loadRegion' function can be used before calling
-  --   'lookupTerrain'.
-  lookupTerrain :: (Int,Int) -> w -> t
-
-  -- | Look up the entity at given (row, column) coordinates.
-  lookupEntity :: (Int,Int) -> w -> Maybe e
-
-  -- | Update the entity at a given location. into the world.
-  update     :: (Int,Int) -> (Maybe e -> Maybe e) -> w -> w
-
-  -- | Give a hint to the world that it should preload the region in
-  --   between the given coordinates (upper left and bottom right) to
-  --   make subsequent lookups faster.
-  loadRegion :: ((Int,Int), (Int,Int)) -> w -> w
-
   -- XXX Allow smaller, finite worlds Too?  Maybe add a variant of
   -- newWorld that creates a finite world from an array.  This could
   -- be used e.g. to create puzzle levels, which can be loaded from a
   -- file instead of generated via noise functions.
-
-------------------------------------------------------------
--- SimpleWorld
-
--- | A 'SimpleWorld' just stores the world function and a map with
---   changed locations.  It does not do any fancy caching; in
---   particular the 'loadRegion' function does nothing.  The
---   'lookupTerrain' and 'lookupEntity' functions first just look up
---   the location in the map of changed locations, and if it's not
---   there it simply runs the function to find out what character
---   should be there.
-data SimpleWorld t e = SimpleWorld
-  (WorldFun t e)                 -- ^ World generation function
-  (M.Map (Int,Int) (Maybe e))    -- ^ Map of locations that have a different entity
-                                 --   than originally
-
-instance Worldly (SimpleWorld t e) t e where
-  newWorld f                        = SimpleWorld f M.empty
-  lookupTerrain i (SimpleWorld f _) = fst (f i)
-  lookupEntity i (SimpleWorld f m)  = M.lookup i m ? snd (f i)
-  update i g w@(SimpleWorld f m)
-    = SimpleWorld f (M.insert i (g (lookupEntity i w)) m)
-  loadRegion _ w                    = w
 
 ------------------------------------------------------------
 -- TileCachingWorld
@@ -142,36 +85,47 @@ type EntityTile e  = A.Array (Int,Int) (Maybe e)
 --   bit tricky, and in any case it's probably not going to matter
 --   much for a while.
 
-data TileCachingWorld t e = TileCachingWorld
-  (WorldFun t e)                                   -- ^ World generation function
-  (M.Map (Int,Int) (TerrainTile t, EntityTile e))  -- ^ Tile cache
-  (M.Map (Int,Int) (Maybe e))                      -- ^ Map of locations that have changed entities
+data World t e = World
+  { _worldFun  :: WorldFun t e
+  , _tileCache :: M.Map (Int,Int) (TerrainTile t, EntityTile e)
+  , _changed   :: M.Map (Int,Int) (Maybe e)
+  }
 
-instance IArray U.UArray t => Worldly (TileCachingWorld t e) t e where
-  newWorld f = TileCachingWorld f M.empty M.empty
-  lookupTerrain i (TileCachingWorld f t _)
-    = ((U.! over both (.&. tileMask) i) . fst <$> M.lookup (tileIndex i) t)
-      ? fst (f i)
-  lookupEntity i (TileCachingWorld f t m)
-    = M.lookup i m
-        ? ((A.! over both (.&. tileMask) i) . snd <$> M.lookup (tileIndex i) t)
-        ? snd (f i)
-  update i g w@(TileCachingWorld f t m)
-    = TileCachingWorld f t (M.insert i (g (lookupEntity i w)) m)
-  loadRegion reg (TileCachingWorld f t m) = TileCachingWorld f t' m
-    where
-      tiles = range (over both tileIndex reg)
-      t' = foldl' (\hm (i,tile) -> maybeInsert i tile hm) t (map (id &&& loadTiles) tiles)
+-- makeLenses ''World
 
-      maybeInsert k v hm
-        | k `M.member` hm = hm
-        | otherwise       = M.insert k v hm
+newWorld :: WorldFun t e -> World t e
+newWorld f = World f M.empty M.empty
 
-      -- loadTiles :: (Int,Int) -> (TerrainTile, EntityTile e)
-      loadTiles ti = (listArray tileBounds terrain, listArray tileBounds entities)
-        where
-          tileCorner = over both (`shiftL` tileBits) ti
-          (terrain, entities) = unzip $ map (f . plusRng tileCorner) (range tileBounds)
+lookupTerrain :: IArray U.UArray t => (Int, Int) -> World t e -> t
+lookupTerrain i (World f t _)
+  = ((U.! over both (.&. tileMask) i) . fst <$> M.lookup (tileIndex i) t)
+    ? fst (f i)
+
+lookupEntity :: (Int, Int) -> World t e -> Maybe e
+lookupEntity i (World f t m)
+  = M.lookup i m
+      ? ((A.! over both (.&. tileMask) i) . snd <$> M.lookup (tileIndex i) t)
+      ? snd (f i)
+
+update :: (Int, Int) -> (Maybe e -> Maybe e) -> World t e -> World t e
+update i g w@(World f t m)
+  = World f t (M.insert i (g (lookupEntity i w)) m)
+
+loadRegion :: IArray U.UArray t => ((Int,Int), (Int,Int)) -> World t e -> World t e
+loadRegion reg (World f t m) = World f t' m
+  where
+    tiles = range (over both tileIndex reg)
+    t' = foldl' (\hm (i,tile) -> maybeInsert i tile hm) t (map (id &&& loadTiles) tiles)
+
+    maybeInsert k v hm
+      | k `M.member` hm = hm
+      | otherwise       = M.insert k v hm
+
+    -- loadTiles :: (Int,Int) -> (TerrainTile, EntityTile e)
+    loadTiles ti = (listArray tileBounds terrain, listArray tileBounds entities)
+      where
+        tileCorner = over both (`shiftL` tileBits) ti
+        (terrain, entities) = unzip $ map (f . plusRng tileCorner) (range tileBounds)
 
 plusRng :: (Int,Int) -> (Int,Int) -> (Int,Int)
 plusRng (x1,y1) (x2,y2) = (x1 `xor` x2,y1 `xor` y2)

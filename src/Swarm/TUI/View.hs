@@ -197,7 +197,7 @@ drawWorld g
       Nothing -> drawCell (row,col) (g ^. world)
 
 -- | Draw a single cell of the world.
-drawCell :: W.Worldly w Int Entity => (Int, Int) -> w -> Widget Name
+drawCell :: (Int, Int) -> W.World Int Entity -> Widget Name
 drawCell i w = case W.lookupEntity i w of
   Just e  -> displayEntity e
   Nothing -> displayTerrain (toEnum (W.lookupTerrain i w))
