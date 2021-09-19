@@ -117,6 +117,8 @@ gameTick = do
 flagRedraw :: MonadState GameState m => ExceptT Exn (StateT s m) ()
 flagRedraw = lift . lift $ needsRedraw .= True
 
+-- | Perform an action requiring a 'W.World' state component in a
+--   larger context with a 'GameState'.
 zoomWorld :: MonadState GameState m => (forall n. MonadState (W.World Int Entity) n => n a) -> m a
 zoomWorld n = do
   w <- use world
