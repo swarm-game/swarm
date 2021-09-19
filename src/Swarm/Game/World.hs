@@ -15,11 +15,6 @@
 -- indexed by 64-bit signed integers, so they correspond to a \(
 -- 2^{64} \times 2^{64} \) torus).
 --
--- This module provides several implementations of a world
--- abstraction, which allows creating a new world, querying or setting
--- the world at a given location, and informing the world that it
--- should preload a certain region to make subsequent lookups faster.
---
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE DeriveGeneric          #-}
@@ -47,8 +42,6 @@ module Swarm.Game.World
     -- ** Monadic variants
   , lookupTerrainM, lookupEntityM, updateM
   ) where
-
-import           Debug.Trace
 
 import           Control.Arrow             ((&&&))
 import           Control.Lens
@@ -97,52 +90,84 @@ type WorldFun t e = Coords -> (t, Maybe e)
   -- be used e.g. to create puzzle levels, which can be loaded from a
   -- file instead of generated via noise functions.
 
+-- | The number of bits we need in each coordinate to represent all
+--   the locations in a tile.  In other words, each tile has a size of
+--   @2^tileBits x 2^tileBits@.
+--
+--   Currently, 'tileBits' is set to 6, giving us 64x64 tiles, with
+--   4096 cells in each tile.  I don't have a good sense for the
+--   tradeoffs here, and I don't know how much the choice of tile size
+--   matters.
 tileBits :: Int
-tileBits = 6     -- Each tile is 2^tileBits x 2^tileBits
+tileBits = 6
 
+-- | The number consisting of 'tileBits' many 1 bits.  We can use this
+--   to mask out the tile offset of a coordinate.
 tileMask :: Int64
 tileMask = (1 `shiftL` tileBits) - 1
 
-tileBounds :: (TileOffset, TileOffset)
-tileBounds = (TileOffset (Coords (0,0)), TileOffset (Coords (tileMask,tileMask)))
-
+-- | If we think of the world as a grid of /tiles/, we can assign each
+--   tile some coordinates in the same way we would if each tile was a
+--   single cell.  These are the tile coordinates.
 newtype TileCoords = TileCoords { unTileCoords :: Coords}
   deriving (Eq, Ord, Show, Ix, Generic)
 
 instance Rewrapped TileCoords t
 instance Wrapped TileCoords
 
+-- | Convert from a cell's coordinates to the coordinates of its tile,
+--   simply by shifting out 'tileBits' many bits.
 tileCoords :: Coords -> TileCoords
 tileCoords = TileCoords . over (_Wrapped . both) (`shiftR` tileBits)
 
+-- | Find the coordinates of the upper-left corner of a tile.
 tileOrigin :: TileCoords -> Coords
 tileOrigin = over (_Wrapped . both) (`shiftL` tileBits) . unTileCoords
 
+-- | A 'TileOffset' represents an offset from the upper-left corner of
+--   some tile to a cell in its interior.
 newtype TileOffset = TileOffset Coords
   deriving (Eq, Ord, Show, Ix, Generic)
 
+-- | The offsets of the upper-left and lower-right corners of a tile:
+--   (0,0) to ('tileMask', 'tileMask').
+tileBounds :: (TileOffset, TileOffset)
+tileBounds = (TileOffset (Coords (0,0)), TileOffset (Coords (tileMask,tileMask)))
+
+-- | Convert the coordinates of a cell, compute its offset within its tile.
 tileOffset :: Coords -> TileOffset
 tileOffset = TileOffset . over (_Wrapped . both) (.&. tileMask)
 
+-- | Add a tile offset to the coordinates of the tile's upper left
+--   corner.  NOTE that for efficiency, this function only works when
+--   the first argument is in fact the coordinates of a tile's
+--   upper-left corner (/i.e./ it is an output of 'tileOrigin').  In
+--   that case the coordinates will end with all 0 bits, and we can
+--   add the tile offset just by doing a coordinatewise 'xor'.
 plusOffset :: Coords -> TileOffset -> Coords
 plusOffset (Coords (x1,y1)) (TileOffset (Coords (x2,y2))) = Coords (x1 `xor` x2, y1 `xor` y2)
 
 instance Rewrapped TileOffset t
 instance Wrapped TileOffset
 
+-- | A terrain tile is an unboxed array of terrain values.
 type TerrainTile t = U.UArray TileOffset t
+
+-- | An entity tile is an array of possible entity values.  Note it
+--   cannot be an unboxed array since entities are complex records
+--   which have to be boxed.
 type EntityTile e  = A.Array TileOffset (Maybe e)
 
--- | A 'TileCachingWorld' keeps a cache of recently accessed square
---   tiles to make lookups faster.  Currently, tiles are \(64 \times
---   64\), but this is adjustible.  Honestly, it does not seem to make
---   much difference as compared to 'SimpleWorld'.
+-- | A 'World' keeps a cache of loaded square tiles to make lookups
+--   faster.
 --
---   Right now the 'TileCachingWorld' simply holds on to all the tiles
---   it has ever loaded.  Ideally it would use some kind of LRU
---   caching scheme to keep memory usage bounded, but it would be a
---   bit tricky, and in any case it's probably not going to matter
---   much for a while.
+--   Right now the 'World' simply holds on to all the tiles it has
+--   ever loaded.  Ideally it would use some kind of LRU caching
+--   scheme to keep memory usage bounded, but it would be a bit
+--   tricky, and in any case it's probably not going to matter much
+--   for a while.  Once tile loads can trigger robots to spawn, it
+--   would also make for some difficult decisions in terms of how to
+--   handle respawning.
 
 data World t e = World
   { _worldFun  :: WorldFun t e
@@ -150,42 +175,66 @@ data World t e = World
   , _changed   :: M.Map Coords (Maybe e)
   }
 
--- makeLenses ''World
-
+-- | Create a new 'World' from a 'WorldFun'.
 newWorld :: WorldFun t e -> World t e
 newWorld f = World f M.empty M.empty
 
+-- | Look up the terrain value at certain coordinates: try looking it
+--   up in the tile cache first, and fall back to running the 'WorldFun'
+--   otherwise.
+--
+--   This function does /not/ ensure that the tile containing the
+--   given coordinates is loaded.  For that, see 'lookupTerrainM'.
 lookupTerrain :: IArray U.UArray t => Coords -> World t e -> t
 lookupTerrain i (World f t _)
   = ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
     ? fst (f i)
 
+-- | A stateful variant of 'lookupTerrain', which first loads the tile
+--   containing the given coordinates if it is not already loaded,
+--   then looks up the terrain value.
 lookupTerrainM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> m t
 lookupTerrainM c = do
   modify $ loadCell c
   lookupTerrain c <$> get
 
+-- | Look up the entity at certain coordinates: try looking it up in
+--   the tile cache first, and fall back to running the 'WorldFun'
+--   otherwise.
+--
+--   This function does /not/ ensure that the tile containing the
+--   given coordinates is loaded.  For that, see 'lookupEntityM'.
 lookupEntity :: Coords -> World t e -> Maybe e
 lookupEntity i (World f t m)
   = M.lookup i m
       ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t)
       ? snd (f i)
 
+-- | A stateful variant of 'lookupTerrain', which first loads the tile
+--   containing the given coordinates if it is not already loaded,
+--   then looks up the terrain value.
 lookupEntityM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> m (Maybe e)
 lookupEntityM c = do
   modify $ loadCell c
   lookupEntity c <$> get
 
+-- | Update the entity (or absence thereof) at a certain location,
+--   returning an updated 'World'.  See also 'updateM'.
 update :: Coords -> (Maybe e -> Maybe e) -> World t e -> World t e
 update i g w@(World f t m)
   = World f t (M.insert i (g (lookupEntity i w)) m)
 
+-- | A stateful variant of 'update', which also ensures the tile
+--   containing the given coordinates is loaded.
 updateM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
 updateM c g = modify $ update c g . loadCell c
 
+-- | Load the tile containing a specific cell.
 loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
 loadCell c = loadRegion (c,c)
 
+-- | Load all the tiles which overlap the given rectangular region
+--   (specified as an upper-left and lower-right corner).
 loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
 loadRegion reg (World f t m) = World f t' m
   where
@@ -194,7 +243,7 @@ loadRegion reg (World f t m) = World f t' m
 
     maybeInsert k v hm
       | k `M.member` hm = hm
-      | otherwise       = Debug.Trace.trace "new tile!" $ M.insert k v hm
+      | otherwise       = M.insert k v hm
 
     loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
     loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
