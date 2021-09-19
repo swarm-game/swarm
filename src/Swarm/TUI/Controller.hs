@@ -36,7 +36,7 @@ module Swarm.TUI.Controller
     -- ** World panel
 
   , handleWorldEvent
-  , keyToDir, scrollView, updateView
+  , keyToDir, scrollView
   , adjustTPS
 
     -- ** Info panel
@@ -200,6 +200,8 @@ runGameTick = zoom gameState gameTick
 updateUI :: StateT AppState (EventM Name) ()
 updateUI = do
 
+  loadVisibleRegion
+
   -- If the game state indicates a redraw is needed, invalidate the
   -- world cache so it will be redrawn.
   g <- use gameState
@@ -233,6 +235,17 @@ updateUI = do
 
     -- Otherwise, do nothing.
     _ -> return ()
+
+-- | Make sure all tiles covering the visible part of the world are
+--   loaded.
+loadVisibleRegion :: StateT AppState (EventM Name) ()
+loadVisibleRegion = do
+  mext <- lift $ lookupExtent WorldExtent
+  case mext of
+    Nothing  -> return ()
+    Just (Extent _ _ size) -> do
+      gs <- use gameState
+      gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
 stripCmd :: Polytype -> Polytype
 stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
@@ -351,19 +364,13 @@ handleWorldEvent s _ = continueWithoutRedraw s
 
 -- | Manually scroll the world view.
 scrollView :: AppState -> (V2 Int64 -> V2 Int64) -> EventM Name AppState
-scrollView s update =
-  updateView $ s & gameState %~ modifyViewCenter update
-
--- | Update the world view after scrolling.
-updateView :: AppState -> EventM Name AppState
-updateView s = do
+scrollView s update = do
+  -- Manually invalidate the 'WorldCache' instead of just setting
+  -- 'needsRedraw'.  I don't quite understand why the latter doesn't
+  -- always work, but there seems to be some sort of race condition
+  -- where 'needsRedraw' gets reset before the UI drawing code runs.
   invalidateCacheEntry WorldCache
-  mext <- lookupExtent WorldExtent
-  case mext of
-    Nothing  -> return s
-    Just (Extent _ _ size) -> return $
-      s & gameState . world
-        %~ W.loadRegion (viewingRegion (s ^. gameState) (over both fromIntegral size))
+  return $ s & gameState %~ modifyViewCenter update
 
 -- | Convert a directional key into a direction.
 keyToDir :: V.Key -> V2 Int64

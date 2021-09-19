@@ -12,8 +12,8 @@
 -- mutable /entity/ layer, with at most one entity per cell.
 --
 -- A world is technically finite but practically infinite (worlds are
--- indexed by 64-bit signed integers, so they correspond to a \(
--- 2^{64} \times 2^{64} \) torus).
+-- indexed by 64-bit signed integers, so they correspond to a
+-- \( 2^{64} \times 2^{64} \) torus).
 --
 -----------------------------------------------------------------------------
 
@@ -95,9 +95,9 @@ type WorldFun t e = Coords -> (t, Maybe e)
 --   @2^tileBits x 2^tileBits@.
 --
 --   Currently, 'tileBits' is set to 6, giving us 64x64 tiles, with
---   4096 cells in each tile.  I don't have a good sense for the
---   tradeoffs here, and I don't know how much the choice of tile size
---   matters.
+--   4096 cells in each tile. That seems intuitively like a good size,
+--   but I don't have a good sense for the tradeoffs here, and I don't
+--   know how much the choice of tile size matters.
 tileBits :: Int
 tileBits = 6
 
