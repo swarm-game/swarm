@@ -27,6 +27,7 @@ import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool                 (bool)
 import           Data.Either               (rights)
+import           Data.Int                  (Int64)
 import           Data.List                 (find)
 import qualified Data.Map                  as M
 import           Data.Maybe                (isNothing, listToMaybe, mapMaybe)
@@ -124,13 +125,13 @@ zoomWorld n = do
   return a
 
 -- | Get the entity (if any) at a given location.
-entityAt :: MonadState GameState m => V2 Int -> ExceptT Exn (StateT Robot m) (Maybe Entity)
+entityAt :: MonadState GameState m => V2 Int64 -> ExceptT Exn (StateT Robot m) (Maybe Entity)
 entityAt loc = lift . lift $ zoomWorld (W.lookupEntityM (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt
   :: MonadState GameState m
-  => V2 Int -> (Maybe Entity -> Maybe Entity) -> ExceptT Exn (StateT Robot m) ()
+  => V2 Int64 -> (Maybe Entity -> Maybe Entity) -> ExceptT Exn (StateT Robot m) ()
 updateEntityAt loc upd = lift . lift $ zoomWorld (W.updateM (W.locToCoords loc) upd)
 
 -- | Get the robot with a given name (if any).
@@ -138,7 +139,7 @@ robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Ma
 robotNamed nm = lift . lift $ use (robotMap . at nm)
 
 -- | Manhattan distance between world locations.
-manhattan :: V2 Int -> V2 Int -> Int
+manhattan :: V2 Int64 -> V2 Int64 -> Int64
 manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 
 ------------------------------------------------------------

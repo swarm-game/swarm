@@ -52,6 +52,7 @@ import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bits
 import           Data.Either               (isRight)
+import           Data.Int                  (Int64)
 import           Data.Maybe                (isJust)
 import qualified Data.Set                  as S
 import qualified Data.Text                 as T
@@ -303,7 +304,7 @@ adjReplHistIndex (+/-) s =
 -- World events
 ------------------------------------------------------------
 
-worldScrollDist :: Int
+worldScrollDist :: Int64
 worldScrollDist = 8
 
 -- | Handle a user input event in the world view panel.
@@ -349,7 +350,7 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') []))
 handleWorldEvent s _ = continueWithoutRedraw s
 
 -- | Manually scroll the world view.
-scrollView :: AppState -> (V2 Int -> V2 Int) -> EventM Name AppState
+scrollView :: AppState -> (V2 Int64 -> V2 Int64) -> EventM Name AppState
 scrollView s update =
   updateView $ s & gameState %~ modifyViewCenter update
 
@@ -361,10 +362,11 @@ updateView s = do
   case mext of
     Nothing  -> return s
     Just (Extent _ _ size) -> return $
-      s & gameState . world %~ W.loadRegion (viewingRegion (s ^. gameState) size)
+      s & gameState . world
+        %~ W.loadRegion (viewingRegion (s ^. gameState) (over both fromIntegral size))
 
 -- | Convert a directional key into a direction.
-keyToDir :: V.Key -> V2 Int
+keyToDir :: V.Key -> V2 Int64
 keyToDir V.KUp         = north
 keyToDir V.KDown       = south
 keyToDir V.KRight      = east

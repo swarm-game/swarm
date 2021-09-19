@@ -38,6 +38,7 @@ module Swarm.Language.Syntax
   ) where
 
 import           Control.Lens         (Traversal', (%~))
+import           Data.Int             (Int64)
 import qualified Data.Set             as S
 import           Data.Text
 import           Linear
@@ -66,7 +67,7 @@ instance FromJSONKey Direction where
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given vector or by turning to an absolute
 --   direction vector.
-applyTurn :: Direction -> V2 Int -> V2 Int
+applyTurn :: Direction -> V2 Int64 -> V2 Int64
 applyTurn Lft (V2 x y)  = V2 (-y) x
 applyTurn Rgt (V2 x y)  = V2 y (-x)
 applyTurn Back (V2 x y) = V2 (-x) (-y)
@@ -79,7 +80,7 @@ applyTurn West _        = west
 -- | Possibly convert a vector into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
 --   directions.
-toDirection :: V2 Int -> Maybe Direction
+toDirection :: V2 Int64 -> Maybe Direction
 toDirection v    = case v of
   V2 0 1    -> Just North
   V2 0 (-1) -> Just South
@@ -90,7 +91,7 @@ toDirection v    = case v of
 -- | Convert a 'Direction' into a corresponding vector.  Note that
 --   this only does something reasonable for 'North', 'South', 'East',
 --   and 'West'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> V2 Int
+fromDirection :: Direction -> V2 Int64
 fromDirection d = case d of
   North -> north
   South -> south
@@ -99,19 +100,19 @@ fromDirection d = case d of
   _     -> V2 0 0
 
 -- | The cardinal direction north = @V2 0 1@.
-north :: V2 Int
+north :: V2 Int64
 north = V2 0 1
 
 -- | The cardinal direction south = @V2 0 (-1)@.
-south :: V2 Int
+south :: V2 Int64
 south = V2 0 (-1)
 
 -- | The cardinal direction east = @V2 1 0@.
-east :: V2 Int
+east :: V2 Int64
 east  = V2 1 0
 
 -- | The cardinal direction west = @V2 (-1) 0@.
-west :: V2 Int
+west :: V2 Int64
 west  = V2 (-1) 0
 
 -- | Constants, representing various built-in functions and commands.

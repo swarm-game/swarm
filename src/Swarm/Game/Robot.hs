@@ -33,12 +33,13 @@ module Swarm.Game.Robot
   ) where
 
 import           Control.Lens              hiding (contains)
+import           Data.Int                  (Int64)
 import           Data.Maybe                (isNothing)
 import           Data.Set                  (Set)
+import           Data.Set.Lens             (setOf)
 import           Data.Text                 (Text)
 import           Linear
 
-import           Data.Set.Lens             (setOf)
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entity         hiding (empty)
@@ -56,7 +57,7 @@ data Robot = Robot
     -- ^ A cached view of the capabilities this robot has.
     --   Automatically generated from '_installedDevices'.
 
-  , _robotLocation     :: V2 Int
+  , _robotLocation     :: V2 Int64
   , _robotCtx          :: (TCtx, CapCtx)
   , _robotEnv          :: Env
   , _machine           :: CEK
@@ -99,10 +100,10 @@ robotDisplay :: Lens' Robot Display
 robotDisplay = robotEntity . entityDisplay
 
 -- | The robot's current location, represented as (x,y).
-robotLocation :: Lens' Robot (V2 Int)
+robotLocation :: Lens' Robot (V2 Int64)
 
 -- | Which way the robot is currently facing.
-robotOrientation :: Lens' Robot (Maybe (V2 Int))
+robotOrientation :: Lens' Robot (Maybe (V2 Int64))
 robotOrientation = robotEntity . entityOrientation
 
 -- | The robot's inventory.
@@ -196,8 +197,8 @@ tickSteps :: Lens' Robot Int
 mkRobot
   :: Text    -- ^ Name of the robot.  Precondition: it should not be the same as any
              --   other robot name.
-  -> V2 Int  -- ^ Initial location.
-  -> V2 Int  -- ^ Initial heading/direction.
+  -> V2 Int64  -- ^ Initial location.
+  -> V2 Int64  -- ^ Initial heading/direction.
   -> CEK     -- ^ Initial CEK machine.
   -> [Entity] -- ^ Installed devices.
   -> Robot

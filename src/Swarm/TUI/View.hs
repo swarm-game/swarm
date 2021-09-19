@@ -178,7 +178,7 @@ drawWorld g
     ctx <- getContext
     let w   = ctx ^. availWidthL
         h   = ctx ^. availHeightL
-        ixs = range (viewingRegion g (w,h))
+        ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
     render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
   where
     -- XXX update how this works!  Gather all displays, all

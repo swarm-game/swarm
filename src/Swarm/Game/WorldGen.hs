@@ -17,6 +17,7 @@ module Swarm.Game.WorldGen where
 import           Data.Bool
 import           Data.Enumeration
 import           Data.Hash.Murmur
+import           Data.Int             (Int64)
 import           Data.List            (find)
 import           Data.Text            (Text)
 import qualified Data.Text            as T
@@ -99,7 +100,7 @@ testWorld2 (Coords ix@(r,c))
 findGoodOrigin :: WorldFun t Text -> WorldFun t Text
 findGoodOrigin f = \(Coords (r,c)) -> f (Coords (r + fromIntegral rOffset, c + fromIntegral cOffset))
   where
-    int' :: Enumeration Int
+    int' :: Enumeration Int64
     int' = fromIntegral <$> int
     Just (rOffset, cOffset) = find isTree (enumerate (int' >< int'))
     isTree = (== Just "tree") . snd . f . Coords

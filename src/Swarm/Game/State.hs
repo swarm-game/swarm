@@ -48,6 +48,7 @@ import           Control.Lens
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bifunctor       (first)
+import           Data.Int             (Int64)
 import           Data.IntMap          (IntMap)
 import           Data.Map             (Map)
 import qualified Data.Map             as M
@@ -69,8 +70,8 @@ import           Swarm.Util
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
 data ViewCenterRule
-  = VCLocation (V2 Int)   -- ^ The view should be centered on an absolute position.
-  | VCRobot Text          -- ^ The view should be centered on a certain robot.
+  = VCLocation (V2 Int64)   -- ^ The view should be centered on an absolute position.
+  | VCRobot Text            -- ^ The view should be centered on a certain robot.
   deriving (Eq, Ord, Show)
 
 makePrisms ''ViewCenterRule
@@ -107,7 +108,7 @@ data GameState = GameState
   , _recipesIn      :: IntMap [Recipe Entity]
   , _world          :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
-  , _viewCenter     :: V2 Int
+  , _viewCenter     :: V2 Int64
   , _needsRedraw    :: Bool
   , _replStatus     :: REPLStatus
   , _messageQueue   :: [Text]
@@ -153,7 +154,7 @@ viewCenterRule :: Lens' GameState ViewCenterRule
 --   modified directly, since it is calculated automatically from the
 --   'viewCenterRule'.  To modify the view center, either set the
 --   'viewCenterRule', or use 'modifyViewCenter'.
-viewCenter :: Getter GameState (V2 Int)
+viewCenter :: Getter GameState (V2 Int64)
 viewCenter = to _viewCenter
 
 -- | Whether the world view needs to be redrawn.
@@ -169,7 +170,7 @@ messageQueue :: Lens' GameState [Text]
 --   'ViewCenterRule' to derive the location it refers to.  The result
 --   is @Maybe@ because the rule may refer to a robot which does not
 --   exist.
-applyViewCenterRule :: ViewCenterRule -> Map Text Robot -> Maybe (V2 Int)
+applyViewCenterRule :: ViewCenterRule -> Map Text Robot -> Maybe (V2 Int64)
 applyViewCenterRule (VCLocation l) _ = Just l
 applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 
@@ -190,7 +191,7 @@ recalcViewCenter g = g
 --   current value.  Note that this also modifies the 'viewCenterRule'
 --   to match.  After calling this function the 'viewCenterRule' will
 --   specify a particular location, not a robot.
-modifyViewCenter :: (V2 Int -> V2 Int) -> GameState -> GameState
+modifyViewCenter :: (V2 Int64 -> V2 Int64) -> GameState -> GameState
 modifyViewCenter update g = g
   & case g ^. viewCenterRule of
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
@@ -199,7 +200,7 @@ modifyViewCenter update g = g
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int,Int) -> (W.Coords, W.Coords)
+viewingRegion :: GameState -> (Int64,Int64) -> (W.Coords, W.Coords)
 viewingRegion g (w,h) = (W.Coords (rmin,cmin), W.Coords (rmax,cmax))
   where
     V2 cx cy = g ^. viewCenter

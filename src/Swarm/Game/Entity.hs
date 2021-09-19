@@ -75,6 +75,7 @@ import           Data.Bifunctor            (bimap, second)
 import           Data.Char                 (toLower)
 import           Data.Function             (on)
 import           Data.Hashable
+import           Data.Int                  (Int64)
 import           Data.IntMap               (IntMap)
 import qualified Data.IntMap               as IM
 import           Data.IntSet               (IntSet)
@@ -187,7 +188,7 @@ data Entity = Entity
                                             --   description. Each
                                             --   'Text' value is one
                                             --   paragraph.
-  , _entityOrientation  :: Maybe (V2 Int)   -- ^ The entity's
+  , _entityOrientation  :: Maybe (V2 Int64)   -- ^ The entity's
                                             --   orientation (if it has
                                             --   one).  For example,
                                             --   when a robot moves, it
@@ -367,7 +368,7 @@ entityDescription :: Lens' Entity [Text]
 entityDescription = hashedLens _entityDescription (\e x -> e { _entityDescription = x })
 
 -- | The direction this entity is facing (if it has one).
-entityOrientation :: Lens' Entity (Maybe (V2 Int))
+entityOrientation :: Lens' Entity (Maybe (V2 Int64))
 entityOrientation = hashedLens _entityOrientation (\e x -> e { _entityOrientation = x })
 
 -- | The properties enjoyed by this entity.

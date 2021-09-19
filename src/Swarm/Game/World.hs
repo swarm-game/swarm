@@ -58,6 +58,7 @@ import           Data.Array.IArray
 import qualified Data.Array.Unboxed        as U
 import           Data.Bits
 import           Data.Foldable             (foldl')
+import           Data.Int                  (Int64)
 import qualified Data.Map.Strict           as M
 import           GHC.Generics              (Generic)
 import           Linear
@@ -72,18 +73,18 @@ import           Swarm.Util
 -- | World coordinates use (row,column) format, with the row
 --   increasing as we move down the screen.  This format plays nicely
 --   with drawing the screen.
-newtype Coords = Coords { unCoords :: (Int,Int)}
+newtype Coords = Coords { unCoords :: (Int64,Int64)}
   deriving (Eq, Ord, Show, Ix, Generic)
 
 instance Rewrapped Coords t
 instance Wrapped Coords
 
 -- | Convert an (x,y) location to a 'Coords' value.
-locToCoords :: V2 Int -> Coords
+locToCoords :: V2 Int64 -> Coords
 locToCoords (V2 x y) = Coords (-y,x)
 
 -- | Convert 'Coords' to an (x,y) location.
-coordsToLoc :: Coords -> V2 Int
+coordsToLoc :: Coords -> V2 Int64
 coordsToLoc (Coords (r,c)) = V2 c (-r)
 
 -- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
@@ -99,7 +100,7 @@ type WorldFun t e = Coords -> (t, Maybe e)
 tileBits :: Int
 tileBits = 6     -- Each tile is 2^tileBits x 2^tileBits
 
-tileMask :: Int
+tileMask :: Int64
 tileMask = (1 `shiftL` tileBits) - 1
 
 tileBounds :: (TileOffset, TileOffset)
@@ -193,7 +194,7 @@ loadRegion reg (World f t m) = World f t' m
 
     maybeInsert k v hm
       | k `M.member` hm = hm
-      | otherwise       = M.insert k v hm
+      | otherwise       = Debug.Trace.trace "new tile!" $ M.insert k v hm
 
     loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
     loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)

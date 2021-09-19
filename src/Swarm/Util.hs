@@ -37,6 +37,7 @@ module Swarm.Util
 import           Control.Monad             (unless)
 import           Control.Monad.Error.Class
 import           Data.Either.Validation
+import           Data.Int                  (Int64)
 import           Data.Maybe                (fromMaybe)
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
@@ -126,8 +127,8 @@ commaList ts    = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
 ------------------------------------------------------------
 -- Some orphan instances
 
-deriving instance ToJSON (V2 Int)
-deriving instance FromJSON (V2 Int)
+deriving instance ToJSON (V2 Int64)
+deriving instance FromJSON (V2 Int64)
 
 ------------------------------------------------------------
 -- Validation utilities
