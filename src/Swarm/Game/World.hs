@@ -27,28 +27,47 @@
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TemplateHaskell        #-}
 {-# LANGUAGE TypeFamilies           #-}
 
 module Swarm.Game.World
-  ( Coords(..), locToCoords, coordsToLoc, WorldFun, World
-  , newWorld, lookupTerrain, lookupEntity
-  , update, loadRegion
+  ( -- * World coordinates
+    Coords(..), locToCoords, coordsToLoc
+
+    -- * Worlds
+  , WorldFun, World
+
+    -- ** Tile management
+  , loadCell, loadRegion
+
+    -- ** World functions
+  , newWorld, lookupTerrain, lookupEntity, update
+
+    -- ** Monadic variants
+  , lookupTerrainM, lookupEntityM, updateM
   ) where
 
-import           Control.Arrow      ((&&&))
-import           Control.Lens
-import qualified Data.Array         as A
-import           Data.Array.IArray
-import qualified Data.Array.Unboxed as U
-import           Data.Bits
-import           Data.Foldable      (foldl')
-import qualified Data.Map.Strict    as M
-import           Linear
-import           Prelude            hiding (lookup)
+import           Debug.Trace
 
-import           GHC.Generics       (Generic)
+import           Control.Arrow             ((&&&))
+import           Control.Lens
+import           Control.Monad.State.Class
+import qualified Data.Array                as A
+import           Data.Array.IArray
+import qualified Data.Array.Unboxed        as U
+import           Data.Bits
+import           Data.Foldable             (foldl')
+import qualified Data.Map.Strict           as M
+import           GHC.Generics              (Generic)
+import           Linear
+import           Prelude                   hiding (lookup)
+
 import           Swarm.Util
+
+------------------------------------------------------------
+-- World coordinates
+------------------------------------------------------------
 
 -- | World coordinates use (row,column) format, with the row
 --   increasing as we move down the screen.  This format plays nicely
@@ -77,20 +96,41 @@ type WorldFun t e = Coords -> (t, Maybe e)
   -- be used e.g. to create puzzle levels, which can be loaded from a
   -- file instead of generated via noise functions.
 
-------------------------------------------------------------
--- TileCachingWorld
-
 tileBits :: Int
 tileBits = 6     -- Each tile is 2^tileBits x 2^tileBits
 
 tileMask :: Int
 tileMask = (1 `shiftL` tileBits) - 1
 
-tileBounds :: (Coords, Coords)
-tileBounds = (Coords (0,0), Coords (tileMask,tileMask))
+tileBounds :: (TileOffset, TileOffset)
+tileBounds = (TileOffset (Coords (0,0)), TileOffset (Coords (tileMask,tileMask)))
 
-type TerrainTile t = U.UArray Coords t
-type EntityTile e  = A.Array Coords (Maybe e)
+newtype TileCoords = TileCoords { unTileCoords :: Coords}
+  deriving (Eq, Ord, Show, Ix, Generic)
+
+instance Rewrapped TileCoords t
+instance Wrapped TileCoords
+
+tileCoords :: Coords -> TileCoords
+tileCoords = TileCoords . over (_Wrapped . both) (`shiftR` tileBits)
+
+tileOrigin :: TileCoords -> Coords
+tileOrigin = over (_Wrapped . both) (`shiftL` tileBits) . unTileCoords
+
+newtype TileOffset = TileOffset Coords
+  deriving (Eq, Ord, Show, Ix, Generic)
+
+tileOffset :: Coords -> TileOffset
+tileOffset = TileOffset . over (_Wrapped . both) (.&. tileMask)
+
+plusOffset :: Coords -> TileOffset -> Coords
+plusOffset (Coords (x1,y1)) (TileOffset (Coords (x2,y2))) = Coords (x1 `xor` x2, y1 `xor` y2)
+
+instance Rewrapped TileOffset t
+instance Wrapped TileOffset
+
+type TerrainTile t = U.UArray TileOffset t
+type EntityTile e  = A.Array TileOffset (Maybe e)
 
 -- | A 'TileCachingWorld' keeps a cache of recently accessed square
 --   tiles to make lookups faster.  Currently, tiles are \(64 \times
@@ -105,7 +145,7 @@ type EntityTile e  = A.Array Coords (Maybe e)
 
 data World t e = World
   { _worldFun  :: WorldFun t e
-  , _tileCache :: M.Map Coords (TerrainTile t, EntityTile e)
+  , _tileCache :: M.Map TileCoords (TerrainTile t, EntityTile e)
   , _changed   :: M.Map Coords (Maybe e)
   }
 
@@ -116,37 +156,47 @@ newWorld f = World f M.empty M.empty
 
 lookupTerrain :: IArray U.UArray t => Coords -> World t e -> t
 lookupTerrain i (World f t _)
-  = ((U.! over (_Wrapped . both) (.&. tileMask) i) . fst <$> M.lookup (tileIndex i) t)
+  = ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
     ? fst (f i)
+
+lookupTerrainM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> m t
+lookupTerrainM c = do
+  modify $ loadCell c
+  lookupTerrain c <$> get
 
 lookupEntity :: Coords -> World t e -> Maybe e
 lookupEntity i (World f t m)
   = M.lookup i m
-      ? ((A.! over (_Wrapped . both) (.&. tileMask) i) . snd <$> M.lookup (tileIndex i) t)
+      ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t)
       ? snd (f i)
+
+lookupEntityM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> m (Maybe e)
+lookupEntityM c = do
+  modify $ loadCell c
+  lookupEntity c <$> get
 
 update :: Coords -> (Maybe e -> Maybe e) -> World t e -> World t e
 update i g w@(World f t m)
   = World f t (M.insert i (g (lookupEntity i w)) m)
 
-loadRegion :: IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
+updateM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
+updateM c g = modify $ update c g . loadCell c
+
+loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
+loadCell c = loadRegion (c,c)
+
+loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
 loadRegion reg (World f t m) = World f t' m
   where
-    tiles = range (over both tileIndex reg)
-    t' = foldl' (\hm (i,tile) -> maybeInsert i tile hm) t (map (id &&& loadTiles) tiles)
+    tiles = range (over both tileCoords reg)
+    t' = foldl' (\hm (i,tile) -> maybeInsert i tile hm) t (map (id &&& loadTile) tiles)
 
     maybeInsert k v hm
       | k `M.member` hm = hm
       | otherwise       = M.insert k v hm
 
-    -- loadTiles :: Coords -> (TerrainTile t, EntityTile e)
-    loadTiles ti = (listArray tileBounds terrain, listArray tileBounds entities)
+    loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
+    loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
       where
-        tileCorner = over (_Wrapped . both) (`shiftL` tileBits) ti
-        (terrain, entities) = unzip $ map (f . plusRng tileCorner) (range tileBounds)
-
-plusRng :: Coords -> Coords -> Coords
-plusRng (Coords (x1,y1)) (Coords (x2,y2)) = Coords (x1 `xor` x2,y1 `xor` y2)
-
-tileIndex :: Coords -> Coords
-tileIndex = _Wrapped . both %~ (`shiftR` tileBits)
+        tileCorner = tileOrigin tc
+        (terrain, entities) = unzip $ map (f . plusOffset tileCorner) (range tileBounds)
