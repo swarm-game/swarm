@@ -134,7 +134,7 @@ newtype TileOffset = TileOffset Coords
 tileBounds :: (TileOffset, TileOffset)
 tileBounds = (TileOffset (Coords (0,0)), TileOffset (Coords (tileMask,tileMask)))
 
--- | Convert the coordinates of a cell, compute its offset within its tile.
+-- | Compute the offset of a given coordinate within its tile.
 tileOffset :: Coords -> TileOffset
 tileOffset = TileOffset . over (_Wrapped . both) (.&. tileMask)
 
@@ -158,8 +158,10 @@ type TerrainTile t = U.UArray TileOffset t
 --   which have to be boxed.
 type EntityTile e  = A.Array TileOffset (Maybe e)
 
--- | A 'World' keeps a cache of loaded square tiles to make lookups
---   faster.
+-- | A 'World' consists of a 'WorldFun' that specifies the initial
+--   world, a cache of loaded square tiles to make lookups faster, and
+--   a map storing locations whose entities have changed from their
+--   initial values.
 --
 --   Right now the 'World' simply holds on to all the tiles it has
 --   ever loaded.  Ideally it would use some kind of LRU caching
@@ -198,9 +200,10 @@ lookupTerrainM c = do
   modify $ loadCell c
   lookupTerrain c <$> get
 
--- | Look up the entity at certain coordinates: try looking it up in
---   the tile cache first, and fall back to running the 'WorldFun'
---   otherwise.
+-- | Look up the entity at certain coordinates: first, see if it is in
+--   the map of locations with changed entities; then try looking it
+--   up in the tile cache first; and finally fall back to running the
+--   'WorldFun'.
 --
 --   This function does /not/ ensure that the tile containing the
 --   given coordinates is loaded.  For that, see 'lookupEntityM'.
@@ -241,9 +244,9 @@ loadRegion reg (World f t m) = World f t' m
     tiles = range (over both tileCoords reg)
     t' = foldl' (\hm (i,tile) -> maybeInsert i tile hm) t (map (id &&& loadTile) tiles)
 
-    maybeInsert k v hm
-      | k `M.member` hm = hm
-      | otherwise       = M.insert k v hm
+    maybeInsert k v tm
+      | k `M.member` tm = tm
+      | otherwise       = M.insert k v tm
 
     loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
     loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
