@@ -274,15 +274,12 @@ stepCEK cek = case cek of
     | otherwise                     -> return $ Out (VCApp c (v2 : args)) k
   Out _ (FApp _ : _) -> badMachineState "FApp of non-function"
 
-  -- Evaluating let expressions is a little bit tricky. We start by
-  -- focusing on the let-bound expression. But since it is allowed to
-  -- be recursive, we have to set up a recursive environment in which
-  -- to evaluate it.  Note how we wrap the expression in VDelay; the
-  -- elaboration step wrapped all recursive references in a
-  -- corresponding @Force@.
+  -- To evaluate let expressions, we start by focusing on the
+  -- let-bound expression. Since it can be recursive, we wrap it in
+  -- @VDelay@ (the elaboration step wrapped all recursive references
+  -- in a corresponding @Force@).
   In (TLet x _ t1 t2) e k           ->
-    let e' = addBinding x (VDelay t1 e') e   -- XXX do this without making a recursive
-                                             -- (hence unprintable) env?
+    let e' = addBinding x (VDelay (Just x) t1 e) e
     in return $ In t1 e' (FLet x t2 e : k)
 
   -- Once we've finished with the let-binding, we switch to evaluating
@@ -300,20 +297,19 @@ stepCEK cek = case cek of
 
   -- Delay expressions immediately turn into VDelay values, awaiting
   -- application of 'Force'.
-  In (TDelay t) e k                  -> return $ Out (VDelay t e) k
+  In (TDelay t) e k                  -> return $ Out (VDelay Nothing t e) k
 
   ------------------------------------------------------------
   -- Execution
 
-  -- To execute a definition, we set up a recursive environment for
-  -- it, and immediately turn the body into a delayed value, so it
-  -- will not even be evaluated until it is called.  We return a
-  -- special VResult value, which packages up the return value from
-  -- the @def@ command itself (@unit@) together with the resulting
-  -- environment (the variable bound to the delayed value).
+  -- To execute a definition, we immediately turn the body into a
+  -- delayed value, so it will not even be evaluated until it is
+  -- called.  We return a special VResult value, which packages up the
+  -- return value from the @def@ command itself (@unit@) together with
+  -- the resulting environment (the variable bound to the delayed
+  -- value).
   Out (VDef x t e) (FExec : k)       -> do
-    let e' = addBinding x (VDelay t e') e
-    return $ Out (VResult VUnit (singleton x (VDelay t e'))) k
+    return $ Out (VResult VUnit (singleton x (VDelay (Just x) t e))) k
 
   -- To execute a constant application, delegate to the 'execConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
@@ -705,8 +701,9 @@ execConst c vs k = do
       _                  -> badConst
 
     Force -> case vs of
-      [VDelay t e] -> return $ In t e k
-      _            -> badConst
+      [VDelay Nothing t e]  -> return $ In t e k
+      [VDelay (Just x) t e] -> return $ In t (addBinding x (VDelay (Just x) t e) e) k
+      _                     -> badConst
 
     -- Note, if should evaluate the branches lazily, but since
     -- evaluation is eager, by the time we get here thn and els have
@@ -733,7 +730,7 @@ execConst c vs k = do
       _           -> badConst
 
     Build -> case vs of
-      [VString name, VDelay cmd e] -> do
+      [VString name, VDelay _ cmd e] -> do
         r <- get
         em <- lift . lift $ use entityMap
         mode <- lift . lift $ use gameMode

@@ -88,7 +88,13 @@ data Value where
   --   can stick a 'TDelay' on it, which turns it into a value.
   --   Delayed terms won't be evaluated until 'Force' is applied to
   --   them.
-  VDelay  :: Term -> Env -> Value
+  --
+  --   Delayed terms are also how we implement recursion.  If the
+  --   variable is @Just@, it indicates a recursive binding.  When the
+  --   @Term@ is evaluated, it should be evaluated in the given
+  --   environment /plus/ a binding of the variable to the entire
+  --   @VDelay@ itself.
+  VDelay  :: Maybe Var -> Term -> Env -> Value
   deriving (Eq, Show)
 
 -- XXX write a more principled pretty-printer, i.e. actually make a
@@ -114,7 +120,7 @@ valueToTerm (VCApp c vs)     = foldl' TApp (TConst c) (reverse (map valueToTerm 
 valueToTerm (VDef x t _)     = TDef x Nothing t
 valueToTerm (VResult v _)    = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
-valueToTerm (VDelay t _)     = TDelay t
+valueToTerm (VDelay _ t _)   = TDelay t
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value
