@@ -54,8 +54,6 @@ module Swarm.TUI.Model
     -- ** Initialization
   , initAppState
 
-    -- * XXX
-
   ) where
 
 import           Control.Lens
@@ -170,9 +168,6 @@ uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryEntry))
 
 -- | When this is @Just@, it represents a popup box containing an
 --   error message that is shown on top of the rest of the UI.
---
---   XXX we can probably easily generalize this to show any pop-up
---   (e.g. tutorial, help, menu, etc.)
 uiError :: Lens' UIState (Maybe (Widget Name))
 
 -- | The base-2 logarithm of the current game speed in ticks per

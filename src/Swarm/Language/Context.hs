@@ -60,11 +60,12 @@ singleton x t = Ctx (M.singleton x t)
 lookup :: Var -> Ctx t -> Maybe t
 lookup x (Ctx c) = M.lookup x c
 
--- | XXX
+-- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var,t)]
 assocs = M.assocs . unCtx
 
--- | XXX
+-- | Add a key-value binding to a context (overwriting the old one if
+--   the key is already present).
 addBinding :: Var -> t -> Ctx t -> Ctx t
 addBinding x t (Ctx c) = Ctx (M.insert x t c)
 

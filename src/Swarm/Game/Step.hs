@@ -542,7 +542,6 @@ execConst c vs k = do
         return $ Out VUnit k
       _ -> badConst
 
-  -- XXX do we need a device to do placement?
     Place -> case vs of
       [VString s] -> do
         inv <- use robotInventory
@@ -689,7 +688,7 @@ execConst c vs k = do
     Cmp cop -> case vs of
       [v1, v2] ->
         case evalCmp cop v1 v2 of
-          Nothing -> return $ Out (VBool False) k  --- XXX random result?
+          Nothing -> return $ Out (VBool False) k
           Just b  -> return $ Out (VBool b) k
       _ -> badConst
 

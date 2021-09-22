@@ -97,8 +97,6 @@ data Value where
   VDelay  :: Maybe Var -> Term -> Env -> Value
   deriving (Eq, Show)
 
--- XXX write a more principled pretty-printer, i.e. actually make a
--- PrettyPrec instance
 -- | Pretty-print a value.
 prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm

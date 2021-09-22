@@ -85,9 +85,6 @@ coordsToLoc (Coords (r,c)) = V2 c (-r)
 -- cell).
 type WorldFun t e = Coords -> (t, Maybe e)
 
--- XXX change to:
--- WorldFun t e = TileCoords -> (TerrainTile t, EntityTile e, [Robot])
-
   -- XXX Allow smaller, finite worlds Too?  Maybe add a variant of
   -- newWorld that creates a finite world from an array.  This could
   -- be used e.g. to create puzzle levels, which can be loaded from a
