@@ -351,3 +351,16 @@
     world once they are done.
   properties: [portable]
   capabilities: [selfdestruct]
+
+- name: life support system
+  display:
+    attr: device
+    char: 'O'
+  description:
+  - A state-of-the-art life support system which maintains the
+    particular temperature and mixture of gases you need to survive.
+    It uses a sophisticated recirculating system and can run pretty
+    much indefinitely.  Unfortunately, the atmosphere outside is
+    severly toxic (why do the inhabitants of this planet need so much
+    nitrogen!?), so you'll have to stay inside for now.
+  properties: [portable]
