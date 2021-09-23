@@ -3,10 +3,10 @@
 Thanks so much for taking the time to contribute to Swarm! All
 contributions are welcomed and appreciated, whether reporting
 a bug or fixing a single punctuation mark, contributing to
-game design, or implementing a complex new language feature.
+game design, or implementing a complex new feature.
 
 The following is a set of guidelines for contributing to Swarm, which
-is hosted in the [swarm repository](https://github.com/byorgey/swarm)
+is hosted in the [`byorgey/swarm` repository](https://github.com/byorgey/swarm)
 on GitHub. These are mostly guidelines, not rules. In particular, you
 don't need to worry that your contribution will be ignored or rejected
 in some way if you don't follow the guidelines. Use your best
@@ -40,8 +40,10 @@ you are expected to uphold this code. Please report unacceptable behavior to
 
 - Bug to report or feature to request? Try the
   [GitHub issue tracker](https://github.com/byorgey/swarm/swarm/issues).
-<!-- - Questions? Join the -->
-<!--   [`#swarm-lang` IRC channel on `freenode.net`](https://webchat.freenode.net/#swarm-lang). -->
+- Questions? Join the
+  `#swarm` IRC channel on the [Libera.Chat
+  network](https://libera.chat/). If you're not familiar with IRC you
+  can easily [connect via this web client](https://web.libera.chat/).
 
 ## How can I contribute?
 
