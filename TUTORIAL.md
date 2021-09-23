@@ -111,7 +111,8 @@ Creating definitions
 --------------------
 
 We can already tell it's going to be tedious typing
-`move;move;move;move;...`, so let's create some definitions to make
+`move;move;move;move;...`.  Since your base has a `dictionary`
+installed, let's create some definitions to make
 our life a bit easier.  To start, type the following:
 ```
 def m2 : cmd () = {move ; move} end
@@ -122,7 +123,7 @@ game could have easily figured out the type of `m2` if we had just
 written `def m2 = ...` (though there are some situations where a type
 signature may be required).  The curly braces are actually optional as
 well.  The `end` is required, and is needed to disambiguate where the
-end of the command is.  It may not seem very ambiguous in this
+end of the definition is.  It may not seem very ambiguous in this
 situation, but is needed especially when several definitions are
 written in sequence (such as in a file full of definitions).
 
@@ -142,6 +143,35 @@ This should build a robot that moves eighteen steps to the east.
 that takes a number as input and moves that many steps forward.  It
 certainly is possible, but right now your robots would not be capable
 of executing it.  You'll have to figure out how to upgrade them!)
+
+The result of a command can be assigned to a variable using a left
+arrow, like so:
+```
+var <- command; ... more commands that can refer to var ...
+```
+(Yes, this is just like Haskell's `do`-notation; and yes, `cmd` is a
+monad, similar to the `IO` monad in Haskell.)  Let's build one more
+robot called `"mover"`. It will get renamed to something else to avoid
+a name conflict, but we can capture its name in a variable using the
+above syntax.  Then we can use the `view` command to focus on it
+instead of the base.  Like so:
+```
+name <- build "mover" {m8; m8; m4}; view name
+```
+Note that `base` executes the `view name` command as soon as it
+finishes executing the `build` command, which is about the same time
+as the newly built robot *starts* executing its program.  So we get to
+watch the new robot as it goes about its business.  Afterwards, the
+view should look something like this:
+
+![](images/mover1.png)
+
+The view is now centered on `mover1` instead of on our `base`, and the
+info panel on the left shows `mover1`'s inventory and installed
+devices instead of `base`'s.  (However, commands entered at the REPL
+will still be executed by `base`.)  To return to viewing `base` and
+its inventory, you can type `view "base"` at the prompt, or tab to
+highlight the world view and hit `c`
 
 Getting some resources
 ----------------------
@@ -171,13 +201,13 @@ Since your base has a `workbench` installed, you can use the `make` command to
 make things.  Just give it the name of a thing you'd like to make, and
 the system will automatically pick a recipe which produces the
 thing you requested and for which you have all the necessary inputs.
-In this case we can request to make either a `log` or a `branch`; it
+In this case we can request to make either a `"log"` or a `"branch"`; it
 doesn't matter which, and we will get the same result either way.
 
 ![](images/log.png)
 
 Note that since the `make` command takes a `string` as an argument,
-`log` has to go in double quotes (otherwise it would be a variable).
+`"log"` has to go in double quotes (otherwise it would be a variable).
 You should now have two branches and a log in your inventory.  Take a
 look at them and see what recipes they enable!
 
