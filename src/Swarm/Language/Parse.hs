@@ -1,9 +1,3 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Swarm.Language.Parse
@@ -16,9 +10,15 @@
 -- use this directly, unless there is a good reason to parse a term
 -- without also type checking it; use
 -- 'Swarm.Language.Pipeline.processTerm' instead, which parses,
--- typechecks, and elaborate a term all at once.
+-- typechecks, elaborates, and capability checks a term all at once.
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Swarm.Language.Parse
   ( -- * Parsers
@@ -27,7 +27,7 @@ module Swarm.Language.Parse
 
     -- * Utility functions
 
-  , runParser, readTerm
+  , runParser, runParserTH, readTerm
 
   ) where
 
@@ -39,7 +39,7 @@ import           Data.Void
 import           Witch
 
 import           Control.Monad.Combinators.Expr
-import           Text.Megaparsec                hiding (State, runParser)
+import           Text.Megaparsec                hiding (runParser)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
 
@@ -272,6 +272,41 @@ mkOp c = TApp . TApp (TConst c)
 --   pretty-printed parse error message.
 runParser :: Parser a -> Text -> Either Text a
 runParser p t = first (from . errorBundlePretty) (parse p "" t)
+
+-- | A utility for running a parser in an arbitrary 'MonadFail' (which
+--   is going to be the TemplateHaskell 'Q' monad --- see
+--   "Swarm.Language.Parse.QQ"), with a specified source position.
+runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
+runParserTH (file, line, col) p s =
+  case snd (runParser' (fully p) initState) of
+    Left err -> fail $ errorBundlePretty err
+    Right e  -> return e
+  where
+    -- This is annoying --- megaparsec does not export its function to
+    -- construct an initial parser state, so we can't just use that
+    -- and then change the one field we need to be different (the
+    -- pstateSourcePos). We have to copy-paste the whole thing.
+    initState :: State Text Void
+    initState = State
+      { stateInput = from s,
+        stateOffset = 0,
+        statePosState =
+          PosState
+            { pstateInput = from s,
+              pstateOffset = 0,
+              pstateSourcePos = SourcePos file (mkPos line) (mkPos col),
+              pstateTabWidth = defaultTabWidth,
+              pstateLinePrefix = ""
+            },
+        stateParseErrors = []
+      }
+
+
+    -- p' = do
+    --   let sourcePos = SourcePos file (mkPos line) (mkPos col)
+    --   updateParserState
+    --     (\st -> st { statePosState = (statePosState st) { pstateSourcePos = sourcePos } })
+    --   fully p
 
 -- | Run a parser "fully", consuming leading whitespace and ensuring
 --   that the parser extends all the way to eof.

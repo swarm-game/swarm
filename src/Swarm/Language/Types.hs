@@ -11,6 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveFoldable        #-}
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveGeneric         #-}
@@ -18,9 +19,13 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+  -- for the Data IntVar instance
 
 module Swarm.Language.Types
   ( -- * Basic definitions
@@ -62,6 +67,7 @@ module Swarm.Language.Types
 
 import           Control.Unification
 import           Control.Unification.IntVar
+import           Data.Data                  (Data)
 import           Data.Functor.Fixedpoint
 import           Data.Maybe                 (fromJust)
 import           Data.String                (IsString (..))
@@ -83,7 +89,7 @@ data BaseTy
   | BString           -- ^ Unicode strings.
   | BDir              -- ^ Directions.
   | BBool             -- ^ Booleans.
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data)
 
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
@@ -97,13 +103,16 @@ data TypeF t
                    --   commands form a monad.
   | TyProdF t t    -- ^ Product type.
   | TyFunF t t     -- ^ Function type.
-  deriving (Show, Eq, Functor, Foldable, Traversable, Generic1, Unifiable)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Generic1, Unifiable, Data)
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
 --   annoying to manually apply and match against 'Fix' constructors
 --   everywhere, so we provide pattern synonyms that allow us to work
 --   with 'Type' as if it were defined in a directly recursive way.
 type Type = Fix TypeF
+
+-- The derived Data instance is so we can make a quasiquoter for types.
+deriving instance Data Type
 
 -- | 'UType's are like 'Type's, but also contain unification
 --   variables.  'UType' is defined via 'UTerm', which is also a kind
@@ -112,6 +121,11 @@ type Type = Fix TypeF
 --   Just as with 'Type', we provide a bunch of pattern synonyms for
 --   working with 'UType' as if it were defined directly.
 type UType = UTerm TypeF IntVar
+
+-- The derived Data instances are so we can make a quasiquoter for
+-- types.
+deriving instance Data UType
+deriving instance Data IntVar
 
 -- | A generic /fold/ for things defined via 'UTerm' (including, in
 --   particular, 'UType').  This probably belongs in the
@@ -154,7 +168,7 @@ type UCtx = Ctx UPolytype
 -- | A @Poly t@ is a universally quantified @t@.  The variables in the
 --   list are bound inside the @t@.  For example, the type @forall
 --   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
-data Poly t = Forall [Var] t deriving (Show, Eq, Functor)
+data Poly t = Forall [Var] t deriving (Show, Eq, Functor, Data)
 
 -- | A polytype without unification variables.
 type Polytype = Poly Type

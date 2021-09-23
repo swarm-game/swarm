@@ -18,6 +18,7 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
@@ -67,6 +68,7 @@ import           Data.Functor.Fixedpoint    (cata)
 
 import           Swarm.Language.Context     hiding (lookup)
 import qualified Swarm.Language.Context     as Ctx
+import           Swarm.Language.Parse.QQ    (tyQ)
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 
@@ -392,43 +394,43 @@ decomposeFunTy ty = do
 
 -- | Infer the type of a constant.
 inferConst :: Const -> UPolytype
-inferConst c = case c of
-  Wait -> Forall [] $ UTyCmd UTyUnit
-  Noop -> Forall [] $ UTyCmd UTyUnit
-  Selfdestruct -> Forall [] $ UTyCmd UTyUnit
+inferConst c = toU $ case c of
+  Wait         -> [tyQ| cmd () |]
+  Noop         -> [tyQ| cmd () |]
+  Selfdestruct -> [tyQ| cmd () |]
 
-  Move -> Forall [] $ UTyCmd UTyUnit
-  Turn -> Forall [] $ UTyFun UTyDir (UTyCmd UTyUnit)
-  Grab -> Forall [] $ UTyCmd UTyUnit
-  Place -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
-  Give -> Forall [] $ UTyFun UTyString (UTyFun UTyString (UTyCmd UTyUnit))
-  Make -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
-  Build -> Forall ["a"] $ UTyFun UTyString (UTyFun (UTyCmd "a") (UTyCmd UTyString))
-  Say -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
-  View -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
-  Appear -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
-  Create -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
+  Move         -> [tyQ| cmd () |]
+  Turn         -> [tyQ| dir -> cmd () |]
+  Grab         -> [tyQ| cmd () |]
+  Place        -> [tyQ| string -> cmd () |]
+  Give         -> [tyQ| string -> string -> cmd () |]
+  Make         -> [tyQ| string -> cmd () |]
+  Build        -> [tyQ| string -> cmd a -> cmd string |]
+  Say          -> [tyQ| string -> cmd () |]
+  View         -> [tyQ| string -> cmd () |]
+  Appear       -> [tyQ| string -> cmd () |]
+  Create       -> [tyQ| string -> cmd () |]
 
-  GetX -> Forall [] $ UTyCmd UTyInt
-  GetY -> Forall [] $ UTyCmd UTyInt
-  Blocked -> Forall [] $ UTyCmd UTyBool
-  Ishere -> Forall [] $ UTyFun UTyString (UTyCmd UTyBool)
-  Random -> Forall [] $ UTyFun UTyInt (UTyCmd UTyInt)
+  GetX         -> [tyQ| cmd int |]
+  GetY         -> [tyQ| cmd int |]
+  Blocked      -> [tyQ| cmd bool |]
+  Ishere       -> [tyQ| string -> cmd bool |]
+  Random       -> [tyQ| int -> cmd int |]
 
-  Run -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
+  Run          -> [tyQ| string -> cmd () |]
 
-  Not -> Forall [] $ UTyFun UTyBool UTyBool
-  Cmp _ -> Forall ["a"] (UTyFun "a" (UTyFun "a" UTyBool))
-  Neg -> Forall [] $ UTyFun UTyInt UTyInt
-  Arith _ ->  Forall [] $ UTyFun UTyInt (UTyFun UTyInt UTyInt)
+  Not          -> [tyQ| bool -> bool |]
+  Cmp _        -> [tyQ| forall a. a -> a -> bool |]
+  Neg          -> [tyQ| int -> int |]
+  Arith _      -> [tyQ| int -> int -> int |]
 
-  If -> Forall ["a"] $ UTyFun UTyBool (UTyFun "a" (UTyFun "a" "a"))
-  Fst -> Forall ["a","b"] $ UTyFun (UTyProd "a" "b") "a"
-  Snd -> Forall ["a","b"] $ UTyFun (UTyProd "a" "b") "b"
-  Force -> Forall ["a"] $ UTyFun "a" "a"
-  Return -> Forall ["a"] $ UTyFun "a" (UTyCmd "a")
-  Try -> Forall ["a"] $ UTyFun (UTyCmd "a") (UTyFun (UTyCmd "a") (UTyCmd "a"))
-  Raise -> Forall ["a"] $ UTyFun UTyString (UTyCmd "a")
+  If           -> [tyQ| forall a. bool -> a -> a -> a |]
+  Fst          -> [tyQ| forall a b. a * b -> a |]
+  Snd          -> [tyQ| forall a b. a * b -> b |]
+  Force        -> [tyQ| forall a. a -> a |]
+  Return       -> [tyQ| forall a. a -> cmd a |]
+  Try          -> [tyQ| forall a. cmd a -> cmd a -> cmd a |]
+  Raise        -> [tyQ| forall a. string -> cmd a |]
 
 -- | @check t ty@ checks that @t@ has type @ty@.
 check :: Term -> UType -> Infer ()
