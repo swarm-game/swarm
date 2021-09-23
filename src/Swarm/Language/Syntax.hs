@@ -135,6 +135,8 @@ data Const
   | Say               -- ^ Emit a message.
   | View              -- ^ View a certain robot.
   | Appear            -- ^ Set what characters are used for display.
+  | Create            -- ^ Create an entity out of thin air. Only
+                      --   available in creative mode.
 
   -- Sensing / generation
   | GetX              -- ^ Get the current x-coordinate.
@@ -189,6 +191,7 @@ arity Build        = 2
 arity Say          = 1
 arity View         = 1
 arity Appear       = 1
+arity Create       = 1
 arity GetX         = 0
 arity GetY         = 0
 arity Blocked      = 0

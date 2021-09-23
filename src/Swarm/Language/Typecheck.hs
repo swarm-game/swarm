@@ -407,6 +407,7 @@ inferConst c = case c of
   Say -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
   View -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
   Appear -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
+  Create -> Forall [] $ UTyFun UTyString (UTyCmd UTyUnit)
 
   GetX -> Forall [] $ UTyCmd UTyInt
   GetY -> Forall [] $ UTyCmd UTyInt

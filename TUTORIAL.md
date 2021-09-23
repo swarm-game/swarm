@@ -221,9 +221,9 @@ Creative Mode
 -------------
 
 For now, there is a secret way to switch between Classic mode and
-Creative mode.  In Classic mode, the kinds of actions your
-robots can do, and the kinds of programs they can interpret, is
-restricted by what devices they have installed.  In Creative mode you
-can do anything you like (though you still cannot (yet?) create
-resources out of thin air).  To switch, tab until the world view is
+Creative mode.  In Classic mode, the kinds of actions your robots can
+do, and the kinds of programs they can interpret, is restricted by
+what devices they have installed.  In Creative mode you can do
+anything you like, including fabricate arbitrary items out of thin air
+using the `create` command.  To switch, tab until the world view is
 highlighted, then hit the `m` key.

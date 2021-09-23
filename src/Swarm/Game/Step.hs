@@ -672,9 +672,19 @@ execConst c vs k = do
 
       _ -> badConst
 
+    Create -> case vs of
+      [VString name] -> do
+        em <- lift . lift $ use entityMap
+        e <- lookupEntityName name em `isJustOr`
+          cmdExn Create ["I've never heard of", indefiniteQ name, "."]
+
+        robotInventory %= insert e
+        return $ Out VUnit k
+      _ -> badConst
+
     Ishere -> case vs of
       [VString s] -> do
-        loc <-use robotLocation
+        loc <- use robotLocation
         me <- entityAt loc
         case me of
           Nothing -> return $ Out (VBool False) k

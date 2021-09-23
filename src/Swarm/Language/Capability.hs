@@ -54,6 +54,7 @@ data Capability
   | CSensefront   -- ^ Execute the 'Blocked' command
   | CRandom       -- ^ Execute the 'Random' command
   | CAppear       -- ^ Execute the 'Appear' command
+  | CCreate       -- ^ Execute the 'Create' command
   | CCond         -- ^ Evaluate conditional expressions
   | CCompare      -- ^ Evaluate comparison operations
   | CArith        -- ^ Evaluate arithmetic operations
@@ -221,6 +222,7 @@ constCaps Place        = S.singleton CPlace
 constCaps Give         = S.singleton CGive
 constCaps Make         = S.singleton CMake
 constCaps If           = S.singleton CCond
+constCaps Create       = S.singleton CCreate
 
 -- Build definitely requires a CBuild capability (provided by a 3D
 -- printer).  However, it's possible we should do something more
