@@ -301,13 +301,6 @@ runParserTH (file, line, col) p s =
         stateParseErrors = []
       }
 
-
-    -- p' = do
-    --   let sourcePos = SourcePos file (mkPos line) (mkPos col)
-    --   updateParserState
-    --     (\st -> st { statePosState = (statePosState st) { pstateSourcePos = sourcePos } })
-    --   fully p
-
 -- | Run a parser "fully", consuming leading whitespace and ensuring
 --   that the parser extends all the way to eof.
 fully :: Parser a -> Parser a
