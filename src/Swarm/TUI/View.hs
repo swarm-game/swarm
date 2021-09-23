@@ -70,7 +70,9 @@ import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Terrain    (displayTerrain)
 import qualified Swarm.Game.World      as W
+import           Swarm.Language.Pretty (prettyText)
 import           Swarm.Language.Syntax
+import           Swarm.Language.Types  (Polytype)
 import           Swarm.TUI.Attr
 import           Swarm.TUI.Border
 import           Swarm.TUI.Model
@@ -89,21 +91,30 @@ drawUI s =
     [ hLimitPercent 25 $ panel highlightAttr fr InfoPanel plainBorder $
       drawInfoPanel s
     , vBox
-      [ panel highlightAttr fr WorldPanel (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)) $
-        drawWorld (s ^. gameState)
+      [ panel highlightAttr fr WorldPanel
+          (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
+          (drawWorld $ s ^. gameState)
       , drawMenu
           (s ^. gameState . paused)
           ((s ^. gameState . viewCenterRule) == VCRobot "base")
           (s ^. uiState)
-      , panel highlightAttr fr REPLPanel plainBorder $
-        vLimit replHeight $
-        padBottom Max $ padLeftRight 1 $
-        drawREPL s
+      , panel highlightAttr fr REPLPanel
+          ( plainBorder
+              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
+          )
+          ( vLimit replHeight $
+            padBottom Max $ padLeftRight 1 $
+            drawREPL s
+          )
       ]
     ]
   ]
   where
     fr = s ^. uiState . uiFocusRing
+
+-- | Render the type of the current REPL input to be shown to the user.
+drawType :: Polytype -> Widget Name
+drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
 
 -- | Draw info about the current number of ticks per second.
 drawTPS :: AppState -> Widget Name

@@ -265,6 +265,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
       Right t@(ProcessedTerm _ (Module ty _) _ _) ->
         continue $ s
           & uiState . uiReplForm    %~ updateFormState ""
+          & uiState . uiReplType    .~ Nothing
           & uiState . uiReplHistory %~ (REPLEntry True entry :)
           & uiState . uiReplHistIdx .~ (-1)
           & gameState . replStatus .~ REPLWorking ty Nothing
@@ -291,12 +292,16 @@ handleREPLEvent s ev = do
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
 validateREPLForm :: AppState -> AppState
-validateREPLForm s = s & uiState . uiReplForm %~ validate
+validateREPLForm s = s
+  & uiState . uiReplForm %~ validate
+  & uiState . uiReplType .~ theType
   where
     (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
-    validate f = setFieldValid (isRight result) REPLInput f
-      where
-        result = processTerm' topCtx topCapCtx (formState f)
+    result = processTerm' topCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
+    theType = case result of
+      Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
+      _                                         -> Nothing
+    validate = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
 adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState

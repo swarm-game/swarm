@@ -2,11 +2,15 @@ Swarm: The Tutorial
 ===================
 
 This is a brief tutorial that should hopefully get you up and running
-with Swarm.  If you find any mistakes, or things that are confusing,
+with Swarm.  Swarm is changing rapidly, so this tutorial may not be
+entirely up-to-date in some unimportant ways (*e.g.* the UI may look
+slightly different), but the intention is to keep it updated as the
+game evolves.  If you find any mistakes, or things that are confusing,
 or ways that the tutorial no longer corresponds to the game, please
 [file a bug
 report](https://github.com/byorgey/swarm/issues/new/choose) or [open a
-pull request](https://github.com/byorgey/swarm/blob/main/CONTRIBUTING.md)!
+pull
+request](https://github.com/byorgey/swarm/blob/main/CONTRIBUTING.md)!
 Eventually, this tutorial file should be [replaced by an in-game
 tutorial](https://github.com/byorgey/swarm/issues/25).
 
@@ -32,7 +36,7 @@ Getting started
 ---------------
 
 When you first start up Swarm, you should be greeted by a screen that
-looks like this:
+looks something like this:
 
 ![](images/initial.png)
 
@@ -78,15 +82,43 @@ braces around the sequence of `move` commands, as in `build "hello"
 move;move;move;move`, what do you think would happen?  Hint: function
 application has higher precedence than semicolon.  Try it and see!)
 
-We can actually see the type of the `build` command by just typing
-`build` by itself at the prompt.  It should return something like
+Types
+-----
+
+We can actually see the type of the `build` command (or any command)
+by just typing it at the prompt, without hitting `Enter`.  Any time
+the expression currently typed at the prompt parses and type checks,
+the REPL will show you the type of the expression in the upper right,
+like this:
+
+![](images/build-type.png)
+
+It will tell you that the type of `build` is
 ```
-build : forall a0. string -> cmd a0 -> cmd string
+∀ a0. string -> cmd a0 -> cmd string
 ```
-which says that `build` takes two arguments---a `string`, and a command
-that returns a value of any type---and results in a command which
-returns a `string`.  Every command returns a value, though some might
-return a value of the unit type, written `()`.
+which says that `build` takes two arguments---a `string`, and a
+command that returns a value of any type---and results in a command
+which returns a `string`.  Every command returns a value, though some
+might return a value of the unit type, written `()`.  For example, if
+you type `move` at the prompt, you will see that its type is `cmd ()`,
+since `move` does not return any interesting result after executing.
+
+Let's try intentionally entering something that does not
+typecheck. Type the following at the prompt:
+```
+"hi" + 2
+```
+Clearly this is nonsense, and you can see that your input is shown in
+red, and there is no type displayed in the upper-right corner of the
+REPL panel, telling us that there is some kind of error (either a
+parse error or a type error).  If you want to see what the error is,
+just hit `Enter`: a dialog box will pop up with a (somewhat) more
+informative error message.
+
+![](images/type-error.png)
+
+To get rid of the error dialog, just hit the `Esc` key.
 
 Something you can't do yet
 --------------------------

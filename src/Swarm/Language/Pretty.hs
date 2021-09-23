@@ -92,7 +92,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
-  prettyPrec _ (Forall xs t) = hsep ("forall" : map pretty xs) <> "." <+> ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
 instance PrettyPrec t => PrettyPrec (Ctx t) where
   prettyPrec _ Empty          = emptyDoc

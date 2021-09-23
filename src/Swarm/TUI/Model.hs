@@ -30,7 +30,7 @@ module Swarm.TUI.Model
 
     -- ** Fields
 
-  , uiFocusRing, uiReplForm, uiReplHistory, uiReplHistIdx
+  , uiFocusRing, uiReplForm, uiReplType, uiReplHistory, uiReplHistIdx
   , uiInventory, uiError, lgTicksPerSecond
   , lastFrameTime, accumulatedTime, frameTicks, frameTickHist, ticksPerFrame
 
@@ -74,6 +74,7 @@ import qualified Brick.Widgets.List   as BL
 import           Swarm.Game.Entity
 import           Swarm.Game.Robot
 import           Swarm.Game.State
+import           Swarm.Language.Types
 import           Swarm.Util
 
 ------------------------------------------------------------
@@ -133,6 +134,7 @@ makePrisms ''InventoryEntry
 data UIState = UIState
   { _uiFocusRing      :: FocusRing Name
   , _uiReplForm       :: Form Text AppEvent Name
+  , _uiReplType       :: Maybe Polytype
   , _uiReplHistory    :: [REPLHistItem]
   , _uiReplHistIdx    :: Int
   , _uiInventory      :: Maybe (Int, BL.List Name InventoryEntry)
@@ -152,6 +154,10 @@ uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The form where the user can type input at the REPL.
 uiReplForm :: Lens' UIState (Form Text AppEvent Name)
+
+-- | The type of the current REPL input which should be displayed to
+--   the user (if any).
+uiReplType :: Lens' UIState (Maybe Polytype)
 
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
@@ -230,6 +236,7 @@ initUIState = liftIO $ do
   return $ UIState
     { _uiFocusRing      = initFocusRing
     , _uiReplForm       = initReplForm
+    , _uiReplType       = Nothing
     , _uiReplHistory    = mhist ? []
     , _uiReplHistIdx    = -1
     , _uiInventory      = Nothing
