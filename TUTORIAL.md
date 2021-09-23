@@ -140,3 +140,40 @@ Getting some resources
 ----------------------
 
 Let's get a tree!  Enter the following:
+```
+build "fetch" {turn west; m8; grab; turn back; m8; give "base" "tree"; selfdestruct}
+```
+The `turn` command causes a robot to turn, of course. It takes a
+direction as an argument, which can be either an absolute direction
+(`north`, `south`, `east`, or `west`) or a relative direction
+(`forward`, `back`, `left`, or `right`).
+
+You should see a robot head west from your base, grab a tree, and
+return to the base.  If all works properly, after the newly built
+robot executes the `give` command, you should see a tree show up in
+your inventory, like this:
+
+![](images/tree.png)
+
+Tab over to your inventory and take a look at the tree.  In the bottom
+left corner you will see a description of the tree along with some
+*recipes* involving trees.  Apparently, we can use a tree to construct
+a rangefinder (this is just for testing and will go away at some
+point!), or two branches and a log.  Let's use the second recipe.
+Since your base has a `workbench`, you can use the `make` command to
+make things.  Just give it the name of a thing you'd like to make, and
+the system will automatically pick a recipe which produces the
+thing you requested and for which you have all the necessary inputs.
+In this case we can request to make either a `log` or a `branch`; it
+doesn't matter which, and we will get the same result either way
+```
+make "log"
+```
+Note that since the `make` command takes a `string` as an argument,
+`log` has to go in double quotes (otherwise it would be a variable).
+You should now have two branches and a log in your inventory.  Take a
+look at them and see what recipes they enable!
+
+By this time you may also notice that the tree has grown back!  Some
+items in the world will regrow after they have been harvested, and
+some will not.
