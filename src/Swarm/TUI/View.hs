@@ -72,6 +72,7 @@ import           Swarm.Game.Terrain    (displayTerrain)
 import qualified Swarm.Game.World      as W
 import           Swarm.Language.Syntax
 import           Swarm.TUI.Attr
+import           Swarm.TUI.Border
 import           Swarm.TUI.Model
 import           Swarm.TUI.Panel
 import           Swarm.Util
@@ -85,16 +86,16 @@ drawUI s =
   [ drawDialog (s ^. uiState)
   , joinBorders $
     hBox
-    [ hLimitPercent 25 $ panel highlightAttr fr InfoPanel Nothing $
+    [ hLimitPercent 25 $ panel highlightAttr fr InfoPanel plainBorder $
       drawInfoPanel s
     , vBox
-      [ panel highlightAttr fr WorldPanel (Just (padLeftRight 1 $ drawTPS s)) $
+      [ panel highlightAttr fr WorldPanel (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)) $
         drawWorld (s ^. gameState)
       , drawMenu
           (s ^. gameState . paused)
           ((s ^. gameState . viewCenterRule) == VCRobot "base")
           (s ^. uiState)
-      , panel highlightAttr fr REPLPanel Nothing $
+      , panel highlightAttr fr REPLPanel plainBorder $
         vLimit replHeight $
         padBottom Max $ padLeftRight 1 $
         drawREPL s

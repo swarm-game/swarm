@@ -25,11 +25,12 @@ module Swarm.TUI.Panel
 import           Brick
 import           Brick.Focus
 import           Brick.Widgets.Border
+import           Swarm.TUI.Border
 
 import           Control.Lens
 
 data Panel n = Panel
-  { _panelName :: n, _panelLabel :: Maybe (Widget n), _panelContent :: Widget n }
+  { _panelName :: n, _panelLabels :: BorderLabels n, _panelContent :: Widget n }
 
 makeLenses ''Panel
 
@@ -42,16 +43,14 @@ drawPanel attr fr = withFocusRing fr drawPanel'
     drawPanel' :: Bool -> Panel n -> Widget n
     drawPanel' focused p
       = (if focused then overrideAttr borderAttr attr else id)
-      $ case p ^. panelLabel of
-          Nothing -> border (p ^. panelContent)
-          Just l  -> borderWithLabel l (p ^. panelContent)
+      $ borderWithLabels (p ^. panelLabels) (p ^. panelContent)
 
 -- | Create a panel.
 panel :: Eq n
   => AttrName             -- ^ Border attribute to use when the panel is focused.
   -> FocusRing n          -- ^ Focus ring the panel should be part of.
   -> n                    -- ^ The name of the panel. Must be unique.
-  -> Maybe (Widget n)     -- ^ The (optional) label to use.
+  -> BorderLabels n       -- ^ The labels to use around the border.
   -> Widget n             -- ^ The content of the panel.
   -> Widget n
-panel attr fr nm lab w = drawPanel attr fr (Panel nm lab w)
+panel attr fr nm labs w = drawPanel attr fr (Panel nm labs w)
