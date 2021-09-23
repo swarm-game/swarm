@@ -135,15 +135,15 @@ defaultEntityDisplay c = Display
   }
 
 -- | Construct a default robot display, with display characters
---   @"■▲▶▼◀"@, the default robot attribute, and priority 10.
+--   @"Ω^>v<"@, the default robot attribute, and priority 10.
 defaultRobotDisplay :: Display
 defaultRobotDisplay = Display
-  { _defaultChar     = '■'
+  { _defaultChar     = 'Ω'
   , _orientationMap  = M.fromList
-      [ (East,  '▶')
-      , (West,  '◀')
-      , (South, '▼')
-      , (North, '▲')
+      [ (East,  '>')
+      , (West,  '<')
+      , (South, 'v')
+      , (North, '^')
       ]
   , _displayAttr     = robotAttr
   , _displayPriority = 10
