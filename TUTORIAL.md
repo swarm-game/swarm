@@ -40,7 +40,7 @@ looks something like this:
 
 ![](images/initial.png)
 
-The little white square in the middle represents your base.  Start by
+The little white `Ω` in the middle represents your base.  Start by
 using the Tab key to cycle through the three panels (the REPL, the
 info panel, and the world panel), and read about the various devices
 installed on your base.
