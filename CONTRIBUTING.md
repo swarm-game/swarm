@@ -22,13 +22,10 @@ pull request.
 [How can I contribute?](#how-can-i-contribute)
 
 - [Reporting Bugs](#reporting-bugs)
-- [Improving Documentation](#improving-documentation)
 - [Suggesting Enhancements](#suggesting-enhancements)
-- [Game Design](#game-design)
-- [Your First Code Contribution](#your-first-code-contribution)
+- [Contributing to Game Design](#contributing-to-game-design)
+- [Making a Code Contribution](#making-a-code-contribution)
 - [Development Workflow](#development-workflow)
-
-[Style guides](#styleguides)
 
 [I have push access to the Swarm repository, now what?](#i-have-push-access-to-the-swarm-repository-now-what)
 
@@ -106,6 +103,24 @@ If you have an idea for a way Swarm could be better, or a super-cool new feature
 you'd like to see, you can
 [submit it on the GitHub issue tracker](https://github.com/byorgey/swarm/issues),
 the same as a bug report. Just describe your idea in as much detail as you can.
+
+### Contributing to Game Design
+
+You are very much encouraged to help think about game design: how new
+language features, entities, devices, and world features should be
+added and changed, and how they all fit together to deepen the game
+and create possibilities of gameplay.  This aspect of the game is very
+much unfinished and will need a lot of work.  Take a look at the
+[DESIGN](DESIGN.md) document in this repository for some overarching
+thoughts and principles about the design of the game.
+
+If you have a concrete idea that you think will work well, you can try
+implementing it and opening a pull request.  However, if you have an
+idea you are unsure about, or if you just want to help think through
+some ideas but lack the skill, time, or desire to implement them, feel
+free to just [open an
+issue](https://github.com/byorgey/swarm/issues/new/choose) with a
+description of your ideas to create a space for discussion.
 
 ### Making a Code Contribution
 
