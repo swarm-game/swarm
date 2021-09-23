@@ -233,8 +233,6 @@ you want to reload the definitions.  Eventually, there will be a way
 to both save and load commands, but this is better than nothing for
 now.
 
-Now go forth and build your swarm!
-
 Creative Mode
 -------------
 
@@ -245,3 +243,5 @@ what devices they have installed.  In Creative mode you can do
 anything you like, including fabricate arbitrary items out of thin air
 using the `create` command.  To switch, highlight the world view
 panel, then hit the `m` key.
+
+Now go forth and build your swarm!
