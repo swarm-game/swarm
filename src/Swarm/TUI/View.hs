@@ -299,7 +299,7 @@ drawItem sel i _ (Separator l)
   -- element of the list, once it scrolls off the top of the viewport
   -- it will never become visible again.
   -- See https://github.com/jtdaugherty/brick/issues/336#issuecomment-921220025
-  = forceAttr sepAttr ((if sel == Just (i+1) then visible else id) $ hBorderWithLabel (txt l))
+  = (if sel == Just (i+1) then visible else id) $ hBorderWithLabel (txt l)
 
 drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
   where

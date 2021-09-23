@@ -55,7 +55,6 @@ swarmAttrMap = attrMap V.defAttr
   , (focusedFormInputAttr, V.defAttr)
 
   , (listSelectedFocusedAttr, bg V.blue)
-  , (sepAttr, V.white `on` V.black)
   , (infoAttr, fg (V.rgbColor @Int 50 50 50))
 
   -- Default attribute
