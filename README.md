@@ -49,18 +49,19 @@ The recommended way to install Swarm at the moment is as follows:
 
        git clone https://github.com/byorgey/swarm.git
 
-1. Get the [`ghcup` tool](https://www.haskell.org/ghcup/).
-1. Use `ghcup` to install the `stack` tool:
+1. If you don't already have the `stack` tool:
+    1. Get the [`ghcup` tool](https://www.haskell.org/ghcup/).
+    1. Use `ghcup` to install `stack`:
 
-       ghcup install stack
+           ghcup install stack
 
-1. Now use the `stack` tool to build and run Swarm:
+1. Now use `stack` to build and run Swarm:
 
        cd /path/to/the/swarm/repo
        stack run
 
-1. Go get a snack while `stack build` downloads a Haskell compiler and
-   builds all of Swarm's dependencies.
+1. Go get a snack while `stack` downloads a Haskell compiler and
+   all of Swarm's dependencies.
 1. Have fun! You probably want to [take a look at the
    tutorial](TUTORIAL.md) to help get you started.
 

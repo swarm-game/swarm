@@ -144,6 +144,9 @@ that takes a number as input and moves that many steps forward.  It
 certainly is possible, but right now your robots would not be capable
 of executing it.  You'll have to figure out how to upgrade them!)
 
+Getting the result of a command
+-------------------------------
+
 The result of a command can be assigned to a variable using a left
 arrow, like so:
 ```
@@ -171,12 +174,13 @@ info panel on the left shows `mover1`'s inventory and installed
 devices instead of `base`'s.  (However, commands entered at the REPL
 will still be executed by `base`.)  To return to viewing `base` and
 its inventory, you can type `view "base"` at the prompt, or tab to
-highlight the world view and hit `c`
+highlight the world view and hit `c`.
 
 Getting some resources
 ----------------------
 
-Let's get a tree!  Enter the following:
+We're going to need some resources.  Let's start by getting a tree!
+Enter the following:
 ```
 build "fetch" {turn west; m8; grab; turn back; m8; give "base" "tree"; selfdestruct}
 ```
