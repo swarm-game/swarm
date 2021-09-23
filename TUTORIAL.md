@@ -1,7 +1,12 @@
+Swarm: The Tutorial
+===================
+
 This is a brief tutorial that should hopefully get you up and running
 with Swarm.  If you find any mistakes, or things that are confusing,
-or ways that it no longer corresponds to the game, please [file a bug
-report](https://github.com/byorgey/swarm/issues/new/choose)!
+or ways that the tutorial no longer corresponds to the game, please
+[file a bug
+report](https://github.com/byorgey/swarm/issues/new/choose) or [open a
+pull request](https://github.com/byorgey/swarm/blob/main/CONTRIBUTING.md)!
 Eventually, this tutorial file should be [replaced by an in-game
 tutorial](https://github.com/byorgey/swarm/issues/25).
 
@@ -16,11 +21,12 @@ have to stay inside your robotic base, with its built-in life support
 system.  However, you are stocked with all the materials you need to
 build a lot of robots to explore for you!  To start, you only have the
 materials to make some very basic devices which give your robots
-abilities like moving, turning, and grabbing things and interpreting
+abilities like moving, turning, grabbing things, and interpreting
 very simple imperative programs.  As you use your robots to gather
 resources, you will be able to construct better devices which in turn
 allow you to construct robots with upgraded abilities and programming
-language features.
+language features, which in turn allow you to program more
+sophisticated robots which in turn will OK I think you get the idea.
 
 Getting started
 ---------------
@@ -106,18 +112,19 @@ Creating definitions
 
 We can already tell it's going to be tedious typing
 `move;move;move;move;...`, so let's create some definitions to make
-our lives a bit easier.  To start, type the following:
+our life a bit easier.  To start, type the following:
 ```
 def m2 : cmd () = {move ; move} end
 ```
 
-The `cmd ()` annotation is optional; in this situation the game could
-have easily figured out the type of `m2` if we had just written `def
-m2 = ...`.  The curly braces are actually optional as well.  The `end`
-is required, and is needed to disambiguate where the end of the
-command is.  It may not seem very ambiguous in this situation, but is
-needed especially when several definitions are written in sequence
-(such as in a file full of definitions).
+The `: cmd ()` annotation on `m2` is optional; in this situation the
+game could have easily figured out the type of `m2` if we had just
+written `def m2 = ...` (though there are some situations where a type
+signature may be required).  The curly braces are actually optional as
+well.  The `end` is required, and is needed to disambiguate where the
+end of the command is.  It may not seem very ambiguous in this
+situation, but is needed especially when several definitions are
+written in sequence (such as in a file full of definitions).
 
 Now try this:
 ```
@@ -160,15 +167,15 @@ left corner you will see a description of the tree along with some
 *recipes* involving trees.  Apparently, we can use a tree to construct
 a rangefinder (this is just for testing and will go away at some
 point!), or two branches and a log.  Let's use the second recipe.
-Since your base has a `workbench`, you can use the `make` command to
+Since your base has a `workbench` installed, you can use the `make` command to
 make things.  Just give it the name of a thing you'd like to make, and
 the system will automatically pick a recipe which produces the
 thing you requested and for which you have all the necessary inputs.
 In this case we can request to make either a `log` or a `branch`; it
-doesn't matter which, and we will get the same result either way
-```
-make "log"
-```
+doesn't matter which, and we will get the same result either way.
+
+![](images/log.png)
+
 Note that since the `make` command takes a `string` as an argument,
 `log` has to go in double quotes (otherwise it would be a variable).
 You should now have two branches and a log in your inventory.  Take a
@@ -177,3 +184,16 @@ look at them and see what recipes they enable!
 By this time you may also notice that the tree has grown back!  Some
 items in the world will regrow after they have been harvested, and
 some will not.
+
+Now go forth and build your swarm!
+
+Creative Mode
+-------------
+
+For now, there is a secret way to switch between Classic mode and
+Creative mode.  In Classic mode, the kinds of actions your
+robots can do, and the kinds of programs they can interpret, is
+restricted by what devices they have installed.  In Creative mode you
+can do anything you like (though you still cannot (yet?) create
+resources out of thin air).  To switch, tab until the world view is
+highlighted, then hit the `m` key.
