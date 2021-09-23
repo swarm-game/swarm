@@ -9,12 +9,12 @@ robots to explore the world and collect resources, which in turn
 allows you to build upgraded robots that can run more interesting and
 complex programs.
 
-![](images/BFS-clearcut.png)
+![](images/log.png)
 
-The implementation is still in a very early stage, but planned
-features include:
+The implementation is still in an early stage, but planned features
+include:
 
-* 2D, infinite, procedurally generated worlds
+* Practically infinite 2D procedurally generated worlds
 * Simple yet powerful programming language based on the polymorphic
   lambda calculus + recursion, with a command monad for describing
   first-class imperative actions
@@ -35,13 +35,13 @@ features include:
     - Future versions might also have multiplayer modes, with co-op or
       PvP play over a network...?
 
-Installing
-==========
+Installing and Playing
+======================
 
-Warning: Swarm is still in a very early stage; it's still missing many
-of the planned features and has no help or tutorial system at all.
-But you can program cute little robots, and hey, that's all that
-really matters, right?
+Warning: Swarm is still in an early stage; it's missing many of the
+planned features, there is no winning condition, and the gameplay is
+not very deep yet.  But you can program cute little robots, and hey,
+that's all that really matters, right?
 
 The recommended way to install Swarm at the moment is as follows:
 
@@ -61,7 +61,8 @@ The recommended way to install Swarm at the moment is as follows:
 
 1. Go get a snack while `stack build` downloads a Haskell compiler and
    builds all of Swarm's dependencies.
-1. Have fun!
+1. Have fun! You probably want to [take a look at the
+   tutorial](TUTORIAL.md) to help get you started.
 
 Contributing
 ============
@@ -70,11 +71,5 @@ If you want to help out, you're most welcome!  There are *lots* of
 ways to contribute, regardless of your Haskell background.  For
 example, even someone with no Haskell experience whatsoever could
 still help with *e.g.* game design, playtesting, and level design for
-challenge mode.
-
-Eventually, this space will probably describe a lot more specific
-kinds of tasks, there will be an issue tracker with things labeled as
-good first ways to contribute, etc.  For now, though, if you're
-interested to help out, just get in touch (see my email in my GitHub
-profile, or contact me via IRC---`byorgey` on Libera.Chat).
-
+challenge mode.  Check out the [CONTRIBUTING](CONTRIBUTING.md) file
+for more specific information about how to contribute.
