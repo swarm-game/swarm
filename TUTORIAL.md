@@ -215,6 +215,20 @@ By this time you may also notice that the tree has grown back!  Some
 items in the world will regrow after they have been harvested, and
 some will not.
 
+Loading definitions from a file
+-------------------------------
+
+One last thing for now: it is possible to load definitions from a
+file.  Just type `run("filename")` and the contents of the file will
+be executed as if you typed it at the REPL.  For example, rather than
+typing definitions at the prompt, you could put a sequence of
+definitions in a file, separated by semicolons (note that whitespace
+is ignored, so format it however you like).  Then you can easily
+modify the definitions or add more, and just `run` the file every time
+you want to reload the definitions.  Eventually, there will be a way
+to both save and load commands, but this is better than nothing for
+now.
+
 Now go forth and build your swarm!
 
 Creative Mode
@@ -225,5 +239,5 @@ Creative mode.  In Classic mode, the kinds of actions your robots can
 do, and the kinds of programs they can interpret, is restricted by
 what devices they have installed.  In Creative mode you can do
 anything you like, including fabricate arbitrary items out of thin air
-using the `create` command.  To switch, tab until the world view is
-highlighted, then hit the `m` key.
+using the `create` command.  To switch, highlight the world view
+panel, then hit the `m` key.
