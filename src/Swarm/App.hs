@@ -14,7 +14,7 @@
 
 module Swarm.App where
 
-import           Control.Concurrent   (forkIO)
+import           Control.Concurrent   (forkIO, threadDelay)
 
 import           Brick
 import           Brick.BChan
@@ -46,10 +46,10 @@ appMain = do
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
 
-      -- Just send Frame events as fast as possible.  The game is
-      -- responsible for figuring out how many steps to take each
-      -- frame to achieve the desired speed, regardless of the frame
-      -- rate.
+      -- Send Frame events as at a reasonable rate for 60 fps. The
+      -- game is responsible for figuring out how many steps to take
+      -- each frame to achieve the desired speed, regardless of the
+      -- frame rate.
       --
       -- 5 is the size of the bounded channel; when it gets that big,
       -- any writes to it will block.  Probably 1 would work fine,
@@ -58,7 +58,9 @@ appMain = do
       -- and do another write.
 
       chan <- newBChan 5
-      _ <- forkIO $ forever $ writeBChan chan Frame
+      _ <- forkIO $ forever $ do
+        threadDelay 16_666
+        writeBChan chan Frame
 
       -- Run the app.
 
