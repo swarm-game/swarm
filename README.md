@@ -38,6 +38,10 @@ include:
 Installing and Playing
 ======================
 
+**NOTE**: At the moment, Swarm is only supported on POSIX-style
+systems such as Linux or OSX.  It is not (natively) supported on
+Windows.  See [this GitHub issue](https://github.com/byorgey/swarm/issues/53).
+
 Warning: Swarm is still in an early stage; it's missing many of the
 planned features, there is no winning condition, and the gameplay is
 not very deep yet.  But you can program cute little robots, and hey,
