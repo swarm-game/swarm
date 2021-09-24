@@ -55,6 +55,10 @@ The recommended way to install Swarm at the moment is as follows:
 
            ghcup install stack
 
+1. It is recommended that you use a relatively large terminal window (*e.g.*
+   132 columns x 43 rows or larger).
+    * To find out the size of your terminal, you can type `stty size`.
+
 1. Now use `stack` to build and run Swarm:
 
        cd /path/to/the/swarm/repo

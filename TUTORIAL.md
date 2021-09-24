@@ -14,6 +14,12 @@ request](https://github.com/byorgey/swarm/blob/main/CONTRIBUTING.md)!
 Eventually, this tutorial file should be [replaced by an in-game
 tutorial](https://github.com/byorgey/swarm/issues/25).
 
+It is recommended that you use a relatively large terminal window
+(*e.g.* 132 x 43 at a minimum, ideally larger).  On the other hand,
+the larger the window, the longer it takes the `vty` library to draw a
+frame.  You can play with the sizing while the game is running---it
+will automatically adjust to the size of the terminal.
+
 The backstory
 -------------
 
