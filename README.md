@@ -38,14 +38,16 @@ include:
 Installing and Playing
 ======================
 
-**NOTE**: At the moment, Swarm is only supported on POSIX-style
-systems such as Linux or OSX.  It is not (natively) supported on
-Windows.  See [this GitHub issue](https://github.com/byorgey/swarm/issues/53).
-
 Warning: Swarm is still in an early stage; it's missing many of the
 planned features, there is no winning condition, and the gameplay is
 not very deep yet.  But you can program cute little robots, and hey,
 that's all that really matters, right?
+
+**NOTE**: Swarm requires a POSIX-style environment that supports
+`terminfo`.  On Linux and OSX, the below instructions should work
+natively.  On Windows, see [the comments on this GitHub
+issue](https://github.com/byorgey/swarm/issues/53) for instructions
+getting it to work under the Windows Subsystem for Linux.
 
 The recommended way to install Swarm at the moment is as follows:
 
@@ -54,7 +56,9 @@ The recommended way to install Swarm at the moment is as follows:
        git clone https://github.com/byorgey/swarm.git
 
 1. If you don't already have the `stack` tool:
-    1. Get the [`ghcup` tool](https://www.haskell.org/ghcup/).
+    1. Get the [`ghcup` tool](https://www.haskell.org/ghcup/), a handy
+       one-stop utility for managing all the different pieces of a
+       Haskell toolchain.
     1. Use `ghcup` to install `stack`:
 
            ghcup install stack
@@ -70,8 +74,9 @@ The recommended way to install Swarm at the moment is as follows:
 
 1. Go get a snack while `stack` downloads a Haskell compiler and
    all of Swarm's dependencies.
-1. Have fun! You probably want to [take a look at the
-   tutorial](TUTORIAL.md) to help get you started.
+1. Have fun! At the moment, you probably want to [take a look at the
+   tutorial](TUTORIAL.md) to help get you started.  Eventually there
+   will be an in-game tutorial.
 
 Contributing
 ============
