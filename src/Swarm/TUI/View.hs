@@ -246,7 +246,7 @@ explainFocusedItem s = case mItem of
     mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
 
     explainRecipes :: Entity -> [Widget Name]
-    explainRecipes = map (txt . prettyRecipe) . recipesWith
+    explainRecipes = map (txtWrap . prettyRecipe) . recipesWith
 
     recipesWith :: Entity -> [Recipe Entity]
     recipesWith e = S.toList . S.fromList $
