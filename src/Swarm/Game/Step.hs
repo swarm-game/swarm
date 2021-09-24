@@ -529,9 +529,11 @@ execConst c vs k = do
         _ <- lift . lift $ addRobot seedBot
         return ()
 
-      -- Add the picked up item to the robot's inventory
+      -- Add the picked up item to the robot's inventory.
       robotInventory %= insert e
-      return $ Out VUnit k
+
+      -- Return the name of the item grabbed.
+      return $ Out (VString (e ^. entityName)) k
 
     Turn -> case vs of
       [VDir d] -> do

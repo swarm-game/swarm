@@ -211,34 +211,39 @@ highlight the world view and hit `c`.
 Getting some resources
 ----------------------
 
-We're going to need some resources.  Let's start by getting a tree!
-Enter the following:
+We're going to need some resources.  There seem to be a bunch of
+things that look like green `T`s nearby; let's see if we can grab one
+of those!  Try entering the following:
 ```
-build "fetch" {turn west; m8; grab; turn back; m8; give "base" "tree"; selfdestruct}
+build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
 ```
+
 The `turn` command causes a robot to turn, of course. It takes a
 direction as an argument, which can be either an absolute direction
 (`north`, `south`, `east`, or `west`) or a relative direction
-(`forward`, `back`, `left`, or `right`).
+(`forward`, `back`, `left`, or `right`).  You can also see that the
+`grab` command returns the name of the thing it grabbed, which is
+especially helpful when grabbing something unknown.
 
-You should see a robot head west from your base, grab a tree, and
+You should see a robot head west from your base, grab a thing, and
 return to the base.  If all works properly, after the newly built
-robot executes the `give` command, you should see a tree show up in
+robot executes the `give` command, you should see the thing show up in
 your inventory, like this:
 
 ![](images/tree.png)
 
-Tab over to your inventory and take a look at the tree.  In the bottom
-left corner you will see a description of the tree along with some
-*recipes* involving trees.  Apparently, we can use a tree to construct
-a rangefinder (this is just for testing and will go away at some
-point!), or two branches and a log.  Let's use the second recipe.
-Since your base has a `workbench` installed, you can use the `make` command to
-make things.  Just give it the name of a thing you'd like to make, and
-the system will automatically pick a recipe which produces the
-thing you requested and for which you have all the necessary inputs.
-In this case we can request to make either a `"log"` or a `"branch"`; it
-doesn't matter which, and we will get the same result either way.
+Apparently that thing is a tree!  Tab over to your inventory and take
+a look at it.  In the bottom left corner you will see a description of
+the tree along with some *recipes* involving trees.  Apparently, we
+can use a tree to construct a rangefinder (this is just for testing
+and will go away at some point!), or two branches and a log.  Let's
+use the second recipe.  Since your base has a `workbench` installed,
+you can use the `make` command to make things.  Just give it the name
+of a thing you'd like to make, and the system will automatically pick
+a recipe which produces the thing you requested and for which you have
+all the necessary inputs.  In this case we can request to make either
+a `"log"` or a `"branch"`; it doesn't matter which, and we will get
+the same result either way.
 
 ![](images/log.png)
 
@@ -247,9 +252,11 @@ Note that since the `make` command takes a `string` as an argument,
 You should now have two branches and a log in your inventory.  Take a
 look at them and see what recipes they enable!
 
-By this time you may also notice that the tree has grown back!  Some
-items in the world will regrow after they have been harvested, and
-some will not.
+By this time you may also notice that the tree has grown back (whether
+it has finished growing back depends on how long you took to read the
+intervening tutorial, and on the random number generator).  Some items
+in the world will regrow after they have been harvested, and some will
+not.
 
 Loading definitions from a file
 -------------------------------

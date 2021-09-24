@@ -401,7 +401,7 @@ inferConst c = toU $ case c of
 
   Move         -> [tyQ| cmd () |]
   Turn         -> [tyQ| dir -> cmd () |]
-  Grab         -> [tyQ| cmd () |]
+  Grab         -> [tyQ| cmd string |]
   Place        -> [tyQ| string -> cmd () |]
   Give         -> [tyQ| string -> string -> cmd () |]
   Make         -> [tyQ| string -> cmd () |]

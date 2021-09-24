@@ -244,8 +244,8 @@
   - A grabber arm allows a robot to manipulate items via the 'grab',
     'place', and 'give' commands.
   - The 'grab' command takes no arguments; it simply grabs whatever is
-    available.  It raises an exception if run in a cell that does not
-    contain an item.
+    available, and also returns the name of the grabbed thing as a string.
+    It raises an exception if run in a cell that does not contain an item.
   - The 'place' command takes one argument, the name of the item to
     place.  The item is removed from the robot's inventory and placed
     in the robot's current cell (which must be empty).  Raises an
