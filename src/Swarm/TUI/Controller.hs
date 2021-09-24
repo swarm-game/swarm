@@ -130,7 +130,9 @@ shutdown s = do
 --   this may involve stepping the game any number of ticks (including
 --   zero).
 runFrameUI :: AppState -> EventM Name (Next AppState)
-runFrameUI s = execStateT (runFrame >> updateUI) s >>= continue
+runFrameUI s = do
+  (redraw, newState) <- runStateT (runFrame >> updateUI) s
+  (if redraw then continue else continueWithoutRedraw) newState
 
 -- | Run the game for a single frame, without updating the UI.
 runFrame :: StateT AppState (EventM Name) ()
@@ -197,7 +199,7 @@ runGameTick = zoom gameState gameTick
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
-updateUI :: StateT AppState (EventM Name) ()
+updateUI :: StateT AppState (EventM Name) Bool
 updateUI = do
 
   loadVisibleRegion
@@ -218,13 +220,20 @@ updateUI = do
   -- If the hashes don't match (either because which robot (or
   -- whether any robot) is focused changed, or the focused robot's
   -- inventory changed), regenerate the list.
-  when (listRobotHash /= focusedRobotHash) (zoom uiState $ populateInventoryList fr)
+  inventoryUpdated <-
+    if (listRobotHash /= focusedRobotHash)
+      then do
+        zoom uiState $ populateInventoryList fr
+        pure True
+      else pure False
 
   -- Now check if the base finished running a program entered at the REPL.
-  case g ^. replStatus of
+  replUpdated <- case g ^. replStatus of
 
     -- It did, and the result was the unit value.  Just reset replStatus.
-    REPLWorking _ (Just VUnit) -> gameState . replStatus .= REPLDone
+    REPLWorking _ (Just VUnit) -> do
+      gameState . replStatus .= REPLDone
+      pure True
 
     -- It did, and returned some other value.  Pretty-print the
     -- result as a REPL output, with its type, and reset the replStatus.
@@ -232,9 +241,13 @@ updateUI = do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
       uiState . uiReplHistory %= (REPLOutput out :)
       gameState . replStatus .= REPLDone
+      pure True
 
     -- Otherwise, do nothing.
-    _ -> return ()
+    _ -> pure False
+
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated
+  pure redraw
 
 -- | Make sure all tiles covering the visible part of the world are
 --   loaded.
