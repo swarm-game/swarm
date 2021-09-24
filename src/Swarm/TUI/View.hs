@@ -97,6 +97,7 @@ drawUI s =
       , drawMenu
           (s ^. gameState . paused)
           ((s ^. gameState . viewCenterRule) == VCRobot "base")
+          (s ^. gameState . gameMode)
           (s ^. uiState)
       , panel highlightAttr fr REPLPanel
           ( plainBorder
@@ -147,12 +148,18 @@ drawDialog s = case s ^. uiError of
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
-drawMenu :: Bool -> Bool -> UIState -> Widget Name
-drawMenu isPaused viewingBase
+drawMenu :: Bool -> Bool -> GameMode -> UIState -> Widget Name
+drawMenu isPaused viewingBase mode
   = vLimit 1
-  . hBox . map (padLeftRight 1 . drawKeyCmd)
+  . hBox . (++[gameModeWidget]) . map (padLeftRight 1 . drawKeyCmd)
   . (globalKeyCmds++) . keyCmdsFor . focusGetCurrent . view uiFocusRing
   where
+    gameModeWidget
+      = padLeft Max . padLeftRight 1
+      . txt . (<> " mode")
+      $ case mode of
+          Classic -> "Classic"
+          Creative -> "Creative"
     globalKeyCmds =
       [ ("^q", "quit")
       , ("Tab", "cycle panels")
