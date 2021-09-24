@@ -72,7 +72,6 @@ module Swarm.Game.CEK
 import           Control.Lens.Combinators  (pattern Empty)
 import           Data.List                 (intercalate)
 import qualified Data.Set                  as S
-import           Data.Text                 (Text)
 import           Witch                     (from)
 
 import           Swarm.Game.Exception
@@ -140,7 +139,7 @@ data Frame
     -- ^ An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
 
-  | FBind (Maybe Text) Term Env
+  | FBind (Maybe Var) Term Env
     -- ^ We are in the process of executing the first component of a
     --   bind; once done, we should also execute the second component
     --   in the given environment (extended by binding the variable,
