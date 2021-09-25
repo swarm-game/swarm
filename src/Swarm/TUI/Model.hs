@@ -30,7 +30,7 @@ module Swarm.TUI.Model
 
     -- ** Fields
 
-  , uiFocusRing, uiReplForm, uiReplType, uiReplHistory, uiReplHistIdx
+  , uiFocusRing, uiReplForm, uiReplType, uiReplHistory, uiReplHistIdx, uiReplLast
   , uiInventory, uiError, lgTicksPerSecond
   , lastFrameTime, accumulatedTime, tickCount, frameCount, lastInfoTime
   , uiShowFPS, uiTPF, uiFPS
@@ -135,6 +135,7 @@ data UIState = UIState
   { _uiFocusRing      :: FocusRing Name
   , _uiReplForm       :: Form Text AppEvent Name
   , _uiReplType       :: Maybe Polytype
+  , _uiReplLast       :: Text
   , _uiReplHistory    :: [REPLHistItem]
   , _uiReplHistIdx    :: Int
   , _uiInventory      :: Maybe (Int, BL.List Name InventoryEntry)
@@ -162,6 +163,10 @@ uiReplForm :: Lens' UIState (Form Text AppEvent Name)
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).
 uiReplType :: Lens' UIState (Maybe Polytype)
+
+-- | The last thing the user has typed which isn't part of the history.
+--   This is used to restore the repl form after the user visited the history.
+uiReplLast :: Lens' UIState Text
 
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
@@ -244,6 +249,7 @@ initUIState = liftIO $ do
     , _uiReplType       = Nothing
     , _uiReplHistory    = mhist ? []
     , _uiReplHistIdx    = -1
+    , _uiReplLast       = ""
     , _uiInventory      = Nothing
     , _uiError          = Nothing
     , _uiShowFPS        = False
