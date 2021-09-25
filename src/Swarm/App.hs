@@ -46,10 +46,13 @@ appMain = do
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
 
-      -- Send Frame events as at a reasonable rate for 60 fps. The
+      -- Send Frame events as at a reasonable rate for 30 fps. The
       -- game is responsible for figuring out how many steps to take
       -- each frame to achieve the desired speed, regardless of the
-      -- frame rate.
+      -- frame rate.  Note that if the game cannot keep up with 30
+      -- fps, it's not a problem: the channel will fill up and this
+      -- thread will block.  So the force of the threadDelay is just
+      -- to set a *maximum* possible frame rate.
       --
       -- 5 is the size of the bounded channel; when it gets that big,
       -- any writes to it will block.  Probably 1 would work fine,
@@ -59,7 +62,7 @@ appMain = do
 
       chan <- newBChan 5
       _ <- forkIO $ forever $ do
-        threadDelay 16_666
+        threadDelay 33_333        -- cap maximum framerate at 30 FPS
         writeBChan chan Frame
 
       -- Run the app.
