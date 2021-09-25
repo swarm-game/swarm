@@ -18,7 +18,6 @@ import           Control.Concurrent   (forkIO, threadDelay)
 
 import           Brick
 import           Brick.BChan
-import           Brick.Main
 import qualified Graphics.Vty         as V
 
 import           Control.Monad.Except
