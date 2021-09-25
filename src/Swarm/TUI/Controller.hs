@@ -272,7 +272,7 @@ stripCmd pty                    = pty
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))
   = continue $ s
-          & uiState . uiReplForm %~ updateFormState ""
+      & uiState . uiReplForm %~ updateFormState ""
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
   = case processTerm' topCtx topCapCtx entry of
       Right t@(ProcessedTerm _ (Module ty _) _ _) ->
