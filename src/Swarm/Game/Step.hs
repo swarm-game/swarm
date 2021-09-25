@@ -68,12 +68,6 @@ evalStepsPerTick = 100
 --   from a file when the whole program starts up).
 gameTick :: (MonadState GameState m, MonadIO m) => m ()
 gameTick = do
-
-  -- Reset the needsRedraw flag.  While stepping the robots, the flag will
-  -- get set to true if anything changes that requires redrawing the
-  -- world (e.g. a robot moving or disappearing).
-  needsRedraw .= False
-
   -- Note, it is tempting to do the below in one line with some clever
   -- lens combinator, but it's not possible.  We want to do an
   -- effectful traversal over a piece of the state (i.e. step each
