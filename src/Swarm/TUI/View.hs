@@ -119,13 +119,19 @@ drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
 
 -- | Draw info about the current number of ticks per second.
 drawTPS :: AppState -> Widget Name
-drawTPS s = hBox [tpsInfo, txt " ", tpfInfo]
+drawTPS s = hBox (tpsInfo : rateInfo)
   where
     tpsInfo
       | l >= 0    = hBox [str (show n), txt " ", txt (number n "tick"), txt " / s"]
       | otherwise = hBox [txt "1 tick / ", str (show n), txt " s"]
 
-    tpfInfo = hBox [txt "(", str (printf "%0.1f" (s ^. uiState . ticksPerFrame)), txt " ticks/frame)"]
+    rateInfo
+      | s ^. uiState . uiShowFPS =
+        [ txt " ("
+        , str (printf "%0.1f" (s ^. uiState . uiTPF)), txt " tpf, "
+        , str (printf "%0.1f" (s ^. uiState . uiFPS)), txt " fps)"
+        ]
+      | otherwise = []
 
     l = s ^. uiState . lgTicksPerSecond
     n = 2^abs l
@@ -334,4 +340,3 @@ drawREPL s = vBox $
 
     fmt (REPLEntry _ e) = txt replPrompt <+> txt e
     fmt (REPLOutput t)  = txt t
-

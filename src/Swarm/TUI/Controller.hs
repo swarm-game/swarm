@@ -170,9 +170,33 @@ runFrame = do
         | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
         | otherwise  = oneSecond * (1 `shiftL` abs lgTPS)
 
+  -- Update TPS/FPS counters every second
+  infoUpdateTime <- use (uiState . lastInfoTime)
+  let updateTime = toNanoSecs $ diffTimeSpec curTime infoUpdateTime
+  when (updateTime >= oneSecond) $ do
+    -- Wait for at least one second to have elapsed
+    when (infoUpdateTime /= 0) $ do
+      -- set how much frame got processed per second
+      frames <- use (uiState . frameCount)
+      uiState . uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
+
+      -- set how much ticks got processed per frame
+      ticks <- use (uiState . tickCount)
+      uiState . uiTPF .= fromIntegral ticks / fromIntegral frames
+
+      -- ensure this frame gets drawn
+      gameState . needsRedraw .= True
+
+    -- Reset the counter and wait another seconds for the next update
+    uiState . tickCount .= 0
+    uiState . frameCount .= 0
+    uiState . lastInfoTime .= curTime
+
+  -- Increment the frame count
+  uiState . frameCount += 1
+
   -- Now do as many ticks as we need to catch up.
   runFrameTicks (fromNanoSecs dt)
-  zoom uiState rememberFrameTicks
 
 -- | Do zero or more ticks, with each tick notionally taking the given
 --   timestep, until we have used up all available accumulated time.
@@ -186,7 +210,7 @@ runFrameTicks dt = do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
-    uiState . frameTicks += 1
+    uiState . tickCount += 1
     uiState . accumulatedTime -= dt
     runFrameTicks dt
 
@@ -380,6 +404,10 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar ',') []))
   = continue $ adjustTPS (-) s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '.') []))
   = continue $ adjustTPS (+) s
+
+-- show fps
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'f') []))
+  = continue $ (s & uiState . uiShowFPS %~ not)
 
 -- for testing only: toggle between classic & creative modes
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') []))

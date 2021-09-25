@@ -32,7 +32,8 @@ module Swarm.TUI.Model
 
   , uiFocusRing, uiReplForm, uiReplType, uiReplHistory, uiReplHistIdx
   , uiInventory, uiError, lgTicksPerSecond
-  , lastFrameTime, accumulatedTime, frameTicks, frameTickHist, ticksPerFrame
+  , lastFrameTime, accumulatedTime, tickCount, frameCount, lastInfoTime
+  , uiShowFPS, uiTPF, uiFPS
 
     -- ** Initialization
 
@@ -45,7 +46,6 @@ module Swarm.TUI.Model
     -- ** Updating
 
   , populateInventoryList
-  , rememberFrameTicks
 
     -- * App state
   , AppState
@@ -139,11 +139,15 @@ data UIState = UIState
   , _uiReplHistIdx    :: Int
   , _uiInventory      :: Maybe (Int, BL.List Name InventoryEntry)
   , _uiError          :: Maybe (Widget Name)
+  , _uiShowFPS        :: Bool
+  , _uiTPF            :: Double
+  , _uiFPS            :: Double
   , _lgTicksPerSecond :: Int
-  , _frameTicks       :: Int
-  , _frameTickHist    :: [Int]
+  , _tickCount        :: Int
+  , _frameCount       :: Int
   , _lastFrameTime    :: TimeSpec
   , _accumulatedTime  :: TimeSpec
+  , _lastInfoTime     :: TimeSpec
   }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''UIState
@@ -176,26 +180,27 @@ uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryEntry))
 --   error message that is shown on top of the rest of the UI.
 uiError :: Lens' UIState (Maybe (Widget Name))
 
+-- | A togle to show the FPS by pressing `f`
+uiShowFPS :: Lens' UIState Bool
+
+-- | Computed ticks per milli seconds
+uiTPF :: Lens' UIState Double
+
+-- | Computed frames per milli seconds
+uiFPS :: Lens' UIState Double
+
 -- | The base-2 logarithm of the current game speed in ticks per
 --   second.
 lgTicksPerSecond :: Lens' UIState Int
 
 -- | A counter used to track how many ticks happen in a single frame.
-frameTicks :: Lens' UIState Int
+tickCount :: Lens' UIState Int
 
--- | How many ticks have happened in each of the last few frames.
-frameTickHist :: Lens' UIState [Int]
+-- | A counter used to track how many frame got rendered
+frameCount :: Lens' UIState Int
 
--- | Compute the average number of ticks per frame over the last few
---   frames.
-ticksPerFrame :: Getter UIState Double
-ticksPerFrame = to getTicksPerFrame
-  where
-    getTicksPerFrame uiState =
-      let hist = uiState ^. frameTickHist
-      in  case hist of
-            [] -> 0
-            _  -> fromIntegral (sum hist) / fromIntegral (length hist)
+-- | The time of the last info widget update
+lastInfoTime :: Lens' UIState TimeSpec
 
 -- | The time of the last 'Frame' event.
 lastFrameTime :: Lens' UIState TimeSpec
@@ -241,11 +246,15 @@ initUIState = liftIO $ do
     , _uiReplHistIdx    = -1
     , _uiInventory      = Nothing
     , _uiError          = Nothing
+    , _uiShowFPS        = False
+    , _uiTPF            = 0
+    , _uiFPS            = 0
     , _lgTicksPerSecond = initLgTicksPerSecond
     , _lastFrameTime    = startTime
     , _accumulatedTime  = 0
-    , _frameTicks       = 0
-    , _frameTickHist    = []
+    , _lastInfoTime     = 0
+    , _tickCount        = 0
+    , _frameCount       = 0
     }
 
 ------------------------------------------------------------
@@ -285,19 +294,6 @@ populateInventoryList (Just r) = do
   -- Finally, populate the newly created list in the UI, and remember
   -- the hash of the current robot.
   uiInventory .= Just (r ^. robotEntity . entityHash, lst)
-
-frameTickHistSize :: Int
-frameTickHistSize = 5
-
--- | Take the current value in the 'frameTicks' counter and prepend it
---   to the 'frameTickHist', also dropping the least recent frame tick
---   count from the history if it has reached a maximum size.  Then
---   reset the 'frameTicks' counter to zero.
-rememberFrameTicks :: MonadState UIState m => m ()
-rememberFrameTicks = do
-  ft <- use frameTicks
-  frameTickHist %= (take frameTickHistSize . (ft:))
-  frameTicks .= 0
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)
