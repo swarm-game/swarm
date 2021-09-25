@@ -369,9 +369,13 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 's') []))
 
 -- speed controls
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
-  = continueWithoutRedraw $ adjustTPS (-) s
+  = continue $ adjustTPS (-) s
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
-  = continueWithoutRedraw $ adjustTPS (+) s
+  = continue $ adjustTPS (+) s
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar ',') []))
+  = continue $ adjustTPS (-) s
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '.') []))
+  = continue $ adjustTPS (+) s
 
 -- for testing only: toggle between classic & creative modes
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') []))
