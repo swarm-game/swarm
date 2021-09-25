@@ -78,6 +78,14 @@ The recommended way to install Swarm at the moment is as follows:
    tutorial](TUTORIAL.md) to help get you started.  Eventually there
    will be an in-game tutorial.
 
+## Nix flake (experimental)
+
+Nix flake user can run `swarm` binary using this command:
+
+    $ nix run github:byorgey/swarm
+
+Please see iohk's `haskell.nix` [guide](https://input-output-hk.github.io/haskell.nix/tutorials/getting-started-flakes/) on how to setting binary cache.
+
 Contributing
 ============
 
