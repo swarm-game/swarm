@@ -137,6 +137,10 @@ runFrameUI s = do
 -- | Run the game for a single frame, without updating the UI.
 runFrame :: StateT AppState (EventM Name) ()
 runFrame = do
+  -- Reset the needsRedraw flag.  While procssing the frame and stepping the robots,
+  -- the flag will get set to true if anything changes that requires redrawing the
+  -- world (e.g. a robot moving or disappearing).
+  gameState . needsRedraw .= False
 
   -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
 
