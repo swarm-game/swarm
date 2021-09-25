@@ -11,6 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveDataTypeable   #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE PatternSynonyms      #-}
@@ -44,6 +45,7 @@ import           Data.Text
 import           Linear
 
 import           Data.Aeson.Types
+import           Data.Data            (Data)
 import           Data.Hashable        (Hashable)
 import           GHC.Generics         (Generic)
 
@@ -56,7 +58,7 @@ import           Swarm.Language.Types
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
 data Direction = Lft | Rgt | Back | Fwd | North | South | East | West
-  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 instance ToJSONKey Direction where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
@@ -163,15 +165,15 @@ data Const
   | Try               -- ^ Try/catch block
   | Raise             -- ^ Raise an exception
 
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data)
 
 -- | Comparison operator constants.
 data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data)
 
 -- | Arithmetic operator constants.
 data ArithConst = Add | Sub | Mul | Div | Exp
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
@@ -247,6 +249,11 @@ data Term
 
     -- | A string literal.
   | TString Text
+  | TAntiString Text         -- ^ For antiquoting a Haskell variable
+                             --   of type Text.  Note that we exclude
+                             --   this from the COMPLETE Pragma below,
+                             --   since it should only ever show up
+                             --   when processing a quasiquotation.
 
     -- | A Boolean literal.
   | TBool Bool
@@ -283,7 +290,10 @@ data Term
     --   special syntactic form so its argument can get special
     --   treatment during evaluation.
   | TDelay Term
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
+
+{-# COMPLETE TUnit, TConst, TDir, TInt, TString, TBool, TVar, TPair
+  , TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 -- | Rewrite a term using a bottom-up traversal, applying the given
 --   function at each subterm.  This is used in

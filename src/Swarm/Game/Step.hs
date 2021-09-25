@@ -15,6 +15,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TypeOperators     #-}
@@ -26,7 +27,7 @@ import           Control.Lens              hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool                 (bool)
-import           Data.Either               (fromRight, rights)
+import           Data.Either               (rights)
 import           Data.Int                  (Int64)
 import           Data.List                 (find)
 import qualified Data.Map                  as M
@@ -51,6 +52,7 @@ import           Swarm.Game.Value
 import qualified Swarm.Game.World          as W
 import           Swarm.Language.Capability
 import           Swarm.Language.Context
+import           Swarm.Language.Parse.QQ   (tmQ)
 import           Swarm.Language.Pipeline
 import           Swarm.Language.Syntax
 import           Swarm.Util
@@ -436,28 +438,22 @@ evalConst c vs k = do
       return $ Up (Fatal msg) k
     Right cek' -> return cek'
 
-
--- XXX load this from a file and have it available in a map?
---     Or make a quasiquoter (https://github.com/byorgey/swarm/issues/16) ?
--- XXX Remove the fromRight error case.
-
--- | A program to run a "seed" robot that regrows a harvested entity.
-seedProgram :: Text -> ProcessedTerm
-seedProgram thing = fromRight (error . from $ "Invalid program: " <> thing) prog
-  where
-    prog = processTerm . into @Text . unlines $
-      [ "let repeat : int -> cmd () -> cmd () = \\n.\\c."
-      , "  if (n == 0) {} {c ; repeat (n-1) c}"
-      , "in {"
-      , "  r <- random 500;"
-      , "  repeat (r + 100) wait;"
-      , "  appear \"|\";"
-      , "  r <- random 500;"
-      , "  repeat (r + 100) wait;"
-      , "  place \"" ++ from @Text thing ++ "\";"
-      , "  selfdestruct"
-      , "}"
-      ]
+-- | A system program for a "seed robot", to regrow a growable entity
+--   after it is harvested.
+seedProgram :: Text -> Either Text ProcessedTerm
+seedProgram thing = processParsedTerm [tmQ|
+  let repeat : int -> cmd () -> cmd () = \n.\c.
+    if (n == 0) {} {c ; repeat (n-1) c}
+  in {
+    r <- random 500;
+    repeat (r + 100) wait;
+    appear "|";
+    r <- random 500;
+    repeat (r + 100) wait;
+    place $str:thing;
+    selfdestruct
+  }
+  |]
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
@@ -512,10 +508,13 @@ execConst c vs k = do
 
       when (e `hasProperty` Growable) $ do
 
+        seed <- seedProgram (e ^. entityName) `isRightOr`
+          (Fatal . T.append "Invalid seed program: ")
+
         -- Grow a new entity from a seed.
         let seedBot =
               mkRobot "seed" loc (V2 0 0)
-                (initMachine (seedProgram (e ^. entityName)) empty)
+                (initMachine seed empty)
                 []
                 & robotDisplay .~
                   (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
