@@ -1,0 +1,5 @@
+source-repository-package
+  type: git
+  location: https://github.com/colinhect/hsnoise
+  tag: 4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d
+packages: .
