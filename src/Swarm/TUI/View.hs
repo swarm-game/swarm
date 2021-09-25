@@ -54,6 +54,7 @@ import           Data.Text             (Text)
 import qualified Data.Text             as T
 import           Linear
 import           Text.Printf
+import           Text.Wrap
 
 import           Brick                 hiding (Direction)
 import           Brick.Focus
@@ -258,8 +259,10 @@ explainFocusedItem s = case mItem of
     mList = s ^? uiState . uiInventory . _Just . _2
     mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
 
+    indent2 = defaultWrapSettings { fillStrategy = FillIndent 2 }
+
     explainRecipes :: Entity -> [Widget Name]
-    explainRecipes = map (txtWrap . prettyRecipe) . recipesWith
+    explainRecipes = map (txtWrapWith indent2 . prettyRecipe) . recipesWith
 
     recipesWith :: Entity -> [Recipe Entity]
     recipesWith e = S.toList . S.fromList $
