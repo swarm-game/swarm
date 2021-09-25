@@ -37,6 +37,8 @@
   description:
   - A plain wooden workbench, providing space for you to make other
     things using the 'make' command.
+  - 'Example:'
+  - 'make "log"'
   properties: [portable]
   capabilities: [make]
 
@@ -327,6 +329,8 @@
     conditional expressions.  The syntax for a conditional expression
     is 'if' followed by three arguments: a boolean test and then
     two expressions of the same type.
+  - 'Example:'
+  - 'if (x > 3) move {turn west; move}'
   properties: [portable]
   capabilities: [cond]
 
