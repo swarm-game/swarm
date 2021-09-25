@@ -18,6 +18,7 @@ import           Control.Concurrent   (forkIO, threadDelay)
 
 import           Brick
 import           Brick.BChan
+import           Brick.Main
 import qualified Graphics.Vty         as V
 
 import           Control.Monad.Except
@@ -33,7 +34,7 @@ app = App
   { appDraw         = drawUI
   , appChooseCursor = showFirstCursor
   , appHandleEvent  = handleEvent
-  , appStartEvent   = return
+  , appStartEvent   = \s -> s <$ enablePasteMode
   , appAttrMap      = const swarmAttrMap
   }
 
@@ -67,3 +68,11 @@ appMain = do
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
       void $ customMain initialVty buildVty (Just chan) app s
+
+-- | If available for the terminal emulator, enable bracketed paste mode.
+enablePasteMode :: EventM s ()
+enablePasteMode = do
+  vty <- getVtyHandle
+  let output = V.outputIface vty
+  when (V.supportsMode output V.BracketedPaste) $
+    liftIO $ V.setMode output V.BracketedPaste True
