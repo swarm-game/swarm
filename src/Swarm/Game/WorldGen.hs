@@ -19,6 +19,7 @@ import           Data.Enumeration
 import           Data.Hash.Murmur
 import           Data.Int             (Int64)
 import           Data.List            (find)
+import           Data.Maybe           (fromMaybe)
 import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           Numeric.Noise.Perlin
@@ -98,9 +99,10 @@ testWorld2 (Coords ix@(r,c))
 
 -- | Offset the world so the base starts on a tree.
 findGoodOrigin :: WorldFun t Text -> WorldFun t Text
-findGoodOrigin f = \(Coords (r,c)) -> f (Coords (r + fromIntegral rOffset, c + fromIntegral cOffset))
+findGoodOrigin f = \(Coords (r,c)) -> f (Coords (r + rOffset, c + cOffset))
   where
     int' :: Enumeration Int64
     int' = fromIntegral <$> int
-    Just (rOffset, cOffset) = find isTree (enumerate (int' >< int'))
+    (rOffset, cOffset) = fromMaybe (error "the impossible happened, no offsets were found") offsets
+    offsets = find isTree (enumerate (int' >< int'))
     isTree = (== Just "tree") . snd . f . Coords
