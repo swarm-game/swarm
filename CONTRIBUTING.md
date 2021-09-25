@@ -137,14 +137,14 @@ learn enough Haskell to contribute to Swarm, we recommend starting by
 [working through these introductory Haskell course
 materials](https://www.cis.upenn.edu/~cis194/spring13/).
 
-If you'd like to contribute some code but are unsure where to begin, you can
-start by looking through
-[issues tagged "Low-Hanging Fruit"](https://github.com/byorgey/swarm/issues?q=is%3Aissue+is%3Aopen+label%3A%22C-Low+Hanging+Fruit%22)
-in the issue tracker. These are bugs and features which should be appropriate
-for someone just getting started to tackle. If you want help understanding or
-getting started on a particular issue, feel free to leave a comment on the issue.
-<!-- or ask in the -->
-<!-- [`#swarm` IRC channel](https://webchat.freenode.net/#swarm). -->
+If you'd like to contribute some code but are unsure where to begin,
+you can start by looking through [issues tagged "Low-Hanging
+Fruit"](https://github.com/byorgey/swarm/issues?q=is%3Aissue+is%3Aopen+label%3A%22C-Low+Hanging+Fruit%22)
+in the issue tracker. These are bugs and features which should be
+appropriate for someone just getting started to tackle. If you want
+help understanding or getting started on a particular issue, feel free
+to leave a comment on the issue, or ask in the `#swarm` IRC
+channel on Libera.Chat.
 
 ### Development Workflow
 
