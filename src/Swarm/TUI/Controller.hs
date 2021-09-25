@@ -379,7 +379,7 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '.') []))
 
 -- for testing only: toggle between classic & creative modes
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') []))
-  = continueWithoutRedraw (s & gameState . gameMode %~ cycleEnum)
+  = continue (s & gameState . gameMode %~ cycleEnum)
 
 -- Fall-through case: don't do anything.
 handleWorldEvent s _ = continueWithoutRedraw s
