@@ -348,15 +348,17 @@ validateREPLForm s = s
 adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState
 adjReplHistIndex (+/-) s =
   s & uiState . uiReplHistIdx .~ newIndex
+    & (if curIndex == -1 then saveLastEntry else id)
     & (if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id)
     & validateREPLForm
   where
+    saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
     entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
     curIndex = s ^. uiState . uiReplHistIdx
     histLen  = length entries
     newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
     newEntry
-      | newIndex == -1 = ""
+      | newIndex == -1 = s ^. uiState . uiReplLast
       | otherwise      = entries !! newIndex
 
 ------------------------------------------------------------
