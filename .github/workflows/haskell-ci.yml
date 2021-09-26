@@ -18,6 +18,8 @@ on:
   - pull_request
 jobs:
   linux:
+    # when changing the name or adding ghc version, please don't forget to update
+    # the .mergify.yml rules at the root of the project.
     name: Haskell-CI - Linux - GHC ${{ matrix.ghc }}
     runs-on: ubuntu-18.04
     container:
