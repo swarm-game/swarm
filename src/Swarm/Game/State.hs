@@ -70,8 +70,8 @@ import           Swarm.Util
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
 data ViewCenterRule
-  = VCLocation (V2 Int64) Text  -- ^ The view should be centered on an absolute position. Keeping the last robot viewed
-  | VCRobot Text                -- ^ The view should be centered on a certain robot.
+  = VCLocation (V2 Int64)   -- ^ The view should be centered on an absolute position.
+  | VCRobot Text            -- ^ The view should be centered on a certain robot.
   deriving (Eq, Ord, Show)
 
 makePrisms ''ViewCenterRule
@@ -171,7 +171,7 @@ messageQueue :: Lens' GameState [Text]
 --   is @Maybe@ because the rule may refer to a robot which does not
 --   exist.
 applyViewCenterRule :: ViewCenterRule -> Map Text Robot -> Maybe (V2 Int64)
-applyViewCenterRule (VCLocation l _) _ = Just l
+applyViewCenterRule (VCLocation l) _ = Just l
 applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 
 -- | Recalculate the veiw center (and cache the result in the
@@ -190,12 +190,12 @@ recalcViewCenter g = g
 -- | Modify the 'viewCenter' by applying an arbitrary function to the
 --   current value.  Note that this also modifies the 'viewCenterRule'
 --   to match.  After calling this function the 'viewCenterRule' will
---   specify a particular location, and the last viewed robot
+--   specify a particular location, not a robot.
 modifyViewCenter :: (V2 Int64 -> V2 Int64) -> GameState -> GameState
 modifyViewCenter update g = g
   & case g ^. viewCenterRule of
-      VCLocation l name -> viewCenterRule .~ VCLocation (update l) name
-      VCRobot name    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter)) name
+      VCLocation l -> viewCenterRule .~ VCLocation (update l)
+      VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
   & recalcViewCenter
 
 -- | Given a width and height, compute the region, centered on the
@@ -212,10 +212,7 @@ viewingRegion g (w,h) = (W.Coords (rmin,cmin), W.Coords (rmax,cmax))
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
 focusedRobot g = do
-  let focusedRobotName = 
-        case g ^. viewCenterRule of
-          VCLocation v2 name -> name
-          VCRobot name       -> name
+  focusedRobotName <- g ^? viewCenterRule . _VCRobot
   g ^? robotMap . ix focusedRobotName
 
 -- | Given a 'Robot', possibly modify its name to ensure that the name
