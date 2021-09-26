@@ -27,12 +27,30 @@ source-repository head
     type:     git
     location: git://github.com/byorgey/swarm.git
 
+flag ci
+  description: Make warnings error
+  default:     False
+  manual:      True
+
+common common
+  if flag(ci)
+    ghc-options:    -Werror
+  ghc-options:      -Wall
+                    -Wcompat
+                    -Widentities
+                    -Wincomplete-uni-patterns
+                    -Wincomplete-record-updates
+                    -Wno-star-is-type
+  if impl(ghc >= 8.4)
+    ghc-options:    -Wpartial-fields
+  default-language: Haskell2010
+
 common stan-config
     ghc-options:      -fwrite-ide-info
                       -hiedir=.hie
 
 library
-    import:           stan-config
+    import:           stan-config, common
     exposed-modules:  Swarm.Language.Context
                       Swarm.Language.Types
                       Swarm.Language.Syntax
@@ -96,13 +114,14 @@ library
                       vector                        >= 0.12 && < 0.13,
                       vty                           >= 5.33 && < 5.34,
                       witch                         >= 0.3.4 && < 0.4,
+                      word-wrap                     >= 0.5 && < 0.6,
                       yaml                          >= 0.11 && < 0.12,
     hs-source-dirs:   src
     default-language: Haskell2010
     default-extensions: StrictData
 
 executable swarm
-    import:           stan-config
+    import:           stan-config, common
     main-is:          Main.hs
     build-depends:    swarm, base
     hs-source-dirs:   app

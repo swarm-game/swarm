@@ -68,8 +68,10 @@ hBorderWithLabels
   :: HBorderLabels n -> Widget n
 hBorderWithLabels (HBorderLabels l c r) =
   Widget Greedy Fixed $ do
-    rendered <- mapM (render . maybe emptyWidget (vLimit 1)) [l,c,r]
-    let [rl,rc,rr] = rendered
+    let renderLabel = render . maybe emptyWidget (vLimit 1)
+    rl <- renderLabel l
+    rc <- renderLabel c
+    rr <- renderLabel r
 
     -- Figure out how wide the whole border is supposed to be
     ctx <- getContext

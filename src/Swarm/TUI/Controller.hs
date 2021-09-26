@@ -14,6 +14,7 @@
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE PatternSynonyms    #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeApplications   #-}
 
@@ -83,6 +84,11 @@ import           Swarm.TUI.List
 import           Swarm.TUI.Model
 import           Swarm.Util
 
+-- | Pattern synonyms to simplify brick event handler
+pattern ControlKey, MetaKey :: Char -> BrickEvent n e
+pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
+pattern MetaKey c    = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
+
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleEvent s (AppEvent Frame)
@@ -96,13 +102,23 @@ handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . 
 handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
-handleEvent s (VtyEvent (V.EvKey (V.KChar 'q') [V.MCtrl])) = shutdown s
-handleEvent s ev =
-  case focusGetCurrent (s ^. uiState . uiFocusRing) of
-    Just REPLPanel  -> handleREPLEvent s ev
-    Just WorldPanel -> handleWorldEvent s ev
-    Just InfoPanel  -> handleInfoPanelEvent s ev
-    _               -> continueWithoutRedraw s
+handleEvent s ev = do
+  -- intercept special keys that works on all panels
+  case ev of
+    ControlKey 'q'      -> shutdown s
+    MetaKey 'w'         -> setFocus s WorldPanel
+    MetaKey 'e'         -> setFocus s InfoPanel
+    MetaKey 'r'         -> setFocus s REPLPanel
+    _anyOtherEvent ->
+      -- and dispatch the other to the focused panel handler
+      case focusGetCurrent (s ^. uiState . uiFocusRing) of
+        Just REPLPanel  -> handleREPLEvent s ev
+        Just WorldPanel -> handleWorldEvent s ev
+        Just InfoPanel  -> handleInfoPanelEvent s ev
+        _               -> continueWithoutRedraw s
+
+setFocus :: AppState -> Name -> EventM Name (Next AppState)
+setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
@@ -348,15 +364,17 @@ validateREPLForm s = s
 adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState
 adjReplHistIndex (+/-) s =
   s & uiState . uiReplHistIdx .~ newIndex
+    & (if curIndex == -1 then saveLastEntry else id)
     & (if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id)
     & validateREPLForm
   where
+    saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
     entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
     curIndex = s ^. uiState . uiReplHistIdx
     histLen  = length entries
     newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
     newEntry
-      | newIndex == -1 = ""
+      | newIndex == -1 = s ^. uiState . uiReplLast
       | otherwise      = entries !! newIndex
 
 ------------------------------------------------------------

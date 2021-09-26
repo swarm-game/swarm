@@ -26,7 +26,7 @@ import           Control.Lens              hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool                 (bool)
-import           Data.Either               (rights)
+import           Data.Either               (fromRight, rights)
 import           Data.Int                  (Int64)
 import           Data.List                 (find)
 import qualified Data.Map                  as M
@@ -438,13 +438,14 @@ evalConst c vs k = do
 
 
 -- XXX load this from a file and have it available in a map?
---     Or make a quasiquoter?
+--     Or make a quasiquoter (https://github.com/byorgey/swarm/issues/16) ?
+-- XXX Remove the fromRight error case.
 
 -- | A program to run a "seed" robot that regrows a harvested entity.
 seedProgram :: Text -> ProcessedTerm
-seedProgram thing = prog
+seedProgram thing = fromRight (error . from $ "Invalid program: " <> thing) prog
   where
-    Right prog = processTerm . into @Text . unlines $
+    prog = processTerm . into @Text . unlines $
       [ "let repeat : int -> cmd () -> cmd () = \\n.\\c."
       , "  if (n == 0) {} {c ; repeat (n-1) c}"
       , "in {"
