@@ -141,6 +141,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TDir d)      = ppr d
   prettyPrec _ (TInt n)      = pretty n
   prettyPrec _ (TString s)   = fromString (show s)
+  prettyPrec _ (TAntiString s) = "$str:" <> pretty s
   prettyPrec _ (TBool b)     = bool "false" "true" b
   prettyPrec _ (TVar s)      = pretty s
   prettyPrec p (TDelay t)    = pparens (p > 10) $ "delay" <+> prettyPrec 11 t

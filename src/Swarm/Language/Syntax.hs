@@ -11,6 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveDataTypeable   #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE PatternSynonyms      #-}
@@ -33,17 +34,19 @@ module Swarm.Language.Syntax
 
     -- * Term traversal
 
-  , bottomUp, fvT, fv, mapFree1
+  , fvT, fv, mapFree1
 
   ) where
 
-import           Control.Lens         (Traversal', (%~))
+import           Control.Lens         (Plated (..), Traversal', (%~))
+import           Data.Data.Lens       (uniplate)
 import           Data.Int             (Int64)
 import qualified Data.Set             as S
 import           Data.Text
 import           Linear
 
 import           Data.Aeson.Types
+import           Data.Data            (Data)
 import           Data.Hashable        (Hashable)
 import           GHC.Generics         (Generic)
 
@@ -56,7 +59,7 @@ import           Swarm.Language.Types
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
 data Direction = Lft | Rgt | Back | Fwd | North | South | East | West
-  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 instance ToJSONKey Direction where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
@@ -163,15 +166,15 @@ data Const
   | Try               -- ^ Try/catch block
   | Raise             -- ^ Raise an exception
 
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data)
 
 -- | Comparison operator constants.
 data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data)
 
 -- | Arithmetic operator constants.
 data ArithConst = Add | Sub | Mul | Div | Exp
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
@@ -248,6 +251,9 @@ data Term
     -- | A string literal.
   | TString Text
 
+    -- | An antiquoted Haskell variable name of type Text.
+  | TAntiString Text
+
     -- | A Boolean literal.
   | TBool Bool
 
@@ -283,24 +289,10 @@ data Term
     --   special syntactic form so its argument can get special
     --   treatment during evaluation.
   | TDelay Term
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data)
 
--- | Rewrite a term using a bottom-up traversal, applying the given
---   function at each subterm.  This is used in
---   "Swarm.Language.Elaborate".
-bottomUp :: (Term -> Term) -> Term -> Term
-bottomUp f (TPair t1 t2) = f (TPair (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TLam x xTy t) = f (TLam x xTy (bottomUp f t))
-bottomUp f (TApp t1 t2)
-  = f (TApp (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TDef x xTy t)
-  = f (TDef x xTy (bottomUp f t))
-bottomUp f (TLet x xTy t1 t2)
-  = f (TLet x xTy (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TBind mx t1 t2)
-  = f (TBind mx (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TDelay t) = f (TDelay (bottomUp f t))
-bottomUp f t = f t
+instance Plated Term where
+  plate = uniplate
 
 -- | Traversal over those subterms of a term which represent free
 --   variables.
@@ -313,6 +305,7 @@ fvT f = go S.empty
       TDir{} -> pure t
       TInt{} -> pure t
       TString{} -> pure t
+      TAntiString{} -> pure t
       TBool{} -> pure t
       TVar x
         | x `S.member` bound -> pure t

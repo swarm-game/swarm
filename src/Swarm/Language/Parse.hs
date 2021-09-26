@@ -23,7 +23,7 @@
 module Swarm.Language.Parse
   ( -- * Parsers
 
-    parsePolytype, parseType, parseTerm
+    Parser, parsePolytype, parseType, parseTerm
 
     -- * Utility functions
 
@@ -31,6 +31,7 @@ module Swarm.Language.Parse
 
   ) where
 
+import           Control.Monad.Reader
 import           Data.Bifunctor
 import           Data.Char
 import           Data.Maybe                     (fromMaybe)
@@ -46,7 +47,15 @@ import qualified Text.Megaparsec.Char.Lexer     as L
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
 
-type Parser = Parsec Void Text
+-- | When parsing a term using a quasiquoter (i.e. something in the
+--   Swarm source code that will be parsed at compile time), we want
+--   to allow antiquoting, i.e. writing something like $x to refer to
+--   an existing Haskell variable.  But when parsing a term entered by
+--   the user at the REPL, we do not want to allow this syntax.
+data Antiquoting = AllowAntiquoting | DisallowAntiquoting
+  deriving (Eq, Ord, Show)
+
+type Parser = ReaderT Antiquoting (Parsec Void Text)
 
 --------------------------------------------------
 -- Lexer
@@ -211,6 +220,11 @@ parseTermAtom =
   <|> parens parseTerm
   <|> TConst Noop <$ try (symbol "{" *> symbol "}")
   <|> braces parseTerm
+  <|> (ask >>= (guard . (==AllowAntiquoting)) >> parseAntiquotation)
+
+parseAntiquotation :: Parser Term
+parseAntiquotation =
+  TAntiString <$> (lexeme . try) (symbol "$str:" *> identifier)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Term
@@ -271,14 +285,14 @@ mkOp c = TApp . TApp (TConst c)
 -- | Run a parser on some input text, returning either the result or a
 --   pretty-printed parse error message.
 runParser :: Parser a -> Text -> Either Text a
-runParser p t = first (from . errorBundlePretty) (parse p "" t)
+runParser p t = first (from . errorBundlePretty) (parse (runReaderT p DisallowAntiquoting) "" t)
 
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Q' monad --- see
 --   "Swarm.Language.Parse.QQ"), with a specified source position.
 runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
 runParserTH (file, line, col) p s =
-  case snd (runParser' (fully p) initState) of
+  case snd (runParser' (runReaderT (fully p) AllowAntiquoting) initState) of
     Left err -> fail $ errorBundlePretty err
     Right e  -> return e
   where

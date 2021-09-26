@@ -14,16 +14,20 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE TypeOperators      #-}
 
 module Swarm.Language.Pipeline
   ( ProcessedTerm(..)
   , processTerm
+  , processParsedTerm
   , processTerm'
+  , processParsedTerm'
   ) where
 
 import           Data.Bifunctor            (first)
+import           Data.Data                 (Data)
 import           Data.Set                  (Set)
 import           Data.Text                 (Text)
 
@@ -44,6 +48,8 @@ data ProcessedTerm = ProcessedTerm
   (Set Capability)  -- ^ Capabilities required by the term
   CapCtx            -- ^ Capability context for any definitions embedded in the term
 
+  deriving (Data)
+
 -- | Given a 'Text' value representing a Swarm program,
 --
 --   1. Parse it (see "Swarm.Language.Parse")
@@ -55,11 +61,19 @@ data ProcessedTerm = ProcessedTerm
 processTerm :: Text -> Either Text ProcessedTerm
 processTerm = processTerm' empty empty
 
+-- | Like 'processTerm', but use a term that has already been parsed.
+processParsedTerm :: Term -> Either Text ProcessedTerm
+processParsedTerm = processParsedTerm' empty empty
+
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm
 processTerm' ctx capCtx txt = do
   t <- readTerm txt
+  processParsedTerm' ctx capCtx t
+
+-- | Like 'processTerm'', but use a term that has already been parsed.
+processParsedTerm' :: TCtx -> CapCtx -> Term -> Either Text ProcessedTerm
+processParsedTerm' ctx capCtx t = do
   ty <- first prettyText (inferTop ctx t)
   let (caps, capCtx') = requiredCaps capCtx t
   return $ ProcessedTerm (elaborate t) ty caps capCtx'
-
