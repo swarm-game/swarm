@@ -253,8 +253,26 @@ mkStmt :: Maybe Text -> Term -> Stmt
 mkStmt Nothing  = BareTerm
 mkStmt (Just x) = Binder x
 
+-- | When semicolons are missing between definitions, for example:
+--     def a = 1 end def b = 2 end def c = 3 end
+--   The makeExprParser produces:
+--     App (App (TDef a) (TDef b)) (TDef x)
+--   This function fix that by converting the Apps into Binds, so that it results in:
+--     Bind a (Bind b (Bind c))
+fixDefMissingSemis :: Term -> Term
+fixDefMissingSemis term =
+  case nestedDefs term [] of
+    [] -> term
+    defs -> foldr1 (TBind Nothing) defs
+  where
+    nestedDefs term' acc = case term' of
+      def@TDef {} -> def : acc
+      TApp nestedTerm def@TDef {} -> nestedDefs nestedTerm (def : acc)
+      -- Otherwise returns an empty list to keep the term unchanged
+      _ -> []
+
 parseExpr :: Parser Term
-parseExpr = makeExprParser parseTermAtom table
+parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
   where
     table =
       [ [ InfixL (TApp <$ string "") ]
