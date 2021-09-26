@@ -235,6 +235,10 @@ stepCEK cek = case cek of
   In (TString s) _ k                -> return $ Out (VString s) k
   In (TBool b) _ k                  -> return $ Out (VBool b) k
 
+  -- There should not be any antiquoted variables left at this point.
+  In (TAntiString v) _ k            ->
+    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) k
+
   -- A constant is turned into a VCApp which might be waiting for arguments.
   In (TConst c) _ k                 -> return $ Out (VCApp c []) k
 
