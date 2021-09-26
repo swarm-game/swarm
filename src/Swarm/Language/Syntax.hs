@@ -34,11 +34,12 @@ module Swarm.Language.Syntax
 
     -- * Term traversal
 
-  , bottomUp, fvT, fv, mapFree1
+  , fvT, fv, mapFree1
 
   ) where
 
-import           Control.Lens         (Traversal', (%~))
+import           Control.Lens         (Plated (..), Traversal', (%~))
+import           Data.Data.Lens       (uniplate)
 import           Data.Int             (Int64)
 import qualified Data.Set             as S
 import           Data.Text
@@ -295,22 +296,8 @@ data Term
 {-# COMPLETE TUnit, TConst, TDir, TInt, TString, TBool, TVar, TPair
   , TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
--- | Rewrite a term using a bottom-up traversal, applying the given
---   function at each subterm.  This is used in
---   "Swarm.Language.Elaborate".
-bottomUp :: (Term -> Term) -> Term -> Term
-bottomUp f (TPair t1 t2) = f (TPair (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TLam x xTy t) = f (TLam x xTy (bottomUp f t))
-bottomUp f (TApp t1 t2)
-  = f (TApp (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TDef x xTy t)
-  = f (TDef x xTy (bottomUp f t))
-bottomUp f (TLet x xTy t1 t2)
-  = f (TLet x xTy (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TBind mx t1 t2)
-  = f (TBind mx (bottomUp f t1) (bottomUp f t2))
-bottomUp f (TDelay t) = f (TDelay (bottomUp f t))
-bottomUp f t = f t
+instance Plated Term where
+  plate = uniplate
 
 -- | Traversal over those subterms of a term which represent free
 --   variables.
