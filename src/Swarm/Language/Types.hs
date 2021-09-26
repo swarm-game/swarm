@@ -186,7 +186,7 @@ type UPolytype = Poly UType
 --   contains the overall type of the expression, as well as the
 --   context giving the types of any defined variables.
 data Module s t = Module { moduleTy :: s, moduleCtx :: Ctx t }
-  deriving (Show, Eq, Functor)
+  deriving (Show, Eq, Functor, Data)
 
 -- | A 'TModule' is the final result of the type inference process on
 --   an expression: we get a polytype for the expression, and a

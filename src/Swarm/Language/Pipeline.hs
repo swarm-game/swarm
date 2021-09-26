@@ -14,8 +14,9 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE TypeOperators      #-}
 
 module Swarm.Language.Pipeline
   ( ProcessedTerm(..)
@@ -26,6 +27,7 @@ module Swarm.Language.Pipeline
   ) where
 
 import           Data.Bifunctor            (first)
+import           Data.Data                 (Data)
 import           Data.Set                  (Set)
 import           Data.Text                 (Text)
 
@@ -45,6 +47,8 @@ data ProcessedTerm = ProcessedTerm
   TModule           -- ^ The type of the term (and of any embedded definitions)
   (Set Capability)  -- ^ Capabilities required by the term
   CapCtx            -- ^ Capability context for any definitions embedded in the term
+
+  deriving (Data)
 
 -- | Given a 'Text' value representing a Swarm program,
 --

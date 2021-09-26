@@ -61,6 +61,7 @@ library
                       Swarm.Language.Typecheck
                       Swarm.Language.Elaborate
                       Swarm.Language.Pipeline
+                      Swarm.Language.Pipeline.QQ
                       Swarm.Game.CEK
                       Swarm.Game.Display
                       Swarm.Game.Entity

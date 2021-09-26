@@ -13,8 +13,9 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Swarm.Language.Capability
   ( Capability(..), CapCtx
@@ -34,6 +35,7 @@ import           Prelude                hiding (lookup)
 import           Text.Read              (readMaybe)
 import           Witch                  (from)
 
+import           Data.Data              (Data)
 import           Data.Yaml
 import           GHC.Generics           (Generic)
 
@@ -61,7 +63,7 @@ data Capability
   | CEnv          -- ^ Store and look up definitions in an environment
   | CLambda       -- ^ Interpret lambda abstractions
   | CRecursion    -- ^ Enable recursive definitions
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
 
 instance ToJSON Capability where
   toJSON = String . from . map toLower . drop 1 . show
@@ -148,6 +150,7 @@ requiredCaps' ctx = go
       TDir _         -> S.empty
       TInt _         -> S.empty
       TString _      -> S.empty
+      TAntiString _  -> S.empty
       TBool _        -> S.empty
 
       -- Look up the capabilities required by a function/command

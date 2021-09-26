@@ -22,38 +22,38 @@
 
 module Swarm.Game.Step where
 
-import           Control.Arrow             ((***))
-import           Control.Lens              hiding (Const, from, parts)
+import           Control.Arrow              ((***))
+import           Control.Lens               hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
-import           Data.Bool                 (bool)
-import           Data.Either               (rights)
-import           Data.Int                  (Int64)
-import           Data.List                 (find)
-import qualified Data.Map                  as M
-import           Data.Maybe                (isNothing, listToMaybe, mapMaybe)
-import qualified Data.Set                  as S
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Data.Bool                  (bool)
+import           Data.Either                (rights)
+import           Data.Int                   (Int64)
+import           Data.List                  (find)
+import qualified Data.Map                   as M
+import           Data.Maybe                 (isNothing, listToMaybe, mapMaybe)
+import qualified Data.Set                   as S
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
 import           Linear
-import           Prelude                   hiding (lookup)
-import           System.Random             (randomRIO)
+import           Prelude                    hiding (lookup)
+import           System.Random              (randomRIO)
 import           Witch
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entity         hiding (empty, lookup, singleton)
-import qualified Swarm.Game.Entity         as E
+import           Swarm.Game.Entity          hiding (empty, lookup, singleton)
+import qualified Swarm.Game.Entity          as E
 import           Swarm.Game.Exception
 import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Value
-import qualified Swarm.Game.World          as W
+import qualified Swarm.Game.World           as W
 import           Swarm.Language.Capability
 import           Swarm.Language.Context
-import           Swarm.Language.Parse.QQ   (tmQ)
 import           Swarm.Language.Pipeline
+import           Swarm.Language.Pipeline.QQ (tmQ)
 import           Swarm.Language.Syntax
 import           Swarm.Util
 
@@ -440,8 +440,8 @@ evalConst c vs k = do
 
 -- | A system program for a "seed robot", to regrow a growable entity
 --   after it is harvested.
-seedProgram :: Text -> Either Text ProcessedTerm
-seedProgram thing = processParsedTerm [tmQ|
+seedProgram :: Text -> ProcessedTerm
+seedProgram thing = [tmQ|
   let repeat : int -> cmd () -> cmd () = \n.\c.
     if (n == 0) {} {c ; repeat (n-1) c}
   in {
@@ -508,13 +508,10 @@ execConst c vs k = do
 
       when (e `hasProperty` Growable) $ do
 
-        seed <- seedProgram (e ^. entityName) `isRightOr`
-          (Fatal . T.append "Invalid seed program: ")
-
         -- Grow a new entity from a seed.
         let seedBot =
               mkRobot "seed" loc (V2 0 0)
-                (initMachine seed empty)
+                (initMachine (seedProgram (e ^. entityName)) empty)
                 []
                 & robotDisplay .~
                   (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))

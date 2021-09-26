@@ -250,11 +250,9 @@ data Term
 
     -- | A string literal.
   | TString Text
-  | TAntiString Text         -- ^ For antiquoting a Haskell variable
-                             --   of type Text.  Note that we exclude
-                             --   this from the COMPLETE Pragma below,
-                             --   since it should only ever show up
-                             --   when processing a quasiquotation.
+
+    -- | An antiquoted Haskell variable name of type Text.
+  | TAntiString Text
 
     -- | A Boolean literal.
   | TBool Bool
@@ -293,9 +291,6 @@ data Term
   | TDelay Term
   deriving (Eq, Show, Data)
 
-{-# COMPLETE TUnit, TConst, TDir, TInt, TString, TBool, TVar, TPair
-  , TLam, TApp, TLet, TDef, TBind, TDelay #-}
-
 instance Plated Term where
   plate = uniplate
 
@@ -310,6 +305,7 @@ fvT f = go S.empty
       TDir{} -> pure t
       TInt{} -> pure t
       TString{} -> pure t
+      TAntiString{} -> pure t
       TBool{} -> pure t
       TVar x
         | x `S.member` bound -> pure t
