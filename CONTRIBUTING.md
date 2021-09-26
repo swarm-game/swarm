@@ -221,3 +221,5 @@ Having push access also means, of course, that you can push directly to
 improvements, and the like; for larger fixes, new features, _etc._ opening a
 pull request from a feature branch is still preferred, to give a chance for
 others to offer suggestions for improvement.
+
+To merge a PR, use the `merge me` label to trigger the mergify process.
