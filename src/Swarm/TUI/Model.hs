@@ -89,6 +89,7 @@ import           Swarm.Util
 --   very important: a separate thread sends 'Frame' events as fast as
 --   it can, telling the TUI to render a new frame.
 data AppEvent = Frame
+  deriving (Show)
 
 -- | 'Name' represents names to uniquely identify various components
 --   of the UI, such as forms, panels, caches, extents, and lists.
