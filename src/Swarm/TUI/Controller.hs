@@ -395,6 +395,7 @@ handleWorldEvent s (VtyEvent (V.EvKey k []))
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
   invalidateCacheEntry WorldCache
   continue $ s & gameState . viewCenterRule .~ VCRobot "base"
+               & gameState . focusedRobotName .~ "base"
                & gameState %~ recalcViewCenter
 
 -- pausing and stepping
