@@ -89,6 +89,9 @@ pattern ControlKey, MetaKey :: Char -> BrickEvent n e
 pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
 pattern MetaKey c    = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 
+pattern FKey :: Int -> BrickEvent n e
+pattern FKey c       = VtyEvent (V.EvKey (V.KFun c) [])
+
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleEvent s (AppEvent Frame)
@@ -109,6 +112,7 @@ handleEvent s ev = do
     MetaKey 'w'         -> setFocus s WorldPanel
     MetaKey 'e'         -> setFocus s InfoPanel
     MetaKey 'r'         -> setFocus s REPLPanel
+    FKey 1              -> toggleModal s HelpModal
     _anyOtherEvent ->
       -- and dispatch the other to the focused panel handler
       case focusGetCurrent (s ^. uiState . uiFocusRing) of
@@ -119,6 +123,14 @@ handleEvent s ev = do
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
+
+toggleModal :: AppState -> Modal -> EventM Name (Next AppState)
+toggleModal s modal =
+  continue $ s
+      & gameState . paused %~ not
+      & uiState . uiModal .~ case s ^. uiState . uiModal of
+          Nothing -> Just modal
+          Just _ -> Nothing
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
