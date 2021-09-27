@@ -29,6 +29,7 @@ module Swarm.Game.State
   , entityMap, recipesOut, recipesIn, world
   , viewCenterRule, viewCenter
   , needsRedraw, replStatus, messageQueue
+  , focusedRobotName
 
     -- * Utilities
 
@@ -99,22 +100,23 @@ data REPLStatus
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
-  { _gameMode       :: GameMode
-  , _paused         :: Bool
-  , _robotMap       :: Map Text Robot
-  , _gensym         :: Int
-  , _entityMap      :: EntityMap
-  , _recipesOut     :: IntMap [Recipe Entity]
-  , _recipesIn      :: IntMap [Recipe Entity]
-  , _world          :: W.World Int Entity
-  , _viewCenterRule :: ViewCenterRule
-  , _viewCenter     :: V2 Int64
-  , _needsRedraw    :: Bool
-  , _replStatus     :: REPLStatus
-  , _messageQueue   :: [Text]
+  { _gameMode         :: GameMode
+  , _paused           :: Bool
+  , _robotMap         :: Map Text Robot
+  , _gensym           :: Int
+  , _entityMap        :: EntityMap
+  , _recipesOut       :: IntMap [Recipe Entity]
+  , _recipesIn        :: IntMap [Recipe Entity]
+  , _world            :: W.World Int Entity
+  , _viewCenterRule   :: ViewCenterRule
+  , _viewCenter       :: V2 Int64
+  , _needsRedraw      :: Bool
+  , _replStatus       :: REPLStatus
+  , _messageQueue     :: [Text]
+  , _focusedRobotName :: Text
   }
 
-let exclude = ['_viewCenter] in
+let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule] in
   makeLensesWith
     (lensRules
        & generateSignatures .~ False
@@ -148,7 +150,26 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 world :: Lens' GameState (W.World Int Entity)
 
 -- | The current rule for determining the center of the world view.
+--   It updates also, viewCenter and focusedRobotName to keep
+--   everything synchronize.
 viewCenterRule :: Lens' GameState ViewCenterRule
+viewCenterRule = lens getter setter
+  where
+    getter :: GameState -> ViewCenterRule
+    getter = _viewCenterRule
+
+    -- The setter takes care of updating viewCenter and focusedRobotName
+    -- So non of this fields get out of sync.
+    setter :: GameState -> ViewCenterRule -> GameState
+    setter g rule =
+      case rule of
+        VCLocation v2 -> g { _viewCenterRule = rule, _viewCenter = v2}
+        VCRobot txt ->
+          let robotcenter = g ^? robotMap . ix txt <&> view robotLocation -- retrive the loc of the robot if it exist, Nothing otherwise.  sometimes, lenses are amazing... 
+          in case robotcenter of
+               Nothing -> g
+               Just v2 -> g { _viewCenterRule = rule, _viewCenter = v2, _focusedRobotName = txt}
+
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -165,6 +186,11 @@ replStatus :: Lens' GameState REPLStatus
 
 -- | A queue of global messages.
 messageQueue :: Lens' GameState [Text]
+
+-- | The current robot in focus. It is only a Getter because
+--   this value should be updated only when viewCenterRule is. 
+focusedRobotName :: Getter GameState Text
+focusedRobotName = to _focusedRobotName
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -196,7 +222,6 @@ modifyViewCenter update g = g
   & case g ^. viewCenterRule of
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
       VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
-  & recalcViewCenter
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
@@ -211,9 +236,7 @@ viewingRegion g (w,h) = (W.Coords (rmin,cmin), W.Coords (rmax,cmax))
 -- | Find out which robot is currently specified by the
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
-focusedRobot g = do
-  focusedRobotName <- g ^? viewCenterRule . _VCRobot
-  g ^? robotMap . ix focusedRobotName
+focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotName)
 
 -- | Given a 'Robot', possibly modify its name to ensure that the name
 --   is unique among robots.  This is done simply by appending a new unique
@@ -259,21 +282,24 @@ initGameState = do
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
 
+  let baseName = "base"
+
   return $ GameState
     { _gameMode       = Classic
     , _paused         = False
-    , _robotMap       = M.singleton "base" (baseRobot baseDevices)
+    , _robotMap       = M.singleton baseName (baseRobot baseDevices)
     , _gensym         = 0
     , _entityMap      = entities
     , _recipesOut     = outRecipeMap recipes
     , _recipesIn      = inRecipeMap recipes
     , _world          =
       W.newWorld . fmap ((lkup entities <$>) . first fromEnum) . findGoodOrigin $ testWorld2
-    , _viewCenterRule = VCRobot "base"
+    , _viewCenterRule = VCRobot baseName
     , _viewCenter     = V2 0 0
     , _needsRedraw    = False
     , _replStatus     = REPLDone
     , _messageQueue   = []
+    , _focusedRobotName = baseName
     }
   where
     lkup :: EntityMap -> Maybe Text -> Maybe Entity

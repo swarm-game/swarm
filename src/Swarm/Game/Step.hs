@@ -659,6 +659,7 @@ execConst c vs k = do
           (`isJustOr` cmdExn View [ "There is no robot named ", s, " to view." ])
 
         lift . lift $ viewCenterRule .= VCRobot s
+
         return $ Out VUnit k
       _ -> badConst
 
