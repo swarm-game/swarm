@@ -188,15 +188,11 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     helpCommands =
       vBox [ hCenter $ txt "Base commands"
            , hCenter $ mkTable baseCommands
-           , padTop (Pad 1) $ hCenter $ txt "Robot commands"
-           , hCenter $ mkTable robotCommands
            ]
     baseCommands =
       [ ("build <name> <commands>", "Create a robot")
       , ("make <name>", "Craft an item")
-      ]
-    robotCommands =
-      [ ("move", "Move one step in the current directory")
+      , ("move", "Move one step in the current direction")
       , ("turn <dir>", "Change the current direction")
       , ("grab", "Grab whatver is available")
       , ("give <robot> <item>", "Give an item to another robot")
