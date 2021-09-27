@@ -116,7 +116,7 @@ data GameState = GameState
   , _focusedRobotName :: Text
   }
 
-let exclude = ['_viewCenter] in
+let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule] in
   makeLensesWith
     (lensRules
        & generateSignatures .~ False
@@ -150,7 +150,26 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 world :: Lens' GameState (W.World Int Entity)
 
 -- | The current rule for determining the center of the world view.
+--   It updates also, viewCenter and focusedRobotName to keep
+--   everything synchronize.
 viewCenterRule :: Lens' GameState ViewCenterRule
+viewCenterRule = lens getter setter
+  where
+    getter :: GameState -> ViewCenterRule
+    getter = _viewCenterRule
+
+    -- The setter takes care of updating viewCenter and focusedRobotName
+    -- So non of this fields get out of sync.
+    setter :: GameState -> ViewCenterRule -> GameState
+    setter g rule =
+      case rule of
+        VCLocation v2 -> g { _viewCenterRule = rule, _viewCenter = v2}
+        VCRobot txt ->
+          let robotcenter = g ^? robotMap . ix txt <&> view robotLocation -- retrive the loc of the robot if it exist, Nothing otherwise.  sometimes, lenses are amazing... 
+          in case robotcenter of
+               Nothing -> g
+               Just v2 -> g { _viewCenterRule = rule, _viewCenter = v2, _focusedRobotName = txt}
+
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -168,8 +187,10 @@ replStatus :: Lens' GameState REPLStatus
 -- | A queue of global messages.
 messageQueue :: Lens' GameState [Text]
 
--- | The current robot in focus
-focusedRobotName :: Lens' GameState Text
+-- | The current robot in focus. It is only a Getter because
+--   this value should be updated only when viewCenterRule is. 
+focusedRobotName :: Getter GameState Text
+focusedRobotName = to _focusedRobotName
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -201,7 +222,6 @@ modifyViewCenter update g = g
   & case g ^. viewCenterRule of
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
       VCRobot _    -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
-  & recalcViewCenter
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
