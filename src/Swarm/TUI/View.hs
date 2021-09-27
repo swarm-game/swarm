@@ -222,7 +222,7 @@ drawMenu isPaused viewingBase mode
           Classic -> "Classic"
           Creative -> "Creative"
     globalKeyCmds =
-      [ ("^q", "quit")
+      [ ("F1", "help")
       , ("Tab", "cycle panels")
       ]
     keyCmdsFor (Just REPLPanel) =
