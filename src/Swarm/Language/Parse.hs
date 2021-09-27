@@ -224,7 +224,8 @@ parseTermAtom =
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiString <$> (lexeme . try) (symbol "$str:" *> identifier)
+      TAntiString <$> (lexeme . try) (symbol "$str:" *> identifier)
+  <|> TAntiInt    <$> (lexeme . try) (symbol "$int:" *> identifier)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Term
