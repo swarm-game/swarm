@@ -15,7 +15,7 @@
 
 module Swarm.Language.Elaborate where
 
-import           Control.Lens          ((%~))
+import           Control.Lens          (transform, (%~))
 
 import           Swarm.Language.Syntax
 
@@ -35,7 +35,7 @@ elaborate
   = (fvT %~ TApp (TConst Force))
 
   -- Now do additional rewriting on all subterms.
-  . bottomUp rewrite
+  . transform rewrite
 
   where
     -- if cond thn els ---> force (if cond (delay thn) (delay els))

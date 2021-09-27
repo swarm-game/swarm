@@ -15,43 +15,45 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TypeOperators     #-}
 
 module Swarm.Game.Step where
 
-import           Control.Arrow             ((***))
-import           Control.Lens              hiding (Const, from, parts)
+import           Control.Arrow              ((***))
+import           Control.Lens               hiding (Const, from, parts)
 import           Control.Monad.Except
 import           Control.Monad.State
-import           Data.Bool                 (bool)
-import           Data.Either               (fromRight, rights)
-import           Data.Int                  (Int64)
-import           Data.List                 (find)
-import qualified Data.Map                  as M
-import           Data.Maybe                (isNothing, listToMaybe, mapMaybe)
-import qualified Data.Set                  as S
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Data.Bool                  (bool)
+import           Data.Either                (rights)
+import           Data.Int                   (Int64)
+import           Data.List                  (find)
+import qualified Data.Map                   as M
+import           Data.Maybe                 (isNothing, listToMaybe, mapMaybe)
+import qualified Data.Set                   as S
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
 import           Linear
-import           Prelude                   hiding (lookup)
-import           System.Random             (randomRIO)
+import           Prelude                    hiding (lookup)
+import           System.Random              (randomRIO)
 import           Witch
 
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
-import           Swarm.Game.Entity         hiding (empty, lookup, singleton)
-import qualified Swarm.Game.Entity         as E
+import           Swarm.Game.Entity          hiding (empty, lookup, singleton)
+import qualified Swarm.Game.Entity          as E
 import           Swarm.Game.Exception
 import           Swarm.Game.Recipe
 import           Swarm.Game.Robot
 import           Swarm.Game.State
 import           Swarm.Game.Value
-import qualified Swarm.Game.World          as W
+import qualified Swarm.Game.World           as W
 import           Swarm.Language.Capability
 import           Swarm.Language.Context
 import           Swarm.Language.Pipeline
+import           Swarm.Language.Pipeline.QQ (tmQ)
 import           Swarm.Language.Syntax
 import           Swarm.Util
 
@@ -232,6 +234,10 @@ stepCEK cek = case cek of
   In (TInt n) _ k                   -> return $ Out (VInt n) k
   In (TString s) _ k                -> return $ Out (VString s) k
   In (TBool b) _ k                  -> return $ Out (VBool b) k
+
+  -- There should not be any antiquoted variables left at this point.
+  In (TAntiString v) _ k            ->
+    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) k
 
   -- A constant is turned into a VCApp which might be waiting for arguments.
   In (TConst c) _ k                 -> return $ Out (VCApp c []) k
@@ -436,28 +442,22 @@ evalConst c vs k = do
       return $ Up (Fatal msg) k
     Right cek' -> return cek'
 
-
--- XXX load this from a file and have it available in a map?
---     Or make a quasiquoter (https://github.com/byorgey/swarm/issues/16) ?
--- XXX Remove the fromRight error case.
-
--- | A program to run a "seed" robot that regrows a harvested entity.
+-- | A system program for a "seed robot", to regrow a growable entity
+--   after it is harvested.
 seedProgram :: Text -> ProcessedTerm
-seedProgram thing = fromRight (error . from $ "Invalid program: " <> thing) prog
-  where
-    prog = processTerm . into @Text . unlines $
-      [ "let repeat : int -> cmd () -> cmd () = \\n.\\c."
-      , "  if (n == 0) {} {c ; repeat (n-1) c}"
-      , "in {"
-      , "  r <- random 500;"
-      , "  repeat (r + 100) wait;"
-      , "  appear \"|\";"
-      , "  r <- random 500;"
-      , "  repeat (r + 100) wait;"
-      , "  place \"" ++ from @Text thing ++ "\";"
-      , "  selfdestruct"
-      , "}"
-      ]
+seedProgram thing = [tmQ|
+  let repeat : int -> cmd () -> cmd () = \n.\c.
+    if (n == 0) {} {c ; repeat (n-1) c}
+  in {
+    r <- random 500;
+    repeat (r + 100) wait;
+    appear "|";
+    r <- random 500;
+    repeat (r + 100) wait;
+    place $str:thing;
+    selfdestruct
+  }
+  |]
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.

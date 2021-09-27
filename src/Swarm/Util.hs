@@ -1,8 +1,9 @@
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeOperators      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TypeOperators         #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -31,22 +32,27 @@ module Swarm.Util
     -- * Validation utilities
 
   , holdsOr, isJustOr, isRightOr, isSuccessOr
+
+    -- * Template Haskell utilities
+
+  , liftText
   )
   where
 
-import           Control.Monad             (unless)
+import           Control.Monad              (unless)
 import           Control.Monad.Error.Class
 import           Data.Either.Validation
-import           Data.Int                  (Int64)
-import           Data.Maybe                (fromMaybe)
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Data.Int                   (Int64)
+import           Data.Maybe                 (fromMaybe)
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
 import           Data.Yaml
-import           Linear                    (V2)
-import qualified NLP.Minimorph.English     as MM
-import           NLP.Minimorph.Util        ((<+>))
-import           System.Directory          (doesFileExist)
-
+import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax (lift)
+import           Linear                     (V2)
+import qualified NLP.Minimorph.English      as MM
+import           NLP.Minimorph.Util         ((<+>))
+import           System.Directory           (doesFileExist)
 
 infixr 1 ?
 
@@ -153,3 +159,10 @@ Left b `isRightOr` f  = throwError (f b)
 isSuccessOr :: MonadError e m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
+
+------------------------------------------------------------
+-- Template Haskell utilities
+
+-- See https://stackoverflow.com/questions/38143464/cant-find-inerface-file-declaration-for-variable
+liftText :: T.Text -> Q Exp
+liftText txt = AppE (VarE 'T.pack) <$> lift (T.unpack txt)

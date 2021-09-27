@@ -316,6 +316,7 @@ infer   (TConst c)                = instantiate $ inferConst c
 infer   (TDir _)                  = return UTyDir
 infer   (TInt _)                  = return UTyInt
 infer   (TString _)               = return UTyString
+infer   (TAntiString _)           = return UTyString
 infer   (TBool _)                 = return UTyBool
 
 -- To infer the type of a pair, just infer both components.

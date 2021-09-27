@@ -1,0 +1,17 @@
+pull_request_rules:
+- actions:
+    merge:
+      strict: smart
+      method: squash
+  name: Automatically merge pull requests
+  conditions:
+  - check-success=Haskell-CI - Linux - GHC 9.0.1
+  - check-success=Haskell-CI - Linux - GHC 8.10.4
+  - label=merge me
+  - ! '#approved-reviews-by>=1'
+  - ! '#changes-requested-reviews-by=0'
+- actions:
+    delete_head_branch: {}
+  name: Delete head branch after merge
+  conditions:
+  - merged
