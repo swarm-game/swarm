@@ -31,7 +31,7 @@ import           Swarm.TUI.View
 app :: App AppState AppEvent Name
 app = App
   { appDraw         = drawUI
-  , appChooseCursor = showFirstCursor
+  , appChooseCursor = chooseCursor
   , appHandleEvent  = handleEvent
   , appStartEvent   = \s -> s <$ enablePasteMode
   , appAttrMap      = const swarmAttrMap

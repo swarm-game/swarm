@@ -21,6 +21,7 @@ module Swarm.TUI.View
     -- * Error dialog
   , errorDialog
   , drawDialog
+  , chooseCursor
 
     -- * Key hint menu
   , drawMenu
@@ -63,6 +64,7 @@ import           Brick.Widgets.Border  (hBorder, hBorderWithLabel)
 import           Brick.Widgets.Center  (center, hCenter)
 import           Brick.Widgets.Dialog
 import qualified Brick.Widgets.List    as BL
+import qualified Brick.Widgets.Table   as BT
 
 import           Swarm.Game.Display
 import           Swarm.Game.Entity     hiding (empty)
@@ -142,15 +144,67 @@ drawTPS s = hBox (tpsInfo : rateInfo)
 replHeight :: Int
 replHeight = 10
 
+-- | Hide the cursor when a modal is set
+chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
+chooseCursor s locs = case s ^. uiState . uiModal of
+  Nothing -> showFirstCursor s locs
+  Just _ -> Nothing
+
 -- | The error dialog window.
 errorDialog :: Dialog ()
 errorDialog = dialog (Just "Error") Nothing 80
 
+-- | Render a fullscreen widget with some padding
+renderModal :: Modal -> Widget Name
+renderModal modal = renderDialog (dialog (Just modalTitle) Nothing 500) modalWidget
+  where
+    modalWidget = Widget Fixed Fixed $ do
+      ctx <- getContext
+      let w = ctx ^. availWidthL
+          h = ctx ^. availHeightL
+          padding = 10
+      render $ setAvailableSize (w - padding, h - padding) modalContent
+    (modalTitle, modalContent) =
+      case modal of
+        HelpModal -> ("Help", helpWidget)
+
+helpWidget :: Widget Name
+helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
+  where
+    helpKeys =
+      vBox [ hCenter $ txt "Global Keybindings"
+           , hCenter $ mkTable glKeyBindings
+           ]
+    mkTable = BT.renderTable . BT.table . map toWidgets
+    toWidgets (k, v) = [txt k, txt v]
+    glKeyBindings =
+      [ ("F1", "Help")
+      , ("Ctrl-q", "quit the game")
+      , ("Tab", "cycle panel focus")
+      , ("Meta-w", "focus on the world map")
+      , ("Meta-e", "focus on the info")
+      , ("Meta-r", "focus on the REPL")
+      ]
+    helpCommands =
+      vBox [ hCenter $ txt "Commands"
+           , hCenter $ mkTable baseCommands
+           ]
+    baseCommands =
+      [ ("build <name> <commands>", "Create a robot")
+      , ("make <name>", "Craft an item")
+      , ("move", "Move one step in the current direction")
+      , ("turn <dir>", "Change the current direction")
+      , ("grab", "Grab whatver is available")
+      , ("give <robot> <item>", "Give an item to another robot")
+      ]
+
 -- | Draw the error dialog window, if it should be displayed right now.
 drawDialog :: UIState -> Widget Name
-drawDialog s = case s ^. uiError of
-  Nothing -> emptyWidget
-  Just d  -> renderDialog errorDialog d
+drawDialog s = case s ^. uiModal of
+  Just m -> renderModal m
+  Nothing -> case s ^. uiError of
+    Just d  -> renderDialog errorDialog d
+    Nothing -> emptyWidget
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
@@ -168,7 +222,7 @@ drawMenu isPaused viewingBase mode
           Classic -> "Classic"
           Creative -> "Creative"
     globalKeyCmds =
-      [ ("^q", "quit")
+      [ ("F1", "help")
       , ("Tab", "cycle panels")
       ]
     keyCmdsFor (Just REPLPanel) =

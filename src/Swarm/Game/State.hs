@@ -19,13 +19,13 @@
 module Swarm.Game.State
   ( -- * Game state record
 
-    ViewCenterRule(..), GameMode(..), REPLStatus(..)
+    ViewCenterRule(..), GameMode(..), REPLStatus(..), RunStatus(..)
 
   , GameState, initGameState
 
     -- ** GameState fields
 
-  , gameMode, paused, robotMap, gensym
+  , gameMode, runStatus, paused, robotMap, gensym
   , entityMap, recipesOut, recipesIn, world
   , viewCenterRule, viewCenter
   , needsRedraw, replStatus, messageQueue
@@ -96,12 +96,23 @@ data REPLStatus
     --   filled in with a result once the command completes.
   deriving (Eq, Show)
 
+-- | A data type to keep track of the pause mode.
+data RunStatus
+  = Running
+    -- ^ The game is running.
+  | ManualPause
+    -- ^ The user paused the game, and it should stay pause after visiting the help.
+  | AutoPause
+    -- ^ The game got paused while visiting the help,
+    --   and it should unpause after returning back to the game.
+  deriving (Eq, Show)
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _gameMode         :: GameMode
-  , _paused           :: Bool
+  , _runStatus        :: RunStatus
   , _robotMap         :: Map Text Robot
   , _gensym           :: Int
   , _entityMap        :: EntityMap
@@ -127,8 +138,12 @@ let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule] in
 -- | The current 'GameMode'.
 gameMode :: Lens' GameState GameMode
 
+-- | The current 'RunStatus'.
+runStatus :: Lens' GameState RunStatus
+
 -- | Whether the game is currently paused.
-paused :: Lens' GameState Bool
+paused :: Getter GameState Bool
+paused = to (\s -> s ^. runStatus /= Running)
 
 -- | All the robots that currently exist in the game, indexed by name.
 robotMap :: Lens' GameState (Map Text Robot)
@@ -165,7 +180,7 @@ viewCenterRule = lens getter setter
       case rule of
         VCLocation v2 -> g { _viewCenterRule = rule, _viewCenter = v2}
         VCRobot txt ->
-          let robotcenter = g ^? robotMap . ix txt <&> view robotLocation -- retrive the loc of the robot if it exist, Nothing otherwise.  sometimes, lenses are amazing... 
+          let robotcenter = g ^? robotMap . ix txt <&> view robotLocation -- retrive the loc of the robot if it exist, Nothing otherwise.  sometimes, lenses are amazing...
           in case robotcenter of
                Nothing -> g
                Just v2 -> g { _viewCenterRule = rule, _viewCenter = v2, _focusedRobotName = txt}
@@ -188,7 +203,7 @@ replStatus :: Lens' GameState REPLStatus
 messageQueue :: Lens' GameState [Text]
 
 -- | The current robot in focus. It is only a Getter because
---   this value should be updated only when viewCenterRule is. 
+--   this value should be updated only when viewCenterRule is.
 focusedRobotName :: Getter GameState Text
 focusedRobotName = to _focusedRobotName
 
@@ -286,7 +301,7 @@ initGameState = do
 
   return $ GameState
     { _gameMode       = Classic
-    , _paused         = False
+    , _runStatus      = Running
     , _robotMap       = M.singleton baseName (baseRobot baseDevices)
     , _gensym         = 0
     , _entityMap      = entities

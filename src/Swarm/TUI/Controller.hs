@@ -89,6 +89,9 @@ pattern ControlKey, MetaKey :: Char -> BrickEvent n e
 pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
 pattern MetaKey c    = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 
+pattern FKey :: Int -> BrickEvent n e
+pattern FKey c       = VtyEvent (V.EvKey (V.KFun c) [])
+
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleEvent s (AppEvent Frame)
@@ -109,7 +112,9 @@ handleEvent s ev = do
     MetaKey 'w'         -> setFocus s WorldPanel
     MetaKey 'e'         -> setFocus s InfoPanel
     MetaKey 'r'         -> setFocus s REPLPanel
-    _anyOtherEvent ->
+    FKey 1              -> toggleModal s HelpModal
+    _anyOtherEvent | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
+                   | otherwise ->
       -- and dispatch the other to the focused panel handler
       case focusGetCurrent (s ^. uiState . uiFocusRing) of
         Just REPLPanel  -> handleREPLEvent s ev
@@ -119,6 +124,27 @@ handleEvent s ev = do
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
+
+toggleModal :: AppState -> Modal -> EventM Name (Next AppState)
+toggleModal s modal = do
+  curTime <- liftIO $ getTime Monotonic
+  continue $ s & case s ^. uiState . uiModal of
+    Nothing -> (uiState . uiModal ?~ modal)   . ensurePause
+    Just _  -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
+  where
+    -- Set the game to AutoPause if needed
+    ensurePause
+      | s ^. gameState . paused = id
+      | otherwise = gameState . runStatus .~ AutoPause
+    -- Set the game to Running if it was auto paused
+    maybeUnpause
+      | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
+      | otherwise = id
+    -- When unpausing, it is critical to ensure the next frame doesn't
+    -- catch up from the time spent in pause.
+    -- TODO: manage unpause more safely to also cover
+    -- the world event handler for the KChar 'p'.
+    resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
@@ -400,7 +426,7 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') [])) = do
   curTime <- liftIO $ getTime Monotonic
   continue $ s
-      & gameState . paused %~ not
+      & gameState . runStatus %~ (\status -> if status == Running then ManualPause else Running)
 
       -- Also reset the last frame time to now. If we are pausing, it
       -- doesn't matter; if we are unpausing, this is critical to

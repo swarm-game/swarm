@@ -20,7 +20,7 @@ module Swarm.TUI.Model
   ( -- * Custom UI label types
     -- $uilabel
 
-    AppEvent(..), Name(..)
+    AppEvent(..), Name(..), Modal(..)
 
     -- * UI state
 
@@ -31,7 +31,7 @@ module Swarm.TUI.Model
     -- ** Fields
 
   , uiFocusRing, uiReplForm, uiReplType, uiReplHistory, uiReplHistIdx, uiReplLast
-  , uiInventory, uiError, lgTicksPerSecond
+  , uiInventory, uiError, uiModal, lgTicksPerSecond
   , lastFrameTime, accumulatedTime, tickCount, frameCount, lastInfoTime
   , uiShowFPS, uiTPF, uiFPS
 
@@ -104,6 +104,10 @@ data Name
                    --   focused robot.
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
+data Modal
+  = HelpModal
+  deriving (Eq, Show)
+
 ------------------------------------------------------------
 -- UI state
 ------------------------------------------------------------
@@ -141,6 +145,7 @@ data UIState = UIState
   , _uiReplHistIdx    :: Int
   , _uiInventory      :: Maybe (Int, BL.List Name InventoryEntry)
   , _uiError          :: Maybe (Widget Name)
+  , _uiModal          :: Maybe Modal
   , _uiShowFPS        :: Bool
   , _uiTPF            :: Double
   , _uiFPS            :: Double
@@ -185,6 +190,10 @@ uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryEntry))
 -- | When this is @Just@, it represents a popup box containing an
 --   error message that is shown on top of the rest of the UI.
 uiError :: Lens' UIState (Maybe (Widget Name))
+
+-- | When this is @Just@, it represents a modal to be displayed on
+--   top of the UI, e.g. for the Help screen.
+uiModal :: Lens' UIState (Maybe Modal)
 
 -- | A togle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -253,6 +262,7 @@ initUIState = liftIO $ do
     , _uiReplLast       = ""
     , _uiInventory      = Nothing
     , _uiError          = Nothing
+    , _uiModal          = Nothing
     , _uiShowFPS        = False
     , _uiTPF            = 0
     , _uiFPS            = 0
