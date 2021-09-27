@@ -113,7 +113,8 @@ handleEvent s ev = do
     MetaKey 'e'         -> setFocus s InfoPanel
     MetaKey 'r'         -> setFocus s REPLPanel
     FKey 1              -> toggleModal s HelpModal
-    _anyOtherEvent ->
+    _anyOtherEvent | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
+                   | otherwise ->
       -- and dispatch the other to the focused panel handler
       case focusGetCurrent (s ^. uiState . uiFocusRing) of
         Just REPLPanel  -> handleREPLEvent s ev
@@ -126,11 +127,18 @@ setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
 toggleModal :: AppState -> Modal -> EventM Name (Next AppState)
 toggleModal s modal =
-  continue $ s
-      & gameState . paused %~ not
-      & uiState . uiModal .~ case s ^. uiState . uiModal of
-          Nothing -> Just modal
-          Just _ -> Nothing
+  continue $ s & case s ^. uiState . uiModal of
+    Nothing -> (uiState . uiModal ?~ modal)   . ensurePause
+    Just _  -> (uiState . uiModal .~ Nothing) . maybeUnpause
+  where
+    -- Set the game to AutoPause if needed
+    ensurePause
+      | s ^. gameState . paused = id
+      | otherwise = gameState . runStatus .~ AutoPause
+    -- Set the game to Running if it was auto paused
+    maybeUnpause
+      | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
+      | otherwise = id
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
@@ -412,7 +420,7 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') [])) = do
   curTime <- liftIO $ getTime Monotonic
   continue $ s
-      & gameState . paused %~ not
+      & gameState . runStatus .~ (if s ^. gameState . runStatus == Running then ManualPause else Running)
 
       -- Also reset the last frame time to now. If we are pausing, it
       -- doesn't matter; if we are unpausing, this is critical to
