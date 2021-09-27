@@ -3,6 +3,7 @@ pull_request_rules:
     merge:
       strict: smart
       method: squash
+      commit_message: title+body
   name: Automatically merge pull requests
   conditions:
   - check-success=Haskell-CI - Linux - GHC 9.0.1
