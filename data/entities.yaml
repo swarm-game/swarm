@@ -5,6 +5,7 @@
   description:
   - A tree.
   properties: [portable, growable]
+  growth: [500, 600]
 
 - name: branch
   display:
@@ -128,6 +129,7 @@
   description:
   - A flower.
   properties: [portable, growable]
+  growth: [30, 50]
 
 - name: lambda
   display:
@@ -140,6 +142,7 @@
   - '  def thrice : cmd () -> cmd () = \c. c;c;c end'
   - defines the function 'thrice' which repeats a command three times.
   properties: [portable, growable]
+  growth: [100, 200]
   capabilities: [lambda]
 
 - name: curry
@@ -172,6 +175,7 @@
   description:
   - A bit.
   properties: [portable, growable]
+  growth: [1000, 1500]
 
 - name: bit (1)
   display:
@@ -180,6 +184,7 @@
   description:
   - A bit.
   properties: [portable, growable]
+  growth: [1000, 1500]
 
 - name: drill bit
   display:

@@ -30,6 +30,7 @@
 module Swarm.Game.Entity
   ( -- * Properties
     EntityProperty(..)
+  , GrowthTime(..), defaultGrowthTime
 
     -- * Entities
   , Entity, mkEntity
@@ -38,7 +39,7 @@ module Swarm.Game.Entity
     -- ** Lenses
     -- $lenses
   , entityDisplay, entityName, entityPlural, entityNameFor
-  , entityDescription, entityOrientation
+  , entityDescription, entityOrientation, entityGrowth
   , entityProperties, hasProperty, entityCapabilities
   , entityInventory
   , entityHash
@@ -124,6 +125,16 @@ instance FromJSON EntityProperty where
         Just c  -> return c
         Nothing -> fail $ "Unknown entity property " ++ from t
 
+-- | How long an entity takes to regrow.  This represents the minimum
+--   and maximum amount of time taken by one growth stage (there are
+--   two stages).  The actual time for each stage will be chosen
+--   uniformly at random between these two values.
+newtype GrowthTime = GrowthTime (Integer, Integer)
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
+
+defaultGrowthTime :: GrowthTime
+defaultGrowthTime = GrowthTime (100, 200)
+
 ------------------------------------------------------------
 -- Entity
 ------------------------------------------------------------
@@ -194,6 +205,8 @@ data Entity = Entity
                                             --   when a robot moves, it
                                             --   moves in the direction
                                             --   of its orientation.
+  , _entityGrowth       :: Maybe GrowthTime -- ^ If this entity grows,
+                                            --   how long does it take?
   , _entityProperties   :: [EntityProperty] -- ^ Properties of the entity.
   , _entityCapabilities :: [Capability]     -- ^ Capabilities provided
                                             --   by this entity.
@@ -211,12 +224,13 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm pl descr orient props caps inv)
+  hashWithSalt s (Entity _ disp nm pl descr orient grow props caps inv)
     = s `hashWithSalt` disp
         `hashWithSalt` nm
         `hashWithSalt` pl
         `hashWithSalt` descr
         `hashWithSalt` orient
+        `hashWithSalt` grow
         `hashWithSalt` props
         `hashWithSalt` caps
         `hashWithSalt` inv
@@ -243,7 +257,7 @@ mkEntity
   -> [EntityProperty] -- ^ Properties
   -> Entity
 mkEntity disp nm descr props
-  = rehashEntity $ Entity 0 disp nm Nothing descr Nothing props [] empty
+  = rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing props [] empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -288,6 +302,7 @@ instance FromJSON Entity where
     <*> v .:? "plural"
     <*> (map reflow <$> (v .: "description"))
     <*> v .:? "orientation"
+    <*> v .:? "growth"
     <*> v .:? "properties"   .!= []
     <*> v .:? "capabilities" .!= []
     <*> pure empty
@@ -370,6 +385,10 @@ entityDescription = hashedLens _entityDescription (\e x -> e { _entityDescriptio
 -- | The direction this entity is facing (if it has one).
 entityOrientation :: Lens' Entity (Maybe (V2 Int64))
 entityOrientation = hashedLens _entityOrientation (\e x -> e { _entityOrientation = x })
+
+-- | How long this entity takes to grow, if it regrows.
+entityGrowth :: Lens' Entity (Maybe GrowthTime)
+entityGrowth = hashedLens _entityGrowth (\e x -> e { _entityGrowth = x })
 
 -- | The properties enjoyed by this entity.
 entityProperties :: Lens' Entity [EntityProperty]
