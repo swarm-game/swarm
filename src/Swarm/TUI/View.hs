@@ -172,7 +172,7 @@ helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
   where
     helpKeys =
-      vBox [ hCenter $ txt "Global keybindings"
+      vBox [ hCenter $ txt "Global Keybindings"
            , hCenter $ mkTable glKeyBindings
            ]
     mkTable = BT.renderTable . BT.table . map toWidgets
@@ -186,7 +186,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
       , ("Meta-r", "focus on the REPL")
       ]
     helpCommands =
-      vBox [ hCenter $ txt "Base commands"
+      vBox [ hCenter $ txt "Commands"
            , hCenter $ mkTable baseCommands
            ]
     baseCommands =
