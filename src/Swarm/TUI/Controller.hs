@@ -420,7 +420,7 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') [])) = do
   curTime <- liftIO $ getTime Monotonic
   continue $ s
-      & gameState . runStatus .~ (if s ^. gameState . runStatus == Running then ManualPause else Running)
+      & gameState . runStatus %~ (\status -> if status == Running then ManualPause else Running)
 
       -- Also reset the last frame time to now. If we are pausing, it
       -- doesn't matter; if we are unpausing, this is critical to
