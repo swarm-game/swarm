@@ -315,6 +315,7 @@ infer   TUnit                     = return UTyUnit
 infer   (TConst c)                = instantiate $ inferConst c
 infer   (TDir _)                  = return UTyDir
 infer   (TInt _)                  = return UTyInt
+infer   (TAntiInt _)              = return UTyInt
 infer   (TString _)               = return UTyString
 infer   (TAntiString _)           = return UTyString
 infer   (TBool _)                 = return UTyBool

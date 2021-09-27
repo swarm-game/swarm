@@ -248,6 +248,9 @@ data Term
     -- | An integer literal.
   | TInt Integer
 
+    -- | An antiquoted Haskell variable name of type Integer.
+  | TAntiInt Text
+
     -- | A string literal.
   | TString Text
 
@@ -304,6 +307,7 @@ fvT f = go S.empty
       TConst{} -> pure t
       TDir{} -> pure t
       TInt{} -> pure t
+      TAntiInt{} -> pure t
       TString{} -> pure t
       TAntiString{} -> pure t
       TBool{} -> pure t
