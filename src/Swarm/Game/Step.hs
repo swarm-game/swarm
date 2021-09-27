@@ -446,16 +446,16 @@ evalConst c vs k = do
 
 -- | A system program for a "seed robot", to regrow a growable entity
 --   after it is harvested.
-seedProgram :: Text -> ProcessedTerm
-seedProgram thing = [tmQ|
+seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
+seedProgram minTime randTime thing = [tmQ|
   let repeat : int -> cmd () -> cmd () = \n.\c.
     if (n == 0) {} {c ; repeat (n-1) c}
   in {
-    r <- random 500;
-    repeat (r + 100) wait;
+    r <- random $int:randTime;
+    repeat (r + $int:minTime) wait;
     appear "|";
-    r <- random 500;
-    repeat (r + 100) wait;
+    r <- random $int:randTime;
+    repeat (r + $int:minTime) wait;
     place $str:thing;
     selfdestruct
   }
@@ -514,10 +514,12 @@ execConst c vs k = do
 
       when (e `hasProperty` Growable) $ do
 
+        let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
+
         -- Grow a new entity from a seed.
         let seedBot =
               mkRobot "seed" loc (V2 0 0)
-                (initMachine (seedProgram (e ^. entityName)) empty)
+                (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
                 []
                 & robotDisplay .~
                   (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
