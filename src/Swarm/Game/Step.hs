@@ -578,9 +578,19 @@ execConst c vs k = do
         item <- (listToMaybe . lookupByName itemName $ inv) `isJustOr`
           cmdExn Give ["You don't have", indefinite itemName, "to give." ]
 
-        -- Make the exchange
-        lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
-        robotInventory %= delete item
+        -- Giving something to ourself should be a no-op.  We need
+        -- this as a special case since it will not work to modify
+        -- ourselves in the robotMap --- after performing a tick we
+        -- return a modified Robot which gets put back in the
+        -- robotMap, overwriting any changes to this robot made
+        -- directly in the robotMap during the tick.
+        myName <- use robotName
+        when (otherName /= myName) $ do
+
+          -- Make the exchange
+          lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
+          robotInventory %= delete item
+
         return $ Out VUnit k
 
       _ -> badConst
