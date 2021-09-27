@@ -149,6 +149,7 @@ requiredCaps' ctx = go
       TUnit          -> S.empty
       TDir _         -> S.empty
       TInt _         -> S.empty
+      TAntiInt _     -> S.empty
       TString _      -> S.empty
       TAntiString _  -> S.empty
       TBool _        -> S.empty
