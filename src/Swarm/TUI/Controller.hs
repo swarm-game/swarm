@@ -126,10 +126,11 @@ setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
 toggleModal :: AppState -> Modal -> EventM Name (Next AppState)
-toggleModal s modal =
+toggleModal s modal = do
+  curTime <- liftIO $ getTime Monotonic
   continue $ s & case s ^. uiState . uiModal of
     Nothing -> (uiState . uiModal ?~ modal)   . ensurePause
-    Just _  -> (uiState . uiModal .~ Nothing) . maybeUnpause
+    Just _  -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
   where
     -- Set the game to AutoPause if needed
     ensurePause
@@ -139,6 +140,11 @@ toggleModal s modal =
     maybeUnpause
       | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
       | otherwise = id
+    -- When unpausing, it is critical to ensure the next frame doesn't
+    -- catch up from the time spent in pause.
+    -- TODO: manage unpause more safely to also cover
+    -- the world event handler for the KChar 'p'.
+    resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
