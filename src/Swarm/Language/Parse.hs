@@ -179,6 +179,7 @@ parseConst =
   <|> Grab    <$ reserved "grab"
   <|> Place   <$ reserved "place"
   <|> Give    <$ reserved "give"
+  <|> Install <$ reserved "install"
   <|> Make    <$ reserved "make"
   <|> Build   <$ reserved "build"
   <|> Run     <$ reserved "run"

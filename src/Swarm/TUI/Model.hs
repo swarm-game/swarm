@@ -310,7 +310,7 @@ populateInventoryList (Just r) = do
 
   -- Finally, populate the newly created list in the UI, and remember
   -- the hash of the current robot.
-  uiInventory .= Just (r ^. robotEntity . entityHash, lst)
+  uiInventory .= Just (r ^. inventoryHash, lst)
 
 ------------------------------------------------------------
 -- App state (= UI state + game state)

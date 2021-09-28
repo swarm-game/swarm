@@ -133,6 +133,7 @@ data Const
   | Grab              -- ^ Grab an item from the current location.
   | Place             -- ^ Try to place an item at the current location.
   | Give              -- ^ Give an item to another robot at the current location.
+  | Install           -- ^ Install a device on a robot.
   | Make              -- ^ Make an item.
   | Build             -- ^ Construct a new robot.
   | Say               -- ^ Emit a message.
@@ -189,6 +190,7 @@ arity Turn         = 1
 arity Grab         = 0
 arity Place        = 1
 arity Give         = 2
+arity Install      = 2
 arity Make         = 1
 arity Build        = 2
 arity Say          = 1

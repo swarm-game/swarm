@@ -414,6 +414,7 @@ inferConst c = toU $ case c of
   Grab         -> [tyQ| cmd string |]
   Place        -> [tyQ| string -> cmd () |]
   Give         -> [tyQ| string -> string -> cmd () |]
+  Install      -> [tyQ| string -> string -> cmd () |]
   Make         -> [tyQ| string -> cmd () |]
   Build        -> [tyQ| forall a. string -> cmd a -> cmd string |]
   Say          -> [tyQ| string -> cmd () |]

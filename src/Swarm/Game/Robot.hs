@@ -20,7 +20,7 @@ module Swarm.Game.Robot
 
     -- ** Lenses
   , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
-  , installedDevices, robotCapabilities
+  , installedDevices, inventoryHash, robotCapabilities
   , robotCtx, robotEnv, machine, systemRobot, selfDestruct, tickSteps
 
     -- ** Create
@@ -40,6 +40,7 @@ import           Data.Set.Lens             (setOf)
 import           Data.Text                 (Text)
 import           Linear
 
+import           Data.Hashable             (hashWithSalt)
 import           Swarm.Game.CEK
 import           Swarm.Game.Display
 import           Swarm.Game.Entity         hiding (empty)
@@ -124,6 +125,12 @@ installedDevices = lens _installedDevices setInstalled
       r { _installedDevices  = inst
         , _robotCapabilities = inventoryCapabilities inst
         }
+
+-- | A hash of a robot's entity record and installed devices, to
+--   facilitate quickly deciding whether we need to redraw the robot
+--   info panel.
+inventoryHash :: Getter Robot Int
+inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `hashWithSalt` (r ^. installedDevices))
 
 -- | Recompute the set of capabilities provided by the inventory of
 --   installed devices.
