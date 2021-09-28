@@ -129,3 +129,19 @@ executable swarm
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -threaded
+
+test-suite swarm-unit
+    import:           stan-config, common
+    main-is:          Unit.hs
+    type:             exitcode-stdio-1.0
+
+    build-depends:    tasty                         >= 0.10 && < 1.5,
+                      tasty-hunit                   >= 0.10 && < 0.11,
+                      -- Import shared with the library don't need bounds
+                      base,
+                      swarm,
+                      text
+
+    hs-source-dirs:   test
+    default-language: Haskell2010
+    ghc-options:      -threaded
