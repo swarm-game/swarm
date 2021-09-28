@@ -260,10 +260,14 @@ inferTop ctx = runInfer ctx . inferModule
 inferModule :: Term -> Infer UModule
 inferModule = \case
 
-  -- For definitions with no type signature, just infer the type of
-  -- the body, generalize it, and return an appropriate context.
+  -- For definitions with no type signature, make up a fresh type
+  -- variable for the body, infer the body under an extended context,
+  -- and unify the two.  Then generalize the type and return an
+  -- appropriate context.
   TDef x Nothing t1 -> do
-    ty <- infer t1
+    xTy <- fresh
+    ty <- withBinding x (Forall [] xTy) $ infer t1
+    xTy =:= ty
     pty <- generalize ty
     return $ Module (UTyCmd UTyUnit) (singleton x pty)
 
@@ -358,11 +362,15 @@ infer (TApp f x)              = do
 -- We can infer the type of a let whether a type has been provided for
 -- the variable or not.
 infer (TLet x Nothing t1 t2)    = do
-  upty <- generalize =<< infer t1
+  xTy <- fresh
+  uty <- withBinding x (Forall [] xTy) $ infer t1
+  xTy =:= uty
+  upty <- generalize uty
   withBinding  x upty $ infer t2
 infer (TLet x (Just pty) t1 t2) = do
   let upty = toU pty
-  -- If an explicit polytype has been provided,
+  -- If an explicit polytype has been provided, skolemize it and check
+  -- definition and body under an extended context.
   uty <- skolemize upty
   withBinding x upty $ do
     check t1 uty
