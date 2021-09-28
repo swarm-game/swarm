@@ -30,3 +30,7 @@ A few principles to guide the development and design of the game.
   deliberately.  It will probably require a lot of experimentation and
   tweaking to balance things so that gameplay is interesting and
   challenging but not overly difficult.
+
+- Don't provide complex built-in features; instead, provide simple,
+  fundamental, composable pieces out of which users can build the
+  complex features themselves.
