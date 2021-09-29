@@ -26,6 +26,11 @@
   - [1, box]
 
 - in:
+  - [5, board]
+  out:
+  - [1, boat]
+
+- in:
   - [2, board]
   out:
   - [1, gear]
@@ -77,7 +82,7 @@
 
 - in:
   - [5, lambda]
-  - [1, cup of water]
+  - [1, water]
   out:
   - [1, curry]
 

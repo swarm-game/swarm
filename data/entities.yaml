@@ -153,20 +153,36 @@
   - Delicious curry cooked from wild lambdas.
   properties: [portable]
 
-- name: wave
+- name: water
+  display:
+    attr: water
+    char: ' '
+  description:
+  - Water.
+  properties: [portable, growable, liquid]
+  growth: [0,0]
+
+- name: wavy water
   display:
     attr: water
     char: '~'
   description:
-  - A wave on the surface of the water.
+  - A wavy section of water.
+  properties: [portable, growable, liquid]
+  growth: [0,0]
+  yields: water
 
-- name: cup of water
+- name: boat
   display:
-    attr: water
-    char: 'U'
+    attr: wood
+    char: 'B'
   description:
-  - A cup full of water.
+  - A robot with a boat installed can float on top of water without drowning!
+  - "Note: most devices are automatically installed on robots
+    that will require them; but since floating is not associated with any particular
+    command, a boat must be manually installed on any robot that will need it."
   properties: [portable]
+  capabilities: [float]
 
 - name: bit (0)
   display:
