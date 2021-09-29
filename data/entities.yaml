@@ -3,7 +3,10 @@
     attr: plant
     char: 'T'
   description:
-  - A tree.
+  - |
+    A tall, living entity made of a tough cellular material called "wood".
+    They regrow after being harvested and are an important raw ingredient used
+    in making a many different devices.
   properties: [portable, growable]
   growth: [500, 600]
 
@@ -12,7 +15,8 @@
     attr: wood
     char: 'y'
   description:
-  - A branch from a tree.
+  - A branch cut from a tree.  It's as if the tree had to make a decision
+    and was exploring two options.
   properties: [portable]
 
 - name: log
@@ -20,7 +24,7 @@
     attr: wood
     char: 'l'
   description:
-  - A wooden log, obtained by harvesting a tree.
+  - A wooden log, obtained by harvesting a tree and cutting off its branches.
   properties: [portable]
 
 - name: board
