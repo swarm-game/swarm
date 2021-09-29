@@ -243,7 +243,7 @@ In the bottom left corner you will see a description of trees along
 with some *recipes* involving trees.  Apparently, we can use a tree to
 construct two branches and a log.
 
-![](images/scantree.png)
+![](images/viewtree.png)
 
 Getting some resources
 ----------------------
