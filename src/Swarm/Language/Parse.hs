@@ -27,7 +27,8 @@ module Swarm.Language.Parse
 
     -- * Utility functions
 
-  , runParser, runParserTH, readTerm, readTerm', showShortError
+  , runParser, runParserTH, readTerm, readTerm'
+  , showShortError, showErrorPos
   ) where
 
 import           Control.Monad.Reader
@@ -357,7 +358,13 @@ readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
 -- | A utility for converting a ParserError into a one line message:
 --   <line-nr>: <error-msg>
 showShortError :: ParserError -> String
-showShortError (ParseErrorBundle e ps) = showLine <> ": " <> showError
+showShortError pe = show line <> ": " <> from msg
   where
-    showError = parseErrorTextPretty (Data.List.NonEmpty.head e)
-    showLine = show $ unPos $ sourceLine $ pstateSourcePos ps
+    (line, _, msg) = showErrorPos pe
+
+showErrorPos :: ParserError -> (Int, Int, Text)
+showErrorPos (ParseErrorBundle e ps) = (line, col, from msg)
+  where
+    msg = parseErrorTextPretty (Data.List.NonEmpty.head e)
+    line = unPos $ sourceLine $ pstateSourcePos ps
+    col = unPos $ sourceColumn $ pstateSourcePos ps

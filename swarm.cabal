@@ -125,7 +125,12 @@ library
 executable swarm
     import:           stan-config, common
     main-is:          Main.hs
-    build-depends:    swarm, base, text
+    build-depends:    lsp                            >= 1.2 && < 1.3,
+                      -- Import shared with the library don't need bounds
+                      base,
+                      lens,
+                      text,
+                      swarm
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -threaded
