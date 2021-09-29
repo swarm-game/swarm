@@ -240,8 +240,8 @@ After this robot finishes, the UI should look like this:
 Apparently those things are trees!  Although you do not actually have
 any trees yet, you can tab over to your inventory to read about them.
 In the bottom left corner you will see a description of trees along
-with some *recipes* involving trees.  Apparently, we can use a tree to
-construct two branches and a log.
+with some *recipes* involving trees.  There is only one recipe,
+showing that we can use a tree to construct two branches and a log.
 
 ![](images/viewtree.png)
 
