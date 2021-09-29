@@ -432,11 +432,6 @@ inferConst c = toU $ case c of
 
   Run          -> [tyQ| string -> cmd () |]
 
-  Not          -> [tyQ| bool -> bool |]
-  Cmp _        -> [tyQ| forall a. a -> a -> bool |]
-  Neg          -> [tyQ| int -> int |]
-  Arith _      -> [tyQ| int -> int -> int |]
-
   If           -> [tyQ| forall a. bool -> a -> a -> a |]
   Fst          -> [tyQ| forall a b. a * b -> a |]
   Snd          -> [tyQ| forall a b. a * b -> b |]
@@ -444,6 +439,25 @@ inferConst c = toU $ case c of
   Return       -> [tyQ| forall a. a -> cmd a |]
   Try          -> [tyQ| forall a. cmd a -> cmd a -> cmd a |]
   Raise        -> [tyQ| forall a. string -> cmd a |]
+
+  Not          -> [tyQ| bool -> bool |]
+  Neg          -> [tyQ| int -> int |]
+
+  Eq           -> cmpBinT
+  Neq          -> cmpBinT
+  Lt           -> cmpBinT
+  Gt           -> cmpBinT
+  Leq          -> cmpBinT
+  Geq          -> cmpBinT
+
+  Add          -> arithBinT
+  Sub          -> arithBinT
+  Mul          -> arithBinT
+  Div          -> arithBinT
+  Exp          -> arithBinT
+  where
+    cmpBinT     = [tyQ| forall a. a -> a -> bool |]
+    arithBinT   = [tyQ| int -> int -> int |]
 
 -- | @check t ty@ checks that @t@ has type @ty@.
 check :: Term -> UType -> Infer ()

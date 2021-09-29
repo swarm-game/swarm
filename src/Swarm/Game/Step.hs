@@ -812,23 +812,6 @@ execConst c vs k = do
           Just e  -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
       _ -> badConst
 
-    Not -> case vs of
-      [VBool b] -> return $ Out (VBool (not b)) k
-      _         -> badConst
-
-    Cmp cop -> case vs of
-      [v1, v2] ->
-        case evalCmp cop v1 v2 of
-          Nothing -> return $ Out (VBool False) k
-          Just b  -> return $ Out (VBool b) k
-      _ -> badConst
-
-    Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (-n)) k
-      _        -> badConst
-    Arith aop -> case vs of
-      [VInt n1, VInt n2] -> return $ Out (VInt (evalArith aop n1 n2)) k
-      _                  -> badConst
 
     Force -> case vs of
       [VDelay Nothing t e]  -> return $ In t e k
@@ -938,28 +921,57 @@ execConst c vs k = do
 
       _ -> badConst
 
+    Not -> case vs of
+      [VBool b] -> return $ Out (VBool (not b)) k
+      _         -> badConst
+
+    Neg -> case vs of
+      [VInt n] -> return $ Out (VInt (-n)) k
+      _        -> badConst
+
+    Eq  -> returnEvalCmp
+    Neq -> returnEvalCmp
+    Lt  -> returnEvalCmp
+    Gt  -> returnEvalCmp
+    Leq -> returnEvalCmp
+    Geq -> returnEvalCmp
+
+    Add -> returnEvalArith
+    Sub -> returnEvalArith
+    Mul -> returnEvalArith
+    Div -> returnEvalArith
+    Exp -> returnEvalArith
+
   where
     badConst = throwError $ Fatal $
       T.unlines
       [ "Bad application of execConst:"
       , from (prettyCEK (Out (VCApp c vs) k))
       ]
+    returnEvalCmp = case vs of
+      [v1, v2] ->
+        case evalCmp c v1 v2 of
+          Nothing -> return $ Out (VBool False) k
+          Just b  -> return $ Out (VBool b) k
+      _ -> badConst
+    returnEvalArith = case vs of
+      [VInt n1, VInt n2] -> return $ Out (VInt $ evalArith c n1 n2) k
+      _                  -> badConst
+
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
-evalCmp :: CmpConst -> Value -> Value -> Maybe Bool
-evalCmp c v1 v2 = decideCmp c <$> compareValues v1 v2
-
--- | Decide the result of a comparison operator, given the 'Ordering'
---   resulting from comparing two values.
-decideCmp :: CmpConst -> Ordering -> Bool
-decideCmp = \case
-  CmpEq  -> (== EQ)
-  CmpNeq -> (/= EQ)
-  CmpLt  -> (== LT)
-  CmpGt  -> (== GT)
-  CmpLeq -> (/= GT)
-  CmpGeq -> (/= LT)
+evalCmp :: Const -> Value -> Value -> Maybe Bool
+evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
+  where
+  decideCmp = \case
+    Eq  -> fmap (== EQ)
+    Neq -> fmap (/= EQ)
+    Lt  -> fmap (== LT)
+    Gt  -> fmap (== GT)
+    Leq -> fmap (/= GT)
+    Geq -> fmap (/= LT)
+    _   -> const Nothing
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
@@ -988,12 +1000,16 @@ compareValues = \case
 --   return some value even though they aren't sensible.  At the
 --   moment, they return 42.  In the future it might be fun if they
 --   return some kind of random result.
-evalArith :: ArithConst -> Integer -> Integer -> Integer
-evalArith Add = (+)
-evalArith Sub = (-)
-evalArith Mul = (*)
-evalArith Div = safeDiv
-evalArith Exp = safeExp
+--   In case we incorrectly use it on bad Const in the library return
+--   huge value.
+evalArith :: Const -> Integer -> Integer -> Integer
+evalArith = \case
+ Add -> (+)
+ Sub -> (-)
+ Mul -> (*)
+ Div -> safeDiv
+ Exp -> safeExp
+ _   -> (\_ _ -> 0xbadc0de)
 
 -- | Perform an integer division, but return 42 for division by zero.
 safeDiv :: Integer -> Integer -> Integer

@@ -115,30 +115,11 @@ instance PrettyPrec Capability where
   prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))
 
 instance PrettyPrec Const where
-  prettyPrec _ Noop      = "{}"
-  prettyPrec p (Cmp c)   = prettyPrec p c
-  prettyPrec p (Arith c) = prettyPrec p c
-  prettyPrec _ Neg       = "-"
-  prettyPrec _ c         = pretty $ T.toLower (from (show c))
-
-instance PrettyPrec CmpConst where
-  prettyPrec _ CmpEq  = "=="
-  prettyPrec _ CmpNeq = "/="
-  prettyPrec _ CmpLt  = "<"
-  prettyPrec _ CmpGt  = ">"
-  prettyPrec _ CmpLeq = "<="
-  prettyPrec _ CmpGeq = ">="
-
-instance PrettyPrec ArithConst where
-  prettyPrec _ Add = "+"
-  prettyPrec _ Sub = "-"
-  prettyPrec _ Mul = "*"
-  prettyPrec _ Div = "/"
-  prettyPrec _ Exp = "^"
+  prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
 instance PrettyPrec Term where
   prettyPrec _ TUnit         = "()"
-  prettyPrec _ (TConst c)    = ppr c
+  prettyPrec p (TConst c)    = prettyPrec p c
   prettyPrec _ (TDir d)      = ppr d
   prettyPrec _ (TInt n)      = pretty n
   prettyPrec _ (TAntiInt v)  = "$int:" <> pretty v
@@ -150,6 +131,18 @@ instance PrettyPrec Term where
   prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
+  -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
+  prettyPrec p (TApp t@(TApp (TConst c) l) r) =
+    let ci = constInfo c
+        pC = fixity ci
+    in case constMeta ci of
+      ConstMBinOp assoc -> pparens (p > pC) $ hsep
+          [ prettyPrec (pC + fromEnum (assoc == R)) l
+          , ppr c
+          , prettyPrec (pC + fromEnum (assoc == L)) r
+          ]
+      _ -> pparens (p > 10) $
+        prettyPrec 10 t <+> prettyPrec 11 r
   prettyPrec p (TApp t1 t2)  = pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
   prettyPrec _ (TLet x mty t1 t2) =
@@ -166,6 +159,12 @@ instance PrettyPrec Term where
     prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec p (TBind (Just x) t1 t2) = pparens (p > 0) $
     pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
+
+appliedTermPrec :: Term -> Int
+appliedTermPrec (TApp f _) = case f of
+  TConst c -> fixity $ constInfo c
+  _        -> appliedTermPrec f
+appliedTermPrec _ = 10 -- TODO: tweak magical value here?
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (Mismatch ty1 ty2) =
