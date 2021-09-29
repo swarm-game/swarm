@@ -249,7 +249,7 @@
     char: '<'
   description:
   - A grabber arm allows a robot to manipulate items via the 'grab',
-    'place', and 'give' commands.
+    'place', 'give', and 'install' commands.
   - The 'grab' command takes no arguments; it simply grabs whatever is
     available, and also returns the name of the grabbed thing as a string.
     It raises an exception if run in a cell that does not contain an item.
@@ -260,8 +260,11 @@
   - "The 'give' command takes two arguments: the name of the robot to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
+  - "The 'install' command takes two arguments: the name of the robot
+    on which to install a device (which can be at most 1 cell away),
+    and the name of the device to install."
 
-  capabilities: [grab, give, place]
+  capabilities: [grab, give, place, install]
   properties: [portable]
 
 - name: solar panel

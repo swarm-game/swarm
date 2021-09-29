@@ -589,11 +589,64 @@ execConst c vs k = do
         -- robotMap, overwriting any changes to this robot made
         -- directly in the robotMap during the tick.
         myName <- use robotName
+        focusedName <- lift . lift $ use focusedRobotName
         when (otherName /= myName) $ do
 
           -- Make the exchange
           lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
           robotInventory %= delete item
+
+          -- Flag the UI for a redraw if we are currently showing either robot's inventory
+          when (focusedName == myName || focusedName == otherName) flagRedraw
+
+        return $ Out VUnit k
+
+      _ -> badConst
+
+    Install -> case vs of
+      [VString otherName, VString itemName] -> do
+
+        -- Make sure the other robot exists
+        other <- robotNamed otherName >>=
+          (`isJustOr` cmdExn Install ["There is no robot named", otherName, "."])
+
+        -- Make sure it is in the same location
+        loc <- use robotLocation
+        ((other ^. robotLocation) `manhattan` loc <= 1) `holdsOr`
+          cmdExn Install ["The robot named", otherName, "is not close enough."]
+
+        -- Make sure we have the required item
+        inv <- use robotInventory
+        item <- (listToMaybe . lookupByName itemName $ inv) `isJustOr`
+          cmdExn Install ["You don't have", indefinite itemName, "to install." ]
+
+        myName <- use robotName
+        focusedName <- lift . lift $ use focusedRobotName
+        case otherName == myName of
+
+          -- We have to special case installing something on ourselves
+          -- for the same reason as Give.
+          True -> do
+
+            -- Don't do anything if the robot already has the device.
+            already <- use (installedDevices . to (`E.contains` item))
+            unless already $ do
+              installedDevices %= insert item
+              robotInventory %= delete item
+
+              -- Flag the UI for a redraw if we are currently showing our inventory
+              when (focusedName == myName) flagRedraw
+
+          False -> do
+            let otherDevices = robotMap . at otherName . _Just . installedDevices
+            already <- lift . lift $ preuse (otherDevices . to (`E.contains` item))
+            unless (already == Just True) $ do
+              lift . lift $ robotMap . at otherName . _Just . installedDevices %= insert item
+              robotInventory %= delete item
+
+              -- Flag the UI for a redraw if we are currently showing
+              -- either robot's inventory
+              when (focusedName == myName || focusedName == otherName) flagRedraw
 
         return $ Out VUnit k
 
