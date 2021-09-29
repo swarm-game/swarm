@@ -79,12 +79,13 @@ gameTick = do
   -- use something like M.traverseMaybeWithKey --- we have to get the
   -- names of all robots and then step them one at a time.
   robotNames <- uses robotMap M.keys
+  time <- use ticks
   forM_ robotNames $ \rn -> do
     mr <- uses robotMap (M.lookup rn)
     case mr of
       Nothing -> return ()
       Just curRobot -> do
-        curRobot' <- tickRobot curRobot
+        curRobot' <- tickRobot time curRobot
         case curRobot' ^. selfDestruct of
           True -> robotMap %= M.delete rn
           False -> robotMap %= M.insert rn curRobot'
@@ -102,6 +103,7 @@ gameTick = do
 
   -- Possibly update the view center.
   modify recalcViewCenter
+  ticks += 1
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -190,29 +192,29 @@ withExceptions k m = do
 -- | Run a robot for one tick, which may consist of up to
 --   'evalStepsPerTick' CEK machine steps and at most one command
 --   execution.
-tickRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
-tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
+tickRobot :: (MonadState GameState m, MonadIO m) => Integer -> Robot -> m Robot
+tickRobot time = tickRobotRec time . (tickSteps .~ evalStepsPerTick)
 
 -- | Recursive helper function for 'tickRobot', which checks if the
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-tickRobotRec :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
-tickRobotRec r
+tickRobotRec :: (MonadState GameState m, MonadIO m) => Integer -> Robot -> m Robot
+tickRobotRec time r
   | not (isActive r) || r ^. tickSteps <= 0 = return r
-  | otherwise = stepRobot r >>= tickRobotRec
+  | otherwise = stepRobot time r >>= tickRobotRec time
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CEK machine for one step.
-stepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
-stepRobot r = do
-  (cek', r') <- runStateT (stepCEK (r ^. machine)) (r & tickSteps -~ 1)
+stepRobot :: (MonadState GameState m, MonadIO m) => Integer -> Robot -> m Robot
+stepRobot time r = do
+  (cek', r') <- runStateT (stepCEK time (r ^. machine)) (r & tickSteps -~ 1)
   return $ r' & machine .~ cek'
 
 -- | The main CEK machine workhorse.  Given a robot, look at its CEK
 --   machine state and figure out a single next step.
-stepCEK :: (MonadState GameState m, MonadIO m) => CEK -> StateT Robot m CEK
-stepCEK cek = case cek of
+stepCEK :: (MonadState GameState m, MonadIO m) => Integer -> CEK -> StateT Robot m CEK
+stepCEK time cek = case cek of
   -- (liftIO $ appendFile "out.txt" (prettyCEK cek)) >>
 
   -- It's a little unsatisfactory the way we handle having both Robot
@@ -227,6 +229,9 @@ stepCEK cek = case cek of
   ------------------------------------------------------------
   -- Evaluation
 
+  Waiting wakeupTime cek'
+    | wakeupTime == time -> stepCEK time cek'
+    | otherwise -> return cek
   -- First some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ k -> return $ Out VUnit k
@@ -269,7 +274,7 @@ stepCEK cek = case cek of
   Out v2 (FApp (VCApp c args) : k)
     | not (isCmd c)
         && arity c == length args + 1 ->
-      evalConst c (reverse (v2 : args)) k
+      evalConst time c (reverse (v2 : args)) k
     | otherwise -> return $ Out (VCApp c (v2 : args)) k
   Out _ (FApp _ : _) -> badMachineState "FApp of non-function"
   -- To evaluate let expressions, we start by focusing on the
@@ -310,7 +315,7 @@ stepCEK cek = case cek of
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) (FExec : k) -> do
     when (takesTick c) $ tickSteps .= 0
-    res <- runExceptT (execConst c (reverse args) k)
+    res <- runExceptT (execConst time c (reverse args) k)
     case res of
       Left exn -> return $ Up exn k
       Right cek' -> return cek'
@@ -413,9 +418,9 @@ takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, GetX, GetY, B
 --   trying to use a function constant without the proper capability
 --   (for example, trying to use `if` without having a conditional
 --   device).  Any other exceptions constitute a bug.
-evalConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> StateT Robot m CEK
-evalConst c vs k = do
-  res <- runExceptT $ execConst c vs k
+evalConst :: (MonadState GameState m, MonadIO m) => Integer -> Const -> [Value] -> Cont -> StateT Robot m CEK
+evalConst time c vs k = do
+  res <- runExceptT $ execConst time c vs k
   case res of
     Left exn@Fatal {} -> return $ Up exn k
     Left exn@Incapable {} -> return $ Up exn k
@@ -433,14 +438,12 @@ evalConst c vs k = do
 seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
 seedProgram minTime randTime thing =
   [tmQ|
-  let repeat : int -> cmd () -> cmd () = \n.\c.
-    if (n == 0) {} {c ; repeat (n-1) c}
-  in {
+  {
     r <- random (1 + $int:randTime);
-    repeat (r + $int:minTime) wait;
+    wait (r + $int:minTime);
     appear "|";
     r <- random (1 + $int:randTime);
-    repeat (r + $int:minTime) wait;
+    wait (r + $int:minTime);
     place $str:thing;
     selfdestruct
   }
@@ -448,8 +451,8 @@ seedProgram minTime randTime thing =
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
-execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
-execConst c vs k = do
+execConst :: (MonadState GameState m, MonadIO m) => Integer -> Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
+execConst time c vs k = do
   -- First, ensure the robot is capable of executing/evaluating this constant.
   ensureCanExecute c
 
@@ -459,7 +462,9 @@ execConst c vs k = do
     Return -> case vs of
       [v] -> return $ Out v k
       _ -> badConst
-    Wait -> return $ Out VUnit k
+    Wait -> case vs of
+      [VInt d] -> return $ Waiting (time + d) (Out VUnit k)
+      _ -> badConst
     Selfdestruct -> do
       selfDestruct .= True
       flagRedraw

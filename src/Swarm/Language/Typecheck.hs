@@ -412,7 +412,7 @@ decomposeFunTy ty = do
 -- | Infer the type of a constant.
 inferConst :: Const -> UPolytype
 inferConst c = toU $ case c of
-  Wait -> [tyQ| cmd () |]
+  Wait -> [tyQ| int -> cmd () |]
   Noop -> [tyQ| cmd () |]
   Selfdestruct -> [tyQ| cmd () |]
   Move -> [tyQ| cmd () |]

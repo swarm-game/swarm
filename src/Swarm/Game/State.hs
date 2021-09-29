@@ -40,6 +40,7 @@ module Swarm.Game.State (
   replWorking,
   messageQueue,
   focusedRobotName,
+  ticks,
 
   -- * Utilities
   applyViewCenterRule,
@@ -136,6 +137,7 @@ data GameState = GameState
   , _replStatus :: REPLStatus
   , _messageQueue :: [Text]
   , _focusedRobotName :: Text
+  , _ticks :: Integer
   }
 
 let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule]
@@ -340,6 +342,7 @@ initGameState = do
       , _replStatus = REPLDone
       , _messageQueue = []
       , _focusedRobotName = baseName
+      , _ticks = 0
       }
  where
   lkup :: EntityMap -> Maybe Text -> Maybe Entity
@@ -354,3 +357,5 @@ emitMessage :: MonadState GameState m => Text -> m ()
 emitMessage msg = do
   q <- use messageQueue
   messageQueue %= (msg :) . (if length q >= maxMessageQueueSize then init else id)
+
+ticks :: Lens' GameState Integer

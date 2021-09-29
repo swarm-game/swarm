@@ -220,8 +220,8 @@ runFrame = do
       uiState . uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
 
       -- set how much ticks got processed per frame
-      ticks <- use (uiState . tickCount)
-      uiState . uiTPF .= fromIntegral ticks / fromIntegral frames
+      uiTicks <- use (uiState . tickCount)
+      uiState . uiTPF .= fromIntegral uiTicks / fromIntegral frames
 
       -- ensure this frame gets drawn
       gameState . needsRedraw .= True
