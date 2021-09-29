@@ -212,11 +212,23 @@ suggestions.
 * If you are a repository contributor (see [I have push access to the
   Swarm repository, now
   what?](#i-have-push-access-to-the-swarm-repository-now-what)), you
-  should create new feature branches in the swarm repository itself
-  (as opposed to in your own fork), unless you have a good reason for
-  doing otherwise.  This eases collaboration and makes CI go more
+  should create new contributions as branches in the swarm repository
+  itself (as opposed to in your own fork), unless you have a good
+  reason for doing otherwise.  Then you can open a pull request from
+  the branch to `main`.  This eases collaboration and makes CI go more
   smoothly (for example, the `restyled.io` bot works much better on
   pulls from local branches than from forks).
+
+* Feel free to open a pull request very early in the process, and mark
+  it as a draft.  This way you can get feedback (and even allow others
+  to contribute) as you go.
+
+* Pull requests should be merged by the `mergify` bot rather than by
+  hand. PRs will be merged as a single squashed commit, using the
+  title and description of the pull request, so make sure that they
+  give a good overview of the content of the PR.  To merge a pull
+  request, (1) make sure it has at least one approving review, and
+  (2) add the `merge me` label.
 
 More conventions will be added as we think of and/or come up with
 them!
