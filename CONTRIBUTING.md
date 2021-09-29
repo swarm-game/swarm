@@ -26,6 +26,7 @@ pull request.
 - [Contributing to Game Design](#contributing-to-game-design)
 - [Making a Code Contribution](#making-a-code-contribution)
 - [Development Workflow](#development-workflow)
+- [Conventions](#conventions)
 
 [I have push access to the Swarm repository, now what?](#i-have-push-access-to-the-swarm-repository-now-what)
 
@@ -149,7 +150,8 @@ channel on Libera.Chat.
 ### Development Workflow
 
 Never made an open source contribution before? Wondering how making a
-contribution actually works? Here's a quick rundown!
+contribution actually works? Here's a quick rundown!  If you're
+already comfortable contributing to open source, you can skip to the [Conventions](#conventions).
 
 1. Find an issue that you are interested in addressing or a feature that you
    would like to add.
@@ -196,6 +198,28 @@ contribution actually works? Here's a quick rundown!
    from now on you can create branches directly within the `swarm` repository
    rather than working in your own fork. For more information, see
    [I have push access to the Swarm repository, now what?](#i-have-push-access-to-the-swarm-repository-now-what).
+
+### Conventions
+
+We follow a few conventions to help keep everyone on the same page.
+Please open a pull request or ask on IRC if you have any questions or
+suggestions.
+
+* Code formatting conventions: coming soon, see
+  https://github.com/byorgey/swarm/issues/103. For this project, we
+  value readability by humans more highly than having minimal diffs.
+
+* If you are a repository contributor (see [I have push access to the
+  Swarm repository, now
+  what?](#i-have-push-access-to-the-swarm-repository-now-what)), you
+  should create new feature branches in the swarm repository itself
+  (as opposed to in your own fork), unless you have a good reason for
+  doing otherwise.  This eases collaboration and makes CI go more
+  smoothly (for example, the `restyled.io` bot works much better on
+  pulls from local branches than from forks).
+
+More conventions will be added as we think of and/or come up with
+them!
 
 ## I have push access to the Swarm repository, now what?
 
