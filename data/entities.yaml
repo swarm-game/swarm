@@ -339,15 +339,6 @@
   properties: [portable]
   capabilities: [cond]
 
-- name: rangefinder
-  display:
-    attr: device
-    char: '>'
-  description:
-  - A laser rangefinder.  This is a placeholder for now.
-  properties: [portable]
-  capabilities: [sensefront]
-
 - name: detonator
   display:
     attr: fire
@@ -373,3 +364,20 @@
     severly toxic (why do the inhabitants of this planet need so much
     nitrogen!?), so you'll have to stay inside for now.
   properties: [portable]
+
+- name: scanner
+  display:
+    attr: device
+    char: '$'
+  description:
+  - "With a scanner device, robots can use the 'scan' command to learn
+    about their surroundings.  Simply give 'scan' a direction in which to scan,
+    and information about the scanned item (if any) will be added to the robot's
+    inventory."
+  - "A scanner also enables the 'blocked' command, which returns a
+     boolean value indicating whether the robot's path is blocked
+     (i.e. whether executing a 'move' command would fail)."
+  - "Finally, robots can use the 'upload' command to copy their accumulated
+    knowledge to another nearby robot; for example, 'upload \"base\"'."
+  properties: [portable]
+  capabilities: [scan, sensefront]

@@ -109,6 +109,7 @@ instance PrettyPrec Direction where
   prettyPrec _ South = "south"
   prettyPrec _ East  = "east"
   prettyPrec _ West  = "west"
+  prettyPrec _ Down  = "down"
 
 instance PrettyPrec Capability where
   prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))

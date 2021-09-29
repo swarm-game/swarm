@@ -640,6 +640,40 @@ execConst c vs k = do
       me <- entityAt nextLoc
       return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) k
 
+    Scan -> case vs of
+      [VDir d] -> do
+        loc <- use robotLocation
+        orient <- use robotOrientation
+        let scanLoc = loc ^+^ applyTurn d (orient ? zero)
+        me <- entityAt scanLoc
+        case me of
+          Nothing -> return ()
+          Just e  -> robotInventory %= insertCount 0 e
+
+        return $ Out VUnit k
+      _ -> badConst
+
+    Upload -> case vs of
+      [VString otherName] -> do
+
+        -- Make sure the other robot exists
+        other <- robotNamed otherName >>=
+          (`isJustOr` cmdExn Upload ["There is no robot named", otherName, "."])
+
+        -- Make sure it is in the same location
+        loc <- use robotLocation
+        ((other ^. robotLocation) `manhattan` loc <= 1) `holdsOr`
+          cmdExn Upload ["The robot named", otherName, "is not close enough."]
+
+        -- Upload knowledge of everything in our inventory
+        inv <- use robotInventory
+        forM_ (elems inv) $ \(_,e) ->
+          lift . lift $ robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
+
+        return $ Out VUnit k
+
+      _ -> badConst
+
     Random -> case vs of
       [VInt hi] -> do
         n <- randomRIO (0, hi-1)
@@ -760,7 +794,7 @@ execConst c vs k = do
             -- Standard devices that are always installed.
             -- XXX in the future, make a way to build these and just start the base
             -- out with a large supply of each?
-            stdDeviceList = ["treads", "grabber", "solar panel", "detonator"]
+            stdDeviceList = ["treads", "grabber", "solar panel", "detonator", "scanner"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
 
             -- Find out what capabilities are required by the program that will

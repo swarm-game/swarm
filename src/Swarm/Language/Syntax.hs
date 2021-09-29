@@ -58,7 +58,7 @@ import           Swarm.Language.Types
 
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
-data Direction = Lft | Rgt | Back | Fwd | North | South | East | West
+data Direction = Lft | Rgt | Back | Fwd | North | South | East | West | Down
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 instance ToJSONKey Direction where
@@ -79,6 +79,7 @@ applyTurn North _       = north
 applyTurn South _       = south
 applyTurn East _        = east
 applyTurn West _        = west
+applyTurn Down _        = V2 0 0
 
 -- | Possibly convert a vector into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
@@ -89,6 +90,7 @@ toDirection v    = case v of
   V2 0 (-1) -> Just South
   V2 1 0    -> Just East
   V2 (-1) 0 -> Just West
+  V2 0 0    -> Just Down
   _         -> Nothing
 
 -- | Convert a 'Direction' into a corresponding vector.  Note that
@@ -145,6 +147,8 @@ data Const
   | GetX              -- ^ Get the current x-coordinate.
   | GetY              -- ^ Get the current y-coordinate.
   | Blocked           -- ^ See if we can move forward or not.
+  | Scan              -- ^ Scan a nearby cell
+  | Upload            -- ^ Upload knowledge to another robot
   | Ishere            -- ^ See if a specific entity is here. (This may be removed.)
   | Random            -- ^ Get a uniformly random integer.
 
@@ -198,6 +202,8 @@ arity Create       = 1
 arity GetX         = 0
 arity GetY         = 0
 arity Blocked      = 0
+arity Scan         = 1
+arity Upload       = 1
 arity Ishere       = 1
 arity Random       = 1
 arity Run          = 1
