@@ -125,7 +125,7 @@ library
 executable swarm
     import:           stan-config, common
     main-is:          Main.hs
-    build-depends:    swarm, base
+    build-depends:    swarm, base, text
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -threaded
