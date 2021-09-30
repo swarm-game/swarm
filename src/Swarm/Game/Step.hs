@@ -763,7 +763,11 @@ execConst c vs k = do
         _ <- robotNamed s >>=
           (`isJustOr` cmdExn View [ "There is no robot named ", s, " to view." ])
 
-        lift . lift $ viewCenterRule .= VCRobot s
+        -- Only the base can actually change the view in the UI.  Other robots can
+        -- execute this command but it does nothing (at least for now).
+        rn <- use robotName
+        when (rn == "base") $
+          lift . lift $ viewCenterRule .= VCRobot s
 
         return $ Out VUnit k
       _ -> badConst
