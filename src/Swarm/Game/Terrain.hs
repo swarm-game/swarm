@@ -35,7 +35,6 @@ data TerrainType
   = StoneT
   | DirtT
   | GrassT
-  | WaterT
   | IceT
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
@@ -49,6 +48,5 @@ terrainMap = M.fromList
   [ (StoneT, defaultTerrainDisplay '░' rockAttr)
   , (DirtT, defaultTerrainDisplay '░' dirtAttr)
   , (GrassT, defaultTerrainDisplay '░' grassAttr)
-  , (WaterT, defaultTerrainDisplay ' ' waterAttr)
   , (IceT, defaultTerrainDisplay ' ' iceAttr)
   ]

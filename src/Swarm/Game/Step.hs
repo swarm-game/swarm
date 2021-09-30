@@ -421,7 +421,7 @@ stepCEK cek = case cek of
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, GetX, GetY, Blocked, Ishere, Try, Random])
+takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, GetX, GetY, Blocked, Ishere, Try, Random, Appear])
 
 -- | At the level of the CEK machine, the only difference bewteen
 --   between *evaluating* a function constant and *executing* a
@@ -451,10 +451,10 @@ seedProgram minTime randTime thing = [tmQ|
   let repeat : int -> cmd () -> cmd () = \n.\c.
     if (n == 0) {} {c ; repeat (n-1) c}
   in {
-    r <- random $int:randTime;
+    r <- random (1 + $int:randTime);
     repeat (r + $int:minTime) wait;
     appear "|";
-    r <- random $int:randTime;
+    r <- random (1 + $int:randTime);
     repeat (r + $int:minTime) wait;
     place $str:thing;
     selfdestruct
@@ -490,9 +490,14 @@ execConst c vs k = do
       -- Make sure nothing is in the way.
       case me of
         Nothing -> return ()
-        Just e ->
+        Just e -> do
           (not . (`hasProperty` Unwalkable)) e `holdsOr`
             cmdExn Move ["There is a", e ^. entityName, "in the way!"]
+
+          -- Robots drown if they walk over liquid
+          caps <- use robotCapabilities
+          when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
+            selfDestruct .= True
 
       robotLocation .= nextLoc
       flagRedraw
@@ -512,24 +517,37 @@ execConst c vs k = do
       updateEntityAt loc (const Nothing)
       flagRedraw
 
+      -- Possibly regrow the entity.
       when (e `hasProperty` Growable) $ do
 
         let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
-        -- Grow a new entity from a seed.
-        let seedBot =
-              mkRobot "seed" loc (V2 0 0)
-                (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
-                []
-                & robotDisplay .~
-                  (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
-                & robotInventory .~ E.singleton e
-                & systemRobot .~ True
-        _ <- lift . lift $ addRobot seedBot
-        return ()
+        case maxT of
+          -- Special case: if the growth time is zero, just add the
+          -- entity back immediately.
+          0 -> updateEntityAt loc (const (Just e))
 
-      -- Add the picked up item to the robot's inventory.
-      robotInventory %= insert e
+          -- Otherwise, grow a new entity from a seed.
+          _ -> do
+            let seedBot =
+                  mkRobot "seed" loc (V2 0 0)
+                    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
+                    []
+                      & robotDisplay .~
+                        (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
+                      & robotInventory .~ E.singleton e
+                      & systemRobot .~ True
+            _ <- lift . lift $ addRobot seedBot
+            return ()
+
+      -- Add the picked up item to the robot's inventory.  If the
+      -- entity yields something different, add that instead.
+      let yieldName = e ^. entityYields
+      e' <- case yieldName of
+        Nothing -> return e
+        Just n  -> (?e) <$> (lift . lift $ uses entityMap (lookupEntityName n))
+
+      robotInventory %= insert e'
 
       -- Return the name of the item grabbed.
       return $ Out (VString (e ^. entityName)) k
