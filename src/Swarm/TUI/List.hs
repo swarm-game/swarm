@@ -34,8 +34,10 @@ handleListEventWithSeparators
   -> EventM n (BL.GenericList n t e)
 handleListEventWithSeparators e isSep theList =
   case e of
-    V.EvKey V.KUp [] -> return $ listFindByStrategy bwdExclusive isItem theList
-    V.EvKey V.KDown [] -> return $ listFindByStrategy fwdExclusive isItem theList
+    V.EvKey V.KUp []         -> return $ backward
+    V.EvKey (V.KChar 'k') [] -> return $ backward
+    V.EvKey V.KDown []       -> return $ forward
+    V.EvKey (V.KChar 'j') [] -> return $ forward
     V.EvKey V.KHome [] ->
       return $ listFindByStrategy fwdInclusive isItem
              $ BL.listMoveToBeginning theList
@@ -49,7 +51,9 @@ handleListEventWithSeparators e isSep theList =
       listFindByStrategy fwdInclusive isItem <$> BL.listMovePageUp theList
     _                      -> return theList
   where
-    isItem = not . isSep
+    isItem   = not . isSep
+    backward = listFindByStrategy bwdExclusive isItem theList
+    forward  = listFindByStrategy fwdExclusive isItem theList
 
 -- | Which direction to search: forward or backward from the current location.
 data FindDir = FindFwd | FindBwd deriving (Eq, Ord, Show, Enum)
