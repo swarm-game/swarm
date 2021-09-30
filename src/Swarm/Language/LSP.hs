@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE OverloadedStrings #-}
--- |
+
 module Swarm.Language.LSP where
 
 import           Control.Lens                   ( (^.) )
