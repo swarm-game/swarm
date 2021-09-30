@@ -358,18 +358,32 @@ readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
 -- | A utility for converting a ParserError into a one line message:
 --   <line-nr>: <error-msg>
 showShortError :: ParserError -> String
-showShortError pe = show line <> ": " <> from msg
+showShortError pe = show (line + 1) <> ": " <> from msg
   where
-    (line, _, msg) = showErrorPos pe
+    ((line, _), _, msg) = showErrorPos pe
 
-showErrorPos :: ParserError -> (Int, Int, Text)
-showErrorPos (ParseErrorBundle errs sourcePS) = (line - 1, col - 1, from msg)
+-- | A utility for converting a ParseError into a range and error message.
+showErrorPos :: ParserError -> ((Int, Int), (Int, Int), Text)
+showErrorPos (ParseErrorBundle errs sourcePS) = (minusOne start, minusOne end, from msg)
   where
+    -- convert megaparsec source pos to starts at 0
+    minusOne (x, y) = (x - 1, y - 1)
+
+    -- get the first error position (ps) and line content (str)
     err = Data.List.NonEmpty.head errs
     offset = case err of
       TrivialError x _ _ -> x
       FancyError x _ -> x
-    (_, ps) = reachOffset offset sourcePS
+    (str, ps) = reachOffset offset sourcePS
     msg = parseErrorTextPretty err
+
+    -- extract the error starting position
     line = unPos $ sourceLine $ pstateSourcePos ps
     col = unPos $ sourceColumn $ pstateSourcePos ps
+    start = ( line, col )
+
+    -- compute the ending position based on the word at starting position
+    wordlength = case break (== ' ') . drop col <$> str of
+      Just (word, _) -> length word + 1
+      _ -> 0
+    end = ( line, col + wordlength)

@@ -54,12 +54,12 @@ lspMain = void $ runServer $ ServerDefinition
 debug :: MonadIO m => Text -> m ()
 debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
-sendDiagnostic :: J.NormalizedUri -> (Int, Int, Text) -> LspM () ()
-sendDiagnostic fileUri (line, column, msg) = do
+sendDiagnostic :: J.NormalizedUri -> ((Int, Int), (Int, Int), Text) -> LspM () ()
+sendDiagnostic fileUri ((startLine, startCol), (endLine, endCol), msg) = do
   let diags =
         [ J.Diagnostic
-            (J.Range (J.Position line column)
-                     (J.Position line (column + 5)) -- TODO: figure out the correct end column
+            (J.Range (J.Position startLine startCol)
+                     (J.Position endLine endCol)
             )
             (Just J.DsWarning) -- severity
             Nothing -- code
@@ -77,7 +77,8 @@ validateSwarmCode doc content = do
   let err = case readTerm' content of
         Right term -> case processParsedTerm' mempty mempty term of
           Right _ -> Nothing
-          Left  e -> Just (0, 0, " " <> e)
+          -- make the error span the whole document until we get source loc on type error
+          Left  e -> Just ((0, 0), (65535, 65535), e)
         Left e -> Just $ showErrorPos e
   -- debug $ "-> " <> from (show err)
   case err of
