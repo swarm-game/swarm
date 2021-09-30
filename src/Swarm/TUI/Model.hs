@@ -14,82 +14,78 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Application state for the @brick@-based Swarm TUI.
-module Swarm.TUI.Model (
-  -- * Custom UI label types
-  -- $uilabel
-  AppEvent (..),
-  Name (..),
-  Modal (..),
+--
+-----------------------------------------------------------------------------
 
-  -- * UI state
-  REPLHistItem (..),
-  InventoryEntry (..),
-  _Separator,
-  _InventoryEntry,
-  UIState,
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeApplications  #-}
 
-  -- ** Fields
-  uiFocusRing,
-  uiReplForm,
-  uiReplType,
-  uiReplHistory,
-  uiReplHistIdx,
-  uiReplLast,
-  uiInventory,
-  uiError,
-  uiModal,
-  lgTicksPerSecond,
-  lastFrameTime,
-  accumulatedTime,
-  tickCount,
-  frameCount,
-  lastInfoTime,
-  uiShowFPS,
-  uiTPF,
-  uiFPS,
+module Swarm.TUI.Model
+  ( -- * Custom UI label types
+    -- $uilabel
 
-  -- ** Initialization
-  initFocusRing,
-  replPrompt,
-  initReplForm,
-  initLgTicksPerSecond,
-  initUIState,
+    AppEvent(..), Name(..), Modal(..)
 
-  -- ** Updating
-  populateInventoryList,
+    -- * UI state
 
-  -- * App state
-  AppState,
+  , REPLHistItem(..)
+  , InventoryEntry(..), _Separator, _InventoryEntry
+  , UIState
 
-  -- ** Fields
-  gameState,
-  uiState,
+    -- ** Fields
 
-  -- ** Initialization
-  initAppState,
-  Seed,
-) where
+  , uiFocusRing, uiReplForm, uiReplType, uiReplHistory, uiReplHistIdx, uiReplLast
+  , uiInventory, uiInfoText, uiError, uiModal, lgTicksPerSecond
+  , lastFrameTime, accumulatedTime, tickCount, frameCount, lastInfoTime
+  , uiShowFPS, uiTPF, uiFPS
 
-import Control.Lens
-import Control.Monad.Except
-import Control.Monad.State
-import Data.List (findIndex, sortOn)
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import qualified Data.Vector as V
-import System.Clock
-import Text.Read (readMaybe)
+    -- ** Initialization
 
-import Brick
-import Brick.Focus
-import Brick.Forms
-import qualified Brick.Widgets.List as BL
+  , initFocusRing
+  , replPrompt
+  , initReplForm
+  , initLgTicksPerSecond
+  , initUIState
 
-import Swarm.Game.Entity
-import Swarm.Game.Robot
-import Swarm.Game.State
-import Swarm.Language.Types
-import Swarm.Util
+    -- ** Updating
+
+  , populateInventoryList
+  , infoScroll
+
+    -- * App state
+  , AppState
+    -- ** Fields
+  , gameState, uiState
+    -- ** Initialization
+  , initAppState
+  , Seed
+
+  ) where
+
+import           Control.Lens
+import           Control.Monad.Except
+import           Control.Monad.State
+import           Data.List            (findIndex, sortOn)
+import           Data.Maybe           (fromMaybe)
+import           Data.Text            (Text)
+import qualified Data.Text            as T
+import qualified Data.Vector          as V
+import           System.Clock
+import           Text.Read            (readMaybe)
+
+import           Brick
+import           Brick.Focus
+import           Brick.Forms
+import qualified Brick.Widgets.List   as BL
+
+import           Swarm.Game.Entity
+import           Swarm.Game.Robot
+import           Swarm.Game.State
+import           Swarm.Language.Types
+import           Swarm.Util
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -112,7 +108,9 @@ data Name
     REPLPanel
   | -- | The panel containing the world view.
     WorldPanel
-  | -- | The info panel on the left side.
+  | -- | The panel showing robot info and inventory on the top left.
+    RobotPanel
+  | -- | The info panel on the bottom left.
     InfoPanel
   | -- | The REPL input form.
     REPLInput
@@ -123,7 +121,12 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
+  | -- | The scrollable viewport for the info panel.
+    InfoViewport
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
+infoScroll :: ViewportScroll Name
+infoScroll = viewportScroll InfoViewport
 
 data Modal
   = HelpModal
@@ -167,6 +170,7 @@ data UIState = UIState
   , _uiReplHistory :: [REPLHistItem]
   , _uiReplHistIdx :: Int
   , _uiInventory :: Maybe (Int, BL.List Name InventoryEntry)
+  , _uiInfoText :: Text
   , _uiError :: Maybe (Widget Name)
   , _uiModal :: Maybe Modal
   , _uiShowFPS :: Bool
@@ -209,6 +213,9 @@ uiReplHistIdx :: Lens' UIState Int
 --   inventory changed) along with a list of the items in the
 --   focused robot's inventory.
 uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryEntry))
+
+-- | The text which should be displayed in the bottom-left info panel.
+uiInfoText :: Lens' UIState Text
 
 -- | When this is @Just@, it represents a popup box containing an
 --   error message that is shown on top of the rest of the UI.
@@ -253,7 +260,7 @@ accumulatedTime :: Lens' UIState TimeSpec
 
 -- | The initial state of the focus ring.
 initFocusRing :: FocusRing Name
-initFocusRing = focusRing [REPLPanel, InfoPanel, WorldPanel]
+initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
 -- | The default REPL prompt.
 replPrompt :: Text
@@ -277,27 +284,52 @@ initUIState :: ExceptT Text IO UIState
 initUIState = liftIO $ do
   mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
   startTime <- getTime Monotonic
-  return $
-    UIState
-      { _uiFocusRing = initFocusRing
-      , _uiReplForm = initReplForm
-      , _uiReplType = Nothing
-      , _uiReplHistory = mhist ? []
-      , _uiReplHistIdx = -1
-      , _uiReplLast = ""
-      , _uiInventory = Nothing
-      , _uiError = Nothing
-      , _uiModal = Nothing
-      , _uiShowFPS = False
-      , _uiTPF = 0
-      , _uiFPS = 0
-      , _lgTicksPerSecond = initLgTicksPerSecond
-      , _lastFrameTime = startTime
-      , _accumulatedTime = 0
-      , _lastInfoTime = 0
-      , _tickCount = 0
-      , _frameCount = 0
-      }
+  return $ UIState
+    { _uiFocusRing      = initFocusRing
+    , _uiReplForm       = initReplForm
+    , _uiReplType       = Nothing
+    , _uiReplHistory    = mhist ? []
+    , _uiReplHistIdx    = -1
+    , _uiReplLast       = ""
+    , _uiInventory      = Nothing
+    , _uiInfoText       = T.unlines
+                          [ "Welcome to"
+                          , "|<< |   | |  | |<<  |\\ /| "
+                          , "--  | < | |><| |>>| | < | "
+                          , ">>| |/ \\| |  | |  \\ |   | "
+                          , "many"
+                          , "many2"
+                          , "many3"
+                          , "many4"
+                          , "many5"
+                          , "many"
+                          , "many2"
+                          , "many3"
+                          , "many4"
+                          , "many5"
+                          , "many"
+                          , "many2"
+                          , "many3"
+                          , "many4"
+                          , "many5"
+                          , "many"
+                          , "many2"
+                          , "many3"
+                          , "many4"
+                          , "many5"
+                          ]
+    , _uiError          = Nothing
+    , _uiModal          = Nothing
+    , _uiShowFPS        = False
+    , _uiTPF            = 0
+    , _uiFPS            = 0
+    , _lgTicksPerSecond = initLgTicksPerSecond
+    , _lastFrameTime    = startTime
+    , _accumulatedTime  = 0
+    , _lastInfoTime     = 0
+    , _tickCount        = 0
+    , _frameCount       = 0
+    }
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
