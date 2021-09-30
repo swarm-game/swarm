@@ -55,6 +55,7 @@ data Capability
   | CBuild        -- ^ Execute the 'Build' command
   | CSenseloc     -- ^ Execute the 'GetX' and 'GetY' commands
   | CSensefront   -- ^ Execute the 'Blocked' command
+  | CScan         -- ^ Execute the 'Scan' command
   | CRandom       -- ^ Execute the 'Random' command
   | CAppear       -- ^ Execute the 'Appear' command
   | CCreate       -- ^ Execute the 'Create' command
@@ -230,6 +231,9 @@ constCaps Install      = S.singleton CInstall
 constCaps Make         = S.singleton CMake
 constCaps If           = S.singleton CCond
 constCaps Create       = S.singleton CCreate
+constCaps Blocked      = S.singleton CSensefront
+constCaps Scan         = S.singleton CScan
+constCaps Upload       = S.singleton CScan
 
 -- Build definitely requires a CBuild capability (provided by a 3D
 -- printer).  However, it's possible we should do something more
@@ -246,7 +250,6 @@ constCaps Build        = S.singleton CBuild
 constCaps Appear       = S.singleton CAppear       -- paint?
 constCaps GetX         = S.singleton CSenseloc     -- GPS?
 constCaps GetY         = S.singleton CSenseloc
-constCaps Blocked      = S.singleton CSensefront   -- rangefinder?
 constCaps Random       = S.singleton CRandom       -- randomness device (with bitcoins)?
 constCaps (Cmp _)      = S.singleton CCompare      -- comparator?
 constCaps Neg          = S.singleton CArith        -- ALU?

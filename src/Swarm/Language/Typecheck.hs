@@ -425,6 +425,8 @@ inferConst c = toU $ case c of
   GetX         -> [tyQ| cmd int |]
   GetY         -> [tyQ| cmd int |]
   Blocked      -> [tyQ| cmd bool |]
+  Scan         -> [tyQ| dir -> cmd () |]
+  Upload       -> [tyQ| string -> cmd () |]
   Ishere       -> [tyQ| string -> cmd bool |]
   Random       -> [tyQ| int -> cmd int |]
 
