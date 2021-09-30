@@ -3,6 +3,7 @@ Swarm
 
 [![Build Status](https://github.com/byorgey/swarm/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/byorgey/swarm/actions)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
+![GitHub Contributors](https://contrib.rocks/image?repo=byorgey/swarm)
 
 Swarm is a 2D programming and resource gathering game. Program your
 robots to explore the world and collect resources, which in turn
@@ -78,10 +79,13 @@ The recommended way to install Swarm at the moment is as follows:
    tutorial](TUTORIAL.md) to help get you started.  Eventually there
    will be an in-game tutorial.
 
-Contributing
-============
+Community
+=========
 
-If you want to help out, you're most welcome!  There are *lots* of
+Check out the [COMMUNITY](COMMUNITY.md) page for ways to connect with
+others in the community.
+
+If you want to contribute, you're most welcome!  There are *lots* of
 ways to contribute, regardless of your Haskell background.  For
 example, even someone with no Haskell experience whatsoever could
 still help with *e.g.* game design, playtesting, and level design for

@@ -50,6 +50,7 @@ data Capability
   | CGrab         -- ^ Execute the 'Grab' command
   | CPlace        -- ^ Execute the 'Place' command
   | CGive         -- ^ Execute the 'Give' command
+  | CInstall      -- ^ Execute the 'Install' command
   | CMake         -- ^ Execute the 'Make' command
   | CBuild        -- ^ Execute the 'Build' command
   | CSenseloc     -- ^ Execute the 'GetX' and 'GetY' commands
@@ -225,6 +226,7 @@ constCaps Turn         = S.singleton CTurn
 constCaps Grab         = S.singleton CGrab
 constCaps Place        = S.singleton CPlace
 constCaps Give         = S.singleton CGive
+constCaps Install      = S.singleton CInstall
 constCaps Make         = S.singleton CMake
 constCaps If           = S.singleton CCond
 constCaps Create       = S.singleton CCreate

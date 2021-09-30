@@ -284,14 +284,14 @@ updateUI = do
     -- The hash of the robot whose inventory is currently displayed (if any)
 
   fr <- use (gameState . to focusedRobot)
-  let focusedRobotHash = view (robotEntity . entityHash) <$> fr
+  let focusedRobotHash = view inventoryHash <$> fr
     -- The hash of the focused robot (if any)
 
   -- If the hashes don't match (either because which robot (or
   -- whether any robot) is focused changed, or the focused robot's
   -- inventory changed), regenerate the list.
   inventoryUpdated <-
-    if (listRobotHash /= focusedRobotHash)
+    if listRobotHash /= focusedRobotHash
       then do
         zoom uiState $ populateInventoryList fr
         pure True
