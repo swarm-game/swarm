@@ -363,8 +363,13 @@ showShortError pe = show line <> ": " <> from msg
     (line, _, msg) = showErrorPos pe
 
 showErrorPos :: ParserError -> (Int, Int, Text)
-showErrorPos (ParseErrorBundle e ps) = (line, col, from msg)
+showErrorPos (ParseErrorBundle errs sourcePS) = (line - 1, col - 1, from msg)
   where
-    msg = parseErrorTextPretty (Data.List.NonEmpty.head e)
+    err = Data.List.NonEmpty.head errs
+    offset = case err of
+      TrivialError x _ _ -> x
+      FancyError x _ -> x
+    (_, ps) = reachOffset offset sourcePS
+    msg = parseErrorTextPretty err
     line = unPos $ sourceLine $ pstateSourcePos ps
     col = unPos $ sourceColumn $ pstateSourcePos ps

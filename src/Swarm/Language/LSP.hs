@@ -7,7 +7,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Language Server Protocol (LSP) server for the Swarm language.
---
+-- See the docs/EDITORS.md to learn how to use it.
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE OverloadedStrings #-}
@@ -20,13 +20,16 @@ import           Control.Monad.IO.Class
 import           Data.Maybe                     ( fromMaybe )
 import           Data.Text                      ( Text )
 import qualified Data.Text.IO                  as Text
+import           System.IO                      ( stderr )
+
 import           Language.LSP.Diagnostics
 import           Language.LSP.Server
 import qualified Language.LSP.Types            as J
 import qualified Language.LSP.Types.Lens       as J
+
 import           Swarm.Language.Parse
 import           Swarm.Language.Pipeline
-import           System.IO                      ( stderr )
+
 
 lspMain :: IO ()
 lspMain = void $ runServer $ ServerDefinition
@@ -55,7 +58,7 @@ sendDiagnostic :: J.NormalizedUri -> (Int, Int, Text) -> LspM () ()
 sendDiagnostic fileUri (line, column, msg) = do
   let diags =
         [ J.Diagnostic
-            (J.Range (J.Position line (column - 1))
+            (J.Range (J.Position line column)
                      (J.Position line (column + 5)) -- TODO: figure out the correct end column
             )
             (Just J.DsWarning) -- severity
@@ -76,7 +79,7 @@ validateSwarmCode doc content = do
           Right _ -> Nothing
           Left  e -> Just (0, 0, " " <> e)
         Left e -> Just $ showErrorPos e
-  -- debug $ pack $ "-> " <> show err
+  -- debug $ "-> " <> from (show err)
   case err of
     Nothing -> pure ()
     Just e  -> sendDiagnostic doc e
