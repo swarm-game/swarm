@@ -346,24 +346,30 @@ explainFocusedItem s = case mItem of
           maximumOf (traverse . recipeInputs . traverse . to width) recipes
         maxOutputWidth = fromMaybe 0 $
           maximumOf (traverse . recipeOutputs . traverse . to width) recipes
-        widthLimit = 2 * max maxInputWidth maxOutputWidth + 10
+        widthLimit = 2 * max maxInputWidth maxOutputWidth + 11
 
     recipesWith :: Entity -> [Recipe Entity]
-    recipesWith e = S.toList . S.fromList $
+    recipesWith e =
          recipesFor (s ^. gameState . recipesOut) e
       ++ recipesFor (s ^. gameState . recipesIn) e
-      -- We remove duplicates by converting to and from a Set,
-      -- because some recipes can have an item as both an input and an
-      -- output (e.g. some recipes that require a furnace); those
-      -- recipes would show up twice above.
 
 drawRecipe :: Entity -> Recipe Entity -> Widget Name
-drawRecipe e (Recipe ins outs) = hBox
-  [ vBox (zipWith drawIn [0..] ins)
-  , hLimit 4 hBorder
-  , vBox (zipWith drawOut [0..]  outs)
+drawRecipe e (Recipe ins outs reqs) = vBox
+  [ hCenter $ drawReqs reqs
+  , hBox
+    [ vBox (zipWith drawIn [0..] ins)
+    , connector
+    , vBox (zipWith drawOut [0..]  outs)
+    ]
   ]
   where
+    connector
+      | null reqs = hLimit 5 hBorder
+      | otherwise = hBox
+          [ hLimit 2 hBorder
+          , joinableBorder (Edges True False True True)
+          , hLimit 2 hBorder
+          ]
     inLen = length ins
     outLen = length outs
     drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
@@ -381,7 +387,7 @@ drawRecipe e (Recipe ins outs) = hBox
     drawOut i (n, ingr) = hBox
       [ padRight (Pad 1) $
           (joinableBorder (Edges (i /= 0) (i /= outLen-1) False True) <=>
-           if i /= inLen-1
+           if i /= outLen-1
              then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
              else emptyWidget
           ) <+>
@@ -394,6 +400,12 @@ drawRecipe e (Recipe ins outs) = hBox
       | otherwise = txtLines nm
       where
         txtLines = vBox . map txt . T.words
+
+drawReqs :: IngredientList Entity -> Widget Name
+drawReqs = vBox . map drawReq
+  where
+    drawReq (1, e) = txt $ e ^. entityName
+    drawReq (n, e) = str (show n) <+> txt " " <+> txt (e ^. entityName)
 
 -- | Draw a list of messages.
 drawMessages :: [Text] -> Widget Name

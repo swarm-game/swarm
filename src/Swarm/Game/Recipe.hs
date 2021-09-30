@@ -17,13 +17,13 @@
 --
 -- A recipe represents some kind of process for transforming
 -- some input entities into some output entities.
+
 module Swarm.Game.Recipe (
   -- * Ingredient lists and recipes
   IngredientList,
   Recipe (..),
   recipeInputs,
   recipeOutputs,
-  prettyRecipe,
 
   -- * Loading recipes
   loadRecipes,
@@ -66,6 +66,7 @@ type IngredientList e = [(Count, e)]
 data Recipe e = Recipe
   { _recipeInputs :: IngredientList e
   , _recipeOutputs :: IngredientList e
+  , _recipeRequirements :: IngredientList e
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
@@ -77,20 +78,25 @@ recipeInputs :: Lens' (Recipe e) (IngredientList e)
 -- | The outputs from a recipe.
 recipeOutputs :: Lens' (Recipe e) (IngredientList e)
 
+-- | Other entities which the recipe requires you to have, but which
+--   are not consumed by the recipe (e.g. a furnace).
+recipeRequirements :: Lens' (Recipe e) (IngredientList e)
+
 ------------------------------------------------------------
 -- Serializing
 ------------------------------------------------------------
 
 instance ToJSON (Recipe Text) where
-  toJSON (Recipe ins outs) =
-    object
-      [ "in" .= ins
-      , "out" .= outs
-      ]
+  toJSON (Recipe ins outs reqs) = object $
+    [ "in"  .= ins
+    , "out" .= outs
+    ]
+    ++
+    [ "required" .= reqs | not (null reqs) ]
 
 instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
-    Recipe <$> v .: "in" <*> v .: "out"
+    Recipe <$> v .: "in" <*> v .: "out" <*> v .:? "required" .!= []
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'
@@ -109,17 +115,6 @@ loadRecipes em = runExceptT $ do
     `isSuccessOr` (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
 
 ------------------------------------------------------------
-
--- | Pretty-print a recipe in the form @input1 + input2 -> output1 + output2@.
-prettyRecipe :: Recipe Entity -> Text
-prettyRecipe (Recipe ins outs) =
-  T.concat [prettyIngredientList ins, " -> ", prettyIngredientList outs]
-
--- | Pretty-print an ingredient list in the form @n1 input1 + n2 input2 + ...@
-prettyIngredientList :: IngredientList Entity -> Text
-prettyIngredientList = T.intercalate " + " . map prettyIngredient
- where
-  prettyIngredient (n, e) = T.concat [into @Text (show n), " ", e ^. entityNameFor n]
 
 -- | Build a map of recipes either by inputs or outputs.
 buildRecipeMap ::
@@ -149,15 +144,15 @@ inRecipeMap = buildRecipeMap recipeInputs
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
 missingIngredientsFor :: Inventory -> Recipe Entity -> [(Count, Entity)]
-missingIngredientsFor inv (Recipe ins _) =
-  filter ((> 0) . fst) $ map (\(n, e) -> (n - E.lookup e inv, e)) ins
+missingIngredientsFor inv (Recipe ins _ reqs) =
+  filter ((> 0) . fst) $ map (\(n, e) -> (n - E.lookup e inv, e)) (ins ++ reqs)
 
 -- | Try to make a recipe, deleting the recipe's inputs from the
 --   inventory and adding the outputs. Return either a description of
 --   which items are lacking, if the inventory does not contain
 --   sufficient inputs, or an updated inventory if it was successful.
 make :: Inventory -> Recipe Entity -> Either [(Count, Entity)] Inventory
-make inv r@(Recipe ins outs) = case missingIngredientsFor inv r of
+make inv r@(Recipe ins outs _) = case missingIngredientsFor inv r of
   [] ->
     Right $
       foldl' (flip (uncurry insertCount)) (foldl' (flip (uncurry deleteCount)) inv ins) outs
