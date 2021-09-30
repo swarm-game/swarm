@@ -73,6 +73,8 @@ data Capability
     CAppear
   | -- | Execute the 'Create' command
     CCreate
+  | -- | Execute the 'Log' command
+    CLog
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
