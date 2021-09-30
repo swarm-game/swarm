@@ -214,42 +214,69 @@ will still be executed by `base`.)  To return to viewing `base` and
 its inventory, you can type `view "base"` at the prompt, or tab to
 highlight the world view and hit `c`.
 
+Exploring
+---------
+
+So what is all this stuff everywhere?  Let's find out!  When you
+`build` a robot, by default it starts out with a `scanner` device,
+which you may have noticed in `mover1`'s inventory.  You can `scan`
+items in the world to learn about them, and later `upload` what you
+have learned to the base.
+
+Let's build a robot to learn about those green `T` things to the west:
+```
+build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"; selfdestruct}
+```
+Notice that the robot did not actually need to walk on top of a `T` to
+learn about it, since it could `scan west` to scan the cell one unit
+to the west (you can also `scan down` to scan the item underneath the
+robot).  Also, it was able to `upload` at a distance of one cell away from
+the base.
+
+After this robot finishes, the UI should look like this:
+
+![](images/scantree.png)
+
+Apparently those things are trees!  Although you do not actually have
+any trees yet, you can tab over to your inventory to read about them.
+In the bottom left corner you will see a description of trees along
+with some *recipes* involving trees.  There is only one recipe,
+showing that we can use a tree to construct two branches and a log.
+
+![](images/viewtree.png)
+
 Getting some resources
 ----------------------
 
-We're going to need some resources.  There seem to be a bunch of
-things that look like green `T`s nearby; let's see if we can grab one
-of those!  Try entering the following:
+So those tree things look pretty useful.  Let's get one!
 ```
 build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
 ```
-
 The `turn` command causes a robot to turn, of course. It takes a
 direction as an argument, which can be either an absolute direction
 (`north`, `south`, `east`, or `west`) or a relative direction
 (`forward`, `back`, `left`, or `right`).  You can also see that the
 `grab` command returns the name of the thing it grabbed, which is
-especially helpful when grabbing something unknown.
+especially helpful when grabbing something unknown. (In this case we
+also could have just written `...; grab; ...; give "base" "tree"; ...`.)
 
-You should see a robot head west from your base, grab a thing, and
+You should see a robot head west from your base, grab a tree, and
 return to the base.  If all works properly, after the newly built
-robot executes the `give` command, you should see the thing show up in
-your inventory, like this:
+robot executes the `give` command, the number next to the `tree` entry
+in your inventory should turn from 0 to 1.  Note that in this case, we
+could have skipped the `scan` step and simply made a robot to go
+`grab` a tree and bring it to us; we would find out what it is when we
+actually got one in our inventory.  But `scan` is still useful for
+things that can't be picked up; you can also make a robot that `scan`s
+multiple things before `upload`ing its knowledge to the base.
 
-![](images/tree.png)
-
-Apparently that thing is a tree!  Tab over to your inventory and take
-a look at it.  In the bottom left corner you will see a description of
-the tree along with some *recipes* involving trees.  Apparently, we
-can use a tree to construct a rangefinder (this is just for testing
-and will go away at some point!), or two branches and a log.  Let's
-use the second recipe.  Since your base has a `workbench` installed,
-you can use the `make` command to make things.  Just give it the name
-of a thing you'd like to make, and the system will automatically pick
-a recipe which produces the thing you requested and for which you have
-all the necessary inputs.  In this case we can request to make either
-a `"log"` or a `"branch"`; it doesn't matter which, and we will get
-the same result either way.
+Since your base has a `workbench` installed, you can use the `make`
+command to make things.  Just give it the name of a thing you'd like
+to make, and the system will automatically pick a recipe which
+produces the thing you requested and for which you have all the
+necessary inputs.  In this case we can request to make either a
+`"log"` or a `"branch"`; it doesn't matter which, and we will get the
+same result either way.
 
 ![](images/log.png)
 
