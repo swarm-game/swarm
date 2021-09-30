@@ -237,7 +237,7 @@ isCmd c = case constMeta $ constInfo c of
 -- | Function constants user can call with reserved words ('wait',...).
 isUserFunc :: Const -> Bool
 isUserFunc c = case constMeta $ constInfo c of
-  ConstMFunc {} -> c `notElem` [Noop, Force]
+  ConstMFunc {} -> c /= Force
   _ -> False
 
 -- | Information about constants used in parsing and pretty printing.
@@ -248,7 +248,7 @@ isUserFunc c = case constMeta $ constInfo c of
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
   Wait         -> commandLow 0
-  Noop         -> command "{}" 0
+  Noop         -> commandLow 0
   Selfdestruct -> commandLow 0
   Move         -> commandLow 0
   Turn         -> commandLow 1

@@ -70,7 +70,7 @@ type ParserError = ParseErrorBundle Text Void
 reservedWords :: [String]
 reservedWords =
   [ "left", "right", "back", "forward", "north", "south", "east", "west", "down"
-  , "wait", "selfdestruct", "move", "turn", "grab", "place", "give", "make"
+  , "wait", "noop", "selfdestruct", "move", "turn", "grab", "place", "give", "make"
   , "build", "run", "getx", "gety", "scan", "upload", "blocked"
   , "random", "say", "view", "appear", "create", "ishere"
   , "int", "string", "dir", "bool", "cmd"
