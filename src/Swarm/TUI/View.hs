@@ -56,7 +56,7 @@ import           Data.Maybe            (fromMaybe)
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder)
+import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
 import Brick.Widgets.Center (center, hCenter)
 import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
@@ -338,7 +338,10 @@ explainFocusedItem s = case mItem of
         ]
       where
         recipes = recipesWith e
-        width (n,ingr) = length (show n) + 1 + T.length (ingr ^. entityName)
+
+        width (n,ingr) =
+          length (show n) + 1 + maximum0 (map T.length . T.words $ ingr ^. entityName)
+
         maxInputWidth = fromMaybe 0 $
           maximumOf (traverse . recipeInputs . traverse . to width) recipes
         maxOutputWidth = fromMaybe 0 $
@@ -366,21 +369,31 @@ drawRecipe e (Recipe ins outs) = hBox
     drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
     drawIn i (n, ingr) = hBox
       [ padRight (Pad 1) $ str (show n)
-      , highlight (ingr ^. entityName)
+      , fmtEntityName (ingr ^. entityName)
       , padLeft (Pad 1) $
           hBorder <+>
-          joinableBorder (Edges (i /= 0) (i /= inLen-1) True False)
+          (joinableBorder (Edges (i /= 0) (i /= inLen-1) True False) <=>
+           if i /= inLen-1
+             then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
+             else emptyWidget
+          )
       ]
     drawOut i (n, ingr) = hBox
       [ padRight (Pad 1) $
-          joinableBorder (Edges (i /= 0) (i /= outLen-1) False True) <+>
+          (joinableBorder (Edges (i /= 0) (i /= outLen-1) False True) <=>
+           if i /= inLen-1
+             then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
+             else emptyWidget
+          ) <+>
           hBorder
-      , highlight (ingr ^. entityName)
+      , fmtEntityName (ingr ^. entityName)
       , padLeft (Pad 1) $ str (show n)
       ]
-    highlight nm
-      | nm == e ^. entityName = withAttr deviceAttr $ txt nm
-      | otherwise = txt nm
+    fmtEntityName nm
+      | nm == e ^. entityName = withAttr deviceAttr $ txtLines nm
+      | otherwise = txtLines nm
+      where
+        txtLines = vBox . map txt . T.words
 
 -- | Draw a list of messages.
 drawMessages :: [Text] -> Widget Name

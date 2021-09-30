@@ -19,10 +19,12 @@
 --
 -- A random collection of small, useful functions that are (or could
 -- be) used throughout the code base.
+
 module Swarm.Util (
   -- * Miscellaneous utilities
   (?),
   maxOn,
+  maximum0,
   readFileMay,
   cycleEnum,
 
@@ -75,6 +77,12 @@ maxOn :: Ord b => (a -> b) -> a -> a -> a
 maxOn f x y
   | f x > f y = x
   | otherwise = y
+
+-- | Find the maximum of a list of numbers, defaulting to 0 if the
+--   list is empty.
+maximum0 :: (Num a, Ord a) => [a] -> a
+maximum0 [] = 0
+maximum0 xs = maximum xs
 
 -- | Safely attempt to read a file, returning @Nothing@ if the file
 --   does not exist.  \"Safely\" should be read in scare quotes here,
