@@ -4,7 +4,7 @@
 module Main where
 
 import Control.Lens ((&), (.~))
-import Control.Monad (replicateM)
+import Control.Monad (replicateM, replicateM_)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Criterion.Main
@@ -26,9 +26,9 @@ treeProgram rn1 rn2 =
   let repeat : int -> cmd () -> cmd () = \n.\c.
     if (n == 0) {} {c ; repeat (n-1) c}
   in {
-    repeat ($int:rn1 + 500) wait;
+    repeat ($int:rn1 + 300) wait;
     appear "|";
-    repeat ($int:rn2 + 500) wait;
+    repeat ($int:rn2 + 300) wait;
     place "tree";
     selfdestruct
   }
@@ -54,10 +54,7 @@ mkTrees numTrees = do
 
 -- | Runs numGameTicks ticks of the game.
 runGame :: Int -> GameState -> IO ()
-runGame numGameTicks = evalStateT (repeatM numGameTicks gameTick)
-  where
-    repeatM 0 m = m
-    repeatM n m = m >> repeatM (n - 1) m
+runGame numGameTicks = evalStateT (replicateM_ numGameTicks gameTick)
 
 main :: IO ()
 main = do
