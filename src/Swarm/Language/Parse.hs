@@ -19,6 +19,7 @@
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Swarm.Language.Parse
   ( -- * Parsers
@@ -34,7 +35,7 @@ module Swarm.Language.Parse
 import           Control.Monad.Reader
 import           Data.Bifunctor
 import           Data.Char
-import           Data.Maybe                     (fromMaybe)
+import           Data.Maybe                     (fromMaybe, mapMaybe)
 import           Data.Text                      (Text)
 import           Data.Void
 import qualified Data.List.NonEmpty             (head)
@@ -44,9 +45,11 @@ import           Control.Monad.Combinators.Expr
 import           Text.Megaparsec                hiding (runParser)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
+import qualified Data.Map.Strict as Map
 
 import           Swarm.Language.Syntax
 import           Swarm.Language.Types
+import Data.Foldable (asum)
 
 -- | When parsing a term using a quasiquoter (i.e. something in the
 --   Swarm source code that will be parsed at compile time), we want
@@ -66,9 +69,9 @@ type ParserError = ParseErrorBundle Text Void
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: [String]
 reservedWords =
-  [ "left", "right", "back", "forward", "north", "south", "east", "west"
+  [ "left", "right", "back", "forward", "north", "south", "east", "west", "down"
   , "wait", "selfdestruct", "move", "turn", "grab", "place", "give", "make"
-  , "build", "run", "getx", "gety"
+  , "build", "run", "getx", "gety", "scan", "upload", "blocked"
   , "random", "say", "view", "appear", "create", "ishere"
   , "int", "string", "dir", "bool", "cmd"
   , "let", "def", "end", "in", "if", "true", "false", "not", "fst", "snd"
@@ -143,8 +146,8 @@ parseType :: Parser Type
 parseType = makeExprParser parseTypeAtom table
   where
     table =
-      [ [ InfixR ((:->:) <$ symbol "->") ]
-      , [ InfixR ((:*:) <$ symbol "*") ]
+      [ [ InfixR ((:*:) <$ symbol "*") ]
+      , [ InfixR ((:->:) <$ symbol "->") ]
       ]
 
 parseTypeAtom :: Parser Type
@@ -168,39 +171,14 @@ parseDirection =
   <|> South  <$ reserved "south"
   <|> East   <$ reserved "east"
   <|> West   <$ reserved "west"
+  <|> Down   <$ reserved "down"
 
--- XXX I wish there was a better way to do this that would warn us to
--- add a new case to the parser whenever we add a new constructor to
--- 'Const'.
+-- | Parse Const as reserved words (e.g. @Raise <$ reserved "raise"@)
 parseConst :: Parser Const
-parseConst =
-      Wait    <$ reserved "wait"
-  <|> Selfdestruct <$ reserved "selfdestruct"
-  <|> Return  <$ reserved "return"
-  <|> Move    <$ reserved "move"
-  <|> Turn    <$ reserved "turn"
-  <|> Grab    <$ reserved "grab"
-  <|> Place   <$ reserved "place"
-  <|> Give    <$ reserved "give"
-  <|> Install <$ reserved "install"
-  <|> Make    <$ reserved "make"
-  <|> Build   <$ reserved "build"
-  <|> Run     <$ reserved "run"
-  <|> GetX    <$ reserved "getx"
-  <|> GetY    <$ reserved "gety"
-  <|> Blocked <$ reserved "blocked"
-  <|> Random  <$ reserved "random"
-  <|> Say     <$ reserved "say"
-  <|> View    <$ reserved "view"
-  <|> Appear  <$ reserved "appear"
-  <|> Create  <$ reserved "create"
-  <|> Ishere  <$ reserved "ishere"
-  <|> If      <$ reserved "if"
-  <|> Not     <$ reserved "not"
-  <|> Fst     <$ reserved "fst"
-  <|> Snd     <$ reserved "snd"
-  <|> Try     <$ reserved "try"
-  <|> Raise   <$ reserved "raise"
+parseConst = asum $ map alternative consts
+  where
+    consts = filter isUserFunc allConst
+    alternative c = c <$ reserved (syntax $ constInfo c)
 
 parseTermAtom :: Parser Term
 parseTermAtom =
@@ -278,29 +256,48 @@ fixDefMissingSemis term =
 parseExpr :: Parser Term
 parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
   where
-    table =
-      [ [ InfixL (TApp <$ string "") ]
-      , [ InfixR (mkOp (Arith Exp) <$ symbol "^") ]
-      , [ Prefix (TApp (TConst Neg) <$ symbol "-") ]
-      , [ InfixL (mkOp (Arith Mul) <$ symbol "*")
-        , InfixL (mkOp (Arith Div) <$ symbol "/")
-        ]
-      , [ InfixL (mkOp (Arith Add) <$ symbol "+")
-        , InfixL (mkOp (Arith Sub) <$ symbol "-")
-        ]
-      , map (\(s, op) -> InfixN (mkOp (Cmp op) <$ symbol s))
-        [ ("==", CmpEq)
-        , ("/=", CmpNeq)
-        , ("<=", CmpLeq)
-        , (">=", CmpGeq)
-        , ("<", CmpLt)
-        , (">", CmpGt)
-        ]
-      , [ InfixR (TPair <$ symbol ",") ]
+    table = snd <$> Map.toDescList tableMap
+    tableMap = Map.unionsWith (++)
+      [ Map.singleton 9 [InfixL (TApp <$ string "")]
+      , binOps
+      , unOps
+      , Map.singleton 2 [InfixR (TPair <$ symbol ",")]
       ]
 
-mkOp :: Const -> Term -> Term -> Term
-mkOp c = TApp . TApp (TConst c)
+-- | Precedences and parsers of binary operators.
+--
+-- >>> Map.map length binOps
+-- fromList [(4,6),(6,2),(7,2),(8,1)]
+binOps :: Map.Map Int [Operator Parser Term]
+binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
+  where
+    binOpToTuple c = do
+      let ci = constInfo c
+      ConstMBinOp assoc <- pure (constMeta ci)
+      let assI = case assoc of
+            L -> InfixL
+            N -> InfixN
+            R -> InfixR
+      pure $ Map.singleton
+        (fixity ci)
+        [assI (mkOp c <$ symbol (syntax ci))]
+
+-- | Precedences and parsers of unary operators (currently only 'Neg').
+--
+-- >>> Map.map length unOps
+-- fromList [(7,1)]
+unOps :: Map.Map Int [Operator Parser Term]
+unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
+  where
+    unOpToTuple c = do
+      let ci = constInfo c
+      ConstMUnOp assoc <- pure (constMeta ci)
+      let assI = case assoc of
+            P -> Prefix
+            S -> Postfix
+      pure $  Map.singleton
+        (fixity ci)
+        [assI (TApp (TConst c) <$ symbol (syntax ci))]
 
 --------------------------------------------------
 -- Utilities

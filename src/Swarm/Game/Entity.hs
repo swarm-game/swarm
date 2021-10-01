@@ -39,7 +39,7 @@ module Swarm.Game.Entity
     -- ** Lenses
     -- $lenses
   , entityDisplay, entityName, entityPlural, entityNameFor
-  , entityDescription, entityOrientation, entityGrowth
+  , entityDescription, entityOrientation, entityGrowth, entityYields
   , entityProperties, hasProperty, entityCapabilities
   , entityInventory
   , entityHash
@@ -112,6 +112,7 @@ data EntityProperty
   = Unwalkable     -- ^ Robots can't move onto a cell containing this entity.
   | Portable       -- ^ Robots can pick this up (via 'Swarm.Language.Syntax.Grab').
   | Growable       -- ^ Regrows from a seed after it is grabbed.
+  | Liquid         -- ^ Robots drown if they walk on this.
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON EntityProperty where
@@ -207,6 +208,10 @@ data Entity = Entity
                                             --   of its orientation.
   , _entityGrowth       :: Maybe GrowthTime -- ^ If this entity grows,
                                             --   how long does it take?
+  , _entityYields       :: Maybe Text       -- ^ The name of a
+                                            --   different entity
+                                            --   obtained when this
+                                            --   entity is grabbed.
   , _entityProperties   :: [EntityProperty] -- ^ Properties of the entity.
   , _entityCapabilities :: [Capability]     -- ^ Capabilities provided
                                             --   by this entity.
@@ -224,13 +229,14 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm pl descr orient grow props caps inv)
+  hashWithSalt s (Entity _ disp nm pl descr orient grow yld props caps inv)
     = s `hashWithSalt` disp
         `hashWithSalt` nm
         `hashWithSalt` pl
         `hashWithSalt` descr
         `hashWithSalt` orient
         `hashWithSalt` grow
+        `hashWithSalt` yld
         `hashWithSalt` props
         `hashWithSalt` caps
         `hashWithSalt` inv
@@ -257,7 +263,7 @@ mkEntity
   -> [EntityProperty] -- ^ Properties
   -> Entity
 mkEntity disp nm descr props
-  = rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing props [] empty
+  = rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props [] empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -303,6 +309,7 @@ instance FromJSON Entity where
     <*> (map reflow <$> (v .: "description"))
     <*> v .:? "orientation"
     <*> v .:? "growth"
+    <*> v .:? "yields"
     <*> v .:? "properties"   .!= []
     <*> v .:? "capabilities" .!= []
     <*> pure empty
@@ -320,6 +327,10 @@ instance ToJSON Entity where
     [ "plural"       .= (e ^. entityPlural) | isJust (e ^. entityPlural) ]
     ++
     [ "orientation"  .= (e ^. entityOrientation) | isJust (e ^. entityOrientation) ]
+    ++
+    [ "growth"       .= (e ^. entityGrowth) | isJust (e ^. entityGrowth) ]
+    ++
+    [ "yields"       .= (e ^. entityYields) | isJust (e ^. entityYields) ]
     ++
     [ "properties"   .= (e ^. entityProperties) | not . null $ e ^. entityProperties ]
     ++
@@ -389,6 +400,11 @@ entityOrientation = hashedLens _entityOrientation (\e x -> e { _entityOrientatio
 -- | How long this entity takes to grow, if it regrows.
 entityGrowth :: Lens' Entity (Maybe GrowthTime)
 entityGrowth = hashedLens _entityGrowth (\e x -> e { _entityGrowth = x })
+
+-- | The name of a different entity yielded when this entity is
+--   grabbed, if any.
+entityYields :: Lens' Entity (Maybe Text)
+entityYields = hashedLens _entityYields (\e x -> e { _entityYields = x })
 
 -- | The properties enjoyed by this entity.
 entityProperties :: Lens' Entity [EntityProperty]

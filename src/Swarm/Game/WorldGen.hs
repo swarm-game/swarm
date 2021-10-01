@@ -64,8 +64,8 @@ testWorld2 (Coords ix@(r,c))
       | h `mod` 10  == 0  = (StoneT, Just "rock")
       | otherwise         = (StoneT, Nothing)
     genBiome Big Soft Natural
-      | even (r+c) = (WaterT, Just "wave")
-      | otherwise  = (WaterT, Nothing)
+      | even (r+c) = (DirtT, Just "wavy water")
+      | otherwise  = (DirtT, Just "water")
     genBiome Small Soft Natural
       | h `mod` 10 == 0  = (GrassT, Just "flower")
       | otherwise        = (GrassT, Nothing)

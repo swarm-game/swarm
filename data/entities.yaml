@@ -3,7 +3,10 @@
     attr: plant
     char: 'T'
   description:
-  - A tree.
+  - |
+    A tall, living entity made of a tough cellular material called "wood".
+    They regrow after being harvested and are an important raw ingredient used
+    in making a many different devices.
   properties: [portable, growable]
   growth: [500, 600]
 
@@ -12,7 +15,8 @@
     attr: wood
     char: 'y'
   description:
-  - A branch from a tree.
+  - A branch cut from a tree.  It's as if the tree had to make a decision
+    and was exploring two options.
   properties: [portable]
 
 - name: log
@@ -20,7 +24,7 @@
     attr: wood
     char: 'l'
   description:
-  - A wooden log, obtained by harvesting a tree.
+  - A wooden log, obtained by harvesting a tree and cutting off its branches.
   properties: [portable]
 
 - name: board
@@ -153,20 +157,36 @@
   - Delicious curry cooked from wild lambdas.
   properties: [portable]
 
-- name: wave
+- name: water
+  display:
+    attr: water
+    char: ' '
+  description:
+  - Water.
+  properties: [portable, growable, liquid]
+  growth: [0,0]
+
+- name: wavy water
   display:
     attr: water
     char: '~'
   description:
-  - A wave on the surface of the water.
+  - A wavy section of water.
+  properties: [portable, growable, liquid]
+  growth: [0,0]
+  yields: water
 
-- name: cup of water
+- name: boat
   display:
-    attr: water
-    char: 'U'
+    attr: wood
+    char: 'B'
   description:
-  - A cup full of water.
+  - A robot with a boat installed can float on top of water without drowning!
+  - "Note: most devices are automatically installed on robots
+    that will require them; but since floating is not associated with any particular
+    command, a boat must be manually installed on any robot that will need it."
   properties: [portable]
+  capabilities: [float]
 
 - name: bit (0)
   display:
@@ -342,15 +362,6 @@
   properties: [portable]
   capabilities: [cond]
 
-- name: rangefinder
-  display:
-    attr: device
-    char: '>'
-  description:
-  - A laser rangefinder.  This is a placeholder for now.
-  properties: [portable]
-  capabilities: [sensefront]
-
 - name: detonator
   display:
     attr: fire
@@ -376,3 +387,20 @@
     severly toxic (why do the inhabitants of this planet need so much
     nitrogen!?), so you'll have to stay inside for now.
   properties: [portable]
+
+- name: scanner
+  display:
+    attr: device
+    char: '$'
+  description:
+  - "With a scanner device, robots can use the 'scan' command to learn
+    about their surroundings.  Simply give 'scan' a direction in which to scan,
+    and information about the scanned item (if any) will be added to the robot's
+    inventory."
+  - "A scanner also enables the 'blocked' command, which returns a
+     boolean value indicating whether the robot's path is blocked
+     (i.e. whether executing a 'move' command would fail)."
+  - "Finally, robots can use the 'upload' command to copy their accumulated
+    knowledge to another nearby robot; for example, 'upload \"base\"'."
+  properties: [portable]
+  capabilities: [scan, sensefront]

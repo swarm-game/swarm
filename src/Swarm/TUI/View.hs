@@ -239,7 +239,7 @@ drawMenu isPaused viewingBase mode
       [ ("c", "recenter") | not viewingBase ]
 
     keyCmdsFor (Just InfoPanel)  =
-      [ ("↓↑/Pg{Up,Dn}/Home/End", "navigate")
+      [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
       , ("Enter", "make")
       ]
     keyCmdsFor _ = []
