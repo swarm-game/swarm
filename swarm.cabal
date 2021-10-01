@@ -145,3 +145,20 @@ test-suite swarm-unit
     hs-source-dirs:   test
     default-language: Haskell2010
     ghc-options:      -threaded
+
+benchmark benchmark
+  import:         stan-config, common
+  main-is:        Benchmark.hs
+  hs-source-dirs: bench
+  type:           exitcode-stdio-1.0
+  build-depends:  criterion                         >= 1.5.10.0 && < 1.6,
+                  -- Import shared with the library don't need bounds
+                  base,
+                  lens,
+                  linear,
+                  mtl,
+                  random,
+                  swarm,
+                  text
+  default-language: Haskell2010
+  ghc-options:      -threaded
