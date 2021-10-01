@@ -248,14 +248,18 @@ request from the feature branch to `main`. This is actually _preferred_ since
 it makes several things smoother (for example, the `restyled.io` bot works much
 better on pulls from local branches than from forks).
 
-Although being given push access does not imply any particular responsibility,
-you are welcome to do things such as help review and merge other pull requests,
-and help triage, label, and update issues in the issue tracker.
+Although being given push access does not imply any particular
+responsibility, you are welcome to do things such as help review and
+merge other pull requests (use the `merge me` label to trigger the
+mergify process), and help triage, label, and update issues in the
+issue tracker.  When giving feedback on a pull request, try to be more
+generous in what you accept from newer contributors---the code can be
+fixed up later if necessary, and it's more important to help them feel
+welcome and that their contribution is valued.  More experienced
+contributors can be held to a higher standard.
 
 Having push access also means, of course, that you can push directly to
 `main`. You are welcome to do so for typos, small fixes, documentation
 improvements, and the like; for larger fixes, new features, _etc._ opening a
 pull request from a feature branch is still preferred, to give a chance for
 others to offer suggestions for improvement.
-
-To merge a PR, use the `merge me` label to trigger the mergify process.

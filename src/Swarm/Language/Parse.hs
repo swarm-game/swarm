@@ -63,9 +63,9 @@ type Parser = ReaderT Antiquoting (Parsec Void Text)
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: [String]
 reservedWords =
-  [ "left", "right", "back", "forward", "north", "south", "east", "west"
+  [ "left", "right", "back", "forward", "north", "south", "east", "west", "down"
   , "wait", "selfdestruct", "move", "turn", "grab", "place", "give", "make"
-  , "build", "run", "getx", "gety"
+  , "build", "run", "getx", "gety", "scan", "upload", "blocked"
   , "random", "say", "view", "appear", "create", "ishere"
   , "int", "string", "dir", "bool", "cmd"
   , "let", "def", "end", "in", "if", "true", "false", "not", "fst", "snd"
@@ -140,8 +140,8 @@ parseType :: Parser Type
 parseType = makeExprParser parseTypeAtom table
   where
     table =
-      [ [ InfixR ((:->:) <$ symbol "->") ]
-      , [ InfixR ((:*:) <$ symbol "*") ]
+      [ [ InfixR ((:*:) <$ symbol "*") ]
+      , [ InfixR ((:->:) <$ symbol "->") ]
       ]
 
 parseTypeAtom :: Parser Type
@@ -165,6 +165,7 @@ parseDirection =
   <|> South  <$ reserved "south"
   <|> East   <$ reserved "east"
   <|> West   <$ reserved "west"
+  <|> Down   <$ reserved "down"
 
 -- XXX I wish there was a better way to do this that would warn us to
 -- add a new case to the parser whenever we add a new constructor to
@@ -186,6 +187,8 @@ parseConst =
   <|> GetX    <$ reserved "getx"
   <|> GetY    <$ reserved "gety"
   <|> Blocked <$ reserved "blocked"
+  <|> Scan    <$ reserved "scan"
+  <|> Upload  <$ reserved "upload"
   <|> Random  <$ reserved "random"
   <|> Say     <$ reserved "say"
   <|> View    <$ reserved "view"
