@@ -42,6 +42,19 @@ module Swarm.Language.Syntax (
   isCmd,
   isUserFunc,
 
+  -- * Syntax
+  Syntax (..),
+  Location (..),
+  noLoc,
+  emptyLoc,
+  pattern STerm,
+  pattern SPair,
+  pattern SLam,
+  pattern SApp,
+  pattern SLet,
+  pattern SDef,
+  pattern SBind,
+
   -- * Terms
   Var,
   Term (..),
@@ -385,6 +398,37 @@ emptyLoc = Location 0 0
 
 noLoc :: Term -> Syntax
 noLoc = Syntax emptyLoc
+
+-- | Match a term without its a syntax
+pattern STerm :: Term -> Syntax
+pattern STerm t <-
+  Syntax _ t
+  where
+    STerm t = Syntax emptyLoc t
+
+-- | Match a TPair without syntax
+pattern SPair :: Term -> Term -> Term
+pattern SPair t1 t2 = TPair (STerm t1) (STerm t2)
+
+-- | Match a TLam without syntax
+pattern SLam :: Var -> Maybe Type -> Term -> Term
+pattern SLam v ty t = TLam v ty (STerm t)
+
+-- | Match a TApp without syntax
+pattern SApp :: Term -> Term -> Term
+pattern SApp t1 t2 = TApp (STerm t1) (STerm t2)
+
+-- | Match a TLet without syntax
+pattern SLet :: Var -> Maybe Polytype -> Term -> Term -> Term
+pattern SLet v pt t1 t2 = TLet v pt (STerm t1) (STerm t2)
+
+-- | Match a TDef without syntax
+pattern SDef :: Var -> Maybe Polytype -> Term -> Term
+pattern SDef v pt t = TDef v pt (STerm t)
+
+-- | Match a TDef without syntax
+pattern SBind :: Maybe Var -> Term -> Term -> Term
+pattern SBind v t1 t2 = TBind v (STerm t1) (STerm t2)
 
 ------------------------------------------------------------
 -- Terms
