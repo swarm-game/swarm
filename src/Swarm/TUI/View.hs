@@ -63,7 +63,7 @@ import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
 
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -334,10 +334,12 @@ explainFocusedItem s = case mItem of
         , padLeftRight 2 $
           hCenter $
           vBox $
-          map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e) recipes
+          map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
         ]
       where
         recipes = recipesWith e
+
+        inv = fromMaybe E.empty $ s ^? gameState . to focusedRobot . _Just . robotInventory
 
         width (n,ingr) =
           length (show n) + 1 + maximum0 (map T.length . T.words $ ingr ^. entityName)
@@ -353,9 +355,13 @@ explainFocusedItem s = case mItem of
          recipesFor (s ^. gameState . recipesOut) e
       ++ recipesFor (s ^. gameState . recipesIn) e
 
-drawRecipe :: Entity -> Recipe Entity -> Widget Name
-drawRecipe e (Recipe ins outs reqs) = vBox
+-- | Draw an ASCII art representation of a recipe.
+drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
+drawRecipe e inv (Recipe ins outs reqs) = vBox
+    -- any requirements (e.g. furnace) go on top.
   [ hCenter $ drawReqs reqs
+
+    -- then we draw inputs, a connector, and outputs.
   , hBox
     [ vBox (zipWith drawIn [0..] ins)
     , connector
@@ -363,6 +369,9 @@ drawRecipe e (Recipe ins outs reqs) = vBox
     ]
   ]
   where
+    -- The connector is either just a horizontal line ─────
+    -- or, if there are requirements, a horizontal line with
+    -- a vertical piece coming out of the center, ──┴── .
     connector
       | null reqs = hLimit 5 hBorder
       | otherwise = hBox
@@ -372,18 +381,23 @@ drawRecipe e (Recipe ins outs reqs) = vBox
           ]
     inLen = length ins
     outLen = length outs
+
+    -- Draw inputs and outputs.
     drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
     drawIn i (n, ingr) = hBox
-      [ padRight (Pad 1) $ str (show n)
-      , fmtEntityName (ingr ^. entityName)
-      , padLeft (Pad 1) $
-          hBorder <+>
+      [ padRight (Pad 1) $ str (show n)      -- how many?
+      , fmtEntityName missing ingr           -- name of the input
+      , padLeft (Pad 1) $                    -- a connecting line:   ─────┬
+          hBorder <+>                        -- ...maybe plus vert ext:   │
           (joinableBorder (Edges (i /= 0) (i /= inLen-1) True False) <=>
            if i /= inLen-1
              then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
              else emptyWidget
           )
       ]
+      where
+        missing = E.lookup ingr inv < n
+
     drawOut i (n, ingr) = hBox
       [ padRight (Pad 1) $
           (joinableBorder (Edges (i /= 0) (i /= outLen-1) False True) <=>
@@ -392,13 +406,19 @@ drawRecipe e (Recipe ins outs reqs) = vBox
              else emptyWidget
           ) <+>
           hBorder
-      , fmtEntityName (ingr ^. entityName)
+      , fmtEntityName False ingr
       , padLeft (Pad 1) $ str (show n)
       ]
-    fmtEntityName nm
-      | nm == e ^. entityName = withAttr deviceAttr $ txtLines nm
+
+    -- If it's the focused entity, draw it highlighted.
+    -- If the robot doesn't have any, draw it in red.
+    fmtEntityName missing ingr
+      | ingr == e = withAttr deviceAttr $ txtLines nm
+      | missing   = withAttr invalidFormInputAttr $ txtLines nm
       | otherwise = txtLines nm
       where
+        -- Split up multi-word names, one line per word
+        nm = ingr ^. entityName
         txtLines = vBox . map txt . T.words
 
 drawReqs :: IngredientList Entity -> Widget Name
