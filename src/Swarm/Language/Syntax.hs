@@ -286,10 +286,10 @@ constInfo c = case c of
   Exp          -> binaryOp "^"  8 R
   Eq           -> binaryOp "==" 4 N
   Neq          -> binaryOp "/=" 4 N
-  Lt           -> binaryOp ">=" 4 N
-  Gt           -> binaryOp "<=" 4 N
-  Leq          -> binaryOp ">"  4 N
-  Geq          -> binaryOp "<"  4 N
+  Lt           -> binaryOp "<"  4 N
+  Gt           -> binaryOp ">"  4 N
+  Leq          -> binaryOp "<=" 4 N
+  Geq          -> binaryOp ">=" 4 N
   where
     unaryOp  s p side = ConstInfo {syntax=s, fixity=p, constMeta=ConstMUnOp side}
     binaryOp s p side = ConstInfo {syntax=s, fixity=p, constMeta=ConstMBinOp side}
