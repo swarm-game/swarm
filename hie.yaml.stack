@@ -1,0 +1,10 @@
+-- If you want to use HLS with Stack, simply do
+--
+--   cp hie.yaml.stack hie.yaml
+--
+-- the file hie.yaml is ignored, so it will not
+-- show in git status ;)
+--
+-- If you are using Cabal, you can ignore this file.
+cradle:
+  stack:

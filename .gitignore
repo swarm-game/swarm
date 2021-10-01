@@ -2,6 +2,9 @@
 dist-newstyle/
 TAGS
 
+cabal.project.local
+hie.yaml
+
 .stack-work/
 stack.yaml.lock
 .hie/
