@@ -363,8 +363,15 @@ constInfo c = case c of
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
-mkOp :: Const -> Term -> Term -> Term
-mkOp c = TApp . TApp (TConst c)
+mkOp :: Const -> Syntax -> Syntax -> Syntax
+mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+ where
+  -- The new syntax span both terms
+  newLoc = Location (locStart l1) (locEnd l2)
+  -- We don't assign a source location for the operator since it is
+  -- usually provided as-is and it is not likely to be useful.
+  sop = noLoc (TConst c)
+  newTerm = TApp (Syntax l1 $ TApp sop s1) s2
 
 -- | The surface syntax for the language
 data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
@@ -375,6 +382,9 @@ data Location = Location {locStart :: Int, locEnd :: Int}
 
 emptyLoc :: Location
 emptyLoc = Location 0 0
+
+noLoc :: Term -> Syntax
+noLoc = Syntax emptyLoc
 
 ------------------------------------------------------------
 -- Terms
@@ -444,15 +454,18 @@ fvT f = go S.empty
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)
-    TLam x ty t1 -> TLam x ty <$> go (S.insert x bound) t1
-    TApp t1 t2 -> TApp <$> go bound t1 <*> go bound t2
-    TLet x ty t1 t2 ->
+    TLam x ty (Syntax l1 t1) -> TLam x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+    TApp (Syntax l1 t1) (Syntax l2 t2) ->
+      TApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
+    TLet x ty (Syntax l1 t1) (Syntax l2 t2) ->
       let bound' = S.insert x bound
-       in TLet x ty <$> go bound' t1 <*> go bound' t2
-    TPair t1 t2 -> TPair <$> go bound t1 <*> go bound t2
-    TDef x ty t1 -> TDef x ty <$> go (S.insert x bound) t1
-    TBind mx t1 t2 ->
-      TBind mx <$> go bound t1 <*> go (maybe id S.insert mx bound) t2
+       in TLet x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
+    TPair (Syntax l1 t1) (Syntax l2 t2) ->
+      TPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
+    TDef x ty (Syntax l1 t1) ->
+      TDef x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+    TBind mx (Syntax l1 t1) (Syntax l2 t2) ->
+      TBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
     TDelay t1 -> TDelay <$> go bound t1
 
 -- | Traversal over the free variables of a term.  Note that if you
