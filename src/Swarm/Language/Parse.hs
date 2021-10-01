@@ -140,8 +140,8 @@ parseType :: Parser Type
 parseType = makeExprParser parseTypeAtom table
   where
     table =
-      [ [ InfixR ((:->:) <$ symbol "->") ]
-      , [ InfixR ((:*:) <$ symbol "*") ]
+      [ [ InfixR ((:*:) <$ symbol "*") ]
+      , [ InfixR ((:->:) <$ symbol "->") ]
       ]
 
 parseTypeAtom :: Parser Type
