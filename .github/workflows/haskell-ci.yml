@@ -129,8 +129,8 @@ jobs:
           echo "packages: ${PKGDIR_swarm}" >> cabal.project
           echo "package swarm" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
-          cat >> cabal.project <<EOF
-          EOF
+          # ensure we use the ghc901 fix
+          cat "${GITHUB_WORKSPACE}/source/cabal.project" | grep -v "^packages" >> cabal.project
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(swarm)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local

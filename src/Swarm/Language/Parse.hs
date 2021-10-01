@@ -28,8 +28,8 @@ module Swarm.Language.Parse
 
     -- * Utility functions
 
-  , runParser, runParserTH, readTerm
-
+  , runParser, runParserTH, readTerm, readTerm'
+  , showShortError, showErrorPos
   ) where
 
 import           Control.Monad.Reader
@@ -38,6 +38,7 @@ import           Data.Char
 import           Data.Maybe                     (fromMaybe, mapMaybe)
 import           Data.Text                      (Text)
 import           Data.Void
+import qualified Data.List.NonEmpty             (head)
 import           Witch
 
 import           Control.Monad.Combinators.Expr
@@ -59,6 +60,8 @@ data Antiquoting = AllowAntiquoting | DisallowAntiquoting
   deriving (Eq, Ord, Show)
 
 type Parser = ReaderT Antiquoting (Parsec Void Text)
+
+type ParserError = ParseErrorBundle Text Void
 
 --------------------------------------------------
 -- Lexer
@@ -343,3 +346,41 @@ fully p = sc *> p <* eof
 --   a pretty-printed parse error message.
 readTerm :: Text -> Either Text Term
 readTerm = runParser (fully parseTerm)
+
+-- | A lower-level readTerm which returns the megaparsec bundle error
+--   for precise error reporting.
+readTerm' :: Text -> Either ParserError Term
+readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
+
+-- | A utility for converting a ParserError into a one line message:
+--   <line-nr>: <error-msg>
+showShortError :: ParserError -> String
+showShortError pe = show (line + 1) <> ": " <> from msg
+  where
+    ((line, _), _, msg) = showErrorPos pe
+
+-- | A utility for converting a ParseError into a range and error message.
+showErrorPos :: ParserError -> ((Int, Int), (Int, Int), Text)
+showErrorPos (ParseErrorBundle errs sourcePS) = (minusOne start, minusOne end, from msg)
+  where
+    -- convert megaparsec source pos to starts at 0
+    minusOne (x, y) = (x - 1, y - 1)
+
+    -- get the first error position (ps) and line content (str)
+    err = Data.List.NonEmpty.head errs
+    offset = case err of
+      TrivialError x _ _ -> x
+      FancyError x _ -> x
+    (str, ps) = reachOffset offset sourcePS
+    msg = parseErrorTextPretty err
+
+    -- extract the error starting position
+    line = unPos $ sourceLine $ pstateSourcePos ps
+    col = unPos $ sourceColumn $ pstateSourcePos ps
+    start = ( line, col )
+
+    -- compute the ending position based on the word at starting position
+    wordlength = case break (== ' ') . drop col <$> str of
+      Just (word, _) -> length word + 1
+      _ -> 0
+    end = ( line, col + wordlength)

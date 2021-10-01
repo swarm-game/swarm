@@ -4,6 +4,15 @@ extra-deps:
 - word-wrap-0.5
 - git: https://github.com/colinhect/hsnoise
   commit: 4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d
+# get latest th-extras for ghc-9.0.1 compat
+# when changing these, update the cabal.project too
+- git: https://github.com/mokus0/th-extras
+  commit: 0d050b24ec5ef37c825b6f28ebd46787191e2a2d
+- git: https://github.com/obsidiansystems/dependent-sum
+  commit: 080b089f2951cd5851cee0d62f81d6ac7b1e2028
+  subdirs:
+  - dependent-sum
+  - dependent-sum-template
 - simple-enumeration-0.2.1@sha256:8625b269c1650d3dd0e3887351c153049f4369853e0d525219e07480ea004b9f,1178
 
 # Allow a newer minor version of GHC than the snapshot specifies
