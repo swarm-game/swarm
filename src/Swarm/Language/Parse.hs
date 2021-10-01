@@ -227,29 +227,38 @@ parseConst = asum $ map alternative consts
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
-parseTermAtom :: Parser Term
+ploc :: Parser Term -> Parser Syntax
+ploc pterm = do
+  start <- getOffset
+  term <- pterm
+  end <- getOffset
+  pure $ Syntax (Location start end) term
+
+parseTermAtom :: Parser Syntax
 parseTermAtom =
-  TUnit <$ symbol "()"
-    <|> TConst <$> parseConst
-    <|> TVar <$> identifier
-    <|> TDir <$> parseDirection
-    <|> TInt <$> integer
-    <|> TString <$> stringLiteral
-    <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
-    <|> TLam <$> (symbol "\\" *> identifier)
-      <*> optional (symbol ":" *> parseType)
-      <*> (symbol "." *> parseTerm)
-    <|> TLet <$> (reserved "let" *> identifier)
-      <*> optional (symbol ":" *> parsePolytype)
-      <*> (symbol "=" *> parseTerm)
-      <*> (reserved "in" *> parseTerm)
-    <|> TDef <$> (reserved "def" *> identifier)
-      <*> optional (symbol ":" *> parsePolytype)
-      <*> (symbol "=" *> parseTerm <* reserved "end")
+  ploc
+    ( TUnit <$ symbol "()"
+        <|> TConst <$> parseConst
+        <|> TVar <$> identifier
+        <|> TDir <$> parseDirection
+        <|> TInt <$> integer
+        <|> TString <$> stringLiteral
+        <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
+        <|> TLam <$> (symbol "\\" *> identifier)
+          <*> optional (symbol ":" *> parseType)
+          <*> (symbol "." *> parseTerm)
+        <|> TLet <$> (reserved "let" *> identifier)
+          <*> optional (symbol ":" *> parsePolytype)
+          <*> (symbol "=" *> parseTerm)
+          <*> (reserved "in" *> parseTerm)
+        <|> TDef <$> (reserved "def" *> identifier)
+          <*> optional (symbol ":" *> parsePolytype)
+          <*> (symbol "=" *> parseTerm <* reserved "end")
+    )
     <|> parens parseTerm
-    <|> TConst Noop <$ try (symbol "{" *> symbol "}")
+    <|> ploc (TConst Noop <$ try (symbol "{" *> symbol "}"))
     <|> braces parseTerm
-    <|> (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+    <|> ploc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
@@ -260,24 +269,24 @@ parseAntiquotation =
 parseTerm :: Parser Syntax
 parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
-mkBindChain :: [Stmt] -> Parser Term
+mkBindChain :: [Stmt] -> Parser Syntax
 mkBindChain stmts = case last stmts of
   Binder _ _ -> fail "Last command in a chain must not have a binder"
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = TBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = TBind (Just x) t1 t2
+  mkBind (BareTerm t1) t2 = noLoc $ TBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = noLoc $ TBind (Just x) t1 t2
 
 data Stmt
-  = BareTerm Term
-  | Binder Text Term
+  = BareTerm Syntax
+  | Binder Text Syntax
   deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =
   mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseExpr
 
-mkStmt :: Maybe Text -> Term -> Stmt
+mkStmt :: Maybe Text -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
 mkStmt (Just x) = Binder x
 
@@ -287,36 +296,49 @@ mkStmt (Just x) = Binder x
 --     App (App (TDef a) (TDef b)) (TDef x)
 --   This function fix that by converting the Apps into Binds, so that it results in:
 --     Bind a (Bind b (Bind c))
-fixDefMissingSemis :: Term -> Term
+fixDefMissingSemis :: Syntax -> Syntax
 fixDefMissingSemis term =
   case nestedDefs term [] of
     [] -> term
-    defs -> foldr1 (TBind Nothing) defs
+    -- TODO: figure out what should be the Syntax Location of this rewrite
+    defs -> foldr1 (\t1 t2 -> noLoc $ TBind Nothing t1 t2) defs
  where
   nestedDefs term' acc = case term' of
-    def@TDef {} -> def : acc
-    TApp nestedTerm def@TDef {} -> nestedDefs nestedTerm (def : acc)
+    def@(Syntax _ TDef {}) -> def : acc
+    (Syntax _ (TApp nestedTerm def@(Syntax _ TDef {}))) -> nestedDefs nestedTerm (def : acc)
     -- Otherwise returns an empty list to keep the term unchanged
     _ -> []
 
-parseExpr :: Parser Term
+parseExpr :: Parser Syntax
 parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
  where
   table = snd <$> Map.toDescList tableMap
   tableMap =
     Map.unionsWith
       (++)
-      [ Map.singleton 9 [InfixL (TApp <$ string "")]
+      [ Map.singleton 9 [InfixL (exprLoc2 $ TApp <$ string "")]
       , binOps
       , unOps
-      , Map.singleton 2 [InfixR (TPair <$ symbol ",")]
+      , Map.singleton 2 [InfixR (exprLoc2 $ TPair <$ symbol ",")]
       ]
+
+exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
+exprLoc2 p = do
+  -- TODO: check if this is correct
+  f <- p
+  pure $ \s1 s2 -> noLoc $ f s1 s2
+
+exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
+exprLoc1 p = do
+  -- TODO: check if this is correct
+  f <- p
+  pure $ \s -> noLoc $ f s
 
 -- | Precedences and parsers of binary operators.
 --
 -- >>> Map.map length binOps
 -- fromList [(4,6),(6,2),(7,2),(8,1)]
-binOps :: Map.Map Int [Operator Parser Term]
+binOps :: Map.Map Int [Operator Parser Syntax]
 binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
  where
   binOpToTuple c = do
@@ -335,7 +357,7 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
 --
 -- >>> Map.map length unOps
 -- fromList [(7,1)]
-unOps :: Map.Map Int [Operator Parser Term]
+unOps :: Map.Map Int [Operator Parser Syntax]
 unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
  where
   unOpToTuple c = do
@@ -347,7 +369,7 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (TApp (TConst c) <$ symbol (syntax ci))]
+        [assI (exprLoc1 $ TApp (noLoc $ TConst c) <$ symbol (syntax ci))]
 
 --------------------------------------------------
 -- Utilities
@@ -395,12 +417,12 @@ fully p = sc *> p <* eof
 --   whitespace and ensuring the parsing extends all the way to the
 --   end of the input 'Text'.  Returns either the resulting 'Term' or
 --   a pretty-printed parse error message.
-readTerm :: Text -> Either Text Term
+readTerm :: Text -> Either Text Syntax
 readTerm = runParser (fully parseTerm)
 
 -- | A lower-level readTerm which returns the megaparsec bundle error
 --   for precise error reporting.
-readTerm' :: Text -> Either ParserError Term
+readTerm' :: Text -> Either ParserError Syntax
 readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
 
 -- | A utility for converting a ParserError into a one line message:
