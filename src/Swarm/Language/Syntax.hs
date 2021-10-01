@@ -366,6 +366,16 @@ constInfo c = case c of
 mkOp :: Const -> Term -> Term -> Term
 mkOp c = TApp . TApp (TConst c)
 
+-- | The surface syntax for the language
+data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
+  deriving (Eq, Show, Data)
+
+data Location = Location {locStart :: Int, locEnd :: Int}
+  deriving (Eq, Show, Data)
+
+emptyLoc :: Location
+emptyLoc = Location 0 0
+
 ------------------------------------------------------------
 -- Terms
 
@@ -390,20 +400,20 @@ data Term
   | -- | A variable.
     TVar Var
   | -- | A pair.
-    TPair Term Term
+    TPair Syntax Syntax
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    TLam Var (Maybe Type) Term
+    TLam Var (Maybe Type) Syntax
   | -- | Function application.
-    TApp Term Term
+    TApp Syntax Syntax
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable.
-    TLet Var (Maybe Polytype) Term Term
+    TLet Var (Maybe Polytype) Syntax Syntax
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands.
-    TDef Var (Maybe Polytype) Term
+    TDef Var (Maybe Polytype) Syntax
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    TBind (Maybe Var) Term Term
+    TBind (Maybe Var) Syntax Syntax
   | -- | Delay evaluation of a term.  Swarm is an eager language, but
     --   in some cases (e.g. for @if@ statements and recursive
     --   bindings) we need to delay evaluation.  The counterpart to
