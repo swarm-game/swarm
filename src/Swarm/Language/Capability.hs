@@ -251,9 +251,22 @@ constCaps Appear       = S.singleton CAppear       -- paint?
 constCaps GetX         = S.singleton CSenseloc     -- GPS?
 constCaps GetY         = S.singleton CSenseloc
 constCaps Random       = S.singleton CRandom       -- randomness device (with bitcoins)?
-constCaps (Cmp _)      = S.singleton CCompare      -- comparator?
+
 constCaps Neg          = S.singleton CArith        -- ALU?
-constCaps (Arith _)    = S.singleton CArith
+
+-- comparator?
+constCaps Eq           = S.singleton CCompare
+constCaps Neq          = S.singleton CCompare
+constCaps Lt           = S.singleton CCompare
+constCaps Gt           = S.singleton CCompare
+constCaps Leq          = S.singleton CCompare
+constCaps Geq          = S.singleton CCompare
+
+constCaps Add          = S.singleton CArith
+constCaps Sub          = S.singleton CArith
+constCaps Mul          = S.singleton CArith
+constCaps Div          = S.singleton CArith
+constCaps Exp          = S.singleton CArith
 
 -- Some more constants which *ought* to have their own capability but
 -- currently don't.

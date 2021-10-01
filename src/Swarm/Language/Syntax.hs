@@ -13,11 +13,13 @@
 {-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE DeriveDataTypeable   #-}
 {-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE DerivingStrategies   #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE PatternSynonyms      #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings    #-}
 
 module Swarm.Language.Syntax
   ( -- * Directions
@@ -25,12 +27,12 @@ module Swarm.Language.Syntax
     Direction(..), applyTurn, toDirection, fromDirection, north, south, east, west
 
     -- * Constants
-  , Const(..), CmpConst(..), ArithConst(..)
+  , Const(..), allConst
 
-  , arity, isCmd
+  , ConstInfo(..), ConstMeta(..), MBinAssoc(..), MUnAssoc(..), constInfo, arity, isCmd, isUserFunc
 
     -- * Terms
-  , Var, Term(..)
+  , Var, Term(..), mkOp
 
     -- * Term traversal
 
@@ -49,6 +51,7 @@ import           Data.Aeson.Types
 import           Data.Data            (Data)
 import           Data.Hashable        (Hashable)
 import           GHC.Generics         (Generic)
+import           Witch.From           (from)
 
 import           Swarm.Language.Types
 
@@ -124,9 +127,9 @@ west  = V2 (-1) 0
 data Const
 
   -- Trivial actions
-  = Wait              -- ^ Wait for one time step without doing anything.
-  | Noop              -- ^ Do nothing.  This is different than 'Wait'
+  = Noop              -- ^ Do nothing.  This is different than 'Wait'
                       --   in that it does not take up a time step.
+  | Wait              -- ^ Wait for one time step without doing anything.
   | Selfdestruct      -- ^ Self-destruct.
 
   -- Basic actions
@@ -156,12 +159,6 @@ data Const
   -- Modules
   | Run               -- ^ Run a program loaded from a file.
 
-  -- Arithmetic
-  | Not               -- ^ Logical negation.
-  | Cmp CmpConst      -- ^ Binary comparison operators.
-  | Neg               -- ^ Arithmetic negation.
-  | Arith ArithConst  -- ^ Binary arithmetic operators.
-
   -- Language built-ins
   | If                -- ^ If-expressions.
   | Fst               -- ^ First projection.
@@ -171,72 +168,140 @@ data Const
   | Try               -- ^ Try/catch block
   | Raise             -- ^ Raise an exception
 
-  deriving (Eq, Ord, Show, Data)
+  -- Arithmetic unary operators
+  | Not               -- ^ Logical negation.
+  | Neg               -- ^ Arithmetic negation.
 
--- | Comparison operator constants.
-data CmpConst = CmpEq | CmpNeq | CmpLt | CmpGt | CmpLeq | CmpGeq
-  deriving (Eq, Ord, Show, Data)
+  -- Comparison operators (check for with isCmpBinOp)
+  | Eq                -- ^ Logical equality comparison
+  | Neq               -- ^ Logical unequality comparison
+  | Lt                -- ^ Logical lesser-then comparison
+  | Gt                -- ^ Logical greater-then comparison
+  | Leq               -- ^ Logical lesser-or-equal comparison
+  | Geq               -- ^ Logical greater-or-equal comparison
 
--- | Arithmetic operator constants.
-data ArithConst = Add | Sub | Mul | Div | Exp
-  deriving (Eq, Ord, Show, Data)
+  -- Arithmetic binary operators (check for with isArithBinOp)
+  | Add               -- ^ Arithmetic addition operator
+  | Sub               -- ^ Arithmetic subtraction operator
+  | Mul               -- ^ Arithmetic multiplication operator
+  | Div               -- ^ Arithmetic division operator
+  | Exp               -- ^ Arithmetic exponentiation operator
+
+  deriving (Eq, Ord, Enum, Bounded, Data, Show)
+
+allConst :: [Const]
+allConst = [minBound..maxBound]
+
+data ConstInfo = ConstInfo
+  { syntax :: Text
+  , fixity :: Int
+  , constMeta :: ConstMeta
+  }
+  deriving (Eq, Ord, Show)
+
+data ConstMeta
+  = ConstMFunc Int Bool     -- ^ Function with arity of which some are commands
+  | ConstMUnOp MUnAssoc     -- ^ Unary operator with fixity and associativity.
+  | ConstMBinOp MBinAssoc   -- ^ Binary operator with fixity and associativity.
+  deriving (Eq, Ord, Show)
+
+-- | The meta type representing associativity of binary operator.
+data MBinAssoc
+  = L   -- ^  Left associative binary operator (see 'Control.Monad.Combinators.Expr.InfixL')
+  | N   -- ^   Non-associative binary operator (see 'Control.Monad.Combinators.Expr.InfixN')
+  | R   -- ^ Right associative binary operator (see 'Control.Monad.Combinators.Expr.InfixR')
+  deriving (Eq, Ord, Show)
+
+-- | The meta type representing associativity of unary operator.
+data MUnAssoc
+  = P   -- ^  Prefix unary operator (see 'Control.Monad.Combinators.Expr.Prefix')
+  | S   -- ^  Suffix unary operator (see 'Control.Monad.Combinators.Expr.Suffix')
+  deriving (Eq, Ord, Show)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
---   'Swarm.Game.Value.VCApp') until it has enough, then dispatch the constant's
---   behavior.
+--   'Swarm.Game.Value.VCApp') until it has enough, then dispatch
+--   the constant's behavior.
 arity :: Const -> Int
-arity Wait         = 0
-arity Noop         = 0
-arity Selfdestruct = 0
-arity Move         = 0
-arity Turn         = 1
-arity Grab         = 0
-arity Place        = 1
-arity Give         = 2
-arity Install      = 2
-arity Make         = 1
-arity Build        = 2
-arity Say          = 1
-arity View         = 1
-arity Appear       = 1
-arity Create       = 1
-arity GetX         = 0
-arity GetY         = 0
-arity Blocked      = 0
-arity Scan         = 1
-arity Upload       = 1
-arity Ishere       = 1
-arity Random       = 1
-arity Run          = 1
-arity Not          = 1
-arity (Cmp _)      = 2
-arity Neg          = 1
-arity (Arith _)    = 2
-arity If           = 3
-arity Fst          = 1
-arity Snd          = 1
-arity Force        = 1
-arity Return       = 1
-arity Try          = 2
-arity Raise        = 1
-  -- It would be more compact to represent the above by testing
-  -- whether the constants are in certain sets, but this way the
-  -- compiler warns us about incomplete pattern match if we add more
-  -- constants.
+arity c = case constMeta $ constInfo c of
+  ConstMUnOp {} -> 1
+  ConstMBinOp {} -> 2
+  ConstMFunc a _ -> a
 
--- | Some constants are commands, which means a fully saturated
---   application of those constants counts as a value, and should not
---   be reduced further until it is to be executed (i.e. until it
---   meets an 'Swarm.Game.CEK.FExec' frame).  Other constants just represent pure
---   functions; fully saturated applications of such constants should
---   be evaluated immediately.
+-- note: verified same as before
 isCmd :: Const -> Bool
-isCmd (Cmp _)   = False
-isCmd (Arith _) = False
-isCmd c = c `notElem` funList
+isCmd c = case constMeta $ constInfo c of
+  ConstMFunc _ cmd -> cmd
+  _ -> False
+
+-- | Function constants user can call with reserved words ('wait',...).
+isUserFunc :: Const -> Bool
+isUserFunc c = case constMeta $ constInfo c of
+  ConstMFunc {} -> c `notElem` [Noop, Force]
+  _ -> False
+
+-- | Information about constants used in parsing and pretty printing.
+--
+-- It would be more compact to represent the information by testing
+-- whether the constants are in certain sets, but using pattern
+-- matching gives us warning if we add more constants.
+constInfo :: Const -> ConstInfo
+constInfo c = case c of
+  Wait         -> commandLow 0
+  Noop         -> command "{}" 0
+  Selfdestruct -> commandLow 0
+  Move         -> commandLow 0
+  Turn         -> commandLow 1
+  Grab         -> commandLow 0
+  Place        -> commandLow 1
+  Give         -> commandLow 2
+  Install      -> commandLow 2
+  Make         -> commandLow 1
+  Build        -> commandLow 2
+  Say          -> commandLow 1
+  View         -> commandLow 1
+  Appear       -> commandLow 1
+  Create       -> commandLow 1
+  GetX         -> commandLow 0
+  GetY         -> commandLow 0
+  Blocked      -> commandLow 0
+  Scan         -> commandLow 0
+  Upload       -> commandLow 1
+  Ishere       -> commandLow 1
+  Random       -> commandLow 1
+  Run          -> commandLow 1
+  Return       -> commandLow 1
+  Try          -> commandLow 2
+  Raise        -> commandLow 1
+  If           -> functionLow 3
+  Fst          -> functionLow 1
+  Snd          -> functionLow 1
+  Force        -> functionLow 1 -- TODO: make internal?!
+  Not          -> functionLow 1
+  Neg          -> unaryOp  "-"  7 P
+  Add          -> binaryOp "+"  6 L
+  Sub          -> binaryOp "-"  6 L
+  Mul          -> binaryOp "*"  7 L
+  Div          -> binaryOp "/"  7 L
+  Exp          -> binaryOp "^"  8 R
+  Eq           -> binaryOp "==" 4 N
+  Neq          -> binaryOp "/=" 4 N
+  Lt           -> binaryOp ">=" 4 N
+  Gt           -> binaryOp "<=" 4 N
+  Leq          -> binaryOp ">"  4 N
+  Geq          -> binaryOp "<"  4 N
   where
-    funList = [If, Force, Not, Neg, Fst, Snd]
+    unaryOp  s p side = ConstInfo {syntax=s, fixity=p, constMeta=ConstMUnOp side}
+    binaryOp s p side = ConstInfo {syntax=s, fixity=p, constMeta=ConstMBinOp side}
+    command  s a      = ConstInfo {syntax=s, fixity=11, constMeta=ConstMFunc a True}
+    function s a      = ConstInfo {syntax=s, fixity=11, constMeta=ConstMFunc a False}
+    commandLow  = command  (lowShow c)
+    functionLow = function (lowShow c)
+
+-- | Make infix operation (e.g. @2 + 3@) a curried function
+--   application (@((+) 2) 3@).
+mkOp :: Const -> Term -> Term -> Term
+mkOp c = TApp . TApp (TConst c)
 
 ------------------------------------------------------------
 -- Terms
@@ -342,3 +407,6 @@ fv = fvT . (\f -> \case { TVar x -> TVar <$> f x ; t -> pure t })
 -- | Apply a function to all free occurrences of a particular variable.
 mapFree1 :: Var -> (Term -> Term) -> Term -> Term
 mapFree1 x f = fvT %~ (\t -> if t == TVar x then f t else t)
+
+lowShow :: Show a => a -> Text
+lowShow a = toLower (from (show a))
