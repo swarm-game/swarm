@@ -257,7 +257,7 @@ parseAntiquotation =
     <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
 
 -- | Parse a Swarm language term.
-parseTerm :: Parser Term
+parseTerm :: Parser Syntax
 parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
 mkBindChain :: [Stmt] -> Parser Term
