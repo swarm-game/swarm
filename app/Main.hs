@@ -1,15 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
-import           Data.Text                      ( Text
-                                                , pack
-                                                )
-import qualified Data.Text.IO                  as Text
-import           Options.Applicative
-import           Swarm.App                      ( appMain )
-import           Swarm.Language.LSP             ( lspMain )
-import           Swarm.Language.Pipeline        ( processTerm )
-import           System.Exit
+import Data.Text (
+  Text,
+  pack,
+ )
+import qualified Data.Text.IO as Text
+import Options.Applicative
+import Swarm.App (appMain)
+import Swarm.Language.LSP (lspMain)
+import Swarm.Language.Pipeline (processTerm)
+import System.Exit
 
 data CLI
   = Run
@@ -19,11 +21,12 @@ data CLI
 cliParser :: Parser CLI
 cliParser =
   subparser
-      (  command "format" (info format (progDesc "Format a file"))
-      <> command "lsp"    (info (pure LSP) (progDesc "Start the LSP"))
-      )
+    ( command "format" (info format (progDesc "Format a file"))
+        <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+    )
     <|> pure Run
-  where format = Format <$> strArgument (metavar "FILE")
+ where
+  format = Format <$> strArgument (metavar "FILE")
 
 cliInfo :: ParserInfo CLI
 cliInfo = info (cliParser <**> helper) (fullDesc <> header "Swarm game")
@@ -43,6 +46,6 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run       -> appMain
+    Run -> appMain
     Format fp -> formatFile fp =<< Text.readFile fp
-    LSP       -> lspMain
+    LSP -> lspMain

@@ -1,13 +1,15 @@
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
-{-# LANGUAGE TypeOperators         #-}
-
+{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Swarm.Util
 -- Copyright   :  Brent Yorgey
@@ -17,42 +19,46 @@
 --
 -- A random collection of small, useful functions that are (or could
 -- be) used throughout the code base.
---
------------------------------------------------------------------------------
+module Swarm.Util (
+  -- * Miscellaneous utilities
+  (?),
+  maxOn,
+  readFileMay,
+  cycleEnum,
 
-module Swarm.Util
-  ( -- * Miscellaneous utilities
+  -- * English language utilities
+  quote,
+  squote,
+  commaList,
+  indefinite,
+  indefiniteQ,
+  plural,
+  number,
 
-    (?), maxOn, readFileMay, cycleEnum
+  -- * Validation utilities
+  holdsOr,
+  isJustOr,
+  isRightOr,
+  isSuccessOr,
 
-    -- * English language utilities
+  -- * Template Haskell utilities
+  liftText,
+) where
 
-  , quote, squote, commaList, indefinite, indefiniteQ, plural, number
-
-    -- * Validation utilities
-
-  , holdsOr, isJustOr, isRightOr, isSuccessOr
-
-    -- * Template Haskell utilities
-
-  , liftText
-  )
-  where
-
-import           Control.Monad              (unless)
-import           Control.Monad.Error.Class
-import           Data.Either.Validation
-import           Data.Int                   (Int64)
-import           Data.Maybe                 (fromMaybe)
-import           Data.Text                  (Text)
-import qualified Data.Text                  as T
-import           Data.Yaml
-import           Language.Haskell.TH
-import           Language.Haskell.TH.Syntax (lift)
-import           Linear                     (V2)
-import qualified NLP.Minimorph.English      as MM
-import           NLP.Minimorph.Util         ((<+>))
-import           System.Directory           (doesFileExist)
+import Control.Monad (unless)
+import Control.Monad.Error.Class
+import Data.Either.Validation
+import Data.Int (Int64)
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Yaml
+import Language.Haskell.TH
+import Language.Haskell.TH.Syntax (lift)
+import Linear (V2)
+import qualified NLP.Minimorph.English as MM
+import NLP.Minimorph.Util ((<+>))
+import System.Directory (doesFileExist)
 
 infixr 1 ?
 
@@ -81,14 +87,14 @@ readFileMay file = do
   b <- doesFileExist file
   case b of
     False -> return Nothing
-    True  -> Just <$> readFile file
+    True -> Just <$> readFile file
 
 -- | Take the successor of an 'Enum' type, wrapping around when it
 --   reaches the end.
 cycleEnum :: (Eq e, Enum e, Bounded e) => e -> e
 cycleEnum e
   | e == maxBound = minBound
-  | otherwise     = succ e
+  | otherwise = succ e
 
 --------------------------------------------------
 -- Some language-y stuff
@@ -105,9 +111,10 @@ indefiniteQ w = MM.indefiniteDet w <+> squote w
 -- | Pluralize a noun.
 plural :: Text -> Text
 plural = MM.defaultNounPlural
-  -- For now, it is just MM.defaultNounPlural, which only uses heuristics;
-  -- in the future, if we discover specific nouns that it gets wrong,
-  -- we can add a lookup table.
+
+-- For now, it is just MM.defaultNounPlural, which only uses heuristics;
+-- in the future, if we discover specific nouns that it gets wrong,
+-- we can add a lookup table.
 
 -- | Either pluralize a noun or not, depending on the value of the
 --   number.
@@ -125,10 +132,10 @@ quote t = T.concat ["\"", t, "\""]
 
 -- | Make a list of things with commas and the word "and".
 commaList :: [Text] -> Text
-commaList []    = ""
-commaList [t]   = t
-commaList [s,t] = T.unwords [s, "and", t]
-commaList ts    = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
+commaList [] = ""
+commaList [t] = t
+commaList [s, t] = T.unwords [s, "and", t]
+commaList ts = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
 
 ------------------------------------------------------------
 -- Some orphan instances
@@ -145,14 +152,14 @@ holdsOr b e = unless b $ throwError e
 
 -- | Require that a 'Maybe' value is 'Just', or throw an exception.
 isJustOr :: MonadError e m => Maybe a -> e -> m a
-Just a  `isJustOr` _ = return a
+Just a `isJustOr` _ = return a
 Nothing `isJustOr` e = throwError e
 
 -- | Require that an 'Either' value is 'Right', or throw an exception
 --   based on the value in the 'Left'.
 isRightOr :: MonadError e m => Either b a -> (b -> e) -> m a
 Right a `isRightOr` _ = return a
-Left b `isRightOr` f  = throwError (f b)
+Left b `isRightOr` f = throwError (f b)
 
 -- | Require that a 'Validation' value is 'Success', or throw an exception
 --   based on the value in the 'Failure'.

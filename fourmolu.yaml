@@ -1,0 +1,8 @@
+indentation: 2
+comma-style: leading
+record-brace-space: true
+indent-wheres: false # 'false' means save space by only half-indenting the 'where' keyword
+diff-friendly-import-export: true
+respectful: true
+haddock-style: single-line
+newlines-between-decls: 1

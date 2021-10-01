@@ -1,4 +1,13 @@
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
+
 -- |
 -- Module      :  Swarm.TUI.Controller
 -- Copyright   :  Brent Yorgey
@@ -7,120 +16,108 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Event handlers for the TUI.
---
------------------------------------------------------------------------------
+module Swarm.TUI.Controller (
+  -- * Event handling
+  handleEvent,
+  shutdown,
 
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE PatternSynonyms    #-}
-{-# LANGUAGE TemplateHaskell    #-}
-{-# LANGUAGE TypeApplications   #-}
+  -- ** Handling 'Frame' events
+  runFrameUI,
+  runFrame,
+  runFrameTicks,
+  runGameTickUI,
+  runGameTick,
+  updateUI,
 
-module Swarm.TUI.Controller
-  ( -- * Event handling
+  -- ** REPL panel
+  handleREPLEvent,
+  validateREPLForm,
+  adjReplHistIndex,
 
-    handleEvent
-  , shutdown
+  -- ** World panel
+  handleWorldEvent,
+  keyToDir,
+  scrollView,
+  adjustTPS,
 
-    -- ** Handling 'Frame' events
+  -- ** Info panel
+  handleInfoPanelEvent,
+) where
 
-  , runFrameUI, runFrame, runFrameTicks
-  , runGameTickUI, runGameTick
-  , updateUI
+import Control.Lens
+import Control.Lens.Extras (is)
+import Control.Monad.Except
+import Control.Monad.State
+import Data.Bits
+import Data.Either (isRight)
+import Data.Int (Int64)
+import Data.Maybe (isJust)
+import qualified Data.Set as S
+import qualified Data.Text as T
+import Linear
+import System.Clock
+import Witch (into)
 
-    -- ** REPL panel
+import Brick hiding (Direction)
+import Brick.Focus
+import Brick.Forms
+import qualified Brick.Widgets.List as BL
+import qualified Graphics.Vty as V
 
-  , handleREPLEvent, validateREPLForm, adjReplHistIndex
-
-    -- ** World panel
-
-  , handleWorldEvent
-  , keyToDir, scrollView
-  , adjustTPS
-
-    -- ** Info panel
-
-  , handleInfoPanelEvent
-
-  )
-  where
-
-import           Control.Lens
-import           Control.Lens.Extras       (is)
-import           Control.Monad.Except
-import           Control.Monad.State
-import           Data.Bits
-import           Data.Either               (isRight)
-import           Data.Int                  (Int64)
-import           Data.Maybe                (isJust)
-import qualified Data.Set                  as S
-import qualified Data.Text                 as T
-import           Linear
-import           System.Clock
-import           Witch                     (into)
-
-import           Brick                     hiding (Direction)
-import           Brick.Focus
-import           Brick.Forms
-import qualified Brick.Widgets.List        as BL
-import qualified Graphics.Vty              as V
-
-import           Swarm.Game.CEK            (idleMachine, initMachine)
-import           Swarm.Game.Entity         hiding (empty)
-import           Swarm.Game.Robot
-import           Swarm.Game.State
-import           Swarm.Game.Step           (gameTick)
-import           Swarm.Game.Value          (Value (VUnit), prettyValue)
-import qualified Swarm.Game.World          as W
-import           Swarm.Language.Capability
-import           Swarm.Language.Context
-import           Swarm.Language.Pipeline
-import           Swarm.Language.Pretty
-import           Swarm.Language.Syntax
-import           Swarm.Language.Types
-import           Swarm.TUI.List
-import           Swarm.TUI.Model
-import           Swarm.Util
+import Swarm.Game.CEK (idleMachine, initMachine)
+import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Robot
+import Swarm.Game.State
+import Swarm.Game.Step (gameTick)
+import Swarm.Game.Value (Value (VUnit), prettyValue)
+import qualified Swarm.Game.World as W
+import Swarm.Language.Capability
+import Swarm.Language.Context
+import Swarm.Language.Pipeline
+import Swarm.Language.Pretty
+import Swarm.Language.Syntax
+import Swarm.Language.Types
+import Swarm.TUI.List
+import Swarm.TUI.Model
+import Swarm.Util
 
 -- | Pattern synonyms to simplify brick event handler
 pattern ControlKey, MetaKey :: Char -> BrickEvent n e
 pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
-pattern MetaKey c    = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
+pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 
 pattern FKey :: Int -> BrickEvent n e
-pattern FKey c       = VtyEvent (V.EvKey (V.KFun c) [])
+pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleEvent s (AppEvent Frame)
   | s ^. gameState . paused = continueWithoutRedraw s
-  | otherwise               = runFrameUI s
-
-handleEvent s (VtyEvent (V.EvResize _ _))            = do
+  | otherwise = runFrameUI s
+handleEvent s (VtyEvent (V.EvResize _ _)) = do
   invalidateCacheEntry WorldCache
   continue s
 handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
-handleEvent s (VtyEvent (V.EvKey V.KBackTab []))     = continue $ s & uiState . uiFocusRing %~ focusPrev
+handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
 handleEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
-    ControlKey 'q'      -> shutdown s
-    MetaKey 'w'         -> setFocus s WorldPanel
-    MetaKey 'e'         -> setFocus s InfoPanel
-    MetaKey 'r'         -> setFocus s REPLPanel
-    FKey 1              -> toggleModal s HelpModal
-    _anyOtherEvent | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
-                   | otherwise ->
-      -- and dispatch the other to the focused panel handler
-      case focusGetCurrent (s ^. uiState . uiFocusRing) of
-        Just REPLPanel  -> handleREPLEvent s ev
-        Just WorldPanel -> handleWorldEvent s ev
-        Just InfoPanel  -> handleInfoPanelEvent s ev
-        _               -> continueWithoutRedraw s
+    ControlKey 'q' -> shutdown s
+    MetaKey 'w' -> setFocus s WorldPanel
+    MetaKey 'e' -> setFocus s InfoPanel
+    MetaKey 'r' -> setFocus s REPLPanel
+    FKey 1 -> toggleModal s HelpModal
+    _anyOtherEvent
+      | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
+      | otherwise ->
+        -- and dispatch the other to the focused panel handler
+        case focusGetCurrent (s ^. uiState . uiFocusRing) of
+          Just REPLPanel -> handleREPLEvent s ev
+          Just WorldPanel -> handleWorldEvent s ev
+          Just InfoPanel -> handleInfoPanelEvent s ev
+          _ -> continueWithoutRedraw s
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
@@ -128,39 +125,39 @@ setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 toggleModal :: AppState -> Modal -> EventM Name (Next AppState)
 toggleModal s modal = do
   curTime <- liftIO $ getTime Monotonic
-  continue $ s & case s ^. uiState . uiModal of
-    Nothing -> (uiState . uiModal ?~ modal)   . ensurePause
-    Just _  -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
-  where
-    -- Set the game to AutoPause if needed
-    ensurePause
-      | s ^. gameState . paused = id
-      | otherwise = gameState . runStatus .~ AutoPause
-    -- Set the game to Running if it was auto paused
-    maybeUnpause
-      | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
-      | otherwise = id
-    -- When unpausing, it is critical to ensure the next frame doesn't
-    -- catch up from the time spent in pause.
-    -- TODO: manage unpause more safely to also cover
-    -- the world event handler for the KChar 'p'.
-    resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
+  continue $
+    s & case s ^. uiState . uiModal of
+      Nothing -> (uiState . uiModal ?~ modal) . ensurePause
+      Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
+ where
+  -- Set the game to AutoPause if needed
+  ensurePause
+    | s ^. gameState . paused = id
+    | otherwise = gameState . runStatus .~ AutoPause
+  -- Set the game to Running if it was auto paused
+  maybeUnpause
+    | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
+    | otherwise = id
+  -- When unpausing, it is critical to ensure the next frame doesn't
+  -- catch up from the time spent in pause.
+  -- TODO: manage unpause more safely to also cover
+  -- the world event handler for the KChar 'p'.
+  resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
 shutdown :: AppState -> EventM Name (Next AppState)
 shutdown s = do
-  let s'   = s & uiState . uiReplHistory . traverse %~ markOld
+  let s' = s & uiState . uiReplHistory . traverse %~ markOld
       hist = filter isEntry (s' ^. uiState . uiReplHistory)
   liftIO $ writeFile ".swarm_history" (show hist)
   halt s'
+ where
+  markOld (REPLEntry _ e) = REPLEntry False e
+  markOld r = r
 
-  where
-    markOld (REPLEntry _ e) = REPLEntry False e
-    markOld r               = r
-
-    isEntry REPLEntry{} = True
-    isEntry _           = False
+  isEntry REPLEntry {} = True
+  isEntry _ = False
 
 ------------------------------------------------------------
 -- Handling Frame events
@@ -207,10 +204,10 @@ runFrame = do
   -- Figure out how many ticks per second we're supposed to do,
   -- and compute the timestep `dt` for a single tick.
   lgTPS <- use (uiState . lgTicksPerSecond)
-  let oneSecond = 1_000_000_000  -- one second = 10^9 nanoseconds
+  let oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
       dt
         | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
-        | otherwise  = oneSecond * (1 `shiftL` abs lgTPS)
+        | otherwise = oneSecond * (1 `shiftL` abs lgTPS)
 
   -- Update TPS/FPS counters every second
   infoUpdateTime <- use (uiState . lastInfoTime)
@@ -248,7 +245,6 @@ runFrameTicks dt = do
 
   -- Is there still time left?
   when (a >= dt) $ do
-
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
@@ -271,7 +267,6 @@ runGameTick = zoom gameState gameTick
 --   game for some number of ticks.
 updateUI :: StateT AppState (EventM Name) Bool
 updateUI = do
-
   loadVisibleRegion
 
   -- If the game state indicates a redraw is needed, invalidate the
@@ -280,12 +275,12 @@ updateUI = do
   when (g ^. needsRedraw) $ lift (invalidateCacheEntry WorldCache)
 
   -- Check if the inventory list needs to be updated.
-  listRobotHash    <- fmap fst <$> use (uiState . uiInventory)
-    -- The hash of the robot whose inventory is currently displayed (if any)
+  listRobotHash <- fmap fst <$> use (uiState . uiInventory)
+  -- The hash of the robot whose inventory is currently displayed (if any)
 
   fr <- use (gameState . to focusedRobot)
   let focusedRobotHash = view inventoryHash <$> fr
-    -- The hash of the focused robot (if any)
+  -- The hash of the focused robot (if any)
 
   -- If the hashes don't match (either because which robot (or
   -- whether any robot) is focused changed, or the focused robot's
@@ -299,7 +294,6 @@ updateUI = do
 
   -- Now check if the base finished running a program entered at the REPL.
   replUpdated <- case g ^. replStatus of
-
     -- It did, and the result was the unit value.  Just reset replStatus.
     REPLWorking _ (Just VUnit) -> do
       gameState . replStatus .= REPLDone
@@ -325,14 +319,14 @@ loadVisibleRegion :: StateT AppState (EventM Name) ()
 loadVisibleRegion = do
   mext <- lift $ lookupExtent WorldExtent
   case mext of
-    Nothing  -> return ()
+    Nothing -> return ()
     Just (Extent _ _ size) -> do
       gs <- use gameState
       gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
 stripCmd :: Polytype -> Polytype
 stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
-stripCmd pty                    = pty
+stripCmd pty = pty
 
 ------------------------------------------------------------
 -- REPL events
@@ -340,34 +334,36 @@ stripCmd pty                    = pty
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl]))
-  = continue $ s
+handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
+  continue $
+    s
       & gameState . robotMap . ix "base" . machine .~ idleMachine
-handleREPLEvent s (VtyEvent (V.EvKey V.KEnter []))
-  = case processTerm' topCtx topCapCtx entry of
-      Right t@(ProcessedTerm _ (Module ty _) _ _) ->
-        continue $ s
-          & uiState . uiReplForm    %~ updateFormState ""
-          & uiState . uiReplType    .~ Nothing
+handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
+  case processTerm' topCtx topCapCtx entry of
+    Right t@(ProcessedTerm _ (Module ty _) _ _) ->
+      continue $
+        s
+          & uiState . uiReplForm %~ updateFormState ""
+          & uiState . uiReplType .~ Nothing
           & uiState . uiReplHistory %~ (REPLEntry True entry :)
           & uiState . uiReplHistIdx .~ (-1)
           & gameState . replStatus .~ REPLWorking ty Nothing
           & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
-      Left err ->
-        continue $ s
+    Left err ->
+      continue $
+        s
           & uiState . uiError ?~ txt err
+ where
+  -- XXX check that we have the capabilities needed to run the
+  -- program before even starting?
 
-      -- XXX check that we have the capabilities needed to run the
-      -- program before even starting?
-  where
-    entry = formState (s ^. uiState . uiReplForm)
-    (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
-    topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
-
-handleREPLEvent s (VtyEvent (V.EvKey V.KUp []))
-  = continue $ s & adjReplHistIndex (+)
-handleREPLEvent s (VtyEvent (V.EvKey V.KDown []))
-  = continue $ s & adjReplHistIndex (-)
+  entry = formState (s ^. uiState . uiReplForm)
+  (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
+  topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
+  continue $ s & adjReplHistIndex (+)
+handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
+  continue $ s & adjReplHistIndex (-)
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
@@ -375,16 +371,17 @@ handleREPLEvent s ev = do
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
 validateREPLForm :: AppState -> AppState
-validateREPLForm s = s
-  & uiState . uiReplForm %~ validate
-  & uiState . uiReplType .~ theType
-  where
-    (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
-    result = processTerm' topCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
-    theType = case result of
-      Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
-      _                                         -> Nothing
-    validate = setFieldValid (isRight result) REPLInput
+validateREPLForm s =
+  s
+    & uiState . uiReplForm %~ validate
+    & uiState . uiReplType .~ theType
+ where
+  (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
+  result = processTerm' topCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
+  theType = case result of
+    Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
+    _ -> Nothing
+  validate = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
 adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState
@@ -393,15 +390,15 @@ adjReplHistIndex (+/-) s =
     & (if curIndex == -1 then saveLastEntry else id)
     & (if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id)
     & validateREPLForm
-  where
-    saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-    entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
-    curIndex = s ^. uiState . uiReplHistIdx
-    histLen  = length entries
-    newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
-    newEntry
-      | newIndex == -1 = s ^. uiState . uiReplLast
-      | otherwise      = entries !! newIndex
+ where
+  saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
+  entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
+  curIndex = s ^. uiState . uiReplHistIdx
+  histLen = length entries
+  newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
+  newEntry
+    | newIndex == -1 = s ^. uiState . uiReplLast
+    | otherwise = entries !! newIndex
 
 ------------------------------------------------------------
 -- World events
@@ -412,12 +409,19 @@ worldScrollDist = 8
 
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-
 -- scrolling the world view
 handleWorldEvent s (VtyEvent (V.EvKey k []))
-  | k `elem` [ V.KUp, V.KDown, V.KLeft, V.KRight
-             , V.KChar 'h', V.KChar 'j', V.KChar 'k', V.KChar 'l' ]
-  = scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
+  | k
+      `elem` [ V.KUp
+             , V.KDown
+             , V.KLeft
+             , V.KRight
+             , V.KChar 'h'
+             , V.KChar 'j'
+             , V.KChar 'k'
+             , V.KChar 'l'
+             ] =
+    scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
   invalidateCacheEntry WorldCache
   continue $ s & gameState . viewCenterRule .~ VCRobot "base"
@@ -425,37 +429,32 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
 -- pausing and stepping
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') [])) = do
   curTime <- liftIO $ getTime Monotonic
-  continue $ s
+  continue $
+    s
       & gameState . runStatus %~ (\status -> if status == Running then ManualPause else Running)
-
       -- Also reset the last frame time to now. If we are pausing, it
       -- doesn't matter; if we are unpausing, this is critical to
       -- ensure the next frame doesn't think it has to catch up from
       -- whenever the game was paused!
       & uiState . lastFrameTime .~ curTime
-
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 's') []))
   | s ^. gameState . paused = runGameTickUI s
-  | otherwise               = continueWithoutRedraw s
-
+  | otherwise = continueWithoutRedraw s
 -- speed controls
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') []))
-  = continue $ adjustTPS (-) s
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') []))
-  = continue $ adjustTPS (+) s
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar ',') []))
-  = continue $ adjustTPS (-) s
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '.') []))
-  = continue $ adjustTPS (+) s
-
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') [])) =
+  continue $ adjustTPS (-) s
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') [])) =
+  continue $ adjustTPS (+) s
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar ',') [])) =
+  continue $ adjustTPS (-) s
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '.') [])) =
+  continue $ adjustTPS (+) s
 -- show fps
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'f') []))
-  = continue $ (s & uiState . uiShowFPS %~ not)
-
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'f') [])) =
+  continue $ (s & uiState . uiShowFPS %~ not)
 -- for testing only: toggle between classic & creative modes
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') []))
-  = continue (s & gameState . gameMode %~ cycleEnum)
-
+handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') [])) =
+  continue (s & gameState . gameMode %~ cycleEnum)
 -- Fall-through case: don't do anything.
 handleWorldEvent s _ = continueWithoutRedraw s
 
@@ -471,15 +470,15 @@ scrollView s update = do
 
 -- | Convert a directional key into a direction.
 keyToDir :: V.Key -> V2 Int64
-keyToDir V.KUp         = north
-keyToDir V.KDown       = south
-keyToDir V.KRight      = east
-keyToDir V.KLeft       = west
+keyToDir V.KUp = north
+keyToDir V.KDown = south
+keyToDir V.KRight = east
+keyToDir V.KLeft = west
 keyToDir (V.KChar 'h') = west
 keyToDir (V.KChar 'j') = south
 keyToDir (V.KChar 'k') = north
 keyToDir (V.KChar 'l') = east
-keyToDir _             = V2 0 0
+keyToDir _ = V2 0 0
 
 -- | Adjust the ticks per second speed.
 adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState
@@ -498,20 +497,21 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
     Just (_, Separator _) -> continueWithoutRedraw s
     Just (_, InventoryEntry _ e) -> do
       let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
-          mkTy   = Forall [] $ TyCmd TyUnit
+          mkTy = Forall [] $ TyCmd TyUnit
           mkProg = TApp (TConst Make) (TString (e ^. entityName))
-          mkPT   = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
+          mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
       case isActive <$> (s ^. gameState . robotMap . at "base") of
-        Just False -> continue $ s
-          & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
-        _          -> continueWithoutRedraw s
-
+        Just False ->
+          continue $
+            s
+              & gameState . replStatus .~ REPLWorking mkTy Nothing
+              & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
+        _ -> continueWithoutRedraw s
 handleInfoPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList of
     Nothing -> continueWithoutRedraw s
-    Just l  -> do
+    Just l -> do
       l' <- handleListEventWithSeparators ev (is _Separator) l
       let s' = s & uiState . uiInventory . _Just . _2 .~ l'
       continue s'
