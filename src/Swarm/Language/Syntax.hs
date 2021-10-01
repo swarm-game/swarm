@@ -228,7 +228,6 @@ arity c = case constMeta $ constInfo c of
   ConstMBinOp {} -> 2
   ConstMFunc a _ -> a
 
--- | TODO: CHECK occurences?
 -- note: verified same as before
 isCmd :: Const -> Bool
 isCmd c = case constMeta $ constInfo c of
@@ -292,7 +291,6 @@ constInfo c = case c of
   Leq          -> binaryOp ">"  4 N
   Geq          -> binaryOp "<"  4 N
   where
-    -- commandInternal = command (error $ "The constant " ++ show c ++ " is for internal use only")
     unaryOp  s p side = ConstInfo {syntax=s, fixity=p, constMeta=ConstMUnOp side}
     binaryOp s p side = ConstInfo {syntax=s, fixity=p, constMeta=ConstMBinOp side}
     command  s a      = ConstInfo {syntax=s, fixity=11, constMeta=ConstMFunc a True}

@@ -50,6 +50,26 @@ prettyConst =
         equalPretty "f (==)" $
         TApp (TVar "f") (TConst Eq)
       )
+    , testCase "operators #8 - unary negation"
+      (
+        equalPretty "-3" $
+        TApp (TConst Neg) (TInt 3)
+      )
+    , testCase "operators #8 - double unary negation"
+      (
+        equalPretty "-(-1)" $
+        TApp (TConst Neg) $ TApp (TConst Neg) (TInt 1)
+      )
+    , testCase "operators #8 - unary negation with strongly fixing binary operator"
+      (
+        equalPretty "-1 ^ (-2)" $
+        TApp (TConst Neg) $ mkOp Exp (TInt 1) $ TApp (TConst Neg) (TInt 2)
+      )
+    , testCase "operators #8 - unary negation with weakly fixing binary operator"
+      (
+        equalPretty "-(1 + -2)" $
+        TApp (TConst Neg) $ mkOp Add (TInt 1) $ TApp (TConst Neg) (TInt 2)
+      )
     , testCase "operators #8 - simple infix operator"
       (
         equalPretty "1 == 2" $

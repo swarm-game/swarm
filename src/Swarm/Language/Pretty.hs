@@ -141,10 +141,16 @@ instance PrettyPrec Term where
           , ppr c
           , prettyPrec (pC + fromEnum (assoc == L)) r
           ]
-      _ -> pparens (p > 10) $
-        prettyPrec 10 t <+> prettyPrec 11 r
-  prettyPrec p (TApp t1 t2)  = pparens (p > 10) $
-    prettyPrec 10 t1 <+> prettyPrec 11 t2
+      _ -> prettyPrecApp p t r
+  prettyPrec p (TApp t1 t2)  = case t1 of
+      TConst c ->
+        let ci = constInfo c
+            pC = fixity ci
+        in case constMeta ci of
+          ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
+          ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
+          _            -> prettyPrecApp p t1 t2
+      _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet x mty t1 t2) =
     hsep $
       ["let", pretty x] ++
@@ -160,11 +166,15 @@ instance PrettyPrec Term where
   prettyPrec p (TBind (Just x) t1 t2) = pparens (p > 0) $
     pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
 
+prettyPrecApp :: Int -> Term -> Term -> Doc a
+prettyPrecApp p t1 t2 = pparens (p > 10) $
+   prettyPrec 10 t1 <+> prettyPrec 11 t2
+
 appliedTermPrec :: Term -> Int
 appliedTermPrec (TApp f _) = case f of
   TConst c -> fixity $ constInfo c
   _        -> appliedTermPrec f
-appliedTermPrec _ = 10 -- TODO: tweak magical value here?
+appliedTermPrec _ = 10
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (Mismatch ty1 ty2) =

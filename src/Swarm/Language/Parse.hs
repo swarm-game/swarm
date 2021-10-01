@@ -261,7 +261,7 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
       , Map.singleton 2 [InfixR (TPair <$ symbol ",")]
       ]
 
--- | Precedence and parser of binary operators.
+-- | Precedences and parsers of binary operators.
 --
 -- >>> Map.map length binOps
 -- fromList [(4,6),(6,2),(7,2),(8,1)]
@@ -275,11 +275,11 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
             L -> InfixL
             N -> InfixN
             R -> InfixR
-      pure $ Map.singleton (fixity ci) [assI (mkOp c <$ symbol (syntax ci))]
+      pure $ Map.singleton
+        (fixity ci)
+        [assI (mkOp c <$ symbol (syntax ci))]
 
--- | Precedence and parser of unary operators.
---
--- TODO: only @Neg@ - just write manually?
+-- | Precedences and parsers of unary operators (currently only 'Neg').
 --
 -- >>> Map.map length unOps
 -- fromList [(7,1)]
@@ -292,7 +292,9 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
       let assI = case assoc of
             P -> Prefix
             S -> Postfix
-      pure $  Map.singleton (fixity ci) [assI (TApp (TConst c) <$ symbol (syntax ci))]
+      pure $  Map.singleton
+        (fixity ci)
+        [assI (TApp (TConst c) <$ symbol (syntax ci))]
 
 --------------------------------------------------
 -- Utilities
