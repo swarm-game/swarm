@@ -14,7 +14,7 @@
 (define-derived-mode swarm-mode prog-mode "Swarm Lang Mode"
   (font-lock-fontify-buffer))
 
-(add-to-list 'auto-mode-alist '("\\.swarm\\'" . swarm-mode))
+(add-to-list 'auto-mode-alist '("\\.sw\\'" . swarm-mode))
 
 (with-eval-after-load 'lsp-mode
   (add-to-list 'lsp-language-id-configuration
