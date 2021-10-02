@@ -9,7 +9,7 @@ import Test.Tasty.HUnit
 
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax hiding (mkOp)
 
 main :: IO ()
 main = defaultMain tests
@@ -22,6 +22,7 @@ parser =
   testGroup
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
+    , testCase "located type error" (process "def a =\n 42 + \"oops\"\nend" "2: Can't unify int and string")
     ]
  where
   valid = flip process ""
@@ -100,5 +101,6 @@ prettyConst =
         )
     ]
  where
+  mkOp c t1 t2 = TApp (TApp (TConst c) t1) t2
   equalPretty :: String -> Term -> Assertion
   equalPretty expected term = assertEqual "" expected . show $ ppr term

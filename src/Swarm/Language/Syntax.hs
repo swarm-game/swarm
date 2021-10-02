@@ -59,6 +59,7 @@ module Swarm.Language.Syntax (
   Var,
   Term (..),
   mkOp,
+  mkOp',
 
   -- * Term traversal
   fvT,
@@ -374,6 +375,9 @@ constInfo c = case c of
   commandLow = command (lowShow c)
   functionLow = function (lowShow c)
 
+mkOp' :: Const -> Term -> Term -> Term
+mkOp' c t1 t2 = TApp (TApp (TConst c) t1) t2
+
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
 mkOp :: Const -> Syntax -> Syntax -> Syntax
@@ -429,6 +433,9 @@ pattern TDef v pt t = SDef v pt (STerm t)
 -- | Match a TDef without syntax
 pattern TBind :: Maybe Var -> Term -> Term -> Term
 pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
+
+-- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
