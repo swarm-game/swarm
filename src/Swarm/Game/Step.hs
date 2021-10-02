@@ -657,7 +657,7 @@ execConst c vs k = do
         -- is greater in the outputs than in the inputs.  This prevents us from doing
         -- silly things like making copper pipes when the user says "make furnace".
         let recipes = filter increase (recipesFor outRs e)
-            increase (Recipe ins outs) = countIn outs > countIn ins
+            increase (Recipe ins outs _) = countIn outs > countIn ins
             countIn xs = maybe 0 fst (find ((== e) . snd) xs)
         not (null recipes)
           `holdsOr` cmdExn Make ["There is no known recipe for making", indefinite name, "."]
