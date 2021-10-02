@@ -229,8 +229,9 @@ parseConst = asum $ map alternative consts
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
-ploc :: Parser Term -> Parser Syntax
-ploc pterm = do
+-- | Add 'Location' to a 'Term' parser
+parseLoc :: Parser Term -> Parser Syntax
+parseLoc pterm = do
   start <- getOffset
   term <- pterm
   end <- getOffset
@@ -238,7 +239,7 @@ ploc pterm = do
 
 parseTermAtom :: Parser Syntax
 parseTermAtom =
-  ploc
+  parseLoc
     ( TUnit <$ symbol "()"
         <|> TConst <$> parseConst
         <|> TVar <$> identifier
@@ -258,9 +259,9 @@ parseTermAtom =
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
     <|> parens parseTerm
-    <|> ploc (TConst Noop <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (TConst Noop <$ try (symbol "{" *> symbol "}"))
     <|> braces parseTerm
-    <|> ploc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+    <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
@@ -302,7 +303,6 @@ fixDefMissingSemis :: Syntax -> Syntax
 fixDefMissingSemis term =
   case nestedDefs term [] of
     [] -> term
-    -- TODO: figure out what should be the Syntax Location of this rewrite
     defs -> foldr1 mkBind defs
  where
   mkBind t1 t2 = Syntax (sLoc t1 <> sLoc t2) $ SBind Nothing t1 t2
@@ -325,15 +325,15 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
       , Map.singleton 2 [InfixR (exprLoc2 $ SPair <$ symbol ",")]
       ]
 
+-- | Utility to add empty location for ExprParser
 exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
 exprLoc2 p = do
-  -- TODO: check if this is correct
   f <- p
   pure $ \s1 s2 -> noLoc $ f s1 s2
 
+-- | Utility to add empty location for ExprParser
 exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
 exprLoc1 p = do
-  -- TODO: check if this is correct
   f <- p
   pure $ \s -> noLoc $ f s
 
