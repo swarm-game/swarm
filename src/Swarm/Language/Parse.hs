@@ -246,14 +246,14 @@ parseTermAtom =
         <|> TInt <$> integer
         <|> TString <$> stringLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
-        <|> TLam <$> (symbol "\\" *> identifier)
+        <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> TLet <$> (reserved "let" *> identifier)
+        <|> SLet <$> (reserved "let" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> TDef <$> (reserved "def" *> identifier)
+        <|> SDef <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
@@ -276,8 +276,8 @@ mkBindChain stmts = case last stmts of
   Binder _ _ -> fail "Last command in a chain must not have a binder"
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = noLoc $ TBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = noLoc $ TBind (Just x) t1 t2
+  mkBind (BareTerm t1) t2 = noLoc $ SBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = noLoc $ SBind (Just x) t1 t2
 
 data Stmt
   = BareTerm Syntax
@@ -303,11 +303,11 @@ fixDefMissingSemis term =
   case nestedDefs term [] of
     [] -> term
     -- TODO: figure out what should be the Syntax Location of this rewrite
-    defs -> foldr1 (\t1 t2 -> noLoc $ TBind Nothing t1 t2) defs
+    defs -> foldr1 (\t1 t2 -> noLoc $ SBind Nothing t1 t2) defs
  where
   nestedDefs term' acc = case term' of
-    def@(Syntax _ TDef {}) -> def : acc
-    (Syntax _ (TApp nestedTerm def@(Syntax _ TDef {}))) -> nestedDefs nestedTerm (def : acc)
+    def@(Syntax _ SDef {}) -> def : acc
+    (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)
     -- Otherwise returns an empty list to keep the term unchanged
     _ -> []
 
@@ -318,10 +318,10 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
   tableMap =
     Map.unionsWith
       (++)
-      [ Map.singleton 9 [InfixL (exprLoc2 $ TApp <$ string "")]
+      [ Map.singleton 9 [InfixL (exprLoc2 $ SApp <$ string "")]
       , binOps
       , unOps
-      , Map.singleton 2 [InfixR (exprLoc2 $ TPair <$ symbol ",")]
+      , Map.singleton 2 [InfixR (exprLoc2 $ SPair <$ symbol ",")]
       ]
 
 exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
@@ -371,7 +371,7 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (exprLoc1 $ TApp (noLoc $ TConst c) <$ symbol (syntax ci))]
+        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ symbol (syntax ci))]
 
 --------------------------------------------------
 -- Utilities
