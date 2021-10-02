@@ -79,8 +79,8 @@ prettyTypeErr :: Text -> TypeErr -> Text
 prettyTypeErr code te = teLoc <> prettyText te
  where
   teLoc = case getTypeErrLocation te of
-    Just loc -> (from . show . fst . fst $ getLocRange code loc) <> ": "
-    Nothing -> ""
+    Just (Location s e) -> (from . show . fst . fst $ getLocRange code (s, e)) <> ": "
+    _anyOtherLoc -> ""
 
 showTypeErrorPos :: Text -> TypeErr -> ((Int, Int), (Int, Int), Text)
 showTypeErrorPos code te = (minusOne start, minusOne end, msg)
@@ -88,8 +88,8 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
   minusOne (x, y) = (x - 1, y - 1)
 
   (start, end) = case getTypeErrLocation te of
-    Just loc -> getLocRange code loc
-    Nothing -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
+    Just (Location s e) -> getLocRange code (s, e)
+    _anyOtherLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
   msg = prettyText te
 
 -- | Like 'processTerm'', but use a term that has already been parsed.

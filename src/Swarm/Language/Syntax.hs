@@ -394,14 +394,16 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
   deriving (Eq, Show, Data)
 
-data Location = Location {locStart :: Int, locEnd :: Int}
+data Location = NoLoc | Location Int Int
   deriving (Eq, Show, Data)
 
 instance Semigroup Location where
+  NoLoc <> l = l
+  l <> NoLoc = l
   Location s1 e1 <> Location s2 e2 = Location (min s1 s2) (max e1 e2)
 
 instance Monoid Location where
-  mempty = Location 0 0
+  mempty = NoLoc
 
 noLoc :: Term -> Syntax
 noLoc = Syntax mempty

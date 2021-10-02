@@ -241,20 +241,20 @@ data TypeErr
   | Infinite IntVar UType
   | -- | The given term was expected to have a certain type, but has a
     -- different type instead.
-    Mismatch (Maybe Location) (TypeF UType) (TypeF UType)
+    Mismatch Location (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel Location Term
   deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
-  mismatchFailure = Mismatch Nothing
+  mismatchFailure = Mismatch NoLoc
 
 getTypeErrLocation :: TypeErr -> Maybe Location
 getTypeErrLocation te = case te of
   UnboundVar l _ -> Just l
   Infinite _ _ -> Nothing
-  Mismatch l _ _ -> l
+  Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
 
 ------------------------------------------------------------
@@ -389,7 +389,7 @@ infer (Syntax _ (SBind mx c1 c2)) = do
 
 addLocToTypeErr :: Syntax -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
-  Mismatch _ a b -> throwError $ Mismatch (Just $ sLoc s) a b
+  Mismatch _ a b -> throwError $ Mismatch (sLoc s) a b
   _ -> throwError te
 
 -- | Decompose a type that is supposed to be a command type.

@@ -466,11 +466,11 @@ getLineCol ps = (line, col)
   col = unPos $ sourceColumn $ pstateSourcePos ps
 
 -- | A utility for converting a Location into a range
-getLocRange :: Text -> Location -> ((Int, Int), (Int, Int))
-getLocRange code loc = (start, end)
+getLocRange :: Text -> (Int, Int) -> ((Int, Int), (Int, Int))
+getLocRange code (locStart, locEnd) = (start, end)
  where
-  start = getLocPos (locStart loc)
-  end = getLocPos (dropWhiteSpace (locEnd loc))
+  start = getLocPos locStart
+  end = getLocPos (dropWhiteSpace locEnd)
 
   -- remove trailing whitespace that got included by the lexer
   dropWhiteSpace offset
