@@ -303,8 +303,9 @@ fixDefMissingSemis term =
   case nestedDefs term [] of
     [] -> term
     -- TODO: figure out what should be the Syntax Location of this rewrite
-    defs -> foldr1 (\t1 t2 -> noLoc $ SBind Nothing t1 t2) defs
+    defs -> foldr1 mkBind defs
  where
+  mkBind t1 t2 = Syntax (sLoc t1 <> sLoc t2) $ SBind Nothing t1 t2
   nestedDefs term' acc = case term' of
     def@(Syntax _ SDef {}) -> def : acc
     (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)

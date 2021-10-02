@@ -46,7 +46,6 @@ module Swarm.Language.Syntax (
   Syntax (..),
   Location (..),
   noLoc,
-  emptyLoc,
   pattern STerm,
   pattern TPair,
   pattern TLam,
@@ -384,7 +383,7 @@ mkOp :: Const -> Syntax -> Syntax -> Syntax
 mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
  where
   -- The new syntax span both terms
-  newLoc = Location (locStart l1) (locEnd l2)
+  newLoc = l1 <> l2
   -- We don't assign a source location for the operator since it is
   -- usually provided as-is and it is not likely to be useful.
   sop = noLoc (TConst c)
@@ -397,18 +396,21 @@ data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
 data Location = Location {locStart :: Int, locEnd :: Int}
   deriving (Eq, Show, Data)
 
-emptyLoc :: Location
-emptyLoc = Location 0 0
+instance Semigroup Location where
+  Location s1 e1 <> Location s2 e2 = Location (min s1 s2) (max e1 e2)
+
+instance Monoid Location where
+  mempty = Location 0 0
 
 noLoc :: Term -> Syntax
-noLoc = Syntax emptyLoc
+noLoc = Syntax mempty
 
 -- | Match a term without its a syntax
 pattern STerm :: Term -> Syntax
 pattern STerm t <-
   Syntax _ t
   where
-    STerm t = Syntax emptyLoc t
+    STerm t = Syntax mempty t
 
 -- | Match a TPair without syntax
 pattern TPair :: Term -> Term -> Term
