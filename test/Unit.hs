@@ -67,40 +67,39 @@ prettyConst =
     , testCase
         "operators #8 - unary negation with strongly fixing binary operator"
         ( equalPretty "-1 ^ (-2)" $
-            TApp (TConst Neg) $ mkOp Exp (TInt 1) $ TApp (TConst Neg) (TInt 2)
+            TApp (TConst Neg) $ mkOp' Exp (TInt 1) $ TApp (TConst Neg) (TInt 2)
         )
     , testCase
         "operators #8 - unary negation with weakly fixing binary operator"
         ( equalPretty "-(1 + -2)" $
-            TApp (TConst Neg) $ mkOp Add (TInt 1) $ TApp (TConst Neg) (TInt 2)
+            TApp (TConst Neg) $ mkOp' Add (TInt 1) $ TApp (TConst Neg) (TInt 2)
         )
     , testCase
         "operators #8 - simple infix operator"
         ( equalPretty "1 == 2" $
-            mkOp Eq (TInt 1) (TInt 2)
+            mkOp' Eq (TInt 1) (TInt 2)
         )
     , testCase
         "operators #8 - infix operator with less fixing inner operator"
         ( equalPretty "1 * (2 + 3)" $
-            mkOp Mul (TInt 1) (mkOp Add (TInt 2) (TInt 3))
+            mkOp' Mul (TInt 1) (mkOp' Add (TInt 2) (TInt 3))
         )
     , testCase
         "operators #8 - infix operator with more fixing inner operator"
         ( equalPretty "1 + 2 * 3" $
-            mkOp Add (TInt 1) (mkOp Mul (TInt 2) (TInt 3))
+            mkOp' Add (TInt 1) (mkOp' Mul (TInt 2) (TInt 3))
         )
     , testCase
         "operators #8 - infix operator right associativity"
         ( equalPretty "2 ^ 4 ^ 8" $
-            mkOp Exp (TInt 2) (mkOp Exp (TInt 4) (TInt 8))
+            mkOp' Exp (TInt 2) (mkOp' Exp (TInt 4) (TInt 8))
         )
     , testCase
         "operators #8 - infix operator right associativity not applied to left"
         ( equalPretty "(2 ^ 4) ^ 8" $
-            mkOp Exp (mkOp Exp (TInt 2) (TInt 4)) (TInt 8)
+            mkOp' Exp (mkOp' Exp (TInt 2) (TInt 4)) (TInt 8)
         )
     ]
  where
-  mkOp c t1 t2 = TApp (TApp (TConst c) t1) t2
   equalPretty :: String -> Term -> Assertion
   equalPretty expected term = assertEqual "" expected . show $ ppr term

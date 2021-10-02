@@ -374,6 +374,7 @@ constInfo c = case c of
   commandLow = command (lowShow c)
   functionLow = function (lowShow c)
 
+-- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
 mkOp' c t1 t2 = TApp (TApp (TConst c) t1) t2
 
