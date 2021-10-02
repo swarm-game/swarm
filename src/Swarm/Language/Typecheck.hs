@@ -387,9 +387,6 @@ infer (Syntax _ (SBind mx c1 c2)) = do
   _ <- decomposeCmdTy ty2
   return ty2
 
-locatedInfer :: Syntax -> Infer UType
-locatedInfer s = infer s `catchError` addLocToTypeErr s
-
 addLocToTypeErr :: Syntax -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
   Mismatch _ a b -> throwError $ Mismatch (Just $ sLoc s) a b
