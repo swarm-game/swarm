@@ -4,6 +4,7 @@
 module Main where
 
 import Data.Text (Text)
+import qualified Data.Text as T
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -23,6 +24,27 @@ parser =
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
     , testCase "located type error" (process "def a =\n 42 + \"oops\"\nend" "2: Can't unify int and string")
+    , testCase
+        "quantification #148 - implicit"
+        (valid "def id : a -> a = \\x. x end; id move")
+    , testCase
+        "quantification #148 - explicit"
+        (valid "def id : forall a. a -> a = \\x. x end; id move")
+    , testCase
+        "quantification #148 - explicit with free tyvars"
+        ( process
+            "def id : forall a. b -> b = \\x. x end; id move"
+            ( T.unlines
+                [ "1:27:"
+                , "  |"
+                , "1 | def id : forall a. b -> b = \\x. x end; id move"
+                , "  |                           ^"
+                , "  Type contains free variable(s): b"
+                , "  Try adding them to the 'forall'."
+                , ""
+                ]
+            )
+        )
     ]
  where
   valid = flip process ""
