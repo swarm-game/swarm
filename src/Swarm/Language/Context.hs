@@ -1,4 +1,11 @@
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      :  Swarm.Language.Context
 -- Copyright   :  Brent Yorgey
@@ -8,31 +15,22 @@
 --
 -- Generic contexts (mappings from variables to other things, such as
 -- types, values, or capability sets) used throughout the codebase.
---
------------------------------------------------------------------------------
-
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable     #-}
-{-# LANGUAGE DeriveFunctor      #-}
-{-# LANGUAGE DeriveTraversable  #-}
-{-# LANGUAGE FlexibleContexts   #-}
-
 module Swarm.Language.Context where
 
-import           Control.Lens.Empty   (AsEmpty (..))
-import           Control.Lens.Prism   (prism)
-import           Control.Monad.Reader (MonadReader, local)
-import           Data.Data            (Data)
-import           Data.Map             (Map)
-import qualified Data.Map             as M
-import           Data.Text            (Text)
-import           Prelude              hiding (lookup)
+import Control.Lens.Empty (AsEmpty (..))
+import Control.Lens.Prism (prism)
+import Control.Monad.Reader (MonadReader, local)
+import Data.Data (Data)
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Text (Text)
+import Prelude hiding (lookup)
 
 -- | We use 'Text' values to represent variables.
 type Var = Text
 
 -- | A context is a mapping from variable names to things.
-newtype Ctx t = Ctx { unCtx :: Map Var t}
+newtype Ctx t = Ctx {unCtx :: Map Var t}
   deriving (Eq, Show, Functor, Foldable, Traversable, Data)
 
 -- | The semigroup operation for contexts is /right/-biased union.
@@ -45,10 +43,10 @@ instance Monoid (Ctx t) where
 
 instance AsEmpty (Ctx t) where
   _Empty = prism (const empty) isEmpty
-    where
-      isEmpty (Ctx c)
-        | M.null c = Right ()
-        | otherwise = Left (Ctx c)
+   where
+    isEmpty (Ctx c)
+      | M.null c = Right ()
+      | otherwise = Left (Ctx c)
 
 -- | The empty context.
 empty :: Ctx t
@@ -63,7 +61,7 @@ lookup :: Var -> Ctx t -> Maybe t
 lookup x (Ctx c) = M.lookup x c
 
 -- | Get the list of key-value associations from a context.
-assocs :: Ctx t -> [(Var,t)]
+assocs :: Ctx t -> [(Var, t)]
 assocs = M.assocs . unCtx
 
 -- | Add a key-value binding to a context (overwriting the old one if

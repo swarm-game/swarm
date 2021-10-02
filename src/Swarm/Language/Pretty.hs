@@ -1,4 +1,13 @@
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
+
 -- |
 -- Module      :  Swarm.Language.Pretty
 -- Copyright   :  Brent Yorgey
@@ -7,44 +16,32 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Pretty-printing for the Swarm language.
---
------------------------------------------------------------------------------
-
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE PatternSynonyms      #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns         #-}
-
 module Swarm.Language.Pretty where
 
-import           Control.Lens.Combinators    (pattern Empty)
-import           Data.Bool                   (bool)
-import           Data.Functor.Fixedpoint     (Fix, unFix)
-import           Data.String                 (fromString)
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
-import           Prettyprinter
+import Control.Lens.Combinators (pattern Empty)
+import Data.Bool (bool)
+import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.String (fromString)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Prettyprinter
 import qualified Prettyprinter.Render.String as RS
-import qualified Prettyprinter.Render.Text   as RT
-import           Witch
+import qualified Prettyprinter.Render.Text as RT
+import Witch
 
-import           Control.Unification
-import           Control.Unification.IntVar
+import Control.Unification
+import Control.Unification.IntVar
 
-import           Swarm.Language.Capability
-import           Swarm.Language.Context
-import           Swarm.Language.Syntax
-import           Swarm.Language.Typecheck
-import           Swarm.Language.Types
-
+import Swarm.Language.Capability
+import Swarm.Language.Context
+import Swarm.Language.Syntax
+import Swarm.Language.Typecheck
+import Swarm.Language.Types
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
 class PrettyPrec a where
-  prettyPrec :: Int -> a -> Doc ann   -- can replace with custom ann type later if desired
+  prettyPrec :: Int -> a -> Doc ann -- can replace with custom ann type later if desired
 
 -- | Pretty-print a thing, with a context precedence level of zero.
 ppr :: PrettyPrec a => a -> Doc ann
@@ -61,15 +58,15 @@ prettyString = RS.renderString . layoutPretty defaultLayoutOptions . ppr
 -- | Optionally surround a document with parentheses depending on the
 --   @Bool@ argument.
 pparens :: Bool -> Doc ann -> Doc ann
-pparens True  = parens
+pparens True = parens
 pparens False = id
 
 instance PrettyPrec BaseTy where
-  prettyPrec _ BUnit   = "()"
-  prettyPrec _ BInt    = "int"
-  prettyPrec _ BDir    = "dir"
+  prettyPrec _ BUnit = "()"
+  prettyPrec _ BInt = "int"
+  prettyPrec _ BDir = "dir"
   prettyPrec _ BString = "string"
-  prettyPrec _ BBool   = "bool"
+  prettyPrec _ BBool = "bool"
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
@@ -79,37 +76,39 @@ instance PrettyPrec (t (Fix t)) => PrettyPrec (Fix t) where
 
 instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) where
   prettyPrec p (UTerm t) = prettyPrec p t
-  prettyPrec p (UVar v)  = prettyPrec p v
+  prettyPrec p (UVar v) = prettyPrec p v
 
 instance PrettyPrec t => PrettyPrec (TypeF t) where
-  prettyPrec _ (TyBaseF b)     = ppr b
-  prettyPrec _ (TyVarF v)      = pretty v
-  prettyPrec p (TyProdF ty1 ty2)  = pparens (p > 2) $
-    prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
+  prettyPrec _ (TyBaseF b) = ppr b
+  prettyPrec _ (TyVarF v) = pretty v
+  prettyPrec p (TyProdF ty1 ty2) =
+    pparens (p > 2) $
+      prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
-  prettyPrec p (TyFunF ty1 ty2)    = pparens (p > 0) $
-    prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
+  prettyPrec p (TyFunF ty1 ty2) =
+    pparens (p > 0) $
+      prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
 instance PrettyPrec t => PrettyPrec (Ctx t) where
-  prettyPrec _ Empty          = emptyDoc
+  prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
-    where
-      prettyBinding (x,ty) = pretty x <> ":" <+> ppr ty
+   where
+    prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
-  prettyPrec _ Lft   = "left"
-  prettyPrec _ Rgt   = "right"
-  prettyPrec _ Back  = "back"
-  prettyPrec _ Fwd   = "forward"
+  prettyPrec _ Lft = "left"
+  prettyPrec _ Rgt = "right"
+  prettyPrec _ Back = "back"
+  prettyPrec _ Fwd = "forward"
   prettyPrec _ North = "north"
   prettyPrec _ South = "south"
-  prettyPrec _ East  = "east"
-  prettyPrec _ West  = "west"
-  prettyPrec _ Down  = "down"
+  prettyPrec _ East = "east"
+  prettyPrec _ West = "west"
+  prettyPrec _ Down = "down"
 
 instance PrettyPrec Capability where
   prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))
@@ -118,16 +117,16 @@ instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
 instance PrettyPrec Term where
-  prettyPrec _ TUnit         = "()"
-  prettyPrec p (TConst c)    = prettyPrec p c
-  prettyPrec _ (TDir d)      = ppr d
-  prettyPrec _ (TInt n)      = pretty n
-  prettyPrec _ (TAntiInt v)  = "$int:" <> pretty v
-  prettyPrec _ (TString s)   = fromString (show s)
+  prettyPrec _ TUnit = "()"
+  prettyPrec p (TConst c) = prettyPrec p c
+  prettyPrec _ (TDir d) = ppr d
+  prettyPrec _ (TInt n) = pretty n
+  prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
+  prettyPrec _ (TString s) = fromString (show s)
   prettyPrec _ (TAntiString v) = "$str:" <> pretty v
-  prettyPrec _ (TBool b)     = bool "false" "true" b
-  prettyPrec _ (TVar s)      = pretty s
-  prettyPrec p (TDelay t)    = pparens (p > 10) $ "delay" <+> prettyPrec 11 t
+  prettyPrec _ (TBool b) = bool "false" "true" b
+  prettyPrec _ (TVar s) = pretty s
+  prettyPrec p (TDelay t) = pparens (p > 10) $ "delay" <+> prettyPrec 11 t
   prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
@@ -135,56 +134,58 @@ instance PrettyPrec Term where
   prettyPrec p (TApp t@(TApp (TConst c) l) r) =
     let ci = constInfo c
         pC = fixity ci
-    in case constMeta ci of
-      ConstMBinOp assoc -> pparens (p > pC) $ hsep
-          [ prettyPrec (pC + fromEnum (assoc == R)) l
-          , ppr c
-          , prettyPrec (pC + fromEnum (assoc == L)) r
-          ]
-      _ -> prettyPrecApp p t r
-  prettyPrec p (TApp t1 t2)  = case t1 of
-      TConst c ->
-        let ci = constInfo c
-            pC = fixity ci
-        in case constMeta ci of
-          ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
-          ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
-          _            -> prettyPrecApp p t1 t2
-      _ -> prettyPrecApp p t1 t2
+     in case constMeta ci of
+          ConstMBinOp assoc ->
+            pparens (p > pC) $
+              hsep
+                [ prettyPrec (pC + fromEnum (assoc == R)) l
+                , ppr c
+                , prettyPrec (pC + fromEnum (assoc == L)) r
+                ]
+          _ -> prettyPrecApp p t r
+  prettyPrec p (TApp t1 t2) = case t1 of
+    TConst c ->
+      let ci = constInfo c
+          pC = fixity ci
+       in case constMeta ci of
+            ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
+            ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
+            _ -> prettyPrecApp p t1 t2
+    _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet x mty t1 t2) =
     hsep $
-      ["let", pretty x] ++
-      maybe [] (\ty -> [":", ppr ty]) mty ++
-      ["=", ppr t1, "in", ppr t2]
+      ["let", pretty x]
+        ++ maybe [] (\ty -> [":", ppr ty]) mty
+        ++ ["=", ppr t1, "in", ppr t2]
   prettyPrec _ (TDef x mty t1) =
     hsep $
-      ["def", pretty x] ++
-      maybe [] (\ty -> [":", ppr ty]) mty ++
-      ["=", ppr t1, "end"]
-  prettyPrec p (TBind Nothing t1 t2) = pparens (p > 0) $
-    prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
-  prettyPrec p (TBind (Just x) t1 t2) = pparens (p > 0) $
-    pretty x <+> "<-" <+> prettyPrec 1 t1  <> ";" <+> prettyPrec 0 t2
+      ["def", pretty x]
+        ++ maybe [] (\ty -> [":", ppr ty]) mty
+        ++ ["=", ppr t1, "end"]
+  prettyPrec p (TBind Nothing t1 t2) =
+    pparens (p > 0) $
+      prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+  prettyPrec p (TBind (Just x) t1 t2) =
+    pparens (p > 0) $
+      pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
-prettyPrecApp p t1 t2 = pparens (p > 10) $
-   prettyPrec 10 t1 <+> prettyPrec 11 t2
+prettyPrecApp p t1 t2 =
+  pparens (p > 10) $
+    prettyPrec 10 t1 <+> prettyPrec 11 t2
 
 appliedTermPrec :: Term -> Int
 appliedTermPrec (TApp f _) = case f of
   TConst c -> fixity $ constInfo c
-  _        -> appliedTermPrec f
+  _ -> appliedTermPrec f
 appliedTermPrec _ = 10
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (Mismatch ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-
   prettyPrec _ (UnboundVar x) =
     "Unbound variable" <+> pretty x
-
   prettyPrec _ (Infinite x uty) =
     "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
-
   prettyPrec _ (DefNotTopLevel t) =
     "Definitions may only be at the top level:" <+> ppr t

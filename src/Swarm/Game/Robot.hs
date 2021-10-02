@@ -1,4 +1,8 @@
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 -- |
 -- Module      :  Swarm.Game.Robot
 -- Copyright   :  Brent Yorgey
@@ -7,77 +11,82 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A data type to represent robots.
---
------------------------------------------------------------------------------
+module Swarm.Game.Robot (
+  -- * Robots
+  Robot,
 
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
+  -- ** Lenses
+  robotEntity,
+  robotName,
+  robotDisplay,
+  robotLocation,
+  robotOrientation,
+  robotInventory,
+  installedDevices,
+  inventoryHash,
+  robotCapabilities,
+  robotCtx,
+  robotEnv,
+  machine,
+  systemRobot,
+  selfDestruct,
+  tickSteps,
 
-module Swarm.Game.Robot
-  ( -- * Robots
+  -- ** Create
+  mkRobot,
+  baseRobot,
 
-    Robot
+  -- ** Query
+  isActive,
+  getResult,
+) where
 
-    -- ** Lenses
-  , robotEntity, robotName, robotDisplay, robotLocation, robotOrientation, robotInventory
-  , installedDevices, inventoryHash, robotCapabilities
-  , robotCtx, robotEnv, machine, systemRobot, selfDestruct, tickSteps
+import Control.Lens hiding (contains)
+import Data.Int (Int64)
+import Data.Maybe (isNothing)
+import Data.Set (Set)
+import Data.Set.Lens (setOf)
+import Data.Text (Text)
+import Linear
 
-    -- ** Create
-
-  , mkRobot, baseRobot
-
-    -- ** Query
-
-  , isActive, getResult
-  ) where
-
-import           Control.Lens              hiding (contains)
-import           Data.Int                  (Int64)
-import           Data.Maybe                (isNothing)
-import           Data.Set                  (Set)
-import           Data.Set.Lens             (setOf)
-import           Data.Text                 (Text)
-import           Linear
-
-import           Data.Hashable             (hashWithSalt)
-import           Swarm.Game.CEK
-import           Swarm.Game.Display
-import           Swarm.Game.Entity         hiding (empty)
-import           Swarm.Game.Value          as V
-import           Swarm.Language.Capability
-import           Swarm.Language.Context
-import           Swarm.Language.Types      (TCtx)
+import Data.Hashable (hashWithSalt)
+import Swarm.Game.CEK
+import Swarm.Game.Display
+import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Value as V
+import Swarm.Language.Capability
+import Swarm.Language.Context
+import Swarm.Language.Types (TCtx)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
-  { _robotEntity       :: Entity
-  , _installedDevices  :: Inventory
-  , _robotCapabilities :: Set Capability
-    -- ^ A cached view of the capabilities this robot has.
+  { _robotEntity :: Entity
+  , _installedDevices :: Inventory
+  , -- | A cached view of the capabilities this robot has.
     --   Automatically generated from '_installedDevices'.
-
-  , _robotLocation     :: V2 Int64
-  , _robotCtx          :: (TCtx, CapCtx)
-  , _robotEnv          :: Env
-  , _machine           :: CEK
-  , _systemRobot       :: Bool
-  , _selfDestruct      :: Bool
-  , _tickSteps         :: Int
+    _robotCapabilities :: Set Capability
+  , _robotLocation :: V2 Int64
+  , _robotCtx :: (TCtx, CapCtx)
+  , _robotEnv :: Env
+  , _machine :: CEK
+  , _systemRobot :: Bool
+  , _selfDestruct :: Bool
+  , _tickSteps :: Int
   }
   deriving (Show)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices] in
-  makeLensesWith
-    (lensRules
-       & generateSignatures .~ False
-       & lensField . mapped . mapped %~ \fn n ->
-         if n `elem` exclude then [] else fn n)
-    ''Robot
+let exclude = ['_robotCapabilities, '_installedDevices]
+ in makeLensesWith
+      ( lensRules
+          & generateSignatures .~ False
+          & lensField . mapped . mapped %~ \fn n ->
+            if n `elem` exclude then [] else fn n
+      )
+      ''Robot
 
 -- | Robots are not entities, but they have almost all the
 --   characteristics of one (or perhaps we could think of robots as
@@ -120,11 +129,12 @@ robotInventory = robotEntity . entityInventory
 --   see whether the robot has a certain capability (see 'robotCapabilities')
 installedDevices :: Lens' Robot Inventory
 installedDevices = lens _installedDevices setInstalled
-  where
-    setInstalled r inst =
-      r { _installedDevices  = inst
-        , _robotCapabilities = inventoryCapabilities inst
-        }
+ where
+  setInstalled r inst =
+    r
+      { _installedDevices = inst
+      , _robotCapabilities = inventoryCapabilities inst
+      }
 
 -- | A hash of a robot's entity record and installed devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
@@ -201,54 +211,63 @@ selfDestruct :: Lens' Robot Bool
 tickSteps :: Lens' Robot Int
 
 -- | Create a robot.
-mkRobot
-  :: Text    -- ^ Name of the robot.  Precondition: it should not be the same as any
-             --   other robot name.
-  -> V2 Int64  -- ^ Initial location.
-  -> V2 Int64  -- ^ Initial heading/direction.
-  -> CEK     -- ^ Initial CEK machine.
-  -> [Entity] -- ^ Installed devices.
-  -> Robot
-mkRobot name l d m devs = Robot
-  { _robotEntity  = mkEntity
-      defaultRobotDisplay
-      name
-      ["A generic robot."]
-      []
-      & entityOrientation ?~ d
-  , _installedDevices = inst
-  , _robotCapabilities = inventoryCapabilities inst
-  , _robotLocation = l
-  , _robotCtx      = (empty, empty)
-  , _robotEnv      = empty
-  , _machine       = m
-  , _systemRobot   = False
-  , _selfDestruct  = False
-  , _tickSteps     = 0
-  }
-  where
-    inst = fromList devs
+mkRobot ::
+  -- | Name of the robot.  Precondition: it should not be the same as any
+  --   other robot name.
+  Text ->
+  -- | Initial location.
+  V2 Int64 ->
+  -- | Initial heading/direction.
+  V2 Int64 ->
+  -- | Initial CEK machine.
+  CEK ->
+  -- | Installed devices.
+  [Entity] ->
+  Robot
+mkRobot name l d m devs =
+  Robot
+    { _robotEntity =
+        mkEntity
+          defaultRobotDisplay
+          name
+          ["A generic robot."]
+          []
+          & entityOrientation ?~ d
+    , _installedDevices = inst
+    , _robotCapabilities = inventoryCapabilities inst
+    , _robotLocation = l
+    , _robotCtx = (empty, empty)
+    , _robotEnv = empty
+    , _machine = m
+    , _systemRobot = False
+    , _selfDestruct = False
+    , _tickSteps = 0
+    }
+ where
+  inst = fromList devs
 
 -- | The initial robot representing your "base".
 baseRobot :: [Entity] -> Robot
-baseRobot devs = Robot
-  { _robotEntity = mkEntity
-      defaultRobotDisplay
-      "base"
-      ["Your base of operations."]
-      []
-  , _installedDevices = inst
-  , _robotCapabilities = inventoryCapabilities inst
-  , _robotLocation = V2 0 0
-  , _robotCtx      = (empty, empty)
-  , _robotEnv      = empty
-  , _machine       = idleMachine
-  , _systemRobot   = False
-  , _selfDestruct  = False
-  , _tickSteps     = 0
-  }
-  where
-    inst = fromList devs
+baseRobot devs =
+  Robot
+    { _robotEntity =
+        mkEntity
+          defaultRobotDisplay
+          "base"
+          ["Your base of operations."]
+          []
+    , _installedDevices = inst
+    , _robotCapabilities = inventoryCapabilities inst
+    , _robotLocation = V2 0 0
+    , _robotCtx = (empty, empty)
+    , _robotEnv = empty
+    , _machine = idleMachine
+    , _systemRobot = False
+    , _selfDestruct = False
+    , _tickSteps = 0
+    }
+ where
+  inst = fromList devs
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool

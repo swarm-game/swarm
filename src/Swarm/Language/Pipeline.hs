@@ -1,4 +1,9 @@
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
+
 -- |
 -- Module      :  Swarm.Language.Pipeline
 -- Copyright   :  Brent Yorgey
@@ -11,43 +16,40 @@
 -- checking, and elaboration.  If you want to simply turn some raw
 -- text representing a Swarm program into something useful, this is
 -- probably the module you want.
---
------------------------------------------------------------------------------
+module Swarm.Language.Pipeline (
+  ProcessedTerm (..),
+  processTerm,
+  processParsedTerm,
+  processTerm',
+  processParsedTerm',
+) where
 
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE TypeOperators      #-}
+import Data.Bifunctor (first)
+import Data.Data (Data)
+import Data.Set (Set)
+import Data.Text (Text)
 
-module Swarm.Language.Pipeline
-  ( ProcessedTerm(..)
-  , processTerm
-  , processParsedTerm
-  , processTerm'
-  , processParsedTerm'
-  ) where
-
-import           Data.Bifunctor            (first)
-import           Data.Data                 (Data)
-import           Data.Set                  (Set)
-import           Data.Text                 (Text)
-
-import           Swarm.Language.Capability
-import           Swarm.Language.Context
-import           Swarm.Language.Elaborate
-import           Swarm.Language.Parse
-import           Swarm.Language.Pretty
-import           Swarm.Language.Syntax
-import           Swarm.Language.Typecheck
-import           Swarm.Language.Types
+import Swarm.Language.Capability
+import Swarm.Language.Context
+import Swarm.Language.Elaborate
+import Swarm.Language.Parse
+import Swarm.Language.Pretty
+import Swarm.Language.Syntax
+import Swarm.Language.Typecheck
+import Swarm.Language.Types
 
 -- | A record containing the results of the language processing
 --   pipeline.  Put a 'Term' in, and get one of these out.
-data ProcessedTerm = ProcessedTerm
-  Term              -- ^ The elaborated term
-  TModule           -- ^ The type of the term (and of any embedded definitions)
-  (Set Capability)  -- ^ Capabilities required by the term
-  CapCtx            -- ^ Capability context for any definitions embedded in the term
-
+data ProcessedTerm
+  = ProcessedTerm
+      Term
+      -- ^ The elaborated term
+      TModule
+      -- ^ The type of the term (and of any embedded definitions)
+      (Set Capability)
+      -- ^ Capabilities required by the term
+      CapCtx
+      -- ^ Capability context for any definitions embedded in the term
   deriving (Data)
 
 -- | Given a 'Text' value representing a Swarm program,

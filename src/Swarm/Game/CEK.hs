@@ -1,4 +1,8 @@
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeOperators #-}
+
 -- |
 -- Module      :  Swarm.Game.CEK
 -- Copyright   :  Brent Yorgey
@@ -44,44 +48,41 @@
 -- have to store the proper environment alongside so that when
 -- we eventually get around to evaluating it, we will be able to
 -- pull out the environment to use.
---
------------------------------------------------------------------------------
+module Swarm.Game.CEK (
+  -- * Frames and continuations
+  Frame (..),
+  Cont,
 
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeOperators   #-}
+  -- * CEK machine states
+  CEK (..),
 
-module Swarm.Game.CEK
-  ( -- * Frames and continuations
-    Frame(..), Cont
+  -- ** Construction
+  initMachine,
+  initMachine',
+  idleMachine,
 
-    -- * CEK machine states
+  -- ** Extracting information
+  finalValue,
 
-  , CEK(..)
+  -- ** Pretty-printing
+  prettyFrame,
+  prettyCont,
+  prettyCEK,
+) where
 
-    -- ** Construction
+import Control.Lens.Combinators (pattern Empty)
+import Data.List (intercalate)
+import qualified Data.Set as S
+import Witch (from)
 
-  , initMachine, initMachine', idleMachine
-
-    -- ** Extracting information
-  , finalValue
-
-    -- ** Pretty-printing
-  , prettyFrame, prettyCont, prettyCEK
-  ) where
-
-import           Control.Lens.Combinators  (pattern Empty)
-import           Data.List                 (intercalate)
-import qualified Data.Set                  as S
-import           Witch                     (from)
-
-import           Swarm.Game.Exception
-import           Swarm.Game.Value          as V
-import           Swarm.Language.Capability (CapCtx)
-import           Swarm.Language.Context
-import           Swarm.Language.Pipeline
-import           Swarm.Language.Pretty
-import           Swarm.Language.Syntax
-import           Swarm.Language.Types
+import Swarm.Game.Exception
+import Swarm.Game.Value as V
+import Swarm.Language.Capability (CapCtx)
+import Swarm.Language.Context
+import Swarm.Language.Pipeline
+import Swarm.Language.Pretty
+import Swarm.Language.Syntax
+import Swarm.Language.Types
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -91,60 +92,50 @@ import           Swarm.Language.Types
 --   what to do next after we finish evaluating the currently focused
 --   term.
 data Frame
-   = FSnd Term Env
-     -- ^ We were evaluating the first component of a pair; next, we
-     --   should evaluate the second component which was saved in this
-     --   frame (and push a 'FFst' frame on the stack to save the first component).
-
-   | FFst Value
-     -- ^ We were evaluating the second component of a pair; when done,
-     --   we should combine it with the value of the first component saved
-     --   in this frame to construct a fully evaluated pair.
-
-   | FArg Term Env
-    -- ^ @FArg t e@ says that we were evaluating the left-hand side of
+  = -- | We were evaluating the first component of a pair; next, we
+    --   should evaluate the second component which was saved in this
+    --   frame (and push a 'FFst' frame on the stack to save the first component).
+    FSnd Term Env
+  | -- | We were evaluating the second component of a pair; when done,
+    --   we should combine it with the value of the first component saved
+    --   in this frame to construct a fully evaluated pair.
+    FFst Value
+  | -- | @FArg t e@ says that we were evaluating the left-hand side of
     -- an application, so the next thing we should do is evaluate the
     -- term @t@ (the right-hand side, /i.e./ argument of the
     -- application) in environment @e@.  We will also push an 'FApp'
     -- frame on the stack.
-
-  | FApp Value
-    -- ^ @FApp v@ says that we were evaluating the right-hand side of
+    FArg Term Env
+  | -- | @FApp v@ says that we were evaluating the right-hand side of
     -- an application; once we are done, we should pass the resulting
     -- value as an argument to @v@.
-
-  | FLet Var Term Env
-    -- ^ @FLet x t2 e@ says that we were evaluating a term @t1@ in an
+    FApp Value
+  | -- | @FLet x t2 e@ says that we were evaluating a term @t1@ in an
     -- expression of the form @let x = t1 in t2@, that is, we were
     -- evaluating the definition of @x@; the next thing we should do
     -- is evaluate @t2@ in the environment @e@ extended with a binding
     -- for @x@.
-
-  | FTry Value
-    -- ^ We are executing inside a 'Try' block.  If an exception is
+    FLet Var Term Env
+  | -- | We are executing inside a 'Try' block.  If an exception is
     --   raised, we will execute the stored term (the "catch" block).
-
-  | FUnionEnv Env
-    -- ^ We were executing a command; next we should take any
+    FTry Value
+  | -- | We were executing a command; next we should take any
     --   environment it returned and union it with this one to produce
     --   the result of a bind expression.
-
-  | FLoadEnv TCtx CapCtx
-    -- ^ We were executing a command that might have definitions; next
+    FUnionEnv Env
+  | -- | We were executing a command that might have definitions; next
     --   we should take the resulting 'Env' and add it to the robot's
     --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
     --   'CapCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
-
-  | FExec
-    -- ^ An @FExec@ frame means the focused value is a command, which
+    FLoadEnv TCtx CapCtx
+  | -- | An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
-
-  | FBind (Maybe Var) Term Env
-    -- ^ We are in the process of executing the first component of a
+    FExec
+  | -- | We are in the process of executing the first component of a
     --   bind; once done, we should also execute the second component
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
-
+    FBind (Maybe Var) Term Env
   deriving (Eq, Show)
 
 -- | A continuation is just a stack of frames.
@@ -162,14 +153,12 @@ type Cont = [Frame]
 --   approach from Harper's Practical Foundations of Programming
 --   Languages.
 data CEK
-  = In Term Env Cont
-    -- ^ When we are on our way "in/down" into a term, we have a
+  = -- | When we are on our way "in/down" into a term, we have a
     --   currently focused term to evaluate in the environment, and a
     --   continuation.  In this mode we generally pattern-match on the
     --   'Term' to decide what to do next.
-
-  | Out Value Cont
-    -- ^ Once we finish evaluating a term, we end up with a 'Value'
+    In Term Env Cont
+  | -- | Once we finish evaluating a term, we end up with a 'Value'
     --   and we switch into "out" mode, bringing the value back up
     --   out of the depths to the context that was expecting it.  In
     --   this mode we generally pattern-match on the 'Cont' to decide
@@ -179,19 +168,19 @@ data CEK
     --   with variables to evaluate at the moment, and we maintain the
     --   invariant that any unevaluated terms buried inside a 'Value'
     --   or 'Cont' must carry along their environment with them.
-
-  | Up Exn Cont
-    -- ^ An exception has been raised.  Keep unwinding the
+    Out Value Cont
+  | -- | An exception has been raised.  Keep unwinding the
     --   continuation stack (until finding an enclosing 'Try' in the
     --   case of a command failure or a user-generated exception, or
     --   until the stack is empty in the case of a fatal exception).
+    Up Exn Cont
   deriving (Eq, Show)
 
 -- | Is the CEK machine in a final (finished) state?  If so, extract
 --   the final value.
 finalValue :: CEK -> Maybe Value
 finalValue (Out v []) = Just v
-finalValue _          = Nothing
+finalValue _ = Nothing
 
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
@@ -201,17 +190,18 @@ initMachine t e = initMachine' t e []
 
 -- | Like 'initMachine', but also take a starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Cont -> CEK
-initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e k
-  = case ctx of
-      Empty -> In t e (FExec : k)
-      _     -> In t e (FExec : FLoadEnv ctx capCtx : k)
+initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e k =
+  case ctx of
+    Empty -> In t e (FExec : k)
+    _ -> In t e (FExec : FLoadEnv ctx capCtx : k)
 initMachine' (ProcessedTerm t _ _ _) e k = In t e k
 
 -- | A machine which does nothing.
 idleMachine :: CEK
 idleMachine = initMachine trivialTerm empty
-  where
-    trivialTerm = ProcessedTerm
+ where
+  trivialTerm =
+    ProcessedTerm
       (TConst Noop)
       (trivMod (Forall [] (TyCmd TyUnit)))
       S.empty
@@ -225,30 +215,36 @@ idleMachine = initMachine trivialTerm empty
 -- | Very poor pretty-printing of CEK machine states, really just for
 --   debugging. At some point we should make a nicer version.
 prettyCEK :: CEK -> String
-prettyCEK (In c _ k) = unlines
-  [ "▶ " ++ prettyString c
-  , "  " ++ prettyCont k ]
-prettyCEK (Out v k) = unlines
-  [ "◀ " ++ from (prettyValue v)
-  , "  " ++ prettyCont k ]
-prettyCEK (Up e k) = unlines
-  [ "! " ++ from (formatExn e)
-  , "  " ++ prettyCont k ]
+prettyCEK (In c _ k) =
+  unlines
+    [ "▶ " ++ prettyString c
+    , "  " ++ prettyCont k
+    ]
+prettyCEK (Out v k) =
+  unlines
+    [ "◀ " ++ from (prettyValue v)
+    , "  " ++ prettyCont k
+    ]
+prettyCEK (Up e k) =
+  unlines
+    [ "! " ++ from (formatExn e)
+    , "  " ++ prettyCont k
+    ]
 
 -- | Poor pretty-printing of continuations.
 prettyCont :: Cont -> String
-prettyCont = ("["++) . (++"]") . intercalate " | " . map prettyFrame
+prettyCont = ("[" ++) . (++ "]") . intercalate " | " . map prettyFrame
 
 -- | Poor pretty-printing of frames.
 prettyFrame :: Frame -> String
-prettyFrame (FSnd t _)           = "(_, " ++ prettyString t ++ ")"
-prettyFrame (FFst v)             = "(" ++ from (prettyValue v) ++ ", _)"
-prettyFrame (FArg t _)           = "_ " ++ prettyString t
-prettyFrame (FApp v)             = prettyString (valueToTerm v) ++ " _"
-prettyFrame (FLet x t _)         = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FTry c)             = "try _ (" ++ from (prettyValue c) ++ ")"
-prettyFrame FUnionEnv{}          = "_ ∪ <Env>"
-prettyFrame FLoadEnv{}           = "loadEnv"
-prettyFrame FExec                = "exec _"
-prettyFrame (FBind Nothing t _)  = "_ ; " ++ prettyString t
+prettyFrame (FSnd t _) = "(_, " ++ prettyString t ++ ")"
+prettyFrame (FFst v) = "(" ++ from (prettyValue v) ++ ", _)"
+prettyFrame (FArg t _) = "_ " ++ prettyString t
+prettyFrame (FApp v) = prettyString (valueToTerm v) ++ " _"
+prettyFrame (FLet x t _) = "let " ++ from x ++ " = _ in " ++ prettyString t
+prettyFrame (FTry c) = "try _ (" ++ from (prettyValue c) ++ ")"
+prettyFrame FUnionEnv {} = "_ ∪ <Env>"
+prettyFrame FLoadEnv {} = "loadEnv"
+prettyFrame FExec = "exec _"
+prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
 prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
