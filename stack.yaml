@@ -2,6 +2,7 @@ resolver: lts-18.12
 extra-deps:
 - brick-0.64
 - word-wrap-0.5
+- hashable-1.3.4.0
 - git: https://github.com/colinhect/hsnoise
   commit: 4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d
 # get latest th-extras for ghc-9.0.1 compat
