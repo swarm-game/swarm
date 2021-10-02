@@ -181,11 +181,11 @@ appliedTermPrec (SApp f _) = case f of
 appliedTermPrec _ = 10
 
 instance PrettyPrec TypeErr where
-  prettyPrec _ (Mismatch ty1 ty2) =
+  prettyPrec _ (Mismatch _ ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (UnboundVar x) =
+  prettyPrec _ (UnboundVar _ x) =
     "Unbound variable" <+> pretty x
   prettyPrec _ (Infinite x uty) =
     "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
-  prettyPrec _ (DefNotTopLevel t) =
+  prettyPrec _ (DefNotTopLevel _ t) =
     "Definitions may only be at the top level:" <+> ppr t

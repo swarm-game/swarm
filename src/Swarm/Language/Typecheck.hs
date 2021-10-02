@@ -99,10 +99,10 @@ runInfer ctx =
 --   an 'UnboundVar' error if it is not found, or opening its
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
-lookup :: Var -> Infer UType
-lookup x = do
+lookup :: Location -> Var -> Infer UType
+lookup loc x = do
   ctx <- ask
-  maybe (throwError $ UnboundVar x) instantiate (Ctx.lookup x ctx)
+  maybe (throwError $ UnboundVar loc x) instantiate (Ctx.lookup x ctx)
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -236,17 +236,17 @@ generalize uty = do
 --   separately be pretty-printed to display them to the user.
 data TypeErr
   = -- | An undefined variable was encountered.
-    UnboundVar Var
+    UnboundVar Location Var
   | Infinite IntVar UType
   | -- | The given term was expected to have a certain type, but has a
     -- different type instead.
-    Mismatch (TypeF UType) (TypeF UType)
+    Mismatch (Maybe Location) (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
-    DefNotTopLevel Term
+    DefNotTopLevel Location Term
 
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
-  mismatchFailure = Mismatch
+  mismatchFailure = Mismatch Nothing
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -328,7 +328,7 @@ infer (Syntax _ (TPair t1 t2)) = UTyProd <$> infer t1 <*> infer t2
 -- delay t has the same type as t.
 infer (Syntax l (TDelay t)) = infer (Syntax l t)
 -- Just look up variables in the context.
-infer (Syntax _ (TVar x)) = lookup x
+infer (Syntax l (TVar x)) = lookup l x
 -- To infer the type of a lambda if the type of the argument is
 -- provided, just infer the body under an extended context and return
 -- the appropriate function type.
@@ -351,7 +351,7 @@ infer (Syntax _ (TApp f x)) = do
   (ty1, ty2) <- decomposeFunTy fTy
 
   -- Then check that the argument has the right type.
-  check x ty1
+  check x ty1 `catchError` addLocToTypeErr x
   return ty2
 
 -- We can infer the type of a let whether a type has been provided for
@@ -368,15 +368,23 @@ infer (Syntax _ (TLet x (Just pty) t1 t2)) = do
   -- definition and body under an extended context.
   uty <- skolemize upty
   withBinding x upty $ do
-    check t1 uty
+    check t1 uty `catchError` addLocToTypeErr t1
     infer t2
-infer (Syntax _ t@TDef {}) = throwError $ DefNotTopLevel t
+infer (Syntax l t@TDef {}) = throwError $ DefNotTopLevel l t
 infer (Syntax _ (TBind mx c1 c2)) = do
   ty1 <- infer c1
   a <- decomposeCmdTy ty1
   ty2 <- maybe id (`withBinding` Forall [] a) mx $ infer c2
   _ <- decomposeCmdTy ty2
   return ty2
+
+locatedInfer :: Syntax -> Infer UType
+locatedInfer s = infer s `catchError` addLocToTypeErr s
+
+addLocToTypeErr :: Syntax -> TypeErr -> Infer a
+addLocToTypeErr s te = case te of
+  Mismatch _ a b -> throwError $ Mismatch (Just $ sLoc s) a b
+  _ -> throwError te
 
 -- | Decompose a type that is supposed to be a command type.
 decomposeCmdTy :: UType -> Infer UType
