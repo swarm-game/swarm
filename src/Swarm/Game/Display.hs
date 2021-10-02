@@ -57,8 +57,6 @@ type Priority = Int
 
 -- Some orphan instances we need to be able to derive a Hashable
 -- instance for Display
-instance (Hashable k, Hashable v) => Hashable (Map k v) where
-  hashWithSalt = hashUsing M.assocs
 instance Hashable AttrName
 
 -- | A record explaining how to display an entity in the TUI.
