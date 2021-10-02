@@ -22,12 +22,14 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
+  showTypeErrorPos,
 ) where
 
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Set (Set)
 import Data.Text (Text)
+import Witch
 
 import Swarm.Language.Capability
 import Swarm.Language.Context
@@ -64,18 +66,35 @@ processTerm :: Text -> Either Text ProcessedTerm
 processTerm = processTerm' empty empty
 
 -- | Like 'processTerm', but use a term that has already been parsed.
-processParsedTerm :: Term -> Either Text ProcessedTerm
+processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm
 processTerm' ctx capCtx txt = do
   t <- readTerm txt
-  processParsedTerm' ctx capCtx t
+  first (prettyTypeErr txt) $ processParsedTerm' ctx capCtx t
+
+prettyTypeErr :: Text -> TypeErr -> Text
+prettyTypeErr code te = teLoc <> prettyText te
+ where
+  teLoc = case getTypeErrLocation te of
+    Just (Location s e) -> (from . show . fst . fst $ getLocRange code (s, e)) <> ": "
+    _anyOtherLoc -> ""
+
+showTypeErrorPos :: Text -> TypeErr -> ((Int, Int), (Int, Int), Text)
+showTypeErrorPos code te = (minusOne start, minusOne end, msg)
+ where
+  minusOne (x, y) = (x - 1, y - 1)
+
+  (start, end) = case getTypeErrLocation te of
+    Just (Location s e) -> getLocRange code (s, e)
+    _anyOtherLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
+  msg = prettyText te
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
-processParsedTerm' :: TCtx -> CapCtx -> Term -> Either Text ProcessedTerm
+processParsedTerm' :: TCtx -> CapCtx -> Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
-  ty <- first prettyText (inferTop ctx t)
-  let (caps, capCtx') = requiredCaps capCtx t
-  return $ ProcessedTerm (elaborate t) ty caps capCtx'
+  ty <- inferTop ctx t
+  let (caps, capCtx') = requiredCaps capCtx (sTerm t)
+  return $ ProcessedTerm (elaborate (sTerm t)) ty caps capCtx'

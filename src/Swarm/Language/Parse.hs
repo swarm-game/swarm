@@ -33,6 +33,7 @@ module Swarm.Language.Parse (
   readTerm',
   showShortError,
   showErrorPos,
+  getLocRange,
 ) where
 
 import Control.Monad.Reader
@@ -40,7 +41,7 @@ import Data.Bifunctor
 import Data.Char
 import qualified Data.List.NonEmpty (head)
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Text (Text)
+import Data.Text (Text, index)
 import Data.Void
 import Witch
 
@@ -49,6 +50,7 @@ import qualified Data.Map.Strict as Map
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Pos as Pos
 
 import Data.Foldable (asum)
 import Swarm.Language.Syntax
@@ -227,29 +229,39 @@ parseConst = asum $ map alternative consts
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
-parseTermAtom :: Parser Term
+-- | Add 'Location' to a 'Term' parser
+parseLoc :: Parser Term -> Parser Syntax
+parseLoc pterm = do
+  start <- getOffset
+  term <- pterm
+  end <- getOffset
+  pure $ Syntax (Location start end) term
+
+parseTermAtom :: Parser Syntax
 parseTermAtom =
-  TUnit <$ symbol "()"
-    <|> TConst <$> parseConst
-    <|> TVar <$> identifier
-    <|> TDir <$> parseDirection
-    <|> TInt <$> integer
-    <|> TString <$> stringLiteral
-    <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
-    <|> TLam <$> (symbol "\\" *> identifier)
-      <*> optional (symbol ":" *> parseType)
-      <*> (symbol "." *> parseTerm)
-    <|> TLet <$> (reserved "let" *> identifier)
-      <*> optional (symbol ":" *> parsePolytype)
-      <*> (symbol "=" *> parseTerm)
-      <*> (reserved "in" *> parseTerm)
-    <|> TDef <$> (reserved "def" *> identifier)
-      <*> optional (symbol ":" *> parsePolytype)
-      <*> (symbol "=" *> parseTerm <* reserved "end")
+  parseLoc
+    ( TUnit <$ symbol "()"
+        <|> TConst <$> parseConst
+        <|> TVar <$> identifier
+        <|> TDir <$> parseDirection
+        <|> TInt <$> integer
+        <|> TString <$> stringLiteral
+        <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
+        <|> SLam <$> (symbol "\\" *> identifier)
+          <*> optional (symbol ":" *> parseType)
+          <*> (symbol "." *> parseTerm)
+        <|> SLet <$> (reserved "let" *> identifier)
+          <*> optional (symbol ":" *> parsePolytype)
+          <*> (symbol "=" *> parseTerm)
+          <*> (reserved "in" *> parseTerm)
+        <|> SDef <$> (reserved "def" *> identifier)
+          <*> optional (symbol ":" *> parsePolytype)
+          <*> (symbol "=" *> parseTerm <* reserved "end")
+    )
     <|> parens parseTerm
-    <|> TConst Noop <$ try (symbol "{" *> symbol "}")
+    <|> parseLoc (TConst Noop <$ try (symbol "{" *> symbol "}"))
     <|> braces parseTerm
-    <|> (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+    <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
@@ -257,27 +269,27 @@ parseAntiquotation =
     <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
 
 -- | Parse a Swarm language term.
-parseTerm :: Parser Term
+parseTerm :: Parser Syntax
 parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
-mkBindChain :: [Stmt] -> Parser Term
+mkBindChain :: [Stmt] -> Parser Syntax
 mkBindChain stmts = case last stmts of
   Binder _ _ -> fail "Last command in a chain must not have a binder"
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = TBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = TBind (Just x) t1 t2
+  mkBind (BareTerm t1) t2 = noLoc $ SBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = noLoc $ SBind (Just x) t1 t2
 
 data Stmt
-  = BareTerm Term
-  | Binder Text Term
+  = BareTerm Syntax
+  | Binder Text Syntax
   deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =
   mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseExpr
 
-mkStmt :: Maybe Text -> Term -> Stmt
+mkStmt :: Maybe Text -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
 mkStmt (Just x) = Binder x
 
@@ -287,36 +299,49 @@ mkStmt (Just x) = Binder x
 --     App (App (TDef a) (TDef b)) (TDef x)
 --   This function fix that by converting the Apps into Binds, so that it results in:
 --     Bind a (Bind b (Bind c))
-fixDefMissingSemis :: Term -> Term
+fixDefMissingSemis :: Syntax -> Syntax
 fixDefMissingSemis term =
   case nestedDefs term [] of
     [] -> term
-    defs -> foldr1 (TBind Nothing) defs
+    defs -> foldr1 mkBind defs
  where
+  mkBind t1 t2 = Syntax (sLoc t1 <> sLoc t2) $ SBind Nothing t1 t2
   nestedDefs term' acc = case term' of
-    def@TDef {} -> def : acc
-    TApp nestedTerm def@TDef {} -> nestedDefs nestedTerm (def : acc)
+    def@(Syntax _ SDef {}) -> def : acc
+    (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)
     -- Otherwise returns an empty list to keep the term unchanged
     _ -> []
 
-parseExpr :: Parser Term
+parseExpr :: Parser Syntax
 parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
  where
   table = snd <$> Map.toDescList tableMap
   tableMap =
     Map.unionsWith
       (++)
-      [ Map.singleton 9 [InfixL (TApp <$ string "")]
+      [ Map.singleton 9 [InfixL (exprLoc2 $ SApp <$ string "")]
       , binOps
       , unOps
-      , Map.singleton 2 [InfixR (TPair <$ symbol ",")]
+      , Map.singleton 2 [InfixR (exprLoc2 $ SPair <$ symbol ",")]
       ]
+
+-- | Utility to add empty location for ExprParser
+exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
+exprLoc2 p = do
+  f <- p
+  pure $ \s1 s2 -> noLoc $ f s1 s2
+
+-- | Utility to add empty location for ExprParser
+exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
+exprLoc1 p = do
+  f <- p
+  pure $ \s -> noLoc $ f s
 
 -- | Precedences and parsers of binary operators.
 --
 -- >>> Map.map length binOps
 -- fromList [(4,6),(6,2),(7,2),(8,1)]
-binOps :: Map.Map Int [Operator Parser Term]
+binOps :: Map.Map Int [Operator Parser Syntax]
 binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
  where
   binOpToTuple c = do
@@ -335,7 +360,7 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
 --
 -- >>> Map.map length unOps
 -- fromList [(7,1)]
-unOps :: Map.Map Int [Operator Parser Term]
+unOps :: Map.Map Int [Operator Parser Syntax]
 unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
  where
   unOpToTuple c = do
@@ -347,7 +372,7 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (TApp (TConst c) <$ symbol (syntax ci))]
+        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ symbol (syntax ci))]
 
 --------------------------------------------------
 -- Utilities
@@ -395,12 +420,12 @@ fully p = sc *> p <* eof
 --   whitespace and ensuring the parsing extends all the way to the
 --   end of the input 'Text'.  Returns either the resulting 'Term' or
 --   a pretty-printed parse error message.
-readTerm :: Text -> Either Text Term
+readTerm :: Text -> Either Text Syntax
 readTerm = runParser (fully parseTerm)
 
 -- | A lower-level readTerm which returns the megaparsec bundle error
 --   for precise error reporting.
-readTerm' :: Text -> Either ParserError Term
+readTerm' :: Text -> Either ParserError Syntax
 readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
 
 -- | A utility for converting a ParserError into a one line message:
@@ -426,12 +451,44 @@ showErrorPos (ParseErrorBundle errs sourcePS) = (minusOne start, minusOne end, f
   msg = parseErrorTextPretty err
 
   -- extract the error starting position
-  line = unPos $ sourceLine $ pstateSourcePos ps
-  col = unPos $ sourceColumn $ pstateSourcePos ps
-  start = (line, col)
+  start@(line, col) = getLineCol ps
 
   -- compute the ending position based on the word at starting position
   wordlength = case break (== ' ') . drop col <$> str of
     Just (word, _) -> length word + 1
     _ -> 0
   end = (line, col + wordlength)
+
+getLineCol :: PosState a -> (Int, Int)
+getLineCol ps = (line, col)
+ where
+  line = unPos $ sourceLine $ pstateSourcePos ps
+  col = unPos $ sourceColumn $ pstateSourcePos ps
+
+-- | A utility for converting a Location into a range
+getLocRange :: Text -> (Int, Int) -> ((Int, Int), (Int, Int))
+getLocRange code (locStart, locEnd) = (start, end)
+ where
+  start = getLocPos locStart
+  end = getLocPos (dropWhiteSpace locEnd)
+
+  -- remove trailing whitespace that got included by the lexer
+  dropWhiteSpace offset
+    | isWhiteSpace offset = dropWhiteSpace (offset - 1)
+    | otherwise = offset
+  isWhiteSpace offset =
+    -- Megaparsec offset needs to be (-1) to start at 0
+    Data.Text.index code (offset - 1) `elem` [' ', '\n', '\r', '\t']
+
+  -- using megaparsec offset facility, compute the line/col
+  getLocPos offset =
+    let sourcePS =
+          PosState
+            { pstateInput = code
+            , pstateOffset = 0
+            , pstateSourcePos = Pos.initialPos ""
+            , pstateTabWidth = Pos.defaultTabWidth
+            , pstateLinePrefix = ""
+            }
+        (_, ps) = reachOffset offset sourcePS
+     in getLineCol ps
