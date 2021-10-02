@@ -33,6 +33,7 @@ module Swarm.Language.Parse (
   readTerm',
   showShortError,
   showErrorPos,
+  getLocRange,
 ) where
 
 import Control.Monad.Reader
@@ -49,6 +50,7 @@ import qualified Data.Map.Strict as Map
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Pos as Pos
 
 import Data.Foldable (asum)
 import Swarm.Language.Syntax
@@ -448,12 +450,36 @@ showErrorPos (ParseErrorBundle errs sourcePS) = (minusOne start, minusOne end, f
   msg = parseErrorTextPretty err
 
   -- extract the error starting position
-  line = unPos $ sourceLine $ pstateSourcePos ps
-  col = unPos $ sourceColumn $ pstateSourcePos ps
-  start = (line, col)
+  start@(line, col) = getLineCol ps
 
   -- compute the ending position based on the word at starting position
   wordlength = case break (== ' ') . drop col <$> str of
     Just (word, _) -> length word + 1
     _ -> 0
   end = (line, col + wordlength)
+
+getLineCol :: PosState a -> (Int, Int)
+getLineCol ps = (line, col)
+ where
+  line = unPos $ sourceLine $ pstateSourcePos ps
+  col = unPos $ sourceColumn $ pstateSourcePos ps
+
+-- | A utility for converting a Location into a range
+getLocRange :: Text -> Location -> ((Int, Int), (Int, Int))
+getLocRange code loc = (start, end)
+ where
+  start = getLocPos (locStart loc)
+  end = getLocPos (locEnd loc)
+
+  -- using megaparsec offset facility, compute the line/col
+  getLocPos offset =
+    let sourcePS =
+          PosState
+            { pstateInput = code
+            , pstateOffset = 0
+            , pstateSourcePos = Pos.initialPos ""
+            , pstateTabWidth = Pos.defaultTabWidth
+            , pstateLinePrefix = ""
+            }
+        (_, ps) = reachOffset offset sourcePS
+     in getLineCol ps

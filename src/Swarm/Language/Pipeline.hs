@@ -22,12 +22,14 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
+  showTypeErrorPos,
 ) where
 
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Set (Set)
 import Data.Text (Text)
+import Witch
 
 import Swarm.Language.Capability
 import Swarm.Language.Context
@@ -71,7 +73,24 @@ processParsedTerm = processParsedTerm' empty empty
 processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm
 processTerm' ctx capCtx txt = do
   t <- readTerm txt
-  first prettyText $ processParsedTerm' ctx capCtx t
+  first (prettyTypeErr txt) $ processParsedTerm' ctx capCtx t
+
+prettyTypeErr :: Text -> TypeErr -> Text
+prettyTypeErr code te = teLoc <> prettyText te
+  where
+    teLoc = case getTypeErrLocation te of
+      Just loc -> (from . show . fst . fst $ getLocRange code loc) <> ": "
+      Nothing -> ""
+
+showTypeErrorPos :: Text -> TypeErr -> ((Int, Int), (Int, Int), Text)
+showTypeErrorPos code te = (minusOne start, minusOne end, msg)
+  where
+    minusOne (x, y) = (x - 1, y - 1)
+
+    (start, end) = case getTypeErrLocation te of
+      Just loc -> getLocRange code loc
+      Nothing -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
+    msg = prettyText te
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: TCtx -> CapCtx -> Syntax -> Either TypeErr ProcessedTerm

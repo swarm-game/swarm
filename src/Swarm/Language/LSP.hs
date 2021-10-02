@@ -81,8 +81,7 @@ validateSwarmCode doc content = do
   let err = case readTerm' content of
         Right term -> case processParsedTerm' mempty mempty term of
           Right _ -> Nothing
-          -- make the error span the whole document until we get source loc on type error
-          Left e -> Just $ showTypeErrorPos e
+          Left e -> Just $ showTypeErrorPos content e
         Left e -> Just $ showErrorPos e
   -- debug $ "-> " <> from (show err)
   case err of
