@@ -126,10 +126,10 @@ requiredCaps ctx tm = case tm of
   -- recursion capability, if the definition is recursive).  However,
   -- we also return a map which associates the defined name to the
   -- capabilities it requires.
-  TDef x _ t ->
+  SDef x _ t ->
     let bodyCaps = (if x `S.member` setOf fv t then S.insert CRecursion else id) (requiredCaps' ctx t)
      in (S.singleton CEnv, singleton x bodyCaps)
-  TBind _ t1 t2 ->
+  SBind _ t1 t2 ->
     -- First, see what capabilities are required to execute the
     -- first command.  It may also define some names, so we get a
     -- map of those names to their required capabilities.
@@ -191,19 +191,19 @@ requiredCaps' ctx = go
     -- the application site.  Again, this is overly conservative in
     -- the case that the argument is unused, but in that case the
     -- unused argument could be removed.
-    TLam _ _ t -> S.insert CLambda $ go t
+    SLam _ _ t -> S.insert CLambda $ go t
     -- An application simply requires the union of the capabilities
     -- from the left- and right-hand sides.  This assumes that the
     -- argument will be used at least once by the function.
-    TApp t1 t2 -> go t1 `S.union` go t2
+    SApp t1 t2 -> go t1 `S.union` go t2
     -- Similarly, for a let, we assume that the let-bound expression
     -- will be used at least once in the body.
-    TLet x _ t1 t2 ->
+    SLet x _ t1 t2 ->
       (if x `S.member` setOf fv t1 then S.insert CRecursion else id) $
         S.insert CEnv $ go t1 `S.union` go t2
     -- Everything else is straightforward.
-    TPair t1 t2 -> go t1 `S.union` go t2
-    TBind _ t1 t2 -> go t1 `S.union` go t2
+    SPair t1 t2 -> go t1 `S.union` go t2
+    SBind _ t1 t2 -> go t1 `S.union` go t2
     TDelay t -> go t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,

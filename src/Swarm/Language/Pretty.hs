@@ -127,11 +127,11 @@ instance PrettyPrec Term where
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TVar s) = pretty s
   prettyPrec p (TDelay t) = pparens (p > 10) $ "delay" <+> prettyPrec 11 t
-  prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
-  prettyPrec _ (TLam x mty body) =
+  prettyPrec _ (SPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
+  prettyPrec _ (SLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
-  prettyPrec p (TApp t@(TApp (TConst c) l) r) =
+  prettyPrec p (SApp t@(SApp (TConst c) l) r) =
     let ci = constInfo c
         pC = fixity ci
      in case constMeta ci of
@@ -143,7 +143,7 @@ instance PrettyPrec Term where
                 , prettyPrec (pC + fromEnum (assoc == L)) r
                 ]
           _ -> prettyPrecApp p t r
-  prettyPrec p (TApp t1 t2) = case t1 of
+  prettyPrec p (SApp t1 t2) = case t1 of
     TConst c ->
       let ci = constInfo c
           pC = fixity ci
@@ -152,20 +152,20 @@ instance PrettyPrec Term where
             ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
-  prettyPrec _ (TLet x mty t1 t2) =
+  prettyPrec _ (SLet x mty t1 t2) =
     hsep $
       ["let", pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty
         ++ ["=", ppr t1, "in", ppr t2]
-  prettyPrec _ (TDef x mty t1) =
+  prettyPrec _ (SDef x mty t1) =
     hsep $
       ["def", pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty
         ++ ["=", ppr t1, "end"]
-  prettyPrec p (TBind Nothing t1 t2) =
+  prettyPrec p (SBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
-  prettyPrec p (TBind (Just x) t1 t2) =
+  prettyPrec p (SBind (Just x) t1 t2) =
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
 
@@ -175,7 +175,7 @@ prettyPrecApp p t1 t2 =
     prettyPrec 10 t1 <+> prettyPrec 11 t2
 
 appliedTermPrec :: Term -> Int
-appliedTermPrec (TApp f _) = case f of
+appliedTermPrec (SApp f _) = case f of
   TConst c -> fixity $ constInfo c
   _ -> appliedTermPrec f
 appliedTermPrec _ = 10
