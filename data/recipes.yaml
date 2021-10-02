@@ -56,17 +56,17 @@
 - in:
   - [1, copper ore]
   - [1, log]
-  - [1, furnace]
   out:
   - [10, copper wire]
+  required:
   - [1, furnace]
 
 - in:
   - [1, copper ore]
   - [1, log]
-  - [1, furnace]
   out:
   - [2, copper pipe]
+  required:
   - [1, furnace]
 
 - in:
