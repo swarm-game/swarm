@@ -244,7 +244,7 @@ data TypeErr
     Mismatch (Maybe Location) (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel Location Term
-    deriving (Show)
+  deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
