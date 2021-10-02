@@ -94,16 +94,16 @@ valueToTerm (VInt n) = TInt n
 valueToTerm (VString s) = TString s
 valueToTerm (VDir d) = TDir d
 valueToTerm (VBool b) = TBool b
-valueToTerm (VPair v1 v2) = SPair (valueToTerm v1) (valueToTerm v2)
+valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =
   M.foldrWithKey
-    (\y v -> SLet y Nothing (valueToTerm v))
-    (SLam x Nothing t)
+    (\y v -> TLet y Nothing (valueToTerm v))
+    (TLam x Nothing t)
     (M.restrictKeys (unCtx e) (S.delete x (setOf fv t)))
-valueToTerm (VCApp c vs) = foldl' SApp (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VDef x t _) = SDef x Nothing t
+valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
+valueToTerm (VDef x t _) = TDef x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
-valueToTerm (VBind mx c1 c2 _) = SBind mx c1 c2
+valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay _ t _) = TDelay t
 
 -- | An environment is a mapping from variable names to values.

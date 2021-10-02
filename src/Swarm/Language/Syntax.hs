@@ -48,12 +48,12 @@ module Swarm.Language.Syntax (
   noLoc,
   emptyLoc,
   pattern STerm,
-  pattern SPair,
-  pattern SLam,
-  pattern SApp,
-  pattern SLet,
-  pattern SDef,
-  pattern SBind,
+  pattern TPair,
+  pattern TLam,
+  pattern TApp,
+  pattern TLet,
+  pattern TDef,
+  pattern TBind,
 
   -- * Terms
   Var,
@@ -384,7 +384,7 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   -- We don't assign a source location for the operator since it is
   -- usually provided as-is and it is not likely to be useful.
   sop = noLoc (TConst c)
-  newTerm = TApp (Syntax l1 $ TApp sop s1) s2
+  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
 -- | The surface syntax for the language
 data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
@@ -407,28 +407,28 @@ pattern STerm t <-
     STerm t = Syntax emptyLoc t
 
 -- | Match a TPair without syntax
-pattern SPair :: Term -> Term -> Term
-pattern SPair t1 t2 = TPair (STerm t1) (STerm t2)
+pattern TPair :: Term -> Term -> Term
+pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
 -- | Match a TLam without syntax
-pattern SLam :: Var -> Maybe Type -> Term -> Term
-pattern SLam v ty t = TLam v ty (STerm t)
+pattern TLam :: Var -> Maybe Type -> Term -> Term
+pattern TLam v ty t = SLam v ty (STerm t)
 
 -- | Match a TApp without syntax
-pattern SApp :: Term -> Term -> Term
-pattern SApp t1 t2 = TApp (STerm t1) (STerm t2)
+pattern TApp :: Term -> Term -> Term
+pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
 
 -- | Match a TLet without syntax
-pattern SLet :: Var -> Maybe Polytype -> Term -> Term -> Term
-pattern SLet v pt t1 t2 = TLet v pt (STerm t1) (STerm t2)
+pattern TLet :: Var -> Maybe Polytype -> Term -> Term -> Term
+pattern TLet v pt t1 t2 = SLet v pt (STerm t1) (STerm t2)
 
 -- | Match a TDef without syntax
-pattern SDef :: Var -> Maybe Polytype -> Term -> Term
-pattern SDef v pt t = TDef v pt (STerm t)
+pattern TDef :: Var -> Maybe Polytype -> Term -> Term
+pattern TDef v pt t = SDef v pt (STerm t)
 
 -- | Match a TDef without syntax
-pattern SBind :: Maybe Var -> Term -> Term -> Term
-pattern SBind v t1 t2 = TBind v (STerm t1) (STerm t2)
+pattern TBind :: Maybe Var -> Term -> Term -> Term
+pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
 
 ------------------------------------------------------------
 -- Terms
@@ -454,20 +454,20 @@ data Term
   | -- | A variable.
     TVar Var
   | -- | A pair.
-    TPair Syntax Syntax
+    SPair Syntax Syntax
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    TLam Var (Maybe Type) Syntax
+    SLam Var (Maybe Type) Syntax
   | -- | Function application.
-    TApp Syntax Syntax
+    SApp Syntax Syntax
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable.
-    TLet Var (Maybe Polytype) Syntax Syntax
+    SLet Var (Maybe Polytype) Syntax Syntax
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands.
-    TDef Var (Maybe Polytype) Syntax
+    SDef Var (Maybe Polytype) Syntax
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    TBind (Maybe Var) Syntax Syntax
+    SBind (Maybe Var) Syntax Syntax
   | -- | Delay evaluation of a term.  Swarm is an eager language, but
     --   in some cases (e.g. for @if@ statements and recursive
     --   bindings) we need to delay evaluation.  The counterpart to
@@ -498,18 +498,18 @@ fvT f = go S.empty
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)
-    TLam x ty (Syntax l1 t1) -> TLam x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
-    TApp (Syntax l1 t1) (Syntax l2 t2) ->
-      TApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    TLet x ty (Syntax l1 t1) (Syntax l2 t2) ->
+    SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+    SApp (Syntax l1 t1) (Syntax l2 t2) ->
+      SApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
+    SLet x ty (Syntax l1 t1) (Syntax l2 t2) ->
       let bound' = S.insert x bound
-       in TLet x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
-    TPair (Syntax l1 t1) (Syntax l2 t2) ->
-      TPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    TDef x ty (Syntax l1 t1) ->
-      TDef x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
-    TBind mx (Syntax l1 t1) (Syntax l2 t2) ->
-      TBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
+       in SLet x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
+    SPair (Syntax l1 t1) (Syntax l2 t2) ->
+      SPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
+    SDef x ty (Syntax l1 t1) ->
+      SDef x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+    SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
+      SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
     TDelay t1 -> TDelay <$> go bound t1
 
 -- | Traversal over the free variables of a term.  Note that if you

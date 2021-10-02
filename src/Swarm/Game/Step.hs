@@ -249,16 +249,16 @@ stepCEK cek = case cek of
     return $ Out v k
 
   -- To evaluate a pair, start evaluating the first component.
-  In (SPair t1 t2) e k -> return $ In t1 e (FSnd t2 e : k)
+  In (TPair t1 t2) e k -> return $ In t1 e (FSnd t2 e : k)
   -- Once that's done, evaluate the second component.
   Out v1 (FSnd t2 e : k) -> return $ In t2 e (FFst v1 : k)
   -- Finally, put the results together into a pair value.
   Out v2 (FFst v1 : k) -> return $ Out (VPair v1 v2) k
   -- Lambdas immediately turn into closures.
-  In (SLam x _ t) e k -> return $ Out (VClo x t e) k
+  In (TLam x _ t) e k -> return $ Out (VClo x t e) k
   -- To evaluate an application, start by focusing on the left-hand
   -- side and saving the argument for later.
-  In (SApp t1 t2) e k -> return $ In t1 e (FArg t2 e : k)
+  In (TApp t1 t2) e k -> return $ In t1 e (FArg t2 e : k)
   -- Once that's done, switch to evaluating the argument.
   Out v1 (FArg t2 e : k) -> return $ In t2 e (FApp v1 : k)
   -- We can evaluate an application of a closure in the usual way.
@@ -276,20 +276,20 @@ stepCEK cek = case cek of
   -- let-bound expression. Since it can be recursive, we wrap it in
   -- @VDelay@ (the elaboration step wrapped all recursive references
   -- in a corresponding @Force@).
-  In (SLet x _ t1 t2) e k ->
+  In (TLet x _ t1 t2) e k ->
     let e' = addBinding x (VDelay (Just x) t1 e) e
      in return $ In t1 e' (FLet x t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
   Out v1 (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) k
   -- Definitions immediately turn into VDef values, awaiting execution.
-  In tm@(SDef x _ t) e k -> withExceptions k $ do
+  In tm@(TDef x _ t) e k -> withExceptions k $ do
     CEnv `hasCapabilityOr` Incapable (S.singleton CEnv) tm
     return $ Out (VDef x t e) k
 
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
-  In (SBind mx t1 t2) e k -> return $ Out (VBind mx t1 t2 e) k
+  In (TBind mx t1 t2) e k -> return $ Out (VBind mx t1 t2 e) k
   -- Delay expressions immediately turn into VDelay values, awaiting
   -- application of 'Force'.
   In (TDelay t) e k -> return $ Out (VDelay Nothing t e) k
@@ -379,7 +379,7 @@ stepCEK cek = case cek of
   -- logging!  Otherwise trying to exceute the Log command will
   -- generate another exception, which will be logged, which will
   -- generate an exception, ... etc.
-  Up exn [] -> return $ In (SApp (TConst Say) (TString (formatExn exn))) empty [FExec]
+  Up exn [] -> return $ In (TApp (TConst Say) (TString (formatExn exn))) empty [FExec]
   -- Fatal errors and capability errors can't be caught; just throw
   -- away the continuation stack.
   Up exn@Fatal {} _ -> return $ Up exn []

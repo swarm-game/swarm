@@ -498,7 +498,7 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
     Just (_, InventoryEntry _ e) -> do
       let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
           mkTy = Forall [] $ TyCmd TyUnit
-          mkProg = SApp (TConst Make) (TString (e ^. entityName))
+          mkProg = TApp (TConst Make) (TString (e ^. entityName))
           mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
       case isActive <$> (s ^. gameState . robotMap . at "base") of
         Just False ->
