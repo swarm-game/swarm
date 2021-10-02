@@ -9,7 +9,6 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Code for drawing the TUI.
-
 module Swarm.TUI.View (
   drawUI,
   drawTPS,
@@ -45,13 +44,11 @@ import Control.Lens
 import Data.Array (range)
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
-import qualified Data.Set as S
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
 import Text.Printf
-import Text.Wrap
-import           Data.Maybe            (fromMaybe)
 
 import Brick hiding (Direction)
 import Brick.Focus
@@ -316,116 +313,121 @@ drawMessageBox s = case s ^. uiState . uiFocusRing . to focusGetCurrent of
 --   such as its description and relevant recipes.
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case mItem of
-  Nothing                   -> txt " "
-  Just (Separator _)        -> txt " "
+  Nothing -> txt " "
+  Just (Separator _) -> txt " "
   Just (InventoryEntry _ e) ->
     vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
-    <=>
-    explainRecipes e
-  where
-    mList = s ^? uiState . uiInventory . _Just . _2
-    mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
+      <=> explainRecipes e
+ where
+  mList = s ^? uiState . uiInventory . _Just . _2
+  mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
 
-    explainRecipes :: Entity -> Widget Name
-    explainRecipes e
-      | null recipes = emptyWidget
-      | otherwise    = vBox
+  explainRecipes :: Entity -> Widget Name
+  explainRecipes e
+    | null recipes = emptyWidget
+    | otherwise =
+      vBox
         [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
         , padLeftRight 2 $
-          hCenter $
-          vBox $
-          map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
+            hCenter $
+              vBox $
+                map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
         ]
-      where
-        recipes = recipesWith e
+   where
+    recipes = recipesWith e
 
-        inv = fromMaybe E.empty $ s ^? gameState . to focusedRobot . _Just . robotInventory
+    inv = fromMaybe E.empty $ s ^? gameState . to focusedRobot . _Just . robotInventory
 
-        width (n,ingr) =
-          length (show n) + 1 + maximum0 (map T.length . T.words $ ingr ^. entityName)
+    width (n, ingr) =
+      length (show n) + 1 + maximum0 (map T.length . T.words $ ingr ^. entityName)
 
-        maxInputWidth = fromMaybe 0 $
-          maximumOf (traverse . recipeInputs . traverse . to width) recipes
-        maxOutputWidth = fromMaybe 0 $
-          maximumOf (traverse . recipeOutputs . traverse . to width) recipes
-        widthLimit = 2 * max maxInputWidth maxOutputWidth + 11
+    maxInputWidth =
+      fromMaybe 0 $
+        maximumOf (traverse . recipeInputs . traverse . to width) recipes
+    maxOutputWidth =
+      fromMaybe 0 $
+        maximumOf (traverse . recipeOutputs . traverse . to width) recipes
+    widthLimit = 2 * max maxInputWidth maxOutputWidth + 11
 
-    recipesWith :: Entity -> [Recipe Entity]
-    recipesWith e =
-         recipesFor (s ^. gameState . recipesOut) e
+  recipesWith :: Entity -> [Recipe Entity]
+  recipesWith e =
+    recipesFor (s ^. gameState . recipesOut) e
       ++ recipesFor (s ^. gameState . recipesIn) e
 
 -- | Draw an ASCII art representation of a recipe.
 drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
-drawRecipe e inv (Recipe ins outs reqs) = vBox
+drawRecipe e inv (Recipe ins outs reqs) =
+  vBox
     -- any requirements (e.g. furnace) go on top.
-  [ hCenter $ drawReqs reqs
-
-    -- then we draw inputs, a connector, and outputs.
-  , hBox
-    [ vBox (zipWith drawIn [0..] ins)
-    , connector
-    , vBox (zipWith drawOut [0..]  outs)
+    [ hCenter $ drawReqs reqs
+    , -- then we draw inputs, a connector, and outputs.
+      hBox
+        [ vBox (zipWith drawIn [0 ..] ins)
+        , connector
+        , vBox (zipWith drawOut [0 ..] outs)
+        ]
     ]
-  ]
-  where
-    -- The connector is either just a horizontal line ─────
-    -- or, if there are requirements, a horizontal line with
-    -- a vertical piece coming out of the center, ──┴── .
-    connector
-      | null reqs = hLimit 5 hBorder
-      | otherwise = hBox
-          [ hLimit 2 hBorder
-          , joinableBorder (Edges True False True True)
-          , hLimit 2 hBorder
-          ]
-    inLen = length ins
-    outLen = length outs
+ where
+  -- The connector is either just a horizontal line ─────
+  -- or, if there are requirements, a horizontal line with
+  -- a vertical piece coming out of the center, ──┴── .
+  connector
+    | null reqs = hLimit 5 hBorder
+    | otherwise =
+      hBox
+        [ hLimit 2 hBorder
+        , joinableBorder (Edges True False True True)
+        , hLimit 2 hBorder
+        ]
+  inLen = length ins
+  outLen = length outs
 
-    -- Draw inputs and outputs.
-    drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
-    drawIn i (n, ingr) = hBox
-      [ padRight (Pad 1) $ str (show n)      -- how many?
-      , fmtEntityName missing ingr           -- name of the input
-      , padLeft (Pad 1) $                    -- a connecting line:   ─────┬
-          hBorder <+>                        -- ...maybe plus vert ext:   │
-          (joinableBorder (Edges (i /= 0) (i /= inLen-1) True False) <=>
-           if i /= inLen-1
-             then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
-             else emptyWidget
-          )
-      ]
-      where
-        missing = E.lookup ingr inv < n
-
-    drawOut i (n, ingr) = hBox
-      [ padRight (Pad 1) $
-          (joinableBorder (Edges (i /= 0) (i /= outLen-1) False True) <=>
-           if i /= outLen-1
-             then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
-             else emptyWidget
-          ) <+>
+  -- Draw inputs and outputs.
+  drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
+  drawIn i (n, ingr) =
+    hBox
+      [ padRight (Pad 1) $ str (show n) -- how many?
+      , fmtEntityName missing ingr -- name of the input
+      , padLeft (Pad 1) $ -- a connecting line:   ─────┬
           hBorder
+            <+> ( joinableBorder (Edges (i /= 0) (i /= inLen -1) True False) -- ...maybe plus vert ext:   │
+                    <=> if i /= inLen -1
+                      then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
+                      else emptyWidget
+                )
+      ]
+   where
+    missing = E.lookup ingr inv < n
+
+  drawOut i (n, ingr) =
+    hBox
+      [ padRight (Pad 1) $
+          ( joinableBorder (Edges (i /= 0) (i /= outLen -1) False True)
+              <=> if i /= outLen -1
+                then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
+                else emptyWidget
+          )
+            <+> hBorder
       , fmtEntityName False ingr
       , padLeft (Pad 1) $ str (show n)
       ]
 
-    -- If it's the focused entity, draw it highlighted.
-    -- If the robot doesn't have any, draw it in red.
-    fmtEntityName missing ingr
-      | ingr == e = withAttr deviceAttr $ txtLines nm
-      | missing   = withAttr invalidFormInputAttr $ txtLines nm
-      | otherwise = txtLines nm
-      where
-        -- Split up multi-word names, one line per word
-        nm = ingr ^. entityName
-        txtLines = vBox . map txt . T.words
+  -- If it's the focused entity, draw it highlighted.
+  -- If the robot doesn't have any, draw it in red.
+  fmtEntityName missing ingr
+    | ingr == e = withAttr deviceAttr $ txtLines nm
+    | missing = withAttr invalidFormInputAttr $ txtLines nm
+    | otherwise = txtLines nm
+   where
+    -- Split up multi-word names, one line per word
+    nm = ingr ^. entityName
+    txtLines = vBox . map txt . T.words
 
 drawReqs :: IngredientList Entity -> Widget Name
 drawReqs = vBox . map drawReq
-  where
-    drawReq (1, e) = txt $ e ^. entityName
-    drawReq (n, e) = str (show n) <+> txt " " <+> txt (e ^. entityName)
+ where
+  drawReq (1, e) = txt $ e ^. entityName
+  drawReq (n, e) = str (show n) <+> txt " " <+> txt (e ^. entityName)
 
 -- | Draw a list of messages.
 drawMessages :: [Text] -> Widget Name

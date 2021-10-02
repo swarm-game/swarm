@@ -17,13 +17,13 @@
 --
 -- A recipe represents some kind of process for transforming
 -- some input entities into some output entities.
-
 module Swarm.Game.Recipe (
   -- * Ingredient lists and recipes
   IngredientList,
   Recipe (..),
   recipeInputs,
   recipeOutputs,
+  recipeRequirements,
 
   -- * Loading recipes
   loadRecipes,
@@ -87,12 +87,12 @@ recipeRequirements :: Lens' (Recipe e) (IngredientList e)
 ------------------------------------------------------------
 
 instance ToJSON (Recipe Text) where
-  toJSON (Recipe ins outs reqs) = object $
-    [ "in"  .= ins
-    , "out" .= outs
-    ]
-    ++
-    [ "required" .= reqs | not (null reqs) ]
+  toJSON (Recipe ins outs reqs) =
+    object $
+      [ "in" .= ins
+      , "out" .= outs
+      ]
+        ++ ["required" .= reqs | not (null reqs)]
 
 instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->

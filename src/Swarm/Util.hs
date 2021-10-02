@@ -19,7 +19,6 @@
 --
 -- A random collection of small, useful functions that are (or could
 -- be) used throughout the code base.
-
 module Swarm.Util (
   -- * Miscellaneous utilities
   (?),
