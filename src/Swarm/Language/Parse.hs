@@ -41,7 +41,7 @@ import Data.Bifunctor
 import Data.Char
 import qualified Data.List.NonEmpty (head)
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Text (Text)
+import Data.Text (Text, index)
 import Data.Void
 import Witch
 
@@ -470,7 +470,15 @@ getLocRange :: Text -> Location -> ((Int, Int), (Int, Int))
 getLocRange code loc = (start, end)
  where
   start = getLocPos (locStart loc)
-  end = getLocPos (locEnd loc)
+  end = getLocPos (dropWhiteSpace (locEnd loc))
+
+  -- remove trailing whitespace that got included by the lexer
+  dropWhiteSpace offset
+    | isWhiteSpace offset = dropWhiteSpace (offset - 1)
+    | otherwise = offset
+  isWhiteSpace offset =
+    -- Megaparsec offset needs to be (-1) to start at 0
+    Data.Text.index code (offset - 1) `elem` [' ', '\n', '\r', '\t']
 
   -- using megaparsec offset facility, compute the line/col
   getLocPos offset =
