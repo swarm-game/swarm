@@ -27,6 +27,7 @@
 module Swarm.Language.Typecheck (
   -- * Type errors
   TypeErr (..),
+  getTypeErrLocation,
 
   -- * Inference monad
   Infer,
@@ -243,10 +244,18 @@ data TypeErr
     Mismatch (Maybe Location) (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel Location Term
+    deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
   mismatchFailure = Mismatch Nothing
+
+getTypeErrLocation :: TypeErr -> Maybe Location
+getTypeErrLocation te = case te of
+  UnboundVar l _ -> Just l
+  Infinite _ _ -> Nothing
+  Mismatch l _ _ -> l
+  DefNotTopLevel l _ -> Just l
 
 ------------------------------------------------------------
 -- Type inference / checking
