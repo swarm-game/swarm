@@ -862,17 +862,26 @@ execConst c vs k = do
         flagRedraw
         return $ Out (VString (newRobot' ^. robotName)) k
       _ -> badConst
+    -- run can take both types of text inputs
+    -- with and without file extension as in
+    -- "./path/to/file.sw" and "./path/to/file"
     Run -> case vs of
       [VString fileName] -> do
-        mf <- liftIO $ readFileMay (into fileName)
+        mf <- liftIO $ readFileMay (into filePath)
 
-        f <- mf `isJustOr` cmdExn Run ["File not found:", fileName]
+        f <- mf `isJustOr` cmdExn Run ["File not found:", filePath]
 
         t <-
           processTerm (into @Text f) `isRightOr` \err ->
-            cmdExn Run ["Error in", fileName, "\n", err]
+            cmdExn Run ["Error in", filePath, "\n", err]
 
         return $ initMachine' t empty k
+       where
+        hasExtension = T.isSuffixOf ".sw" fileName
+        filePath =
+          if hasExtension
+            then fileName
+            else T.append fileName ".sw"
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) k
