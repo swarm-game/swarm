@@ -897,7 +897,7 @@ execConst c vs k = do
       Fatal $
         T.unlines
           [ "Bad application of execConst:"
-          , from (prettyCEK (Out (VCApp c vs) k))
+          , from (prettyCEK (Out (VCApp c (reverse vs)) k))
           ]
   returnEvalCmp = case vs of
     [v1, v2] ->

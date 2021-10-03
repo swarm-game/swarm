@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFoldable #-}
@@ -7,6 +5,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -33,6 +32,7 @@ module Swarm.Language.Types (
 
   -- * @Type@
   Type,
+  tyVars,
   pattern TyBase,
   pattern TyVar,
   pattern TyUnit,
@@ -83,8 +83,11 @@ module Swarm.Language.Types (
 import Control.Unification
 import Control.Unification.IntVar
 import Data.Data (Data)
+import Data.Foldable (fold)
 import Data.Functor.Fixedpoint
 import Data.Maybe (fromJust)
+import Data.Set (Set)
+import qualified Data.Set as S
 import Data.String (IsString (..))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -135,6 +138,10 @@ data TypeF t
 --   everywhere, so we provide pattern synonyms that allow us to work
 --   with 'Type' as if it were defined in a directly recursive way.
 type Type = Fix TypeF
+
+-- | Get all the type variables contained in a 'Type'.
+tyVars :: Type -> Set Var
+tyVars = cata (\case TyVarF x -> S.singleton x; f -> fold f)
 
 -- The derived Data instance is so we can make a quasiquoter for types.
 deriving instance Data Type
