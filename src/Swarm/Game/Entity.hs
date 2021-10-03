@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -85,7 +83,7 @@ import Brick (Widget)
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
-import Data.Bifunctor (bimap, second)
+import Data.Bifunctor (bimap, first, second)
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Hashable
@@ -525,27 +523,20 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount k e (Inventory cs byN) = Inventory cs' byN'
+deleteCount k e (Inventory cs byN) = Inventory cs' byN
  where
   cs' = IM.alter removeCount (e ^. entityHash) cs
-  newCount = lookup e (Inventory cs' byN)
-
-  byN'
-    | newCount == 0 = M.adjust (IS.delete (e ^. entityHash)) (T.toLower $ e ^. entityName) byN
-    | otherwise = byN
 
   removeCount :: Maybe (Count, a) -> Maybe (Count, a)
   removeCount Nothing = Nothing
-  removeCount (Just (n, a))
-    | k >= n = Nothing
-    | otherwise = Just (n - k, a)
+  removeCount (Just (n, a)) = Just (max 0 (n - k), a)
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
 deleteAll e (Inventory cs byN) =
   Inventory
-    (IM.alter (const Nothing) (e ^. entityHash) cs)
-    (M.adjust (IS.delete (e ^. entityHash)) (T.toLower $ e ^. entityName) byN)
+    (IM.adjust (first (const 0)) (e ^. entityHash) cs)
+    byN
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
