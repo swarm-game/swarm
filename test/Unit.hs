@@ -14,8 +14,8 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 
-import qualified Swarm.Game.Entity as E
 import Swarm.Game.Display (defaultRobotDisplay)
+import qualified Swarm.Game.Entity as E
 
 main :: IO ()
 main = defaultMain tests
@@ -132,10 +132,10 @@ prettyConst =
   equalPretty expected term = assertEqual "" expected . show $ ppr term
 
 inventory :: TestTree
-inventory = testGroup
+inventory =
+  testGroup
     "Inventory"
     [ testCase "byName case insensitive insert delete" $
         let e = E.mkEntity defaultRobotDisplay "WaCkYcAsE" [] []
-        in  assertEqual "" (E.empty & E.insert e & E.delete e & E.lookupByName (e ^. E.entityName)) []
+         in assertEqual "" (E.empty & E.insert e & E.delete e & E.lookupByName (e ^. E.entityName)) []
     ]
-  
