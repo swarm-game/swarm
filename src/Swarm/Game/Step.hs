@@ -862,11 +862,14 @@ execConst c vs k = do
         flagRedraw
         return $ Out (VString (newRobot' ^. robotName)) k
       _ -> badConst
+    -- run can take both types of text inputs
+    -- with and without file extension as in
+    -- "./path/to/file.sw" and "./path/to/file"
     Run -> case vs of
       [VString fileName] -> do
-        mf <- liftIO $ readFileMay (into fileName)
+        mf <- liftIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
 
-        f <- mf `isJustOr` cmdExn Run ["File not found:", fileName]
+        f <- msum mf `isJustOr` cmdExn Run ["File not found:", fileName]
 
         t <-
           processTerm (into @Text f) `isRightOr` \err ->
