@@ -13,18 +13,20 @@
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where
 
-import Control.Lens ((^.))
+import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text.IO as Text
 import System.IO (stderr)
+import Witch
 
 import Language.LSP.Diagnostics
 import Language.LSP.Server
 import qualified Language.LSP.Types as J
 import qualified Language.LSP.Types.Lens as J
+import Language.LSP.VFS
 
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
@@ -46,38 +48,26 @@ lspMain =
                   Just
                     ( J.TextDocumentSyncOptions
                         (Just True)
-                        Nothing
+                        (Just syncKind)
                         (Just False)
                         (Just False)
                         (Just $ J.InR $ J.SaveOptions $ Just True)
                     )
               }
         }
+ where
+  -- Using SyncFull seems to handle the debounce for us.
+  -- The alternative is to use SyncIncremental, but then then
+  -- handler is called for each key-stroke.
+  syncKind = J.TdSyncFull
 
 debug :: MonadIO m => Text -> m ()
 debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
-sendDiagnostic :: J.NormalizedUri -> ((Int, Int), (Int, Int), Text) -> LspM () ()
-sendDiagnostic fileUri ((startLine, startCol), (endLine, endCol), msg) = do
-  let diags =
-        [ J.Diagnostic
-            ( J.Range
-                (J.Position startLine startCol)
-                (J.Position endLine endCol)
-            )
-            (Just J.DsWarning) -- severity
-            Nothing -- code
-            (Just "swarm-lsp") -- source
-            msg
-            Nothing -- tags
-            (Just (J.List []))
-        ]
-  publishDiagnostics 100 fileUri Nothing (partitionBySource diags)
-
-validateSwarmCode :: J.NormalizedUri -> Text -> LspM () ()
-validateSwarmCode doc content = do
-  -- debug $ "Validating: " <> pack (show doc) <> " ( " <> content <> ")"
-  flushDiagnosticsBySource 1 (Just "swarm-lsp")
+validateSwarmCode :: J.NormalizedUri -> J.TextDocumentVersion -> Text -> LspM () ()
+validateSwarmCode doc version content = do
+  -- debug $ "Validating: " <> from (show doc) <> " ( " <> content <> ")"
+  flushDiagnosticsBySource 0 (Just "swarm-lsp")
   let err = case readTerm' content of
         Right term -> case processParsedTerm' mempty mempty term of
           Right _ -> Nothing
@@ -86,7 +76,24 @@ validateSwarmCode doc content = do
   -- debug $ "-> " <> from (show err)
   case err of
     Nothing -> pure ()
-    Just e -> sendDiagnostic doc e
+    Just e -> sendDiagnostic e
+ where
+  sendDiagnostic :: ((Int, Int), (Int, Int), Text) -> LspM () ()
+  sendDiagnostic ((startLine, startCol), (endLine, endCol), msg) = do
+    let diags =
+          [ J.Diagnostic
+              ( J.Range
+                  (J.Position startLine startCol)
+                  (J.Position endLine endCol)
+              )
+              (Just J.DsWarning) -- severity
+              Nothing -- code
+              (Just "swarm-lsp") -- source
+              msg
+              Nothing -- tags
+              (Just (J.List []))
+          ]
+    publishDiagnostics 1 doc version (partitionBySource diags)
 
 handlers :: Handlers (LspM ())
 handlers =
@@ -96,9 +103,16 @@ handlers =
     , notificationHandler J.STextDocumentDidSave $ \msg -> do
         let doc = msg ^. J.params . J.textDocument . J.uri
             content = fromMaybe "?" $ msg ^. J.params . J.text
-        validateSwarmCode (J.toNormalizedUri doc) content
+        validateSwarmCode (J.toNormalizedUri doc) Nothing content
     , notificationHandler J.STextDocumentDidOpen $ \msg -> do
         let doc = msg ^. J.params . J.textDocument . J.uri
             content = msg ^. J.params . J.textDocument . J.text
-        validateSwarmCode (J.toNormalizedUri doc) content
+        validateSwarmCode (J.toNormalizedUri doc) Nothing content
+    , notificationHandler J.STextDocumentDidChange $ \msg -> do
+        let doc = msg ^. J.params . J.textDocument . J.uri . to J.toNormalizedUri
+        mdoc <- getVirtualFile doc
+        case mdoc of
+          Just vf@(VirtualFile _ version _rope) -> do
+            validateSwarmCode doc (Just version) (virtualFileText vf)
+          _ -> debug $ "No virtual file found for: " <> (from (show msg))
     ]
