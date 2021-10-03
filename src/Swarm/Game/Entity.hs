@@ -531,7 +531,7 @@ deleteCount k e (Inventory cs byN) = Inventory cs' byN'
   newCount = lookup e (Inventory cs' byN)
 
   byN'
-    | newCount == 0 = M.adjust (IS.delete (e ^. entityHash)) (e ^. entityName) byN
+    | newCount == 0 = M.adjust (IS.delete (e ^. entityHash)) (T.toLower $ e ^. entityName) byN
     | otherwise = byN
 
   removeCount :: Maybe (Count, a) -> Maybe (Count, a)
@@ -545,7 +545,7 @@ deleteAll :: Entity -> Inventory -> Inventory
 deleteAll e (Inventory cs byN) =
   Inventory
     (IM.alter (const Nothing) (e ^. entityHash) cs)
-    (M.adjust (IS.delete (e ^. entityHash)) (e ^. entityName) byN)
+    (M.adjust (IS.delete (e ^. entityHash)) (T.toLower $ e ^. entityName) byN)
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
