@@ -19,6 +19,7 @@ import Witch (from)
 
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Util (liftText)
 
@@ -49,7 +50,7 @@ quoteTermExp s = do
         )
   parsed <- runParserTH pos parseTerm s
   case processParsedTerm parsed of
-    Left errMsg -> fail $ from errMsg
+    Left errMsg -> fail $ from $ prettyText errMsg
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
 antiTermExp :: Term -> Maybe TH.ExpQ

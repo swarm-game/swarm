@@ -205,9 +205,14 @@ We follow a few conventions to help keep everyone on the same page.
 Please open a pull request or ask on IRC if you have any questions or
 suggestions.
 
-* Code formatting conventions: coming soon, see
-  https://github.com/byorgey/swarm/issues/103. For this project, we
-  value readability by humans more highly than having minimal diffs.
+* We use [`fourmolu`](https://hackage.haskell.org/package/fourmolu)
+  with a [custom
+  configuration](https://github.com/byorgey/swarm/blob/main/fourmolu.yaml)
+  for formatting Haskell code.  There is probably a way
+  to configure your favorite editor to have `fourmolu` automatically
+  applied to your code; but if you don't know how to set that up, don't
+  worry!  The [`restyled.io` bot](https://restyled.io/) automatically
+  reformats pull requests as necessary.
 
 * If you are a repository contributor (see [I have push access to the
   Swarm repository, now
