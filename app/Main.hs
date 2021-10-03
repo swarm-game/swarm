@@ -15,31 +15,44 @@ import System.Exit
 
 data CLI
   = Run
-  | Format FilePath
+  | Format Input
   | LSP
 
 cliParser :: Parser CLI
 cliParser =
   subparser
-    ( command "format" (info format (progDesc "Format a file"))
+    ( command "format" (info (format <**> helper) (progDesc "Format a file"))
         <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
     )
     <|> pure Run
  where
-  format = Format <$> strArgument (metavar "FILE")
+  format =
+    (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
+      <|> (Format . File <$> strArgument (metavar "FILE"))
 
 cliInfo :: ParserInfo CLI
 cliInfo = info (cliParser <**> helper) (fullDesc <> header "Swarm game")
 
 -- | Utility function to validate and format swarm-lang code
-formatFile :: FilePath -> Text -> IO ()
-formatFile fp content = do
+data Input = Stdin | File FilePath
+
+getInput :: Input -> IO Text
+getInput Stdin = Text.getContents
+getInput (File fp) = Text.readFile fp
+
+showInput :: Input -> Text
+showInput Stdin = "(input)"
+showInput (File fp) = pack fp
+
+formatFile :: Input -> IO ()
+formatFile input = do
+  content <- getInput input
   case processTerm content of
     Right _ -> do
       Text.putStrLn content
       exitSuccess
     Left e -> do
-      Text.putStrLn $ pack fp <> ":" <> e
+      Text.putStrLn $ showInput input <> ":" <> e
       exitFailure
 
 main :: IO ()
@@ -47,5 +60,5 @@ main = do
   cli <- execParser cliInfo
   case cli of
     Run -> appMain
-    Format fp -> formatFile fp =<< Text.readFile fp
+    Format fo -> formatFile fo
     LSP -> lspMain
