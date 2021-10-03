@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.11.20210222
+# version: 0.13.20210901
 #
-# REGENDATA ("0.11.20210222",["github","swarm.cabal"])
+# REGENDATA ("0.13.20210901",["github","swarm.cabal"])
 #
 name: Haskell-CI
 on:
@@ -20,7 +20,7 @@ jobs:
   linux:
     # when changing the name or adding ghc version, please don't forget to update
     # the .mergify.yml rules at the root of the project.
-    name: Haskell-CI - Linux - GHC ${{ matrix.ghc }}
+    name: Haskell-CI - Linux - ${{ matrix.compiler }}
     runs-on: ubuntu-18.04
     container:
       image: buildpack-deps:bionic
@@ -28,41 +28,52 @@ jobs:
     strategy:
       matrix:
         include:
-          - ghc: 9.0.1
+          - compiler: ghc-9.0.1
+            compilerKind: ghc
+            compilerVersion: 9.0.1
+            setup-method: hvr-ppa
             allow-failure: false
-          - ghc: 8.10.4
+          - compiler: ghc-8.10.4
+            compilerKind: ghc
+            compilerVersion: 8.10.4
+            setup-method: hvr-ppa
             allow-failure: false
       fail-fast: false
     steps:
       - name: apt
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common
+          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
           apt-add-repository -y 'ppa:hvr/ghc'
           apt-get update
-          apt-get install -y ghc-$GHC_VERSION cabal-install-3.4
+          apt-get install -y "$HCNAME" cabal-install-3.4
         env:
-          GHC_VERSION: ${{ matrix.ghc }}
+          HCKIND: ${{ matrix.compilerKind }}
+          HCNAME: ${{ matrix.compiler }}
+          HCVER: ${{ matrix.compilerVersion }}
       - name: Set PATH and environment variables
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-          echo "LANG=C.UTF-8" >> $GITHUB_ENV
-          echo "CABAL_DIR=$HOME/.cabal" >> $GITHUB_ENV
-          echo "CABAL_CONFIG=$HOME/.cabal/config" >> $GITHUB_ENV
-          HC=/opt/ghc/$GHC_VERSION/bin/ghc
-          echo "HC=$HC" >> $GITHUB_ENV
-          echo "HCPKG=/opt/ghc/$GHC_VERSION/bin/ghc-pkg" >> $GITHUB_ENV
-          echo "HADDOCK=/opt/ghc/$GHC_VERSION/bin/haddock" >> $GITHUB_ENV
-          echo "CABAL=/opt/cabal/3.4/bin/cabal -vnormal+nowrap" >> $GITHUB_ENV
+          echo "LANG=C.UTF-8" >> "$GITHUB_ENV"
+          echo "CABAL_DIR=$HOME/.cabal" >> "$GITHUB_ENV"
+          echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
+          HCDIR=/opt/$HCKIND/$HCVER
+          HC=$HCDIR/bin/$HCKIND
+          echo "HC=$HC" >> "$GITHUB_ENV"
+          echo "HCPKG=$HCDIR/bin/$HCKIND-pkg" >> "$GITHUB_ENV"
+          echo "HADDOCK=$HCDIR/bin/haddock" >> "$GITHUB_ENV"
+          echo "CABAL=/opt/cabal/3.4/bin/cabal -vnormal+nowrap" >> "$GITHUB_ENV"
           HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
-          echo "HCNUMVER=$HCNUMVER" >> $GITHUB_ENV
-          echo "ARG_TESTS=--enable-tests" >> $GITHUB_ENV
-          echo "ARG_BENCH=--enable-benchmarks" >> $GITHUB_ENV
-          echo "HEADHACKAGE=false" >> $GITHUB_ENV
-          echo "ARG_COMPILER=--ghc --with-compiler=$HC --flags=ci" >> $GITHUB_ENV
-          echo "GHCJSARITH=0" >> $GITHUB_ENV
+          echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
+          echo "ARG_TESTS=--enable-tests" >> "$GITHUB_ENV"
+          echo "ARG_BENCH=--enable-benchmarks" >> "$GITHUB_ENV"
+          echo "HEADHACKAGE=false" >> "$GITHUB_ENV"
+          echo "ARG_COMPILER=--$HCKIND --with-compiler=$HC" >> "$GITHUB_ENV"
+          echo "GHCJSARITH=0" >> "$GITHUB_ENV"
         env:
-          GHC_VERSION: ${{ matrix.ghc }}
+          HCKIND: ${{ matrix.compilerKind }}
+          HCNAME: ${{ matrix.compiler }}
+          HCVER: ${{ matrix.compilerVersion }}
       - name: env
         run: |
           env
@@ -123,7 +134,8 @@ jobs:
       - name: generate cabal.project
         run: |
           PKGDIR_swarm="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/swarm-[0-9.]*')"
-          echo "PKGDIR_swarm=${PKGDIR_swarm}" >> $GITHUB_ENV
+          echo "PKGDIR_swarm=${PKGDIR_swarm}" >> "$GITHUB_ENV"
+          rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
           echo "packages: ${PKGDIR_swarm}" >> cabal.project
@@ -141,9 +153,9 @@ jobs:
       - name: cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+          restore-keys: ${{ runner.os }}-${{ matrix.compiler }}-
       - name: install dependencies
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --dependencies-only -j2 all
@@ -154,6 +166,9 @@ jobs:
       - name: build
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
+      - name: tests
+        run: |
+          $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
       - name: cabal check
         run: |
           cd ${PKGDIR_swarm} || false

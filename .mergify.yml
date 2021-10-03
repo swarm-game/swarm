@@ -6,8 +6,8 @@ pull_request_rules:
       commit_message: title+body
   name: Automatically merge pull requests
   conditions:
-  - check-success=Haskell-CI - Linux - GHC 9.0.1
-  - check-success=Haskell-CI - Linux - GHC 8.10.4
+  - check-success=Haskell-CI - Linux - ghc-9.0.1
+  - check-success=Haskell-CI - Linux - ghc-8.10.4
   - label=merge me
   - ! '#approved-reviews-by>=1'
   - ! '#changes-requested-reviews-by=0'
