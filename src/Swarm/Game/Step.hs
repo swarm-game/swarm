@@ -867,21 +867,15 @@ execConst c vs k = do
     -- "./path/to/file.sw" and "./path/to/file"
     Run -> case vs of
       [VString fileName] -> do
-        mf <- liftIO $ readFileMay (into filePath)
+        mf <- liftIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
 
-        f <- mf `isJustOr` cmdExn Run ["File not found:", filePath]
+        f <- msum mf `isJustOr` cmdExn Run ["File not found:", fileName]
 
         t <-
           processTerm (into @Text f) `isRightOr` \err ->
-            cmdExn Run ["Error in", filePath, "\n", err]
+            cmdExn Run ["Error in", fileName, "\n", err]
 
         return $ initMachine' t empty k
-       where
-        hasExtension = T.isSuffixOf ".sw" fileName
-        filePath =
-          if hasExtension
-            then fileName
-            else T.append fileName ".sw"
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) k
