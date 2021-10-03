@@ -322,18 +322,19 @@ populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   search <- use (uiSearch)
-  let mkInvEntry (n,e) = InventoryEntry n e
-      itemList label
-        = (\case { [] -> []; xs -> Separator label : xs })
-        . map mkInvEntry
-        . filter (T.isPrefixOf search . view entityName . snd)
-        . sortOn (view entityName . snd)
-        . elems
-      allItems = (r ^. robotInventory . to (itemList "Inventory"))
-              ++ (r ^. installedDevices . to (itemList "Installed devices"))
+  let mkInvEntry (n, e) = InventoryEntry n e
+      itemList label =
+        (\case [] -> []; xs -> Separator label : xs)
+          . map mkInvEntry
+          . filter (T.isPrefixOf search . view entityName . snd)
+          . sortOn (view entityName . snd)
+          . elems
+      allItems =
+        (r ^. robotInventory . to (itemList "Inventory"))
+          ++ (r ^. installedDevices . to (itemList "Installed devices"))
       items
         | T.null search = allItems
-        | otherwise     = (Separator $ "Search: " <> search) : allItems
+        | otherwise = (Separator $ "Search: " <> search) : allItems
 
       -- Attempt to keep the selected element steady.
       sel = mList >>= BL.listSelectedElement -- Get the currently selected element+index.

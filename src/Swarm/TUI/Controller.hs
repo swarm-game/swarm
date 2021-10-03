@@ -118,7 +118,7 @@ handleEvent s ev = do
           Just WorldPanel -> handleWorldEvent s ev
           Just InfoPanel
             | s ^. uiState . uiSearching -> handleSearchingEvent s ev
-            | otherwise                  -> handleInfoPanelEvent s ev
+            | otherwise -> handleInfoPanelEvent s ev
           _ -> continueWithoutRedraw s
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
@@ -509,10 +509,8 @@ handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
               & gameState . replStatus .~ REPLWorking mkTy Nothing
               & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
         _ -> continueWithoutRedraw s
-
-handleInfoPanelEvent s (VtyEvent (V.EvKey (V.KChar '/') []))
-  = continue $ s & uiState . uiSearching .~ True
-
+handleInfoPanelEvent s (VtyEvent (V.EvKey (V.KChar '/') [])) =
+  continue $ s & uiState . uiSearching .~ True
 handleInfoPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList of
@@ -525,26 +523,26 @@ handleInfoPanelEvent s _ = continueWithoutRedraw s
 
 -- | Handle user input events searching in the info panel.
 handleSearchingEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleSearchingEvent s (VtyEvent (V.EvKey V.KEsc []))
-  = continue $ s & uiState . uiSearching .~ False
-                 & uiState . uiSearch .~ ""
-                 & uiState . uiInventory . _Just . _1 .~ 0
-
-handleSearchingEvent s (VtyEvent (V.EvKey V.KEnter []))
-  = continue $ s & uiState . uiSearching .~ False
-                 & uiState . uiInventory . _Just . _1 .~ 0
-
-handleSearchingEvent s (VtyEvent (V.EvKey (V.KChar c) []))
-  = continue $ s & uiState . uiSearch %~ (`T.snoc` c)
-                 & uiState . uiInventory . _Just . _1 .~ 0
-
-handleSearchingEvent s (VtyEvent (V.EvKey V.KBS []))
-  = continue $ s & uiState . uiSearch %~ safeTextInit
-                 & uiState . uiInventory . _Just . _1 .~ 0
-
+handleSearchingEvent s (VtyEvent (V.EvKey V.KEsc [])) =
+  continue $
+    s & uiState . uiSearching .~ False
+      & uiState . uiSearch .~ ""
+      & uiState . uiInventory . _Just . _1 .~ 0
+handleSearchingEvent s (VtyEvent (V.EvKey V.KEnter [])) =
+  continue $
+    s & uiState . uiSearching .~ False
+      & uiState . uiInventory . _Just . _1 .~ 0
+handleSearchingEvent s (VtyEvent (V.EvKey (V.KChar c) [])) =
+  continue $
+    s & uiState . uiSearch %~ (`T.snoc` c)
+      & uiState . uiInventory . _Just . _1 .~ 0
+handleSearchingEvent s (VtyEvent (V.EvKey V.KBS [])) =
+  continue $
+    s & uiState . uiSearch %~ safeTextInit
+      & uiState . uiInventory . _Just . _1 .~ 0
 handleSearchingEvent s _ = continueWithoutRedraw s
 
 safeTextInit :: T.Text -> T.Text
 safeTextInit t
-  | T.null t  = t
+  | T.null t = t
   | otherwise = T.init t
