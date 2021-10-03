@@ -199,6 +199,11 @@ already comfortable contributing to open source, you can skip to the [Convention
    rather than working in your own fork. For more information, see
    [I have push access to the Swarm repository, now what?](#i-have-push-access-to-the-swarm-repository-now-what).
 
+As a note, if you want to use the Stack tool with [HLS](https://github.com/haskell/haskell-language-server),
+check the `hie.yaml.stack` file. Pure Cabal should work fine with the defaults,
+but you might want to [add a GHC flag](https://haskell-language-server.readthedocs.io/en/latest/features.html)
+to build docs into `cabal.project.local`.
+
 ### Conventions
 
 We follow a few conventions to help keep everyone on the same page.
