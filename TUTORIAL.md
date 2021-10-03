@@ -227,6 +227,11 @@ Let's build a robot to learn about those green `T` things to the west:
 ```
 build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"; selfdestruct}
 ```
+The `turn` command causes a robot to turn, of course. It takes a
+direction as an argument, which can be either an absolute direction
+(`north`, `south`, `east`, or `west`) or a relative direction
+(`forward`, `back`, `left`, `right`, or `down`).
+
 Notice that the robot did not actually need to walk on top of a `T` to
 learn about it, since it could `scan west` to scan the cell one unit
 to the west (you can also `scan down` to scan the item underneath the
@@ -252,10 +257,7 @@ So those tree things look pretty useful.  Let's get one!
 ```
 build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
 ```
-The `turn` command causes a robot to turn, of course. It takes a
-direction as an argument, which can be either an absolute direction
-(`north`, `south`, `east`, or `west`) or a relative direction
-(`forward`, `back`, `left`, or `right`).  You can also see that the
+You can see that the
 `grab` command returns the name of the thing it grabbed, which is
 especially helpful when grabbing something unknown. (In this case we
 also could have just written `...; grab; ...; give "base" "tree"; ...`.)
@@ -278,12 +280,12 @@ necessary inputs.  In this case we can request to make either a
 `"log"` or a `"branch"`; it doesn't matter which, and we will get the
 same result either way.
 
-![](images/log.png)
-
 Note that since the `make` command takes a `string` as an argument,
 `"log"` has to go in double quotes (otherwise it would be a variable).
 You should now have two branches and a log in your inventory.  Take a
 look at them and see what recipes they enable!
+
+![](images/log.png)
 
 By this time you may also notice that the tree has grown back (whether
 it has finished growing back depends on how long you took to read the

@@ -1,4 +1,22 @@
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
+-- for the Data IntVar instance
+
 -- |
 -- Module      :  Swarm.Language.Types
 -- Copyright   :  Brent Yorgey
@@ -7,76 +25,73 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Types for the Swarm programming language and related utilities.
---
------------------------------------------------------------------------------
+module Swarm.Language.Types (
+  -- * Basic definitions
+  BaseTy (..),
+  Var,
+  TypeF (..),
 
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveFoldable        #-}
-{-# LANGUAGE DeriveFunctor         #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
+  -- * @Type@
+  Type,
+  pattern TyBase,
+  pattern TyVar,
+  pattern TyUnit,
+  pattern TyInt,
+  pattern TyString,
+  pattern TyDir,
+  pattern TyBool,
+  pattern (:*:),
+  pattern (:->:),
+  pattern TyCmd,
 
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-  -- for the Data IntVar instance
+  -- * @UType@
+  UType,
+  pattern UTyBase,
+  pattern UTyVar,
+  pattern UTyUnit,
+  pattern UTyInt,
+  pattern UTyString,
+  pattern UTyDir,
+  pattern UTyBool,
+  pattern UTyProd,
+  pattern UTyFun,
+  pattern UTyCmd,
 
-module Swarm.Language.Types
-  ( -- * Basic definitions
-    BaseTy(..), Var
-  , TypeF(..)
+  -- ** Utilities
+  ucata,
+  mkVarName,
 
-    -- * @Type@
-  , Type
+  -- * Polytypes
+  Poly (..),
+  Polytype,
+  UPolytype,
 
-  , pattern TyBase, pattern TyVar
-  , pattern TyUnit, pattern TyInt, pattern TyString, pattern TyDir, pattern TyBool
-  , pattern (:*:), pattern (:->:)
-  , pattern TyCmd
+  -- * Contexts
+  TCtx,
+  UCtx,
 
-    -- * @UType@
-  , UType
-  , pattern UTyBase, pattern UTyVar
-  , pattern UTyUnit, pattern UTyInt, pattern UTyString, pattern UTyDir, pattern UTyBool
-  , pattern UTyProd, pattern UTyFun
-  , pattern UTyCmd
+  -- * Modules
+  Module (..),
+  TModule,
+  UModule,
+  trivMod,
 
-    -- ** Utilities
+  -- * The 'WithU' class
+  WithU (..),
+) where
 
-  , ucata, mkVarName
+import Control.Unification
+import Control.Unification.IntVar
+import Data.Data (Data)
+import Data.Functor.Fixedpoint
+import Data.Maybe (fromJust)
+import Data.String (IsString (..))
+import Data.Text (Text)
+import qualified Data.Text as T
+import GHC.Generics (Generic1)
+import Witch
 
-    -- * Polytypes
-  , Poly(..), Polytype, UPolytype
-
-    -- * Contexts
-  , TCtx, UCtx
-
-    -- * Modules
-  , Module(..), TModule, UModule, trivMod
-
-    -- * The 'WithU' class
-  , WithU(..)
-
-  ) where
-
-import           Control.Unification
-import           Control.Unification.IntVar
-import           Data.Data                  (Data)
-import           Data.Functor.Fixedpoint
-import           Data.Maybe                 (fromJust)
-import           Data.String                (IsString (..))
-import           Data.Text                  (Text)
-import qualified Data.Text                  as T
-import           GHC.Generics               (Generic1)
-import           Witch
-
-import           Swarm.Language.Context
+import Swarm.Language.Context
 
 ------------------------------------------------------------
 -- Types
@@ -84,11 +99,16 @@ import           Swarm.Language.Context
 
 -- | Base types.
 data BaseTy
-  = BUnit             -- ^ The unit type, with a single inhabitant.
-  | BInt              -- ^ Signed, arbitrary-size integers.
-  | BString           -- ^ Unicode strings.
-  | BDir              -- ^ Directions.
-  | BBool             -- ^ Booleans.
+  = -- | The unit type, with a single inhabitant.
+    BUnit
+  | -- | Signed, arbitrary-size integers.
+    BInt
+  | -- | Unicode strings.
+    BString
+  | -- | Directions.
+    BDir
+  | -- | Booleans.
+    BBool
   deriving (Eq, Ord, Show, Data)
 
 -- | A "structure functor" encoding the shape of type expressions.
@@ -97,12 +117,17 @@ data BaseTy
 --   so that we can work with the @unification-fd@ package (see
 --   https://byorgey.wordpress.com/2021/09/08/implementing-hindley-milner-with-the-unification-fd-library/).
 data TypeF t
-  = TyBaseF BaseTy -- ^ A base type.
-  | TyVarF Var     -- ^ A type variable.
-  | TyCmdF t       -- ^ Commands, with return type.  Note that
-                   --   commands form a monad.
-  | TyProdF t t    -- ^ Product type.
-  | TyFunF t t     -- ^ Function type.
+  = -- | A base type.
+    TyBaseF BaseTy
+  | -- | A type variable.
+    TyVarF Var
+  | -- | Commands, with return type.  Note that
+    --   commands form a monad.
+    TyCmdF t
+  | -- | Product type.
+    TyProdF t t
+  | -- | Function type.
+    TyFunF t t
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic1, Unifiable, Data)
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
@@ -132,7 +157,7 @@ deriving instance Data IntVar
 --   @unification-fd@ package, but since it doesn't provide one, we
 --   define it here.
 ucata :: Functor t => (v -> a) -> (t a -> a) -> UTerm t v -> a
-ucata f _ (UVar v)  = f v
+ucata f _ (UVar v) = f v
 ucata f g (UTerm t) = g (fmap (ucata f g) t)
 
 -- | A quick-and-dirty method for turning an 'IntVar' (used internally
@@ -185,7 +210,7 @@ type UPolytype = Poly UType
 --   contain definitions ('Swarm.Language.Syntax.TDef').  A module
 --   contains the overall type of the expression, as well as the
 --   context giving the types of any defined variables.
-data Module s t = Module { moduleTy :: s, moduleCtx :: Ctx t }
+data Module s t = Module {moduleTy :: s, moduleCtx :: Ctx t}
   deriving (Show, Eq, Functor, Data)
 
 -- | A 'TModule' is the final result of the type inference process on
@@ -226,7 +251,7 @@ class WithU t where
   -- | Convert from @t@ to its associated "@U@-version".  This
   --   direction is always safe (we simply have no unification
   --   variables even though the type allows it).
-  toU   :: t -> U t
+  toU :: t -> U t
 
   -- | Convert from the associated "@U@-version" back to @t@.
   --   Generally, this direction requires somehow knowing that there
@@ -258,19 +283,19 @@ pattern TyVar :: Var -> Type
 pattern TyVar v = Fix (TyVarF v)
 
 pattern TyUnit :: Type
-pattern TyUnit   = Fix (TyBaseF BUnit)
+pattern TyUnit = Fix (TyBaseF BUnit)
 
 pattern TyInt :: Type
-pattern TyInt    = Fix (TyBaseF BInt)
+pattern TyInt = Fix (TyBaseF BInt)
 
 pattern TyString :: Type
 pattern TyString = Fix (TyBaseF BString)
 
 pattern TyDir :: Type
-pattern TyDir    = Fix (TyBaseF BDir)
+pattern TyDir = Fix (TyBaseF BDir)
 
 pattern TyBool :: Type
-pattern TyBool   = Fix (TyBaseF BBool)
+pattern TyBool = Fix (TyBaseF BBool)
 
 infixl 6 :*:
 
@@ -292,19 +317,19 @@ pattern UTyVar :: Var -> UType
 pattern UTyVar v = UTerm (TyVarF v)
 
 pattern UTyUnit :: UType
-pattern UTyUnit   = UTerm (TyBaseF BUnit)
+pattern UTyUnit = UTerm (TyBaseF BUnit)
 
 pattern UTyInt :: UType
-pattern UTyInt    = UTerm (TyBaseF BInt)
+pattern UTyInt = UTerm (TyBaseF BInt)
 
 pattern UTyString :: UType
 pattern UTyString = UTerm (TyBaseF BString)
 
 pattern UTyDir :: UType
-pattern UTyDir    = UTerm (TyBaseF BDir)
+pattern UTyDir = UTerm (TyBaseF BDir)
 
 pattern UTyBool :: UType
-pattern UTyBool   = UTerm (TyBaseF BBool)
+pattern UTyBool = UTerm (TyBaseF BBool)
 
 pattern UTyProd :: UType -> UType -> UType
 pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)
