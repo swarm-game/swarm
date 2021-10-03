@@ -145,6 +145,7 @@ test-suite swarm-unit
                       tasty-hunit                   >= 0.10 && < 0.11,
                       -- Import shared with the library don't need bounds
                       base,
+                      lens,
                       swarm,
                       text
 
