@@ -237,7 +237,8 @@ drawMenu isPaused viewingBase mode =
     , ("Tab", "cycle panels")
     ]
   keyCmdsFor (Just REPLPanel) =
-    [ ("Enter", "execute")
+    [ ("↓↑", "history")
+    , ("Enter", "execute")
     ]
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll")
