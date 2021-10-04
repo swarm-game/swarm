@@ -68,6 +68,7 @@ module Swarm.Game.Entity (
   -- ** Lookup
   lookup,
   lookupByName,
+  countByName,
   contains,
   elems,
 
@@ -95,7 +96,7 @@ import qualified Data.IntSet as IS
 import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromMaybe, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -482,10 +483,21 @@ lookup :: Entity -> Inventory -> Count
 lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 
 -- | Look up an entity by name in an inventory, returning a list of
---   matching entities.
+--   matching entities.  Note, if this returns some entities, it does
+--   *not* mean we necessarily have any in our inventory!  It just
+--   means we *know about* them.  If you want to know whether you have
+--   any, use 'lookup' and see whether the resulting 'Count' is
+--   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
 lookupByName name (Inventory cs byN) =
   maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
+
+-- | Look up an entity by name and see how many there are in the
+--   inventory.  If there are multiple entities with the same name, it
+--   just picks the first one returned from 'lookupByName'.
+countByName :: Text -> Inventory -> Count
+countByName name inv = fromMaybe 0 $
+  flip lookup inv <$> listToMaybe (lookupByName name inv)
 
 -- | The empty inventory.
 empty :: Inventory
@@ -513,7 +525,7 @@ insertCount cnt e (Inventory cs byN) =
     (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (cnt, e) cs)
     (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
 
--- | Check whether an inventory contains a given entity.
+-- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
 contains inv e = lookup e inv > 0
 
