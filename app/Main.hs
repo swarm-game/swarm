@@ -30,7 +30,7 @@ cliParser =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
   seed :: Parser Int
-  seed = option auto ( long "seed" <> short 's' <> value 0)
+  seed = option auto (long "seed" <> short 's' <> value 0)
 
 cliInfo :: ParserInfo CLI
 cliInfo = info (cliParser <**> helper) (fullDesc <> header "Swarm game")

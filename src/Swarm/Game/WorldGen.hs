@@ -105,7 +105,8 @@ findGoodOrigin f = \(Coords (r, c)) -> f (Coords (r + rOffset, c + cOffset))
   (rOffset, cOffset) = fromMaybe (error "the impossible happened, no offsets were found") offsets
   offsets = find isGoodPlace (enumerate (int' >< int'))
   hasEntity mayE = (== mayE) . snd . f . Coords
-  isGoodPlace cs = hasEntity Nothing cs
-    && any (hasEntity (Just "tree")) (neighbors cs)
-    && all (\c -> hasEntity (Just "tree") c || hasEntity Nothing c) (neighbors cs)
-  neighbors (x,y) = (,) <$> [x-1..x+1] <*> [y-1..y+1]
+  isGoodPlace cs =
+    hasEntity Nothing cs
+      && any (hasEntity (Just "tree")) (neighbors cs)
+      && all (\c -> hasEntity (Just "tree") c || hasEntity Nothing c) (neighbors cs)
+  neighbors (x, y) = (,) <$> [x -1 .. x + 1] <*> [y -1 .. y + 1]

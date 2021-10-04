@@ -72,7 +72,7 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
-import Swarm.Game.WorldGen (findGoodOrigin, testWorld2, Seed)
+import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -336,9 +336,9 @@ initGameState seed = do
       , _recipesIn = inRecipeMap recipes
       , _world =
           W.newWorld
-          . fmap ((lkup entities <$>) . first fromEnum)
-          . findGoodOrigin
-          $ testWorld2 seed
+            . fmap ((lkup entities <$>) . first fromEnum)
+            . findGoodOrigin
+            $ testWorld2 seed
       , _viewCenterRule = VCRobot baseName
       , _viewCenter = V2 0 0
       , _needsRedraw = False
