@@ -70,13 +70,12 @@ gameTick :: (MonadState GameState m, MonadIO m) => m ()
 gameTick = do
   wakeUpRobotsDoneSleeping
   robotNames <- use activeRobots
-  time <- use ticks
   forM_ robotNames $ \rn -> do
     mr <- uses robotMap (M.lookup rn)
     case mr of
       Nothing -> return ()
       Just curRobot -> do
-        curRobot' <- tickRobot time curRobot
+        curRobot' <- tickRobot curRobot
         case curRobot' ^. selfDestruct of
           True -> deleteRobot rn
           False -> robotMap %= M.insert rn curRobot'
@@ -185,29 +184,29 @@ withExceptions k m = do
 -- | Run a robot for one tick, which may consist of up to
 --   'evalStepsPerTick' CEK machine steps and at most one command
 --   execution.
-tickRobot :: (MonadState GameState m, MonadIO m) => Integer -> Robot -> m Robot
-tickRobot time = tickRobotRec time . (tickSteps .~ evalStepsPerTick)
+tickRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
+tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
 
 -- | Recursive helper function for 'tickRobot', which checks if the
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-tickRobotRec :: (MonadState GameState m, MonadIO m) => Integer -> Robot -> m Robot
-tickRobotRec time r
+tickRobotRec :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
+tickRobotRec r
   | not (isActive r) || r ^. tickSteps <= 0 = return r
-  | otherwise = stepRobot time r >>= tickRobotRec time
+  | otherwise = stepRobot r >>= tickRobotRec
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CEK machine for one step.
-stepRobot :: (MonadState GameState m, MonadIO m) => Integer -> Robot -> m Robot
-stepRobot time r = do
-  (cek', r') <- runStateT (stepCEK time (r ^. machine)) (r & tickSteps -~ 1)
+stepRobot :: (MonadState GameState m, MonadIO m) => Robot -> m Robot
+stepRobot r = do
+  (cek', r') <- runStateT (stepCEK (r ^. machine)) (r & tickSteps -~ 1)
   return $ r' & machine .~ cek'
 
 -- | The main CEK machine workhorse.  Given a robot, look at its CEK
 --   machine state and figure out a single next step.
-stepCEK :: (MonadState GameState m, MonadIO m) => Integer -> CEK -> StateT Robot m CEK
-stepCEK time cek = case cek of
+stepCEK :: (MonadState GameState m, MonadIO m) => CEK -> StateT Robot m CEK
+stepCEK cek = case cek of
   -- (liftIO $ appendFile "out.txt" (prettyCEK cek)) >>
 
   -- It's a little unsatisfactory the way we handle having both Robot
@@ -224,9 +223,12 @@ stepCEK time cek = case cek of
 
   -- We wake up robots whose wake-up time has been reached. If it hasn't yet
   -- then stepCEK is a no-op.
-  Waiting wakeupTime cek'
-    | wakeupTime == time -> stepCEK time cek'
-    | otherwise -> return cek
+  Waiting wakeupTime cek' -> do
+    time <- lift $ use ticks
+    if wakeupTime == time
+      then stepCEK cek'
+      else return cek
+
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ k -> return $ Out VUnit k
@@ -269,7 +271,7 @@ stepCEK time cek = case cek of
   Out v2 (FApp (VCApp c args) : k)
     | not (isCmd c)
         && arity c == length args + 1 ->
-      evalConst time c (reverse (v2 : args)) k
+      evalConst c (reverse (v2 : args)) k
     | otherwise -> return $ Out (VCApp c (v2 : args)) k
   Out _ (FApp _ : _) -> badMachineState "FApp of non-function"
   -- To evaluate let expressions, we start by focusing on the
@@ -310,7 +312,7 @@ stepCEK time cek = case cek of
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) (FExec : k) -> do
     when (takesTick c) $ tickSteps .= 0
-    res <- runExceptT (execConst time c (reverse args) k)
+    res <- runExceptT (execConst c (reverse args) k)
     case res of
       Left exn -> return $ Up exn k
       Right cek' -> return cek'
@@ -413,9 +415,9 @@ takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, GetX, GetY, B
 --   trying to use a function constant without the proper capability
 --   (for example, trying to use `if` without having a conditional
 --   device).  Any other exceptions constitute a bug.
-evalConst :: (MonadState GameState m, MonadIO m) => Integer -> Const -> [Value] -> Cont -> StateT Robot m CEK
-evalConst time c vs k = do
-  res <- runExceptT $ execConst time c vs k
+evalConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> StateT Robot m CEK
+evalConst c vs k = do
+  res <- runExceptT $ execConst c vs k
   case res of
     Left exn@Fatal {} -> return $ Up exn k
     Left exn@Incapable {} -> return $ Up exn k
@@ -446,8 +448,8 @@ seedProgram minTime randTime thing =
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
-execConst :: (MonadState GameState m, MonadIO m) => Integer -> Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
-execConst time c vs k = do
+execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
+execConst c vs k = do
   -- First, ensure the robot is capable of executing/evaluating this constant.
   ensureCanExecute c
 
@@ -458,7 +460,9 @@ execConst time c vs k = do
       [v] -> return $ Out v k
       _ -> badConst
     Wait -> case vs of
-      [VInt d] -> return $ Waiting (time + d) (Out VUnit k)
+      [VInt d] -> do
+        time <- lift . lift $ use ticks
+        return $ Waiting (time + d) (Out VUnit k)
       _ -> badConst
     Selfdestruct -> do
       selfDestruct .= True
