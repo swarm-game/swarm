@@ -407,13 +407,13 @@ wakeUpRobotsDoneSleeping = do
 deleteRobot :: MonadState GameState m => Text -> m ()
 deleteRobot rn = do
   mrobot <- robotMap . at rn <<.= Nothing
-  let robot = fromMaybe (error "expected robot to exist") mrobot
-  -- Currently the only way to delete a robot is to self-destruct, so
-  -- deleteRobot should always be called on an active robot. But we prepare
-  -- for the future.
-  -- We could blindly delete the robot from both waitingRobots and activeRobots
-  -- but deleting from waitingRobots is costly, even more so if you don't know
-  -- the key.
-  case waitingUntil robot of
-    Nothing -> internalActiveRobots %= S.delete rn
-    Just time -> waitingRobots . ix time %= filter (/= rn)
+  mrobot `forM_` \robot ->
+    -- Currently the only way to delete a robot is to self-destruct, so
+    -- deleteRobot should always be called on an active robot. But we prepare
+    -- for the future.
+    -- We could blindly delete the robot from both waitingRobots and activeRobots
+    -- but deleting from waitingRobots is costly, even more so if you don't know
+    -- the key.
+    case waitingUntil robot of
+      Nothing -> internalActiveRobots %= S.delete rn
+      Just time -> waitingRobots . ix time %= filter (/= rn)
