@@ -717,7 +717,7 @@ execConst c vs k = do
     Random -> case vs of
       [VInt hi] -> do
         rand <- lift . lift $ use randGen
-        let (n,g) = uniformR (0, hi -1) rand
+        let (n, g) = uniformR (0, hi -1) rand
         lift . lift $ randGen .= g
         return $ Out (VInt n) k
       _ -> badConst

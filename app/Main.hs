@@ -34,10 +34,13 @@ cliParser =
   seed = option auto (long "seed" <> short 's' <> value 0 <> help "Seed for world generation")
 
 cliInfo :: ParserInfo CLI
-cliInfo = info (cliParser <**> helper)
-  (header "Swarm game - pre-alpha version"
-    <> progDesc "To play the game simply run without any command."
-    <> fullDesc)
+cliInfo =
+  info
+    (cliParser <**> helper)
+    ( header "Swarm game - pre-alpha version"
+        <> progDesc "To play the game simply run without any command."
+        <> fullDesc
+    )
 
 data Input = Stdin | File FilePath
 
