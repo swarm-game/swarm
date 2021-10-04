@@ -49,7 +49,7 @@ mkTrees numTrees = do
   rn1s <- replicateM numTrees (randomRIO (0, 99))
   rn2s <- replicateM numTrees (randomRIO (0, 99))
   let robots = zipWith3 mkTreeBot [V2 x 0 | x <- [0 ..]] rn1s rn2s
-  Right initState <- runExceptT initGameState
+  Right initState <- runExceptT (initGameState 0)
   execStateT (mapM_ addRobot robots) initState
 
 -- | Runs numGameTicks ticks of the game.

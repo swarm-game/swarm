@@ -14,7 +14,7 @@ import Swarm.Language.Pipeline (processTerm)
 import System.Exit
 
 data CLI
-  = Run
+  = Run Int
   | Format Input
   | LSP
 
@@ -24,11 +24,13 @@ cliParser =
     ( command "format" (info (format <**> helper) (progDesc "Format a file"))
         <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
     )
-    <|> pure Run
+    <|> Run <$> seed
  where
   format =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
+  seed :: Parser Int
+  seed = option auto ( long "seed" <> short 's' <> value 0)
 
 cliInfo :: ParserInfo CLI
 cliInfo = info (cliParser <**> helper) (fullDesc <> header "Swarm game")
@@ -59,6 +61,6 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run -> appMain
+    Run seed -> appMain seed
     Format fo -> formatFile fo
     LSP -> lspMain
