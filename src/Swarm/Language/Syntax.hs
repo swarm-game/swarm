@@ -346,7 +346,7 @@ constInfo c = case c of
   Scan -> commandLow 0
   Upload -> commandLow 1
   Ishere -> commandLow 1
-  Self   -> commandLow 0
+  Self -> commandLow 0
   Random -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1
