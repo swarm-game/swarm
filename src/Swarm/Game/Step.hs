@@ -227,7 +227,6 @@ stepCEK time cek = case cek of
   Waiting wakeupTime cek'
     | wakeupTime == time -> stepCEK time cek'
     | otherwise -> return cek
-
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ k -> return $ Out VUnit k
