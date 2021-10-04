@@ -38,9 +38,9 @@ app =
 
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
-appMain :: IO ()
-appMain = do
-  res <- runExceptT initAppState
+appMain :: Seed -> IO ()
+appMain seed = do
+  res <- runExceptT $ initAppState seed
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do

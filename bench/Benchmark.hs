@@ -40,8 +40,8 @@ mkTreeBot :: V2 Int64 -> Integer -> Integer -> Robot
 mkTreeBot loc rn1 rn2 =
   mkRobot "tree" loc (V2 0 0) machine []
     & systemRobot .~ True
-  where
-    machine = initMachine (treeProgram rn1 rn2) Context.empty
+ where
+  machine = initMachine (treeProgram rn1 rn2) Context.empty
 
 -- | Creates a GameState with numTrees trees with random growing rates.
 mkTrees :: Int -> IO GameState
@@ -49,7 +49,7 @@ mkTrees numTrees = do
   rn1s <- replicateM numTrees (randomRIO (0, 99))
   rn2s <- replicateM numTrees (randomRIO (0, 99))
   let robots = zipWith3 mkTreeBot [V2 x 0 | x <- [0 ..]] rn1s rn2s
-  Right initState <- runExceptT initGameState
+  Right initState <- runExceptT (initGameState 0)
   execStateT (mapM_ addRobot robots) initState
 
 -- | Runs numGameTicks ticks of the game.
@@ -67,8 +67,8 @@ main = do
   defaultMain
     [ bgroup
         "run 1000 game ticks"
-        [ bench "10 trees" $ whnfIO (runGame 1000 trees10),
-          bench "20 trees" $ whnfIO (runGame 1000 trees20),
-          bench "30 trees" $ whnfIO (runGame 1000 trees30)
+        [ bench "10 trees" $ whnfIO (runGame 1000 trees10)
+        , bench "20 trees" $ whnfIO (runGame 1000 trees20)
+        , bench "30 trees" $ whnfIO (runGame 1000 trees30)
         ]
     ]

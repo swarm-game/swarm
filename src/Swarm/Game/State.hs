@@ -21,6 +21,7 @@ module Swarm.Game.State (
   REPLStatus (..),
   RunStatus (..),
   GameState,
+  Seed,
   initGameState,
 
   -- ** GameState fields
@@ -71,7 +72,7 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
-import Swarm.Game.WorldGen (findGoodOrigin, testWorld2)
+import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -304,8 +305,8 @@ addRobot r = do
 
 -- | Create an initial game state record, first loading entities and
 --   recipies from disk.
-initGameState :: ExceptT Text IO GameState
-initGameState = do
+initGameState :: Seed -> ExceptT Text IO GameState
+initGameState seed = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -322,6 +323,7 @@ initGameState = do
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
 
   let baseName = "base"
+  liftIO $ putStrLn ("Using seed... " <> show seed)
 
   return $
     GameState
@@ -333,7 +335,10 @@ initGameState = do
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
       , _world =
-          W.newWorld . fmap ((lkup entities <$>) . first fromEnum) . findGoodOrigin $ testWorld2
+          W.newWorld
+            . fmap ((lkup entities <$>) . first fromEnum)
+            . findGoodOrigin
+            $ testWorld2 seed
       , _viewCenterRule = VCRobot baseName
       , _viewCenter = V2 0 0
       , _needsRedraw = False
