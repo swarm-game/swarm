@@ -11,3 +11,5 @@ stack.yaml.lock
 stan.html
 
 .swarm_history
+
+result

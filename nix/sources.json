@@ -1,0 +1,74 @@
+{
+    "dependent": {
+        "branch": "master",
+        "description": "Dependent sums and supporting typeclasses for comparing and displaying them",
+        "homepage": "",
+        "owner": "obsidiansystems",
+        "repo": "dependent-sum",
+        "rev": "080b089f2951cd5851cee0d62f81d6ac7b1e2028",
+        "sha256": "0van8l06nq2nnaavx1s7z82faf5bd7iicqppwqrk82qv1j4hswfk",
+        "type": "tarball",
+        "url": "https://github.com/obsidiansystems/dependent-sum/archive/080b089f2951cd5851cee0d62f81d6ac7b1e2028.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "haskell-hls-nix": {
+        "branch": "main",
+        "description": "Nix builds of Haskell Language Server",
+        "homepage": "",
+        "owner": "shajra",
+        "repo": "haskell-hls-nix",
+        "rev": "0056e1096adae22fac8a5dfb272567f216f1d231",
+        "sha256": "1qwiv199sib7f3qnf81xx3dk10nplcgrsqgvb0xp5i9psg1fxrak",
+        "type": "tarball",
+        "url": "https://github.com/shajra/haskell-hls-nix/archive/0056e1096adae22fac8a5dfb272567f216f1d231.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hsnoise": {
+        "branch": "master",
+        "description": "A coherent 3d noise library in Haskell.",
+        "homepage": "",
+        "owner": "colinhect",
+        "repo": "hsnoise",
+        "rev": "4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d",
+        "sha256": "054az3r243xp1wrbha2fjbl6syr99765d3rrp5an98lkpmfvxc38",
+        "type": "tarball",
+        "url": "https://github.com/colinhect/hsnoise/archive/4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "niv": {
+        "branch": "master",
+        "description": "Easy dependency management for Nix projects",
+        "homepage": "https://github.com/nmattia/niv",
+        "owner": "nmattia",
+        "repo": "niv",
+        "rev": "65a61b147f307d24bfd0a5cd56ce7d7b7cc61d2e",
+        "sha256": "17mirpsx5wyw262fpsd6n6m47jcgw8k2bwcp1iwdnrlzy4dhcgqh",
+        "type": "tarball",
+        "url": "https://github.com/nmattia/niv/archive/65a61b147f307d24bfd0a5cd56ce7d7b7cc61d2e.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "release-21.05",
+        "description": "Nix Packages collection",
+        "homepage": "",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e13415439621ab8cc41b0e76a9dd623c3baeb8ac",
+        "sha256": "0gy1zxkvglc0vpxg6w3jf8m367zqazx0k9d8c8yrpq8c54ib7x6j",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/e13415439621ab8cc41b0e76a9dd623c3baeb8ac.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "th-extras": {
+        "branch": "master",
+        "description": "A grab bag of useful functions for use with Template Haskell",
+        "homepage": "",
+        "owner": "mokus0",
+        "repo": "th-extras",
+        "rev": "0d050b24ec5ef37c825b6f28ebd46787191e2a2d",
+        "sha256": "045f36yagrigrggvyb96zqmw8y42qjsllhhx2h20q25sk5h44xsd",
+        "type": "tarball",
+        "url": "https://github.com/mokus0/th-extras/archive/0d050b24ec5ef37c825b6f28ebd46787191e2a2d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}
