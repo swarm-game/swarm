@@ -178,14 +178,12 @@ paused = to (\s -> s ^. runStatus /= Running)
 -- | All the robots that currently exist in the game, indexed by name.
 robotMap :: Lens' GameState (Map Text Robot)
 
--- | The names of the robots that are currently not sleeping. Private.
+-- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState (Set Text)
 activeRobots = internalActiveRobots
 
--- | The names of the robots that are currently not sleeping.
-
 -- | The names of the robots that are currently sleeping, indexed by wake up
--- | time. Private.
+-- | time. Internal.
 waitingRobots :: Lens' GameState (Map Integer [Text])
 
 -- | A counter used to generate globally unique IDs.
@@ -390,14 +388,14 @@ emitMessage msg = do
 ticks :: Lens' GameState Integer
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
--- | queue.
+--   queue.
 sleepUntil :: MonadState GameState m => Text -> Integer -> m ()
 sleepUntil rn time = do
   internalActiveRobots %= S.delete rn
   waitingRobots . at time . non [] %= (rn :)
 
 -- | Removes robots whose wake up time matches the current game ticks count
--- | from the waitingRobots queue and put them back in the activeRobots set.
+--   from the waitingRobots queue and put them back in the activeRobots set.
 wakeUpRobotsDoneSleeping :: MonadState GameState m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks

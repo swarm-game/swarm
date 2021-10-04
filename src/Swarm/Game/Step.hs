@@ -69,16 +69,6 @@ evalStepsPerTick = 100
 gameTick :: (MonadState GameState m, MonadIO m) => m ()
 gameTick = do
   wakeUpRobotsDoneSleeping
-  -- Note, it is tempting to do the below in one line with some clever
-  -- lens combinator, but it's not possible.  We want to do an
-  -- effectful traversal over a piece of the state (i.e. step each
-  -- robot in the robot map, where stepping a robot could have effects
-  -- on the game state), but the problem is the effects could in
-  -- theory include modifying the very state we are traversing over.
-  -- In fact, stepping one robot can even have effects on other robots
-  -- (e.g. if one robot gives an item to another), so we can't even
-  -- use something like M.traverseMaybeWithKey --- we have to get the
-  -- names of all robots and then step them one at a time.
   robotNames <- use activeRobots
   time <- use ticks
   forM_ robotNames $ \rn -> do
@@ -105,6 +95,7 @@ gameTick = do
 
   -- Possibly update the view center.
   modify recalcViewCenter
+  -- Advance the game time by one.
   ticks += 1
 
 ------------------------------------------------------------
@@ -231,10 +222,13 @@ stepCEK time cek = case cek of
   ------------------------------------------------------------
   -- Evaluation
 
+  -- We wake up robots whose wake-up time has been reached. If it hasn't yet
+  -- then stepCEK is a no-op.
   Waiting wakeupTime cek'
     | wakeupTime == time -> stepCEK time cek'
     | otherwise -> return cek
-  -- First some straightforward cases.  These all immediately turn
+
+  -- Now some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ k -> return $ Out VUnit k
   In (TDir d) _ k -> return $ Out (VDir d) k
