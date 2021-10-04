@@ -30,6 +30,7 @@ module Swarm.Game.State (
   paused,
   robotMap,
   gensym,
+  randGen,
   entityMap,
   recipesOut,
   recipesIn,
@@ -75,6 +76,7 @@ import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
 import Swarm.Language.Types
 import Swarm.Util
+import System.Random (StdGen, mkStdGen)
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -127,6 +129,7 @@ data GameState = GameState
   , _runStatus :: RunStatus
   , _robotMap :: Map Text Robot
   , _gensym :: Int
+  , _randGen :: StdGen
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
@@ -163,6 +166,9 @@ robotMap :: Lens' GameState (Map Text Robot)
 
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
+
+-- | Pseudorandom generator initialized at start.
+randGen :: Lens' GameState StdGen
 
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
@@ -331,6 +337,7 @@ initGameState seed = do
       , _runStatus = Running
       , _robotMap = M.singleton baseName (baseRobot baseDevices)
       , _gensym = 0
+      , _randGen = mkStdGen seed
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes

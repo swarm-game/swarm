@@ -34,7 +34,7 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
-import System.Random (randomRIO)
+import System.Random (uniformR)
 import Witch
 import Prelude hiding (lookup)
 
@@ -716,7 +716,9 @@ execConst c vs k = do
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
-        n <- randomRIO (0, hi -1)
+        rand <- lift . lift $ use randGen
+        let (n,g) = uniformR (0, hi -1) rand
+        lift . lift $ randGen .= g
         return $ Out (VInt n) k
       _ -> badConst
     Say -> case vs of
