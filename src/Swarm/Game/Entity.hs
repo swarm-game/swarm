@@ -96,7 +96,7 @@ import qualified Data.IntSet as IS
 import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (isJust, fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -496,8 +496,9 @@ lookupByName name (Inventory cs byN) =
 --   inventory.  If there are multiple entities with the same name, it
 --   just picks the first one returned from 'lookupByName'.
 countByName :: Text -> Inventory -> Count
-countByName name inv = fromMaybe 0 $
-  flip lookup inv <$> listToMaybe (lookupByName name inv)
+countByName name inv =
+  fromMaybe 0 $
+    flip lookup inv <$> listToMaybe (lookupByName name inv)
 
 -- | The empty inventory.
 empty :: Inventory
