@@ -95,6 +95,7 @@ drawUI s =
                 (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
                 (drawWorld $ s ^. gameState)
             , drawMenu
+                (s ^. gameState . replWorking)
                 (s ^. gameState . paused)
                 ((s ^. gameState . viewCenterRule) == VCRobot "base")
                 (s ^. gameState . gameMode)
@@ -214,8 +215,8 @@ drawDialog s = case s ^. uiModal of
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
-drawMenu :: Bool -> Bool -> GameMode -> UIState -> Widget Name
-drawMenu isPaused viewingBase mode =
+drawMenu :: Bool -> Bool -> Bool -> GameMode -> UIState -> Widget Name
+drawMenu isReplWorking isPaused viewingBase mode =
   vLimit 1
     . hBox
     . (++ [gameModeWidget])
@@ -238,8 +239,9 @@ drawMenu isPaused viewingBase mode =
     ]
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
-    , ("Enter", "execute")
     ]
+      ++ [("Enter", "execute") | not isReplWorking]
+      ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll")
     , ("<>", "slower/faster")

@@ -37,6 +37,7 @@ module Swarm.Game.State (
   viewCenter,
   needsRedraw,
   replStatus,
+  replWorking,
   messageQueue,
   focusedRobotName,
 
@@ -208,6 +209,13 @@ needsRedraw :: Lens' GameState Bool
 
 -- | The current status of the REPL.
 replStatus :: Lens' GameState REPLStatus
+
+-- | Whether the repl is currently working.
+replWorking :: Getter GameState Bool
+replWorking = to (\s -> matchesWorking $ s ^. replStatus)
+ where
+  matchesWorking REPLDone = False
+  matchesWorking (REPLWorking _ _) = True
 
 -- | A queue of global messages.
 messageQueue :: Lens' GameState [Text]
