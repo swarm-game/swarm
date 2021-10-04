@@ -774,6 +774,11 @@ execConst c vs k = do
           Nothing -> return $ Out (VBool False) k
           Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
       _ -> badConst
+    Self -> case vs of
+      [] -> do
+        name <- use robotName
+        return $ Out (VString name) k
+      _ -> badConst
     Force -> case vs of
       [VDelay Nothing t e] -> return $ In t e k
       [VDelay (Just x) t e] -> return $ In t (addBinding x (VDelay (Just x) t e) e) k
