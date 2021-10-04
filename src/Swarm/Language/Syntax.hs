@@ -202,7 +202,7 @@ data Const
   | -- | See if a specific entity is here. (This may be removed.)
     Ishere
   | -- | Find it's own name
-    Self
+    Whoami
   | -- | Get a uniformly random integer.
     Random
   | -- Modules
@@ -346,7 +346,7 @@ constInfo c = case c of
   Scan -> commandLow 0
   Upload -> commandLow 1
   Ishere -> commandLow 1
-  Self -> commandLow 0
+  Whoami -> commandLow 0
   Random -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1

@@ -411,7 +411,7 @@
     char: 'U'
   description:
   - "With a mirror, robots can reflect on themselves and see their own name"
-  - "A mirror enables the `self` command which returns the calling robots
+  - "A mirror enables the `whoami` command which returns the callee robot's
      name as text"
   properities: [portable]
-  capabilities: [self]
+  capabilities: [whoami]

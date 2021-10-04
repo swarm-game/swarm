@@ -774,7 +774,7 @@ execConst c vs k = do
           Nothing -> return $ Out (VBool False) k
           Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
       _ -> badConst
-    Self -> case vs of
+    Whoami -> case vs of
       [] -> do
         name <- use robotName
         return $ Out (VString name) k
