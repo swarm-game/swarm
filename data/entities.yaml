@@ -404,3 +404,17 @@
     knowledge to another nearby robot; for example, 'upload \"base\"'."
   properties: [portable]
   capabilities: [scan, sensefront]
+
+- name: flash memory
+  display:
+    attr: device
+    char: '§'
+  description:
+  - "With a flash memory device, robots can be reprogrammed using the
+     `reprogram` command.
+  - "Only robots that have completed executing their previous command
+     can be reprogrammed"
+  - "The robot must possess enough capabilities to run the new command
+     otherwise it will fail"
+  properties: [portable]
+  capabilities: [reprogram]
