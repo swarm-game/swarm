@@ -68,6 +68,7 @@ evalStepsPerTick = 100
 --   from a file when the whole program starts up).
 gameTick :: (MonadState GameState m, MonadIO m) => m ()
 gameTick = do
+  wakeUpRobotsDoneSleeping
   -- Note, it is tempting to do the below in one line with some clever
   -- lens combinator, but it's not possible.  We want to do an
   -- effectful traversal over a piece of the state (i.e. step each
@@ -78,7 +79,7 @@ gameTick = do
   -- (e.g. if one robot gives an item to another), so we can't even
   -- use something like M.traverseMaybeWithKey --- we have to get the
   -- names of all robots and then step them one at a time.
-  robotNames <- uses robotMap M.keys
+  robotNames <- use activeRobots
   time <- use ticks
   forM_ robotNames $ \rn -> do
     mr <- uses robotMap (M.lookup rn)
@@ -87,8 +88,9 @@ gameTick = do
       Just curRobot -> do
         curRobot' <- tickRobot time curRobot
         case curRobot' ^. selfDestruct of
-          True -> robotMap %= M.delete rn
+          True -> deleteRobot rn
           False -> robotMap %= M.insert rn curRobot'
+        mapM_ (sleepUntil rn) (waitingUntil curRobot')
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL.

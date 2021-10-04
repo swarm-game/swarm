@@ -28,6 +28,7 @@ module Swarm.Game.State (
   runStatus,
   paused,
   robotMap,
+  activeRobots,
   gensym,
   entityMap,
   recipesOut,
@@ -51,6 +52,9 @@ module Swarm.Game.State (
   ensureUniqueName,
   addRobot,
   emitMessage,
+  sleepUntil,
+  wakeUpRobotsDoneSleeping,
+  deleteRobot,
 ) where
 
 import Control.Lens
@@ -67,6 +71,8 @@ import qualified Data.Text as T
 import Linear
 import Witch (into)
 
+import Data.Set (Set)
+import qualified Data.Set as S
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -126,6 +132,12 @@ data GameState = GameState
   { _gameMode :: GameMode
   , _runStatus :: RunStatus
   , _robotMap :: Map Text Robot
+  , _activeRobots :: Set Text
+  , -- Waiting robots for a given time are currently a list because it is cheaper
+    -- to append to a list than to a Set, and we currently never delete waiting
+    -- robots. If deleting waiting robots becomes a thing and is frequent enough,
+    -- then it may be worth switching to a Set.
+    _waitingRobots :: Map Integer [Text]
   , _gensym :: Int
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
@@ -140,7 +152,11 @@ data GameState = GameState
   , _ticks :: Integer
   }
 
-let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule]
+-- We want to access _activeRobots via a Lens inside this module but to expose
+-- it as a Getter externally to protect invariants.
+makeLensesFor [("_activeRobots", "internalActiveRobots")] ''GameState
+
+let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule, '_activeRobots]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -161,6 +177,16 @@ paused = to (\s -> s ^. runStatus /= Running)
 
 -- | All the robots that currently exist in the game, indexed by name.
 robotMap :: Lens' GameState (Map Text Robot)
+
+-- | The names of the robots that are currently not sleeping. Private.
+activeRobots :: Getter GameState (Set Text)
+activeRobots = internalActiveRobots
+
+-- | The names of the robots that are currently not sleeping.
+
+-- | The names of the robots that are currently sleeping, indexed by wake up
+-- | time. Private.
+waitingRobots :: Lens' GameState (Map Integer [Text])
 
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
@@ -301,7 +327,7 @@ addRobot :: MonadState GameState m => Robot -> m Robot
 addRobot r = do
   r' <- ensureUniqueName r
   robotMap %= M.insert (r' ^. robotName) r'
-
+  internalActiveRobots %= S.insert (r' ^. robotName)
   return r'
 
 -- | Create an initial game state record, first loading entities and
@@ -330,6 +356,8 @@ initGameState = do
       { _gameMode = Classic
       , _runStatus = Running
       , _robotMap = M.singleton baseName (baseRobot baseDevices)
+      , _activeRobots = S.singleton baseName
+      , _waitingRobots = M.empty
       , _gensym = 0
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
@@ -358,4 +386,36 @@ emitMessage msg = do
   q <- use messageQueue
   messageQueue %= (msg :) . (if length q >= maxMessageQueueSize then init else id)
 
+-- | The number of ticks elapsed since the game started.
 ticks :: Lens' GameState Integer
+
+-- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
+-- | queue.
+sleepUntil :: MonadState GameState m => Text -> Integer -> m ()
+sleepUntil rn time = do
+  internalActiveRobots %= S.delete rn
+  waitingRobots . at time . non [] %= (rn :)
+
+-- | Removes robots whose wake up time matches the current game ticks count
+-- | from the waitingRobots queue and put them back in the activeRobots set.
+wakeUpRobotsDoneSleeping :: MonadState GameState m => m ()
+wakeUpRobotsDoneSleeping = do
+  time <- use ticks
+  mrns <- waitingRobots . at time <<.= Nothing
+  case mrns of
+    Nothing -> return ()
+    Just rns -> internalActiveRobots %= S.union (S.fromList rns)
+
+deleteRobot :: MonadState GameState m => Text -> m ()
+deleteRobot rn = do
+  mrobot <- robotMap . at rn <<.= Nothing
+  let robot = fromMaybe (error "expected robot to exist") mrobot
+  -- Currently the only way to delete a robot is to self-destruct, so
+  -- deleteRobot should always be called on an active robot. But we prepare
+  -- for the future.
+  -- We could blindly delete the robot from both waitingRobots and activeRobots
+  -- but deleting from waitingRobots is costly, even more so if you don't know
+  -- the key.
+  case waitingUntil robot of
+    Nothing -> internalActiveRobots %= S.delete rn
+    Just time -> waitingRobots . ix time %= filter (/= rn)
