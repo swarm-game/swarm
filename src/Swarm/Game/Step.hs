@@ -798,6 +798,64 @@ execConst c vs k = do
     Raise -> case vs of
       [VString s] -> return $ Up (User s) k
       _ -> badConst
+    Reprogram -> case vs of
+      [VString otherRobotName, VDelay _ cmd e] -> do
+        em <- lift . lift $ use entityMap
+        mode <- lift . lift $ use gameMode
+
+        -- check if robot exists
+        otherRobot <-
+          robotNamed otherRobotName
+            >>= (`isJustOr` cmdExn Reprogram ["There is no robot named", otherRobotName, "."])
+
+        -- check if robot has completed executing it's current command
+        _ <-
+          finalValue (otherRobot ^. machine)
+            `isJustOr` cmdExn
+              Reprogram
+              ["You cannot reprogram a robot that has not completed it's current command"]
+
+        let -- Standard devices that are always installed.
+            -- XXX in the future, make a way to build these and just start the base
+            -- out with a large supply of each?
+            stdDeviceList = ["treads", "grabber", "solar panel", "detonator", "scanner"]
+            stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
+
+            -- Find out what capabilities are required by the program that will
+            -- be run on the other robot, and what devices would provide those
+            -- capabilities.
+            (caps, _capCtx) = requiredCaps (snd (otherRobot ^. robotCtx)) cmd
+            capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
+
+            -- A device is OK if it is a standard device, or the robot has
+            -- one in its inventory
+            deviceOK d = d `S.member` stdDevices || (otherRobot ^. robotInventory) `E.contains` d
+
+            missingDevices = S.filter (not . deviceOK) capDevices
+
+        -- check if robot has all devices to execute new command
+        (mode == Creative || S.null missingDevices)
+          `holdsOr` cmdExn
+            Reprogram
+            [ "the target robot does not have required devices:\n"
+            , commaList (map (^. entityName) (S.toList missingDevices))
+            ]
+
+        -- check that current robot is not trying to reprogram self
+        myName <- use robotName
+        (otherRobotName /= myName)
+          `holdsOr` cmdExn
+            Reprogram
+            ["You cannot make a robot reprogram itself"]
+
+        -- update other robot's CEK machine and environment
+        lift . lift $ robotMap . at otherRobotName . _Just . machine .= In cmd e [FExec]
+        lift . lift $ robotMap . at otherRobotName . _Just . robotEnv .= empty
+        lift . lift $ robotMap . at otherRobotName . _Just . robotCtx .= (empty, empty)
+
+        flagRedraw
+        return $ Out (VString otherRobotName) k
+      _ -> badConst
     Build -> case vs of
       [VString name, VDelay _ cmd e] -> do
         r <- get
