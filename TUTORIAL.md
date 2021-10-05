@@ -312,13 +312,13 @@ World generation
 ----------------
 
 If you do not like the starting place of the base, there is a way
-to start somwhere else. *In a different world!*
+to start somewhere else. *In a different world!*
 
 ```bash
 $ swarm --seed $RANDOM
 ```
 
-You can specify the *world seed* leading to a radically different
+You can specify the *world seed* leading to radically different
 starting conditions. You can start next to a copper patch, between
 lakes or in the middle of a plain. Either way, you have established
 your base in the shade of what you assume is a tree and now can
