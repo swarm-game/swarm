@@ -66,10 +66,18 @@
 - name: mountain
   display:
     attr: snow
-    char: '∧'
+    char: '▲'
   description:
   - A mountain.
   properties: [unwalkable]
+
+- name: mountain tunnel
+  display:
+    attr: snow
+    char: '△'
+  description:
+  - A tunnel in a mountain through which robots can freely move.
+  properties: []
 
 - name: copper ore
   display:
@@ -80,6 +88,14 @@
     Often, in locations where copper can be found on the surface, additional copper can
     be found by drilling beneath the surface.
   properties: [portable]
+
+- name: copper vein
+  display:
+    attr: copper'
+    char: 'C'
+  description:
+  - A place where raw copper ore can be drilled.
+  properties: []
 
 - name: copper wire
   display:
@@ -320,6 +336,7 @@
     char: '!'
   description:
   - A drill allows robots to drill through rocks and mountains.
+  capabilities: [drill]
   properties: [portable]
 
 - name: 3D printer
