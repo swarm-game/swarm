@@ -410,8 +410,8 @@
     attr: device
     char: 'U'
   description:
-  - "With a mirror, robots can reflect on themselves and see their own name"
-  - "A mirror enables the `whoami` command which returns the callee robot's
-     name as text"
+  - "With a mirror, robots can reflect on themselves and see their own name."
+  - "A mirror enables the 'whoami' command, which returns the robot's
+     name as a string."
   properities: [portable]
   capabilities: [whoami]
