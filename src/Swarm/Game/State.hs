@@ -21,6 +21,7 @@ module Swarm.Game.State (
   REPLStatus (..),
   RunStatus (..),
   GameState,
+  Seed,
   initGameState,
 
   -- ** GameState fields
@@ -30,6 +31,7 @@ module Swarm.Game.State (
   robotMap,
   activeRobots,
   gensym,
+  randGen,
   entityMap,
   recipesOut,
   recipesIn,
@@ -78,9 +80,10 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
-import Swarm.Game.WorldGen (findGoodOrigin, testWorld2)
+import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
 import Swarm.Language.Types
 import Swarm.Util
+import System.Random (StdGen, mkStdGen)
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -139,6 +142,7 @@ data GameState = GameState
     -- then it may be worth switching to a Set.
     _waitingRobots :: Map Integer [Text]
   , _gensym :: Int
+  , _randGen :: StdGen
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
@@ -188,6 +192,9 @@ waitingRobots :: Lens' GameState (Map Integer [Text])
 
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
+
+-- | Pseudorandom generator initialized at start.
+randGen :: Lens' GameState StdGen
 
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
@@ -330,8 +337,8 @@ addRobot r = do
 
 -- | Create an initial game state record, first loading entities and
 --   recipies from disk.
-initGameState :: ExceptT Text IO GameState
-initGameState = do
+initGameState :: Seed -> ExceptT Text IO GameState
+initGameState seed = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -348,6 +355,7 @@ initGameState = do
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
 
   let baseName = "base"
+  liftIO $ putStrLn ("Using seed... " <> show seed)
 
   return $
     GameState
@@ -357,11 +365,15 @@ initGameState = do
       , _activeRobots = S.singleton baseName
       , _waitingRobots = M.empty
       , _gensym = 0
+      , _randGen = mkStdGen seed
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
       , _world =
-          W.newWorld . fmap ((lkup entities <$>) . first fromEnum) . findGoodOrigin $ testWorld2
+          W.newWorld
+            . fmap ((lkup entities <$>) . first fromEnum)
+            . findGoodOrigin
+            $ testWorld2 seed
       , _viewCenterRule = VCRobot baseName
       , _viewCenter = V2 0 0
       , _needsRedraw = False
