@@ -36,6 +36,7 @@ swarmAttrMap =
     , (woodAttr, fg (V.rgbColor @Int 139 69 19))
     , (flowerAttr, fg (V.rgbColor @Int 200 0 200))
     , (copperAttr, fg V.yellow)
+    , (copperAttr, fg V.brightYellow)
     , (snowAttr, fg V.white)
     , (fireAttr, fg V.red `V.withStyle` V.bold)
     , (deviceAttr, fg V.yellow `V.withStyle` V.bold)
@@ -61,6 +62,7 @@ robotAttr
   , plantAttr
   , flowerAttr
   , copperAttr
+  , copperAttr'
   , snowAttr
   , rockAttr
   , baseAttr
@@ -87,6 +89,7 @@ entityAttr = "entity"
 plantAttr = "plant"
 flowerAttr = "flower"
 copperAttr = "copper"
+copperAttr' = "copper'"
 snowAttr = "snow"
 fireAttr = "fire"
 rockAttr = "rock"

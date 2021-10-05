@@ -49,6 +49,29 @@
   - [1, drill]
 
 - in:
+  - [1, boulder]
+  out:
+  - [3, rock]
+  required:
+  - [1, drill]
+
+- in:
+  - [1, mountain]
+  out:
+  - [9, rock]
+  - [1, mountain tunnel]
+  required:
+  - [1, drill]
+
+- in:
+  - [1, copper vein]
+  out:
+  - [1, copper ore]
+  - [1, copper vein]
+  required:
+  - [1, drill]
+
+- in:
   - [5, rock]
   out:
   - [1, furnace]

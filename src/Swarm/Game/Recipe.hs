@@ -33,6 +33,7 @@ module Swarm.Game.Recipe (
   -- * Looking up recipes
   recipesFor,
   make,
+  make',
 ) where
 
 import Control.Lens hiding (from, (.=))
@@ -152,8 +153,14 @@ missingIngredientsFor inv (Recipe ins _ reqs) =
 --   which items are lacking, if the inventory does not contain
 --   sufficient inputs, or an updated inventory if it was successful.
 make :: Inventory -> Recipe Entity -> Either [(Count, Entity)] Inventory
-make inv r@(Recipe ins outs _) = case missingIngredientsFor inv r of
+make inv r = uncurry addOuts <$> make' inv r
+ where
+  addOuts = foldl' (flip (uncurry insertCount))
+
+-- | Try to make a recipe, but do not insert it yet.
+make' :: Inventory -> Recipe Entity -> Either [(Count, Entity)] (Inventory, IngredientList Entity)
+make' inv r@(Recipe ins outs _) = case missingIngredientsFor inv r of
   [] ->
-    Right $
-      foldl' (flip (uncurry insertCount)) (foldl' (flip (uncurry deleteCount)) inv ins) outs
+    let removed = foldl' (flip (uncurry deleteCount)) inv ins
+     in Right (removed, outs)
   missing -> Left missing

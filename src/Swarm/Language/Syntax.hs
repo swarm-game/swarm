@@ -176,6 +176,8 @@ data Const
     Install
   | -- | Make an item.
     Make
+  | -- | Drill through an entity.
+    Drill
   | -- | Construct a new robot.
     Build
   | -- | Emit a message.
@@ -335,6 +337,7 @@ constInfo c = case c of
   Give -> commandLow 2
   Install -> commandLow 2
   Make -> commandLow 1
+  Drill -> commandLow 1
   Build -> commandLow 2
   Say -> commandLow 1
   View -> commandLow 1
@@ -380,7 +383,7 @@ constInfo c = case c of
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
-mkOp' c t1 t2 = TApp (TApp (TConst c) t1) t2
+mkOp' c t1 = TApp (TApp (TConst c) t1)
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).

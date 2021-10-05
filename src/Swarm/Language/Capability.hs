@@ -61,6 +61,8 @@ data Capability
     CMake
   | -- | Execute the 'Build' command
     CBuild
+  | -- | Execute the 'Drill' command
+    CDrill
   | -- | Execute the 'GetX' and 'GetY' commands
     CSenseloc
   | -- | Execute the 'Blocked' command
@@ -236,6 +238,7 @@ constCaps Place = S.singleton CPlace
 constCaps Give = S.singleton CGive
 constCaps Install = S.singleton CInstall
 constCaps Make = S.singleton CMake
+constCaps Drill = S.singleton CDrill
 constCaps If = S.singleton CCond
 constCaps Create = S.singleton CCreate
 constCaps Blocked = S.singleton CSensefront

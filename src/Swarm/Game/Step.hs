@@ -38,6 +38,7 @@ import System.Random (uniformR)
 import Witch
 import Prelude hiding (lookup)
 
+import qualified Data.List as L
 import Swarm.Game.CEK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton)
@@ -673,6 +674,53 @@ execConst c vs k = do
             `isJustOr` cmdExn Make ["You don't have the ingredients to make", indefinite name, "."]
 
         robotInventory .= inv'
+        return $ Out VUnit k
+      _ -> badConst
+    Drill -> case vs of
+      [VDir d] -> do
+        rname <- use robotName
+        inv <- use robotInventory
+        loc <- use robotLocation
+        rDir <- use robotOrientation
+
+        let nextLoc = loc ^+^ applyTurn d (rDir ? V2 0 0)
+        em <- lift . lift $ use entityMap
+        drill <- lookupEntityName "drill" em `isJustOr` cmdExn Drill ["Drill does not exist?!"]
+        nextE <- entityAt nextLoc >>= (`isJustOr` cmdExn Drill ["There is nothing to drill", "in the direction", "of robot", rname <> "."])
+        -- TODO: this would lose the drill when trying to drill water
+        --       but I guess it would not work well with try which
+        --       might eventually be provided by some time-machine
+        --
+        -- if "water" `T.isSuffixOf` (nextE ^. entityName)
+        --  then do
+        --    installedDevices %= delete drill
+        --    throwError $ cmdExn Drill ["Drill is lost beneath the waves!"]
+        --  else pure ()
+
+        inRs <- lift . lift $ use recipesIn
+
+        let recipes = filter drilling (recipesFor inRs nextE)
+            drilling = any ((== drill) . snd) . view recipeRequirements
+
+        not (null recipes) `holdsOr` cmdExn Drill ["There is no way to drill a", nextE ^. entityName <> "."]
+
+        -- add and remove drill as it is requiered in recipe - the drilled entity is replaced at the end
+        let inv' = insert drill $ insert nextE inv
+        (invTaken, outs) <-
+          listToMaybe (rights (map (make' inv') recipes))
+            `isJustOr` cmdExn Drill ["You don't have the ingredients\n to drill", indefinite (nextE ^. entityName) <> "."]
+
+        let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
+            downAmount = sum $ map fst down
+
+        (downAmount <= 1) `holdsOr` cmdExn Drill ["Bad recipe - can not place more then one unmovable entity."]
+
+        robotInventory .= delete drill (L.foldl' (flip (uncurry insertCount)) invTaken out)
+        _ <-
+          if downAmount == 0
+            then updateEntityAt nextLoc (const Nothing)
+            else updateEntityAt nextLoc (const (Just . snd . head $ down))
+        flagRedraw
         return $ Out VUnit k
       _ -> badConst
     GetX -> do
