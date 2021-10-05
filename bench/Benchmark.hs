@@ -23,12 +23,10 @@ import System.Random (randomRIO)
 treeProgram :: Integer -> Integer -> ProcessedTerm
 treeProgram rn1 rn2 =
   [tmQ|
-  let repeat : int -> cmd () -> cmd () = \n.\c.
-    if (n == 0) {} {c ; repeat (n-1) c}
-  in {
-    repeat ($int:rn1 + 300) wait;
+  {
+    wait ($int:rn1 + 300);
     appear "|";
-    repeat ($int:rn2 + 300) wait;
+    wait ($int:rn2 + 300);
     place "tree";
     selfdestruct
   }

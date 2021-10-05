@@ -38,6 +38,7 @@ module Swarm.Game.Robot (
 
   -- ** Query
   isActive,
+  waitingUntil,
   getResult,
 ) where
 
@@ -272,6 +273,13 @@ baseRobot devs =
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
 isActive = isNothing . getResult
+
+-- | The time until which the robot is waiting, if any.
+waitingUntil :: Robot -> Maybe Integer
+waitingUntil robot =
+  case _machine robot of
+    Waiting time _ -> Just time
+    _ -> Nothing
 
 -- | Get the result of the robot's computation if it is finished.
 getResult :: Robot -> Maybe Value
