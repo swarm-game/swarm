@@ -434,6 +434,7 @@ inferConst c = toU $ case c of
   Scan -> [tyQ| dir -> cmd () |]
   Upload -> [tyQ| string -> cmd () |]
   Ishere -> [tyQ| string -> cmd bool |]
+  Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
   If -> [tyQ| forall a. bool -> a -> a -> a |]

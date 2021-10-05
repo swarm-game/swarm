@@ -87,8 +87,13 @@ data Capability
     CLambda
   | -- | Enable recursive definitions
     CRecursion
+<<<<<<< HEAD
   | -- | Execute the 'Reprogram' command
     CReprogram
+=======
+  | -- | Capability to introspect and see it's own name
+    CWhoami
+>>>>>>> main
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
 
 instance ToJSON Capability where
@@ -276,6 +281,7 @@ constCaps Exp = S.singleton CArith
 -- currently don't.
 constCaps View = S.empty -- XXX this should also require something.
 constCaps Ishere = S.empty -- XXX this should require a capability.
+constCaps Whoami = S.singleton CWhoami
 constCaps Run = S.empty -- XXX this should also require a capability
 -- which the base starts out with.
 constCaps Not = S.empty -- XXX some kind of boolean logic cap?

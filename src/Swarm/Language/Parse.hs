@@ -36,10 +36,9 @@ module Swarm.Language.Parse (
 
 import Control.Monad.Reader
 import Data.Bifunctor
-import Data.Char
 import qualified Data.List.NonEmpty (head)
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Text (Text, index)
+import Data.Text (Text, index, toLower)
 import Data.Void
 import Witch
 
@@ -71,58 +70,31 @@ type ParserError = ParseErrorBundle Text Void
 -- Lexer
 
 -- | List of reserved words that cannot be used as variable names.
-reservedWords :: [String]
+reservedWords :: [Text]
 reservedWords =
-  [ "left"
-  , "right"
-  , "back"
-  , "forward"
-  , "north"
-  , "south"
-  , "east"
-  , "west"
-  , "down"
-  , "wait"
-  , "noop"
-  , "selfdestruct"
-  , "move"
-  , "turn"
-  , "grab"
-  , "place"
-  , "give"
-  , "make"
-  , "build"
-  , "run"
-  , "getx"
-  , "gety"
-  , "scan"
-  , "upload"
-  , "blocked"
-  , "random"
-  , "say"
-  , "view"
-  , "appear"
-  , "create"
-  , "ishere"
-  , "int"
-  , "string"
-  , "dir"
-  , "bool"
-  , "cmd"
-  , "let"
-  , "def"
-  , "end"
-  , "in"
-  , "if"
-  , "true"
-  , "false"
-  , "not"
-  , "fst"
-  , "snd"
-  , "forall"
-  , "try"
-  , "raise"
-  ]
+  map (syntax . constInfo) (filter isUserFunc allConst)
+    ++ [ "left"
+       , "right"
+       , "back"
+       , "forward"
+       , "north"
+       , "south"
+       , "east"
+       , "west"
+       , "down"
+       , "int"
+       , "string"
+       , "dir"
+       , "bool"
+       , "cmd"
+       , "let"
+       , "def"
+       , "end"
+       , "in"
+       , "true"
+       , "false"
+       , "forall"
+       ]
 
 -- | Skip spaces and comments.
 sc :: Parser ()
@@ -156,10 +128,12 @@ identifier :: Parser Text
 identifier = (lexeme . try) (p >>= check) <?> "variable name"
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_')
-  check x
-    | map toLower x `elem` reservedWords =
-      fail $ "reserved word " ++ x ++ " cannot be used as variable name"
-    | otherwise = return (into @Text x)
+  check s
+    | toLower t `elem` reservedWords =
+      fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+    | otherwise = return t
+   where
+    t = into @Text s
 
 -- | Parse a string literal (including escape sequences) in double quotes.
 stringLiteral :: Parser Text

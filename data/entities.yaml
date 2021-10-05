@@ -418,3 +418,14 @@
      otherwise it will fail."
   properties: [portable]
   capabilities: [reprogram]
+
+- name: mirror
+  display:
+    attr: device
+    char: 'U'
+  description:
+  - "With a mirror, robots can reflect on themselves and see their own name."
+  - "A mirror enables the 'whoami' command, which returns the robot's
+     name as a string."
+  properities: [portable]
+  capabilities: [whoami]

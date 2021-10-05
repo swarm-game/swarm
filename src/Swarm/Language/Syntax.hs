@@ -204,6 +204,8 @@ data Const
     Upload
   | -- | See if a specific entity is here. (This may be removed.)
     Ishere
+  | -- | Find it's own name
+    Whoami
   | -- | Get a uniformly random integer.
     Random
   | -- Modules
@@ -348,6 +350,7 @@ constInfo c = case c of
   Scan -> commandLow 0
   Upload -> commandLow 1
   Ishere -> commandLow 1
+  Whoami -> commandLow 0
   Random -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1
@@ -375,6 +378,7 @@ constInfo c = case c of
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}
   command s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a True}
   function s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False}
+  -- takes the number of arguments for a commmand
   commandLow = command (lowShow c)
   functionLow = function (lowShow c)
 
