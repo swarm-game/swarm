@@ -87,13 +87,10 @@ data Capability
     CLambda
   | -- | Enable recursive definitions
     CRecursion
-<<<<<<< HEAD
   | -- | Execute the 'Reprogram' command
     CReprogram
-=======
   | -- | Capability to introspect and see it's own name
     CWhoami
->>>>>>> main
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
 
 instance ToJSON Capability where
