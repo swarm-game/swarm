@@ -104,10 +104,10 @@ instance ToJSON (Recipe Text) where
 instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
     Recipe
-    <$> v .: "in"
-    <*> v .: "out"
-    <*> v .:? "required" .!= []
-    <*> v .:? "time" .!= 1
+      <$> v .: "in"
+      <*> v .: "out"
+      <*> v .:? "required" .!= []
+      <*> v .:? "time" .!= 1
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'
@@ -158,7 +158,7 @@ inRecipeMap = buildRecipeMap recipeInputs
 missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [(Count, Entity)]
 missingIngredientsFor (inv, ins) (Recipe inps _ reqs _) =
   findLacking inv inps
-  <> findLacking ins (findLacking inv reqs)
+    <> findLacking ins (findLacking inv reqs)
  where
   findLacking inven = filter ((> 0) . fst) . map (countNeeded inven)
   countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
@@ -178,5 +178,5 @@ make' invs@(inv, _) r =
   case missingIngredientsFor invs r of
     [] ->
       let removed = foldl' (flip (uncurry deleteCount)) inv (r ^. recipeInputs)
-      in Right (removed, r ^. recipeOutputs)
+       in Right (removed, r ^. recipeOutputs)
     missing -> Left missing
