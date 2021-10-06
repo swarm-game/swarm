@@ -863,7 +863,7 @@ execConst c vs k = do
         lift . lift $ robotMap . at otherRobotName . _Just . robotEnv .= empty
         lift . lift $ robotMap . at otherRobotName . _Just . robotCtx .= (empty, empty)
 
-        return $ Out (VString otherRobotName) k
+        return $ Out VUnit k
       _ -> badConst
     Build -> case vs of
       [VString name, VDelay _ cmd e] -> do
