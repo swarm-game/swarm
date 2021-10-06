@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -14,78 +12,85 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Application state for the @brick@-based Swarm TUI.
---
------------------------------------------------------------------------------
+module Swarm.TUI.Model (
+  -- * Custom UI label types
+  -- $uilabel
+  AppEvent (..),
+  Name (..),
+  Modal (..),
 
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeApplications  #-}
+  -- * UI state
+  REPLHistItem (..),
+  InventoryEntry (..),
+  _Separator,
+  _InventoryEntry,
+  UIState,
 
-module Swarm.TUI.Model
-  ( -- * Custom UI label types
-    -- $uilabel
+  -- ** Fields
+  uiFocusRing,
+  uiReplForm,
+  uiReplType,
+  uiReplHistory,
+  uiReplHistIdx,
+  uiReplLast,
+  uiInventory,
+  uiInfoText,
+  uiError,
+  uiModal,
+  lgTicksPerSecond,
+  lastFrameTime,
+  accumulatedTime,
+  tickCount,
+  frameCount,
+  lastInfoTime,
+  uiShowFPS,
+  uiTPF,
+  uiFPS,
 
-    AppEvent(..), Name(..), Modal(..)
+  -- ** Initialization
+  initFocusRing,
+  replPrompt,
+  initReplForm,
+  initLgTicksPerSecond,
+  initUIState,
 
-    -- * UI state
+  -- ** Updating
+  populateInventoryList,
+  infoScroll,
 
-  , REPLHistItem(..)
-  , InventoryEntry(..), _Separator, _InventoryEntry
-  , UIState
+  -- * App state
+  AppState,
 
-    -- ** Fields
+  -- ** Fields
+  gameState,
+  uiState,
 
-  , uiFocusRing, uiReplForm, uiReplType, uiReplHistory, uiReplHistIdx, uiReplLast
-  , uiInventory, uiInfoText, uiError, uiModal, lgTicksPerSecond
-  , lastFrameTime, accumulatedTime, tickCount, frameCount, lastInfoTime
-  , uiShowFPS, uiTPF, uiFPS
+  -- ** Initialization
+  initAppState,
+  Seed,
+) where
 
-    -- ** Initialization
+import Control.Lens
+import Control.Monad.Except
+import Control.Monad.State
+import Data.List (findIndex, sortOn)
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Vector as V
+import System.Clock
+import Text.Read (readMaybe)
 
-  , initFocusRing
-  , replPrompt
-  , initReplForm
-  , initLgTicksPerSecond
-  , initUIState
+import Brick
+import Brick.Focus
+import Brick.Forms
+import qualified Brick.Widgets.List as BL
 
-    -- ** Updating
-
-  , populateInventoryList
-  , infoScroll
-
-    -- * App state
-  , AppState
-    -- ** Fields
-  , gameState, uiState
-    -- ** Initialization
-  , initAppState
-  , Seed
-
-  ) where
-
-import           Control.Lens
-import           Control.Monad.Except
-import           Control.Monad.State
-import           Data.List            (findIndex, sortOn)
-import           Data.Maybe           (fromMaybe)
-import           Data.Text            (Text)
-import qualified Data.Text            as T
-import qualified Data.Vector          as V
-import           System.Clock
-import           Text.Read            (readMaybe)
-
-import           Brick
-import           Brick.Focus
-import           Brick.Forms
-import qualified Brick.Widgets.List   as BL
-
-import           Swarm.Game.Entity
-import           Swarm.Game.Robot
-import           Swarm.Game.State
-import           Swarm.Language.Types
-import           Swarm.Util
+import Swarm.Game.Entity
+import Swarm.Game.Robot
+import Swarm.Game.State
+import Swarm.Language.Types
+import Swarm.Util
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -284,52 +289,54 @@ initUIState :: ExceptT Text IO UIState
 initUIState = liftIO $ do
   mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
   startTime <- getTime Monotonic
-  return $ UIState
-    { _uiFocusRing      = initFocusRing
-    , _uiReplForm       = initReplForm
-    , _uiReplType       = Nothing
-    , _uiReplHistory    = mhist ? []
-    , _uiReplHistIdx    = -1
-    , _uiReplLast       = ""
-    , _uiInventory      = Nothing
-    , _uiInfoText       = T.unlines
-                          [ "Welcome to"
-                          , "|<< |   | |  | |<<  |\\ /| "
-                          , "--  | < | |><| |>>| | < | "
-                          , ">>| |/ \\| |  | |  \\ |   | "
-                          , "many"
-                          , "many2"
-                          , "many3"
-                          , "many4"
-                          , "many5"
-                          , "many"
-                          , "many2"
-                          , "many3"
-                          , "many4"
-                          , "many5"
-                          , "many"
-                          , "many2"
-                          , "many3"
-                          , "many4"
-                          , "many5"
-                          , "many"
-                          , "many2"
-                          , "many3"
-                          , "many4"
-                          , "many5"
-                          ]
-    , _uiError          = Nothing
-    , _uiModal          = Nothing
-    , _uiShowFPS        = False
-    , _uiTPF            = 0
-    , _uiFPS            = 0
-    , _lgTicksPerSecond = initLgTicksPerSecond
-    , _lastFrameTime    = startTime
-    , _accumulatedTime  = 0
-    , _lastInfoTime     = 0
-    , _tickCount        = 0
-    , _frameCount       = 0
-    }
+  return $
+    UIState
+      { _uiFocusRing = initFocusRing
+      , _uiReplForm = initReplForm
+      , _uiReplType = Nothing
+      , _uiReplHistory = mhist ? []
+      , _uiReplHistIdx = -1
+      , _uiReplLast = ""
+      , _uiInventory = Nothing
+      , _uiInfoText =
+          T.unlines
+            [ "Welcome to"
+            , "|<< |   | |  | |<<  |\\ /| "
+            , "--  | < | |><| |>>| | < | "
+            , ">>| |/ \\| |  | |  \\ |   | "
+            , "many"
+            , "many2"
+            , "many3"
+            , "many4"
+            , "many5"
+            , "many"
+            , "many2"
+            , "many3"
+            , "many4"
+            , "many5"
+            , "many"
+            , "many2"
+            , "many3"
+            , "many4"
+            , "many5"
+            , "many"
+            , "many2"
+            , "many3"
+            , "many4"
+            , "many5"
+            ]
+      , _uiError = Nothing
+      , _uiModal = Nothing
+      , _uiShowFPS = False
+      , _uiTPF = 0
+      , _uiFPS = 0
+      , _lgTicksPerSecond = initLgTicksPerSecond
+      , _lastFrameTime = startTime
+      , _accumulatedTime = 0
+      , _lastInfoTime = 0
+      , _tickCount = 0
+      , _frameCount = 0
+      }
 
 ------------------------------------------------------------
 -- Functions for updating the UI state

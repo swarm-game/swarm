@@ -104,21 +104,22 @@ handleEvent s (VtyEvent (V.EvKey V.KEsc []))
 handleEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
-    ControlKey 'q'      -> shutdown s
-    MetaKey 'w'         -> setFocus s WorldPanel
-    MetaKey 'e'         -> setFocus s RobotPanel
-    MetaKey 'r'         -> setFocus s REPLPanel
-    MetaKey 't'         -> setFocus s InfoPanel
-    FKey 1              -> toggleModal s HelpModal
-    _anyOtherEvent | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
-                   | otherwise ->
-      -- and dispatch the other to the focused panel handler
-      case focusGetCurrent (s ^. uiState . uiFocusRing) of
-        Just REPLPanel  -> handleREPLEvent s ev
-        Just WorldPanel -> handleWorldEvent s ev
-        Just RobotPanel -> handleRobotPanelEvent s ev
-        Just InfoPanel  -> handleInfoPanelEvent s ev
-        _               -> continueWithoutRedraw s
+    ControlKey 'q' -> shutdown s
+    MetaKey 'w' -> setFocus s WorldPanel
+    MetaKey 'e' -> setFocus s RobotPanel
+    MetaKey 'r' -> setFocus s REPLPanel
+    MetaKey 't' -> setFocus s InfoPanel
+    FKey 1 -> toggleModal s HelpModal
+    _anyOtherEvent
+      | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
+      | otherwise ->
+        -- and dispatch the other to the focused panel handler
+        case focusGetCurrent (s ^. uiState . uiFocusRing) of
+          Just REPLPanel -> handleREPLEvent s ev
+          Just WorldPanel -> handleWorldEvent s ev
+          Just RobotPanel -> handleRobotPanelEvent s ev
+          Just InfoPanel -> handleInfoPanelEvent s ev
+          _ -> continueWithoutRedraw s
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
@@ -505,11 +506,12 @@ handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
           mkProg = TApp (TConst Make) (TString (e ^. entityName))
           mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
       case isActive <$> (s ^. gameState . robotMap . at "base") of
-        Just False -> continue $ s
-          & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
-        _          -> continueWithoutRedraw s
-
+        Just False ->
+          continue $
+            s
+              & gameState . replStatus .~ REPLWorking mkTy Nothing
+              & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
+        _ -> continueWithoutRedraw s
 handleRobotPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList of
@@ -526,11 +528,10 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 
 handleInfoPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleInfoPanelEvent s = \case
-  VtyEvent (V.EvKey V.KDown [])     -> vScrollBy infoScroll 1 >> continue s
-  VtyEvent (V.EvKey V.KUp [])       -> vScrollBy infoScroll (-1) >> continue s
+  VtyEvent (V.EvKey V.KDown []) -> vScrollBy infoScroll 1 >> continue s
+  VtyEvent (V.EvKey V.KUp []) -> vScrollBy infoScroll (-1) >> continue s
   VtyEvent (V.EvKey V.KPageDown []) -> vScrollPage infoScroll Down >> continue s
-  VtyEvent (V.EvKey V.KPageUp [])   -> vScrollPage infoScroll Up >> continue s
-  VtyEvent (V.EvKey V.KHome [])     -> vScrollToBeginning infoScroll >> continue s
-  VtyEvent (V.EvKey V.KEnd [])      -> vScrollToEnd infoScroll >> continue s
-  _                                 -> continueWithoutRedraw s
-
+  VtyEvent (V.EvKey V.KPageUp []) -> vScrollPage infoScroll Up >> continue s
+  VtyEvent (V.EvKey V.KHome []) -> vScrollToBeginning infoScroll >> continue s
+  VtyEvent (V.EvKey V.KEnd []) -> vScrollToEnd infoScroll >> continue s
+  _ -> continueWithoutRedraw s

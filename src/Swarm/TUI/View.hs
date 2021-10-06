@@ -9,78 +9,74 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Code for drawing the TUI.
+module Swarm.TUI.View (
+  drawUI,
+  drawTPS,
 
-module Swarm.TUI.View
-  (
-    drawUI
-  , drawTPS
+  -- * Error dialog
+  errorDialog,
+  drawDialog,
+  chooseCursor,
 
-    -- * Error dialog
-  , errorDialog
-  , drawDialog
-  , chooseCursor
+  -- * Key hint menu
+  drawMenu,
+  drawKeyCmd,
 
-    -- * Key hint menu
-  , drawMenu
-  , drawKeyCmd
+  -- * World
+  drawWorld,
+  drawCell,
 
-    -- * World
-  , drawWorld
-  , drawCell
+  -- * Robot panel
+  drawRobotPanel,
+  drawItem,
+  drawLabelledEntityName,
 
-    -- * Robot panel
+  -- * Info panel
+  drawInfoPanel,
+  explainFocusedItem,
+  drawMessages,
 
-  , drawRobotPanel
-  , drawItem
-  , drawLabelledEntityName
+  -- * REPL
+  drawREPL,
+) where
 
-    -- * Info panel
-
-  , drawInfoPanel
-  , explainFocusedItem
-  , drawMessages
-
-    -- * REPL
-  , drawREPL
-  ) where
-
-import           Control.Arrow         ((&&&))
-import           Control.Lens
-import           Data.Array            (range)
-import           Data.List.Split       (chunksOf)
-import qualified Data.Map              as M
+import Control.Arrow ((&&&))
+import Control.Lens
+import Data.Array (range)
+import Data.List.Split (chunksOf)
+import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
-import qualified Data.Set              as S
-import           Data.Text             (Text)
-import qualified Data.Text             as T
-import           Linear
-import           Text.Printf
-import           Text.Wrap
+import qualified Data.Set as S
+import Data.Text (Text)
+import qualified Data.Text as T
+import Linear
+import Text.Printf
+import Text.Wrap
 
-import           Brick                 hiding (Direction)
-import           Brick.Focus
-import           Brick.Forms
-import           Brick.Widgets.Border  (hBorder, hBorderWithLabel, joinableBorder, vBorder)
-import           Brick.Widgets.Center  (center, hCenter)
-import           Brick.Widgets.Dialog
-import qualified Brick.Widgets.List    as BL
-import qualified Brick.Widgets.Table   as BT
+import Brick hiding (Direction)
+import Brick.Focus
+import Brick.Forms
+import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Center (center, hCenter)
+import Brick.Widgets.Dialog
+import qualified Brick.Widgets.List as BL
+import qualified Brick.Widgets.Table as BT
 
-import           Swarm.Game.Display
-import           Swarm.Game.Entity     as E
-import           Swarm.Game.Recipe
-import           Swarm.Game.Robot
-import           Swarm.Game.State
-import           Swarm.Game.Terrain    (displayTerrain)
-import qualified Swarm.Game.World      as W
-import           Swarm.Language.Pretty (prettyText)
-import           Swarm.Language.Syntax
-import           Swarm.Language.Types  (Polytype)
-import           Swarm.TUI.Attr
-import           Swarm.TUI.Border
-import           Swarm.TUI.Model
-import           Swarm.TUI.Panel
-import           Swarm.Util
+import Swarm.Game.Display
+import Swarm.Game.Entity as E
+import Swarm.Game.Recipe
+import Swarm.Game.Robot
+import Swarm.Game.State
+import Swarm.Game.Terrain (displayTerrain)
+import qualified Swarm.Game.World as W
+import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax
+import Swarm.Language.Types (Polytype)
+import Swarm.TUI.Attr
+import Swarm.TUI.Border
+import Swarm.TUI.Model
+import Swarm.TUI.Panel
+import Swarm.Util
 
 -- | The main entry point for drawing the entire UI.  Generates a list
 --   of widgets, where each represents a layer.  Right now we just
@@ -90,32 +86,39 @@ drawUI :: AppState -> [Widget Name]
 drawUI s =
   [ drawDialog (s ^. uiState)
   , joinBorders $
-    hBox
-    [ hLimitPercent 25 $
-      vBox
-      [ vLimitPercent 50 $ panel highlightAttr fr RobotPanel plainBorder $ drawRobotPanel s
-      , panel highlightAttr fr InfoPanel plainBorder $ drawInfoPanel s
-      ]
-    , vBox
-      [ panel highlightAttr fr WorldPanel
-          (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
-          (drawWorld $ s ^. gameState)
-      , drawMenu
-          (s ^. gameState . replWorking)
-          (s ^. gameState . paused)
-          ((s ^. gameState . viewCenterRule) == VCRobot "base")
-          (s ^. gameState . gameMode)
-          (s ^. uiState)
-      , panel highlightAttr fr REPLPanel
-          ( plainBorder
-              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
-          )
-          ( vLimit replHeight $
-            padBottom Max $ padLeftRight 1 $
-            drawREPL s
-          )
-      ]
-    ]
+      hBox
+        [ hLimitPercent 25 $
+            vBox
+              [ vLimitPercent 50 $ panel highlightAttr fr RobotPanel plainBorder $ drawRobotPanel s
+              , panel highlightAttr fr InfoPanel plainBorder $ drawInfoPanel s
+              ]
+        , vBox
+            [ panel
+                highlightAttr
+                fr
+                WorldPanel
+                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
+                (drawWorld $ s ^. gameState)
+            , drawMenu
+                (s ^. gameState . replWorking)
+                (s ^. gameState . paused)
+                ((s ^. gameState . viewCenterRule) == VCRobot "base")
+                (s ^. gameState . gameMode)
+                (s ^. uiState)
+            , panel
+                highlightAttr
+                fr
+                REPLPanel
+                ( plainBorder
+                    & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
+                )
+                ( vLimit replHeight $
+                    padBottom Max $
+                      padLeftRight 1 $
+                        drawREPL s
+                )
+            ]
+        ]
   ]
  where
   fr = s ^. uiState . uiFocusRing
@@ -154,7 +157,7 @@ replHeight = 10
 chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
 chooseCursor s locs = case s ^. uiState . uiModal of
   Nothing -> showFirstCursor s locs
-  Just _  -> Nothing
+  Just _ -> Nothing
 
 -- | The error dialog window.
 errorDialog :: Dialog ()
@@ -435,8 +438,8 @@ drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInve
             , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) isFocused lst)
             ]
   _ -> padBottom Max $ str " "
-  where
-    isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just RobotPanel
+ where
+  isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just RobotPanel
 
 -- | Draw an inventory entry.
 drawItem ::
@@ -475,18 +478,19 @@ drawLabelledEntityName e =
 --   about the currently focused inventory item.
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s =
-  viewport InfoViewport Vertical .
-  padLeftRight 1 $ explainFocusedItem s
-  -- drawMessages (s ^. gameState . messageQueue)
+  viewport InfoViewport Vertical
+    . padLeftRight 1
+    $ explainFocusedItem s
+
+-- drawMessages (s ^. gameState . messageQueue)
 
 indent2 :: WrapSettings
-indent2 = defaultWrapSettings { fillStrategy = FillIndent 2 }
+indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
 
 -- | Draw a list of messages.
 drawMessages :: [Text] -> Widget Name
 drawMessages [] = txt " "
 drawMessages ms = vBox . map (txtWrapWith indent2) . reverse $ ms
-
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
