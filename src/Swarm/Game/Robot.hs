@@ -23,6 +23,7 @@ module Swarm.Game.Robot (
   robotOrientation,
   robotInventory,
   installedDevices,
+  robotLog,
   inventoryHash,
   robotCapabilities,
   robotCtx,
@@ -45,6 +46,8 @@ module Swarm.Game.Robot (
 import Control.Lens hiding (contains)
 import Data.Int (Int64)
 import Data.Maybe (isNothing)
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
 import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
@@ -67,6 +70,7 @@ data Robot = Robot
   , -- | A cached view of the capabilities this robot has.
     --   Automatically generated from '_installedDevices'.
     _robotCapabilities :: Set Capability
+  , _robotLog :: Seq Text
   , _robotLocation :: V2 Int64
   , _robotCtx :: (TCtx, CapCtx)
   , _robotEnv :: Env
@@ -136,6 +140,13 @@ installedDevices = lens _installedDevices setInstalled
       { _installedDevices = inst
       , _robotCapabilities = inventoryCapabilities inst
       }
+
+-- | The robot's own private message log, most recent message last.
+--   Messages can be added both by explicit use of the 'Log' command,
+--   and by uncaught exceptions.  Stored as a "Data.Sequence" so that
+--   we can efficiently add to the end and also process from beginning
+--   to end.
+robotLog :: Lens' Robot (Seq Text)
 
 -- | A hash of a robot's entity record and installed devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
@@ -236,6 +247,7 @@ mkRobot name l d m devs =
           & entityOrientation ?~ d
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
+    , _robotLog = Seq.empty
     , _robotLocation = l
     , _robotCtx = (empty, empty)
     , _robotEnv = empty
@@ -259,6 +271,7 @@ baseRobot devs =
           []
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
+    , _robotLog = Seq.empty
     , _robotLocation = V2 0 0
     , _robotCtx = (empty, empty)
     , _robotEnv = empty

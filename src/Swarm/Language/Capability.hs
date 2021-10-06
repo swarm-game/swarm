@@ -1,8 +1,7 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- |
 -- Module      :  Swarm.Language.Capability
@@ -216,71 +215,67 @@ requiredCaps' ctx = go
 
 -- | Capabilities needed to evaluate or execute a constant.
 constCaps :: Const -> Set Capability
--- Some built-in constants that don't require any special capability.
-constCaps Wait = S.empty
-constCaps Noop = S.empty
-constCaps Force = S.empty
-constCaps Return = S.empty
--- It's important that no capability is required for 'say', because
--- this is how exceptions get reported.  Requiring a capability for
--- 'say' that a robot does not have will cause an infinite loop of
--- throwing a capability exception and reporting it via 'say'.  If we
--- later decide we do want to require a capability for 'say', we would
--- have to include a special case in the interpreter to silently
--- swallow exceptions if the robot doesn't have that capability.
-constCaps Say = S.empty
--- Some straightforward ones.
-constCaps Selfdestruct = S.singleton CSelfdestruct
-constCaps Move = S.singleton CMove
-constCaps Turn = S.singleton CTurn
-constCaps Grab = S.singleton CGrab
-constCaps Place = S.singleton CPlace
-constCaps Give = S.singleton CGive
-constCaps Install = S.singleton CInstall
-constCaps Make = S.singleton CMake
-constCaps If = S.singleton CCond
-constCaps Create = S.singleton CCreate
-constCaps Blocked = S.singleton CSensefront
-constCaps Scan = S.singleton CScan
-constCaps Upload = S.singleton CScan
--- Build definitely requires a CBuild capability (provided by a 3D
--- printer).  However, it's possible we should do something more
--- sophisticated here.  After all, the argument to build won't be run
--- by the robot running the build command.  This is partly taken care
--- of already by the way we interpret the build command in the
--- interpreter.  However, I suspect things currently start to go
--- haywire if you try to build a robot that builds other robots.
-constCaps Build = S.singleton CBuild
--- Some additional straightforward ones, which however currently
--- cannot be used in classic mode since there is no craftable item
--- which conveys their capability.
-constCaps Appear = S.singleton CAppear -- paint?
-constCaps GetX = S.singleton CSenseloc -- GPS?
-constCaps GetY = S.singleton CSenseloc
-constCaps Random = S.singleton CRandom -- randomness device (with bitcoins)?
-constCaps Neg = S.singleton CArith -- ALU?
+constCaps =
+  S.fromList . \case
+    -- Some built-in constants that don't require any special capability.
+    Wait -> []
+    Noop -> []
+    Force -> []
+    Return -> []
+    -- It's important that no capability is required for 'say', because
+    -- this is how exceptions get reported.  Requiring a capability for
+    -- 'say' that a robot does not have will cause an infinite loop of
+    -- throwing a capability exception and reporting it via 'say'.  If we
+    -- later decide we do want to require a capability for 'say', we would
+    -- have to include a special case in the interpreter to silently
+    -- swallow exceptions if the robot doesn't have that capability.
+    Say -> []
+    Log -> [CLog]
+    -- Some straightforward ones.
+    Selfdestruct -> [CSelfdestruct]
+    Move -> [CMove]
+    Turn -> [CTurn]
+    Grab -> [CGrab]
+    Place -> [CPlace]
+    Give -> [CGive]
+    Install -> [CInstall]
+    Make -> [CMake]
+    If -> [CCond]
+    Create -> [CCreate]
+    Blocked -> [CSensefront]
+    Scan -> [CScan]
+    Upload -> [CScan]
+    Build -> [CBuild]
+    -- Some additional straightforward ones, which however currently
+    -- cannot be used in classic mode since there is no craftable item
+    -- which conveys their capability.
+    Appear -> [CAppear] -- paint?
+    GetX -> [CSenseloc] -- GPS?
+    GetY -> [CSenseloc]
+    Random -> [CRandom] -- randomness device (with bitcoins)?
+    Neg -> [CArith] -- ALU? pocket calculator?
+    Whoami -> [CWhoami] -- mirror, needs a recipe
 
--- comparator?
-constCaps Eq = S.singleton CCompare
-constCaps Neq = S.singleton CCompare
-constCaps Lt = S.singleton CCompare
-constCaps Gt = S.singleton CCompare
-constCaps Leq = S.singleton CCompare
-constCaps Geq = S.singleton CCompare
-constCaps Add = S.singleton CArith
-constCaps Sub = S.singleton CArith
-constCaps Mul = S.singleton CArith
-constCaps Div = S.singleton CArith
-constCaps Exp = S.singleton CArith
--- Some more constants which *ought* to have their own capability but
--- currently don't.
-constCaps View = S.empty -- XXX this should also require something.
-constCaps Ishere = S.empty -- XXX this should require a capability.
-constCaps Whoami = S.singleton CWhoami
-constCaps Run = S.empty -- XXX this should also require a capability
--- which the base starts out with.
-constCaps Not = S.empty -- XXX some kind of boolean logic cap?
-constCaps Fst = S.empty -- XXX should require cap for pairs
-constCaps Snd = S.empty
-constCaps Try = S.empty -- XXX these definitely need to require
-constCaps Raise = S.empty -- something.
+    -- comparator?
+    Eq -> [CCompare]
+    Neq -> [CCompare]
+    Lt -> [CCompare]
+    Gt -> [CCompare]
+    Leq -> [CCompare]
+    Geq -> [CCompare]
+    Add -> [CArith]
+    Sub -> [CArith]
+    Mul -> [CArith]
+    Div -> [CArith]
+    Exp -> [CArith]
+    -- Some more constants which *ought* to have their own capability but
+    -- currently don't.
+    View -> [] -- XXX this should also require something.
+    Ishere -> [] -- XXX this should require a capability.
+    Run -> [] -- XXX this should also require a capability
+    -- which the base starts out with.
+    Not -> [] -- XXX some kind of boolean logic cap?
+    Fst -> [] -- XXX should require cap for pairs
+    Snd -> []
+    Try -> [] -- XXX these definitely need to require
+    Raise -> [] -- something.

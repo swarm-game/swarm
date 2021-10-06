@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -180,6 +178,8 @@ data Const
     Build
   | -- | Emit a message.
     Say
+  | -- | Emit a log message.
+    Log
   | -- | View a certain robot.
     View
   | -- | Set what characters are used for display.
@@ -306,7 +306,12 @@ arity c = case constMeta $ constInfo c of
   ConstMBinOp {} -> 2
   ConstMFunc a _ -> a
 
--- note: verified same as before
+-- | Whether a constant represents a /command/.  Constants which are
+--   not commands are /functions/ which are interpreted as soon as
+--   they are evaluated.  Commands, on the other hand, are not
+--   interpreted until being /executed/, that is, when meeting an
+--   'FExec' frame.  When evaluated, commands simply turn into a
+--   'VCApp'.
 isCmd :: Const -> Bool
 isCmd c = case constMeta $ constInfo c of
   ConstMFunc _ cmd -> cmd
@@ -337,6 +342,7 @@ constInfo c = case c of
   Make -> commandLow 1
   Build -> commandLow 2
   Say -> commandLow 1
+  Log -> commandLow 1
   View -> commandLow 1
   Appear -> commandLow 1
   Create -> commandLow 1

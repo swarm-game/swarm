@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -30,6 +28,7 @@ import Data.Int (Int64)
 import Data.List (find)
 import qualified Data.Map as M
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -729,6 +728,11 @@ execConst c vs k = do
       [VString s] -> do
         rn <- use robotName
         lift . lift $ emitMessage (T.concat [rn, ": ", s])
+        return $ Out VUnit k
+      _ -> badConst
+    Log -> case vs of
+      [VString s] -> do
+        robotLog %= (Seq.|> s)
         return $ Out VUnit k
       _ -> badConst
     View -> case vs of
