@@ -68,7 +68,7 @@ circlerProgram =
     }
   |]
 
--- | Initialize a robot with program prog at location loc facing north.
+-- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> V2 Int64 -> Robot
 initRobot prog loc = mkRobot "" north loc (initMachine prog Context.empty) []
 
