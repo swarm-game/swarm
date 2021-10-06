@@ -254,9 +254,12 @@ drawMenu isReplWorking isPaused viewingBase mode =
     ]
       ++ [("s", "step") | isPaused]
       ++ [("c", "recenter") | not viewingBase]
-  keyCmdsFor (Just InfoPanel) =
+  keyCmdsFor (Just RobotPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
     , ("Enter", "make")
+    ]
+  keyCmdsFor (Just InfoPanel) =
+    [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "scroll")
     ]
   keyCmdsFor _ = []
 
