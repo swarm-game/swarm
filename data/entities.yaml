@@ -410,8 +410,8 @@
     attr: device
     char: '§'
   description:
-  - "With a flash memory device, robots can be reprogrammed using the
-     `reprogram` command."
+  - "Using a flash memory device, a robot can reprogram other robots using the
+     'reprogram' command."
   - "Only robots that have completed executing their previous command
      can be reprogrammed."
   - "The robot must possess enough capabilities to run the new command

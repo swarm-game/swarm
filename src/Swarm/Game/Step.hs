@@ -818,7 +818,7 @@ execConst c vs k = do
           finalValue (otherRobot ^. machine)
             `isJustOr` cmdExn
               Reprogram
-              ["You cannot reprogram a robot that has not completed it's current command"]
+              ["You cannot reprogram a robot that has not completed its current command"]
 
         let -- Standard devices that are always installed.
             -- XXX in the future, make a way to build these and just start the base
@@ -834,7 +834,7 @@ execConst c vs k = do
 
             -- A device is OK if it is a standard device, or the robot has
             -- one in its inventory
-            deviceOK d = d `S.member` stdDevices || (otherRobot ^. robotInventory) `E.contains` d
+            deviceOK d = (otherRobot ^. installedDevices) `E.contains` d
 
             missingDevices = S.filter (not . deviceOK) capDevices
 
