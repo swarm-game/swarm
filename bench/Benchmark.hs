@@ -3,21 +3,25 @@
 
 module Main where
 
-import Control.Lens ((&), (.~))
 import Control.Monad (replicateM_)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Criterion.Main (bench, bgroup, defaultMain, whnfIO)
-import GHC.Int (Int64)
 import Linear.V2 (V2 (V2))
 import Swarm.Game.CEK (initMachine)
-import Swarm.Game.Robot (Robot, mkRobot, systemRobot)
-import Swarm.Game.State (GameState, addRobot, initGameState)
+import Swarm.Game.Robot (Robot, mkRobot)
+import Swarm.Game.State (GameState, addRobot, initGameState, gameMode, GameMode (Creative))
 import Swarm.Game.Step (gameTick)
 import qualified Swarm.Language.Context as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax (north)
+import Data.Int (Int64)
+import Control.Lens ((&), (.~))
 
+-- | The program of a robot which waits a random number of ticks, changes its
+--   appearence, then waits another random number of ticks, places a tree, and
+--   then self-destructs.
 treeProgram :: ProcessedTerm
 treeProgram =
   [tmQ|
@@ -32,22 +36,21 @@ treeProgram =
   }
   |]
 
--- | Creates a seed robot at location loc which waits a random number of ticks
---   before changing its appearance, and then a random number of ticks before
---   placing a tree.
-mkTreeBot :: V2 Int64 -> Robot
-mkTreeBot loc =
-  mkRobot "tree" loc (V2 0 0) machine []
-    & systemRobot .~ True
- where
-  machine = initMachine treeProgram Context.empty
+-- | Initialize a robot with program prog at location loc facing north.
+initRobot :: ProcessedTerm -> V2 Int64 -> Robot
+initRobot prog loc = mkRobot "" north loc (initMachine prog Context.empty) []
+
+-- | Creates a GameState with numRobot copies of robot, aligned in a row
+--   pointing east and starting at (0,0).
+mkGameState :: Int -> (V2 Int64 -> Robot) -> IO GameState
+mkGameState numRobots robotMaker = do
+  let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0..numRobots-1]]
+  Right initState <- runExceptT (initGameState 0)
+  execStateT (mapM addRobot robots) (initState & gameMode .~ Creative)
 
 -- | Creates a GameState with numTrees trees.
 mkTrees :: Int -> IO GameState
-mkTrees numTrees = do
-  let robots = [mkTreeBot (V2 (fromIntegral x) 0) | x <- [0 .. numTrees -1]]
-  Right initState <- runExceptT (initGameState 0)
-  execStateT (mapM_ addRobot robots) initState
+mkTrees numTrees = mkGameState numTrees (initRobot treeProgram)
 
 -- | Runs numGameTicks ticks of the game.
 runGame :: Int -> GameState -> IO ()
