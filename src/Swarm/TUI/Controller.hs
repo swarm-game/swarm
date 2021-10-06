@@ -526,12 +526,15 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 -- Info panel events
 ------------------------------------------------------------
 
+-- | Handle user events in the info panel (just scrolling).
 handleInfoPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleInfoPanelEvent s = \case
   VtyEvent (V.EvKey V.KDown []) -> vScrollBy infoScroll 1 >> continue s
   VtyEvent (V.EvKey V.KUp []) -> vScrollBy infoScroll (-1) >> continue s
-  VtyEvent (V.EvKey V.KPageDown []) -> vScrollPage infoScroll Down >> continue s
-  VtyEvent (V.EvKey V.KPageUp []) -> vScrollPage infoScroll Up >> continue s
+  VtyEvent (V.EvKey (V.KChar 'k') []) -> vScrollBy infoScroll 1 >> continue s
+  VtyEvent (V.EvKey (V.KChar 'j') []) -> vScrollBy infoScroll (-1) >> continue s
+  VtyEvent (V.EvKey V.KPageDown []) -> vScrollPage infoScroll Brick.Down >> continue s
+  VtyEvent (V.EvKey V.KPageUp []) -> vScrollPage infoScroll Brick.Up >> continue s
   VtyEvent (V.EvKey V.KHome []) -> vScrollToBeginning infoScroll >> continue s
   VtyEvent (V.EvKey V.KEnd []) -> vScrollToEnd infoScroll >> continue s
   _ -> continueWithoutRedraw s
