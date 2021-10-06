@@ -4,10 +4,10 @@
 module Main where
 
 import Control.Lens ((&), (.~))
-import Control.Monad (replicateM, replicateM_)
+import Control.Monad (replicateM_)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
-import Criterion.Main
+import Criterion.Main (bench, bgroup, defaultMain, whnfIO)
 import GHC.Int (Int64)
 import Linear.V2 (V2 (V2))
 import Swarm.Game.CEK (initMachine)
@@ -17,36 +17,35 @@ import Swarm.Game.Step (gameTick)
 import qualified Swarm.Language.Context as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Term (TInt))
-import System.Random (randomRIO)
 
-treeProgram :: Integer -> Integer -> ProcessedTerm
-treeProgram rn1 rn2 =
+treeProgram :: ProcessedTerm
+treeProgram =
   [tmQ|
   {
-    wait ($int:rn1 + 300);
+    r <- random 100;
+    wait (r + 300);
     appear "|";
-    wait ($int:rn2 + 300);
+    r <- random 100;
+    wait (r + 300);
     place "tree";
     selfdestruct
   }
   |]
 
--- | Creates a seed robot at location loc which waits rn1 ticks before changing
--- | its appearance, and then rn2 ticks before placing a tree.
-mkTreeBot :: V2 Int64 -> Integer -> Integer -> Robot
-mkTreeBot loc rn1 rn2 =
+-- | Creates a seed robot at location loc which waits a random number of ticks
+--   before changing its appearance, and then a random number of ticks before
+--   placing a tree.
+mkTreeBot :: V2 Int64 -> Robot
+mkTreeBot loc =
   mkRobot "tree" loc (V2 0 0) machine []
     & systemRobot .~ True
  where
-  machine = initMachine (treeProgram rn1 rn2) Context.empty
+  machine = initMachine treeProgram Context.empty
 
--- | Creates a GameState with numTrees trees with random growing rates.
+-- | Creates a GameState with numTrees trees.
 mkTrees :: Int -> IO GameState
 mkTrees numTrees = do
-  rn1s <- replicateM numTrees (randomRIO (0, 99))
-  rn2s <- replicateM numTrees (randomRIO (0, 99))
-  let robots = zipWith3 mkTreeBot [V2 x 0 | x <- [0 ..]] rn1s rn2s
+  let robots = [mkTreeBot (V2 (fromIntegral x) 0) | x <- [0 .. numTrees -1]]
   Right initState <- runExceptT (initGameState 0)
   execStateT (mapM_ addRobot robots) initState
 
