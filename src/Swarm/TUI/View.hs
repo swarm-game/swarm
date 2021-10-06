@@ -43,6 +43,7 @@ module Swarm.TUI.View (
 import Control.Arrow ((&&&))
 import Control.Lens
 import Data.Array (range)
+import qualified Data.Foldable as F
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
@@ -388,6 +389,8 @@ explainFocusedItem s = case mItem of
   Just (InventoryEntry _ e) ->
     vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
       <=> explainRecipes e
+      -- Special case: logger device displays the robot's log.
+      <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
  where
   mList = s ^? uiState . uiInventory . _Just . _2
   mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
@@ -501,6 +504,14 @@ drawReqs = vBox . map drawReq
 
 indent2 :: WrapSettings
 indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
+
+drawRobotLog :: AppState -> Widget Name
+drawRobotLog s =
+  vBox
+    [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
+    , vBox . map (txtWrapWith indent2) $
+        (s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList)
+    ]
 
 -- | Draw a list of messages.
 drawMessages :: [Text] -> Widget Name

@@ -351,6 +351,7 @@ initGameState seed = do
         , "workbench"
         , "grabber"
         , "life support system"
+        , "logger"
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
 
