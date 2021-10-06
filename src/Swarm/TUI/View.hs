@@ -267,6 +267,10 @@ drawMenu isReplWorking isPaused viewingBase mode =
 drawKeyCmd :: (Text, Text) -> Widget Name
 drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
 
+------------------------------------------------------------
+-- World panel
+------------------------------------------------------------
+
 -- | Draw the current world view.
 drawWorld :: GameState -> Widget Name
 drawWorld g =
@@ -302,6 +306,78 @@ drawCell :: W.Coords -> W.World Int Entity -> Widget Name
 drawCell i w = case W.lookupEntity i w of
   Just e -> displayEntity e
   Nothing -> displayTerrain (toEnum (W.lookupTerrain i w))
+
+------------------------------------------------------------
+-- Robot inventory panel
+------------------------------------------------------------
+
+-- | Draw info about the currently focused robot, such as its name,
+--   position, orientation, and inventory.
+drawRobotPanel :: AppState -> Widget Name
+drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
+  (Just r, Just (_, lst)) ->
+    let V2 x y = r ^. robotLocation
+     in padBottom Max $
+          vBox
+            [ hCenter $
+                hBox
+                  [ txt (r ^. robotName)
+                  , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
+                  , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
+                  ]
+            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) isFocused lst)
+            ]
+  _ -> padBottom Max $ str " "
+ where
+  isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just RobotPanel
+
+-- | Draw an inventory entry.
+drawItem ::
+  -- | The index of the currently selected inventory entry
+  Maybe Int ->
+  -- | The index of the entry we are drawing
+  Int ->
+  -- | Whether this entry is selected; we can ignore this
+  --   because it will automatically have a special attribute
+  --   applied to it.
+  Bool ->
+  -- | The entry to draw.
+  InventoryEntry ->
+  Widget Name
+drawItem sel i _ (Separator l) =
+  -- Make sure a separator right before the focused element is
+  -- visible. Otherwise, when a separator occurs as the very first
+  -- element of the list, once it scrolls off the top of the viewport
+  -- it will never become visible again.
+  -- See https://github.com/jtdaugherty/brick/issues/336#issuecomment-921220025
+  (if sel == Just (i + 1) then visible else id) $ hBorderWithLabel (txt l)
+drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
+ where
+  showCount = padLeft Max . str . show
+
+-- | Draw the name of an entity, labelled with its visual
+--   representation as a cell in the world.
+drawLabelledEntityName :: Entity -> Widget Name
+drawLabelledEntityName e =
+  hBox
+    [ padRight (Pad 2) (displayEntity e)
+    , txt (e ^. entityName)
+    ]
+
+------------------------------------------------------------
+-- Info panel
+------------------------------------------------------------
+
+-- XXX show 'vvv' or '...' or something in the border if there's more
+-- off the bottom?
+
+-- | Draw the info panel in the bottom-left corner, which shows info
+--   about the currently focused inventory item.
+drawInfoPanel :: AppState -> Widget Name
+drawInfoPanel s =
+  viewport InfoViewport Vertical
+    . padLeftRight 1
+    $ explainFocusedItem s
 
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
@@ -423,69 +499,6 @@ drawReqs = vBox . map drawReq
   drawReq (1, e) = txt $ e ^. entityName
   drawReq (n, e) = str (show n) <+> txt " " <+> txt (e ^. entityName)
 
--- | Draw info about the currently focused robot, such as its name,
---   position, orientation, and inventory.
-drawRobotPanel :: AppState -> Widget Name
-drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
-  (Just r, Just (_, lst)) ->
-    let V2 x y = r ^. robotLocation
-     in padBottom Max $
-          vBox
-            [ hCenter $
-                hBox
-                  [ txt (r ^. robotName)
-                  , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
-                  , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
-                  ]
-            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) isFocused lst)
-            ]
-  _ -> padBottom Max $ str " "
- where
-  isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just RobotPanel
-
--- | Draw an inventory entry.
-drawItem ::
-  -- | The index of the currently selected inventory entry
-  Maybe Int ->
-  -- | The index of the entry we are drawing
-  Int ->
-  -- | Whether this entry is selected; we can ignore this
-  --   because it will automatically have a special attribute
-  --   applied to it.
-  Bool ->
-  -- | The entry to draw.
-  InventoryEntry ->
-  Widget Name
-drawItem sel i _ (Separator l) =
-  -- Make sure a separator right before the focused element is
-  -- visible. Otherwise, when a separator occurs as the very first
-  -- element of the list, once it scrolls off the top of the viewport
-  -- it will never become visible again.
-  -- See https://github.com/jtdaugherty/brick/issues/336#issuecomment-921220025
-  (if sel == Just (i + 1) then visible else id) $ hBorderWithLabel (txt l)
-drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
- where
-  showCount = padLeft Max . str . show
-
--- | Draw the name of an entity, labelled with its visual
---   representation as a cell in the world.
-drawLabelledEntityName :: Entity -> Widget Name
-drawLabelledEntityName e =
-  hBox
-    [ padRight (Pad 2) (displayEntity e)
-    , txt (e ^. entityName)
-    ]
-
--- | Draw the info panel in the bottom-left corner, which shows info
---   about the currently focused inventory item.
-drawInfoPanel :: AppState -> Widget Name
-drawInfoPanel s =
-  viewport InfoViewport Vertical
-    . padLeftRight 1
-    $ explainFocusedItem s
-
--- drawMessages (s ^. gameState . messageQueue)
-
 indent2 :: WrapSettings
 indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
 
@@ -493,6 +506,10 @@ indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
 drawMessages :: [Text] -> Widget Name
 drawMessages [] = txt " "
 drawMessages ms = vBox . map (txtWrapWith indent2) . reverse $ ms
+
+------------------------------------------------------------
+-- REPL panel
+------------------------------------------------------------
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
