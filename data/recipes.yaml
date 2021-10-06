@@ -10,6 +10,11 @@
   - [4, board]
 
 - in:
+  - [100, log]
+  out:
+  - [1, logger]
+
+- in:
   - [1, board]
   - [2, branch]
   out:
