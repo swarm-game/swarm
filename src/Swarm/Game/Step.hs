@@ -813,6 +813,13 @@ execConst c vs k = do
           robotNamed otherRobotName
             >>= (`isJustOr` cmdExn Reprogram ["There is no robot named", otherRobotName, "."])
 
+        -- check that current robot is not trying to reprogram self
+        myName <- use robotName
+        (otherRobotName /= myName)
+          `holdsOr` cmdExn
+            Reprogram
+            ["You cannot make a robot reprogram itself"]
+
         -- check if robot has completed executing it's current command
         _ <-
           finalValue (otherRobot ^. machine)
@@ -820,13 +827,18 @@ execConst c vs k = do
               Reprogram
               ["You cannot reprogram a robot that has not completed its current command"]
 
-        let -- Standard devices that are always installed.
-            -- XXX in the future, make a way to build these and just start the base
-            -- out with a large supply of each?
-            stdDeviceList = ["treads", "grabber", "solar panel", "detonator", "scanner"]
-            stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
+        -- check if otherRobot is at the correct distance
+        -- a robot can program adjacent robots
+        -- creative mode ignores distance checks
+        loc <- use robotLocation
+        ( mode == Creative
+            || (otherRobot ^. robotLocation) `manhattan` loc <= 1
+          )
+          `holdsOr` cmdExn
+            Reprogram
+            ["You can only program adjacent robot"]
 
-            -- Find out what capabilities are required by the program that will
+        let -- Find out what capabilities are required by the program that will
             -- be run on the other robot, and what devices would provide those
             -- capabilities.
             (caps, _capCtx) = requiredCaps (snd (otherRobot ^. robotCtx)) cmd
@@ -846,19 +858,11 @@ execConst c vs k = do
             , commaList (map (^. entityName) (S.toList missingDevices))
             ]
 
-        -- check that current robot is not trying to reprogram self
-        myName <- use robotName
-        (otherRobotName /= myName)
-          `holdsOr` cmdExn
-            Reprogram
-            ["You cannot make a robot reprogram itself"]
-
         -- update other robot's CEK machine and environment
         lift . lift $ robotMap . at otherRobotName . _Just . machine .= In cmd e [FExec]
         lift . lift $ robotMap . at otherRobotName . _Just . robotEnv .= empty
         lift . lift $ robotMap . at otherRobotName . _Just . robotCtx .= (empty, empty)
 
-        flagRedraw
         return $ Out (VString otherRobotName) k
       _ -> badConst
     Build -> case vs of
