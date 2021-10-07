@@ -87,6 +87,8 @@ data Capability
     CLambda
   | -- | Enable recursive definitions
     CRecursion
+  | -- | Execute the 'Reprogram' command
+    CReprogram
   | -- | Capability to introspect and see it's own name
     CWhoami
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
@@ -249,6 +251,8 @@ constCaps Upload = S.singleton CScan
 -- interpreter.  However, I suspect things currently start to go
 -- haywire if you try to build a robot that builds other robots.
 constCaps Build = S.singleton CBuild
+-- Reprogram reqiures a CReprogram capability.
+constCaps Reprogram = S.singleton CReprogram
 -- Some additional straightforward ones, which however currently
 -- cannot be used in classic mode since there is no craftable item
 -- which conveys their capability.

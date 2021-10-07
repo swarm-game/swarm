@@ -178,6 +178,9 @@ data Const
     Make
   | -- | Construct a new robot.
     Build
+  | -- | Reprogram a robot that has executed it's command
+    --   with a new command
+    Reprogram
   | -- | Emit a message.
     Say
   | -- | View a certain robot.
@@ -335,6 +338,7 @@ constInfo c = case c of
   Give -> commandLow 2
   Install -> commandLow 2
   Make -> commandLow 1
+  Reprogram -> commandLow 2
   Build -> commandLow 2
   Say -> commandLow 1
   View -> commandLow 1
