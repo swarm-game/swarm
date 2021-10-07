@@ -24,6 +24,7 @@ module Swarm.Game.Robot (
   robotInventory,
   installedDevices,
   robotLog,
+  robotLogUpdated,
   inventoryHash,
   robotCapabilities,
   robotCtx,
@@ -71,6 +72,7 @@ data Robot = Robot
     --   Automatically generated from '_installedDevices'.
     _robotCapabilities :: Set Capability
   , _robotLog :: Seq Text
+  , _robotLogUpdated :: Bool
   , _robotLocation :: V2 Int64
   , _robotCtx :: (TCtx, CapCtx)
   , _robotEnv :: Env
@@ -84,7 +86,7 @@ data Robot = Robot
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices]
+let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -145,8 +147,20 @@ installedDevices = lens _installedDevices setInstalled
 --   Messages can be added both by explicit use of the 'Log' command,
 --   and by uncaught exceptions.  Stored as a "Data.Sequence" so that
 --   we can efficiently add to the end and also process from beginning
---   to end.
+--   to end.  Note that updating via this lens will also set the
+--   'robotLogUpdated'.
 robotLog :: Lens' Robot (Seq Text)
+robotLog = lens _robotLog setLog
+ where
+  setLog r newLog =
+    r
+      { _robotLog = newLog
+      , _robotLogUpdated = True
+      }
+
+-- | Has the 'robotLog' been updated since the last time it was
+--   viewed?
+robotLogUpdated :: Lens' Robot Bool
 
 -- | A hash of a robot's entity record and installed devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
@@ -248,6 +262,7 @@ mkRobot name l d m devs =
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLog = Seq.empty
+    , _robotLogUpdated = False
     , _robotLocation = l
     , _robotCtx = (empty, empty)
     , _robotEnv = empty
@@ -272,6 +287,7 @@ baseRobot devs =
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLog = Seq.empty
+    , _robotLogUpdated = False
     , _robotLocation = V2 0 0
     , _robotCtx = (empty, empty)
     , _robotEnv = empty

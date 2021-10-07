@@ -354,7 +354,7 @@ drawItem ::
   --   applied to it.
   Bool ->
   -- | The entry to draw.
-  InventoryEntry ->
+  InventoryListEntry ->
   Widget Name
 drawItem sel i _ (Separator l) =
   -- Make sure a separator right before the focused element is
@@ -366,6 +366,7 @@ drawItem sel i _ (Separator l) =
 drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
  where
   showCount = padLeft Max . str . show
+drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
 
 -- | Draw the name of an entity, labelled with its visual
 --   representation as a cell in the world.
@@ -397,7 +398,10 @@ explainFocusedItem s = case mItem of
   Just (InventoryEntry _ e) ->
     vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
       <=> explainRecipes e
-      -- Special case: logger device displays the robot's log.
+  Just (InstalledEntry e) ->
+    vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
+      <=> explainRecipes e
+      -- Special case: installed logger device displays the robot's log.
       <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
  where
   mList = s ^? uiState . uiInventory . _Just . _2
@@ -517,10 +521,15 @@ drawRobotLog :: AppState -> Widget Name
 drawRobotLog s =
   vBox
     [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
-    , vBox . map (txtWrapWith indent2) $
-        (s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList)
+    , vBox . imap drawMsg $ logMsgs
     ]
+ where
+  logMsgs = s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList
+  n = length logMsgs
 
+  drawMsg i =
+    (if i == n -1 && s ^. uiState . uiScrollToEnd then visible else id)
+      . txtWrapWith indent2
 
 ------------------------------------------------------------
 -- REPL panel

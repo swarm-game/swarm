@@ -312,6 +312,29 @@ updateUI = do
     -- Otherwise, do nothing.
     _ -> pure False
 
+  -- If the focused robot's log has been updated, attempt to
+  -- automatically switch to it and scroll all the way down so the new
+  -- message can be seen.
+  uiState . uiScrollToEnd .= False
+  logUpdated <- do
+    case maybe False (view robotLogUpdated) fr of
+      False -> pure False
+      True -> do
+        -- Reset the log updated flag
+        zoom gameState clearFocusedRobotLogUpdated
+
+        -- Find and focus an installed "logger" device in the inventory list.
+        let isLogger (InstalledEntry e) = e ^. entityName == "logger"
+            isLogger _ = False
+            focusLogger = BL.listFindBy isLogger
+
+        uiState . uiInventory . _Just . _2 %= focusLogger
+
+        -- Now inform the UI that it should scroll the info panel to
+        -- the very end.
+        uiState . uiScrollToEnd .= True
+        pure True
+
   -- Decide whether the info panel has more content scrolled off the
   -- top and/or bottom, so we can draw some indicators to show it if
   -- so.  Note, because we only know the update size and position of
@@ -329,7 +352,7 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || infoPanelUpdated
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated
   pure redraw
 
 -- | Make sure all tiles covering the visible part of the world are
@@ -517,18 +540,8 @@ handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
   case mList >>= BL.listSelectedElement of
     Nothing -> continueWithoutRedraw s
     Just (_, Separator _) -> continueWithoutRedraw s
-    Just (_, InventoryEntry _ e) -> do
-      let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
-          mkTy = Forall [] $ TyCmd TyUnit
-          mkProg = TApp (TConst Make) (TString (e ^. entityName))
-          mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
-      case isActive <$> (s ^. gameState . robotMap . at "base") of
-        Just False ->
-          continue $
-            s
-              & gameState . replStatus .~ REPLWorking mkTy Nothing
-              & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
-        _ -> continueWithoutRedraw s
+    Just (_, InventoryEntry _ e) -> makeEntity s e
+    Just (_, InstalledEntry e) -> makeEntity s e
 handleRobotPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList of
@@ -538,6 +551,22 @@ handleRobotPanelEvent s (VtyEvent ev) = do
       let s' = s & uiState . uiInventory . _Just . _2 .~ l'
       continue s'
 handleRobotPanelEvent s _ = continueWithoutRedraw s
+
+-- | Attempt to make an entity selected from the inventory, if the
+--   base is not currently busy.
+makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
+makeEntity s e = do
+  let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+      mkTy = Forall [] $ TyCmd TyUnit
+      mkProg = TApp (TConst Make) (TString (e ^. entityName))
+      mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
+  case isActive <$> (s ^. gameState . robotMap . at "base") of
+    Just False ->
+      continue $
+        s
+          & gameState . replStatus .~ REPLWorking mkTy Nothing
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
+    _ -> continueWithoutRedraw s
 
 ------------------------------------------------------------
 -- Info panel events

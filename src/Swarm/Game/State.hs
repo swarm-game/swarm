@@ -51,6 +51,7 @@ module Swarm.Game.State (
   modifyViewCenter,
   viewingRegion,
   focusedRobot,
+  clearFocusedRobotLogUpdated,
   ensureUniqueName,
   addRobot,
   emitMessage,
@@ -305,6 +306,12 @@ viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
 focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotName)
+
+-- | Clear the 'robotLogUpdated' flag of the focused robot.
+clearFocusedRobotLogUpdated :: MonadState GameState m => m ()
+clearFocusedRobotLogUpdated = do
+  n <- use focusedRobotName
+  robotMap . ix n . robotLogUpdated .= False
 
 -- | Given a 'Robot', possibly modify its name to ensure that the name
 --   is unique among robots.  This is done simply by appending a new unique
