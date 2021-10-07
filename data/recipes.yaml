@@ -10,7 +10,7 @@
   - [4, board]
 
 - in:
-  - [100, log]
+  - [1, log]
   out:
   - [1, logger]
 
