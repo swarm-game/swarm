@@ -149,14 +149,23 @@ ensureCanExecute c = do
   (sys || mode == Creative || S.null missingCaps)
     `holdsOr` Incapable missingCaps (TConst c)
 
--- | Ensure that either a robot has a given capability, OR we are in creative
---   mode.
-hasCapabilityOr :: MonadState GameState m => Capability -> Exn -> ExceptT Exn (StateT Robot m) ()
-hasCapabilityOr cap exn = do
-  mode <- lift . lift $ use gameMode
+-- | Test whether the current robot has a given capability (either
+--   because it has a device which gives it that capability, or it is a
+--   system robot, or we are in creative mode).
+hasCapability :: MonadState GameState m => Capability -> StateT Robot m Bool
+hasCapability cap = do
+  mode <- lift $ use gameMode
   sys <- use systemRobot
   caps <- use robotCapabilities
-  (sys || mode == Creative || cap `S.member` caps) `holdsOr` exn
+  return (sys || mode == Creative || cap `S.member` caps)
+
+-- | Ensure that either a robot has a given capability, OR we are in creative
+--   mode.
+hasCapabilityOr ::
+  MonadState GameState m => Capability -> Exn -> ExceptT Exn (StateT Robot m) ()
+hasCapabilityOr cap exn = do
+  h <- lift $ hasCapability cap
+  h `holdsOr` exn
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -366,21 +375,18 @@ stepCEK cek = case cek of
   -- just ignore the try block and continue.
   Out v (FTry _ : k) -> return $ Out v k
   -- If an exception rises all the way to the top level without being
-  -- handled, turn it into an error message via the 'say' command.
-  -- Note that (for now at least) the 'say' command requires no
-  -- capabilities, so this cannot generate an infinite loop. However,
-  -- in the future we might differentiate between a 'log' command
-  -- (which appends to an internal message queue, visible only via
-  -- 'view'), and might require a logging device, and a 'say' command
-  -- which broadcasts to other (nearby?) robots.
+  -- handled, turn it into an error message via the 'log' command.
 
-  -- NOTE, if this is changed to go via e.g. a Log command that
-  -- requires a capability, make sure to check for that capability
-  -- here and silently discard the message if the robot can't do
-  -- logging!  Otherwise trying to exceute the Log command will
-  -- generate another exception, which will be logged, which will
-  -- generate an exception, ... etc.
-  Up exn [] -> return $ In (TApp (TConst Say) (TString (formatExn exn))) empty [FExec]
+  -- HOWEVER, we have to make sure to check that the robot has the
+  -- 'log' capability, and silently discard the message otherwise.  If
+  -- we didn't, trying to exceute the Log command would generate
+  -- another exception, which will be logged, which would generate an
+  -- exception, ... etc.
+  Up exn [] -> do
+    h <- hasCapability CLog
+    case h of
+      True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty [FExec]
+      False -> return $ Out VUnit []
   -- Fatal errors and capability errors can't be caught; just throw
   -- away the continuation stack.
   Up exn@Fatal {} _ -> return $ Up exn []

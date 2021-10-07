@@ -222,14 +222,6 @@ constCaps =
     Noop -> []
     Force -> []
     Return -> []
-    -- It's important that no capability is required for 'say', because
-    -- this is how exceptions get reported.  Requiring a capability for
-    -- 'say' that a robot does not have will cause an infinite loop of
-    -- throwing a capability exception and reporting it via 'say'.  If we
-    -- later decide we do want to require a capability for 'say', we would
-    -- have to include a special case in the interpreter to silently
-    -- swallow exceptions if the robot doesn't have that capability.
-    Say -> []
     Log -> [CLog]
     -- Some straightforward ones.
     Selfdestruct -> [CSelfdestruct]
@@ -270,6 +262,7 @@ constCaps =
     Exp -> [CArith]
     -- Some more constants which *ought* to have their own capability but
     -- currently don't.
+    Say -> []
     View -> [] -- XXX this should also require something.
     Ishere -> [] -- XXX this should require a capability.
     Run -> [] -- XXX this should also require a capability
