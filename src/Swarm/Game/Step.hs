@@ -814,6 +814,7 @@ execConst c vs k = do
         em <- lift . lift $ use entityMap
         mode <- lift . lift $ use gameMode
         rctx@(_, capCtx) <- use robotCtx
+        renv <- use robotEnv
 
         -- check if robot exists
         childRobot <-
@@ -869,7 +870,7 @@ execConst c vs k = do
         -- and context which collectively mean all the variables
         -- declared in the parent robot
         lift . lift $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
-        lift . lift $ robotMap . at childRobotName . _Just . robotEnv .= e
+        lift . lift $ robotMap . at childRobotName . _Just . robotEnv .= renv
         lift . lift $ robotMap . at childRobotName . _Just . robotCtx .= rctx
 
         return $ Out VUnit k
