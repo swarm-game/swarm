@@ -38,6 +38,8 @@ module Swarm.TUI.Model (
   uiInventory,
   uiError,
   uiModal,
+  uiSearch,
+  uiSearching,
   lgTicksPerSecond,
   lastFrameTime,
   accumulatedTime,
@@ -76,6 +78,7 @@ import Control.Monad.State
 import Data.List (findIndex, sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import System.Clock
 import Text.Read (readMaybe)
@@ -172,6 +175,8 @@ data UIState = UIState
   , _uiShowFPS :: Bool
   , _uiTPF :: Double
   , _uiFPS :: Double
+  , _uiSearch :: Text
+  , _uiSearching :: Bool
   , _lgTicksPerSecond :: Int
   , _tickCount :: Int
   , _frameCount :: Int
@@ -226,6 +231,12 @@ uiTPF :: Lens' UIState Double
 
 -- | Computed frames per milli seconds
 uiFPS :: Lens' UIState Double
+
+-- | Search term for filtering inventory
+uiSearch :: Lens' UIState Text
+
+-- | User is typing a search term
+uiSearching :: Lens' UIState Bool
 
 -- | The base-2 logarithm of the current game speed in ticks per
 --   second.
@@ -291,6 +302,8 @@ initUIState = liftIO $ do
       , _uiShowFPS = False
       , _uiTPF = 0
       , _uiFPS = 0
+      , _uiSearch = ""
+      , _uiSearching = False
       , _lgTicksPerSecond = initLgTicksPerSecond
       , _lastFrameTime = startTime
       , _accumulatedTime = 0
@@ -309,15 +322,19 @@ populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
 populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
-  let mkInvEntry (n, e) = InventoryEntry n e
-      itemList label =
-        (\case [] -> []; xs -> Separator label : xs)
-          . map mkInvEntry
-          . sortOn (view entityName . snd)
-          . elems
-      items =
-        (r ^. robotInventory . to (itemList "Inventory"))
-          ++ (r ^. installedDevices . to (itemList "Installed devices"))
+  search <- use (uiSearch)
+  let mkInvEntry (n,e) = InventoryEntry n e
+      itemList label
+        = (\case { [] -> []; xs -> Separator label : xs })
+        . map mkInvEntry
+        . filter (T.isPrefixOf search . view entityName . snd)
+        . sortOn (view entityName . snd)
+        . elems
+      allItems = (r ^. robotInventory . to (itemList "Inventory"))
+              ++ (r ^. installedDevices . to (itemList "Installed devices"))
+      items
+        | T.null search = allItems
+        | otherwise     = (Separator $ "Search: " <> search) : allItems
 
       -- Attempt to keep the selected element steady.
       sel = mList >>= BL.listSelectedElement -- Get the currently selected element+index.
