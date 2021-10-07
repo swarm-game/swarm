@@ -34,7 +34,7 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
-import System.Random (randomRIO)
+import System.Random (uniformR)
 import Witch
 import Prelude hiding (lookup)
 
@@ -68,17 +68,8 @@ evalStepsPerTick = 100
 --   from a file when the whole program starts up).
 gameTick :: (MonadState GameState m, MonadIO m) => m ()
 gameTick = do
-  -- Note, it is tempting to do the below in one line with some clever
-  -- lens combinator, but it's not possible.  We want to do an
-  -- effectful traversal over a piece of the state (i.e. step each
-  -- robot in the robot map, where stepping a robot could have effects
-  -- on the game state), but the problem is the effects could in
-  -- theory include modifying the very state we are traversing over.
-  -- In fact, stepping one robot can even have effects on other robots
-  -- (e.g. if one robot gives an item to another), so we can't even
-  -- use something like M.traverseMaybeWithKey --- we have to get the
-  -- names of all robots and then step them one at a time.
-  robotNames <- uses robotMap M.keys
+  wakeUpRobotsDoneSleeping
+  robotNames <- use activeRobots
   forM_ robotNames $ \rn -> do
     mr <- uses robotMap (M.lookup rn)
     case mr of
@@ -86,8 +77,9 @@ gameTick = do
       Just curRobot -> do
         curRobot' <- tickRobot curRobot
         case curRobot' ^. selfDestruct of
-          True -> robotMap %= M.delete rn
+          True -> deleteRobot rn
           False -> robotMap %= M.insert rn curRobot'
+        mapM_ (sleepUntil rn) (waitingUntil curRobot')
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL.
@@ -102,6 +94,8 @@ gameTick = do
 
   -- Possibly update the view center.
   modify recalcViewCenter
+  -- Advance the game time by one.
+  ticks += 1
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -227,7 +221,15 @@ stepCEK cek = case cek of
   ------------------------------------------------------------
   -- Evaluation
 
-  -- First some straightforward cases.  These all immediately turn
+  -- We wake up robots whose wake-up time has been reached. If it hasn't yet
+  -- then stepCEK is a no-op.
+  Waiting wakeupTime cek' -> do
+    time <- lift $ use ticks
+    if wakeupTime == time
+      then stepCEK cek'
+      else return cek
+
+  -- Now some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ k -> return $ Out VUnit k
   In (TDir d) _ k -> return $ Out (VDir d) k
@@ -433,14 +435,12 @@ evalConst c vs k = do
 seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
 seedProgram minTime randTime thing =
   [tmQ|
-  let repeat : int -> cmd () -> cmd () = \n.\c.
-    if (n == 0) {} {c ; repeat (n-1) c}
-  in {
+  {
     r <- random (1 + $int:randTime);
-    repeat (r + $int:minTime) wait;
+    wait (r + $int:minTime);
     appear "|";
     r <- random (1 + $int:randTime);
-    repeat (r + $int:minTime) wait;
+    wait (r + $int:minTime);
     place $str:thing;
     selfdestruct
   }
@@ -459,7 +459,11 @@ execConst c vs k = do
     Return -> case vs of
       [v] -> return $ Out v k
       _ -> badConst
-    Wait -> return $ Out VUnit k
+    Wait -> case vs of
+      [VInt d] -> do
+        time <- lift . lift $ use ticks
+        return $ Waiting (time + d) (Out VUnit k)
+      _ -> badConst
     Selfdestruct -> do
       selfDestruct .= True
       flagRedraw
@@ -716,7 +720,9 @@ execConst c vs k = do
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
-        n <- randomRIO (0, hi -1)
+        rand <- lift . lift $ use randGen
+        let (n, g) = uniformR (0, hi -1) rand
+        lift . lift $ randGen .= g
         return $ Out (VInt n) k
       _ -> badConst
     Say -> case vs of

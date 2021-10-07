@@ -368,7 +368,7 @@ constInfo c = case c of
   Div -> binaryOp "/" 7 L
   Exp -> binaryOp "^" 8 R
   Eq -> binaryOp "==" 4 N
-  Neq -> binaryOp "/=" 4 N
+  Neq -> binaryOp "!=" 4 N
   Lt -> binaryOp "<" 4 N
   Gt -> binaryOp ">" 4 N
   Leq -> binaryOp "<=" 4 N

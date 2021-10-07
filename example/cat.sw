@@ -11,7 +11,7 @@ let randdir : cmd dir = {
 
 forever {
   n <- random 20;
-  repeat (10 + n) wait;
+  wait (10 + n);
   d <- randdir;
   turn d;
   dist <- random 10;

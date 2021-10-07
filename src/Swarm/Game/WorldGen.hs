@@ -42,10 +42,11 @@ testWorld1 (Coords (i, j))
 data Size = Small | Big deriving (Eq, Ord, Show, Read)
 data Hardness = Soft | Hard deriving (Eq, Ord, Show, Read)
 data Origin = Natural | Artificial deriving (Eq, Ord, Show, Read)
+type Seed = Int
 
 -- | A more featureful test world.
-testWorld2 :: WorldFun TerrainType Text
-testWorld2 (Coords ix@(r, c)) =
+testWorld2 :: Seed -> WorldFun TerrainType Text
+testWorld2 baseSeed (Coords ix@(r, c)) =
   genBiome
     (bool Small Big (sample ix pn0 > 0))
     (bool Soft Hard (sample ix pn1 > 0))
@@ -84,23 +85,28 @@ testWorld2 (Coords ix@(r, c)) =
   sample (i, j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
 
   pn :: Int -> Perlin
-  pn seed = perlin seed 6 0.05 0.6
+  pn seed = perlin (seed + baseSeed) 6 0.05 0.6
 
   pn0 = pn 0
   pn1 = pn 1
   pn2 = pn 2
 
   clumps :: Int -> Perlin
-  clumps seed = perlin seed 4 0.08 0.5
+  clumps seed = perlin (seed + baseSeed) 4 0.08 0.5
 
   cl0 = clumps 0
 
--- | Offset the world so the base starts on a tree.
+-- | Offset the world so the base starts on empty spot next to tree and grass.
 findGoodOrigin :: WorldFun t Text -> WorldFun t Text
 findGoodOrigin f = \(Coords (r, c)) -> f (Coords (r + rOffset, c + cOffset))
  where
   int' :: Enumeration Int64
   int' = fromIntegral <$> int
   (rOffset, cOffset) = fromMaybe (error "the impossible happened, no offsets were found") offsets
-  offsets = find isTree (enumerate (int' >< int'))
-  isTree = (== Just "tree") . snd . f . Coords
+  offsets = find isGoodPlace (enumerate (int' >< int'))
+  hasEntity mayE = (== mayE) . snd . f . Coords
+  isGoodPlace cs =
+    hasEntity Nothing cs
+      && any (hasEntity (Just "tree")) (neighbors cs)
+      && all (\c -> hasEntity (Just "tree") c || hasEntity Nothing c) (neighbors cs)
+  neighbors (x, y) = (,) <$> [x, x - 1, x + 1] <*> [y, y - 1, y + 1]

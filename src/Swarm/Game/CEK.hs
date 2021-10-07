@@ -174,6 +174,9 @@ data CEK
     --   case of a command failure or a user-generated exception, or
     --   until the stack is empty in the case of a fatal exception).
     Up Exn Cont
+  | -- | The machine is waiting for the game to reach a certain time
+    --   to resume its execution.
+    Waiting Integer CEK
   deriving (Eq, Show)
 
 -- | Is the CEK machine in a final (finished) state?  If so, extract
@@ -230,6 +233,8 @@ prettyCEK (Up e k) =
     [ "! " ++ from (formatExn e)
     , "  " ++ prettyCont k
     ]
+prettyCEK (Waiting t cek) =
+  "🕑" <> show t <> " " <> show cek
 
 -- | Poor pretty-printing of continuations.
 prettyCont :: Cont -> String

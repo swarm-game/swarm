@@ -67,6 +67,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
+  Seed,
 ) where
 
 import Control.Lens
@@ -356,8 +357,8 @@ gameState :: Lens' AppState GameState
 uiState :: Lens' AppState UIState
 
 -- | Initialize the 'AppState'.
-initAppState :: ExceptT Text IO AppState
-initAppState = AppState <$> initGameState <*> initUIState
+initAppState :: Seed -> ExceptT Text IO AppState
+initAppState seed = AppState <$> initGameState seed <*> initUIState
 
 ------------------------------------------------------------
 --
