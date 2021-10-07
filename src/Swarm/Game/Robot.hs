@@ -12,6 +12,12 @@
 --
 -- A data type to represent robots.
 module Swarm.Game.Robot (
+  -- * Robot log entries
+  LogEntry (..),
+  leText,
+  leRobotName,
+  leTime,
+
   -- * Robots
   Robot,
 
@@ -63,6 +69,19 @@ import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Types (TCtx)
 
+-- | An entry in a robot's log.
+data LogEntry = LogEntry
+  { -- | The text of the log entry.
+    _leText :: Text
+  , -- | The name of the robot that generated the entry.
+    _leRobotName :: Text
+  , -- | The time at which the entry was created.
+    _leTime :: Integer
+  }
+  deriving (Show)
+
+makeLenses ''LogEntry
+
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
@@ -71,7 +90,7 @@ data Robot = Robot
   , -- | A cached view of the capabilities this robot has.
     --   Automatically generated from '_installedDevices'.
     _robotCapabilities :: Set Capability
-  , _robotLog :: Seq Text
+  , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
   , _robotLocation :: V2 Int64
   , _robotCtx :: (TCtx, CapCtx)
@@ -149,7 +168,7 @@ installedDevices = lens _installedDevices setInstalled
 --   we can efficiently add to the end and also process from beginning
 --   to end.  Note that updating via this lens will also set the
 --   'robotLogUpdated'.
-robotLog :: Lens' Robot (Seq Text)
+robotLog :: Lens' Robot (Seq LogEntry)
 robotLog = lens _robotLog setLog
  where
   setLog r newLog =

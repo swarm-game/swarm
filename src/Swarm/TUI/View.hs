@@ -46,6 +46,7 @@ import qualified Data.Foldable as F
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
+import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
@@ -521,15 +522,18 @@ drawRobotLog :: AppState -> Widget Name
 drawRobotLog s =
   vBox
     [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
-    , vBox . imap drawMsg $ logMsgs
+    , vBox . imap drawEntry $ logEntries
     ]
  where
-  logMsgs = s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList
-  n = length logMsgs
+  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList
+  n = length logEntries
 
-  drawMsg i =
+  singleSource = 1 == (S.size . S.fromList . map (view leRobotName) $ logEntries)
+
+  drawEntry i e =
     (if i == n -1 && s ^. uiState . uiScrollToEnd then visible else id)
       . txtWrapWith indent2
+      $ (if singleSource then e ^. leText else T.concat ["[", e ^. leRobotName, "] ", e ^. leText])
 
 ------------------------------------------------------------
 -- REPL panel

@@ -721,6 +721,10 @@ execConst c vs k = do
         forM_ (elems inv) $ \(_, e) ->
           lift . lift $ robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
 
+        -- Upload our log
+        rlog <- use robotLog
+        lift . lift $ robotMap . at otherName . _Just . robotLog %= (<> rlog)
+
         return $ Out VUnit k
       _ -> badConst
     Random -> case vs of
@@ -738,7 +742,9 @@ execConst c vs k = do
       _ -> badConst
     Log -> case vs of
       [VString s] -> do
-        robotLog %= (Seq.|> s)
+        rn <- use robotName
+        time <- lift . lift $ use ticks
+        robotLog %= (Seq.|> LogEntry s rn time)
         return $ Out VUnit k
       _ -> badConst
     View -> case vs of
