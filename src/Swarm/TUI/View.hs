@@ -34,7 +34,6 @@ module Swarm.TUI.View (
   -- * Info panel
   drawInfoPanel,
   explainFocusedItem,
-  drawMessages,
 
   -- * REPL
   drawREPL,
@@ -522,10 +521,6 @@ drawRobotLog s =
         (s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList)
     ]
 
--- | Draw a list of messages.
-drawMessages :: [Text] -> Widget Name
-drawMessages [] = txt " "
-drawMessages ms = vBox . map (txtWrapWith indent2) . reverse $ ms
 
 ------------------------------------------------------------
 -- REPL panel
