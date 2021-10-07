@@ -34,6 +34,8 @@ module Swarm.TUI.Model (
   uiReplHistIdx,
   uiReplLast,
   uiInventory,
+  uiMoreInfoTop,
+  uiMoreInfoBot,
   uiError,
   uiModal,
   lgTicksPerSecond,
@@ -173,6 +175,8 @@ data UIState = UIState
   , _uiReplHistory :: [REPLHistItem]
   , _uiReplHistIdx :: Int
   , _uiInventory :: Maybe (Int, BL.List Name InventoryEntry)
+  , _uiMoreInfoTop :: Bool
+  , _uiMoreInfoBot :: Bool
   , _uiError :: Maybe (Widget Name)
   , _uiModal :: Maybe Modal
   , _uiShowFPS :: Bool
@@ -215,6 +219,12 @@ uiReplHistIdx :: Lens' UIState Int
 --   inventory changed) along with a list of the items in the
 --   focused robot's inventory.
 uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryEntry))
+
+-- | Does the info panel contain more content past the top of the panel?
+uiMoreInfoTop :: Lens' UIState Bool
+
+-- | Does the info panel contain more content past the bottom of the panel?
+uiMoreInfoBot :: Lens' UIState Bool
 
 -- | When this is @Just@, it represents a popup box containing an
 --   error message that is shown on top of the rest of the UI.
@@ -292,6 +302,8 @@ initUIState = liftIO $ do
       , _uiReplHistIdx = -1
       , _uiReplLast = ""
       , _uiInventory = Nothing
+      , _uiMoreInfoTop = False
+      , _uiMoreInfoBot = False
       , _uiError = Nothing
       , _uiModal = Nothing
       , _uiShowFPS = False

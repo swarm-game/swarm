@@ -90,7 +90,17 @@ drawUI s =
         [ hLimitPercent 25 $
             vBox
               [ vLimitPercent 50 $ panel highlightAttr fr RobotPanel plainBorder $ drawRobotPanel s
-              , panel highlightAttr fr InfoPanel plainBorder $ drawInfoPanel s
+              , panel
+                  highlightAttr
+                  fr
+                  InfoPanel
+                  ( plainBorder
+                      & topLabels . centerLabel
+                      .~ (if moreTop then Just (txt " · · · ") else Nothing)
+                      & bottomLabels . centerLabel
+                      .~ (if moreBot then Just (txt " · · · ") else Nothing)
+                  )
+                  $ drawInfoPanel s
               ]
         , vBox
             [ panel
@@ -122,6 +132,8 @@ drawUI s =
   ]
  where
   fr = s ^. uiState . uiFocusRing
+  moreTop = s ^. uiState . uiMoreInfoTop
+  moreBot = s ^. uiState . uiMoreInfoBot
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -368,9 +380,6 @@ drawLabelledEntityName e =
 ------------------------------------------------------------
 -- Info panel
 ------------------------------------------------------------
-
--- XXX show 'vvv' or '...' or something in the border if there's more
--- off the bottom?
 
 -- | Draw the info panel in the bottom-left corner, which shows info
 --   about the currently focused inventory item.

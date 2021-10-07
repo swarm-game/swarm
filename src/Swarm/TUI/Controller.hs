@@ -312,7 +312,24 @@ updateUI = do
     -- Otherwise, do nothing.
     _ -> pure False
 
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated
+  -- Decide whether the info panel has more content scrolled off the
+  -- top and/or bottom, so we can draw some indicators to show it if
+  -- so.  Note, because we only know the update size and position of
+  -- the viewport *after* it has been rendered, this means the top and
+  -- bottom indicators will only be updated one frame *after* the info
+  -- panel updates, but this isn't really that big of deal.
+  infoPanelUpdated <- do
+    mvp <- lift $ lookupViewport InfoViewport
+    case mvp of
+      Nothing -> return False
+      Just vp -> do
+        let topMore = (vp ^. vpTop) > 0
+            botMore = (vp ^. vpTop + snd (vp ^. vpSize)) < snd (vp ^. vpContentSize)
+        oldTopMore <- uiState . uiMoreInfoTop <<.= topMore
+        oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
+        return $ oldTopMore /= topMore || oldBotMore /= botMore
+
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || infoPanelUpdated
   pure redraw
 
 -- | Make sure all tiles covering the visible part of the world are
