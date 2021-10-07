@@ -804,35 +804,36 @@ execConst c vs k = do
       [VString s] -> return $ Up (User s) k
       _ -> badConst
     Reprogram -> case vs of
-      [VString otherRobotName, VDelay _ cmd e] -> do
+      [VString childRobotName, VDelay _ cmd e] -> do
         em <- lift . lift $ use entityMap
         mode <- lift . lift $ use gameMode
+        rctx@(_, capCtx) <- use robotCtx
 
         -- check if robot exists
-        otherRobot <-
-          robotNamed otherRobotName
-            >>= (`isJustOr` cmdExn Reprogram ["There is no robot named", otherRobotName, "."])
+        childRobot <-
+          robotNamed childRobotName
+            >>= (`isJustOr` cmdExn Reprogram ["There is no robot named", childRobotName, "."])
 
         -- check that current robot is not trying to reprogram self
         myName <- use robotName
-        (otherRobotName /= myName)
+        (childRobotName /= myName)
           `holdsOr` cmdExn
             Reprogram
             ["You cannot make a robot reprogram itself"]
 
         -- check if robot has completed executing it's current command
         _ <-
-          finalValue (otherRobot ^. machine)
+          finalValue (childRobot ^. machine)
             `isJustOr` cmdExn
               Reprogram
               ["You cannot reprogram a robot that has not completed its current command"]
 
-        -- check if otherRobot is at the correct distance
+        -- check if childRobot is at the correct distance
         -- a robot can program adjacent robots
         -- creative mode ignores distance checks
         loc <- use robotLocation
         ( mode == Creative
-            || (otherRobot ^. robotLocation) `manhattan` loc <= 1
+            || (childRobot ^. robotLocation) `manhattan` loc <= 1
           )
           `holdsOr` cmdExn
             Reprogram
@@ -841,12 +842,11 @@ execConst c vs k = do
         let -- Find out what capabilities are required by the program that will
             -- be run on the other robot, and what devices would provide those
             -- capabilities.
-            (caps, _capCtx) = requiredCaps (snd (otherRobot ^. robotCtx)) cmd
+            (caps, _capCtx) = requiredCaps capCtx cmd
             capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
-            -- A device is OK if it is a standard device, or the robot has
-            -- one in its inventory
-            deviceOK d = (otherRobot ^. installedDevices) `E.contains` d
+            -- device is ok if it is installed on the childRobot
+            deviceOK d = (childRobot ^. installedDevices) `E.contains` d
 
             missingDevices = S.filter (not . deviceOK) capDevices
 
@@ -858,10 +858,13 @@ execConst c vs k = do
             , commaList (map (^. entityName) (S.toList missingDevices))
             ]
 
-        -- update other robot's CEK machine and environment
-        lift . lift $ robotMap . at otherRobotName . _Just . machine .= In cmd e [FExec]
-        lift . lift $ robotMap . at otherRobotName . _Just . robotEnv .= empty
-        lift . lift $ robotMap . at otherRobotName . _Just . robotCtx .= (empty, empty)
+        -- update other robot's CEK machine, environment and context
+        -- the childRobot inherits the parent robot's environment
+        -- and context which collectively mean all the variables
+        -- declared in the parent robot
+        lift . lift $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
+        lift . lift $ robotMap . at childRobotName . _Just . robotEnv .= e
+        lift . lift $ robotMap . at childRobotName . _Just . robotCtx .= rctx
 
         return $ Out VUnit k
       _ -> badConst
