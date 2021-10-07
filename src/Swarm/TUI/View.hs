@@ -521,7 +521,6 @@ drawRobotLog s =
         (s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList)
     ]
 
-
 ------------------------------------------------------------
 -- REPL panel
 ------------------------------------------------------------
