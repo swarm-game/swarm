@@ -34,7 +34,6 @@ module Swarm.TUI.Model (
   uiReplHistIdx,
   uiReplLast,
   uiInventory,
-  uiInfoText,
   uiError,
   uiModal,
   lgTicksPerSecond,
@@ -76,7 +75,6 @@ import Control.Monad.State
 import Data.List (findIndex, sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import System.Clock
 import Text.Read (readMaybe)
@@ -175,7 +173,6 @@ data UIState = UIState
   , _uiReplHistory :: [REPLHistItem]
   , _uiReplHistIdx :: Int
   , _uiInventory :: Maybe (Int, BL.List Name InventoryEntry)
-  , _uiInfoText :: Text
   , _uiError :: Maybe (Widget Name)
   , _uiModal :: Maybe Modal
   , _uiShowFPS :: Bool
@@ -218,9 +215,6 @@ uiReplHistIdx :: Lens' UIState Int
 --   inventory changed) along with a list of the items in the
 --   focused robot's inventory.
 uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryEntry))
-
--- | The text which should be displayed in the bottom-left info panel.
-uiInfoText :: Lens' UIState Text
 
 -- | When this is @Just@, it represents a popup box containing an
 --   error message that is shown on top of the rest of the UI.
@@ -298,33 +292,6 @@ initUIState = liftIO $ do
       , _uiReplHistIdx = -1
       , _uiReplLast = ""
       , _uiInventory = Nothing
-      , _uiInfoText =
-          T.unlines
-            [ "Welcome to"
-            , "|<< |   | |  | |<<  |\\ /| "
-            , "--  | < | |><| |>>| | < | "
-            , ">>| |/ \\| |  | |  \\ |   | "
-            , "many"
-            , "many2"
-            , "many3"
-            , "many4"
-            , "many5"
-            , "many"
-            , "many2"
-            , "many3"
-            , "many4"
-            , "many5"
-            , "many"
-            , "many2"
-            , "many3"
-            , "many4"
-            , "many5"
-            , "many"
-            , "many2"
-            , "many3"
-            , "many4"
-            , "many5"
-            ]
       , _uiError = Nothing
       , _uiModal = Nothing
       , _uiShowFPS = False
