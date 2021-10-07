@@ -6,7 +6,7 @@
   - |
     A tall, living entity made of a tough cellular material called "wood".
     They regrow after being harvested and are an important raw ingredient used
-    in making a many different devices.
+    in making many different devices.
   properties: [portable, growable]
   growth: [500, 600]
 
