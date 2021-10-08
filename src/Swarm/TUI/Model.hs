@@ -88,7 +88,7 @@ import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
-import Swarm.Game.Entity
+import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Language.Types
@@ -344,7 +344,15 @@ populateInventoryList (Just r) = do
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
           . sortOn (view entityName . snd)
+          . filter shouldDisplay
           . elems
+
+      -- Display items if we have a positive number of them, or they
+      -- aren't an installed device.  In other words we don't need to
+      -- display installed devices twice unless we actually have some
+      -- in our inventory in addition to being installed.
+      shouldDisplay (n, e) = n > 0 || not ((r ^. installedDevices) `E.contains` e)
+
       items =
         (r ^. robotInventory . to (itemList mkInvEntry "Inventory"))
           ++ (r ^. installedDevices . to (itemList mkInstEntry "Installed devices"))
