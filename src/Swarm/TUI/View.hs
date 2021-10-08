@@ -337,11 +337,9 @@ drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInve
                   , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
                   , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
                   ]
-            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) isFocused lst)
+            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) True lst)
             ]
   _ -> padRight Max . padBottom Max $ str " "
- where
-  isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just RobotPanel
 
 -- | Draw an inventory entry.
 drawItem ::
