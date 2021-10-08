@@ -46,7 +46,6 @@ import qualified Data.Foldable as F
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
-import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
@@ -526,14 +525,15 @@ drawRobotLog s =
     ]
  where
   logEntries = s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList
+  rn = s ^? gameState . to focusedRobot . _Just . robotName
   n = length logEntries
 
-  singleSource = 1 == (S.size . S.fromList . map (view leRobotName) $ logEntries)
+  allMe = all ((== rn) . Just . view leRobotName) logEntries
 
   drawEntry i e =
     (if i == n -1 && s ^. uiState . uiScrollToEnd then visible else id)
       . txtWrapWith indent2
-      $ (if singleSource then e ^. leText else T.concat ["[", e ^. leRobotName, "] ", e ^. leText])
+      $ (if allMe then e ^. leText else T.concat ["[", e ^. leRobotName, "] ", e ^. leText])
 
 ------------------------------------------------------------
 -- REPL panel
