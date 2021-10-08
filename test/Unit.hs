@@ -3,8 +3,6 @@
 -- | Swarm unit tests
 module Main where
 
-import Control.Lens
-
 import Data.Text (Text)
 import qualified Data.Text as T
 import Test.Tasty
@@ -14,14 +12,11 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 
-import Swarm.Game.Display (defaultRobotDisplay)
-import qualified Swarm.Game.Entity as E
-
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [parser, prettyConst, inventory]
+tests = testGroup "Tests" [parser, prettyConst]
 
 parser :: TestTree
 parser =
@@ -130,12 +125,3 @@ prettyConst =
  where
   equalPretty :: String -> Term -> Assertion
   equalPretty expected term = assertEqual "" expected . show $ ppr term
-
-inventory :: TestTree
-inventory =
-  testGroup
-    "Inventory"
-    [ testCase "byName case insensitive insert delete" $
-        let e = E.mkEntity defaultRobotDisplay "WaCkYcAsE" [] []
-         in assertEqual "" (E.empty & E.insert e & E.delete e & E.lookupByName (e ^. E.entityName)) []
-    ]
