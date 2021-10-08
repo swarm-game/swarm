@@ -999,10 +999,22 @@ execConst c vs k = do
         case mtarget of
           Nothing -> return $ Out VUnit k -- Nothing to salvage
           Just target -> do
+            -- Copy over the salvaged robot's inventory
             robotInventory %= E.union (target ^. robotInventory)
             robotInventory %= E.union (target ^. installedDevices)
-            robotLog <>= target ^. robotLog
+
+            -- Also copy over its log, if we have one
+            inst <- use installedDevices
+            em <- lift . lift $ use entityMap
+            mode <- lift . lift $ use gameMode
+            logger <-
+              lookupEntityName "logger" em
+                `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
+            when (mode == Creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
+
+            -- Finally, delete the salvaged robot
             lift . lift $ deleteRobot (target ^. robotName)
+
             return $ Out VUnit k
       _ -> badConst
     -- run can take both types of text inputs
