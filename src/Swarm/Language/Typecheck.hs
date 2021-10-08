@@ -423,6 +423,7 @@ inferConst c = toU $ case c of
   Install -> [tyQ| string -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
   Build -> [tyQ| forall a. string -> cmd a -> cmd string |]
+  Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
   Log -> [tyQ| string -> cmd () |]
   View -> [tyQ| string -> cmd () |]

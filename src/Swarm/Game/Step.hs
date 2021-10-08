@@ -39,7 +39,7 @@ import Prelude hiding (lookup)
 
 import Swarm.Game.CEK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton)
+import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import qualified Swarm.Game.Entity as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
@@ -77,7 +77,27 @@ gameTick = do
         curRobot' <- tickRobot curRobot
         case curRobot' ^. selfDestruct of
           True -> deleteRobot rn
-          False -> robotMap %= M.insert rn curRobot'
+          False -> do
+            robotMap %= M.insert rn curRobot'
+
+            let oldLoc = curRobot ^. robotLocation
+                newLoc = curRobot' ^. robotLocation
+
+                -- Make sure empty sets don't hang around in the
+                -- robotsByLocation map.  We don't want a key with an
+                -- empty set at every location any robot has ever
+                -- visited!
+                deleteOne _ Nothing = Nothing
+                deleteOne x (Just s)
+                  | S.null s' = Nothing
+                  | otherwise = Just s'
+                 where
+                  s' = S.delete x s
+
+            when (newLoc /= oldLoc) $ do
+              robotsByLocation . at oldLoc %= deleteOne rn
+              robotsByLocation . at newLoc . non Empty %= S.insert rn
+
         mapM_ (sleepUntil rn) (waitingUntil curRobot')
 
   -- See if the base is finished with a computation, and if so, record
@@ -132,6 +152,21 @@ robotNamed nm = lift . lift $ use (robotMap . at nm)
 -- | Manhattan distance between world locations.
 manhattan :: V2 Int64 -> V2 Int64 -> Int64
 manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+
+------------------------------------------------------------
+-- Debugging
+------------------------------------------------------------
+
+-- | For debugging only. Print some text via the robot's log.
+traceLog :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) ()
+traceLog msg = do
+  rn <- use robotName
+  time <- lift . lift $ use ticks
+  robotLog %= (Seq.|> LogEntry msg rn time)
+
+-- | For debugging only. Print a showable value via the robot's log.
+traceLogShow :: (Show a, MonadState GameState m) => a -> ExceptT Exn (StateT Robot m) ()
+traceLogShow = traceLog . from . show
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -723,7 +758,7 @@ execConst c vs k = do
 
         -- Upload our log
         rlog <- use robotLog
-        lift . lift $ robotMap . at otherName . _Just . robotLog %= (<> rlog)
+        lift . lift $ robotMap . at otherName . _Just . robotLog <>= rlog
 
         return $ Out VUnit k
       _ -> badConst
@@ -888,6 +923,23 @@ execConst c vs k = do
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
         return $ Out (VString (newRobot' ^. robotName)) k
+      _ -> badConst
+    Salvage -> case vs of
+      [] -> do
+        loc <- use robotLocation
+        rm <- lift . lift $ use robotMap
+        robotSet <- lift . lift $ use (robotsByLocation . at loc)
+        let robotNameList = maybe [] S.toList robotSet
+            mtarget = find okToSalvage . mapMaybe (`M.lookup` rm) $ robotNameList
+            okToSalvage r = (r ^. robotName /= "base") && (not . isActive $ r)
+        case mtarget of
+          Nothing -> return $ Out VUnit k -- Nothing to salvage
+          Just target -> do
+            robotInventory %= E.union (target ^. robotInventory)
+            robotInventory %= E.union (target ^. installedDevices)
+            robotLog <>= target ^. robotLog
+            lift . lift $ deleteRobot (target ^. robotName)
+            return $ Out VUnit k
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in

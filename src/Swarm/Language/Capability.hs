@@ -60,6 +60,8 @@ data Capability
     CMake
   | -- | Execute the 'Build' command
     CBuild
+  | -- | Execute the 'Salvage' command
+    CSalvage
   | -- | Execute the 'GetX' and 'GetY' commands
     CSenseloc
   | -- | Execute the 'Blocked' command
@@ -238,6 +240,7 @@ constCaps =
     Scan -> [CScan]
     Upload -> [CScan]
     Build -> [CBuild]
+    Salvage -> [CSalvage]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.

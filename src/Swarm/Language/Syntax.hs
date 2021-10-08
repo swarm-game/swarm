@@ -176,6 +176,8 @@ data Const
     Make
   | -- | Construct a new robot.
     Build
+  | -- | Deconstruct an old robot.
+    Salvage
   | -- | Emit a message.
     Say
   | -- | Emit a log message.
@@ -341,6 +343,7 @@ constInfo c = case c of
   Install -> commandLow 2
   Make -> commandLow 1
   Build -> commandLow 2
+  Salvage -> commandLow 0
   Say -> commandLow 1
   Log -> commandLow 1
   View -> commandLow 1
