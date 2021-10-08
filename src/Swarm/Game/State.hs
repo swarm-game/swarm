@@ -29,6 +29,7 @@ module Swarm.Game.State (
   runStatus,
   paused,
   robotMap,
+  robotsByLocation,
   activeRobots,
   gensym,
   randGen,
@@ -51,6 +52,7 @@ module Swarm.Game.State (
   modifyViewCenter,
   viewingRegion,
   focusedRobot,
+  clearFocusedRobotLogUpdated,
   ensureUniqueName,
   addRobot,
   emitMessage,
@@ -135,6 +137,7 @@ data GameState = GameState
   { _gameMode :: GameMode
   , _runStatus :: RunStatus
   , _robotMap :: Map Text Robot
+  , _robotsByLocation :: Map (V2 Int64) (Set Text)
   , _activeRobots :: Set Text
   , -- Waiting robots for a given time are currently a list because it is cheaper
     -- to append to a list than to a Set, and we currently never delete waiting
@@ -181,6 +184,17 @@ paused = to (\s -> s ^. runStatus /= Running)
 
 -- | All the robots that currently exist in the game, indexed by name.
 robotMap :: Lens' GameState (Map Text Robot)
+
+-- | The names of all robots that currently exist in the game, indexed by
+--   location (which we need both for /e.g./ the 'Salvage' command as
+--   well as for actually drawing the world).  Unfortunately there is
+--   no good way to automatically keep this up to date, since we don't
+--   just want to completely rebuild it every time the 'robotMap'
+--   changes.  Instead, we just make sure to update it every time the
+--   location of a robot changes, or a robot is created or destroyed.
+--   Fortunately, there are relatively few ways for these things to
+--   happen.
+robotsByLocation :: Lens' GameState (Map (V2 Int64) (Set Text))
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState (Set Text)
@@ -306,6 +320,12 @@ viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
 focusedRobot :: GameState -> Maybe Robot
 focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotName)
 
+-- | Clear the 'robotLogUpdated' flag of the focused robot.
+clearFocusedRobotLogUpdated :: MonadState GameState m => m ()
+clearFocusedRobotLogUpdated = do
+  n <- use focusedRobotName
+  robotMap . ix n . robotLogUpdated .= False
+
 -- | Given a 'Robot', possibly modify its name to ensure that the name
 --   is unique among robots.  This is done simply by appending a new unique
 ensureUniqueName :: MonadState GameState m => Robot -> m Robot
@@ -327,11 +347,14 @@ uniquifyRobotName name tag = do
     False -> return name'
 
 -- | Add a robot to the game state, possibly updating its name to
---   ensure it is unique, and return the (possibly modified) robot.
+--   ensure it is unique, also adding it to the index of robots by
+--   location, and return the (possibly modified) robot.
 addRobot :: MonadState GameState m => Robot -> m Robot
 addRobot r = do
   r' <- ensureUniqueName r
   robotMap %= M.insert (r' ^. robotName) r'
+  robotsByLocation
+    %= M.insertWith S.union (r' ^. robotLocation) (S.singleton (r' ^. robotName))
   internalActiveRobots %= S.insert (r' ^. robotName)
   return r'
 
@@ -351,17 +374,21 @@ initGameState seed = do
         , "workbench"
         , "grabber"
         , "life support system"
+        , "logger"
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
 
   let baseName = "base"
+      theBase = baseRobot baseDevices
+
   liftIO $ putStrLn ("Using seed... " <> show seed)
 
   return $
     GameState
       { _gameMode = Classic
       , _runStatus = Running
-      , _robotMap = M.singleton baseName (baseRobot baseDevices)
+      , _robotMap = M.singleton baseName theBase
+      , _robotsByLocation = M.singleton zero (S.singleton baseName)
       , _activeRobots = S.singleton baseName
       , _waitingRobots = M.empty
       , _gensym = 0
@@ -419,13 +446,16 @@ wakeUpRobotsDoneSleeping = do
 deleteRobot :: MonadState GameState m => Text -> m ()
 deleteRobot rn = do
   mrobot <- robotMap . at rn <<.= Nothing
-  mrobot `forM_` \robot ->
-    -- Currently the only way to delete a robot is to self-destruct, so
-    -- deleteRobot should always be called on an active robot. But we prepare
-    -- for the future.
-    -- We could blindly delete the robot from both waitingRobots and activeRobots
-    -- but deleting from waitingRobots is costly, even more so if you don't know
-    -- the key.
+  mrobot `forM_` \robot -> do
+    -- Delete the robot from the index of robots by location.
+    robotsByLocation . ix (robot ^. robotLocation) %= S.delete rn
+
+    -- Currently the only way to delete a robot is to self-destruct,
+    -- so deleteRobot should always be called on an active robot. But
+    -- we prepare for the future.  We could blindly delete the robot
+    -- from both waitingRobots and activeRobots but deleting from
+    -- waitingRobots is costly, even more so if you don't know the
+    -- key.
     case waitingUntil robot of
       Nothing -> internalActiveRobots %= S.delete rn
       Just time -> waitingRobots . ix time %= filter (/= rn)

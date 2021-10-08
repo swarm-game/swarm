@@ -48,15 +48,17 @@ looks something like this:
 
 In the world view, you see the default [*World 0*](./TUTORIAL.md#world-generation)
 and the little white `Ω` in the middle represents your base. Start by
-using the Tab key to cycle through the three panels (the REPL, the
-info panel, and the world panel), and read about the various devices
-installed on your base.
+using the Tab key to cycle through the four panels (the REPL, the
+info panel, the inventory panel, and the world panel), and read about the various devices
+installed on your base.  There is a lot to take in at first so feel
+free to just skim; this tutorial will cover the use of your devices in
+more detail.
 
 Building your first robot
 -------------------------
 
 Pretty much the only thing you can do is build robots.  Let's build
-one!  Tab back to the REPL and type
+one!  Tab back to the REPL (or hit the `Meta-r` shortcut) and type
 ```
 build "hello" {move; move; move; move}
 ```
@@ -134,9 +136,10 @@ Try entering the following at the REPL:
 ```
 build "nope" {let m : cmd () = move in m;m;m}
 ```
-You should get an error saying something like
+The info panel should automatically switch to showing your `logger`
+device, with an error message at the bottom saying something like
 ```
-base: build: this would require installing devices you don't have:
+build: this would require installing devices you don't have:
   dictionary
 ```
 This is telling you that in order to `build` a robot which has the right
@@ -192,7 +195,8 @@ arrow, like so:
 var <- command; ... more commands that can refer to var ...
 ```
 (Yes, this is just like Haskell's `do`-notation; and yes, `cmd` is a
-monad, similar to the `IO` monad in Haskell.)  Let's build one more
+monad, similar to the `IO` monad in Haskell. But if that doesn't mean
+anything to you, don't worry about it!)  Let's build one more
 robot called `"mover"`. It will get renamed to something else to avoid
 a name conflict, but we can capture its name in a variable using the
 above syntax.  Then we can use the `view` command to focus on it
@@ -209,11 +213,11 @@ view should look something like this:
 ![](images/mover1.png)
 
 The view is now centered on `mover1` instead of on our `base`, and the
-info panel on the left shows `mover1`'s inventory and installed
-devices instead of `base`'s.  (However, commands entered at the REPL
-will still be executed by `base`.)  To return to viewing `base` and
-its inventory, you can type `view "base"` at the prompt, or tab to
-highlight the world view and hit `c`.
+top-left panel shows `mover1`'s inventory and installed devices
+instead of `base`'s.  (However, commands entered at the REPL will
+still be executed by `base`.)  To return to viewing `base` and its
+inventory, you can type `view "base"` at the prompt, or focus the
+world panel (either using `Tab` or `Meta-w`) and hit `c`.
 
 Exploring
 ---------
@@ -235,7 +239,7 @@ direction as an argument, which can be either an absolute direction
 
 Notice that the robot did not actually need to walk on top of a `T` to
 learn about it, since it could `scan west` to scan the cell one unit
-to the west (you can also `scan down` to scan the item underneath the
+to the west (you can also `scan down` to scan an item directly underneath the
 robot).  Also, it was able to `upload` at a distance of one cell away from
 the base.
 
@@ -254,7 +258,7 @@ showing that we can use a tree to construct two branches and a log.
 Getting some resources
 ----------------------
 
-So those tree things look pretty useful.  Let's get one!
+So those tree things look like they might be useful.  Let's get one!
 ```
 build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
 ```
@@ -294,6 +298,82 @@ intervening tutorial, and on the random number generator).  Some items
 in the world will regrow after they have been harvested, and some will
 not.
 
+Debugging and cleaning up
+-------------------------
+
+You may have noticed that robots which finish running their programs
+just sit there forever if they didn't self-destruct.  Relatedly,
+various conditions can cause a robot to crash, which would also leave
+it stranded.  Let's see both how to clean up leftover robots, and a
+simple way to diagnose when something goes wrong.
+
+When a robot program crashes, it prints a message to a log which can
+later be used to help diagnose the error---that is, *if* the robot has
+a `logger` device.  Otherwise, the error message is simply lost.
+Let's `build` a robot with a `logger` device and make it crash on
+purpose to see how this works.
+
+First, we have to make a `logger` device.  A `logger` can be made from
+one `log`, which you should already have in your inventory, so simply
+type `make "logger"` at the REPL.
+
+Now, how de we `build` a robot with the `logger` installed?  The
+easiest way is to have the robot explicitly use the `log` command; the
+`build` command analyzes the given program and automatically installs
+any devices that will be necessary to execute it.  (It is also
+possible to manually install devices with the `install` command.)  So
+let's type the following:
+```
+build "crasher" {log "hi!"; turn south; move; grab; move}
+```
+The world should now look something like the below.  Notice that the
+`logger` is gone from your inventory---it was automatically installed
+on `crasher`.  Notice also that `crasher` only moved one unit south,
+even though we told it to move two steps!  What went wrong?
+
+![](images/crasher1.png)
+
+One thing we could do at this point is to `view "crasher"`.  However,
+it will probably become a bit more difficult to use the `view` command in
+future versions of the game, and in any case, what if we didn't know
+or remember the name of the robot that crashed?  Fortunately, there is
+something else we can do: send out another robot to `salvage` the
+crashed robot.
+
+The `salvage` command can be executed by any robot with a `grabber`,
+which is one of the devices installed on new robots by default.  It
+takes no arguments, and simply looks for any idle robot in the same
+cell; if it finds one, it disassembles the idle robot, transferring
+all its inventory and installed devices into the inventory of the
+robot that ran the `salvage` command.  It also copies over the log of
+the robot being salvaged, appending it to its own log (if it has
+one). If there is no idle robot present, the `salvage` command simply
+does nothing.
+
+So let's salvage the `crasher` using the code below.  We need
+to ensure that the salvaging robot itself has a `logger`, so that it
+can copy over the dead robot's log, so we have to first grab another
+`tree` in order to make one.   Note the use of
+the `upload` command, which we have seen before.  In addition to
+uploading knowledge about entities, it turns out that it also uploads
+the log from a `logger`.
+```
+build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
+make "log"
+make "logger"
+build "s" {turn south; move; salvage; turn back; move; upload "base"}
+```
+The world should now look something like this:
+
+![](images/salvaged.png)
+
+As you can see, the base's log now contains some entries from
+`crasher`!  They were copied over to `s`'s log when it salvaged
+`crasher`, and then to the base's log when `s` executed the `upload`
+command.  We can see the initial `hi!` entry, and then we can see the
+reason that it crashed: it attempted to execute a `grab` instruction
+in a cell with nothing to grab.
+
 Loading definitions from a file
 -------------------------------
 
@@ -321,8 +401,8 @@ $ swarm --seed $RANDOM
 You can specify the *world seed* leading to radically different
 starting conditions. You can start next to a copper patch, between
 lakes or in the middle of a plain. Either way, you have established
-your base in the shade of what you assume is a tree and now can
-send out robots to explore!
+your base in the shade of what you assume is a tree and now can send
+out robots to explore!
 
 ![World generated with seed 16](./images/world16.png)
 

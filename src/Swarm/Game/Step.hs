@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -30,6 +28,7 @@ import Data.Int (Int64)
 import Data.List (find)
 import qualified Data.Map as M
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -40,7 +39,7 @@ import Prelude hiding (lookup)
 
 import Swarm.Game.CEK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton)
+import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import qualified Swarm.Game.Entity as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
@@ -78,7 +77,27 @@ gameTick = do
         curRobot' <- tickRobot curRobot
         case curRobot' ^. selfDestruct of
           True -> deleteRobot rn
-          False -> robotMap %= M.insert rn curRobot'
+          False -> do
+            robotMap %= M.insert rn curRobot'
+
+            let oldLoc = curRobot ^. robotLocation
+                newLoc = curRobot' ^. robotLocation
+
+                -- Make sure empty sets don't hang around in the
+                -- robotsByLocation map.  We don't want a key with an
+                -- empty set at every location any robot has ever
+                -- visited!
+                deleteOne _ Nothing = Nothing
+                deleteOne x (Just s)
+                  | S.null s' = Nothing
+                  | otherwise = Just s'
+                 where
+                  s' = S.delete x s
+
+            when (newLoc /= oldLoc) $ do
+              robotsByLocation . at oldLoc %= deleteOne rn
+              robotsByLocation . at newLoc . non Empty %= S.insert rn
+
         mapM_ (sleepUntil rn) (waitingUntil curRobot')
 
   -- See if the base is finished with a computation, and if so, record
@@ -135,6 +154,21 @@ manhattan :: V2 Int64 -> V2 Int64 -> Int64
 manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 
 ------------------------------------------------------------
+-- Debugging
+------------------------------------------------------------
+
+-- | For debugging only. Print some text via the robot's log.
+traceLog :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) ()
+traceLog msg = do
+  rn <- use robotName
+  time <- lift . lift $ use ticks
+  robotLog %= (Seq.|> LogEntry msg rn time)
+
+-- | For debugging only. Print a showable value via the robot's log.
+traceLogShow :: (Show a, MonadState GameState m) => a -> ExceptT Exn (StateT Robot m) ()
+traceLogShow = traceLog . from . show
+
+------------------------------------------------------------
 -- Exceptions and validation
 ------------------------------------------------------------
 
@@ -150,14 +184,23 @@ ensureCanExecute c = do
   (sys || mode == Creative || S.null missingCaps)
     `holdsOr` Incapable missingCaps (TConst c)
 
--- | Ensure that either a robot has a given capability, OR we are in creative
---   mode.
-hasCapabilityOr :: MonadState GameState m => Capability -> Exn -> ExceptT Exn (StateT Robot m) ()
-hasCapabilityOr cap exn = do
-  mode <- lift . lift $ use gameMode
+-- | Test whether the current robot has a given capability (either
+--   because it has a device which gives it that capability, or it is a
+--   system robot, or we are in creative mode).
+hasCapability :: MonadState GameState m => Capability -> StateT Robot m Bool
+hasCapability cap = do
+  mode <- lift $ use gameMode
   sys <- use systemRobot
   caps <- use robotCapabilities
-  (sys || mode == Creative || cap `S.member` caps) `holdsOr` exn
+  return (sys || mode == Creative || cap `S.member` caps)
+
+-- | Ensure that either a robot has a given capability, OR we are in creative
+--   mode.
+hasCapabilityOr ::
+  MonadState GameState m => Capability -> Exn -> ExceptT Exn (StateT Robot m) ()
+hasCapabilityOr cap exn = do
+  h <- lift $ hasCapability cap
+  h `holdsOr` exn
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -367,21 +410,18 @@ stepCEK cek = case cek of
   -- just ignore the try block and continue.
   Out v (FTry _ : k) -> return $ Out v k
   -- If an exception rises all the way to the top level without being
-  -- handled, turn it into an error message via the 'say' command.
-  -- Note that (for now at least) the 'say' command requires no
-  -- capabilities, so this cannot generate an infinite loop. However,
-  -- in the future we might differentiate between a 'log' command
-  -- (which appends to an internal message queue, visible only via
-  -- 'view'), and might require a logging device, and a 'say' command
-  -- which broadcasts to other (nearby?) robots.
+  -- handled, turn it into an error message via the 'log' command.
 
-  -- NOTE, if this is changed to go via e.g. a Log command that
-  -- requires a capability, make sure to check for that capability
-  -- here and silently discard the message if the robot can't do
-  -- logging!  Otherwise trying to exceute the Log command will
-  -- generate another exception, which will be logged, which will
-  -- generate an exception, ... etc.
-  Up exn [] -> return $ In (TApp (TConst Say) (TString (formatExn exn))) empty [FExec]
+  -- HOWEVER, we have to make sure to check that the robot has the
+  -- 'log' capability, and silently discard the message otherwise.  If
+  -- we didn't, trying to exceute the Log command would generate
+  -- another exception, which will be logged, which would generate an
+  -- exception, ... etc.
+  Up exn [] -> do
+    h <- hasCapability CLog
+    case h of
+      True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty [FExec]
+      False -> return $ Out VUnit []
   -- Fatal errors and capability errors can't be caught; just throw
   -- away the continuation stack.
   Up exn@Fatal {} _ -> return $ Up exn []
@@ -539,8 +579,6 @@ execConst c vs k = do
       return $ Out (VString (e ^. entityName)) k
     Turn -> case vs of
       [VDir d] -> do
-        -- "treads" `isInstalledOr` cmdExn Turn ["You need treads to turn."]
-
         robotOrientation . _Just %= applyTurn d
         flagRedraw
         return $ Out VUnit k
@@ -716,6 +754,10 @@ execConst c vs k = do
         forM_ (elems inv) $ \(_, e) ->
           lift . lift $ robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
 
+        -- Upload our log
+        rlog <- use robotLog
+        lift . lift $ robotMap . at otherName . _Just . robotLog <>= rlog
+
         return $ Out VUnit k
       _ -> badConst
     Random -> case vs of
@@ -729,6 +771,13 @@ execConst c vs k = do
       [VString s] -> do
         rn <- use robotName
         lift . lift $ emitMessage (T.concat [rn, ": ", s])
+        return $ Out VUnit k
+      _ -> badConst
+    Log -> case vs of
+      [VString s] -> do
+        rn <- use robotName
+        time <- lift . lift $ use ticks
+        robotLog %= (Seq.|> LogEntry s rn time)
         return $ Out VUnit k
       _ -> badConst
     View -> case vs of
@@ -938,6 +987,35 @@ execConst c vs k = do
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
         return $ Out (VString (newRobot' ^. robotName)) k
+      _ -> badConst
+    Salvage -> case vs of
+      [] -> do
+        loc <- use robotLocation
+        rm <- lift . lift $ use robotMap
+        robotSet <- lift . lift $ use (robotsByLocation . at loc)
+        let robotNameList = maybe [] S.toList robotSet
+            mtarget = find okToSalvage . mapMaybe (`M.lookup` rm) $ robotNameList
+            okToSalvage r = (r ^. robotName /= "base") && (not . isActive $ r)
+        case mtarget of
+          Nothing -> return $ Out VUnit k -- Nothing to salvage
+          Just target -> do
+            -- Copy over the salvaged robot's inventory
+            robotInventory %= E.union (target ^. robotInventory)
+            robotInventory %= E.union (target ^. installedDevices)
+
+            -- Also copy over its log, if we have one
+            inst <- use installedDevices
+            em <- lift . lift $ use entityMap
+            mode <- lift . lift $ use gameMode
+            logger <-
+              lookupEntityName "logger" em
+                `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
+            when (mode == Creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
+
+            -- Finally, delete the salvaged robot
+            lift . lift $ deleteRobot (target ^. robotName)
+
+            return $ Out VUnit k
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in
