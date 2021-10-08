@@ -84,7 +84,7 @@ gameTick = do
               Just wakeUpTime ->
                 sleepUntil rn wakeUpTime
               Nothing ->
-                unless (isActive curRobot') do
+                unless (isActive curRobot' || rn == "base") do
                   sleepForever rn
 
   -- See if the base is finished with a computation, and if so, record
