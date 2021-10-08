@@ -412,6 +412,20 @@
   properties: [portable]
   capabilities: [scan, sensefront]
 
+- name: flash memory
+  display:
+    attr: device
+    char: '§'
+  description:
+  - "Using a flash memory device, a robot can reprogram other robots using the
+     'reprogram' command."
+  - "Only robots that have completed executing their previous command
+     can be reprogrammed."
+  - "The robot must possess enough capabilities to run the new command
+     otherwise it will fail."
+  properties: [portable]
+  capabilities: [reprogram]
+
 - name: mirror
   display:
     attr: device

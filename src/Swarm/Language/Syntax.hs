@@ -178,6 +178,9 @@ data Const
     Build
   | -- | Deconstruct an old robot.
     Salvage
+  | -- | Reprogram a robot that has executed it's command
+    --   with a new command
+    Reprogram
   | -- | Emit a message.
     Say
   | -- | Emit a log message.
@@ -342,6 +345,7 @@ constInfo c = case c of
   Give -> commandLow 2
   Install -> commandLow 2
   Make -> commandLow 1
+  Reprogram -> commandLow 2
   Build -> commandLow 2
   Salvage -> commandLow 0
   Say -> commandLow 1
@@ -373,7 +377,7 @@ constInfo c = case c of
   Div -> binaryOp "/" 7 L
   Exp -> binaryOp "^" 8 R
   Eq -> binaryOp "==" 4 N
-  Neq -> binaryOp "/=" 4 N
+  Neq -> binaryOp "!=" 4 N
   Lt -> binaryOp "<" 4 N
   Gt -> binaryOp ">" 4 N
   Leq -> binaryOp "<=" 4 N

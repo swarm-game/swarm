@@ -90,6 +90,8 @@ data Capability
     CLambda
   | -- | Enable recursive definitions
     CRecursion
+  | -- | Execute the 'Reprogram' command
+    CReprogram
   | -- | Capability to introspect and see it's own name
     CWhoami
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
@@ -241,6 +243,7 @@ constCaps =
     Upload -> [CScan]
     Build -> [CBuild]
     Salvage -> [CSalvage]
+    Reprogram -> [CReprogram]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.
