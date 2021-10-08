@@ -46,7 +46,8 @@ looks something like this:
 
 ![](images/initial.png)
 
-The little white `Ω` in the middle represents your base.  Start by
+In the world view, you see the default [*World 0*](./TUTORIAL.md#world-generation)
+and the little white `Ω` in the middle represents your base. Start by
 using the Tab key to cycle through the three panels (the REPL, the
 info panel, and the world panel), and read about the various devices
 installed on your base.
@@ -306,6 +307,24 @@ modify the definitions or add more, and just `run` the file every time
 you want to reload the definitions.  Eventually, there will be a way
 to both save and load commands, but this is better than nothing for
 now.
+
+World generation
+----------------
+
+If you do not like the starting place of the base, there is a way
+to start somewhere else. *In a different world!*
+
+```bash
+$ swarm --seed $RANDOM
+```
+
+You can specify the *world seed* leading to radically different
+starting conditions. You can start next to a copper patch, between
+lakes or in the middle of a plain. Either way, you have established
+your base in the shade of what you assume is a tree and now can
+send out robots to explore!
+
+![World generated with seed 16](./images/world16.png)
 
 Creative Mode
 -------------

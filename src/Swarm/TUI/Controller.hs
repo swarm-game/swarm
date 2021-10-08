@@ -220,8 +220,8 @@ runFrame = do
       uiState . uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
 
       -- set how much ticks got processed per frame
-      ticks <- use (uiState . tickCount)
-      uiState . uiTPF .= fromIntegral ticks / fromIntegral frames
+      uiTicks <- use (uiState . tickCount)
+      uiState . uiTPF .= fromIntegral uiTicks / fromIntegral frames
 
       -- ensure this frame gets drawn
       gameState . needsRedraw .= True
@@ -339,20 +339,23 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
     s
       & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
-  case processTerm' topCtx topCapCtx entry of
-    Right t@(ProcessedTerm _ (Module ty _) _ _) ->
-      continue $
-        s
-          & uiState . uiReplForm %~ updateFormState ""
-          & uiState . uiReplType .~ Nothing
-          & uiState . uiReplHistory %~ (REPLEntry True entry :)
-          & uiState . uiReplHistIdx .~ (-1)
-          & gameState . replStatus .~ REPLWorking ty Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
-    Left err ->
-      continue $
-        s
-          & uiState . uiError ?~ txt err
+  if not $ s ^. gameState . replWorking
+    then case processTerm' topCtx topCapCtx entry of
+      Right t@(ProcessedTerm _ (Module ty _) _ _) ->
+        continue $
+          s
+            & uiState . uiReplForm %~ updateFormState ""
+            & uiState . uiReplType .~ Nothing
+            & uiState . uiReplHistory %~ (REPLEntry True entry :)
+            & uiState . uiReplHistIdx .~ (-1)
+            & uiState . uiError .~ Nothing
+            & gameState . replStatus .~ REPLWorking ty Nothing
+            & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
+      Left err ->
+        continue $
+          s
+            & uiState . uiError ?~ txt err
+    else continueWithoutRedraw s
  where
   -- XXX check that we have the capabilities needed to run the
   -- program before even starting?

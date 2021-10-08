@@ -412,7 +412,7 @@ decomposeFunTy ty = do
 -- | Infer the type of a constant.
 inferConst :: Const -> UPolytype
 inferConst c = toU $ case c of
-  Wait -> [tyQ| cmd () |]
+  Wait -> [tyQ| int -> cmd () |]
   Noop -> [tyQ| cmd () |]
   Selfdestruct -> [tyQ| cmd () |]
   Move -> [tyQ| cmd () |]
@@ -422,6 +422,7 @@ inferConst c = toU $ case c of
   Give -> [tyQ| string -> string -> cmd () |]
   Install -> [tyQ| string -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
+  Reprogram -> [tyQ| forall a. string -> cmd a -> cmd () |]
   Build -> [tyQ| forall a. string -> cmd a -> cmd string |]
   Say -> [tyQ| string -> cmd () |]
   View -> [tyQ| string -> cmd () |]
@@ -433,6 +434,7 @@ inferConst c = toU $ case c of
   Scan -> [tyQ| dir -> cmd () |]
   Upload -> [tyQ| string -> cmd () |]
   Ishere -> [tyQ| string -> cmd bool |]
+  Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
   If -> [tyQ| forall a. bool -> a -> a -> a |]

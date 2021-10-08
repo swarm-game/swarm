@@ -178,6 +178,9 @@ data Const
     Make
   | -- | Construct a new robot.
     Build
+  | -- | Reprogram a robot that has executed it's command
+    --   with a new command
+    Reprogram
   | -- | Emit a message.
     Say
   | -- | View a certain robot.
@@ -201,6 +204,8 @@ data Const
     Upload
   | -- | See if a specific entity is here. (This may be removed.)
     Ishere
+  | -- | Find it's own name
+    Whoami
   | -- | Get a uniformly random integer.
     Random
   | -- Modules
@@ -333,6 +338,7 @@ constInfo c = case c of
   Give -> commandLow 2
   Install -> commandLow 2
   Make -> commandLow 1
+  Reprogram -> commandLow 2
   Build -> commandLow 2
   Say -> commandLow 1
   View -> commandLow 1
@@ -344,6 +350,7 @@ constInfo c = case c of
   Scan -> commandLow 0
   Upload -> commandLow 1
   Ishere -> commandLow 1
+  Whoami -> commandLow 0
   Random -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1
@@ -361,7 +368,7 @@ constInfo c = case c of
   Div -> binaryOp "/" 7 L
   Exp -> binaryOp "^" 8 R
   Eq -> binaryOp "==" 4 N
-  Neq -> binaryOp "/=" 4 N
+  Neq -> binaryOp "!=" 4 N
   Lt -> binaryOp "<" 4 N
   Gt -> binaryOp ">" 4 N
   Leq -> binaryOp "<=" 4 N
@@ -371,6 +378,7 @@ constInfo c = case c of
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}
   command s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a True}
   function s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False}
+  -- takes the number of arguments for a commmand
   commandLow = command (lowShow c)
   functionLow = function (lowShow c)
 

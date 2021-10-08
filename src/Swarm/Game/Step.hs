@@ -34,7 +34,7 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
-import System.Random (randomRIO)
+import System.Random (uniformR)
 import Witch
 import Prelude hiding (lookup)
 
@@ -68,17 +68,8 @@ evalStepsPerTick = 100
 --   from a file when the whole program starts up).
 gameTick :: (MonadState GameState m, MonadIO m) => m ()
 gameTick = do
-  -- Note, it is tempting to do the below in one line with some clever
-  -- lens combinator, but it's not possible.  We want to do an
-  -- effectful traversal over a piece of the state (i.e. step each
-  -- robot in the robot map, where stepping a robot could have effects
-  -- on the game state), but the problem is the effects could in
-  -- theory include modifying the very state we are traversing over.
-  -- In fact, stepping one robot can even have effects on other robots
-  -- (e.g. if one robot gives an item to another), so we can't even
-  -- use something like M.traverseMaybeWithKey --- we have to get the
-  -- names of all robots and then step them one at a time.
-  robotNames <- uses robotMap M.keys
+  wakeUpRobotsDoneSleeping
+  robotNames <- use activeRobots
   forM_ robotNames $ \rn -> do
     mr <- uses robotMap (M.lookup rn)
     case mr of
@@ -86,8 +77,9 @@ gameTick = do
       Just curRobot -> do
         curRobot' <- tickRobot curRobot
         case curRobot' ^. selfDestruct of
-          True -> robotMap %= M.delete rn
+          True -> deleteRobot rn
           False -> robotMap %= M.insert rn curRobot'
+        mapM_ (sleepUntil rn) (waitingUntil curRobot')
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL.
@@ -102,6 +94,8 @@ gameTick = do
 
   -- Possibly update the view center.
   modify recalcViewCenter
+  -- Advance the game time by one.
+  ticks += 1
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -227,7 +221,15 @@ stepCEK cek = case cek of
   ------------------------------------------------------------
   -- Evaluation
 
-  -- First some straightforward cases.  These all immediately turn
+  -- We wake up robots whose wake-up time has been reached. If it hasn't yet
+  -- then stepCEK is a no-op.
+  Waiting wakeupTime cek' -> do
+    time <- lift $ use ticks
+    if wakeupTime == time
+      then stepCEK cek'
+      else return cek
+
+  -- Now some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ k -> return $ Out VUnit k
   In (TDir d) _ k -> return $ Out (VDir d) k
@@ -433,14 +435,12 @@ evalConst c vs k = do
 seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
 seedProgram minTime randTime thing =
   [tmQ|
-  let repeat : int -> cmd () -> cmd () = \n.\c.
-    if (n == 0) {} {c ; repeat (n-1) c}
-  in {
+  {
     r <- random (1 + $int:randTime);
-    repeat (r + $int:minTime) wait;
+    wait (r + $int:minTime);
     appear "|";
     r <- random (1 + $int:randTime);
-    repeat (r + $int:minTime) wait;
+    wait (r + $int:minTime);
     place $str:thing;
     selfdestruct
   }
@@ -459,7 +459,11 @@ execConst c vs k = do
     Return -> case vs of
       [v] -> return $ Out v k
       _ -> badConst
-    Wait -> return $ Out VUnit k
+    Wait -> case vs of
+      [VInt d] -> do
+        time <- lift . lift $ use ticks
+        return $ Waiting (time + d) (Out VUnit k)
+      _ -> badConst
     Selfdestruct -> do
       selfDestruct .= True
       flagRedraw
@@ -725,7 +729,9 @@ execConst c vs k = do
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
-        n <- randomRIO (0, hi -1)
+        rand <- lift . lift $ use randGen
+        let (n, g) = uniformR (0, hi -1) rand
+        lift . lift $ randGen .= g
         return $ Out (VInt n) k
       _ -> badConst
     Say -> case vs of
@@ -783,6 +789,11 @@ execConst c vs k = do
           Nothing -> return $ Out (VBool False) k
           Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
       _ -> badConst
+    Whoami -> case vs of
+      [] -> do
+        name <- use robotName
+        return $ Out (VString name) k
+      _ -> badConst
     Force -> case vs of
       [VDelay Nothing t e] -> return $ In t e k
       [VDelay (Just x) t e] -> return $ In t (addBinding x (VDelay (Just x) t e) e) k
@@ -806,6 +817,72 @@ execConst c vs k = do
       _ -> badConst
     Raise -> case vs of
       [VString s] -> return $ Up (User s) k
+      _ -> badConst
+    Reprogram -> case vs of
+      [VString childRobotName, VDelay _ cmd e] -> do
+        em <- lift . lift $ use entityMap
+        mode <- lift . lift $ use gameMode
+        rctx@(_, capCtx) <- use robotCtx
+        renv <- use robotEnv
+
+        -- check if robot exists
+        childRobot <-
+          robotNamed childRobotName
+            >>= (`isJustOr` cmdExn Reprogram ["There is no robot named", childRobotName, "."])
+
+        -- check that current robot is not trying to reprogram self
+        myName <- use robotName
+        (childRobotName /= myName)
+          `holdsOr` cmdExn
+            Reprogram
+            ["You cannot make a robot reprogram itself"]
+
+        -- check if robot has completed executing it's current command
+        _ <-
+          finalValue (childRobot ^. machine)
+            `isJustOr` cmdExn
+              Reprogram
+              ["You cannot reprogram a robot that has not completed its current command"]
+
+        -- check if childRobot is at the correct distance
+        -- a robot can program adjacent robots
+        -- creative mode ignores distance checks
+        loc <- use robotLocation
+        ( mode == Creative
+            || (childRobot ^. robotLocation) `manhattan` loc <= 1
+          )
+          `holdsOr` cmdExn
+            Reprogram
+            ["You can only program adjacent robot"]
+
+        let -- Find out what capabilities are required by the program that will
+            -- be run on the other robot, and what devices would provide those
+            -- capabilities.
+            (caps, _capCtx) = requiredCaps capCtx cmd
+            capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
+
+            -- device is ok if it is installed on the childRobot
+            deviceOK d = (childRobot ^. installedDevices) `E.contains` d
+
+            missingDevices = S.filter (not . deviceOK) capDevices
+
+        -- check if robot has all devices to execute new command
+        (mode == Creative || S.null missingDevices)
+          `holdsOr` cmdExn
+            Reprogram
+            [ "the target robot does not have required devices:\n"
+            , commaList (map (^. entityName) (S.toList missingDevices))
+            ]
+
+        -- update other robot's CEK machine, environment and context
+        -- the childRobot inherits the parent robot's environment
+        -- and context which collectively mean all the variables
+        -- declared in the parent robot
+        lift . lift $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
+        lift . lift $ robotMap . at childRobotName . _Just . robotEnv .= renv
+        lift . lift $ robotMap . at childRobotName . _Just . robotCtx .= rctx
+
+        return $ Out VUnit k
       _ -> badConst
     Build -> case vs of
       [VString name, VDelay _ cmd e] -> do
