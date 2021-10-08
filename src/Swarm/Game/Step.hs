@@ -579,8 +579,6 @@ execConst c vs k = do
       return $ Out (VString (e ^. entityName)) k
     Turn -> case vs of
       [VDir d] -> do
-        -- "treads" `isInstalledOr` cmdExn Turn ["You need treads to turn."]
-
         robotOrientation . _Just %= applyTurn d
         flagRedraw
         return $ Out VUnit k
