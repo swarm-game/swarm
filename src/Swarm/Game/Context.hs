@@ -7,7 +7,12 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Swarm.Game.Context where
+module Swarm.Game.Context (
+  Ctx,
+  VarCtx (..),
+  Phase,
+  Context (..),
+) where
 
 import Control.Applicative
 import Data.Data
@@ -48,15 +53,17 @@ data VarCtx p = VarCtx
 
 type family CapsForPhase (p :: Phase) :: * -> * where
   CapsForPhase 'ParseCommand = Maybe
-  CapsForPhase 'CapabilityCheck = Maybe
+  CapsForPhase 'CapabilityCheck = Identity
+  -- capabilities need not be accessed when
+  -- evaluating a term even if they already exist
   CapsForPhase 'EvaluateTerm = Const ()
 
 type family TypeForPhase (p :: Phase) :: * -> * where
   TypeForPhase 'ParseCommand = Identity
-  TypeForPhase 'CapabilityCheck = Maybe
+  TypeForPhase 'CapabilityCheck = Const ()
   TypeForPhase 'EvaluateTerm = Const ()
 
 type family ValForPhase (p :: Phase) :: * -> * where
-  ValForPhase 'ParseCommand = Identity
+  ValForPhase 'ParseCommand = Maybe
   ValForPhase 'CapabilityCheck = Maybe
-  ValForPhase 'EvaluateTerm = Const ()
+  ValForPhase 'EvaluateTerm = Identity
