@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -174,7 +172,13 @@ robotLog = lens _robotLog setLog
   setLog r newLog =
     r
       { _robotLog = newLog
-      , _robotLogUpdated = True
+      , -- Flag the log as updated if (1) if already was, or (2) the new
+        -- log is a different length than the old.  (This would not
+        -- catch updates that merely modify an entry, but we don't want
+        -- to have to compare the entire logs, and we only ever append
+        -- to logs anyway.)
+        _robotLogUpdated =
+          _robotLogUpdated r || Seq.length (_robotLog r) /= Seq.length newLog
       }
 
 -- | Has the 'robotLog' been updated since the last time it was
