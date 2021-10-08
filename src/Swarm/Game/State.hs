@@ -55,6 +55,7 @@ module Swarm.Game.State (
   addRobot,
   emitMessage,
   sleepUntil,
+  sleepForever,
   wakeUpRobotsDoneSleeping,
   deleteRobot,
 ) where
@@ -405,6 +406,10 @@ sleepUntil :: MonadState GameState m => Text -> Integer -> m ()
 sleepUntil rn time = do
   internalActiveRobots %= S.delete rn
   waitingRobots . at time . non [] %= (rn :)
+
+-- | Takes a robot out of the activeRobots set.
+sleepForever :: MonadState GameState m => Text -> m ()
+sleepForever rn = internalActiveRobots %= S.delete rn
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the waitingRobots queue and put them back in the activeRobots set.

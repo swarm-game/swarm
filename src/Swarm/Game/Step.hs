@@ -76,9 +76,11 @@ gameTick = do
       Nothing -> return ()
       Just curRobot -> do
         curRobot' <- tickRobot curRobot
-        case curRobot' ^. selfDestruct of
-          True -> deleteRobot rn
-          False -> robotMap %= M.insert rn curRobot'
+        if curRobot' ^. selfDestruct
+          then deleteRobot rn
+          else robotMap %= M.insert rn curRobot'
+        unless (isActive curRobot') do
+          sleepForever rn
         mapM_ (sleepUntil rn) (waitingUntil curRobot')
 
   -- See if the base is finished with a computation, and if so, record
