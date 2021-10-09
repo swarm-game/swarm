@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -70,6 +68,7 @@ module Swarm.Game.Entity (
   -- ** Lookup
   lookup,
   lookupByName,
+  countByName,
   contains,
   elems,
 
@@ -86,7 +85,7 @@ import Brick (Widget)
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
-import Data.Bifunctor (bimap, second)
+import Data.Bifunctor (bimap, first, second)
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Hashable
@@ -98,7 +97,7 @@ import qualified Data.IntSet as IS
 import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (isJust)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -485,10 +484,22 @@ lookup :: Entity -> Inventory -> Count
 lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 
 -- | Look up an entity by name in an inventory, returning a list of
---   matching entities.
+--   matching entities.  Note, if this returns some entities, it does
+--   *not* mean we necessarily have any in our inventory!  It just
+--   means we *know about* them.  If you want to know whether you have
+--   any, use 'lookup' and see whether the resulting 'Count' is
+--   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
 lookupByName name (Inventory cs byN) =
   maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
+
+-- | Look up an entity by name and see how many there are in the
+--   inventory.  If there are multiple entities with the same name, it
+--   just picks the first one returned from 'lookupByName'.
+countByName :: Text -> Inventory -> Count
+countByName name inv =
+  fromMaybe 0 $
+    flip lookup inv <$> listToMaybe (lookupByName name inv)
 
 -- | The empty inventory.
 empty :: Inventory
@@ -516,7 +527,7 @@ insertCount cnt e (Inventory cs byN) =
     (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (cnt, e) cs)
     (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
 
--- | Check whether an inventory contains a given entity.
+-- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
 contains inv e = lookup e inv > 0
 
@@ -526,27 +537,20 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount k e (Inventory cs byN) = Inventory cs' byN'
+deleteCount k e (Inventory cs byN) = Inventory cs' byN
  where
   cs' = IM.alter removeCount (e ^. entityHash) cs
-  newCount = lookup e (Inventory cs' byN)
-
-  byN'
-    | newCount == 0 = M.adjust (IS.delete (e ^. entityHash)) (T.toLower $ e ^. entityName) byN
-    | otherwise = byN
 
   removeCount :: Maybe (Count, a) -> Maybe (Count, a)
   removeCount Nothing = Nothing
-  removeCount (Just (n, a))
-    | k >= n = Nothing
-    | otherwise = Just (n - k, a)
+  removeCount (Just (n, a)) = Just (max 0 (n - k), a)
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
 deleteAll e (Inventory cs byN) =
   Inventory
-    (IM.alter (const Nothing) (e ^. entityHash) cs)
-    (M.adjust (IS.delete (e ^. entityHash)) (T.toLower $ e ^. entityName) byN)
+    (IM.adjust (first (const 0)) (e ^. entityHash) cs)
+    byN
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]

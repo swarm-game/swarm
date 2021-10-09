@@ -595,7 +595,10 @@ execConst c vs k = do
         -- Make sure the robot has the thing in its inventory
         e <-
           listToMaybe (lookupByName s inv)
-            `isJustOr` cmdExn Place ["You don't have", indefinite s, "to place."]
+            `isJustOr` cmdExn Place ["What is", indefinite s, "?"]
+
+        (E.lookup e inv > 0)
+          `holdsOr` cmdExn Place ["You don't have", indefinite s, "to place."]
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
@@ -620,7 +623,10 @@ execConst c vs k = do
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOr` cmdExn Give ["You don't have", indefinite itemName, "to give."]
+            `isJustOr` cmdExn Give ["What is", indefinite itemName, "?"]
+
+        (E.lookup item inv > 0)
+          `holdsOr` cmdExn Give ["You don't have", indefinite itemName, "to give."]
 
         -- Giving something to ourself should be a no-op.  We need
         -- this as a special case since it will not work to modify
@@ -656,7 +662,10 @@ execConst c vs k = do
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOr` cmdExn Install ["You don't have", indefinite itemName, "to install."]
+            `isJustOr` cmdExn Install ["What is", indefinite itemName, "?"]
+
+        (E.lookup item inv > 0)
+          `holdsOr` cmdExn Install ["You don't have", indefinite itemName, "to install."]
 
         myName <- use robotName
         focusedName <- lift . lift $ use focusedRobotName
