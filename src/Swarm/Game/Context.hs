@@ -10,7 +10,7 @@
 module Swarm.Game.Context (
   Ctx,
   VarCtx (..),
-  Phase(..),
+  Phase (..),
   VarContext (..),
   emptyVarContext,
 ) where
@@ -63,8 +63,8 @@ emptyVarContext = VarContext Data.Map.empty
 type family CapsForPhase (p :: Phase) :: * -> * where
   CapsForPhase 'ParseCommand = Maybe
   CapsForPhase 'CapabilityCheck = Identity
-  -- capabilities need not be accessed when
-  -- evaluating a term even if they already exist
+-- capabilities need not be accessed when
+-- evaluating a term even if they already exist
   CapsForPhase 'EvaluateTerm = Const ()
   CapsForPhase 'BaseRobot = Identity
 

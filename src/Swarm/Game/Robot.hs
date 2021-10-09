@@ -3,8 +3,8 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- Module      :  Swarm.Game.Robot
@@ -55,7 +55,7 @@ import Linear
 
 import Data.Hashable (hashWithSalt)
 import Swarm.Game.CEK
-import Swarm.Game.Context (Phase (BaseRobot), emptyVarContext, VarContext (VarContext))
+import Swarm.Game.Context (Phase (BaseRobot), VarContext (VarContext), emptyVarContext)
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
