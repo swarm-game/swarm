@@ -78,6 +78,7 @@ module Swarm.Game.Entity (
   delete,
   deleteCount,
   deleteAll,
+  union,
 ) where
 
 import Brick (Widget)
@@ -554,3 +555,10 @@ deleteAll e (Inventory cs byN) =
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
 elems (Inventory cs _) = IM.elems cs
+
+-- | Union two inventories.
+union :: Inventory -> Inventory -> Inventory
+union (Inventory cs1 byN1) (Inventory cs2 byN2) =
+  Inventory
+    (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
+    (M.unionWith IS.union byN1 byN2)

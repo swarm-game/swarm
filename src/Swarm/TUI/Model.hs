@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -23,9 +21,10 @@ module Swarm.TUI.Model (
 
   -- * UI state
   REPLHistItem (..),
-  InventoryEntry (..),
+  InventoryListEntry (..),
   _Separator,
   _InventoryEntry,
+  _InstalledEntry,
   UIState,
 
   -- ** Fields
@@ -36,6 +35,9 @@ module Swarm.TUI.Model (
   uiReplHistIdx,
   uiReplLast,
   uiInventory,
+  uiMoreInfoTop,
+  uiMoreInfoBot,
+  uiScrollToEnd,
   uiError,
   uiModal,
   lgTicksPerSecond,
@@ -57,6 +59,7 @@ module Swarm.TUI.Model (
 
   -- ** Updating
   populateInventoryList,
+  infoScroll,
 
   -- * App state
   AppState,
@@ -85,7 +88,7 @@ import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
-import Swarm.Game.Entity
+import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Language.Types
@@ -112,7 +115,9 @@ data Name
     REPLPanel
   | -- | The panel containing the world view.
     WorldPanel
-  | -- | The info panel on the left side.
+  | -- | The panel showing robot info and inventory on the top left.
+    RobotPanel
+  | -- | The info panel on the bottom left.
     InfoPanel
   | -- | The REPL input form.
     REPLInput
@@ -123,7 +128,12 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
+  | -- | The scrollable viewport for the info panel.
+    InfoViewport
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
+infoScroll :: ViewportScroll Name
+infoScroll = viewportScroll InfoViewport
 
 data Modal
   = HelpModal
@@ -148,14 +158,17 @@ data REPLHistItem
   deriving (Eq, Ord, Show, Read)
 
 -- | An entry in the inventory list displayed in the info panel.  We
---   can either have an entity with a count, or a labelled separator.
---   The purpose of the separators is to show a clear distinction
---   between the robot's /inventory/ and its /installed devices/.
-data InventoryEntry
+--   can either have an entity with a count in the robot's inventory,
+--   an entity installed on the robot, or a labelled separator.  The
+--   purpose of the separators is to show a clear distinction between
+--   the robot's /inventory/ and its /installed devices/.
+data InventoryListEntry
   = Separator Text
   | InventoryEntry Count Entity
+  | InstalledEntry Entity
+  deriving (Eq)
 
-makePrisms ''InventoryEntry
+makePrisms ''InventoryListEntry
 
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
@@ -166,7 +179,10 @@ data UIState = UIState
   , _uiReplLast :: Text
   , _uiReplHistory :: [REPLHistItem]
   , _uiReplHistIdx :: Int
-  , _uiInventory :: Maybe (Int, BL.List Name InventoryEntry)
+  , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
+  , _uiMoreInfoTop :: Bool
+  , _uiMoreInfoBot :: Bool
+  , _uiScrollToEnd :: Bool
   , _uiError :: Maybe (Widget Name)
   , _uiModal :: Maybe Modal
   , _uiShowFPS :: Bool
@@ -208,7 +224,17 @@ uiReplHistIdx :: Lens' UIState Int
 -- | The hash value of the focused robot entity (so we can tell if its
 --   inventory changed) along with a list of the items in the
 --   focused robot's inventory.
-uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryEntry))
+uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryListEntry))
+
+-- | Does the info panel contain more content past the top of the panel?
+uiMoreInfoTop :: Lens' UIState Bool
+
+-- | Does the info panel contain more content past the bottom of the panel?
+uiMoreInfoBot :: Lens' UIState Bool
+
+-- | A flag telling the UI to scroll the info panel to the very end
+--   (used when a new log message is appended).
+uiScrollToEnd :: Lens' UIState Bool
 
 -- | When this is @Just@, it represents a popup box containing an
 --   error message that is shown on top of the rest of the UI.
@@ -253,7 +279,7 @@ accumulatedTime :: Lens' UIState TimeSpec
 
 -- | The initial state of the focus ring.
 initFocusRing :: FocusRing Name
-initFocusRing = focusRing [REPLPanel, InfoPanel, WorldPanel]
+initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
 -- | The default REPL prompt.
 replPrompt :: Text
@@ -286,6 +312,9 @@ initUIState = liftIO $ do
       , _uiReplHistIdx = -1
       , _uiReplLast = ""
       , _uiInventory = Nothing
+      , _uiMoreInfoTop = False
+      , _uiMoreInfoBot = False
+      , _uiScrollToEnd = False
       , _uiError = Nothing
       , _uiModal = Nothing
       , _uiShowFPS = False
@@ -310,14 +339,23 @@ populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   let mkInvEntry (n, e) = InventoryEntry n e
-      itemList label =
+      mkInstEntry (_, e) = InstalledEntry e
+      itemList mk label =
         (\case [] -> []; xs -> Separator label : xs)
-          . map mkInvEntry
+          . map mk
           . sortOn (view entityName . snd)
+          . filter shouldDisplay
           . elems
+
+      -- Display items if we have a positive number of them, or they
+      -- aren't an installed device.  In other words we don't need to
+      -- display installed devices twice unless we actually have some
+      -- in our inventory in addition to being installed.
+      shouldDisplay (n, e) = n > 0 || not ((r ^. installedDevices) `E.contains` e)
+
       items =
-        (r ^. robotInventory . to (itemList "Inventory"))
-          ++ (r ^. installedDevices . to (itemList "Installed devices"))
+        (r ^. robotInventory . to (itemList mkInvEntry "Inventory"))
+          ++ (r ^. installedDevices . to (itemList mkInstEntry "Installed devices"))
 
       -- Attempt to keep the selected element steady.
       sel = mList >>= BL.listSelectedElement -- Get the currently selected element+index.
@@ -325,10 +363,12 @@ populateInventoryList (Just r) = do
         -- If there is no currently selected element, just focus on
         -- index 1 (not 0, to avoid the separator).
         Nothing -> 1
-        -- Otherwise, try to find the same entity in the list and focus on that;
+        -- Otherwise, try to find the same entry in the list;
         -- if it's not there, keep the index the same.
         Just (selIdx, InventoryEntry _ e) ->
           fromMaybe selIdx (findIndex ((== Just e) . preview (_InventoryEntry . _2)) items)
+        Just (selIdx, InstalledEntry e) ->
+          fromMaybe selIdx (findIndex ((== Just e) . preview _InstalledEntry) items)
         Just (selIdx, _) -> selIdx
 
       -- Create the new list, focused at the desired index.
