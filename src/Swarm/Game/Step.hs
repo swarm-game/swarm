@@ -291,10 +291,14 @@ stepCEK cek = case cek of
       else return cek
   
   Out v (FImmediate wf rf:c) -> do
-    robotInventory %= robotFunInventory rf
-    lift $ world %= worldFun wf
-    lift $ needsRedraw .= True
-    stepCEK (Out v c)
+    wc <- worldFun wf <$> lift (use world)
+    case wc of
+      Left exn -> return $ Up exn c
+      Right wo -> do
+        robotInventory %= robotFunInventory rf
+        lift $ world .= wo
+        lift $ needsRedraw .= True
+        stepCEK (Out v c)
 
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
@@ -749,7 +753,7 @@ execConst c vs k = do
           listToMaybe (rights (map makeRecipe recipes))
             `isJustOr` cmdExn Make ["You don't have the ingredients to make", indefinite name, "."]
 
-        finishCookingRecipe recipe (WorldFun id) (RobotFun $ const inv')
+        finishCookingRecipe recipe (WorldFun Right) (RobotFun $ const inv')
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
@@ -781,14 +785,9 @@ execConst c vs k = do
             `isJustOr` cmdExn Drill ["You don't have the ingredients\n to drill", indefinite (nextE ^. entityName) <> "."]
 
         let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
+            inv' = L.foldl' (flip (uncurry insertCount)) invTaken out
+            changeWorld = changeWorld' nextE nextLoc down
 
-        let changeWorld = case down of {
-            [] -> W.update (W.locToCoords nextLoc) (const Nothing);
-            [de] -> W.update (W.locToCoords nextLoc) (const (Just $ snd de));
-            _ -> id -- throwError $ cmdExn Drill ["Bad recipe - can not place more then one unmovable entity."]
-          } :: W.World Int Entity -> W.World Int Entity
-
-        let inv' = L.foldl' (flip (uncurry insertCount)) invTaken out
         finishCookingRecipe recipe (WorldFun changeWorld) (RobotFun $ const inv')
       _ -> badConst
     Blocked -> do
@@ -1138,6 +1137,19 @@ execConst c vs k = do
     let recTime = pred $ r ^. recipeTime
     time <- doOnGame $ use ticks
     return $ Waiting (time + recTime) $ Out VUnit (FImmediate wf rf : k)
+
+  changeWorld' :: Entity -> V2 Int64 -> IngredientList Entity -> W.World Int Entity -> Either Exn (W.World Int Entity)
+  changeWorld' nextThen loc down w =
+    let nextNow = W.lookupEntity (W.locToCoords loc) w
+    in if Just nextThen /= nextNow
+      then undefined
+      else w `updateLoc` loc <$> case down of 
+        [] -> Right Nothing
+        [de] -> Right $ Just $ snd de
+        _ -> Left $ Fatal "Bad recipe - can not place more then one unmovable entity."
+  
+  updateLoc w loc res = W.update (W.locToCoords loc) (const res) w    
+
   returnEvalCmp = case vs of
     [v1, v2] ->
       case evalCmp c v1 v2 of

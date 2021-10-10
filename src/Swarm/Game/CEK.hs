@@ -268,8 +268,6 @@ prettyFrame FImmediate {} = "(_ : cmd a)"
 --------------------------------------------------------------
 -- Wrappers for functions in FImmediate
 --
--- TODO: allow functions to fail
---
 -- NOTE: we can not use GameState and Robot directly, as it
 -- would create a cyclic dependency. The alternative is
 -- making CEK, Cont and Frame polymorphic which just muddies
@@ -279,7 +277,7 @@ prettyFrame FImmediate {} = "(_ : cmd a)"
 --------------------------------------------------------------
 
 newtype WorldFun = WorldFun
-  { worldFun :: World Int Entity -> World Int Entity
+  { worldFun :: World Int Entity -> Either Exn (World Int Entity)
   }
 
 newtype RobotFun = RobotFun
