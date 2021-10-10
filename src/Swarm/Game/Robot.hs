@@ -65,6 +65,7 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Syntax (east)
 import Swarm.Language.Types (TCtx)
 
 -- | An entry in a robot's log.
@@ -307,6 +308,8 @@ baseRobot devs =
           "base"
           ["Your base of operations."]
           []
+          & entityOrientation ?~ east
+          & entityDisplay . orientationMap .~ Empty
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLog = Seq.empty
