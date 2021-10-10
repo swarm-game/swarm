@@ -66,6 +66,8 @@ data Capability
     CSenseloc
   | -- | Execute the 'Blocked' command
     CSensefront
+  | -- | Execute the 'Ishere' command
+    CSensehere
   | -- | Execute the 'Scan' command
     CScan
   | -- | Execute the 'Random' command
@@ -240,6 +242,7 @@ constCaps =
     Create -> [CCreate]
     Blocked -> [CSensefront]
     Scan -> [CScan]
+    Ishere -> [CSensehere]
     Upload -> [CScan]
     Build -> [CBuild]
     Salvage -> [CSalvage]
@@ -270,7 +273,6 @@ constCaps =
     -- currently don't.
     Say -> []
     View -> [] -- XXX this should also require something.
-    Ishere -> [] -- XXX this should require a capability.
     Run -> [] -- XXX this should also require a capability
     -- which the base starts out with.
     Not -> [] -- XXX some kind of boolean logic cap?
