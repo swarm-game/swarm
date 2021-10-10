@@ -77,7 +77,7 @@
   - [1, copper vein]
   required:
   - [1, drill]
-  time: 15
+  time: 42
 
 - in:
   - [5, rock]
