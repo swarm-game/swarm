@@ -125,9 +125,13 @@ gameTick = do
 -- Some utility functions
 ------------------------------------------------------------
 
+-- | Perform operation on the monad with game state.
+doOnGame :: MonadState GameState m => m a -> ExceptT Exn (StateT Robot m) a
+doOnGame = lift . lift
+
 -- | Set a flag telling the UI that the world needs to be redrawn.
-flagRedraw :: MonadState GameState m => ExceptT Exn (StateT s m) ()
-flagRedraw = lift . lift $ needsRedraw .= True
+flagRedraw :: MonadState GameState m => ExceptT Exn (StateT Robot m) ()
+flagRedraw = doOnGame $ needsRedraw .= True
 
 -- | Perform an action requiring a 'W.World' state component in a
 --   larger context with a 'GameState'.
@@ -140,7 +144,7 @@ zoomWorld n = do
 
 -- | Get the entity (if any) at a given location.
 entityAt :: MonadState GameState m => V2 Int64 -> ExceptT Exn (StateT Robot m) (Maybe Entity)
-entityAt loc = lift . lift $ zoomWorld (W.lookupEntityM (W.locToCoords loc))
+entityAt loc = doOnGame $ zoomWorld (W.lookupEntityM (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
@@ -148,11 +152,11 @@ updateEntityAt ::
   V2 Int64 ->
   (Maybe Entity -> Maybe Entity) ->
   ExceptT Exn (StateT Robot m) ()
-updateEntityAt loc upd = lift . lift $ zoomWorld (W.updateM (W.locToCoords loc) upd)
+updateEntityAt loc upd = doOnGame $ zoomWorld (W.updateM (W.locToCoords loc) upd)
 
 -- | Get the robot with a given name (if any).
 robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)
-robotNamed nm = lift . lift $ use (robotMap . at nm)
+robotNamed nm = doOnGame $ use (robotMap . at nm)
 
 -- | Manhattan distance between world locations.
 manhattan :: V2 Int64 -> V2 Int64 -> Int64
@@ -175,7 +179,7 @@ uniform bnds = do
 traceLog :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) ()
 traceLog msg = do
   rn <- use robotName
-  time <- lift . lift $ use ticks
+  time <- doOnGame $ use ticks
   robotLog %= (Seq.|> LogEntry msg rn time)
 
 -- | For debugging only. Print a showable value via the robot's log.
@@ -191,7 +195,7 @@ traceLogShow = traceLog . from . show
 --   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: MonadState GameState m => Const -> ExceptT Exn (StateT Robot m) ()
 ensureCanExecute c = do
-  mode <- lift . lift $ use gameMode
+  mode <- doOnGame $ use gameMode
   sys <- use systemRobot
   robotCaps <- use robotCapabilities
   let missingCaps = constCaps c `S.difference` robotCaps
@@ -515,7 +519,7 @@ execConst c vs k = do
       _ -> badConst
     Wait -> case vs of
       [VInt d] -> do
-        time <- lift . lift $ use ticks
+        time <- doOnGame $ use ticks
         return $ Waiting (time + d) (Out VUnit k)
       _ -> badConst
     Selfdestruct -> do
@@ -577,7 +581,7 @@ execConst c vs k = do
                       .~ (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
                     & robotInventory .~ E.singleton e
                     & systemRobot .~ True
-            _ <- lift . lift $ addRobot seedBot
+            _ <- doOnGame $ addRobot seedBot
             return ()
 
       -- Add the picked up item to the robot's inventory.  If the
@@ -585,7 +589,7 @@ execConst c vs k = do
       let yieldName = e ^. entityYields
       e' <- case yieldName of
         Nothing -> return e
-        Just n -> (?e) <$> (lift . lift $ uses entityMap (lookupEntityName n))
+        Just n -> (?e) <$> doOnGame (uses entityMap (lookupEntityName n))
 
       robotInventory %= insert e'
 
@@ -649,10 +653,10 @@ execConst c vs k = do
         -- robotMap, overwriting any changes to this robot made
         -- directly in the robotMap during the tick.
         myName <- use robotName
-        focusedName <- lift . lift $ use focusedRobotName
+        focusedName <- doOnGame $ use focusedRobotName
         when (otherName /= myName) $ do
           -- Make the exchange
-          lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
+          doOnGame $ robotMap . at otherName . _Just . robotInventory %= insert item
           robotInventory %= delete item
 
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
@@ -682,7 +686,7 @@ execConst c vs k = do
           `holdsOr` cmdExn Install ["You don't have", indefinite itemName, "to install."]
 
         myName <- use robotName
-        focusedName <- lift . lift $ use focusedRobotName
+        focusedName <- doOnGame $ use focusedRobotName
         case otherName == myName of
           -- We have to special case installing something on ourselves
           -- for the same reason as Give.
@@ -697,9 +701,9 @@ execConst c vs k = do
               when (focusedName == myName) flagRedraw
           False -> do
             let otherDevices = robotMap . at otherName . _Just . installedDevices
-            already <- lift . lift $ preuse (otherDevices . to (`E.contains` item))
+            already <- doOnGame $ preuse (otherDevices . to (`E.contains` item))
             unless (already == Just True) $ do
-              lift . lift $ robotMap . at otherName . _Just . installedDevices %= insert item
+              doOnGame $ robotMap . at otherName . _Just . installedDevices %= insert item
               robotInventory %= delete item
 
               -- Flag the UI for a redraw if we are currently showing
@@ -712,12 +716,12 @@ execConst c vs k = do
       [VString name] -> do
         inv <- use robotInventory
         ins <- use installedDevices
-        em <- lift . lift $ use entityMap
+        em <- doOnGame $ use entityMap
         e <-
           lookupEntityName name em
             `isJustOr` cmdExn Make ["I've never heard of", indefiniteQ name, "."]
 
-        outRs <- lift . lift $ use recipesOut
+        outRs <- doOnGame $ use recipesOut
 
         -- Only consider recipes where the number of things we are trying to make
         -- is greater in the outputs than in the inputs.  This prevents us from doing
@@ -750,11 +754,11 @@ execConst c vs k = do
         rDir <- use robotOrientation
 
         let nextLoc = loc ^+^ applyTurn d (rDir ? V2 0 0)
-        em <- lift . lift $ use entityMap
+        em <- doOnGame $ use entityMap
         drill <- lookupEntityName "drill" em `isJustOr` cmdExn Drill ["Drill does not exist?!"]
         nextE <- entityAt nextLoc >>= (`isJustOr` cmdExn Drill ["There is nothing to drill", "in the direction", "of robot", rname <> "."])
 
-        inRs <- lift . lift $ use recipesIn
+        inRs <- doOnGame $ use recipesIn
 
         let recipes = filter drilling (recipesFor inRs nextE)
             drilling = any ((== drill) . snd) . view recipeRequirements
@@ -811,11 +815,11 @@ execConst c vs k = do
         -- Upload knowledge of everything in our inventory
         inv <- use robotInventory
         forM_ (elems inv) $ \(_, e) ->
-          lift . lift $ robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
+          doOnGame $ robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
 
         -- Upload our log
         rlog <- use robotLog
-        lift . lift $ robotMap . at otherName . _Just . robotLog <>= rlog
+        doOnGame $ robotMap . at otherName . _Just . robotLog <>= rlog
 
         return $ Out VUnit k
       _ -> badConst
@@ -827,13 +831,13 @@ execConst c vs k = do
     Say -> case vs of
       [VString s] -> do
         rn <- use robotName
-        lift . lift $ emitMessage (T.concat [rn, ": ", s])
+        doOnGame $ emitMessage (T.concat [rn, ": ", s])
         return $ Out VUnit k
       _ -> badConst
     Log -> case vs of
       [VString s] -> do
         rn <- use robotName
-        time <- lift . lift $ use ticks
+        time <- doOnGame $ use ticks
         robotLog %= (Seq.|> LogEntry s rn time)
         return $ Out VUnit k
       _ -> badConst
@@ -847,7 +851,7 @@ execConst c vs k = do
         -- execute this command but it does nothing (at least for now).
         rn <- use robotName
         when (rn == "base") $
-          lift . lift $ viewCenterRule .= VCRobot s
+          doOnGame $ viewCenterRule .= VCRobot s
 
         return $ Out VUnit k
       _ -> badConst
@@ -870,7 +874,7 @@ execConst c vs k = do
       _ -> badConst
     Create -> case vs of
       [VString name] -> do
-        em <- lift . lift $ use entityMap
+        em <- doOnGame $ use entityMap
         e <-
           lookupEntityName name em
             `isJustOr` cmdExn Create ["I've never heard of", indefiniteQ name, "."]
@@ -917,8 +921,8 @@ execConst c vs k = do
       _ -> badConst
     Reprogram -> case vs of
       [VString childRobotName, VDelay _ cmd e] -> do
-        em <- lift . lift $ use entityMap
-        mode <- lift . lift $ use gameMode
+        em <- doOnGame $ use entityMap
+        mode <- doOnGame $ use gameMode
         rctx@(_, capCtx) <- use robotCtx
         renv <- use robotEnv
 
@@ -975,17 +979,17 @@ execConst c vs k = do
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        lift . lift $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
-        lift . lift $ robotMap . at childRobotName . _Just . robotEnv .= renv
-        lift . lift $ robotMap . at childRobotName . _Just . robotCtx .= rctx
+        doOnGame $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
+        doOnGame $ robotMap . at childRobotName . _Just . robotEnv .= renv
+        doOnGame $ robotMap . at childRobotName . _Just . robotCtx .= rctx
 
         return $ Out VUnit k
       _ -> badConst
     Build -> case vs of
       [VString name, VDelay _ cmd e] -> do
         r <- get
-        em <- lift . lift $ use entityMap
-        mode <- lift . lift $ use gameMode
+        em <- doOnGame $ use entityMap
+        mode <- doOnGame $ use gameMode
 
         let -- Standard devices that are always installed.
             -- XXX in the future, make a way to build these and just start the base
@@ -1034,7 +1038,7 @@ execConst c vs k = do
                 (S.toList devices)
 
         -- Add the new robot to the world.
-        newRobot' <- lift . lift $ addRobot newRobot
+        newRobot' <- doOnGame $ addRobot newRobot
 
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.
@@ -1049,8 +1053,8 @@ execConst c vs k = do
     Salvage -> case vs of
       [] -> do
         loc <- use robotLocation
-        rm <- lift . lift $ use robotMap
-        robotSet <- lift . lift $ use (robotsByLocation . at loc)
+        rm <- doOnGame $ use robotMap
+        robotSet <- doOnGame $ use (robotsByLocation . at loc)
         let robotNameList = maybe [] S.toList robotSet
             mtarget = find okToSalvage . mapMaybe (`M.lookup` rm) $ robotNameList
             okToSalvage r = (r ^. robotName /= "base") && (not . isActive $ r)
@@ -1063,15 +1067,15 @@ execConst c vs k = do
 
             -- Also copy over its log, if we have one
             inst <- use installedDevices
-            em <- lift . lift $ use entityMap
-            mode <- lift . lift $ use gameMode
+            em <- doOnGame $ use entityMap
+            mode <- doOnGame $ use gameMode
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
             when (mode == Creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Finally, delete the salvaged robot
-            lift . lift $ deleteRobot (target ^. robotName)
+            doOnGame $ deleteRobot (target ^. robotName)
 
             return $ Out VUnit k
       _ -> badConst
@@ -1108,6 +1112,7 @@ execConst c vs k = do
     Div -> returnEvalArith
     Exp -> returnEvalArith
  where
+  badConst :: MonadState GameState m => ExceptT Exn (StateT Robot m) a
   badConst =
     throwError $
       Fatal $
@@ -1115,9 +1120,10 @@ execConst c vs k = do
           [ "Bad application of execConst:"
           , from (prettyCEK (Out (VCApp c (reverse vs)) k))
           ]
+  finishCookingRecipe :: MonadState GameState m => Recipe e -> ExceptT Exn (StateT Robot m) CEK
   finishCookingRecipe r = do
     let recTime = pred $ r ^. recipeTime
-    time <- lift . lift $ use ticks
+    time <- doOnGame $ use ticks
     return $ Waiting (time + recTime) $ Out VUnit k
   returnEvalCmp = case vs of
     [v1, v2] ->
