@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -710,6 +711,7 @@ execConst c vs k = do
     Make -> case vs of
       [VString name] -> do
         inv <- use robotInventory
+        ins <- use installedDevices
         em <- lift . lift $ use entityMap
         e <-
           lookupEntityName name em
@@ -721,19 +723,20 @@ execConst c vs k = do
         -- is greater in the outputs than in the inputs.  This prevents us from doing
         -- silly things like making copper pipes when the user says "make furnace".
         let recipes = filter increase (recipesFor outRs e)
-            increase (Recipe ins outs _) = countIn outs > countIn ins
+            increase r = countIn (r ^. recipeOutputs) > countIn (r ^. recipeInputs)
             countIn xs = maybe 0 fst (find ((== e) . snd) xs)
         not (null recipes)
           `holdsOr` cmdExn Make ["There is no known recipe for making", indefinite name, "."]
 
         -- Now try each recipe and take the first one that we have the
         -- ingredients for.
-        inv' <-
-          listToMaybe (rights (map (make inv) recipes))
+        let makeRecipe r = (,r) <$> make (inv, ins) r
+        (inv', recipe) <-
+          listToMaybe (rights (map makeRecipe recipes))
             `isJustOr` cmdExn Make ["You don't have the ingredients to make", indefinite name, "."]
 
         robotInventory .= inv'
-        return $ Out VUnit k
+        finishCookingRecipe recipe
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
@@ -742,6 +745,7 @@ execConst c vs k = do
       [VDir d] -> do
         rname <- use robotName
         inv <- use robotInventory
+        ins <- use installedDevices
         loc <- use robotLocation
         rDir <- use robotOrientation
 
@@ -749,15 +753,6 @@ execConst c vs k = do
         em <- lift . lift $ use entityMap
         drill <- lookupEntityName "drill" em `isJustOr` cmdExn Drill ["Drill does not exist?!"]
         nextE <- entityAt nextLoc >>= (`isJustOr` cmdExn Drill ["There is nothing to drill", "in the direction", "of robot", rname <> "."])
-        -- TODO: this would lose the drill when trying to drill water
-        --       but I guess it would not work well with try which
-        --       might eventually be provided by some time-machine
-        --
-        -- if "water" `T.isSuffixOf` (nextE ^. entityName)
-        --  then do
-        --    installedDevices %= delete drill
-        --    throwError $ cmdExn Drill ["Drill is lost beneath the waves!"]
-        --  else pure ()
 
         inRs <- lift . lift $ use recipesIn
 
@@ -766,24 +761,22 @@ execConst c vs k = do
 
         not (null recipes) `holdsOr` cmdExn Drill ["There is no way to drill a", nextE ^. entityName <> "."]
 
-        -- add and remove drill as it is requiered in recipe - the drilled entity is replaced at the end
-        let inv' = insert drill $ insert nextE inv
-        (invTaken, outs) <-
-          listToMaybe (rights (map (make' inv') recipes))
+        -- add the drilled entity so it can be consumed by recipe
+        let makeRecipe r = (\(i, o) -> (i, o, r)) <$> make' (insert nextE inv, ins) r
+        (invTaken, outs, recipe) <-
+          listToMaybe (rights (map makeRecipe recipes))
             `isJustOr` cmdExn Drill ["You don't have the ingredients\n to drill", indefinite (nextE ^. entityName) <> "."]
 
         let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
-            downAmount = sum $ map fst down
 
-        (downAmount <= 1) `holdsOr` cmdExn Drill ["Bad recipe - can not place more then one unmovable entity."]
+        case down of
+          [] -> updateEntityAt nextLoc (const Nothing)
+          [de] -> updateEntityAt nextLoc (const (Just $ snd de))
+          _ -> throwError $ cmdExn Drill ["Bad recipe - can not place more then one unmovable entity."]
 
-        robotInventory .= delete drill (L.foldl' (flip (uncurry insertCount)) invTaken out)
-        _ <-
-          if downAmount == 0
-            then updateEntityAt nextLoc (const Nothing)
-            else updateEntityAt nextLoc (const (Just . snd . head $ down))
+        robotInventory .= L.foldl' (flip (uncurry insertCount)) invTaken out
         flagRedraw
-        return $ Out VUnit k
+        finishCookingRecipe recipe
       _ -> badConst
     Blocked -> do
       loc <- use robotLocation
@@ -1122,6 +1115,10 @@ execConst c vs k = do
           [ "Bad application of execConst:"
           , from (prettyCEK (Out (VCApp c (reverse vs)) k))
           ]
+  finishCookingRecipe r = do
+    let recTime = pred $ r ^. recipeTime
+    time <- lift . lift $ use ticks
+    return . (if recTime == 0 then id else Waiting (time + recTime)) $ Out VUnit k
   returnEvalCmp = case vs of
     [v1, v2] ->
       case evalCmp c v1 v2 of

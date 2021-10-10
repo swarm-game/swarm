@@ -59,6 +59,7 @@
   - [3, rock]
   required:
   - [1, drill]
+  time: 3
 
 - in:
   - [1, mountain]
@@ -67,6 +68,7 @@
   - [1, mountain tunnel]
   required:
   - [1, drill]
+  time: 9
 
 - in:
   - [1, copper vein]
@@ -75,6 +77,7 @@
   - [1, copper vein]
   required:
   - [1, drill]
+  time: 3
 
 - in:
   - [5, rock]

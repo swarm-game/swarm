@@ -36,7 +36,7 @@ swarmAttrMap =
     , (woodAttr, fg (V.rgbColor @Int 139 69 19))
     , (flowerAttr, fg (V.rgbColor @Int 200 0 200))
     , (copperAttr, fg V.yellow)
-    , (copperAttr, fg V.brightYellow)
+    , (copperAttr', fg V.brightYellow)
     , (snowAttr, fg V.white)
     , (fireAttr, fg V.red `V.withStyle` V.bold)
     , (deviceAttr, fg V.yellow `V.withStyle` V.bold)
