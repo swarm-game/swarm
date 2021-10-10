@@ -197,54 +197,32 @@ defaultGrowthTime = GrowthTime (100, 200)
 --   entities stored in the world that are the same will literally
 --   just be stored as pointers to the same shared record.
 data Entity = Entity
-  { -- | A hash value computed
-    --   from the other fields
+  { -- | A hash value computed from the other fields
     _entityHash :: Int
-  , -- | The way this entity
-    --   should be displayed on
-    --   the world map.
+  , -- | The way this entity should be displayed on the world map.
     _entityDisplay :: Display
-  , -- | The name of the
-    --   entity, used /e.g./ in
-    --   an inventory display.
+  , -- | The name of the entity, used /e.g./ in an inventory display.
     _entityName :: Text
-  , -- | The plural of the
-    --   entity name, in case
-    --   it is irregular.  If
-    --   this field is
-    --   @Nothing@, default
-    --   pluralization
-    --   heuristics will be
-    --   used (see 'plural').
+  , -- | The plural of the entity name, in case it is irregular.  If
+    --   this field is @Nothing@, default pluralization heuristics
+    --   will be used (see 'plural').
     _entityPlural :: Maybe Text
-  , -- | A longer-form
-    --   description. Each
-    --   'Text' value is one
+  , -- | A longer-form description. Each 'Text' value is one
     --   paragraph.
     _entityDescription :: [Text]
-  , -- | The entity's
-    --   orientation (if it has
-    --   one).  For example,
-    --   when a robot moves, it
-    --   moves in the direction
-    --   of its orientation.
+  , -- | The entity's orientation (if it has one).  For example, when
+    --   a robot moves, it moves in the direction of its orientation.
     _entityOrientation :: Maybe (V2 Int64)
-  , -- | If this entity grows,
-    --   how long does it take?
+  , -- | If this entity grows, how long does it take?
     _entityGrowth :: Maybe GrowthTime
-  , -- | The name of a
-    --   different entity
-    --   obtained when this
-    --   entity is grabbed.
+  , -- | The name of a different entity obtained when this entity is
+    -- grabbed.
     _entityYields :: Maybe Text
   , -- | Properties of the entity.
     _entityProperties :: [EntityProperty]
-  , -- | Capabilities provided
-    --   by this entity.
+  , -- | Capabilities provided by this entity.
     _entityCapabilities :: [Capability]
-  , -- | Inventory of other
-    --   entities held by this
-    --   entity.
+  , -- | Inventory of other entities held by this entity.
     _entityInventory :: Inventory
   }
   -- Note that an entity does not have a location, because the
