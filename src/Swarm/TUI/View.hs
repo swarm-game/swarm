@@ -472,7 +472,6 @@ drawRecipe e inv (Recipe ins outs reqs time) =
   inLen = length ins + length times
   outLen = length outs
   times = [(fromIntegral time, timeE) | time /= 1]
-  timeE = mkEntity (defaultEntityDisplay '.') "tick" [] []
 
   -- Draw inputs and outputs.
   drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
@@ -508,12 +507,17 @@ drawRecipe e inv (Recipe ins outs reqs time) =
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
     | ingr == e = withAttr deviceAttr $ txtLines nm
+    | ingr == timeE = withAttr sandAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm
    where
     -- Split up multi-word names, one line per word
     nm = ingr ^. entityName
     txtLines = vBox . map txt . T.words
+
+-- | Ad-hoc entity to represent time - only used in recipe drawing
+timeE :: Entity
+timeE = mkEntity (defaultEntityDisplay '.') "time piece" [] []
 
 drawReqs :: IngredientList Entity -> Widget Name
 drawReqs = vBox . map drawReq

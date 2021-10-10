@@ -289,8 +289,7 @@ stepCEK cek = case cek of
     if wakeupTime == time
       then stepCEK cek'
       else return cek
-  
-  Out v (FImmediate wf rf:c) -> do
+  Out v (FImmediate wf rf : c) -> do
     wc <- worldFun wf <$> lift (use world)
     case wc of
       Left exn -> return $ Up exn c
@@ -1128,27 +1127,31 @@ execConst c vs k = do
           [ "Bad application of execConst:"
           , from (prettyCEK (Out (VCApp c (reverse vs)) k))
           ]
-  finishCookingRecipe :: MonadState GameState m =>
-      Recipe e ->
-      WorldFun ->
-      RobotFun ->
-      ExceptT Exn (StateT Robot m) CEK
+  finishCookingRecipe ::
+    MonadState GameState m =>
+    Recipe e ->
+    WorldFun ->
+    RobotFun ->
+    ExceptT Exn (StateT Robot m) CEK
   finishCookingRecipe r wf rf = do
     let recTime = pred $ r ^. recipeTime
     time <- doOnGame $ use ticks
     return $ Waiting (time + recTime) $ Out VUnit (FImmediate wf rf : k)
 
+  -- replace some entity in the world with another entity
   changeWorld' :: Entity -> V2 Int64 -> IngredientList Entity -> W.World Int Entity -> Either Exn (W.World Int Entity)
-  changeWorld' nextThen loc down w =
-    let nextNow = W.lookupEntity (W.locToCoords loc) w
-    in if Just nextThen /= nextNow
-      then undefined
-      else w `updateLoc` loc <$> case down of 
-        [] -> Right Nothing
-        [de] -> Right $ Just $ snd de
-        _ -> Left $ Fatal "Bad recipe - can not place more then one unmovable entity."
-  
-  updateLoc w loc res = W.update (W.locToCoords loc) (const res) w    
+  changeWorld' eThen loc down w =
+    let eNow = W.lookupEntity (W.locToCoords loc) w
+     in if Just eThen /= eNow
+          then Left $ CmdFailed c $ "The " <> (eThen ^. entityName) <> " is not there."
+          else
+            w `updateLoc` loc <$> case down of
+              [] -> Right Nothing
+              [de] -> Right $ Just $ snd de
+              _ -> Left $ Fatal "Bad recipe - can not place more then one unmovable entity."
+
+  -- update some tile in the world setting it to entity or making it empty
+  updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
 
   returnEvalCmp = case vs of
     [v1, v2] ->

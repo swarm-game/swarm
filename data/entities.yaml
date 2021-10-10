@@ -60,7 +60,7 @@
     attr: rock
     char: '@'
   description:
-  - A rock.
+  - A rock. Can be drilled to smaller rocks relatively fast.
   properties: [unwalkable]
 
 - name: mountain
@@ -68,7 +68,7 @@
     attr: snow
     char: 'A'
   description:
-  - A mountain.
+  - A mountain. Can be tunneled through with a drill, but it takes time.
   properties: [unwalkable]
 
 - name: mountain tunnel
