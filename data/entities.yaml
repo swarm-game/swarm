@@ -270,7 +270,7 @@
   description:
   - A grabber arm is an all-purpose device allowing a robot to
     manipulate other items and robots via the 'grab', 'place', 'give',
-    'install', and 'salvage' commands.
+    and 'install' commands.
   - The 'grab' command takes no arguments; it simply grabs whatever is
     available, and also returns the name of the grabbed thing as a string.
     It raises an exception if run in a cell that does not contain an item.
@@ -284,14 +284,24 @@
   - "The 'install' command takes two arguments: the name of the robot
     on which to install a device (which can be at most 1 cell away),
     and the name of the device to install."
-  - "Finally, 'salvage' takes no arguments. It looks for an inactive
+
+  capabilities: [grab, give, place, install]
+  properties: [portable]
+
+- name: plasma cutter
+  display:
+    attr: device
+    char: '+'
+  description:
+  - "A plasma cutter uses a jet of hot plasma to cut through metal like
+    butter.  Used via the 'salvage' command to cut apart old robots."
+  - "'salvage' takes no arguments. It looks for an inactive
     robot (one which is not currently running a program) in the
     current cell. If an inactive robot is found, its log (if any) is
-    downloaded and it is dismantled, transferring its inventory to the
+    downloaded and it is dismantled, transferring its devices and inventory to the
     robot running 'salvage'.  If no inactive robots are found in the
     current cell, 'salvage' does nothing."
-
-  capabilities: [grab, give, place, install, salvage]
+  capabilities: [salvage]
   properties: [portable]
 
 - name: solar panel
