@@ -75,10 +75,10 @@
   display:
     attr: snow
     char: 'Å'
+    priority: 11
   description:
   - A tunnel in a mountain through which robots can freely move.
   properties: []
-  priority: 11
 
 - name: copper ore
   display:

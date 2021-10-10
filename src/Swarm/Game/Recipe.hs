@@ -81,7 +81,7 @@ recipeInputs :: Lens' (Recipe e) (IngredientList e)
 -- | The outputs from a recipe.
 recipeOutputs :: Lens' (Recipe e) (IngredientList e)
 
--- | The outputs from a recipe.
+-- | The time required to finish a recipe.
 recipeTime :: Lens' (Recipe e) Integer
 
 -- | Other entities which the recipe requires you to have, but which

@@ -1118,7 +1118,7 @@ execConst c vs k = do
   finishCookingRecipe r = do
     let recTime = pred $ r ^. recipeTime
     time <- lift . lift $ use ticks
-    return . (if recTime == 0 then id else Waiting (time + recTime)) $ Out VUnit k
+    return $ Waiting (time + recTime) $ Out VUnit k
   returnEvalCmp = case vs of
     [v1, v2] ->
       case evalCmp c v1 v2 of

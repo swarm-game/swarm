@@ -314,7 +314,7 @@ drawWorld g =
     let (ePrio, eWidget) = drawCell coords (g ^. world)
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
-            | ePrio > 10 -> eWidget
+            | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
             | otherwise ->
               withAttr (r ^. robotDisplay . displayAttr) $
                 str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
