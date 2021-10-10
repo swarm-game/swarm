@@ -289,6 +289,12 @@ stepCEK cek = case cek of
     if wakeupTime == time
       then stepCEK cek'
       else return cek
+  
+  Out v (FImmediate wf rf:c) -> do
+    robotInventory %= robotFunInventory rf
+    lift $ world %= worldFun wf
+    lift $ needsRedraw .= True
+    stepCEK (Out v c)
 
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
@@ -743,8 +749,7 @@ execConst c vs k = do
           listToMaybe (rights (map makeRecipe recipes))
             `isJustOr` cmdExn Make ["You don't have the ingredients to make", indefinite name, "."]
 
-        robotInventory .= inv'
-        finishCookingRecipe recipe
+        finishCookingRecipe recipe (WorldFun id) (RobotFun $ const inv')
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
@@ -777,14 +782,14 @@ execConst c vs k = do
 
         let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
 
-        case down of
-          [] -> updateEntityAt nextLoc (const Nothing)
-          [de] -> updateEntityAt nextLoc (const (Just $ snd de))
-          _ -> throwError $ cmdExn Drill ["Bad recipe - can not place more then one unmovable entity."]
+        let changeWorld = case down of {
+            [] -> W.update (W.locToCoords nextLoc) (const Nothing);
+            [de] -> W.update (W.locToCoords nextLoc) (const (Just $ snd de));
+            _ -> id -- throwError $ cmdExn Drill ["Bad recipe - can not place more then one unmovable entity."]
+          } :: W.World Int Entity -> W.World Int Entity
 
-        robotInventory .= L.foldl' (flip (uncurry insertCount)) invTaken out
-        flagRedraw
-        finishCookingRecipe recipe
+        let inv' = L.foldl' (flip (uncurry insertCount)) invTaken out
+        finishCookingRecipe recipe (WorldFun changeWorld) (RobotFun $ const inv')
       _ -> badConst
     Blocked -> do
       loc <- use robotLocation
@@ -1124,11 +1129,15 @@ execConst c vs k = do
           [ "Bad application of execConst:"
           , from (prettyCEK (Out (VCApp c (reverse vs)) k))
           ]
-  finishCookingRecipe :: MonadState GameState m => Recipe e -> ExceptT Exn (StateT Robot m) CEK
-  finishCookingRecipe r = do
+  finishCookingRecipe :: MonadState GameState m =>
+      Recipe e ->
+      WorldFun ->
+      RobotFun ->
+      ExceptT Exn (StateT Robot m) CEK
+  finishCookingRecipe r wf rf = do
     let recTime = pred $ r ^. recipeTime
     time <- doOnGame $ use ticks
-    return $ Waiting (time + recTime) $ Out VUnit k
+    return $ Waiting (time + recTime) $ Out VUnit (FImmediate wf rf : k)
   returnEvalCmp = case vs of
     [v1, v2] ->
       case evalCmp c v1 v2 of
