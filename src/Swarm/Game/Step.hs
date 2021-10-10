@@ -504,6 +504,24 @@ seedProgram minTime randTime thing =
   }
   |]
 
+-- | Construct a "seed robot" from entity, time range and position.
+--   It has low priority and will be covered by placed entities.
+mkSeedBot :: Entity -> (Integer, Integer) -> V2 Int64 -> Robot
+mkSeedBot e (minT, maxT) loc =
+  mkRobot
+    "seed"
+    loc
+    (V2 0 0)
+    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
+    []
+    & robotDisplay
+      .~ ( defaultEntityDisplay '.'
+            & displayAttr .~ (e ^. entityDisplay . displayAttr)
+            & displayPriority .~ 0
+         )
+    & robotInventory .~ E.singleton e
+    & systemRobot .~ True
+
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
@@ -564,25 +582,11 @@ execConst c vs k = do
       when (e `hasProperty` Growable) $ do
         let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
-        case maxT of
-          -- Special case: if the growth time is zero, just add the
-          -- entity back immediately.
-          0 -> updateEntityAt loc (const (Just e))
-          -- Otherwise, grow a new entity from a seed.
-          _ -> do
-            let seedBot =
-                  mkRobot
-                    "seed"
-                    loc
-                    (V2 0 0)
-                    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
-                    []
-                    & robotDisplay
-                      .~ (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
-                    & robotInventory .~ E.singleton e
-                    & systemRobot .~ True
-            _ <- doOnGame $ addRobot seedBot
-            return ()
+        if maxT == 0
+          then -- Special case: if the time is zero, growth is instant.
+            updateEntityAt loc (const (Just e))
+          else -- Otherwise, grow a new entity from a seed.
+            void $ doOnGame $ addRobot $ mkSeedBot e (minT, maxT) loc
 
       -- Add the picked up item to the robot's inventory.  If the
       -- entity yields something different, add that instead.
