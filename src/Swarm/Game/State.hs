@@ -58,6 +58,7 @@ module Swarm.Game.State (
   sleepForever,
   wakeUpRobotsDoneSleeping,
   deleteRobot,
+  activateRobot
 ) where
 
 import Control.Lens
@@ -410,6 +411,12 @@ sleepUntil rn time = do
 -- | Takes a robot out of the activeRobots set.
 sleepForever :: MonadState GameState m => Text -> m ()
 sleepForever rn = internalActiveRobots %= S.delete rn
+
+-- | Adds a robot to the activeRobots set. For efficiency reasons and because
+--   it makes little sense to call this function on a waiting robot, does *not*
+--   remove the robot from the waitingRobots queue.
+activateRobot :: MonadState GameState m => Text -> m ()
+activateRobot rn = internalActiveRobots %= S.insert rn
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the waitingRobots queue and put them back in the activeRobots set.
