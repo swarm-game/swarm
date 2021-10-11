@@ -5,14 +5,23 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Swarm.Game.Context (
+  -- * Data types
   Ctx,
   VarCtx (..),
-  Phase(..),
-  VarContext (..),
-  emptyVarContext,
+  UseCase (..),
+  VarContextStore (..),
+
+  -- ** Data constructors
+  emptyVarContextStore,
+
+  -- ** Inter-convert functions
+  coerceToParseCommand,
+  coerceToCapabilityCheck,
+  coerceToEvaluateTerm,
 ) where
 
 import Control.Applicative hiding (empty)
@@ -28,8 +37,8 @@ import Swarm.Language.Types
 newtype Ctx t = Ctx {unCtx :: Map Var t}
   deriving (Eq, Show, Functor, Foldable, Traversable, Data)
 
--- | Different phases of the program
-data Phase
+-- | Different uses for variable context
+data UseCase
   = -- | Command parsing
     ParseCommand
   | -- | Checking capabilities for a definition
@@ -40,42 +49,54 @@ data Phase
     BaseRobot
   deriving (Eq, Ord, Show)
 
--- A context is a mapping from variable name to information
--- about the variable. There can be multiple "things" that
--- independently store information about the variable
--- they are bundled together in the record
-newtype VarContext (p :: Phase) = VarContext (Map Var (VarCtx p))
-data VarCtx p = VarCtx
+-- A variable context stores multiple information about
+-- about the variable. The type of these things depends
+-- on the 'UseCase' for which the variable context is
+-- used.
+data VarCtx u = VarCtx
   { -- Set of capaibilities required to compute a variable
-    varCaps :: CapsForPhase p (Set Capability)
+    varCaps :: CapsForPhase u (Set Capability)
   , -- Type of the value the variable stores
-    varType :: TypeForPhase p Polytype
+    varType :: TypeForPhase u Polytype
   , -- Value of the variable
-    varVal :: ValForPhase p Value
+    varVal :: ValForPhase u Value
   }
 
-instance Show (VarContext p) where
-  show _ = ""
+-- convert variable context from 'BaseRobot' to 'ParseCommand' use case
+coerceToParseCommand :: VarCtx 'BaseRobot -> VarCtx 'ParseCommand
+coerceToParseCommand v = VarCtx {varCaps = Just . runIdentity . varCaps $ v, varType = varType v, varVal = Just . runIdentity . varVal $ v}
 
-emptyVarContext :: VarContext p
-emptyVarContext = VarContext Data.Map.empty
+-- convert variable context from 'BaseRobot' to 'CapabilityCheck' use case
+coerceToCapabilityCheck :: VarCtx 'BaseRobot -> VarCtx 'CapabilityCheck
+coerceToCapabilityCheck v = VarCtx {varCaps = varCaps v, varType = Const (), varVal = Just . runIdentity . varVal $ v}
 
-type family CapsForPhase (p :: Phase) :: * -> * where
+-- convert variable context from 'BaseRobot' to 'EvaluateTerm' use case
+coerceToEvaluateTerm :: VarCtx 'BaseRobot -> VarCtx 'EvaluateTerm
+coerceToEvaluateTerm v = VarCtx {varCaps = Const (), varType = Const (), varVal = varVal v}
+
+type family CapsForPhase (u :: UseCase) :: * -> * where
   CapsForPhase 'ParseCommand = Maybe
   CapsForPhase 'CapabilityCheck = Identity
-  -- capabilities need not be accessed when
-  -- evaluating a term even if they already exist
+-- capabilities need not be accessed when
+-- evaluating a term even if they already exist
   CapsForPhase 'EvaluateTerm = Const ()
   CapsForPhase 'BaseRobot = Identity
 
-type family TypeForPhase (p :: Phase) :: * -> * where
+type family TypeForPhase (u :: UseCase) :: * -> * where
   TypeForPhase 'ParseCommand = Identity
   TypeForPhase 'CapabilityCheck = Const ()
   TypeForPhase 'EvaluateTerm = Const ()
   TypeForPhase 'BaseRobot = Identity
 
-type family ValForPhase (p :: Phase) :: * -> * where
+type family ValForPhase (u :: UseCase) :: * -> * where
   ValForPhase 'ParseCommand = Maybe
   ValForPhase 'CapabilityCheck = Maybe
   ValForPhase 'EvaluateTerm = Identity
   ValForPhase 'BaseRobot = Identity
+
+-- Map variable names to variable context
+newtype VarContextStore = VarContextStore (Map Var (VarCtx 'BaseRobot))
+
+-- create empty variable context store
+emptyVarContextStore :: VarContextStore
+emptyVarContextStore = VarContextStore Data.Map.empty
