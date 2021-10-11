@@ -60,7 +60,7 @@
     attr: rock
     char: '@'
   description:
-  - A rock. Can be drilled to smaller rocks relatively fast.
+  - A very large, impassable rock. A drill can be used to get rid of it and turn it into smaller rocks.
   properties: [unwalkable]
 
 - name: mountain
