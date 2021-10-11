@@ -1,11 +1,7 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 -- |
 -- Module      :  Swarm.Game.Robot
@@ -82,6 +78,7 @@ data Robot = Robot
   , _robotContext :: VarContextStore
   }
   deriving ()
+-- turn of show deriving for now since 'VarContextStore' cannot implement 'Show'
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -155,7 +152,7 @@ inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `h
 -- | Recompute the set of capabilities provided by the inventory of
 --   installed devices.
 inventoryCapabilities :: Inventory -> Set Capability
-inventoryCapabilities = setOf (to Swarm.Game.Entity.elems . traverse . _2 . entityCapabilities . traverse)
+inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
 
 -- | Get the set of capabilities this robot possesses.  This is only a
 --   getter, not a lens, because it is automatically generated from
