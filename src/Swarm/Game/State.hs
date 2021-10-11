@@ -58,7 +58,7 @@ module Swarm.Game.State (
   sleepForever,
   wakeUpRobotsDoneSleeping,
   deleteRobot,
-  activateRobot
+  activateRobot,
 ) where
 
 import Control.Lens
