@@ -137,11 +137,19 @@ data GameState = GameState
   { _gameMode :: GameMode
   , _runStatus :: RunStatus
   , _robotMap :: Map Text Robot
-  , _activeRobots :: Set Text
-  , -- Waiting robots for a given time are currently a list because it is cheaper
-    -- to append to a list than to a Set, and we currently never delete waiting
-    -- robots. If deleting waiting robots becomes a thing and is frequent enough,
-    -- then it may be worth switching to a Set.
+  , -- A set of robots to consider for the next game tick. It is guaranteed to
+    -- be a subset of the keys of robotMap. It may contain waiting or idle
+    -- robots. But robots that are present in robotMap and not in activeRobots
+    -- are guaranteed to be either waiting or idle.
+    _activeRobots :: Set Text
+  , -- A set of probably waiting robots, indexed by probable wake-up time. It
+    -- may contain robots that are in fact active or idle, as well as robots
+    -- that do not exist anymore. Its only guarantee is that once a robot name
+    -- with its wake up time is inserted in it, it will remain there until the
+    -- wake-up time is reached, at which point it is removed via
+    -- wakeUpRobotsDoneSleeping.
+    -- Waiting robots for a given time are a list because it is cheaper to
+    -- append to a list than to a Set.
     _waitingRobots :: Map Integer [Text]
   , _gensym :: Int
   , _randGen :: StdGen
@@ -412,32 +420,25 @@ sleepUntil rn time = do
 sleepForever :: MonadState GameState m => Text -> m ()
 sleepForever rn = internalActiveRobots %= S.delete rn
 
--- | Adds a robot to the activeRobots set. For efficiency reasons and because
---   it makes little sense to call this function on a waiting robot, does *not*
---   remove the robot from the waitingRobots queue.
+-- | Adds a robot to the activeRobots set.
 activateRobot :: MonadState GameState m => Text -> m ()
 activateRobot rn = internalActiveRobots %= S.insert rn
 
 -- | Removes robots whose wake up time matches the current game ticks count
---   from the waitingRobots queue and put them back in the activeRobots set.
+--   from the waitingRobots queue and put them back in the activeRobots set
+--   if they still exist in the keys of robotMap.
 wakeUpRobotsDoneSleeping :: MonadState GameState m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
   mrns <- waitingRobots . at time <<.= Nothing
   case mrns of
     Nothing -> return ()
-    Just rns -> internalActiveRobots %= S.union (S.fromList rns)
+    Just rns -> do
+      robots <- use robotMap
+      let aliveRns = filter (`M.member` robots) rns
+      internalActiveRobots %= S.union (S.fromList aliveRns)
 
 deleteRobot :: MonadState GameState m => Text -> m ()
 deleteRobot rn = do
-  mrobot <- robotMap . at rn <<.= Nothing
-  mrobot `forM_` \robot ->
-    -- Currently the only way to delete a robot is to self-destruct, so
-    -- deleteRobot should always be called on an active robot. But we prepare
-    -- for the future.
-    -- We could blindly delete the robot from both waitingRobots and activeRobots
-    -- but deleting from waitingRobots is costly, even more so if you don't know
-    -- the key.
-    case waitingUntil robot of
-      Nothing -> internalActiveRobots %= S.delete rn
-      Just time -> waitingRobots . ix time %= filter (/= rn)
+  robotMap %= M.delete rn
+  internalActiveRobots %= S.delete rn
