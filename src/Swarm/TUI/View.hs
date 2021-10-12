@@ -26,14 +26,14 @@ module Swarm.TUI.View (
   drawWorld,
   drawCell,
 
-  -- * Info panel
-  drawInfoPanel,
-  drawMessageBox,
-  explainFocusedItem,
-  drawMessages,
-  drawRobotInfo,
+  -- * Robot panel
+  drawRobotPanel,
   drawItem,
   drawLabelledEntityName,
+
+  -- * Info panel
+  drawInfoPanel,
+  explainFocusedItem,
 
   -- * REPL
   drawREPL,
@@ -42,6 +42,7 @@ module Swarm.TUI.View (
 import Control.Arrow ((&&&))
 import Control.Lens
 import Data.Array (range)
+import qualified Data.Foldable as F
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
@@ -49,6 +50,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
 import Text.Printf
+import Text.Wrap
 
 import Brick hiding (Direction)
 import Brick.Focus
@@ -85,8 +87,20 @@ drawUI s =
   , joinBorders $
       hBox
         [ hLimitPercent 25 $
-            panel highlightAttr fr InfoPanel plainBorder $
-              drawInfoPanel s
+            vBox
+              [ vLimitPercent 50 $ panel highlightAttr fr RobotPanel plainBorder $ drawRobotPanel s
+              , panel
+                  highlightAttr
+                  fr
+                  InfoPanel
+                  ( plainBorder
+                      & topLabels . centerLabel
+                      .~ (if moreTop then Just (txt " · · · ") else Nothing)
+                      & bottomLabels . centerLabel
+                      .~ (if moreBot then Just (txt " · · · ") else Nothing)
+                  )
+                  $ drawInfoPanel s
+              ]
         , vBox
             [ panel
                 highlightAttr
@@ -117,6 +131,8 @@ drawUI s =
   ]
  where
   fr = s ^. uiState . uiFocusRing
+  moreTop = s ^. uiState . uiMoreInfoTop
+  moreBot = s ^. uiState . uiMoreInfoBot
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -187,8 +203,9 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("Ctrl-q", "quit the game")
     , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
-    , ("Meta-e", "focus on the info")
+    , ("Meta-e", "focus on the robot inventory")
     , ("Meta-r", "focus on the REPL")
+    , ("Meta-t", "focus on the info panel")
     ]
   helpCommands =
     vBox
@@ -249,15 +266,22 @@ drawMenu isReplWorking isPaused viewingBase mode =
     ]
       ++ [("s", "step") | isPaused]
       ++ [("c", "recenter") | not viewingBase]
-  keyCmdsFor (Just InfoPanel) =
+  keyCmdsFor (Just RobotPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
     , ("Enter", "make")
+    ]
+  keyCmdsFor (Just InfoPanel) =
+    [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "scroll")
     ]
   keyCmdsFor _ = []
 
 -- | Draw a single key command in the menu.
 drawKeyCmd :: (Text, Text) -> Widget Name
 drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
+
+------------------------------------------------------------
+-- World panel
+------------------------------------------------------------
 
 -- | Draw the current world view.
 drawWorld :: GameState -> Widget Name
@@ -295,22 +319,73 @@ drawCell i w = case W.lookupEntity i w of
   Just e -> displayEntity e
   Nothing -> displayTerrain (toEnum (W.lookupTerrain i w))
 
--- | Draw the info panel on the left-hand side of the UI.
-drawInfoPanel :: AppState -> Widget Name
-drawInfoPanel s =
-  vBox
-    [ drawRobotInfo s
-    , hBorder
-    , vLimitPercent 50 $ padBottom Max $ padAll 1 $ drawMessageBox s
+------------------------------------------------------------
+-- Robot inventory panel
+------------------------------------------------------------
+
+-- | Draw info about the currently focused robot, such as its name,
+--   position, orientation, and inventory.
+drawRobotPanel :: AppState -> Widget Name
+drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
+  (Just r, Just (_, lst)) ->
+    let V2 x y = r ^. robotLocation
+     in padBottom Max $
+          vBox
+            [ hCenter $
+                hBox
+                  [ txt (r ^. robotName)
+                  , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
+                  , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
+                  ]
+            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) True lst)
+            ]
+  _ -> padRight Max . padBottom Max $ str " "
+
+-- | Draw an inventory entry.
+drawItem ::
+  -- | The index of the currently selected inventory entry
+  Maybe Int ->
+  -- | The index of the entry we are drawing
+  Int ->
+  -- | Whether this entry is selected; we can ignore this
+  --   because it will automatically have a special attribute
+  --   applied to it.
+  Bool ->
+  -- | The entry to draw.
+  InventoryListEntry ->
+  Widget Name
+drawItem sel i _ (Separator l) =
+  -- Make sure a separator right before the focused element is
+  -- visible. Otherwise, when a separator occurs as the very first
+  -- element of the list, once it scrolls off the top of the viewport
+  -- it will never become visible again.
+  -- See https://github.com/jtdaugherty/brick/issues/336#issuecomment-921220025
+  (if sel == Just (i + 1) then visible else id) $ hBorderWithLabel (txt l)
+drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
+ where
+  showCount = padLeft Max . str . show
+drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
+
+-- | Draw the name of an entity, labelled with its visual
+--   representation as a cell in the world.
+drawLabelledEntityName :: Entity -> Widget Name
+drawLabelledEntityName e =
+  hBox
+    [ padRight (Pad 2) (displayEntity e)
+    , txt (e ^. entityName)
     ]
 
--- | Draw the lower half of the info panel, which either shows info
---   about the currently focused inventory item, or shows the most
---   recent entries in the message queue.
-drawMessageBox :: AppState -> Widget Name
-drawMessageBox s = case s ^. uiState . uiFocusRing . to focusGetCurrent of
-  Just InfoPanel -> explainFocusedItem s
-  _ -> drawMessages (s ^. gameState . messageQueue)
+------------------------------------------------------------
+-- Info panel
+------------------------------------------------------------
+
+-- | Draw the info panel in the bottom-left corner, which shows info
+--   about the currently focused inventory item.
+drawInfoPanel :: AppState -> Widget Name
+drawInfoPanel s =
+  viewport InfoViewport Vertical
+    . padLeftRight 1
+    $ explainFocusedItem s
 
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
@@ -321,6 +396,11 @@ explainFocusedItem s = case mItem of
   Just (InventoryEntry _ e) ->
     vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
       <=> explainRecipes e
+  Just (InstalledEntry e) ->
+    vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
+      <=> explainRecipes e
+      -- Special case: installed logger device displays the robot's log.
+      <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
  where
   mList = s ^? uiState . uiInventory . _Just . _2
   mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
@@ -432,66 +512,30 @@ drawReqs = vBox . map drawReq
   drawReq (1, e) = txt $ e ^. entityName
   drawReq (n, e) = str (show n) <+> txt " " <+> txt (e ^. entityName)
 
--- | Draw a list of messages.
-drawMessages :: [Text] -> Widget Name
-drawMessages [] = txt " "
-drawMessages ms = Widget Fixed Fixed $ do
-  ctx <- getContext
-  let h = ctx ^. availHeightL
-  render . vBox . map txt . reverse . take h $ ms
+indent2 :: WrapSettings
+indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
 
--- | Draw info about the currently focused robot, such as its name,
---   position, orientation, and inventory.
-drawRobotInfo :: AppState -> Widget Name
-drawRobotInfo s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
-  (Just r, Just (_, lst)) ->
-    let V2 x y = r ^. robotLocation
-     in padBottom Max $
-          vBox
-            [ hCenter $
-                hBox
-                  [ txt (r ^. robotName)
-                  , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
-                  , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
-                  ]
-            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) isFocused lst)
-            ]
-  _ -> padBottom Max $ str " "
- where
-  isFocused = (s ^. uiState . uiFocusRing . to focusGetCurrent) == Just InfoPanel
-
--- | Draw an inventory entry.
-drawItem ::
-  -- | The index of the currently selected inventory entry
-  Maybe Int ->
-  -- | The index of the entry we are drawing
-  Int ->
-  -- | Whether this entry is selected; we can ignore this
-  --   because it will automatically have a special attribute
-  --   applied to it.
-  Bool ->
-  -- | The entry to draw.
-  InventoryEntry ->
-  Widget Name
-drawItem sel i _ (Separator l) =
-  -- Make sure a separator right before the focused element is
-  -- visible. Otherwise, when a separator occurs as the very first
-  -- element of the list, once it scrolls off the top of the viewport
-  -- it will never become visible again.
-  -- See https://github.com/jtdaugherty/brick/issues/336#issuecomment-921220025
-  (if sel == Just (i + 1) then visible else id) $ hBorderWithLabel (txt l)
-drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
- where
-  showCount = padLeft Max . str . show
-
--- | Draw the name of an entity, labelled with its visual
---   representation as a cell in the world.
-drawLabelledEntityName :: Entity -> Widget Name
-drawLabelledEntityName e =
-  hBox
-    [ padRight (Pad 2) (displayEntity e)
-    , txt (e ^. entityName)
+drawRobotLog :: AppState -> Widget Name
+drawRobotLog s =
+  vBox
+    [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
+    , vBox . imap drawEntry $ logEntries
     ]
+ where
+  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList
+  rn = s ^? gameState . to focusedRobot . _Just . robotName
+  n = length logEntries
+
+  allMe = all ((== rn) . Just . view leRobotName) logEntries
+
+  drawEntry i e =
+    (if i == n -1 && s ^. uiState . uiScrollToEnd then visible else id)
+      . txtWrapWith indent2
+      $ (if allMe then e ^. leText else T.concat ["[", e ^. leRobotName, "] ", e ^. leText])
+
+------------------------------------------------------------
+-- REPL panel
+------------------------------------------------------------
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
