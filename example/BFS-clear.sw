@@ -7,6 +7,14 @@ def while : cmd bool -> cmd () -> cmd () = \test.\c.
   b <- test;
   if b {c ; while test c} {}
 end;
+def getX : cmd int =
+  pos <- whereami;
+  return (fst pos);
+end;
+def getY : cmd int =
+  pos <- whereami;
+  return (snd pos);
+end;
 def gotoX : int -> cmd () = \tgt.
   cur <- getX;
   if (cur == tgt)
@@ -49,6 +57,5 @@ def clear : cmd () =
   };
   goto 0 0;
   give "base" "tree";
-  halt
 end;
 def start : cmd string = build "h" {turn west; repeat 7 move; clear} end
