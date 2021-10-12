@@ -45,6 +45,7 @@ module Swarm.TUI.Model (
   accumulatedTime,
   tickCount,
   frameCount,
+  frameTickCount,
   lastInfoTime,
   uiShowFPS,
   uiTPF,
@@ -191,6 +192,7 @@ data UIState = UIState
   , _lgTicksPerSecond :: Int
   , _tickCount :: Int
   , _frameCount :: Int
+  , _frameTickCount :: Int
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
@@ -257,11 +259,17 @@ uiFPS :: Lens' UIState Double
 --   second.
 lgTicksPerSecond :: Lens' UIState Int
 
--- | A counter used to track how many ticks happen in a single frame.
+-- | A counter used to track how many ticks have happened since the
+--   last time we updated the ticks/frame statistics.
 tickCount :: Lens' UIState Int
 
--- | A counter used to track how many frame got rendered
+-- | A counter used to track how many frames have been rendered since the
+--   last time we updated the ticks/frame statistics.
 frameCount :: Lens' UIState Int
+
+-- | A counter used to track how many ticks have happened in the
+--   current frame, so we can stop when we get to the tick cap.
+frameTickCount :: Lens' UIState Int
 
 -- | The time of the last info widget update
 lastInfoTime :: Lens' UIState TimeSpec
@@ -326,6 +334,7 @@ initUIState = liftIO $ do
       , _lastInfoTime = 0
       , _tickCount = 0
       , _frameCount = 0
+      , _frameTickCount = 0
       }
 
 ------------------------------------------------------------
