@@ -463,18 +463,19 @@ worldScrollDist = 8
 
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
--- scrolling the world view
+-- scrolling the world view in Creative mode
 handleWorldEvent s (VtyEvent (V.EvKey k []))
-  | k
-      `elem` [ V.KUp
-             , V.KDown
-             , V.KLeft
-             , V.KRight
-             , V.KChar 'h'
-             , V.KChar 'j'
-             , V.KChar 'k'
-             , V.KChar 'l'
-             ] =
+  | (s ^. gameState . gameMode) == Creative
+      && k
+        `elem` [ V.KUp
+               , V.KDown
+               , V.KLeft
+               , V.KRight
+               , V.KChar 'h'
+               , V.KChar 'j'
+               , V.KChar 'k'
+               , V.KChar 'l'
+               ] =
     scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
   invalidateCacheEntry WorldCache

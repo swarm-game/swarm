@@ -260,10 +260,11 @@ drawMenu isReplWorking isPaused viewingBase mode =
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
-    [ ("←↓↑→ / hjkl", "scroll")
-    , ("<>", "slower/faster")
-    , ("p", if isPaused then "unpause" else "pause")
+    [ ("←↓↑→ / hjkl", "scroll") | mode == Creative
     ]
+      ++ [ ("<>", "slower/faster")
+         , ("p", if isPaused then "unpause" else "pause")
+         ]
       ++ [("s", "step") | isPaused]
       ++ [("c", "recenter") | not viewingBase]
   keyCmdsFor (Just RobotPanel) =

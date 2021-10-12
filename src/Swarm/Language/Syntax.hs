@@ -148,6 +148,18 @@ west :: V2 Int64
 west = V2 (-1) 0
 
 -- | Constants, representing various built-in functions and commands.
+--
+--   IF YOU ADD A NEW CONSTANT, be sure to also update:
+--   1. the 'constInfo' function (below)
+--   2. the capability checker ("Swarm.Language.Capability")
+--   3. the type checker ("Swarm.Language.Typecheck")
+--   4. the runtime ("Swarm.Game.Step")
+--   5. the emacs mode syntax highlighter (@contribs/swarm-mode.el@)
+--
+--   GHC will warn you about incomplete pattern matches for the first
+--   four, so it's not really possible to forget.  Note you do not
+--   need to update the parser or pretty-printer, since they are
+--   auto-generated from 'constInfo'.
 data Const
   = -- Trivial actions
 
