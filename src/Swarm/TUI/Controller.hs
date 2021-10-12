@@ -401,6 +401,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
             & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
+            & gameState %~ execState (activateRobot "base")
       Left err ->
         continue $
           s
