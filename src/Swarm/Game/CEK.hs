@@ -182,6 +182,7 @@ data CEK
 -- | Is the CEK machine in a final (finished) state?  If so, extract
 --   the final value.
 finalValue :: CEK -> Maybe Value
+{-# INLINE finalValue #-}
 finalValue (Out v []) = Just v
 finalValue _ = Nothing
 

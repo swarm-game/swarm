@@ -237,20 +237,28 @@ runFrame = do
   uiState . frameCount += 1
 
   -- Now do as many ticks as we need to catch up.
+  uiState . frameTickCount .= 0
   runFrameTicks (fromNanoSecs dt)
 
+ticksPerFrameCap :: Int
+ticksPerFrameCap = 30
+
 -- | Do zero or more ticks, with each tick notionally taking the given
---   timestep, until we have used up all available accumulated time.
+--   timestep, until we have used up all available accumulated time,
+--   OR until we have hit the cap on ticks per frame, whichever comes
+--   first.
 runFrameTicks :: TimeSpec -> StateT AppState (EventM Name) ()
 runFrameTicks dt = do
   a <- use (uiState . accumulatedTime)
+  t <- use (uiState . frameTickCount)
 
-  -- Is there still time left?
-  when (a >= dt) $ do
+  -- Is there still time left?  Or have we hit the cap on ticks per frame?
+  when (a >= dt && t < ticksPerFrameCap) $ do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
     uiState . tickCount += 1
+    uiState . frameTickCount += 1
     uiState . accumulatedTime -= dt
     runFrameTicks dt
 
@@ -393,6 +401,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
             & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
+            & gameState %~ execState (activateRobot "base")
       Left err ->
         continue $
           s

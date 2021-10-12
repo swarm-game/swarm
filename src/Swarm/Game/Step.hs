@@ -75,11 +75,10 @@ gameTick = do
       Nothing -> return ()
       Just curRobot -> do
         curRobot' <- tickRobot curRobot
-        case curRobot' ^. selfDestruct of
-          True -> deleteRobot rn
-          False -> do
+        if curRobot' ^. selfDestruct
+          then deleteRobot rn
+          else do
             robotMap %= M.insert rn curRobot'
-
             let oldLoc = curRobot ^. robotLocation
                 newLoc = curRobot' ^. robotLocation
 
@@ -97,8 +96,12 @@ gameTick = do
             when (newLoc /= oldLoc) $ do
               robotsByLocation . at oldLoc %= deleteOne rn
               robotsByLocation . at newLoc . non Empty %= S.insert rn
-
-        mapM_ (sleepUntil rn) (waitingUntil curRobot')
+            case waitingUntil curRobot' of
+              Just wakeUpTime ->
+                sleepUntil rn wakeUpTime
+              Nothing ->
+                unless (isActive curRobot') do
+                  sleepForever rn
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL.
