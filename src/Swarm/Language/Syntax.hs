@@ -149,6 +149,18 @@ west :: V2 Int64
 west = V2 (-1) 0
 
 -- | Constants, representing various built-in functions and commands.
+--
+--   IF YOU ADD A NEW CONSTANT, be sure to also update:
+--   1. the 'constInfo' function (below)
+--   2. the capability checker ("Swarm.Language.Capability")
+--   3. the type checker ("Swarm.Language.Typecheck")
+--   4. the runtime ("Swarm.Game.Step")
+--   5. the emacs mode syntax highlighter (@contribs/swarm-mode.el@)
+--
+--   GHC will warn you about incomplete pattern matches for the first
+--   four, so it's not really possible to forget.  Note you do not
+--   need to update the parser or pretty-printer, since they are
+--   auto-generated from 'constInfo'.
 data Const
   = -- Trivial actions
 
@@ -195,10 +207,8 @@ data Const
     Create
   | -- Sensing / generation
 
-    -- | Get the current x-coordinate.
-    GetX
-  | -- | Get the current y-coordinate.
-    GetY
+    -- | Get the current x, y coordinates
+    Whereami
   | -- | See if we can move forward or not.
     Blocked
   | -- | Scan a nearby cell
@@ -354,8 +364,7 @@ constInfo c = case c of
   View -> commandLow 1
   Appear -> commandLow 1
   Create -> commandLow 1
-  GetX -> commandLow 0
-  GetY -> commandLow 0
+  Whereami -> commandLow 0
   Blocked -> commandLow 0
   Scan -> commandLow 0
   Upload -> commandLow 1

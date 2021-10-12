@@ -62,7 +62,7 @@ data Capability
     CBuild
   | -- | Execute the 'Salvage' command
     CSalvage
-  | -- | Execute the 'GetX' and 'GetY' commands
+  | -- | Execute the 'Whereami' command
     CSenseloc
   | -- | Execute the 'Blocked' command
     CSensefront
@@ -251,8 +251,7 @@ constCaps =
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.
     Appear -> [CAppear] -- paint?
-    GetX -> [CSenseloc] -- GPS?
-    GetY -> [CSenseloc]
+    Whereami -> [CSenseloc] -- GPS?
     Random -> [CRandom] -- randomness device (with bitcoins)?
     Neg -> [CArith] -- ALU? pocket calculator?
     Whoami -> [CWhoami] -- mirror, needs a recipe

@@ -327,6 +327,7 @@ baseRobot devs =
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
+{-# INLINE isActive #-}
 isActive = isNothing . getResult
 
 -- | The time until which the robot is waiting, if any.
@@ -338,4 +339,5 @@ waitingUntil robot =
 
 -- | Get the result of the robot's computation if it is finished.
 getResult :: Robot -> Maybe Value
+{-# INLINE getResult #-}
 getResult = finalValue . view machine

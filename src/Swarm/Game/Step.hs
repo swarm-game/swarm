@@ -33,7 +33,7 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
-import System.Random (uniformR)
+import System.Random (UniformRange, uniformR)
 import Witch
 import Prelude hiding (lookup)
 
@@ -75,11 +75,10 @@ gameTick = do
       Nothing -> return ()
       Just curRobot -> do
         curRobot' <- tickRobot curRobot
-        case curRobot' ^. selfDestruct of
-          True -> deleteRobot rn
-          False -> do
+        if curRobot' ^. selfDestruct
+          then deleteRobot rn
+          else do
             robotMap %= M.insert rn curRobot'
-
             let oldLoc = curRobot ^. robotLocation
                 newLoc = curRobot' ^. robotLocation
 
@@ -97,8 +96,12 @@ gameTick = do
             when (newLoc /= oldLoc) $ do
               robotsByLocation . at oldLoc %= deleteOne rn
               robotsByLocation . at newLoc . non Empty %= S.insert rn
-
-        mapM_ (sleepUntil rn) (waitingUntil curRobot')
+            case waitingUntil curRobot' of
+              Just wakeUpTime ->
+                sleepUntil rn wakeUpTime
+              Nothing ->
+                unless (isActive curRobot') do
+                  sleepForever rn
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL.
@@ -152,6 +155,15 @@ robotNamed nm = lift . lift $ use (robotMap . at nm)
 -- | Manhattan distance between world locations.
 manhattan :: V2 Int64 -> V2 Int64 -> Int64
 manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+
+-- | Generate a uniformly random number using the random generator in
+--   the game state.
+uniform :: (MonadState GameState m, UniformRange a) => (a, a) -> ExceptT Exn (StateT Robot m) a
+uniform bnds = do
+  rand <- lift . lift $ use randGen
+  let (n, g) = uniformR bnds rand
+  lift . lift $ randGen .= g
+  return n
 
 ------------------------------------------------------------
 -- Debugging
@@ -446,7 +458,7 @@ stepCEK cek = case cek of
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, GetX, GetY, Blocked, Ishere, Try, Random, Appear])
+takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, Whereami, Blocked, Ishere, Try, Random, Appear])
 
 -- | At the level of the CEK machine, the only difference bewteen
 --   between *evaluating* a function constant and *executing* a
@@ -722,12 +734,9 @@ execConst c vs k = do
         robotInventory .= inv'
         return $ Out VUnit k
       _ -> badConst
-    GetX -> do
-      V2 x _ <- use robotLocation
-      return $ Out (VInt (fromIntegral x)) k
-    GetY -> do
-      V2 _ y <- use robotLocation
-      return $ Out (VInt (fromIntegral y)) k
+    Whereami -> do
+      V2 x y <- use robotLocation
+      return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) k
     Blocked -> do
       loc <- use robotLocation
       orient <- use robotOrientation
@@ -771,9 +780,7 @@ execConst c vs k = do
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
-        rand <- lift . lift $ use randGen
-        let (n, g) = uniformR (0, hi -1) rand
-        lift . lift $ randGen .= g
+        n <- uniform (0, hi - 1)
         return $ Out (VInt n) k
       _ -> badConst
     Say -> case vs of
@@ -1070,11 +1077,25 @@ execConst c vs k = do
   returnEvalCmp = case vs of
     [v1, v2] ->
       case evalCmp c v1 v2 of
-        Nothing -> return $ Out (VBool False) k
+        -- If the comparison does not make sense, just return a random result.
+        Nothing -> do
+          b <- uniform (False, True)
+          return $ Out (VBool b) k
         Just b -> return $ Out (VBool b) k
     _ -> badConst
   returnEvalArith = case vs of
-    [VInt n1, VInt n2] -> return $ Out (VInt $ evalArith c n1 n2) k
+    [VInt n1, VInt n2] -> case evalArith c n1 n2 of
+      Left exn -> return $ Up exn k
+      -- Note, we want to maintain the invariant that only executing
+      -- commands can throw exceptions, not evaluating pure
+      -- expressions; hence, dividing by zero and exponentiating by a
+      -- negative number have to return some value even though they
+      -- aren't sensible.  Nothing signals this type of failure; we
+      -- choose a random number to return.
+      Right Nothing -> do
+        n <- uniform (-1000000, 1000000)
+        return $ Out (VInt n) k
+      Right (Just r) -> return $ Out (VInt r) k
     _ -> badConst
 
 -- | Evaluate the application of a comparison operator.  Returns
@@ -1111,31 +1132,29 @@ compareValues = \case
   VBind {} -> const Nothing
   VDelay {} -> const Nothing
 
--- | Evaluate the application of an arithmetic operator.  Note, we
---   want to maintain the invariant that only executing commands can
---   throw exceptions, not evaluating pure expressions; hence,
---   dividing by zero and exponentiating by a negative number have to
---   return some value even though they aren't sensible.  At the
---   moment, they return 42.  In the future it might be fun if they
---   return some kind of random result.
---   In case we incorrectly use it on bad Const in the library return
---   huge value.
-evalArith :: Const -> Integer -> Integer -> Integer
+-- | Evaluate the application of an arithmetic operator, returning
+--   @Nothing@ in the case of a failing operation. In case we
+--   incorrectly use it on a bad 'Const' in the library, return an
+--   exception.
+evalArith :: Const -> Integer -> Integer -> Either Exn (Maybe Integer)
 evalArith = \case
-  Add -> (+)
-  Sub -> (-)
-  Mul -> (*)
-  Div -> safeDiv
-  Exp -> safeExp
-  _ -> (\_ _ -> 0xbadc0de)
+  Add -> ok (+)
+  Sub -> ok (-)
+  Mul -> ok (*)
+  Div -> \x y -> Right (safeDiv x y)
+  Exp -> \x y -> Right (safeExp x y)
+  c -> \_ _ -> Left $ Fatal $ T.append "evalArith called on bad constant " (from (show c))
+ where
+  ok f x y = Right $ Just (f x y)
 
--- | Perform an integer division, but return 42 for division by zero.
-safeDiv :: Integer -> Integer -> Integer
-safeDiv _ 0 = 42
-safeDiv a b = a `div` b
+-- | Perform an integer division, but return @Nothing@ for division by
+--   zero.
+safeDiv :: Integer -> Integer -> Maybe Integer
+safeDiv _ 0 = Nothing
+safeDiv a b = Just $ a `div` b
 
--- | Perform exponentiation, but return 42 if the power is negative.
-safeExp :: Integer -> Integer -> Integer
+-- | Perform exponentiation, but return @Nothing@ if the power is negative.
+safeExp :: Integer -> Integer -> Maybe Integer
 safeExp a b
-  | b < 0 = 42
-  | otherwise = a ^ b
+  | b < 0 = Nothing
+  | otherwise = Just $ a ^ b
