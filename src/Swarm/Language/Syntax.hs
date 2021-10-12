@@ -194,10 +194,8 @@ data Const
     Create
   | -- Sensing / generation
 
-    -- | Get the current x-coordinate.
-    GetX
-  | -- | Get the current y-coordinate.
-    GetY
+    -- | Get the current x, y coordinates
+    Whereami
   | -- | See if we can move forward or not.
     Blocked
   | -- | Scan a nearby cell
@@ -353,8 +351,7 @@ constInfo c = case c of
   View -> commandLow 1
   Appear -> commandLow 1
   Create -> commandLow 1
-  GetX -> commandLow 0
-  GetY -> commandLow 0
+  Whereami -> commandLow 0
   Blocked -> commandLow 0
   Scan -> commandLow 0
   Upload -> commandLow 1
