@@ -322,8 +322,8 @@ infer (Syntax _ (TAntiString _)) = return UTyString
 infer (Syntax _ (TBool _)) = return UTyBool
 -- To infer the type of a pair, just infer both components.
 infer (Syntax _ (SPair t1 t2)) = UTyProd <$> infer t1 <*> infer t2
--- delay t has the same type as t.
-infer (Syntax l (TDelay t)) = infer (Syntax l t)
+-- if t : ty, then  {{t}} : delay ty.
+infer (Syntax _ (SDelay t)) = UTyDelay <$> infer t
 -- Just look up variables in the context.
 infer (Syntax l (TVar x)) = lookup l x
 -- To infer the type of a lambda if the type of the argument is
@@ -425,8 +425,8 @@ inferConst c = toU $ case c of
   Give -> [tyQ| string -> string -> cmd () |]
   Install -> [tyQ| string -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
-  Reprogram -> [tyQ| forall a. string -> cmd a -> cmd () |]
-  Build -> [tyQ| forall a. string -> cmd a -> cmd string |]
+  Reprogram -> [tyQ| forall a. string -> delay (cmd a) -> cmd () |]
+  Build -> [tyQ| forall a. string -> delay (cmd a) -> cmd string |]
   Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
   Log -> [tyQ| string -> cmd () |]
@@ -445,7 +445,7 @@ inferConst c = toU $ case c of
   If -> [tyQ| forall a. bool -> a -> a -> a |]
   Fst -> [tyQ| forall a b. a * b -> a |]
   Snd -> [tyQ| forall a b. a * b -> b |]
-  Force -> [tyQ| forall a. a -> a |]
+  Force -> [tyQ| forall a. delay a -> a |]
   Return -> [tyQ| forall a. a -> cmd a |]
   Try -> [tyQ| forall a. cmd a -> cmd a -> cmd a |]
   Raise -> [tyQ| forall a. string -> cmd a |]

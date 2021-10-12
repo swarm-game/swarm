@@ -1,9 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Swarm.Language.Elaborate
 -- Copyright   :  Brent Yorgey
@@ -51,15 +47,5 @@ elaborate =
   -- any such variables must in fact refer to things previously
   -- bound by 'def'.
   rewrite (TDef x ty t1) = TDef x ty (mapFree1 x (TApp (TConst Force)) t1)
-  -- Delay evaluation of the program argument to a 'Build' command,
-  -- so it will be evaluated by the constructed robot instead of the one
-  -- doing the constructing.
-  rewrite (TApp (TApp (TConst Build) nm) prog) =
-    TApp (TApp (TConst Build) nm) (TDelay prog)
-  -- Delay evaluation of the program argument to a 'Reprogram' command,
-  -- so it will be evaluated by the reprogrammed robot instead of the one
-  -- doing the reprogramming.
-  rewrite (TApp (TApp (TConst Reprogram) nm) prog) =
-    TApp (TApp (TConst Reprogram) nm) (TDelay prog)
   -- Leave any other subterms alone.
   rewrite t = t

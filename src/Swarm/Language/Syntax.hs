@@ -51,6 +51,7 @@ module Swarm.Language.Syntax (
   pattern TLet,
   pattern TDef,
   pattern TBind,
+  pattern TDelay,
 
   -- * Terms
   Var,
@@ -325,7 +326,7 @@ isCmd c = case constMeta $ constInfo c of
 -- | Function constants user can call with reserved words ('wait',...).
 isUserFunc :: Const -> Bool
 isUserFunc c = case constMeta $ constInfo c of
-  ConstMFunc {} -> c /= Force
+  ConstMFunc {} -> True
   _ -> False
 
 -- | Information about constants used in parsing and pretty printing.
@@ -368,7 +369,7 @@ constInfo c = case c of
   If -> functionLow 3
   Fst -> functionLow 1
   Snd -> functionLow 1
-  Force -> functionLow 1 -- TODO: make internal?!
+  Force -> unaryOp "!" 8 P
   Not -> functionLow 1
   Neg -> unaryOp "-" 7 P
   Add -> binaryOp "+" 6 L
@@ -452,9 +453,13 @@ pattern TLet v pt t1 t2 = SLet v pt (STerm t1) (STerm t2)
 pattern TDef :: Var -> Maybe Polytype -> Term -> Term
 pattern TDef v pt t = SDef v pt (STerm t)
 
--- | Match a TDef without syntax
+-- | Match a TBind without syntax
 pattern TBind :: Maybe Var -> Term -> Term -> Term
 pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
+
+-- | Match a TDelay without syntax
+pattern TDelay :: Term -> Term
+pattern TDelay t = SDelay (STerm t)
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
 {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
@@ -497,14 +502,14 @@ data Term
     SDef Var (Maybe Polytype) Syntax
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     SBind (Maybe Var) Syntax Syntax
-  | -- | Delay evaluation of a term.  Swarm is an eager language, but
-    --   in some cases (e.g. for @if@ statements and recursive
-    --   bindings) we need to delay evaluation.  The counterpart to
-    --   @delay@ is @force@, where @force (delay t) = t@.  Note that
-    --   'Force' is just a constant, whereas 'TDelay' has to be a
-    --   special syntactic form so its argument can get special
+  | -- | Delay evaluation of a term, written @{{...}}@.  Swarm is an
+    --   eager language, but in some cases (e.g. for @if@ statements
+    --   and recursive bindings) we need to delay evaluation.  The
+    --   counterpart to @{{...}}@ is @force@, where @force {{t}} = t@.
+    --   Note that 'Force' is just a constant, whereas 'TDelay' has to
+    --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
-    TDelay Term
+    SDelay Syntax
   deriving (Eq, Show, Data)
 
 instance Plated Term where
@@ -539,7 +544,8 @@ fvT f = go S.empty
       SDef x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
     SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
       SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
-    TDelay t1 -> TDelay <$> go bound t1
+    SDelay (Syntax l1 t1) ->
+      SDelay <$> (Syntax l1 <$> go bound t1)
 
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via

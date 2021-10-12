@@ -85,6 +85,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
     pparens (p > 2) $
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
+  prettyPrec p (TyDelayF ty) = pparens (p > 9) $ "delay" <+> prettyPrec 10 ty
   prettyPrec p (TyFunF ty1 ty2) =
     pparens (p > 0) $
       prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
@@ -126,7 +127,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TAntiString v) = "$str:" <> pretty v
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec p (TDelay t) = pparens (p > 10) $ "delay" <+> prettyPrec 11 t
+  prettyPrec _ (TDelay t) = braces . braces $ ppr t
   prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
