@@ -458,7 +458,7 @@ stepCEK cek = case cek of
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, GetX, GetY, Blocked, Ishere, Try, Random, Appear])
+takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, Whereami, Blocked, Ishere, Try, Random, Appear])
 
 -- | At the level of the CEK machine, the only difference bewteen
 --   between *evaluating* a function constant and *executing* a
@@ -734,12 +734,9 @@ execConst c vs k = do
         robotInventory .= inv'
         return $ Out VUnit k
       _ -> badConst
-    GetX -> do
-      V2 x _ <- use robotLocation
-      return $ Out (VInt (fromIntegral x)) k
-    GetY -> do
-      V2 _ y <- use robotLocation
-      return $ Out (VInt (fromIntegral y)) k
+    Whereami -> do
+      V2 x y <- use robotLocation
+      return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) k
     Blocked -> do
       loc <- use robotLocation
       orient <- use robotOrientation
