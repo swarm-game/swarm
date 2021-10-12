@@ -16,13 +16,10 @@
 (setq swarm-mode-syntax-table
       (let ( (synTable (make-syntax-table)))
 
-        ;; C++ style comments “// …”
-        (modify-syntax-entry ?\/ ". 12b" synTable)
-        (modify-syntax-entry ?\n "> b" synTable)
-        ;; ;; Java style block comments “/* … */”
-        ;; not sure how to get these at the same time as single-line // comments
-        ;; (modify-syntax-entry ?\/ ". 14" synTable)
-        ;; (modify-syntax-entry ?* ". 23" synTable)
+        ;; C++ style comments ("// ..." and "/* ... */")
+        (modify-syntax-entry ?\/ ". 124" synTable)
+        (modify-syntax-entry ?* ". 23b" synTable)
+        (modify-syntax-entry ?\n "> " synTable)
 
         synTable))
 
