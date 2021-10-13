@@ -43,6 +43,7 @@ import Control.Arrow ((&&&))
 import Control.Lens
 import Data.Array (range)
 import qualified Data.Foldable as F
+import qualified Data.List as L
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
@@ -441,8 +442,8 @@ explainFocusedItem s = case mItem of
 
   recipesWith :: Entity -> [Recipe Entity]
   recipesWith e =
-    recipesFor (s ^. gameState . recipesOut) e
-      ++ recipesFor (s ^. gameState . recipesIn) e
+    let getRecipes select = recipesFor (s ^. gameState . select) e
+     in L.nub $ getRecipes recipesOut ++ getRecipes recipesIn
 
 -- | Draw an ASCII art representation of a recipe.
 drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
