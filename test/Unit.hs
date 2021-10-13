@@ -3,12 +3,16 @@
 -- | Swarm unit tests
 module Main where
 
+import Control.Monad.State
 import Data.Text (Text)
 import qualified Data.Text as T
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Swarm.Language.Pipeline
+import Swarm.Game.CEK
+import Swarm.Game.Robot
+import Swarm.Game.Value
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 
@@ -16,7 +20,7 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [parser, prettyConst]
+tests = testGroup "Tests" [parser, prettyConst, eval]
 
 parser :: TestTree
 parser =
@@ -125,3 +129,29 @@ prettyConst =
  where
   equalPretty :: String -> Term -> Assertion
   equalPretty expected term = assertEqual "" expected . show $ ppr term
+
+eval :: TestTree
+eval =
+  testGroup
+    "Language - evaluation"
+    [ testCase
+        "sum types #224 - blah"
+        ("inl 3 < inr true" `evaluatesTo` VBool True)
+    ]
+ where
+  evaluatesTo :: Text -> Value -> Assertion
+  evaluatesTo tm val = do
+    result <- processTerm tm >>= evalPT
+    assertEqual "" (Right val) result
+
+  evalPT :: ProcessedTerm -> IO (Either Text Value)
+  evalPT t = evaluateCEK (initMachine t empty)
+
+  evaluateCEK :: CEK -> IO (Either Text Value)
+  evaluateCEK = flip evalStateT _ . evalStateT _ . runCEK
+
+  runCEK :: CEK -> StateT Robot (StateT GameState IO) (Either Text Value)
+  runCEK (Up exn []) = return (Left (formatExn exn))
+  runCEK cek = case finalValue cek of
+    Just v -> return v
+    Nothing -> stepCEK cek >>= runCEK
