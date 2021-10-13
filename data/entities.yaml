@@ -86,16 +86,27 @@
     char: 'C'
   description:
   - Raw copper ore.  It is extremely useful for making wires, pipes, and other metal things.
-    Often, in locations where copper can be found on the surface, additional copper can
-    be found by drilling beneath the surface.
+    Patches of copper ore can be found on the surface, but are quickly exhausted.
+  - Scanners seem to indicate larger quantities of copper could be found beneath some of the
+    mountains, but those would require a drill to access and mine.
   properties: [portable]
 
 - name: copper vein
   display:
     attr: copper'
-    char: 'C'
+    char: 'A'
   description:
-  - A place where raw copper ore can be drilled.
+  - A place in the mountains where raw copper ore can be mined.
+    As it is hidden inside a mountain, a tunnel needs to be
+    first drilled through, so that the vein becomes accessible.
+  properties: [unwalkable]
+
+- name: copper mine
+  display:
+    attr: copper'
+    char: 'Å'
+  description:
+  - A copper vein that can be actively mined to produce copper ore.
   properties: []
 
 - name: copper wire

@@ -73,8 +73,16 @@
 - in:
   - [1, copper vein]
   out:
+  - [1, copper mine]
+  required:
+  - [1, drill]
+  time: 42
+
+- in:
+  - [1, copper mine]
+  out:
   - [1, copper ore]
-  - [1, copper vein]
+  - [1, copper mine]
   required:
   - [1, drill]
   time: 42
