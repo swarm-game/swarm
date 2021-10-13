@@ -234,6 +234,8 @@ data Const
     Left
   | -- | Second injection.
     Right
+  | -- | Case analysis on a sum type.
+    Case
   | -- | First projection.
     Fst
   | -- | Second projection.
@@ -383,6 +385,7 @@ constInfo c = case c of
   If -> functionLow 3
   Left -> functionLow 1
   Right -> functionLow 1
+  Case -> functionLow 3
   Fst -> functionLow 1
   Snd -> functionLow 1
   Force -> functionLow 1 -- TODO: make internal?!

@@ -869,6 +869,9 @@ execConst c vs k = do
     SLS.Right -> case vs of
       [v] -> return $ Out (VRight v) k
       _ -> badConst
+    Case -> case vs of
+      [VInj s v, kl, kr] -> return $ Out v (FApp (bool kl kr s) : k)
+      _ -> badConst
     Fst -> case vs of
       [VPair v _] -> return $ Out v k
       _ -> badConst

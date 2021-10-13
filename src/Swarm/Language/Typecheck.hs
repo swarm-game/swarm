@@ -445,6 +445,7 @@ inferConst c = toU $ case c of
   If -> [tyQ| forall a. bool -> a -> a -> a |]
   SLS.Left -> [tyQ| forall a b. a -> a + b |]
   SLS.Right -> [tyQ| forall a b. b -> a + b |]
+  Case -> [tyQ| forall a b c. a + b -> (a -> c) -> (b -> c) -> c |]
   Fst -> [tyQ| forall a b. a * b -> a |]
   Snd -> [tyQ| forall a b. a * b -> b |]
   Force -> [tyQ| forall a. a -> a |]
