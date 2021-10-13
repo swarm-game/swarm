@@ -164,13 +164,24 @@ missingIngredientsFor (inv, ins) (Recipe inps _ reqs _) =
   countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
 
 -- | Try to make a recipe, deleting the recipe's inputs from the
---   inventory and adding the outputs. Return either a description of
---   which items are lacking, if the inventory does not contain
---   sufficient inputs, or an updated inventory if it was successful.
-make :: (Inventory, Inventory) -> Recipe Entity -> Either [(Count, Entity)] Inventory
-make invs r = uncurry addOuts <$> make' invs r
+--   inventory. Return either a description of which items are
+--   lacking, if the inventory does not contain sufficient inputs,
+--   or an inventory without inputs and function adding outputs if
+--   it was successful.
+make ::
+  -- robots inventory and installed devices
+  (Inventory, Inventory) ->
+  -- considered recipe
+  Recipe Entity ->
+  -- failure (with count of missing) or success with a new inventory,
+  -- a function to add results and the recipe repeated
+  Either
+    [(Count, Entity)]
+    (Inventory, Inventory -> Inventory, Recipe Entity)
+make invs r = finish <$> make' invs r
  where
-  addOuts = foldl' (flip (uncurry insertCount))
+  finish (invTaken, out) = (invTaken, addOuts out, r)
+  addOuts out inv' = foldl' (flip $ uncurry insertCount) inv' out
 
 -- | Try to make a recipe, but do not insert it yet.
 make' :: (Inventory, Inventory) -> Recipe Entity -> Either [(Count, Entity)] (Inventory, IngredientList Entity)

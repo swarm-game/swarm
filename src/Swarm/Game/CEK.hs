@@ -56,8 +56,8 @@ module Swarm.Game.CEK (
   -- ** Wrappers for creating delayed change of state
 
   --    See 'FImmediate'.
-  WorldFun (..),
-  RobotFun (..),
+  WorldUpdate (..),
+  RobotUpdate (..),
 
   -- * CEK machine states
   CEK (..),
@@ -144,7 +144,7 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) Term Env
-  | FImmediate WorldFun RobotFun
+  | FImmediate WorldUpdate RobotUpdate
   deriving (Eq, Show)
 
 -- | A continuation is just a stack of frames.
@@ -276,18 +276,18 @@ prettyFrame FImmediate {} = "(_ : cmd a)"
 -- BEWARE: the types do not follow normal laws for Show and Eq
 --------------------------------------------------------------
 
-newtype WorldFun = WorldFun
-  { worldFun :: World Int Entity -> Either Exn (World Int Entity)
+newtype WorldUpdate = WorldUpdate
+  { worldUpdate :: World Int Entity -> Either Exn (World Int Entity)
   }
 
-newtype RobotFun = RobotFun
-  { robotFunInventory :: Inventory -> Inventory
+newtype RobotUpdate = RobotUpdate
+  { robotUpdateInventory :: Inventory -> Inventory
   }
 
-instance Show WorldFun where show _ = "WorldFun {???}"
+instance Show WorldUpdate where show _ = "WorldUpdate {???}"
 
-instance Show RobotFun where show _ = "RobotFun {???}"
+instance Show RobotUpdate where show _ = "RobotUpdate {???}"
 
-instance Eq WorldFun where _ == _ = True
+instance Eq WorldUpdate where _ == _ = True
 
-instance Eq RobotFun where _ == _ = True
+instance Eq RobotUpdate where _ == _ = True

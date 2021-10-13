@@ -289,15 +289,15 @@ stepCEK cek = case cek of
     if wakeupTime == time
       then stepCEK cek'
       else return cek
-  Out v (FImmediate wf rf : c) -> do
-    wc <- worldFun wf <$> lift (use world)
+  Out v (FImmediate wf rf : k) -> do
+    wc <- worldUpdate wf <$> lift (use world)
     case wc of
-      Left exn -> return $ Up exn c
+      Left exn -> return $ Up exn k
       Right wo -> do
-        robotInventory %= robotFunInventory rf
+        robotInventory %= robotUpdateInventory rf
         lift $ world .= wo
         lift $ needsRedraw .= True
-        stepCEK (Out v c)
+        stepCEK (Out v k)
 
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
@@ -564,7 +564,7 @@ execConst c vs k = do
         Nothing -> return ()
         Just e -> do
           (not . (`hasProperty` Unwalkable)) e
-            `holdsOr` cmdExn Move ["There is a", e ^. entityName, "in the way!"]
+            `holdsOrFail` ["There is a", e ^. entityName, "in the way!"]
 
           -- Robots drown if they walk over liquid
           caps <- use robotCapabilities
@@ -577,11 +577,11 @@ execConst c vs k = do
     Grab -> do
       -- Ensure there is an entity here.
       loc <- use robotLocation
-      e <- entityAt loc >>= (`isJustOr` cmdExn Grab ["There is nothing here to grab."])
+      e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
 
       -- Ensure it can be picked up.
       (e `hasProperty` Portable)
-        `holdsOr` cmdExn Grab ["The", e ^. entityName, "here can't be grabbed."]
+        `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
 
       -- Remove the entity from the world.
       updateEntityAt loc (const Nothing)
@@ -621,15 +621,15 @@ execConst c vs k = do
 
         -- Make sure there's nothing already here
         nothingHere <- isNothing <$> entityAt loc
-        nothingHere `holdsOr` cmdExn Place ["There is already an entity here."]
+        nothingHere `holdsOrFail` ["There is already an entity here."]
 
         -- Make sure the robot has the thing in its inventory
         e <-
           listToMaybe (lookupByName s inv)
-            `isJustOr` cmdExn Place ["What is", indefinite s, "?"]
+            `isJustOrFail` ["What is", indefinite s, "?"]
 
         (E.lookup e inv > 0)
-          `holdsOr` cmdExn Place ["You don't have", indefinite s, "to place."]
+          `holdsOrFail` ["You don't have", indefinite s, "to place."]
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
@@ -643,21 +643,21 @@ execConst c vs k = do
         -- Make sure the other robot exists
         other <-
           robotNamed otherName
-            >>= (`isJustOr` cmdExn Give ["There is no robot named", otherName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOr` cmdExn Give ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOr` cmdExn Give ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName, "?"]
 
         (E.lookup item inv > 0)
-          `holdsOr` cmdExn Give ["You don't have", indefinite itemName, "to give."]
+          `holdsOrFail` ["You don't have", indefinite itemName, "to give."]
 
         -- Giving something to ourself should be a no-op.  We need
         -- this as a special case since it will not work to modify
@@ -682,21 +682,21 @@ execConst c vs k = do
         -- Make sure the other robot exists
         other <-
           robotNamed otherName
-            >>= (`isJustOr` cmdExn Install ["There is no robot named", otherName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOr` cmdExn Install ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOr` cmdExn Install ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName, "?"]
 
         (E.lookup item inv > 0)
-          `holdsOr` cmdExn Install ["You don't have", indefinite itemName, "to install."]
+          `holdsOrFail` ["You don't have", indefinite itemName, "to install."]
 
         myName <- use robotName
         focusedName <- doOnGame $ use focusedRobotName
@@ -732,7 +732,7 @@ execConst c vs k = do
         em <- doOnGame $ use entityMap
         e <-
           lookupEntityName name em
-            `isJustOr` cmdExn Make ["I've never heard of", indefiniteQ name, "."]
+            `isJustOrFail` ["I've never heard of", indefiniteQ name, "."]
 
         outRs <- doOnGame $ use recipesOut
 
@@ -743,16 +743,16 @@ execConst c vs k = do
             increase r = countIn (r ^. recipeOutputs) > countIn (r ^. recipeInputs)
             countIn xs = maybe 0 fst (find ((== e) . snd) xs)
         not (null recipes)
-          `holdsOr` cmdExn Make ["There is no known recipe for making", indefinite name, "."]
+          `holdsOrFail` ["There is no known recipe for making", indefinite name, "."]
 
-        -- Now try each recipe and take the first one that we have the
-        -- ingredients for.
-        let makeRecipe r = (,r) <$> make (inv, ins) r
-        (inv', recipe) <-
-          listToMaybe (rights (map makeRecipe recipes))
-            `isJustOr` cmdExn Make ["You don't have the ingredients to make", indefinite name, "."]
+        -- Try recipes and remeber the first one that we have ingredients for.
+        (invTaken, changeInv, recipe) <-
+          listToMaybe (rights (map (make (inv, ins)) recipes))
+            `isJustOrFail` ["You don't have the ingredients to make", indefinite name, "."]
 
-        finishCookingRecipe recipe (WorldFun Right) (RobotFun $ const inv')
+        -- take recipe inputs from inventory and add outputs after recipeTime
+        robotInventory .= invTaken
+        finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
@@ -767,27 +767,32 @@ execConst c vs k = do
 
         let nextLoc = loc ^+^ applyTurn d (rDir ? V2 0 0)
         em <- doOnGame $ use entityMap
-        drill <- lookupEntityName "drill" em `isJustOr` cmdExn Drill ["Drill does not exist?!"]
-        nextE <- entityAt nextLoc >>= (`isJustOr` cmdExn Drill ["There is nothing to drill", "in the direction", "of robot", rname <> "."])
+        drill <- lookupEntityName "drill" em `isJustOr` Fatal "Drill does not exist?!"
+        nextME <- entityAt nextLoc
+        nextE <-
+          nextME
+            `isJustOrFail` ["There is nothing to drill", "in the direction", "of robot", rname <> "."]
 
         inRs <- doOnGame $ use recipesIn
 
         let recipes = filter drilling (recipesFor inRs nextE)
             drilling = any ((== drill) . snd) . view recipeRequirements
 
-        not (null recipes) `holdsOr` cmdExn Drill ["There is no way to drill a", nextE ^. entityName <> "."]
+        not (null recipes) `holdsOrFail` ["There is no way to drill", indefinite (nextE ^. entityName) <> "."]
 
-        -- add the drilled entity so it can be consumed by recipe
-        let makeRecipe r = (\(i, o) -> (i, o, r)) <$> make' (insert nextE inv, ins) r
-        (invTaken, outs, recipe) <-
+        -- add the drilled entity so it can be consumed by the recipe
+        let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
+        ((invTaken, outs), recipe) <-
           listToMaybe (rights (map makeRecipe recipes))
-            `isJustOr` cmdExn Drill ["You don't have the ingredients\n to drill", indefinite (nextE ^. entityName) <> "."]
+            `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
 
         let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
-            inv' = L.foldl' (flip (uncurry insertCount)) invTaken out
+            changeInv inv' = L.foldl' (flip $ uncurry insertCount) inv' out
             changeWorld = changeWorld' nextE nextLoc down
 
-        finishCookingRecipe recipe (WorldFun changeWorld) (RobotFun $ const inv')
+        -- take recipe inputs from inventory and add outputs after recipeTime
+        robotInventory .= invTaken
+        finishCookingRecipe recipe (WorldUpdate changeWorld) (RobotUpdate changeInv)
       _ -> badConst
     Blocked -> do
       loc <- use robotLocation
@@ -812,12 +817,12 @@ execConst c vs k = do
         -- Make sure the other robot exists
         other <-
           robotNamed otherName
-            >>= (`isJustOr` cmdExn Upload ["There is no robot named", otherName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOr` cmdExn Upload ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
 
         -- Upload knowledge of everything in our inventory
         inv <- use robotInventory
@@ -852,7 +857,7 @@ execConst c vs k = do
       [VString s] -> do
         _ <-
           robotNamed s
-            >>= (`isJustOr` cmdExn View ["There is no robot named ", s, " to view."])
+            >>= (`isJustOrFail` ["There is no robot named ", s, " to view."])
 
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
@@ -884,7 +889,7 @@ execConst c vs k = do
         em <- doOnGame $ use entityMap
         e <-
           lookupEntityName name em
-            `isJustOr` cmdExn Create ["I've never heard of", indefiniteQ name, "."]
+            `isJustOrFail` ["I've never heard of", indefiniteQ name, "."]
 
         robotInventory %= insert e
         return $ Out VUnit k
@@ -936,21 +941,17 @@ execConst c vs k = do
         -- check if robot exists
         childRobot <-
           robotNamed childRobotName
-            >>= (`isJustOr` cmdExn Reprogram ["There is no robot named", childRobotName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", childRobotName, "."])
 
         -- check that current robot is not trying to reprogram self
         myName <- use robotName
         (childRobotName /= myName)
-          `holdsOr` cmdExn
-            Reprogram
-            ["You cannot make a robot reprogram itself"]
+          `holdsOrFail` ["You cannot make a robot reprogram itself"]
 
         -- check if robot has completed executing it's current command
         _ <-
           finalValue (childRobot ^. machine)
-            `isJustOr` cmdExn
-              Reprogram
-              ["You cannot reprogram a robot that has not completed its current command"]
+            `isJustOrFail` ["You cannot reprogram a robot that has not completed its current command"]
 
         -- check if childRobot is at the correct distance
         -- a robot can program adjacent robots
@@ -959,9 +960,7 @@ execConst c vs k = do
         ( mode == Creative
             || (childRobot ^. robotLocation) `manhattan` loc <= 1
           )
-          `holdsOr` cmdExn
-            Reprogram
-            ["You can only program adjacent robot"]
+          `holdsOrFail` ["You can only program adjacent robot"]
 
         let -- Find out what capabilities are required by the program that will
             -- be run on the other robot, and what devices would provide those
@@ -976,11 +975,9 @@ execConst c vs k = do
 
         -- check if robot has all devices to execute new command
         (mode == Creative || S.null missingDevices)
-          `holdsOr` cmdExn
-            Reprogram
-            [ "the target robot does not have required devices:\n"
-            , commaList (map (^. entityName) (S.toList missingDevices))
-            ]
+          `holdsOrFail` [ "the target robot does not have required devices:\n"
+                        , commaList (map (^. entityName) (S.toList missingDevices))
+                        ]
 
         -- update other robot's CEK machine, environment and context
         -- the childRobot inherits the parent robot's environment
@@ -1029,11 +1026,9 @@ execConst c vs k = do
 
         -- Make sure we're not missing any required devices.
         (mode == Creative || S.null missingDevices)
-          `holdsOr` cmdExn
-            Build
-            [ "this would require installing devices you don't have:\n"
-            , commaList (map (^. entityName) (S.toList missingDevices))
-            ]
+          `holdsOrFail` [ "this would require installing devices you don't have:\n"
+                        , commaList (map (^. entityName) (S.toList missingDevices))
+                        ]
 
         -- Construct the new robot.
         let newRobot =
@@ -1093,7 +1088,7 @@ execConst c vs k = do
       [VString fileName] -> do
         mf <- liftIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
 
-        f <- msum mf `isJustOr` cmdExn Run ["File not found:", fileName]
+        f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
         t <-
           processTerm (into @Text f) `isRightOr` \err ->
@@ -1130,28 +1125,37 @@ execConst c vs k = do
   finishCookingRecipe ::
     MonadState GameState m =>
     Recipe e ->
-    WorldFun ->
-    RobotFun ->
+    WorldUpdate ->
+    RobotUpdate ->
     ExceptT Exn (StateT Robot m) CEK
   finishCookingRecipe r wf rf = do
-    let recTime = pred $ r ^. recipeTime
     time <- doOnGame $ use ticks
-    return $ Waiting (time + recTime) $ Out VUnit (FImmediate wf rf : k)
+    let remTime = r ^. recipeTime
+    return . (if remTime <= 1 then id else Waiting (remTime + time)) $
+      Out VUnit (FImmediate wf rf : k)
 
   -- replace some entity in the world with another entity
-  changeWorld' :: Entity -> V2 Int64 -> IngredientList Entity -> W.World Int Entity -> Either Exn (W.World Int Entity)
+  changeWorld' ::
+    Entity ->
+    V2 Int64 ->
+    IngredientList Entity ->
+    W.World Int Entity ->
+    Either Exn (W.World Int Entity)
   changeWorld' eThen loc down w =
     let eNow = W.lookupEntity (W.locToCoords loc) w
      in if Just eThen /= eNow
-          then Left $ CmdFailed c $ "The " <> (eThen ^. entityName) <> " is not there."
+          then Left $ cmdExn c ["The", eThen ^. entityName, "is not there."]
           else
             w `updateLoc` loc <$> case down of
               [] -> Right Nothing
               [de] -> Right $ Just $ snd de
-              _ -> Left $ Fatal "Bad recipe - can not place more then one unmovable entity."
+              _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
   -- update some tile in the world setting it to entity or making it empty
   updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
+
+  holdsOrFail a ts = a `holdsOr` cmdExn c ts
+  isJustOrFail a ts = a `isJustOr` cmdExn c ts
 
   returnEvalCmp = case vs of
     [v1, v2] ->
