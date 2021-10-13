@@ -12,8 +12,9 @@
 --
 -- A data type to represent robots.
 module Swarm.Game.Robot (
-  -- * Robots
+  -- * Robots data
   Robot,
+  RobotContext(..),
 
   -- ** Lenses
   robotEntity,
@@ -25,8 +26,7 @@ module Swarm.Game.Robot (
   installedDevices,
   inventoryHash,
   robotCapabilities,
-  robotCtx,
-  robotEnv,
+  robotContext,
   machine,
   systemRobot,
   selfDestruct,
@@ -52,13 +52,25 @@ import Linear
 
 import Data.Hashable (hashWithSalt)
 import Swarm.Game.CEK
-import Swarm.Game.Context (VarContextStore, emptyVarContextStore)
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Types (TCtx)
+
+-- | 'RobotContext' is a record that stores all the information
+--   related to all the variables defined for a 'Robot'.
+data RobotContext = RobotContext
+  { -- mapping from variable name to it's type
+    typeCtx :: TCtx
+  , -- | mapping from variable name to all the capabilities
+    --   required to compute it
+    capCtx :: CapCtx
+  , -- mapping from variable name to it's value
+    valCtx :: Env
+  }
+  deriving (Show)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -69,16 +81,13 @@ data Robot = Robot
     --   Automatically generated from '_installedDevices'.
     _robotCapabilities :: Set Capability
   , _robotLocation :: V2 Int64
-  , _robotCtx :: (TCtx, CapCtx)
-  , _robotEnv :: Env
+  , _robotContext :: RobotContext
   , _machine :: CEK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _tickSteps :: Int
-  , _robotContext :: VarContextStore
   }
-  deriving ()
--- turn of show deriving for now since 'VarContextStore' cannot implement 'Show'
+  deriving (Show)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -125,7 +134,7 @@ robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
 
 -- | The robot's context
-robotContext :: Lens' Robot VarContextStore
+robotContext :: Lens' Robot RobotContext
 
 -- | A separate inventory for "installed devices", which provide the
 --   robot with certain capabilities.
@@ -160,13 +169,6 @@ inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . t
 --   capabilities is to modify its 'installedDevices'.
 robotCapabilities :: Getter Robot (Set Capability)
 robotCapabilities = to _robotCapabilities
-
--- | The type and capability contexts describing the robot's currently
---   stored definitions.
-robotCtx :: Lens' Robot (TCtx, CapCtx)
-
--- | The robot's environment of stored definitions.
-robotEnv :: Lens' Robot Env
 
 -- | The robot's current CEK machine state.
 machine :: Lens' Robot CEK
@@ -243,13 +245,11 @@ mkRobot name l d m devs =
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLocation = l
-    , _robotCtx = (empty, empty)
-    , _robotEnv = empty
+    , _robotContext = RobotContext empty empty empty
     , _machine = m
     , _systemRobot = False
     , _selfDestruct = False
     , _tickSteps = 0
-    , _robotContext = emptyVarContextStore
     }
  where
   inst = fromList devs
@@ -267,13 +267,11 @@ baseRobot devs =
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLocation = V2 0 0
-    , _robotCtx = (empty, empty)
-    , _robotEnv = empty
+    , _robotContext = RobotContext empty empty empty
     , _machine = idleMachine
     , _systemRobot = False
     , _selfDestruct = False
     , _tickSteps = 0
-    , _robotContext = emptyVarContextStore
     }
  where
   inst = fromList devs
