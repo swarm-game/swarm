@@ -1132,7 +1132,9 @@ compareValues = \case
   VBool b1 -> \case VBool b2 -> Just (compare b1 b2); _ -> Nothing
   VInj s1 v1 -> \case
     VInj s2 v2 ->
-      (compare s1 s2 <>) <$> compareValues v1 v2
+      case compare s1 s2 of
+        EQ -> compareValues v1 v2
+        o -> Just o
     _ -> Nothing
   VPair v11 v12 -> \case
     VPair v21 v22 ->
