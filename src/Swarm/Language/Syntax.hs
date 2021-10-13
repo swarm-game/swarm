@@ -64,8 +64,6 @@ module Swarm.Language.Syntax (
   mapFree1,
 ) where
 
-import Prelude hiding (Left, Right)
-
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Data.Lens (uniplate)
 import Data.Int (Int64)
@@ -230,10 +228,10 @@ data Const
 
     -- | If-expressions.
     If
-  | -- | First injection.
-    Left
-  | -- | Second injection.
-    Right
+  | -- | Left injection.
+    Inl
+  | -- | Right injection.
+    Inr
   | -- | Case analysis on a sum type.
     Case
   | -- | First projection.
@@ -383,8 +381,8 @@ constInfo c = case c of
   Try -> commandLow 2
   Raise -> commandLow 1
   If -> functionLow 3
-  Left -> functionLow 1
-  Right -> functionLow 1
+  Inl -> functionLow 1
+  Inr -> functionLow 1
   Case -> functionLow 3
   Fst -> functionLow 1
   Snd -> functionLow 1

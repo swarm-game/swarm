@@ -51,8 +51,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax hiding (Left, Right)
-import qualified Swarm.Language.Syntax as SLS
+import Swarm.Language.Syntax
 import Swarm.Util
 
 -- | The maximum number of CEK machine evaluation steps each robot is
@@ -863,11 +862,11 @@ execConst c vs k = do
     If -> case vs of
       [VBool b, thn, els] -> return $ Out (bool els thn b) k
       _ -> badConst
-    SLS.Left -> case vs of
-      [v] -> return $ Out (VLeft v) k
+    Inl -> case vs of
+      [v] -> return $ Out (VInj False v) k
       _ -> badConst
-    SLS.Right -> case vs of
-      [v] -> return $ Out (VRight v) k
+    Inr -> case vs of
+      [v] -> return $ Out (VInj True v) k
       _ -> badConst
     Case -> case vs of
       [VInj s v, kl, kr] -> return $ Out v (FApp (bool kl kr s) : k)

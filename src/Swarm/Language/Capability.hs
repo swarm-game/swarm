@@ -31,7 +31,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Read (readMaybe)
 import Witch (from)
-import Prelude hiding (Left, Right, lookup)
+import Prelude hiding (lookup)
 
 import Data.Data (Data)
 import Data.Yaml
@@ -275,8 +275,8 @@ constCaps =
     Run -> [] -- XXX this should also require a capability
     -- which the base starts out with.
     Not -> [] -- XXX some kind of boolean logic cap?
-    Left -> [] -- XXX should require cap for sums
-    Right -> []
+    Inl -> [] -- XXX should require cap for sums
+    Inr -> []
     Case -> []
     Fst -> [] -- XXX should require cap for pairs
     Snd -> []

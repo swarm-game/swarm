@@ -14,8 +14,6 @@
 module Swarm.Game.Value (
   -- * Values
   Value (..),
-  pattern VLeft,
-  pattern VRight,
   prettyValue,
   valueToTerm,
 
@@ -29,7 +27,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
-import Prelude hiding (Left, Right)
+import Prelude
 
 import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
@@ -48,7 +46,7 @@ data Value where
   VDir :: Direction -> Value
   -- | A boolean.
   VBool :: Bool -> Value
-  -- | An injection into a sum type.  False = Left, True = Right.
+  -- | An injection into a sum type.  False = left, True = right.
   VInj :: Bool -> Value -> Value
   -- | A pair.
   VPair :: Value -> Value -> Value
@@ -90,10 +88,6 @@ data Value where
   VDelay :: Maybe Var -> Term -> Env -> Value
   deriving (Eq, Show)
 
-pattern VLeft, VRight :: Value -> Value
-pattern VLeft v = VInj False v
-pattern VRight v = VInj True v
-
 -- | Pretty-print a value.
 prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
@@ -105,7 +99,7 @@ valueToTerm (VInt n) = TInt n
 valueToTerm (VString s) = TString s
 valueToTerm (VDir d) = TDir d
 valueToTerm (VBool b) = TBool b
-valueToTerm (VInj s v) = TApp (TConst (bool Left Right s)) (valueToTerm v)
+valueToTerm (VInj s v) = TApp (TConst (bool Inl Inr s)) (valueToTerm v)
 valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =
   M.foldrWithKey
