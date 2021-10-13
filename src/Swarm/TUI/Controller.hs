@@ -75,7 +75,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax hiding (Left, Right)
 import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model

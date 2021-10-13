@@ -81,6 +81,9 @@ instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) wh
 instance PrettyPrec t => PrettyPrec (TypeF t) where
   prettyPrec _ (TyBaseF b) = ppr b
   prettyPrec _ (TyVarF v) = pretty v
+  prettyPrec p (TySumF ty1 ty2) =
+    pparens (p > 1) $
+      prettyPrec 2 ty1 <+> "+" <+> prettyPrec 1 ty2
   prettyPrec p (TyProdF ty1 ty2) =
     pparens (p > 2) $
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2

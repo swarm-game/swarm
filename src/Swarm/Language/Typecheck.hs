@@ -72,7 +72,8 @@ import Control.Unification.IntVar
 import Swarm.Language.Context hiding (lookup)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Parse.QQ (tyQ)
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax hiding (Left, Right)
+import qualified Swarm.Language.Syntax as SLS
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -442,6 +443,8 @@ inferConst c = toU $ case c of
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
   If -> [tyQ| forall a. bool -> a -> a -> a |]
+  SLS.Left -> [tyQ| forall a b. a -> a + b |]
+  SLS.Right -> [tyQ| forall a b. b -> a + b |]
   Fst -> [tyQ| forall a b. a * b -> a |]
   Snd -> [tyQ| forall a b. a * b -> b |]
   Force -> [tyQ| forall a. a -> a |]

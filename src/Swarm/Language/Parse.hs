@@ -185,6 +185,7 @@ parseType = makeExprParser parseTypeAtom table
  where
   table =
     [ [InfixR ((:*:) <$ symbol "*")]
+    , [InfixR ((:+:) <$ symbol "+")]
     , [InfixR ((:->:) <$ symbol "->")]
     ]
 
@@ -377,8 +378,8 @@ runParser p t = first (from . errorBundlePretty) (parse (runReaderT p DisallowAn
 runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
 runParserTH (file, line, col) p s =
   case snd (runParser' (runReaderT (fully p) AllowAntiquoting) initState) of
-    Left err -> fail $ errorBundlePretty err
-    Right e -> return e
+    Prelude.Left err -> fail $ errorBundlePretty err
+    Prelude.Right e -> return e
  where
   -- This is annoying --- megaparsec does not export its function to
   -- construct an initial parser state, so we can't just use that

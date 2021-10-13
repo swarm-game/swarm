@@ -20,7 +20,7 @@ import Witch (from)
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax hiding (Left, Right)
 import Swarm.Util (liftText)
 
 -- | A quasiquoter for Swarm language terms, so we can conveniently
