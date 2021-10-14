@@ -378,7 +378,7 @@ constInfo c = case c of
   If -> functionLow 3
   Fst -> functionLow 1
   Snd -> functionLow 1
-  Force -> unaryOp "!" 8 P
+  Force -> functionLow 1
   Not -> functionLow 1
   Neg -> unaryOp "-" 7 P
   Add -> binaryOp "+" 6 L
