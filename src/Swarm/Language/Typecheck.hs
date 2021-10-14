@@ -427,6 +427,7 @@ inferConst c = toU $ case c of
   Make -> [tyQ| string -> cmd () |]
   Reprogram -> [tyQ| string -> cmd a -> cmd () |]
   Build -> [tyQ| string -> cmd a -> cmd string |]
+  Drill -> [tyQ| dir -> cmd () |]
   Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
   Log -> [tyQ| string -> cmd () |]

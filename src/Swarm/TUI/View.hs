@@ -43,6 +43,7 @@ import Control.Arrow ((&&&))
 import Control.Lens
 import Data.Array (range)
 import qualified Data.Foldable as F
+import qualified Data.List as L
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
@@ -308,17 +309,23 @@ drawWorld g =
     M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
       . M.elems
       $ g ^. robotMap
-  drawLoc coords = case M.lookup (W.coordsToLoc coords) robotsByLoc of
-    Just r ->
-      withAttr (r ^. robotDisplay . displayAttr) $
-        str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
-    Nothing -> drawCell coords (g ^. world)
+
+  drawLoc :: W.Coords -> Widget Name
+  drawLoc coords =
+    let (ePrio, eWidget) = drawCell coords (g ^. world)
+     in case M.lookup (W.coordsToLoc coords) robotsByLoc of
+          Just r
+            | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
+            | otherwise ->
+              withAttr (r ^. robotDisplay . displayAttr) $
+                str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
+          Nothing -> eWidget
 
 -- | Draw a single cell of the world.
-drawCell :: W.Coords -> W.World Int Entity -> Widget Name
+drawCell :: W.Coords -> W.World Int Entity -> (Int, Widget Name)
 drawCell i w = case W.lookupEntity i w of
-  Just e -> displayEntity e
-  Nothing -> displayTerrain (toEnum (W.lookupTerrain i w))
+  Just e -> (e ^. entityDisplay . displayPriority, displayEntity e)
+  Nothing -> (0, displayTerrain (toEnum (W.lookupTerrain i w)))
 
 ------------------------------------------------------------
 -- Robot inventory panel
@@ -435,18 +442,18 @@ explainFocusedItem s = case mItem of
 
   recipesWith :: Entity -> [Recipe Entity]
   recipesWith e =
-    recipesFor (s ^. gameState . recipesOut) e
-      ++ recipesFor (s ^. gameState . recipesIn) e
+    let getRecipes select = recipesFor (s ^. gameState . select) e
+     in L.nub $ getRecipes recipesOut ++ getRecipes recipesIn
 
 -- | Draw an ASCII art representation of a recipe.
 drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
-drawRecipe e inv (Recipe ins outs reqs) =
+drawRecipe e inv (Recipe ins outs reqs time) =
   vBox
     -- any requirements (e.g. furnace) go on top.
     [ hCenter $ drawReqs reqs
     , -- then we draw inputs, a connector, and outputs.
       hBox
-        [ vBox (zipWith drawIn [0 ..] ins)
+        [ vBox (zipWith drawIn [0 ..] (ins <> times))
         , connector
         , vBox (zipWith drawOut [0 ..] outs)
         ]
@@ -463,8 +470,9 @@ drawRecipe e inv (Recipe ins outs reqs) =
         , joinableBorder (Edges True False True True)
         , hLimit 2 hBorder
         ]
-  inLen = length ins
+  inLen = length ins + length times
   outLen = length outs
+  times = [(fromIntegral time, timeE) | time /= 1]
 
   -- Draw inputs and outputs.
   drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
@@ -500,6 +508,7 @@ drawRecipe e inv (Recipe ins outs reqs) =
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
     | ingr == e = withAttr deviceAttr $ txtLines nm
+    | ingr == timeE = withAttr sandAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm
    where
@@ -507,8 +516,12 @@ drawRecipe e inv (Recipe ins outs reqs) =
     nm = ingr ^. entityName
     txtLines = vBox . map txt . T.words
 
+-- | Ad-hoc entity to represent time - only used in recipe drawing
+timeE :: Entity
+timeE = mkEntity (defaultEntityDisplay '.') "ticks" [] []
+
 drawReqs :: IngredientList Entity -> Widget Name
-drawReqs = vBox . map drawReq
+drawReqs = vBox . map (hCenter . drawReq)
  where
   drawReq (1, e) = txt $ e ^. entityName
   drawReq (n, e) = str (show n) <+> txt " " <+> txt (e ^. entityName)

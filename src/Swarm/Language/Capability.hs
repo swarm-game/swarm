@@ -62,6 +62,8 @@ data Capability
     CBuild
   | -- | Execute the 'Salvage' command
     CSalvage
+  | -- | Execute the 'Drill' command
+    CDrill
   | -- | Execute the 'Whereami' command
     CSenseloc
   | -- | Execute the 'Blocked' command
@@ -247,6 +249,7 @@ constCaps =
     Build -> [CBuild]
     Salvage -> [CSalvage]
     Reprogram -> [CReprogram]
+    Drill -> [CDrill]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.

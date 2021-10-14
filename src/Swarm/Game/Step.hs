@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -37,6 +38,7 @@ import System.Random (UniformRange, uniformR)
 import Witch
 import Prelude hiding (lookup)
 
+import qualified Data.List as L
 import Swarm.Game.CEK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -123,9 +125,13 @@ gameTick = do
 -- Some utility functions
 ------------------------------------------------------------
 
+-- | Perform operation on the monad with game state.
+doOnGame :: MonadState GameState m => m a -> ExceptT Exn (StateT Robot m) a
+doOnGame = lift . lift
+
 -- | Set a flag telling the UI that the world needs to be redrawn.
-flagRedraw :: MonadState GameState m => ExceptT Exn (StateT s m) ()
-flagRedraw = lift . lift $ needsRedraw .= True
+flagRedraw :: MonadState GameState m => ExceptT Exn (StateT Robot m) ()
+flagRedraw = doOnGame $ needsRedraw .= True
 
 -- | Perform an action requiring a 'W.World' state component in a
 --   larger context with a 'GameState'.
@@ -138,7 +144,7 @@ zoomWorld n = do
 
 -- | Get the entity (if any) at a given location.
 entityAt :: MonadState GameState m => V2 Int64 -> ExceptT Exn (StateT Robot m) (Maybe Entity)
-entityAt loc = lift . lift $ zoomWorld (W.lookupEntityM (W.locToCoords loc))
+entityAt loc = doOnGame $ zoomWorld (W.lookupEntityM (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
@@ -146,11 +152,11 @@ updateEntityAt ::
   V2 Int64 ->
   (Maybe Entity -> Maybe Entity) ->
   ExceptT Exn (StateT Robot m) ()
-updateEntityAt loc upd = lift . lift $ zoomWorld (W.updateM (W.locToCoords loc) upd)
+updateEntityAt loc upd = doOnGame $ zoomWorld (W.updateM (W.locToCoords loc) upd)
 
 -- | Get the robot with a given name (if any).
 robotNamed :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) (Maybe Robot)
-robotNamed nm = lift . lift $ use (robotMap . at nm)
+robotNamed nm = doOnGame $ use (robotMap . at nm)
 
 -- | Manhattan distance between world locations.
 manhattan :: V2 Int64 -> V2 Int64 -> Int64
@@ -173,7 +179,7 @@ uniform bnds = do
 traceLog :: MonadState GameState m => Text -> ExceptT Exn (StateT Robot m) ()
 traceLog msg = do
   rn <- use robotName
-  time <- lift . lift $ use ticks
+  time <- doOnGame $ use ticks
   robotLog %= (Seq.|> LogEntry msg rn time)
 
 -- | For debugging only. Print a showable value via the robot's log.
@@ -189,7 +195,7 @@ traceLogShow = traceLog . from . show
 --   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: MonadState GameState m => Const -> ExceptT Exn (StateT Robot m) ()
 ensureCanExecute c = do
-  mode <- lift . lift $ use gameMode
+  mode <- doOnGame $ use gameMode
   sys <- use systemRobot
   robotCaps <- use robotCapabilities
   let missingCaps = constCaps c `S.difference` robotCaps
@@ -283,6 +289,15 @@ stepCEK cek = case cek of
     if wakeupTime == time
       then stepCEK cek'
       else return cek
+  Out v (FImmediate wf rf : k) -> do
+    wc <- worldUpdate wf <$> lift (use world)
+    case wc of
+      Left exn -> return $ Up exn k
+      Right wo -> do
+        robotInventory %= robotUpdateInventory rf
+        lift $ world .= wo
+        lift $ needsRedraw .= True
+        stepCEK (Out v k)
 
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
@@ -498,6 +513,24 @@ seedProgram minTime randTime thing =
   }
   |]
 
+-- | Construct a "seed robot" from entity, time range and position.
+--   It has low priority and will be covered by placed entities.
+mkSeedBot :: Entity -> (Integer, Integer) -> V2 Int64 -> Robot
+mkSeedBot e (minT, maxT) loc =
+  mkRobot
+    "seed"
+    loc
+    (V2 0 0)
+    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
+    []
+    & robotDisplay
+      .~ ( defaultEntityDisplay '.'
+            & displayAttr .~ (e ^. entityDisplay . displayAttr)
+            & displayPriority .~ 0
+         )
+    & robotInventory .~ E.singleton e
+    & systemRobot .~ True
+
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst :: (MonadState GameState m, MonadIO m) => Const -> [Value] -> Cont -> ExceptT Exn (StateT Robot m) CEK
@@ -513,7 +546,7 @@ execConst c vs k = do
       _ -> badConst
     Wait -> case vs of
       [VInt d] -> do
-        time <- lift . lift $ use ticks
+        time <- doOnGame $ use ticks
         return $ Waiting (time + d) (Out VUnit k)
       _ -> badConst
     Selfdestruct -> do
@@ -531,7 +564,7 @@ execConst c vs k = do
         Nothing -> return ()
         Just e -> do
           (not . (`hasProperty` Unwalkable)) e
-            `holdsOr` cmdExn Move ["There is a", e ^. entityName, "in the way!"]
+            `holdsOrFail` ["There is a", e ^. entityName, "in the way!"]
 
           -- Robots drown if they walk over liquid
           caps <- use robotCapabilities
@@ -544,11 +577,11 @@ execConst c vs k = do
     Grab -> do
       -- Ensure there is an entity here.
       loc <- use robotLocation
-      e <- entityAt loc >>= (`isJustOr` cmdExn Grab ["There is nothing here to grab."])
+      e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
 
       -- Ensure it can be picked up.
       (e `hasProperty` Portable)
-        `holdsOr` cmdExn Grab ["The", e ^. entityName, "here can't be grabbed."]
+        `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
 
       -- Remove the entity from the world.
       updateEntityAt loc (const Nothing)
@@ -558,32 +591,18 @@ execConst c vs k = do
       when (e `hasProperty` Growable) $ do
         let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
-        case maxT of
-          -- Special case: if the growth time is zero, just add the
-          -- entity back immediately.
-          0 -> updateEntityAt loc (const (Just e))
-          -- Otherwise, grow a new entity from a seed.
-          _ -> do
-            let seedBot =
-                  mkRobot
-                    "seed"
-                    loc
-                    (V2 0 0)
-                    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
-                    []
-                    & robotDisplay
-                      .~ (defaultEntityDisplay '.' & displayAttr .~ (e ^. entityDisplay . displayAttr))
-                    & robotInventory .~ E.singleton e
-                    & systemRobot .~ True
-            _ <- lift . lift $ addRobot seedBot
-            return ()
+        if maxT == 0
+          then -- Special case: if the time is zero, growth is instant.
+            updateEntityAt loc (const (Just e))
+          else -- Otherwise, grow a new entity from a seed.
+            void $ doOnGame $ addRobot $ mkSeedBot e (minT, maxT) loc
 
       -- Add the picked up item to the robot's inventory.  If the
       -- entity yields something different, add that instead.
       let yieldName = e ^. entityYields
       e' <- case yieldName of
         Nothing -> return e
-        Just n -> (?e) <$> (lift . lift $ uses entityMap (lookupEntityName n))
+        Just n -> (?e) <$> doOnGame (uses entityMap (lookupEntityName n))
 
       robotInventory %= insert e'
 
@@ -602,15 +621,15 @@ execConst c vs k = do
 
         -- Make sure there's nothing already here
         nothingHere <- isNothing <$> entityAt loc
-        nothingHere `holdsOr` cmdExn Place ["There is already an entity here."]
+        nothingHere `holdsOrFail` ["There is already an entity here."]
 
         -- Make sure the robot has the thing in its inventory
         e <-
           listToMaybe (lookupByName s inv)
-            `isJustOr` cmdExn Place ["What is", indefinite s, "?"]
+            `isJustOrFail` ["What is", indefinite s, "?"]
 
         (E.lookup e inv > 0)
-          `holdsOr` cmdExn Place ["You don't have", indefinite s, "to place."]
+          `holdsOrFail` ["You don't have", indefinite s, "to place."]
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
@@ -624,21 +643,21 @@ execConst c vs k = do
         -- Make sure the other robot exists
         other <-
           robotNamed otherName
-            >>= (`isJustOr` cmdExn Give ["There is no robot named", otherName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOr` cmdExn Give ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOr` cmdExn Give ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName, "?"]
 
         (E.lookup item inv > 0)
-          `holdsOr` cmdExn Give ["You don't have", indefinite itemName, "to give."]
+          `holdsOrFail` ["You don't have", indefinite itemName, "to give."]
 
         -- Giving something to ourself should be a no-op.  We need
         -- this as a special case since it will not work to modify
@@ -647,10 +666,10 @@ execConst c vs k = do
         -- robotMap, overwriting any changes to this robot made
         -- directly in the robotMap during the tick.
         myName <- use robotName
-        focusedName <- lift . lift $ use focusedRobotName
+        focusedName <- doOnGame $ use focusedRobotName
         when (otherName /= myName) $ do
           -- Make the exchange
-          lift . lift $ robotMap . at otherName . _Just . robotInventory %= insert item
+          doOnGame $ robotMap . at otherName . _Just . robotInventory %= insert item
           robotInventory %= delete item
 
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
@@ -663,24 +682,24 @@ execConst c vs k = do
         -- Make sure the other robot exists
         other <-
           robotNamed otherName
-            >>= (`isJustOr` cmdExn Install ["There is no robot named", otherName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOr` cmdExn Install ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOr` cmdExn Install ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName, "?"]
 
         (E.lookup item inv > 0)
-          `holdsOr` cmdExn Install ["You don't have", indefinite itemName, "to install."]
+          `holdsOrFail` ["You don't have", indefinite itemName, "to install."]
 
         myName <- use robotName
-        focusedName <- lift . lift $ use focusedRobotName
+        focusedName <- doOnGame $ use focusedRobotName
         case otherName == myName of
           -- We have to special case installing something on ourselves
           -- for the same reason as Give.
@@ -695,9 +714,9 @@ execConst c vs k = do
               when (focusedName == myName) flagRedraw
           False -> do
             let otherDevices = robotMap . at otherName . _Just . installedDevices
-            already <- lift . lift $ preuse (otherDevices . to (`E.contains` item))
+            already <- doOnGame $ preuse (otherDevices . to (`E.contains` item))
             unless (already == Just True) $ do
-              lift . lift $ robotMap . at otherName . _Just . installedDevices %= insert item
+              doOnGame $ robotMap . at otherName . _Just . installedDevices %= insert item
               robotInventory %= delete item
 
               -- Flag the UI for a redraw if we are currently showing
@@ -709,34 +728,72 @@ execConst c vs k = do
     Make -> case vs of
       [VString name] -> do
         inv <- use robotInventory
-        em <- lift . lift $ use entityMap
+        ins <- use installedDevices
+        em <- doOnGame $ use entityMap
         e <-
           lookupEntityName name em
-            `isJustOr` cmdExn Make ["I've never heard of", indefiniteQ name, "."]
+            `isJustOrFail` ["I've never heard of", indefiniteQ name, "."]
 
-        outRs <- lift . lift $ use recipesOut
+        outRs <- doOnGame $ use recipesOut
 
         -- Only consider recipes where the number of things we are trying to make
         -- is greater in the outputs than in the inputs.  This prevents us from doing
         -- silly things like making copper pipes when the user says "make furnace".
         let recipes = filter increase (recipesFor outRs e)
-            increase (Recipe ins outs _) = countIn outs > countIn ins
+            increase r = countIn (r ^. recipeOutputs) > countIn (r ^. recipeInputs)
             countIn xs = maybe 0 fst (find ((== e) . snd) xs)
         not (null recipes)
-          `holdsOr` cmdExn Make ["There is no known recipe for making", indefinite name, "."]
+          `holdsOrFail` ["There is no known recipe for making", indefinite name, "."]
 
-        -- Now try each recipe and take the first one that we have the
-        -- ingredients for.
-        inv' <-
-          listToMaybe (rights (map (make inv) recipes))
-            `isJustOr` cmdExn Make ["You don't have the ingredients to make", indefinite name, "."]
+        -- Try recipes and remeber the first one that we have ingredients for.
+        (invTaken, changeInv, recipe) <-
+          listToMaybe (rights (map (make (inv, ins)) recipes))
+            `isJustOrFail` ["You don't have the ingredients to make", indefinite name, "."]
 
-        robotInventory .= inv'
-        return $ Out VUnit k
+        -- take recipe inputs from inventory and add outputs after recipeTime
+        robotInventory .= invTaken
+        finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) k
+    Drill -> case vs of
+      [VDir d] -> do
+        rname <- use robotName
+        inv <- use robotInventory
+        ins <- use installedDevices
+        loc <- use robotLocation
+        rDir <- use robotOrientation
+
+        let nextLoc = loc ^+^ applyTurn d (rDir ? V2 0 0)
+        em <- doOnGame $ use entityMap
+        drill <- lookupEntityName "drill" em `isJustOr` Fatal "Drill does not exist?!"
+        nextME <- entityAt nextLoc
+        nextE <-
+          nextME
+            `isJustOrFail` ["There is nothing to drill", "in the direction", "of robot", rname <> "."]
+
+        inRs <- doOnGame $ use recipesIn
+
+        let recipes = filter drilling (recipesFor inRs nextE)
+            drilling = any ((== drill) . snd) . view recipeRequirements
+
+        not (null recipes) `holdsOrFail` ["There is no way to drill", indefinite (nextE ^. entityName) <> "."]
+
+        -- add the drilled entity so it can be consumed by the recipe
+        let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
+        ((invTaken, outs), recipe) <-
+          listToMaybe (rights (map makeRecipe recipes))
+            `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
+
+        let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
+            changeInv inv' = L.foldl' (flip $ uncurry insertCount) inv' out
+            changeWorld = changeWorld' nextE nextLoc down
+
+        -- take recipe inputs from inventory and add outputs after recipeTime
+        robotInventory .= invTaken
+        finishCookingRecipe recipe (WorldUpdate changeWorld) (RobotUpdate changeInv)
+      _ -> badConst
     Blocked -> do
       loc <- use robotLocation
       orient <- use robotOrientation
@@ -760,21 +817,21 @@ execConst c vs k = do
         -- Make sure the other robot exists
         other <-
           robotNamed otherName
-            >>= (`isJustOr` cmdExn Upload ["There is no robot named", otherName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOr` cmdExn Upload ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
 
         -- Upload knowledge of everything in our inventory
         inv <- use robotInventory
         forM_ (elems inv) $ \(_, e) ->
-          lift . lift $ robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
+          doOnGame $ robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
 
         -- Upload our log
         rlog <- use robotLog
-        lift . lift $ robotMap . at otherName . _Just . robotLog <>= rlog
+        doOnGame $ robotMap . at otherName . _Just . robotLog <>= rlog
 
         return $ Out VUnit k
       _ -> badConst
@@ -786,13 +843,13 @@ execConst c vs k = do
     Say -> case vs of
       [VString s] -> do
         rn <- use robotName
-        lift . lift $ emitMessage (T.concat [rn, ": ", s])
+        doOnGame $ emitMessage (T.concat [rn, ": ", s])
         return $ Out VUnit k
       _ -> badConst
     Log -> case vs of
       [VString s] -> do
         rn <- use robotName
-        time <- lift . lift $ use ticks
+        time <- doOnGame $ use ticks
         robotLog %= (Seq.|> LogEntry s rn time)
         return $ Out VUnit k
       _ -> badConst
@@ -800,13 +857,13 @@ execConst c vs k = do
       [VString s] -> do
         _ <-
           robotNamed s
-            >>= (`isJustOr` cmdExn View ["There is no robot named ", s, " to view."])
+            >>= (`isJustOrFail` ["There is no robot named ", s, " to view."])
 
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
         rn <- use robotName
         when (rn == "base") $
-          lift . lift $ viewCenterRule .= VCRobot s
+          doOnGame $ viewCenterRule .= VCRobot s
 
         return $ Out VUnit k
       _ -> badConst
@@ -829,10 +886,10 @@ execConst c vs k = do
       _ -> badConst
     Create -> case vs of
       [VString name] -> do
-        em <- lift . lift $ use entityMap
+        em <- doOnGame $ use entityMap
         e <-
           lookupEntityName name em
-            `isJustOr` cmdExn Create ["I've never heard of", indefiniteQ name, "."]
+            `isJustOrFail` ["I've never heard of", indefiniteQ name, "."]
 
         robotInventory %= insert e
         return $ Out VUnit k
@@ -885,29 +942,25 @@ execConst c vs k = do
       _ -> badConst
     Reprogram -> case vs of
       [VString childRobotName, VDelay _ cmd e] -> do
-        em <- lift . lift $ use entityMap
-        mode <- lift . lift $ use gameMode
+        em <- doOnGame $ use entityMap
+        mode <- doOnGame $ use gameMode
         rctx@(_, capCtx) <- use robotCtx
         renv <- use robotEnv
 
         -- check if robot exists
         childRobot <-
           robotNamed childRobotName
-            >>= (`isJustOr` cmdExn Reprogram ["There is no robot named", childRobotName, "."])
+            >>= (`isJustOrFail` ["There is no robot named", childRobotName, "."])
 
         -- check that current robot is not trying to reprogram self
         myName <- use robotName
         (childRobotName /= myName)
-          `holdsOr` cmdExn
-            Reprogram
-            ["You cannot make a robot reprogram itself"]
+          `holdsOrFail` ["You cannot make a robot reprogram itself"]
 
         -- check if robot has completed executing it's current command
         _ <-
           finalValue (childRobot ^. machine)
-            `isJustOr` cmdExn
-              Reprogram
-              ["You cannot reprogram a robot that has not completed its current command"]
+            `isJustOrFail` ["You cannot reprogram a robot that has not completed its current command"]
 
         -- check if childRobot is at the correct distance
         -- a robot can program adjacent robots
@@ -916,9 +969,7 @@ execConst c vs k = do
         ( mode == Creative
             || (childRobot ^. robotLocation) `manhattan` loc <= 1
           )
-          `holdsOr` cmdExn
-            Reprogram
-            ["You can only program adjacent robot"]
+          `holdsOrFail` ["You can only program adjacent robot"]
 
         let -- Find out what capabilities are required by the program that will
             -- be run on the other robot, and what devices would provide those
@@ -933,27 +984,25 @@ execConst c vs k = do
 
         -- check if robot has all devices to execute new command
         (mode == Creative || S.null missingDevices)
-          `holdsOr` cmdExn
-            Reprogram
-            [ "the target robot does not have required devices:\n"
-            , commaList (map (^. entityName) (S.toList missingDevices))
-            ]
+          `holdsOrFail` [ "the target robot does not have required devices:\n"
+                        , commaList (map (^. entityName) (S.toList missingDevices))
+                        ]
 
         -- update other robot's CEK machine, environment and context
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        lift . lift $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
-        lift . lift $ robotMap . at childRobotName . _Just . robotEnv .= renv
-        lift . lift $ robotMap . at childRobotName . _Just . robotCtx .= rctx
+        doOnGame $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
+        doOnGame $ robotMap . at childRobotName . _Just . robotEnv .= renv
+        doOnGame $ robotMap . at childRobotName . _Just . robotCtx .= rctx
 
         return $ Out VUnit k
       _ -> badConst
     Build -> case vs of
       [VString name, VDelay _ cmd e] -> do
         r <- get
-        em <- lift . lift $ use entityMap
-        mode <- lift . lift $ use gameMode
+        em <- doOnGame $ use entityMap
+        mode <- doOnGame $ use gameMode
 
         let -- Standard devices that are always installed.
             -- XXX in the future, make a way to build these and just start the base
@@ -986,11 +1035,9 @@ execConst c vs k = do
 
         -- Make sure we're not missing any required devices.
         (mode == Creative || S.null missingDevices)
-          `holdsOr` cmdExn
-            Build
-            [ "this would require installing devices you don't have:\n"
-            , commaList (map (^. entityName) (S.toList missingDevices))
-            ]
+          `holdsOrFail` [ "this would require installing devices you don't have:\n"
+                        , commaList (map (^. entityName) (S.toList missingDevices))
+                        ]
 
         -- Construct the new robot.
         let newRobot =
@@ -1002,7 +1049,7 @@ execConst c vs k = do
                 (S.toList devices)
 
         -- Add the new robot to the world.
-        newRobot' <- lift . lift $ addRobot newRobot
+        newRobot' <- doOnGame $ addRobot newRobot
 
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.
@@ -1017,8 +1064,8 @@ execConst c vs k = do
     Salvage -> case vs of
       [] -> do
         loc <- use robotLocation
-        rm <- lift . lift $ use robotMap
-        robotSet <- lift . lift $ use (robotsByLocation . at loc)
+        rm <- doOnGame $ use robotMap
+        robotSet <- doOnGame $ use (robotsByLocation . at loc)
         let robotNameList = maybe [] S.toList robotSet
             mtarget = find okToSalvage . mapMaybe (`M.lookup` rm) $ robotNameList
             okToSalvage r = (r ^. robotName /= "base") && (not . isActive $ r)
@@ -1031,15 +1078,15 @@ execConst c vs k = do
 
             -- Also copy over its log, if we have one
             inst <- use installedDevices
-            em <- lift . lift $ use entityMap
-            mode <- lift . lift $ use gameMode
+            em <- doOnGame $ use entityMap
+            mode <- doOnGame $ use gameMode
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
             when (mode == Creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Finally, delete the salvaged robot
-            lift . lift $ deleteRobot (target ^. robotName)
+            doOnGame $ deleteRobot (target ^. robotName)
 
             return $ Out VUnit k
       _ -> badConst
@@ -1050,7 +1097,7 @@ execConst c vs k = do
       [VString fileName] -> do
         mf <- liftIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
 
-        f <- msum mf `isJustOr` cmdExn Run ["File not found:", fileName]
+        f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
         t <-
           processTerm (into @Text f) `isRightOr` \err ->
@@ -1076,6 +1123,7 @@ execConst c vs k = do
     Div -> returnEvalArith
     Exp -> returnEvalArith
  where
+  badConst :: MonadState GameState m => ExceptT Exn (StateT Robot m) a
   badConst =
     throwError $
       Fatal $
@@ -1083,6 +1131,41 @@ execConst c vs k = do
           [ "Bad application of execConst:"
           , from (prettyCEK (Out (VCApp c (reverse vs)) k))
           ]
+  finishCookingRecipe ::
+    MonadState GameState m =>
+    Recipe e ->
+    WorldUpdate ->
+    RobotUpdate ->
+    ExceptT Exn (StateT Robot m) CEK
+  finishCookingRecipe r wf rf = do
+    time <- doOnGame $ use ticks
+    let remTime = r ^. recipeTime
+    return . (if remTime <= 1 then id else Waiting (remTime + time)) $
+      Out VUnit (FImmediate wf rf : k)
+
+  -- replace some entity in the world with another entity
+  changeWorld' ::
+    Entity ->
+    V2 Int64 ->
+    IngredientList Entity ->
+    W.World Int Entity ->
+    Either Exn (W.World Int Entity)
+  changeWorld' eThen loc down w =
+    let eNow = W.lookupEntity (W.locToCoords loc) w
+     in if Just eThen /= eNow
+          then Left $ cmdExn c ["The", eThen ^. entityName, "is not there."]
+          else
+            w `updateLoc` loc <$> case down of
+              [] -> Right Nothing
+              [de] -> Right $ Just $ snd de
+              _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
+
+  -- update some tile in the world setting it to entity or making it empty
+  updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
+
+  holdsOrFail a ts = a `holdsOr` cmdExn c ts
+  isJustOrFail a ts = a `isJustOr` cmdExn c ts
+
   returnEvalCmp = case vs of
     [v1, v2] ->
       case evalCmp c v1 v2 of

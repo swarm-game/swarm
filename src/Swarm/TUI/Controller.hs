@@ -576,6 +576,7 @@ makeEntity s e = do
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
           & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
+          & gameState %~ execState (activateRobot "base")
     _ -> continueWithoutRedraw s
 
 ------------------------------------------------------------
