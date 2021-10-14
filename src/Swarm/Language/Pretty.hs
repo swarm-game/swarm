@@ -85,7 +85,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
     pparens (p > 2) $
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
-  prettyPrec p (TyDelayF ty) = pparens (p > 9) $ "delay" <+> prettyPrec 10 ty
+  prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
     pparens (p > 0) $
       prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2

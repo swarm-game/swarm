@@ -201,7 +201,7 @@ parseTypeAtom =
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
-    <|> TyDelay <$> (reserved "delay" *> parseTypeAtom)
+    <|> TyDelay <$> braces parseType
     <|> parens parseType
 
 parseDirection :: Parser Direction
