@@ -143,11 +143,14 @@ test-suite swarm-unit
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
                       tasty-hunit                   >= 0.10 && < 0.11,
-                      -- Import shared with the library don't need bounds
+                      -- Imports shared with the library don't need bounds
                       base,
                       lens,
+                      linear,
+                      mtl,
                       swarm,
-                      text
+                      text,
+                      witch
 
     hs-source-dirs:   test
     default-language: Haskell2010
