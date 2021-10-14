@@ -54,6 +54,40 @@
   - [1, drill]
 
 - in:
+  - [1, boulder]
+  out:
+  - [3, rock]
+  required:
+  - [1, drill]
+  time: 9
+
+- in:
+  - [1, mountain]
+  out:
+  - [9, rock]
+  - [1, mountain tunnel]
+  required:
+  - [1, drill]
+  time: 90
+
+- in:
+  - [1, copper vein]
+  out:
+  - [1, copper mine]
+  required:
+  - [1, drill]
+  time: 42
+
+- in:
+  - [1, copper mine]
+  out:
+  - [1, copper ore]
+  - [1, copper mine]
+  required:
+  - [1, drill]
+  time: 42
+
+- in:
   - [5, rock]
   out:
   - [1, furnace]
