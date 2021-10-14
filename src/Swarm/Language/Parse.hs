@@ -145,9 +145,6 @@ stringLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
 integer :: Parser Integer
 integer = lexeme L.decimal
 
-dbraces :: Parser a -> Parser a
-dbraces = between (symbol "{{") (symbol "}}")
-
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
 
@@ -253,10 +250,8 @@ parseTermAtom =
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
     <|> parens parseTerm
-    <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
-    <|> parseLoc (SDelay <$> dbraces parseTerm)
-    <|> parseLoc (TConst Noop <$ try (symbol "{" *> symbol "}"))
-    <|> braces parseTerm
+    <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 parseAntiquotation :: Parser Term
