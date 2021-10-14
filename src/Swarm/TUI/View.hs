@@ -521,7 +521,7 @@ timeE :: Entity
 timeE = mkEntity (defaultEntityDisplay '.') "ticks" [] []
 
 drawReqs :: IngredientList Entity -> Widget Name
-drawReqs = vBox . map drawReq
+drawReqs = vBox . map (hCenter . drawReq)
  where
   drawReq (1, e) = txt $ e ^. entityName
   drawReq (n, e) = str (show n) <+> txt " " <+> txt (e ^. entityName)
