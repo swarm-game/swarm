@@ -47,7 +47,7 @@ treeProgram =
 moverProgram :: ProcessedTerm
 moverProgram =
   [tmQ|
-    let forever : cmd () -> cmd () = \c. { c; forever c }
+    let forever : cmd () -> cmd () = \c. c; forever c
     in forever move
   |]
 
@@ -55,8 +55,8 @@ moverProgram =
 circlerProgram :: ProcessedTerm
 circlerProgram =
   [tmQ|
-    let forever : cmd () -> cmd () = \c. { c; forever c }
-    in forever {
+    let forever : cmd () -> cmd () = \c. c; forever c
+    in forever (
       move;
       turn east;
       move;
@@ -65,7 +65,7 @@ circlerProgram =
       turn west;
       move;
       turn north
-    }
+    )
   |]
 
 -- | Initializes a robot with program prog at location loc facing north.
