@@ -23,7 +23,6 @@ import Control.Arrow ((***))
 import Control.Lens hiding (Const, from, parts)
 import Control.Monad.Except
 import Control.Monad.State
-import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
 import Data.List (find)
@@ -911,13 +910,9 @@ execConst c vs k = do
       [VDelay Nothing t e] -> return $ In t e k
       [VDelay (Just x) t e] -> return $ In t (addBinding x (VDelay (Just x) t e) e) k
       _ -> badConst
-    -- Note, if should evaluate the branches lazily, but since
-    -- evaluation is eager, by the time we get here thn and els have
-    -- already been fully evaluated --- what gives?  The answer is that
-    -- we rely on elaboration to add 'lazy' wrappers around the branches
-    -- (and a 'force' wrapper around the entire if).
     If -> case vs of
-      [VBool b, thn, els] -> return $ Out (bool els thn b) k
+      [VBool True, VDelay _ thn e, _] -> return $ In thn e k
+      [VBool False, _, VDelay _ els e] -> return $ In els e k
       _ -> badConst
     Fst -> case vs of
       [VPair v _] -> return $ Out v k

@@ -30,12 +30,6 @@ elaborate =
     -- Now do additional rewriting on all subterms.
     . transform rewrite
  where
-  -- if cond thn els ---> force (if cond (delay thn) (delay els))
-  -- When if is evaluated, its arguments are eagerly evaluated, just
-  -- like any function application.  This ensures that evaluation of
-  -- the arguments is delayed until one of them is chosen by the if.
-  rewrite (TApp (TApp (TApp (TConst If) cond) thn) els) =
-    TApp (TConst Force) (TApp (TApp (TApp (TConst If) cond) (TDelay thn)) (TDelay els))
   -- Rewrite any recursive occurrences of x inside t1 to (force x).
   -- When interpreting t1, we will put a binding (x |-> delay t1)
   -- in the context.
