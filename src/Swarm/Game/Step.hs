@@ -1164,16 +1164,7 @@ execConst c vs k = do
   returnEvalArith = case vs of
     [VInt n1, VInt n2] -> case evalArith c n1 n2 of
       Left exn -> return $ Up exn k
-      -- Note, we want to maintain the invariant that only executing
-      -- commands can throw exceptions, not evaluating pure
-      -- expressions; hence, dividing by zero and exponentiating by a
-      -- negative number have to return some value even though they
-      -- aren't sensible.  Nothing signals this type of failure; we
-      -- choose a random number to return.
-      Right Nothing -> do
-        n <- uniform (-1000000, 1000000)
-        return $ Out (VInt n) k
-      Right (Just r) -> return $ Out (VInt r) k
+      Right r -> return $ Out (VInt r) k
     _ -> badConst
 
 -- | Evaluate the application of a comparison operator.  Returns
@@ -1211,28 +1202,27 @@ compareValues = \case
   VDelay {} -> const Nothing
 
 -- | Evaluate the application of an arithmetic operator, returning
---   @Nothing@ in the case of a failing operation. In case we
---   incorrectly use it on a bad 'Const' in the library, return an
---   exception.
-evalArith :: Const -> Integer -> Integer -> Either Exn (Maybe Integer)
+--   an exception in the case of a failing operation, or in case we
+--   incorrectly use it on a bad 'Const' in the library.
+evalArith :: Const -> Integer -> Integer -> Either Exn Integer
 evalArith = \case
   Add -> ok (+)
   Sub -> ok (-)
   Mul -> ok (*)
-  Div -> \x y -> Right (safeDiv x y)
-  Exp -> \x y -> Right (safeExp x y)
+  Div -> safeDiv
+  Exp -> safeExp
   c -> \_ _ -> Left $ Fatal $ T.append "evalArith called on bad constant " (from (show c))
  where
-  ok f x y = Right $ Just (f x y)
+  ok f x y = Right $ f x y
 
 -- | Perform an integer division, but return @Nothing@ for division by
 --   zero.
-safeDiv :: Integer -> Integer -> Maybe Integer
-safeDiv _ 0 = Nothing
-safeDiv a b = Just $ a `div` b
+safeDiv :: Integer -> Integer -> Either Exn Integer
+safeDiv _ 0 = Left $ CmdFailed Div "Division by zero"
+safeDiv a b = return $ a `div` b
 
 -- | Perform exponentiation, but return @Nothing@ if the power is negative.
-safeExp :: Integer -> Integer -> Maybe Integer
+safeExp :: Integer -> Integer -> Either Exn Integer
 safeExp a b
-  | b < 0 = Nothing
-  | otherwise = Just $ a ^ b
+  | b < 0 = Left $ CmdFailed Exp "Negative exponent"
+  | otherwise = return $ a ^ b
