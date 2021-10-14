@@ -1155,11 +1155,8 @@ execConst c vs k = do
   returnEvalCmp = case vs of
     [v1, v2] ->
       case evalCmp c v1 v2 of
-        -- If the comparison does not make sense, just return a random result.
-        Nothing -> do
-          b <- uniform (False, True)
-          return $ Out (VBool b) k
-        Just b -> return $ Out (VBool b) k
+        Left exn -> return $ Up exn k
+        Right b -> return $ Out (VBool b) k
     _ -> badConst
   returnEvalArith = case vs of
     [VInt n1, VInt n2] -> case evalArith c n1 n2 of
@@ -1169,7 +1166,7 @@ execConst c vs k = do
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
-evalCmp :: Const -> Value -> Value -> Maybe Bool
+evalCmp :: Const -> Value -> Value -> Either Exn Bool
 evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
  where
   decideCmp = \case
@@ -1179,27 +1176,41 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
     Gt -> fmap (== GT)
     Leq -> fmap (/= GT)
     Geq -> fmap (/= LT)
-    _ -> const Nothing
+    _ -> const $ Left $ Fatal $ T.append "evalCmp called on bad constant " (from (show c))
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
-compareValues :: Value -> Value -> Maybe Ordering
-compareValues = \case
-  VUnit -> \case VUnit -> Just EQ; _ -> Nothing
-  VInt n1 -> \case VInt n2 -> Just (compare n1 n2); _ -> Nothing
-  VString t1 -> \case VString t2 -> Just (compare t1 t2); _ -> Nothing
-  VDir d1 -> \case VDir d2 -> Just (compare d1 d2); _ -> Nothing
-  VBool b1 -> \case VBool b2 -> Just (compare b1 b2); _ -> Nothing
+compareValues :: Value -> Value -> Either Exn Ordering
+compareValues = \v1 -> case v1 of
+  VUnit -> \case VUnit -> Right EQ; v2 -> Left $ incompatCmp VUnit v2
+  VInt n1 -> \case VInt n2 -> Right (compare n1 n2); v2 -> Left $ incompatCmp v1 v2
+  VString t1 -> \case VString t2 -> Right (compare t1 t2); v2 -> Left $ incompatCmp v1 v2
+  VDir d1 -> \case VDir d2 -> Right (compare d1 d2); v2 -> Left $ incompatCmp v1 v2
+  VBool b1 -> \case VBool b2 -> Right (compare b1 b2); v2 -> Left $ incompatCmp v1 v2
   VPair v11 v12 -> \case
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
-    _ -> Nothing
-  VClo {} -> const Nothing
-  VCApp {} -> const Nothing
-  VDef {} -> const Nothing
-  VResult {} -> const Nothing
-  VBind {} -> const Nothing
-  VDelay {} -> const Nothing
+    v2 -> Left $ incompatCmp v1 v2
+  VClo {} -> Left . incomparable v1
+  VCApp {} -> Left . incomparable v1
+  VDef {} -> Left . incomparable v1
+  VResult {} -> Left . incomparable v1
+  VBind {} -> Left . incomparable v1
+  VDelay {} -> Left . incomparable v1
+
+-- | Values with different types were compared; this should not be
+--   possible since the type system should catch it.
+incompatCmp :: Value -> Value -> Exn
+incompatCmp v1 v2 =
+  Fatal $
+    T.unwords ["Incompatible comparison of ", prettyValue v1, "and", prettyValue v2]
+
+-- | Values were compared of a type which cannot be compared
+--   (e.g. functions, etc.).
+incomparable :: Value -> Value -> Exn
+incomparable v1 v2 =
+  CmdFailed Lt $
+    T.unwords ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
 -- | Evaluate the application of an arithmetic operator, returning
 --   an exception in the case of a failing operation, or in case we
