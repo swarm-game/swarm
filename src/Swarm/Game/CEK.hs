@@ -53,6 +53,12 @@ module Swarm.Game.CEK (
   Frame (..),
   Cont,
 
+  -- ** Wrappers for creating delayed change of state
+
+  --    See 'FImmediate'.
+  WorldUpdate (..),
+  RobotUpdate (..),
+
   -- * CEK machine states
   CEK (..),
 
@@ -75,8 +81,10 @@ import Data.List (intercalate)
 import qualified Data.Set as S
 import Witch (from)
 
+import Swarm.Game.Entity (Entity, Inventory)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
+import Swarm.Game.World (World)
 import Swarm.Language.Capability (CapCtx)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
@@ -136,6 +144,7 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) Term Env
+  | FImmediate WorldUpdate RobotUpdate
   deriving (Eq, Show)
 
 -- | A continuation is just a stack of frames.
@@ -254,3 +263,31 @@ prettyFrame FLoadEnv {} = "loadEnv"
 prettyFrame FExec = "exec _"
 prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
 prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
+prettyFrame FImmediate {} = "(_ : cmd a)"
+
+--------------------------------------------------------------
+-- Wrappers for functions in FImmediate
+--
+-- NOTE: we can not use GameState and Robot directly, as it
+-- would create a cyclic dependency. The alternative is
+-- making CEK, Cont and Frame polymorphic which just muddies
+-- the picture too much for one little game feature.
+--
+-- BEWARE: the types do not follow normal laws for Show and Eq
+--------------------------------------------------------------
+
+newtype WorldUpdate = WorldUpdate
+  { worldUpdate :: World Int Entity -> Either Exn (World Int Entity)
+  }
+
+newtype RobotUpdate = RobotUpdate
+  { robotUpdateInventory :: Inventory -> Inventory
+  }
+
+instance Show WorldUpdate where show _ = "WorldUpdate {???}"
+
+instance Show RobotUpdate where show _ = "RobotUpdate {???}"
+
+instance Eq WorldUpdate where _ == _ = True
+
+instance Eq RobotUpdate where _ == _ = True

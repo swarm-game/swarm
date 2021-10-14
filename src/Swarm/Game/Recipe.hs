@@ -24,6 +24,7 @@ module Swarm.Game.Recipe (
   recipeInputs,
   recipeOutputs,
   recipeRequirements,
+  recipeTime,
 
   -- * Loading recipes
   loadRecipes,
@@ -33,6 +34,7 @@ module Swarm.Game.Recipe (
   -- * Looking up recipes
   recipesFor,
   make,
+  make',
 ) where
 
 import Control.Lens hiding (from, (.=))
@@ -67,6 +69,7 @@ data Recipe e = Recipe
   { _recipeInputs :: IngredientList e
   , _recipeOutputs :: IngredientList e
   , _recipeRequirements :: IngredientList e
+  , _recipeTime :: Integer
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
@@ -78,6 +81,9 @@ recipeInputs :: Lens' (Recipe e) (IngredientList e)
 -- | The outputs from a recipe.
 recipeOutputs :: Lens' (Recipe e) (IngredientList e)
 
+-- | The time required to finish a recipe.
+recipeTime :: Lens' (Recipe e) Integer
+
 -- | Other entities which the recipe requires you to have, but which
 --   are not consumed by the recipe (e.g. a furnace).
 recipeRequirements :: Lens' (Recipe e) (IngredientList e)
@@ -87,16 +93,21 @@ recipeRequirements :: Lens' (Recipe e) (IngredientList e)
 ------------------------------------------------------------
 
 instance ToJSON (Recipe Text) where
-  toJSON (Recipe ins outs reqs) =
+  toJSON (Recipe ins outs reqs time) =
     object $
       [ "in" .= ins
       , "out" .= outs
       ]
         ++ ["required" .= reqs | not (null reqs)]
+        ++ ["time" .= time | time /= 1]
 
 instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
-    Recipe <$> v .: "in" <*> v .: "out" <*> v .:? "required" .!= []
+    Recipe
+      <$> v .: "in"
+      <*> v .: "out"
+      <*> v .:? "required" .!= []
+      <*> v .:? "time" .!= 1
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'
@@ -143,17 +154,40 @@ inRecipeMap = buildRecipeMap recipeInputs
 
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
-missingIngredientsFor :: Inventory -> Recipe Entity -> [(Count, Entity)]
-missingIngredientsFor inv (Recipe ins _ reqs) =
-  filter ((> 0) . fst) $ map (\(n, e) -> (n - E.lookup e inv, e)) (ins ++ reqs)
+--   Requirements are not consumed and so can use installed.
+missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [(Count, Entity)]
+missingIngredientsFor (inv, ins) (Recipe inps _ reqs _) =
+  findLacking inv inps
+    <> findLacking ins (findLacking inv reqs)
+ where
+  findLacking inven = filter ((> 0) . fst) . map (countNeeded inven)
+  countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
 
 -- | Try to make a recipe, deleting the recipe's inputs from the
---   inventory and adding the outputs. Return either a description of
---   which items are lacking, if the inventory does not contain
---   sufficient inputs, or an updated inventory if it was successful.
-make :: Inventory -> Recipe Entity -> Either [(Count, Entity)] Inventory
-make inv r@(Recipe ins outs _) = case missingIngredientsFor inv r of
-  [] ->
-    Right $
-      foldl' (flip (uncurry insertCount)) (foldl' (flip (uncurry deleteCount)) inv ins) outs
-  missing -> Left missing
+--   inventory. Return either a description of which items are
+--   lacking, if the inventory does not contain sufficient inputs,
+--   or an inventory without inputs and function adding outputs if
+--   it was successful.
+make ::
+  -- robots inventory and installed devices
+  (Inventory, Inventory) ->
+  -- considered recipe
+  Recipe Entity ->
+  -- failure (with count of missing) or success with a new inventory,
+  -- a function to add results and the recipe repeated
+  Either
+    [(Count, Entity)]
+    (Inventory, Inventory -> Inventory, Recipe Entity)
+make invs r = finish <$> make' invs r
+ where
+  finish (invTaken, out) = (invTaken, addOuts out, r)
+  addOuts out inv' = foldl' (flip $ uncurry insertCount) inv' out
+
+-- | Try to make a recipe, but do not insert it yet.
+make' :: (Inventory, Inventory) -> Recipe Entity -> Either [(Count, Entity)] (Inventory, IngredientList Entity)
+make' invs@(inv, _) r =
+  case missingIngredientsFor invs r of
+    [] ->
+      let removed = foldl' (flip (uncurry deleteCount)) inv (r ^. recipeInputs)
+       in Right (removed, r ^. recipeOutputs)
+    missing -> Left missing
