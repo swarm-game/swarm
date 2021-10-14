@@ -126,7 +126,7 @@ data Frame
     FLet Var Term Env
   | -- | We are executing inside a 'Try' block.  If an exception is
     --   raised, we will execute the stored term (the "catch" block).
-    FTry Value
+    FTry Term Env
   | -- | We were executing a command; next we should take any
     --   environment it returned and union it with this one to produce
     --   the result of a bind expression.
@@ -257,7 +257,7 @@ prettyFrame (FFst v) = "(" ++ from (prettyValue v) ++ ", _)"
 prettyFrame (FArg t _) = "_ " ++ prettyString t
 prettyFrame (FApp v) = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _) = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FTry c) = "try _ (" ++ from (prettyValue c) ++ ")"
+prettyFrame (FTry t _) = "try _ (" ++ prettyString t ++ ")"
 prettyFrame FUnionEnv {} = "_ ∪ <Env>"
 prettyFrame FLoadEnv {} = "loadEnv"
 prettyFrame FExec = "exec _"

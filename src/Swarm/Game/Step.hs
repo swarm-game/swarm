@@ -434,7 +434,7 @@ stepCEK cek = case cek of
 
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
-  Out v (FTry _ : k) -> return $ Out v k
+  Out v (FTry {} : k) -> return $ Out v k
   -- If an exception rises all the way to the top level without being
   -- handled, turn it into an error message via the 'log' command.
 
@@ -455,7 +455,7 @@ stepCEK cek = case cek of
   -- Otherwise, if we are raising an exception up the continuation
   -- stack and come to a Try frame, execute the associated catch
   -- block.
-  Up _ (FTry c : k) -> return $ Out c (FExec : k)
+  Up _ (FTry t e : k) -> return $ In t e (FExec : k)
   -- Otherwise, keep popping from the continuation stack.
   Up exn (_ : k) -> return $ Up exn k
   -- Finally, if we're done evaluating and the continuation stack is
@@ -921,7 +921,7 @@ execConst c vs k = do
       [VPair _ v] -> return $ Out v k
       _ -> badConst
     Try -> case vs of
-      [c1, c2] -> return $ Out c1 (FExec : FTry c2 : k)
+      [VDelay _ c1 e1, VDelay _ c2 e2] -> return $ In c1 e1 (FExec : FTry c2 e2 : k)
       _ -> badConst
     Raise -> case vs of
       [VString s] -> return $ Up (User s) k
