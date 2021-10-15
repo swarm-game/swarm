@@ -934,8 +934,8 @@ execConst c vs k = do
     Reprogram -> case vs of
       [VString childRobotName, VDelay _ cmd e] -> do
         r <- get
-        em <- lift . lift $ use entityMap
-        mode <- lift . lift $ use gameMode
+        em <- doOnGame $ use entityMap
+        mode <- doOnGame $ use gameMode
 
         -- check if robot exists
         childRobot <-
