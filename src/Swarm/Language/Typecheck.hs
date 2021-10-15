@@ -68,7 +68,6 @@ import Prelude hiding (lookup)
 import Control.Unification hiding (applyBindings, (=:=))
 import qualified Control.Unification as U
 import Control.Unification.IntVar
-import Data.Functor.Fixedpoint (cata)
 
 import Swarm.Language.Context hiding (lookup)
 import qualified Swarm.Language.Context as Ctx
@@ -114,31 +113,17 @@ lookup loc x = do
 --   'IntVar's in a 'Set'.
 deriving instance Ord IntVar
 
--- | A class for getting the free variables (unification or type
---   variables) of a thing.
+-- | A class for getting the free unification variables of a thing.
 class FreeVars a where
-  freeVars :: a -> Infer (Set (Either Var IntVar))
+  freeVars :: a -> Infer (Set IntVar)
 
--- | We can get the free variables of a type (which would consist of
---   only type variables).
-instance FreeVars Type where
-  freeVars = return . cata (\case TyVarF x -> S.singleton (Left x); f -> fold f)
-
--- | We can get the free variables of a 'UType' (which would consist
---   of unification variables as well as type variables).
+-- | We can get the free unification variables of a 'UType'.
 instance FreeVars UType where
-  freeVars ut = do
-    fuvs <- fmap (S.fromList . map Right) . lift . lift $ getFreeVars ut
-    let ftvs =
-          ucata
-            (const S.empty)
-            (\case TyVarF x -> S.singleton (Left x); f -> fold f)
-            ut
-    return $ fuvs `S.union` ftvs
+  freeVars ut = fmap S.fromList . lift . lift $ getFreeVars ut
 
 -- | We can also get the free variables of a polytype.
 instance FreeVars t => FreeVars (Poly t) where
-  freeVars (Forall xs t) = (\\ S.fromList (map Left xs)) <$> freeVars t
+  freeVars (Forall _ t) = freeVars t
 
 -- | We can get the free variables in any polytype in a context.
 instance FreeVars UCtx where
@@ -224,8 +209,8 @@ generalize uty = do
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
-      xs = map (either id (mkVarName "a")) fvs
-  return $ Forall xs (substU (M.fromList (zip fvs (map UTyVar xs))) uty')
+      xs = map (mkVarName "a") fvs
+  return $ Forall xs (substU (M.fromList (zip (map Right fvs) (map UTyVar xs))) uty')
 
 ------------------------------------------------------------
 -- Type errors
@@ -238,6 +223,8 @@ generalize uty = do
 data TypeErr
   = -- | An undefined variable was encountered.
     UnboundVar Location Var
+  | -- | A Skolem variable escaped its local context.
+    EscapedSkolem Location Var
   | Infinite IntVar UType
   | -- | The given term was expected to have a certain type, but has a
     -- different type instead.
@@ -253,6 +240,7 @@ instance Fallible TypeF IntVar TypeErr where
 getTypeErrLocation :: TypeErr -> Maybe Location
 getTypeErrLocation te = case te of
   UnboundVar l _ -> Just l
+  EscapedSkolem l _ -> Just l
   Infinite _ _ -> Nothing
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
@@ -371,14 +359,29 @@ infer (Syntax _ (SLet x Nothing t1 t2)) = do
   xTy =:= uty
   upty <- generalize uty
   withBinding x upty $ infer t2
-infer (Syntax _ (SLet x (Just pty) t1 t2)) = do
+infer (Syntax l (SLet x (Just pty) t1 t2)) = do
   let upty = toU pty
   -- If an explicit polytype has been provided, skolemize it and check
   -- definition and body under an extended context.
   uty <- skolemize upty
-  withBinding x upty $ do
+  resTy <- withBinding x upty $ do
     check t1 uty `catchError` addLocToTypeErr t1
     infer t2
+  -- Make sure no skolem variables have escaped.
+  ask >>= mapM_ noSkolems
+  return resTy
+ where
+  noSkolems :: UPolytype -> Infer ()
+  noSkolems (Forall xs upty) = do
+    upty' <- applyBindings upty
+    let tyvs =
+          ucata
+            (const S.empty)
+            (\case TyVarF v -> S.singleton v; f -> fold f)
+            upty'
+        ftyvs = tyvs `S.difference` S.fromList xs
+    unless (S.null ftyvs) $
+      throwError $ EscapedSkolem l (head (S.toList ftyvs))
 infer (Syntax l t@SDef {}) = throwError $ DefNotTopLevel l t
 infer (Syntax _ (SBind mx c1 c2)) = do
   ty1 <- infer c1
@@ -423,13 +426,15 @@ inferConst c = toU $ case c of
   Install -> [tyQ| string -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
   Reprogram -> [tyQ| forall a. string -> cmd a -> cmd () |]
+  Drill -> [tyQ| dir -> cmd () |]
   Build -> [tyQ| forall a. string -> cmd a -> cmd string |]
+  Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
+  Log -> [tyQ| string -> cmd () |]
   View -> [tyQ| string -> cmd () |]
   Appear -> [tyQ| string -> cmd () |]
   Create -> [tyQ| string -> cmd () |]
-  GetX -> [tyQ| cmd int |]
-  GetY -> [tyQ| cmd int |]
+  Whereami -> [tyQ| cmd (int * int) |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd () |]
   Upload -> [tyQ| string -> cmd () |]

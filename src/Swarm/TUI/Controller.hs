@@ -106,8 +106,9 @@ handleEvent s ev = do
   case ev of
     ControlKey 'q' -> shutdown s
     MetaKey 'w' -> setFocus s WorldPanel
-    MetaKey 'e' -> setFocus s InfoPanel
+    MetaKey 'e' -> setFocus s RobotPanel
     MetaKey 'r' -> setFocus s REPLPanel
+    MetaKey 't' -> setFocus s InfoPanel
     FKey 1 -> toggleModal s HelpModal
     _anyOtherEvent
       | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
@@ -116,6 +117,7 @@ handleEvent s ev = do
         case focusGetCurrent (s ^. uiState . uiFocusRing) of
           Just REPLPanel -> handleREPLEvent s ev
           Just WorldPanel -> handleWorldEvent s ev
+          Just RobotPanel -> handleRobotPanelEvent s ev
           Just InfoPanel -> handleInfoPanelEvent s ev
           _ -> continueWithoutRedraw s
 
@@ -235,20 +237,28 @@ runFrame = do
   uiState . frameCount += 1
 
   -- Now do as many ticks as we need to catch up.
+  uiState . frameTickCount .= 0
   runFrameTicks (fromNanoSecs dt)
 
+ticksPerFrameCap :: Int
+ticksPerFrameCap = 30
+
 -- | Do zero or more ticks, with each tick notionally taking the given
---   timestep, until we have used up all available accumulated time.
+--   timestep, until we have used up all available accumulated time,
+--   OR until we have hit the cap on ticks per frame, whichever comes
+--   first.
 runFrameTicks :: TimeSpec -> StateT AppState (EventM Name) ()
 runFrameTicks dt = do
   a <- use (uiState . accumulatedTime)
+  t <- use (uiState . frameTickCount)
 
-  -- Is there still time left?
-  when (a >= dt) $ do
+  -- Is there still time left?  Or have we hit the cap on ticks per frame?
+  when (a >= dt && t < ticksPerFrameCap) $ do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
     uiState . tickCount += 1
+    uiState . frameTickCount += 1
     uiState . accumulatedTime -= dt
     runFrameTicks dt
 
@@ -310,7 +320,47 @@ updateUI = do
     -- Otherwise, do nothing.
     _ -> pure False
 
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated
+  -- If the focused robot's log has been updated, attempt to
+  -- automatically switch to it and scroll all the way down so the new
+  -- message can be seen.
+  uiState . uiScrollToEnd .= False
+  logUpdated <- do
+    case maybe False (view robotLogUpdated) fr of
+      False -> pure False
+      True -> do
+        -- Reset the log updated flag
+        zoom gameState clearFocusedRobotLogUpdated
+
+        -- Find and focus an installed "logger" device in the inventory list.
+        let isLogger (InstalledEntry e) = e ^. entityName == "logger"
+            isLogger _ = False
+            focusLogger = BL.listFindBy isLogger
+
+        uiState . uiInventory . _Just . _2 %= focusLogger
+
+        -- Now inform the UI that it should scroll the info panel to
+        -- the very end.
+        uiState . uiScrollToEnd .= True
+        pure True
+
+  -- Decide whether the info panel has more content scrolled off the
+  -- top and/or bottom, so we can draw some indicators to show it if
+  -- so.  Note, because we only know the update size and position of
+  -- the viewport *after* it has been rendered, this means the top and
+  -- bottom indicators will only be updated one frame *after* the info
+  -- panel updates, but this isn't really that big of deal.
+  infoPanelUpdated <- do
+    mvp <- lift $ lookupViewport InfoViewport
+    case mvp of
+      Nothing -> return False
+      Just vp -> do
+        let topMore = (vp ^. vpTop) > 0
+            botMore = (vp ^. vpTop + snd (vp ^. vpSize)) < snd (vp ^. vpContentSize)
+        oldTopMore <- uiState . uiMoreInfoTop <<.= topMore
+        oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
+        return $ oldTopMore /= topMore || oldBotMore /= botMore
+
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated
   pure redraw
 
 -- | Make sure all tiles covering the visible part of the world are
@@ -351,6 +401,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
             & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
+            & gameState %~ execState (activateRobot "base")
       Left err ->
         continue $
           s
@@ -412,18 +463,19 @@ worldScrollDist = 8
 
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
--- scrolling the world view
+-- scrolling the world view in Creative mode
 handleWorldEvent s (VtyEvent (V.EvKey k []))
-  | k
-      `elem` [ V.KUp
-             , V.KDown
-             , V.KLeft
-             , V.KRight
-             , V.KChar 'h'
-             , V.KChar 'j'
-             , V.KChar 'k'
-             , V.KChar 'l'
-             ] =
+  | (s ^. gameState . gameMode) == Creative
+      && k
+        `elem` [ V.KUp
+               , V.KDown
+               , V.KLeft
+               , V.KRight
+               , V.KChar 'h'
+               , V.KChar 'j'
+               , V.KChar 'k'
+               , V.KChar 'l'
+               ] =
     scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
   invalidateCacheEntry WorldCache
@@ -488,29 +540,19 @@ adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState
 adjustTPS (+/-) = uiState . lgTicksPerSecond %~ (+/- 1)
 
 ------------------------------------------------------------
--- Info panel events
+-- Robot panel events
 ------------------------------------------------------------
 
--- | Handle user input events in the info panel.
-handleInfoPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleInfoPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
+-- | Handle user input events in the robot panel.
+handleRobotPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList >>= BL.listSelectedElement of
     Nothing -> continueWithoutRedraw s
     Just (_, Separator _) -> continueWithoutRedraw s
-    Just (_, InventoryEntry _ e) -> do
-      let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
-          mkTy = Forall [] $ TyCmd TyUnit
-          mkProg = TApp (TConst Make) (TString (e ^. entityName))
-          mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
-      case isActive <$> (s ^. gameState . robotMap . at "base") of
-        Just False ->
-          continue $
-            s
-              & gameState . replStatus .~ REPLWorking mkTy Nothing
-              & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
-        _ -> continueWithoutRedraw s
-handleInfoPanelEvent s (VtyEvent ev) = do
+    Just (_, InventoryEntry _ e) -> makeEntity s e
+    Just (_, InstalledEntry e) -> makeEntity s e
+handleRobotPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList of
     Nothing -> continueWithoutRedraw s
@@ -518,4 +560,38 @@ handleInfoPanelEvent s (VtyEvent ev) = do
       l' <- handleListEventWithSeparators ev (is _Separator) l
       let s' = s & uiState . uiInventory . _Just . _2 .~ l'
       continue s'
-handleInfoPanelEvent s _ = continueWithoutRedraw s
+handleRobotPanelEvent s _ = continueWithoutRedraw s
+
+-- | Attempt to make an entity selected from the inventory, if the
+--   base is not currently busy.
+makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
+makeEntity s e = do
+  let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+      mkTy = Forall [] $ TyCmd TyUnit
+      mkProg = TApp (TConst Make) (TString (e ^. entityName))
+      mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
+  case isActive <$> (s ^. gameState . robotMap . at "base") of
+    Just False ->
+      continue $
+        s
+          & gameState . replStatus .~ REPLWorking mkTy Nothing
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
+          & gameState %~ execState (activateRobot "base")
+    _ -> continueWithoutRedraw s
+
+------------------------------------------------------------
+-- Info panel events
+------------------------------------------------------------
+
+-- | Handle user events in the info panel (just scrolling).
+handleInfoPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleInfoPanelEvent s = \case
+  VtyEvent (V.EvKey V.KDown []) -> vScrollBy infoScroll 1 >> continue s
+  VtyEvent (V.EvKey V.KUp []) -> vScrollBy infoScroll (-1) >> continue s
+  VtyEvent (V.EvKey (V.KChar 'k') []) -> vScrollBy infoScroll 1 >> continue s
+  VtyEvent (V.EvKey (V.KChar 'j') []) -> vScrollBy infoScroll (-1) >> continue s
+  VtyEvent (V.EvKey V.KPageDown []) -> vScrollPage infoScroll Brick.Down >> continue s
+  VtyEvent (V.EvKey V.KPageUp []) -> vScrollPage infoScroll Brick.Up >> continue s
+  VtyEvent (V.EvKey V.KHome []) -> vScrollToBeginning infoScroll >> continue s
+  VtyEvent (V.EvKey V.KEnd []) -> vScrollToEnd infoScroll >> continue s
+  _ -> continueWithoutRedraw s

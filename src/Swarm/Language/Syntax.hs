@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -150,6 +148,18 @@ west :: V2 Int64
 west = V2 (-1) 0
 
 -- | Constants, representing various built-in functions and commands.
+--
+--   IF YOU ADD A NEW CONSTANT, be sure to also update:
+--   1. the 'constInfo' function (below)
+--   2. the capability checker ("Swarm.Language.Capability")
+--   3. the type checker ("Swarm.Language.Typecheck")
+--   4. the runtime ("Swarm.Game.Step")
+--   5. the emacs mode syntax highlighter (@contribs/swarm-mode.el@)
+--
+--   GHC will warn you about incomplete pattern matches for the first
+--   four, so it's not really possible to forget.  Note you do not
+--   need to update the parser or pretty-printer, since they are
+--   auto-generated from 'constInfo'.
 data Const
   = -- Trivial actions
 
@@ -176,13 +186,19 @@ data Const
     Install
   | -- | Make an item.
     Make
+  | -- | Drill through an entity.
+    Drill
   | -- | Construct a new robot.
     Build
+  | -- | Deconstruct an old robot.
+    Salvage
   | -- | Reprogram a robot that has executed it's command
     --   with a new command
     Reprogram
   | -- | Emit a message.
     Say
+  | -- | Emit a log message.
+    Log
   | -- | View a certain robot.
     View
   | -- | Set what characters are used for display.
@@ -192,10 +208,8 @@ data Const
     Create
   | -- Sensing / generation
 
-    -- | Get the current x-coordinate.
-    GetX
-  | -- | Get the current y-coordinate.
-    GetY
+    -- | Get the current x, y coordinates
+    Whereami
   | -- | See if we can move forward or not.
     Blocked
   | -- | Scan a nearby cell
@@ -309,7 +323,12 @@ arity c = case constMeta $ constInfo c of
   ConstMBinOp {} -> 2
   ConstMFunc a _ -> a
 
--- note: verified same as before
+-- | Whether a constant represents a /command/.  Constants which are
+--   not commands are /functions/ which are interpreted as soon as
+--   they are evaluated.  Commands, on the other hand, are not
+--   interpreted until being /executed/, that is, when meeting an
+--   'FExec' frame.  When evaluated, commands simply turn into a
+--   'VCApp'.
 isCmd :: Const -> Bool
 isCmd c = case constMeta $ constInfo c of
   ConstMFunc _ cmd -> cmd
@@ -339,13 +358,15 @@ constInfo c = case c of
   Install -> commandLow 2
   Make -> commandLow 1
   Reprogram -> commandLow 2
+  Drill -> commandLow 1
   Build -> commandLow 2
+  Salvage -> commandLow 0
   Say -> commandLow 1
+  Log -> commandLow 1
   View -> commandLow 1
   Appear -> commandLow 1
   Create -> commandLow 1
-  GetX -> commandLow 0
-  GetY -> commandLow 0
+  Whereami -> commandLow 0
   Blocked -> commandLow 0
   Scan -> commandLow 0
   Upload -> commandLow 1
@@ -384,7 +405,7 @@ constInfo c = case c of
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
-mkOp' c t1 t2 = TApp (TApp (TConst c) t1) t2
+mkOp' c t1 = TApp (TApp (TConst c) t1)
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).

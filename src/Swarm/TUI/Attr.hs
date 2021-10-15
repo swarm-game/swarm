@@ -36,7 +36,9 @@ swarmAttrMap =
     , (woodAttr, fg (V.rgbColor @Int 139 69 19))
     , (flowerAttr, fg (V.rgbColor @Int 200 0 200))
     , (copperAttr, fg V.yellow)
+    , (copperAttr', fg (V.rgbColor @Int 78 117 102))
     , (snowAttr, fg V.white)
+    , (sandAttr, fg (V.rgbColor @Int 194 178 128))
     , (fireAttr, fg V.red `V.withStyle` V.bold)
     , (deviceAttr, fg V.yellow `V.withStyle` V.bold)
     , -- Terrain attributes
@@ -61,7 +63,9 @@ robotAttr
   , plantAttr
   , flowerAttr
   , copperAttr
+  , copperAttr'
   , snowAttr
+  , sandAttr
   , rockAttr
   , baseAttr
   , fireAttr
@@ -87,7 +91,9 @@ entityAttr = "entity"
 plantAttr = "plant"
 flowerAttr = "flower"
 copperAttr = "copper"
+copperAttr' = "copper'"
 snowAttr = "snow"
+sandAttr = "sand"
 fireAttr = "fire"
 rockAttr = "rock"
 woodAttr = "wood"
