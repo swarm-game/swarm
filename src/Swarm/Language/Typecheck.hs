@@ -322,7 +322,7 @@ infer (Syntax _ (TAntiString _)) = return UTyString
 infer (Syntax _ (TBool _)) = return UTyBool
 -- To infer the type of a pair, just infer both components.
 infer (Syntax _ (SPair t1 t2)) = UTyProd <$> infer t1 <*> infer t2
--- if t : ty, then  {{t}} : delay ty.
+-- if t : ty, then  {t} : {ty}.
 infer (Syntax _ (SDelay t)) = UTyDelay <$> infer t
 -- Just look up variables in the context.
 infer (Syntax l (TVar x)) = lookup l x

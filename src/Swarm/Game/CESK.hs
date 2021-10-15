@@ -9,14 +9,15 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- The Swarm interpreter uses a technique known as a
--- <https://matt.might.net/articles/cesk-machines/ CESK machine>.
--- Execution happens simply by iterating a step function,
--- sending one state of the CESK machine to the next. In addition
--- to being relatively efficient, this means we can easily run a
--- bunch of robots synchronously, in parallel, without resorting
--- to any threads (by stepping their machines in a round-robin
--- fashion); pause and single-step the game; save and resume,
--- and so on.
+-- <https://matt.might.net/articles/cesk-machines/ CESK machine> (if
+-- you want to read up on them, you may want to start by reading about
+-- <https://matt.might.net/articles/cek-machines/ CEK machines>
+-- first).  Execution happens simply by iterating a step function,
+-- sending one state of the CESK machine to the next. In addition to
+-- being relatively efficient, this means we can easily run a bunch of
+-- robots synchronously, in parallel, without resorting to any threads
+-- (by stepping their machines in a round-robin fashion); pause and
+-- single-step the game; save and resume, and so on.
 --
 -- Essentially, a CESK machine state has four components:
 --
@@ -169,7 +170,23 @@ type Cont = [Frame]
 data Store = Store {next :: Int, mu :: IntMap Cell} deriving (Show, Eq)
 
 -- | A memory cell can be in one of three states.
-data Cell = Blackhole | E Term Env | V Value deriving (Show, Eq)
+data Cell
+  = -- | A cell starts out life as an unevaluated term together with
+    --   its environment.
+    E Term Env
+  | -- | When the cell is 'Force'd, it is set to a 'Blackhole' while
+    --   being evaluated.  If it is ever referenced again while still
+    --   a 'Blackhole', that means it depends on itself in a way that
+    --   would trigger an infinite loop, and we can signal an error.
+    --   (Of course, we
+    --   <http://www.lel.ed.ac.uk/~gpullum/loopsnoop.html cannot
+    --   detect /all/ infinite loops this way>.)
+    Blackhole
+  | -- | Once evaluation is complete, we cache the final 'Value' in
+    --   the 'Cell', so that subsequent lookups can just use it
+    --   without recomputing anything.
+    V Value
+  deriving (Show, Eq)
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty

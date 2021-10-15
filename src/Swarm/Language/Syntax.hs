@@ -514,11 +514,11 @@ data Term
     SDef Var (Maybe Polytype) Syntax
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     SBind (Maybe Var) Syntax Syntax
-  | -- | Delay evaluation of a term, written @{{...}}@.  Swarm is an
+  | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
-    --   counterpart to @{{...}}@ is @force@, where @force {{t}} = t@.
-    --   Note that 'Force' is just a constant, whereas 'TDelay' has to
+    --   counterpart to @{...}@ is @force@, where @force {t} = t@.
+    --   Note that 'Force' is just a constant, whereas 'SDelay' has to
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay Syntax
