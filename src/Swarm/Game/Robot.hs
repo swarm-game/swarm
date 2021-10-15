@@ -59,7 +59,7 @@ import Data.Text (Text)
 import Linear
 
 import Data.Hashable (hashWithSalt)
-import Swarm.Game.CEK
+import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V

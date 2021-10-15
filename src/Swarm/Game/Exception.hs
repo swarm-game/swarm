@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Game.CEK
+-- Module      :  Swarm.Game.Exception
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --

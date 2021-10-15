@@ -38,7 +38,7 @@ import Witch
 import Prelude hiding (lookup)
 
 import qualified Data.List as L
-import Swarm.Game.CEK
+import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import qualified Swarm.Game.Entity as E

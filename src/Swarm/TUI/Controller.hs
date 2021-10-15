@@ -64,7 +64,7 @@ import Brick.Forms
 import qualified Brick.Widgets.List as BL
 import qualified Graphics.Vty as V
 
-import Swarm.Game.CEK (idleMachine, initMachine)
+import Swarm.Game.CESK (idleMachine, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.State

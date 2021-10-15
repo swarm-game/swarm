@@ -54,7 +54,7 @@ data Value where
   --   application is fully saturated (as defined by its 'arity'),
   --   whether it is a value or not depends on whether or not it
   --   represents a command (as defined by 'isCmd').  If a command
-  --   (e.g. 'Build'), it is a value, and awaits an 'Swarm.Game.CEK.FExec' frame
+  --   (e.g. 'Build'), it is a value, and awaits an 'Swarm.Game.CESK.FExec' frame
   --   which will cause it to execute.  Otherwise (e.g. 'If'), it is
   --   not a value, and will immediately reduce.
   VCApp :: Const -> [Value] -> Value

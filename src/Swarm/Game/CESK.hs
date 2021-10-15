@@ -1,10 +1,8 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeOperators #-}
 
 -- |
--- Module      :  Swarm.Game.CEK
+-- Module      :  Swarm.Game.CESK
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -51,7 +49,7 @@
 -- have to store the proper environment alongside so that when
 -- we eventually get around to evaluating it, we will be able to
 -- pull out the environment to use.
-module Swarm.Game.CEK (
+module Swarm.Game.CESK (
   -- * Frames and continuations
   Frame (..),
   Cont,
