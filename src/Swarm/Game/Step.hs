@@ -19,7 +19,6 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
-import Control.Arrow ((***))
 import Control.Lens hiding (Const, from, parts)
 import Control.Monad.Except
 import Control.Monad.State
@@ -420,8 +419,9 @@ stepCEK cek = case cek of
   -- top-level environment and contexts, so they will be available to
   -- future programs.
   Out (VResult v e) (FLoadEnv ctx cctx : k) -> do
-    robotEnv %= (`union` e)
-    robotCtx %= ((`union` ctx) *** (`union` cctx))
+    robotContext . valCtx %= (`union` e)
+    robotContext . typeCtx %= (`union` ctx)
+    robotContext . capCtx %= (`union` cctx)
     return $ Out v k
   Out v (FLoadEnv {} : k) -> return $ Out v k
   -- Any other type of value wiwth an FExec frame is an error (should
@@ -933,10 +933,9 @@ execConst c vs k = do
       _ -> badConst
     Reprogram -> case vs of
       [VString childRobotName, VDelay _ cmd e] -> do
-        em <- doOnGame $ use entityMap
-        mode <- doOnGame $ use gameMode
-        rctx@(_, capCtx) <- use robotCtx
-        renv <- use robotEnv
+        r <- get
+        em <- lift . lift $ use entityMap
+        mode <- lift . lift $ use gameMode
 
         -- check if robot exists
         childRobot <-
@@ -965,7 +964,7 @@ execConst c vs k = do
         let -- Find out what capabilities are required by the program that will
             -- be run on the other robot, and what devices would provide those
             -- capabilities.
-            (caps, _capCtx) = requiredCaps capCtx cmd
+            (caps, _capCtx) = requiredCaps (r ^. robotContext . capCtx) cmd
             capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
             -- device is ok if it is installed on the childRobot
@@ -984,8 +983,7 @@ execConst c vs k = do
         -- and context which collectively mean all the variables
         -- declared in the parent robot
         doOnGame $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
-        doOnGame $ robotMap . at childRobotName . _Just . robotEnv .= renv
-        doOnGame $ robotMap . at childRobotName . _Just . robotCtx .= rctx
+        doOnGame $ robotMap . at childRobotName . _Just . robotContext .= r ^. robotContext
 
         return $ Out VUnit k
       _ -> badConst
@@ -1005,7 +1003,7 @@ execConst c vs k = do
             -- Find out what capabilities are required by the program that will
             -- be run on the newly constructed robot, and what devices would
             -- provide those capabilities.
-            (caps, _capCtx) = requiredCaps (snd (r ^. robotCtx)) cmd
+            (caps, _capCtx) = requiredCaps (r ^. robotContext . capCtx) cmd
             capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
             -- Note that _capCtx must be empty: at least at the
