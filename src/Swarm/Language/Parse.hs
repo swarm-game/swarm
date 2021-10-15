@@ -254,10 +254,10 @@ parseTermAtom =
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
     <|> parens parseTerm
-    <|> parseLoc (TDelay False (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
-    <|> parseLoc (SDelay True <$> dbraces parseTerm)
-    <|> parseLoc (TDelay False (TConst Noop) <$ try (symbol "{" *> symbol "}"))
-    <|> parseLoc (SDelay False <$> braces parseTerm)
+    <|> parseLoc (TDelay False Nothing (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
+    <|> parseLoc (SDelay True Nothing <$> dbraces parseTerm)
+    <|> parseLoc (TDelay False Nothing (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay False Nothing <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 -- | Construct an 'SLet', automatically filling in the Boolean field

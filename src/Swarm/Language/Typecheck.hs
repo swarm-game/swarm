@@ -321,7 +321,15 @@ infer (Syntax _ (TBool _)) = return UTyBool
 -- To infer the type of a pair, just infer both components.
 infer (Syntax _ (SPair t1 t2)) = UTyProd <$> infer t1 <*> infer t2
 -- if t : ty, then  {t} : {ty}.
-infer (Syntax _ (SDelay _ t)) = UTyDelay <$> infer t
+-- Note that in theory, if the @Maybe Var@ component of the @SDelay@
+-- is @Just@, we should typecheck the body under a context extended
+-- with a type binding for the variable, and ensure that the type of
+-- the variable is the same as the type inferred for the overall
+-- @SDelay@.  However, we rely on the invariant that such recursive
+-- @SDelay@ nodes are never generated from the surface syntax, only
+-- dynamically at runtime when evaluating recursive let or def expressions,
+-- so we don't have to worry about typechecking them here.
+infer (Syntax _ (SDelay _ _ t)) = UTyDelay <$> infer t
 -- Just look up variables in the context.
 infer (Syntax l (TVar x)) = lookup l x
 -- To infer the type of a lambda if the type of the argument is

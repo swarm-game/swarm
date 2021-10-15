@@ -343,13 +343,15 @@ stepCESK cesk = case cesk of
       evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
-  -- To evaluate let expressions, we start by focusing on the
-  -- let-bound expression. Since it can be recursive, we wrap it in
-  -- @VDelay@ (the elaboration step wrapped all recursive references
-  -- in a corresponding @Force@).
-  In (TLet _ x _ t1 t2) e s k ->
-    let e' = addBinding x (VDelay (Just x) t1 e) e
-     in return $ In t1 e' s (FLet x t2 e : k)
+  -- To evaluate non-recursive let expressions, we start by focusing on the
+  -- let-bound expression.
+  In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
+  -- To evaluate recursive let expressions, we evaluate the memoized
+  -- delay of the let-bound expression.  Every free occurrence of x
+  -- in the let-bound expression and the body has already been
+  -- rewritten by elaboration to 'force x'.
+  In (TLet True x _ t1 t2) e s k ->
+    return $ In (TDelay True (Just x) t1) e s (FLet x t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
   Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
@@ -362,12 +364,20 @@ stepCESK cesk = case cesk of
   -- until such time as it is to be executed.
   In (TBind mx t1 t2) e s k -> return $ Out (VBind mx t1 t2 e) s k
   -- Non-memoized delay expressions immediately turn into VDelay values, awaiting
-  -- application of 'Force'.
-  In (TDelay False t) e s k -> return $ Out (VDelay Nothing t e) s k
+  -- application of 'Force'.  Note that according to an invariant on @Delay@ nodes,
+  -- if the first field is @False@ then the second field must be @Nothing@.
+  In (TDelay False _ t) e s k -> return $ Out (VDelay Nothing t e) s k
   -- For memoized delay expressions, we allocate a new cell in the store and
   -- return a reference to it.
-  In (TDelay True t) e s k -> do
-    let (loc, s') = allocate e t s
+  In (TDelay True x t) e s k -> do
+    -- Note that if the delay expression is recursive, we add a
+    -- binding to the environment that wil be used to evaluate the
+    -- body, binding the variable to a reference to the memory cell we
+    -- just allocated for the body expression itself.  As a fun aside,
+    -- notice how Haskell's recursion and laziness play a starring
+    -- role: @loc@ is both an output from @allocate@ and used as part
+    -- of an input! =D
+    let (loc, s') = allocate (maybe id (`addBinding` VRef loc) x e) t s
     return $ Out (VRef loc) s' k
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.

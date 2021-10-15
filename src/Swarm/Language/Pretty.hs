@@ -127,8 +127,8 @@ instance PrettyPrec Term where
   prettyPrec _ (TAntiString v) = "$str:" <> pretty v
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (TDelay False t) = braces $ ppr t
-  prettyPrec _ (TDelay True t) = braces . braces $ ppr t
+  prettyPrec _ (TDelay False _ t) = braces $ ppr t
+  prettyPrec _ (TDelay True _ t) = braces . braces $ ppr t
   prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body

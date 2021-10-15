@@ -214,7 +214,7 @@ requiredCaps' ctx = go
     -- Everything else is straightforward.
     TPair t1 t2 -> go t1 `S.union` go t2
     TBind _ t1 t2 -> go t1 `S.union` go t2
-    TDelay _ t -> go t
+    TDelay _ _ t -> go t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning S.empty is safe.

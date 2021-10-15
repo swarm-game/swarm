@@ -30,10 +30,10 @@ elaborate =
     -- Now do additional rewriting on all subterms.
     . transform rewrite
  where
-  -- Rewrite any recursive occurrences of x inside t1 to (force x).
-  -- When interpreting t1, we will put a binding (x |-> delay t1)
-  -- in the context.
-  rewrite (TLet True x ty t1 t2) = TLet True x ty (mapFree1 x (TApp (TConst Force)) t1) t2
+  -- For recursive let bindings, rewrite any occurrences of x to
+  -- (force x).  When interpreting t1, we will put a binding (x |->
+  -- delay t1) in the context.
+  rewrite (TLet True x ty t1 t2) = TLet True x ty (wrapForce x t1) (wrapForce x t2)
   -- Rewrite any recursive occurrences of x inside t1 to (force x).
   -- When a TDef is encountered at runtime its body will immediately
   -- be wrapped in a VDelay. However, to make this work we also need
@@ -43,3 +43,6 @@ elaborate =
   rewrite (TDef True x ty t1) = TDef True x ty (mapFree1 x (TApp (TConst Force)) t1)
   -- Leave any other subterms alone.
   rewrite t = t
+
+wrapForce :: Var -> Term -> Term
+wrapForce x = mapFree1 x (TApp (TConst Force))
