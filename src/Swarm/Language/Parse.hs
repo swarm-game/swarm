@@ -51,6 +51,7 @@ import qualified Text.Megaparsec.Pos as Pos
 
 import Data.Foldable (asum)
 import qualified Data.Set as S
+import Data.Set.Lens (setOf)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 
@@ -244,11 +245,11 @@ parseTermAtom =
         <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> SLet <$> (reserved "let" *> identifier)
+        <|> sLet <$> (reserved "let" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> SDef <$> (reserved "def" *> identifier)
+        <|> sDef <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
@@ -258,6 +259,16 @@ parseTermAtom =
     <|> parseLoc (TDelay False (TConst Noop) <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay False <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+
+-- | Construct an 'SLet', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sLet :: Var -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet x ty t1 = SLet (x `S.member` setOf fv (sTerm t1)) x ty t1
+
+-- | Construct an 'SDef', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sDef :: Var -> Maybe Polytype -> Syntax -> Term
+sDef x ty t = SDef (x `S.member` setOf fv (sTerm t)) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =

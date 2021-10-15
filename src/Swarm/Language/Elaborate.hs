@@ -33,13 +33,13 @@ elaborate =
   -- Rewrite any recursive occurrences of x inside t1 to (force x).
   -- When interpreting t1, we will put a binding (x |-> delay t1)
   -- in the context.
-  rewrite (TLet x ty t1 t2) = TLet x ty (mapFree1 x (TApp (TConst Force)) t1) t2
+  rewrite (TLet True x ty t1 t2) = TLet True x ty (mapFree1 x (TApp (TConst Force)) t1) t2
   -- Rewrite any recursive occurrences of x inside t1 to (force x).
   -- When a TDef is encountered at runtime its body will immediately
   -- be wrapped in a VDelay. However, to make this work we also need
   -- to wrap all free variables in any term with 'force' --- since
   -- any such variables must in fact refer to things previously
   -- bound by 'def'.
-  rewrite (TDef x ty t1) = TDef x ty (mapFree1 x (TApp (TConst Force)) t1)
+  rewrite (TDef True x ty t1) = TDef True x ty (mapFree1 x (TApp (TConst Force)) t1)
   -- Leave any other subterms alone.
   rewrite t = t

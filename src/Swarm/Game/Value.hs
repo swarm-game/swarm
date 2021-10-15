@@ -93,11 +93,11 @@ valueToTerm (VBool b) = TBool b
 valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =
   M.foldrWithKey
-    (\y v -> TLet y Nothing (valueToTerm v))
+    (\y v -> TLet False y Nothing (valueToTerm v))
     (TLam x Nothing t)
     (M.restrictKeys (unCtx e) (S.delete x (setOf fv t)))
 valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VDef x t _) = TDef x Nothing t
+valueToTerm (VDef x t _) = TDef False x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay _ t _) = TDelay False t

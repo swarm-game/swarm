@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -262,7 +260,7 @@ inferModule s@(Syntax _ t) = case t of
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef x Nothing t1 -> do
+  SDef _ x Nothing t1 -> do
     xTy <- fresh
     ty <- withBinding x (Forall [] xTy) $ infer t1
     xTy =:= ty
@@ -271,7 +269,7 @@ inferModule s@(Syntax _ t) = case t of
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef x (Just pty) t1 -> do
+  SDef _ x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
     withBinding x upty $ check t1 uty
@@ -353,13 +351,13 @@ infer (Syntax _ (SApp f x)) = do
 
 -- We can infer the type of a let whether a type has been provided for
 -- the variable or not.
-infer (Syntax _ (SLet x Nothing t1 t2)) = do
+infer (Syntax _ (SLet _ x Nothing t1 t2)) = do
   xTy <- fresh
   uty <- withBinding x (Forall [] xTy) $ infer t1
   xTy =:= uty
   upty <- generalize uty
   withBinding x upty $ infer t2
-infer (Syntax l (SLet x (Just pty) t1 t2)) = do
+infer (Syntax l (SLet _ x (Just pty) t1 t2)) = do
   let upty = toU pty
   -- If an explicit polytype has been provided, skolemize it and check
   -- definition and body under an extended context.

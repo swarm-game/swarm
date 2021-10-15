@@ -347,14 +347,14 @@ stepCESK cesk = case cesk of
   -- let-bound expression. Since it can be recursive, we wrap it in
   -- @VDelay@ (the elaboration step wrapped all recursive references
   -- in a corresponding @Force@).
-  In (TLet x _ t1 t2) e s k ->
+  In (TLet _ x _ t1 t2) e s k ->
     let e' = addBinding x (VDelay (Just x) t1 e) e
      in return $ In t1 e' s (FLet x t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
   Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
   -- Definitions immediately turn into VDef values, awaiting execution.
-  In tm@(TDef x _ t) e s k -> withExceptions s k $ do
+  In tm@(TDef _ x _ t) e s k -> withExceptions s k $ do
     CEnv `hasCapabilityOr` Incapable (S.singleton CEnv) tm
     return $ Out (VDef x t e) s k
 

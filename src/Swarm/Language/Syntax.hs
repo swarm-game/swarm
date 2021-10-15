@@ -458,12 +458,12 @@ pattern TApp :: Term -> Term -> Term
 pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
 
 -- | Match a TLet without syntax
-pattern TLet :: Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet v pt t1 t2 = SLet v pt (STerm t1) (STerm t2)
+pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
+pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
 
 -- | Match a TDef without syntax
-pattern TDef :: Var -> Maybe Polytype -> Term -> Term
-pattern TDef v pt t = SDef v pt (STerm t)
+pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
+pattern TDef r v pt t = SDef r v pt (STerm t)
 
 -- | Match a TBind without syntax
 pattern TBind :: Maybe Var -> Term -> Term -> Term
@@ -507,11 +507,13 @@ data Term
   | -- | Function application.
     SApp Syntax Syntax
   | -- | A (recursive) let expression, with or without a type
-    --   annotation on the variable.
-    SLet Var (Maybe Polytype) Syntax Syntax
+    --   annotation on the variable. The @Bool@ indicates whether
+    --   it is known to be recursive.
+    SLet Bool Var (Maybe Polytype) Syntax Syntax
   | -- | A (recursive) definition command, which binds a variable to a
-    --   value in subsequent commands.
-    SDef Var (Maybe Polytype) Syntax
+    --   value in subsequent commands. The @Bool@ indicates whether the
+    --   definition is known to be recursive.
+    SDef Bool Var (Maybe Polytype) Syntax
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     SBind (Maybe Var) Syntax Syntax
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
@@ -555,13 +557,13 @@ fvT f = go S.empty
     SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
     SApp (Syntax l1 t1) (Syntax l2 t2) ->
       SApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    SLet x ty (Syntax l1 t1) (Syntax l2 t2) ->
+    SLet r x ty (Syntax l1 t1) (Syntax l2 t2) ->
       let bound' = S.insert x bound
-       in SLet x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
+       in SLet r x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
     SPair (Syntax l1 t1) (Syntax l2 t2) ->
       SPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    SDef x ty (Syntax l1 t1) ->
-      SDef x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+    SDef r x ty (Syntax l1 t1) ->
+      SDef r x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
     SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
       SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
     SDelay m (Syntax l1 t1) ->
