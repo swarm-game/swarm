@@ -35,6 +35,7 @@ import Control.Unification.IntVar
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax (DirInfo (dirSyntax))
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 
@@ -100,15 +101,7 @@ instance PrettyPrec t => PrettyPrec (Ctx t) where
     prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
-  prettyPrec _ Lft = "left"
-  prettyPrec _ Rgt = "right"
-  prettyPrec _ Back = "back"
-  prettyPrec _ Fwd = "forward"
-  prettyPrec _ North = "north"
-  prettyPrec _ South = "south"
-  prettyPrec _ East = "east"
-  prettyPrec _ West = "west"
-  prettyPrec _ Down = "down"
+  prettyPrec _ = pretty . dirSyntax . dirInfo
 
 instance PrettyPrec Capability where
   prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))

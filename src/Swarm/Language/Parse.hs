@@ -73,16 +73,8 @@ type ParserError = ParseErrorBundle Text Void
 reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
-    ++ [ "left"
-       , "right"
-       , "back"
-       , "forward"
-       , "north"
-       , "south"
-       , "east"
-       , "west"
-       , "down"
-       , "int"
+    ++ map (dirSyntax . dirInfo) allDirs
+    ++ [ "int"
        , "string"
        , "dir"
        , "bool"
@@ -200,16 +192,9 @@ parseTypeAtom =
     <|> parens parseType
 
 parseDirection :: Parser Direction
-parseDirection =
-  Lft <$ reserved "left"
-    <|> Rgt <$ reserved "right"
-    <|> Back <$ reserved "back"
-    <|> Fwd <$ reserved "forward"
-    <|> North <$ reserved "north"
-    <|> South <$ reserved "south"
-    <|> East <$ reserved "east"
-    <|> West <$ reserved "west"
-    <|> Down <$ reserved "down"
+parseDirection = asum $ map alternative allDirs
+ where
+  alternative d = d <$ (reserved . dirSyntax . dirInfo) d
 
 -- | Parse Const as reserved words (e.g. @Raise <$ reserved "raise"@)
 parseConst :: Parser Const

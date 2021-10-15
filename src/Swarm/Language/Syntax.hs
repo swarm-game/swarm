@@ -20,9 +20,12 @@
 module Swarm.Language.Syntax (
   -- * Directions
   Direction (..),
+  DirInfo (..),
   applyTurn,
   toDirection,
   fromDirection,
+  allDirs,
+  dirInfo,
   north,
   south,
   east,
@@ -86,7 +89,7 @@ import Swarm.Language.Types
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
 data Direction = Lft | Rgt | Back | Fwd | North | South | East | West | Down
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
 instance ToJSONKey Direction where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
@@ -402,6 +405,30 @@ constInfo c = case c of
   -- takes the number of arguments for a commmand
   commandLow = command (lowShow c)
   functionLow = function (lowShow c)
+
+data DirInfo = DirInfo
+  { dirSyntax :: Text
+  , dirAbs :: Maybe (V2 Int64) -- TODO
+  , dirApplyTurn :: V2 Int64 -> V2 Int64
+  }
+
+allDirs :: [Direction]
+allDirs = [minBound .. maxBound]
+
+-- | TODO Information about all directions
+dirInfo :: Direction -> DirInfo
+dirInfo d = case d of
+  Lft -> DirInfo "left" Nothing applyTurnForDir
+  Rgt -> DirInfo "right" Nothing applyTurnForDir
+  Back -> DirInfo "back" Nothing applyTurnForDir
+  Fwd -> DirInfo "forward" Nothing applyTurnForDir
+  North -> DirInfo "north" (Just north) applyTurnForDir
+  South -> DirInfo "south" (Just south) applyTurnForDir
+  East -> DirInfo "east" (Just east) applyTurnForDir
+  West -> DirInfo "west" (Just west) applyTurnForDir
+  Down -> DirInfo "down" Nothing applyTurnForDir
+ where
+  applyTurnForDir = applyTurn d
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
