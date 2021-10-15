@@ -148,6 +148,9 @@ integer = lexeme L.decimal
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
 
+dbraces :: Parser a -> Parser a
+dbraces = between (symbol "{{") (symbol "}}")
+
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
@@ -250,8 +253,10 @@ parseTermAtom =
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
     <|> parens parseTerm
-    <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
-    <|> parseLoc (SDelay <$> braces parseTerm)
+    <|> parseLoc (TDelay False (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
+    <|> parseLoc (SDelay True <$> dbraces parseTerm)
+    <|> parseLoc (TDelay False (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay False <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 parseAntiquotation :: Parser Term

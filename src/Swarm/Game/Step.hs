@@ -32,7 +32,7 @@ import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
-import Linear
+import Linear (V2 (..), zero, (^+^))
 import System.Random (UniformRange, uniformR)
 import Witch
 import Prelude hiding (lookup)
@@ -361,9 +361,17 @@ stepCESK cesk = case cesk of
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
   In (TBind mx t1 t2) e s k -> return $ Out (VBind mx t1 t2 e) s k
-  -- Delay expressions immediately turn into VDelay values, awaiting
+  -- Non-memoized delay expressions immediately turn into VDelay values, awaiting
   -- application of 'Force'.
-  In (TDelay t) e s k -> return $ Out (VDelay Nothing t e) s k
+  In (TDelay False t) e s k -> return $ Out (VDelay Nothing t e) s k
+  -- For memoized delay expressions, we allocate a new cell in the store and
+  -- return a reference to it.
+  In (TDelay True t) e s k -> do
+    let (loc, s') = allocate e t s
+    return $ Out (VRef loc) s' k
+  -- If we see an update frame, it means we're supposed to set the value
+  -- of a particular cell to the value we just finished computing.
+  Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
   ------------------------------------------------------------
   -- Execution
 
@@ -448,10 +456,11 @@ stepCESK cesk = case cesk of
     case h of
       True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty s [FExec]
       False -> return $ Out VUnit s []
-  -- Fatal errors and capability errors can't be caught; just throw
-  -- away the continuation stack.
+  -- Fatal errors, capability errors, and infinite loop errors can't
+  -- be caught; just throw away the continuation stack.
   Up exn@Fatal {} s _ -> return $ Up exn s []
   Up exn@Incapable {} s _ -> return $ Up exn s []
+  Up exn@InfiniteLoop {} s _ -> return $ Up exn s []
   -- Otherwise, if we are raising an exception up the continuation
   -- stack and come to a Try frame, execute the associated catch
   -- block.
@@ -909,8 +918,37 @@ execConst c vs s k = do
     Force -> case vs of
       [VDelay Nothing t e] -> return $ In t e s k
       [VDelay (Just x) t e] -> return $ In t (addBinding x (VDelay (Just x) t e) e) s k
+      [VRef loc] ->
+        -- To force a VRef, we look up the location in the store.
+        case lookupCell loc s of
+          -- If there's no cell at that location, it's a bug!  It
+          -- shouldn't be possible to get a VRef to a non-existent
+          -- location, since the only way VRefs get created is at the
+          -- time we allocate a new cell.
+          Nothing ->
+            return $
+              Up (Fatal $ T.append "Reference to unknown memory cell " (from (show loc))) s k
+          -- If the location contains an unevaluated expression, it's
+          -- time to evaluate it.  Set the cell to a 'Blackhole', push
+          -- an 'FUpdate' frame so we remember to update the location
+          -- to its value once we finish evaluating it, and focus on
+          -- the expression.
+          Just (E t e') -> return $ In t e' (setCell loc Blackhole s) (FUpdate loc : k)
+          -- If the location contains a Blackhole, that means we are
+          -- already currently in the middle of evaluating it, i.e. it
+          -- depends on itself, so throw an 'InfiniteLoop' error.
+          Just Blackhole -> return $ Up InfiniteLoop s k
+          -- If the location already contains a value, just return it.
+          Just (V v) -> return $ Out v s k
       _ -> badConst
     If -> case vs of
+      -- XXX Need to update if to work with memoized as well as
+      -- non-memoized delays, but we don't want to replicate all the
+      -- logic here for dealing with VRef!  Need to somehow cause a
+      -- Force to be called on the output of a naive if...  note, we
+      -- can't use elaboration because we want it to work for partial
+      -- applications of if.  Just return an application of Force to
+      -- the proper value?
       [VBool True, VDelay _ thn e, _] -> return $ In thn e s k
       [VBool False, _, VDelay _ els e] -> return $ In els e s k
       _ -> badConst
@@ -921,6 +959,7 @@ execConst c vs s k = do
       [VPair _ v] -> return $ Out v s k
       _ -> badConst
     Try -> case vs of
+      -- XXX same thing goes for Try (and for Build and Reprogram) as for If.
       [VDelay _ c1 e1, VDelay _ c2 e2] -> return $ In c1 e1 s (FExec : FTry c2 e2 : k)
       _ -> badConst
     Raise -> case vs of
@@ -1197,6 +1236,7 @@ compareValues = \v1 -> case v1 of
   VResult {} -> Left . incomparable v1
   VBind {} -> Left . incomparable v1
   VDelay {} -> Left . incomparable v1
+  VRef {} -> Left . incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.

@@ -63,6 +63,7 @@ module Swarm.Game.CESK (
 
   -- * Store
   Store,
+  Loc,
   emptyStore,
   Cell (..),
   allocate,
@@ -156,7 +157,10 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) Term Env
-  | FImmediate WorldUpdate RobotUpdate
+  | -- | Apply specific updates to the world and current robot.
+    FImmediate WorldUpdate RobotUpdate
+  | -- | Update the memory cell at a certain location with the computed value.
+    FUpdate Loc
   deriving (Eq, Show)
 
 -- | A continuation is just a stack of frames.
@@ -166,8 +170,10 @@ type Cont = [Frame]
 -- Store
 ------------------------------------------------------------
 
+type Loc = Int
+
 -- | 'Store' represents a store, indexing integer locations to 'Cell's.
-data Store = Store {next :: Int, mu :: IntMap Cell} deriving (Show, Eq)
+data Store = Store {next :: Loc, mu :: IntMap Cell} deriving (Show, Eq)
 
 -- | A memory cell can be in one of three states.
 data Cell
@@ -194,15 +200,15 @@ emptyStore = Store 0 IM.empty
 -- | Allocate a new memory cell containing an unevaluated expression
 --   with the current environment.  Return the index of the allocated
 --   cell.
-allocate :: Env -> Term -> Store -> (Int, Store)
+allocate :: Env -> Term -> Store -> (Loc, Store)
 allocate e t (Store n m) = (n, Store (n + 1) (IM.insert n (E t e) m))
 
 -- | Look up the cell at a given index.
-lookupCell :: Int -> Store -> Maybe Cell
+lookupCell :: Loc -> Store -> Maybe Cell
 lookupCell n = IM.lookup n . mu
 
 -- | Set the cell at a given index.
-setCell :: Int -> Cell -> Store -> Store
+setCell :: Loc -> Cell -> Store -> Store
 setCell n c (Store nxt m) = Store nxt (IM.insert n c m)
 
 ------------------------------------------------------------
@@ -323,6 +329,7 @@ prettyFrame FExec = "exec _"
 prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
 prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FImmediate {} = "(_ : cmd a)"
+prettyFrame (FUpdate loc) = "store@" ++ show loc ++ "(_)"
 
 --------------------------------------------------------------
 -- Wrappers for functions in FImmediate
