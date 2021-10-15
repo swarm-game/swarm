@@ -11,29 +11,32 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- The Swarm interpreter uses a technique known as a
--- <https://matt.might.net/articles/cek-machines/ CEK machine>.
+-- <https://matt.might.net/articles/cesk-machines/ CESK machine>.
 -- Execution happens simply by iterating a step function,
--- sending one state of the CEK machine to the next. In addition
+-- sending one state of the CESK machine to the next. In addition
 -- to being relatively efficient, this means we can easily run a
 -- bunch of robots synchronously, in parallel, without resorting
 -- to any threads (by stepping their machines in a round-robin
 -- fashion); pause and single-step the game; save and resume,
 -- and so on.
 --
--- Essentially, a CEK machine state has three components:
+-- Essentially, a CESK machine state has four components:
 --
 -- - The __C__ontrol is the thing we are currently focused on:
 --   either a 'Term' to evaluate, or a 'Value' that we have
 --   just finished evaluating.
 -- - The __E__nvironment ('Env') is a mapping from variables that might
 --   occur free in the Control to their values.
+-- - The __S__tore ('Store') is a mapping from abstract integer
+--   /locations/ to values.  We use it to store delayed (lazy) values,
+--   so they will be computed at most once.
 -- - The __K__ontinuation ('Cont') is a stack of 'Frame's,
 --   representing the evaluation context, /i.e./ what we are supposed
 --   to do after we finish with the currently focused thing.  When we
 --   reduce the currently focused term to a value, the top frame on
 --   the stack tells us how to proceed.
 --
--- You can think of a CEK machine as a defunctionalization of a
+-- You can think of a CESK machine as a defunctionalization of a
 -- recursive big-step interpreter, where we explicitly keep track of
 -- the call stack and the environments that would be in effect at
 -- various places in the recursion.  One could probably even derive
@@ -41,7 +44,7 @@
 -- then converting it to CPS, then defunctionalizing the
 -- continuations.
 --
--- The slightly confusing thing about CEK machines is how we
+-- The slightly confusing thing about CESK machines is how we
 -- have to pass around environments everywhere.  Basically,
 -- anywhere there can be unevaluated terms containing free
 -- variables (in values, in continuation stack frames, ...), we
@@ -59,8 +62,16 @@ module Swarm.Game.CEK (
   WorldUpdate (..),
   RobotUpdate (..),
 
-  -- * CEK machine states
-  CEK (..),
+  -- * Store
+  Store,
+  emptyStore,
+  Cell (..),
+  allocate,
+  lookupCell,
+  setCell,
+
+  -- * CESK machine states
+  CESK (..),
 
   -- ** Construction
   initMachine,
@@ -73,10 +84,12 @@ module Swarm.Game.CEK (
   -- ** Pretty-printing
   prettyFrame,
   prettyCont,
-  prettyCEK,
+  prettyCESK,
 ) where
 
 import Control.Lens.Combinators (pattern Empty)
+import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as IM
 import Data.List (intercalate)
 import qualified Data.Set as S
 import Witch (from)
@@ -150,23 +163,54 @@ data Frame
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
 
--- | The overall state of a CEK machine, which can actually be one of
---   three kinds of states. The CEK machine is named after the first
+------------------------------------------------------------
+-- Store
+------------------------------------------------------------
+
+-- | 'Store' represents a store, indexing integer locations to 'Cell's.
+data Store = Store {next :: Int, mu :: IntMap Cell} deriving (Show, Eq)
+
+-- | A memory cell can be in one of three states.
+data Cell = Blackhole | E Term Env | V Value deriving (Show, Eq)
+
+emptyStore :: Store
+emptyStore = Store 0 IM.empty
+
+-- | Allocate a new memory cell containing an unevaluated expression
+--   with the current environment.  Return the index of the allocated
+--   cell.
+allocate :: Env -> Term -> Store -> (Int, Store)
+allocate e t (Store n m) = (n, Store (n + 1) (IM.insert n (E t e) m))
+
+-- | Look up the cell at a given index.
+lookupCell :: Int -> Store -> Maybe Cell
+lookupCell n = IM.lookup n . mu
+
+-- | Set the cell at a given index.
+setCell :: Int -> Cell -> Store -> Store
+setCell n c (Store nxt m) = Store nxt (IM.insert n c m)
+
+------------------------------------------------------------
+-- CESK machine
+------------------------------------------------------------
+
+-- | The overall state of a CESK machine, which can actually be one of
+--   three kinds of states. The CESK machine is named after the first
 --   kind of state, and it would probably be possible to inline a
 --   bunch of things and get rid of the second state, but I find it
 --   much more natural and elegant this way.  Most tutorial
---   presentations of CEK machines only have one kind of state, but
+--   presentations of CEK/CESK machines only have one kind of state, but
 --   then again, most tutorial presentations only deal with the bare
 --   lambda calculus, so one can tell whether a term is a value just
 --   by seeing whether it is syntactically a lambda.  I learned this
 --   approach from Harper's Practical Foundations of Programming
 --   Languages.
-data CEK
+data CESK
   = -- | When we are on our way "in/down" into a term, we have a
-    --   currently focused term to evaluate in the environment, and a
-    --   continuation.  In this mode we generally pattern-match on the
+    --   currently focused term to evaluate in the environment, a store,
+    --   and a continuation.  In this mode we generally pattern-match on the
     --   'Term' to decide what to do next.
-    In Term Env Cont
+    In Term Env Store Cont
   | -- | Once we finish evaluating a term, we end up with a 'Value'
     --   and we switch into "out" mode, bringing the value back up
     --   out of the depths to the context that was expecting it.  In
@@ -177,40 +221,40 @@ data CEK
     --   with variables to evaluate at the moment, and we maintain the
     --   invariant that any unevaluated terms buried inside a 'Value'
     --   or 'Cont' must carry along their environment with them.
-    Out Value Cont
+    Out Value Store Cont
   | -- | An exception has been raised.  Keep unwinding the
     --   continuation stack (until finding an enclosing 'Try' in the
     --   case of a command failure or a user-generated exception, or
     --   until the stack is empty in the case of a fatal exception).
-    Up Exn Cont
+    Up Exn Store Cont
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
-    Waiting Integer CEK
+    Waiting Integer CESK
   deriving (Eq, Show)
 
--- | Is the CEK machine in a final (finished) state?  If so, extract
+-- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value.
-finalValue :: CEK -> Maybe Value
+finalValue :: CESK -> Maybe Value
 {-# INLINE finalValue #-}
-finalValue (Out v []) = Just v
+finalValue (Out v _ []) = Just v
 finalValue _ = Nothing
 
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
 --   whether it has a command type or not.
-initMachine :: ProcessedTerm -> Env -> CEK
+initMachine :: ProcessedTerm -> Env -> CESK
 initMachine t e = initMachine' t e []
 
 -- | Like 'initMachine', but also take a starting continuation.
-initMachine' :: ProcessedTerm -> Env -> Cont -> CEK
+initMachine' :: ProcessedTerm -> Env -> Cont -> CESK
 initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e k =
   case ctx of
-    Empty -> In t e (FExec : k)
-    _ -> In t e (FExec : FLoadEnv ctx capCtx : k)
-initMachine' (ProcessedTerm t _ _ _) e k = In t e k
+    Empty -> In t e emptyStore (FExec : k)
+    _ -> In t e emptyStore (FExec : FLoadEnv ctx capCtx : k)
+initMachine' (ProcessedTerm t _ _ _) e k = In t e emptyStore k
 
 -- | A machine which does nothing.
-idleMachine :: CEK
+idleMachine :: CESK
 idleMachine = initMachine trivialTerm empty
  where
   trivialTerm =
@@ -221,29 +265,29 @@ idleMachine = initMachine trivialTerm empty
       empty
 
 ------------------------------------------------------------
--- Very crude pretty-printing of CEK states.  Should really make a
+-- Very crude pretty-printing of CESK states.  Should really make a
 -- nicer version of this code...
 ------------------------------------------------------------
 
--- | Very poor pretty-printing of CEK machine states, really just for
+-- | Very poor pretty-printing of CESK machine states, really just for
 --   debugging. At some point we should make a nicer version.
-prettyCEK :: CEK -> String
-prettyCEK (In c _ k) =
+prettyCESK :: CESK -> String
+prettyCESK (In c _ _ k) =
   unlines
     [ "▶ " ++ prettyString c
     , "  " ++ prettyCont k
     ]
-prettyCEK (Out v k) =
+prettyCESK (Out v _ k) =
   unlines
     [ "◀ " ++ from (prettyValue v)
     , "  " ++ prettyCont k
     ]
-prettyCEK (Up e k) =
+prettyCESK (Up e _ k) =
   unlines
     [ "! " ++ from (formatExn e)
     , "  " ++ prettyCont k
     ]
-prettyCEK (Waiting t cek) =
+prettyCESK (Waiting t cek) =
   "🕑" <> show t <> " " <> show cek
 
 -- | Poor pretty-printing of continuations.
@@ -270,7 +314,7 @@ prettyFrame FImmediate {} = "(_ : cmd a)"
 --
 -- NOTE: we can not use GameState and Robot directly, as it
 -- would create a cyclic dependency. The alternative is
--- making CEK, Cont and Frame polymorphic which just muddies
+-- making CESK, Cont and Frame polymorphic which just muddies
 -- the picture too much for one little game feature.
 --
 -- BEWARE: the types do not follow normal laws for Show and Eq
