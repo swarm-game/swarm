@@ -80,6 +80,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
+import Data.Maybe (fromMaybe)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -97,19 +98,51 @@ instance ToJSONKey Direction where
 instance FromJSONKey Direction where
   fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
 
+data DirInfo = DirInfo
+  { dirSyntax :: Text
+  , -- absolute direction if it exists
+    dirAbs :: Maybe (V2 Int64)
+  , -- the turning for the direction
+    dirApplyTurn :: V2 Int64 -> V2 Int64
+  }
+
+allDirs :: [Direction]
+allDirs = [minBound .. maxBound]
+
+-- | TODO Information about all directions
+dirInfo :: Direction -> DirInfo
+dirInfo d = case d of
+  Lft -> DirInfo "left" Nothing (\(V2 x y) -> V2 (- y) x)
+  Rgt -> DirInfo "right" Nothing (\(V2 x y) -> V2 y (- x))
+  Back -> DirInfo "back" Nothing (\(V2 x y) -> V2 (- y) (- x))
+  Fwd -> DirInfo "forward" Nothing id
+  North -> DirInfo "north" (Just north) (const north)
+  South -> DirInfo "south" (Just south) (const south)
+  East -> DirInfo "east" (Just east) (const east)
+  West -> DirInfo "west" (Just west) (const west)
+  Down -> DirInfo "down" Nothing (const $ V2 0 0)
+
+-- | The cardinal direction north = @V2 0 1@.
+north :: V2 Int64
+north = V2 0 1
+
+-- | The cardinal direction south = @V2 0 (-1)@.
+south :: V2 Int64
+south = V2 0 (-1)
+
+-- | The cardinal direction east = @V2 1 0@.
+east :: V2 Int64
+east = V2 1 0
+
+-- | The cardinal direction west = @V2 (-1) 0@.
+west :: V2 Int64
+west = V2 (-1) 0
+
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given vector or by turning to an absolute
 --   direction vector.
 applyTurn :: Direction -> V2 Int64 -> V2 Int64
-applyTurn Lft (V2 x y) = V2 (- y) x
-applyTurn Rgt (V2 x y) = V2 y (- x)
-applyTurn Back (V2 x y) = V2 (- x) (- y)
-applyTurn Fwd v = v
-applyTurn North _ = north
-applyTurn South _ = south
-applyTurn East _ = east
-applyTurn West _ = west
-applyTurn Down _ = V2 0 0
+applyTurn = dirApplyTurn . dirInfo
 
 -- | Possibly convert a vector into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
@@ -127,28 +160,7 @@ toDirection v = case v of
 --   this only does something reasonable for 'North', 'South', 'East',
 --   and 'West'---other 'Direction's return the zero vector.
 fromDirection :: Direction -> V2 Int64
-fromDirection d = case d of
-  North -> north
-  South -> south
-  East -> east
-  West -> west
-  _ -> V2 0 0
-
--- | The cardinal direction north = @V2 0 1@.
-north :: V2 Int64
-north = V2 0 1
-
--- | The cardinal direction south = @V2 0 (-1)@.
-south :: V2 Int64
-south = V2 0 (-1)
-
--- | The cardinal direction east = @V2 1 0@.
-east :: V2 Int64
-east = V2 1 0
-
--- | The cardinal direction west = @V2 (-1) 0@.
-west :: V2 Int64
-west = V2 (-1) 0
+fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
 
 -- | Constants, representing various built-in functions and commands.
 --
@@ -405,30 +417,6 @@ constInfo c = case c of
   -- takes the number of arguments for a commmand
   commandLow = command (lowShow c)
   functionLow = function (lowShow c)
-
-data DirInfo = DirInfo
-  { dirSyntax :: Text
-  , dirAbs :: Maybe (V2 Int64) -- TODO
-  , dirApplyTurn :: V2 Int64 -> V2 Int64
-  }
-
-allDirs :: [Direction]
-allDirs = [minBound .. maxBound]
-
--- | TODO Information about all directions
-dirInfo :: Direction -> DirInfo
-dirInfo d = case d of
-  Lft -> DirInfo "left" Nothing applyTurnForDir
-  Rgt -> DirInfo "right" Nothing applyTurnForDir
-  Back -> DirInfo "back" Nothing applyTurnForDir
-  Fwd -> DirInfo "forward" Nothing applyTurnForDir
-  North -> DirInfo "north" (Just north) applyTurnForDir
-  South -> DirInfo "south" (Just south) applyTurnForDir
-  East -> DirInfo "east" (Just east) applyTurnForDir
-  West -> DirInfo "west" (Just west) applyTurnForDir
-  Down -> DirInfo "down" Nothing applyTurnForDir
- where
-  applyTurnForDir = applyTurn d
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
