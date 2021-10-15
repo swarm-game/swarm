@@ -11,7 +11,7 @@ import Criterion.Main (Benchmark, bench, bgroup, defaultConfig, defaultMainWith,
 import Criterion.Types (Config (timeLimit))
 import Data.Int (Int64)
 import Linear.V2 (V2 (V2))
-import Swarm.Game.CEK (initMachine)
+import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Robot (Robot, mkRobot)
 import Swarm.Game.State (GameMode (Creative), GameState, addRobot, gameMode, initGameState, world)
 import Swarm.Game.Step (gameTick)
