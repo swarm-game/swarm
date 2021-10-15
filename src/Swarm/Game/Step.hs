@@ -419,9 +419,9 @@ stepCEK cek = case cek of
   -- top-level environment and contexts, so they will be available to
   -- future programs.
   Out (VResult v e) (FLoadEnv ctx cctx : k) -> do
-    robotContext . valCtx %= (`union` e)
-    robotContext . typeCtx %= (`union` ctx)
-    robotContext . capCtx %= (`union` cctx)
+    robotContext . defVals %= (`union` e)
+    robotContext . defTypes %= (`union` ctx)
+    robotContext . defCaps %= (`union` cctx)
     return $ Out v k
   Out v (FLoadEnv {} : k) -> return $ Out v k
   -- Any other type of value wiwth an FExec frame is an error (should
@@ -964,7 +964,7 @@ execConst c vs k = do
         let -- Find out what capabilities are required by the program that will
             -- be run on the other robot, and what devices would provide those
             -- capabilities.
-            (caps, _capCtx) = requiredCaps (r ^. robotContext . capCtx) cmd
+            (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
             capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
             -- device is ok if it is installed on the childRobot
@@ -1003,7 +1003,7 @@ execConst c vs k = do
             -- Find out what capabilities are required by the program that will
             -- be run on the newly constructed robot, and what devices would
             -- provide those capabilities.
-            (caps, _capCtx) = requiredCaps (r ^. robotContext . capCtx) cmd
+            (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
             capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
             -- Note that _capCtx must be empty: at least at the

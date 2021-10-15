@@ -68,6 +68,7 @@ import Swarm.Game.CEK (idleMachine, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
 import qualified Swarm.Game.World as W
 import Swarm.Language.Capability
@@ -79,7 +80,6 @@ import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.Util
-import Swarm.Game.Step (gameTick)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern ControlKey, MetaKey :: Char -> BrickEvent n e
@@ -412,9 +412,9 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   -- program before even starting?
 
   entry = formState (s ^. uiState . uiReplForm)
-  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . typeCtx
-  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . capCtx
-  topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . valCtx
+  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
+  topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
@@ -431,8 +431,8 @@ validateREPLForm s =
     & uiState . uiReplForm %~ validate
     & uiState . uiReplType .~ theType
  where
-  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . typeCtx
-  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . capCtx
+  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
   theType = case result of
     Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
@@ -568,7 +568,7 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 --   base is not currently busy.
 makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
 makeEntity s e = do
-  let topVarCtx = s ^. gameState . robotMap . ix "base" . robotContext . valCtx
+  let topDefCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
       mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
@@ -577,7 +577,7 @@ makeEntity s e = do
       continue $
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topVarCtx
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topDefCtx
           & gameState %~ execState (activateRobot "base")
     _ -> continueWithoutRedraw s
 

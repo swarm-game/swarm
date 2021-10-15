@@ -22,9 +22,9 @@ module Swarm.Game.Robot (
 
   -- * Robot context
   RobotContext,
-  typeCtx,
-  capCtx,
-  valCtx,
+  defTypes,
+  defCaps,
+  defVals,
 
   -- ** Lenses
   robotEntity,
@@ -74,16 +74,16 @@ import Swarm.Language.Context
 import Swarm.Language.Syntax (east)
 import Swarm.Language.Types (TCtx)
 
--- | A record that stores all the information
---   related to all the variables defined for a 'Robot'.
+-- | A record that stores the information
+--   for all defintions stored in a 'Robot'
 data RobotContext = RobotContext
-  { -- mapping from variable name to it's type
-    _typeCtx :: TCtx
-  , -- | mapping from variable name to all the capabilities
+  { -- | maps a definition to it's type
+    _defTypes :: TCtx
+  , -- | maps a defintion to the capabilities
     --   required to compute it
-    _capCtx :: CapCtx
-  , -- mapping from variable name to it's value
-    _valCtx :: Env
+    _defCaps :: CapCtx
+  , -- | maps a defintion to it's value
+    _defVals :: Env
   }
   deriving (Show)
 
@@ -101,10 +101,6 @@ data LogEntry = LogEntry
   deriving (Show)
 
 makeLenses ''LogEntry
-
--- typeCtx :: Lens' RobotContext TCtx
--- capCtx :: Lens' RobotContext CapCtx
--- valCtx :: Lens' RobotContext Env
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
