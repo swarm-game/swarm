@@ -11,6 +11,7 @@
 -- A data type to represent robots.
 module Swarm.Game.Robot (
   -- * Robots data
+
   -- * Robot log entries
   LogEntry (..),
   leText,
