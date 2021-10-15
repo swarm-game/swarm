@@ -140,10 +140,10 @@ defaultRobotDisplay =
     { _defaultChar = 'Ω'
     , _orientationMap =
         M.fromList
-          [ (East, '>')
-          , (West, '<')
-          , (South, 'v')
-          , (North, '^')
+          [ (DEast, '>')
+          , (DWest, '<')
+          , (DSouth, 'v')
+          , (DNorth, '^')
           ]
     , _displayAttr = robotAttr
     , _displayPriority = 10

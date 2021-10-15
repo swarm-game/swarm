@@ -72,6 +72,7 @@ import Data.Data.Lens (uniplate)
 import Data.Int (Int64)
 import qualified Data.Set as S
 import Data.Text
+import qualified Data.Text as T
 import Linear
 
 import Data.Aeson.Types
@@ -89,7 +90,7 @@ import Swarm.Language.Types
 
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
-data Direction = Lft | Rgt | Back | Fwd | North | South | East | West | Down
+data Direction = DLeft | DRight | DBack | DForward | DNorth | DSouth | DEast | DWest | DDown
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
 instance ToJSONKey Direction where
@@ -112,15 +113,19 @@ allDirs = [minBound .. maxBound]
 -- | TODO Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  Lft -> DirInfo "left" Nothing (\(V2 x y) -> V2 (- y) x)
-  Rgt -> DirInfo "right" Nothing (\(V2 x y) -> V2 y (- x))
-  Back -> DirInfo "back" Nothing (\(V2 x y) -> V2 (- y) (- x))
-  Fwd -> DirInfo "forward" Nothing id
-  North -> DirInfo "north" (Just north) (const north)
-  South -> DirInfo "south" (Just south) (const south)
-  East -> DirInfo "east" (Just east) (const east)
-  West -> DirInfo "west" (Just west) (const west)
-  Down -> DirInfo "down" Nothing (const $ V2 0 0)
+  DLeft -> DirInfo directionSyntax Nothing (\(V2 x y) -> V2 (- y) x)
+  DRight -> DirInfo directionSyntax Nothing (\(V2 x y) -> V2 y (- x))
+  DBack -> DirInfo directionSyntax Nothing (\(V2 x y) -> V2 (- y) (- x))
+  DForward -> DirInfo directionSyntax Nothing id
+  DNorth -> DirInfo directionSyntax (Just north) (const north)
+  DSouth -> DirInfo directionSyntax (Just south) (const south)
+  DEast -> DirInfo directionSyntax (Just east) (const east)
+  DWest -> DirInfo directionSyntax (Just west) (const west)
+  DDown -> DirInfo directionSyntax Nothing (const $ V2 0 0)
+ where
+  -- name is generate from Direction data constuctor
+  -- e.g. DLeft becomes "left"
+  directionSyntax = toLower . T.tail . from . show $ d
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
@@ -149,16 +154,16 @@ applyTurn = dirApplyTurn . dirInfo
 --   directions.
 toDirection :: V2 Int64 -> Maybe Direction
 toDirection v = case v of
-  V2 0 1 -> Just North
-  V2 0 (-1) -> Just South
-  V2 1 0 -> Just East
-  V2 (-1) 0 -> Just West
-  V2 0 0 -> Just Down
+  V2 0 1 -> Just DNorth
+  V2 0 (-1) -> Just DSouth
+  V2 1 0 -> Just DEast
+  V2 (-1) 0 -> Just DWest
+  V2 0 0 -> Just DDown
   _ -> Nothing
 
 -- | Convert a 'Direction' into a corresponding vector.  Note that
---   this only does something reasonable for 'North', 'South', 'East',
---   and 'West'---other 'Direction's return the zero vector.
+--   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
+--   and 'DWest'---other 'Direction's return the zero vector.
 fromDirection :: Direction -> V2 Int64
 fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
 
