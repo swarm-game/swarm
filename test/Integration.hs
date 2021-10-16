@@ -5,9 +5,9 @@
 module Main where
 
 import Control.Monad
-import Data.Text (Text)
-import Data.Functor
 import Data.Either
+import Data.Functor
+import Data.Text (Text)
 import Swarm.Language.Pipeline (processTerm)
 import System.Directory (doesFileExist, listDirectory)
 import System.FilePath.Posix
@@ -33,5 +33,5 @@ acquire = do
   paths <- listDirectory exampleDirectory <&> map (exampleDirectory </>)
   filePaths <- filterM doesFileExist paths
   mapM (\path -> (,) path <$> readFile path) filePaths
-  where
-    exampleDirectory = "example"
+ where
+  exampleDirectory = "example"
