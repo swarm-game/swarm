@@ -37,6 +37,7 @@ import System.Random (UniformRange, uniformR)
 import Witch
 import Prelude hiding (lookup)
 
+import Data.Bool (bool)
 import qualified Data.List as L
 import Swarm.Game.CESK
 import Swarm.Game.Display
@@ -356,9 +357,9 @@ stepCESK cesk = case cesk of
   -- the body in a suitably extended environment.
   Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
   -- Definitions immediately turn into VDef values, awaiting execution.
-  In tm@(TDef _ x _ t) e s k -> withExceptions s k $ do
+  In tm@(TDef r x _ t) e s k -> withExceptions s k $ do
     CEnv `hasCapabilityOr` Incapable (S.singleton CEnv) tm
-    return $ Out (VDef x t e) s k
+    return $ Out (VDef r x t e) s k
 
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
@@ -366,7 +367,7 @@ stepCESK cesk = case cesk of
   -- Non-memoized delay expressions immediately turn into VDelay values, awaiting
   -- application of 'Force'.  Note that according to an invariant on @Delay@ nodes,
   -- if the first field is @False@ then the second field must be @Nothing@.
-  In (TDelay False _ t) e s k -> return $ Out (VDelay Nothing t e) s k
+  In (TDelay False _ t) e s k -> return $ Out (VDelay t e) s k
   -- For memoized delay expressions, we allocate a new cell in the store and
   -- return a reference to it.
   In (TDelay True x t) e s k -> do
@@ -387,13 +388,17 @@ stepCESK cesk = case cesk of
 
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
-  -- called.  We return a special VResult value, which packages up the
-  -- return value from the @def@ command itself (@unit@) together with
-  -- the resulting environment (the variable bound to the delayed
-  -- value).
-  Out (VDef x t e) s (FExec : k) -> do
-    return $ Out (VResult VUnit (singleton x (VDelay (Just x) t e))) s k
-
+  -- called.  We memoize both recursive and non-recursive definitions,
+  -- since the point of a definition is that it may be used many times.
+  Out (VDef r x t e) s (FExec : k) ->
+    return $ In (TDelay True (bool Nothing (Just x) r) t) e s (FDef x : k)
+  -- Once we have finished evaluating the (memoized, delayed) body of
+  -- a definition, we return a special VResult value, which packages
+  -- up the return value from the @def@ command itself (@unit@)
+  -- together with the resulting environment (the variable bound to
+  -- the delayed value).
+  Out v s (FDef x : k) ->
+    return $ Out (VResult VUnit (singleton x v)) s k
   -- To execute a constant application, delegate to the 'execConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
@@ -926,8 +931,7 @@ execConst c vs s k = do
         return $ Out (VString name) s k
       _ -> badConst
     Force -> case vs of
-      [VDelay Nothing t e] -> return $ In t e s k
-      [VDelay (Just x) t e] -> return $ In t (addBinding x (VDelay (Just x) t e) e) s k
+      [VDelay t e] -> return $ In t e s k
       [VRef loc] ->
         -- To force a VRef, we look up the location in the store.
         case lookupCell loc s of
@@ -959,8 +963,8 @@ execConst c vs s k = do
       -- can't use elaboration because we want it to work for partial
       -- applications of if.  Just return an application of Force to
       -- the proper value?
-      [VBool True, VDelay _ thn e, _] -> return $ In thn e s k
-      [VBool False, _, VDelay _ els e] -> return $ In els e s k
+      [VBool True, VDelay thn e, _] -> return $ In thn e s k
+      [VBool False, _, VDelay els e] -> return $ In els e s k
       _ -> badConst
     Fst -> case vs of
       [VPair v _] -> return $ Out v s k
@@ -970,13 +974,13 @@ execConst c vs s k = do
       _ -> badConst
     Try -> case vs of
       -- XXX same thing goes for Try (and for Build and Reprogram) as for If.
-      [VDelay _ c1 e1, VDelay _ c2 e2] -> return $ In c1 e1 s (FExec : FTry c2 e2 : k)
+      [VDelay c1 e1, VDelay c2 e2] -> return $ In c1 e1 s (FExec : FTry c2 e2 : k)
       _ -> badConst
     Raise -> case vs of
       [VString msg] -> return $ Up (User msg) s k
       _ -> badConst
     Reprogram -> case vs of
-      [VString childRobotName, VDelay _ cmd e] -> do
+      [VString childRobotName, VDelay cmd e] -> do
         em <- doOnGame $ use entityMap
         mode <- doOnGame $ use gameMode
         rctx@(_, capCtx) <- use robotCtx
@@ -1034,7 +1038,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Build -> case vs of
-      [VString name, VDelay _ cmd e] -> do
+      [VString name, VDelay cmd e] -> do
         r <- get
         em <- doOnGame $ use entityMap
         mode <- doOnGame $ use gameMode

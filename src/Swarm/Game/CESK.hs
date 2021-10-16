@@ -149,6 +149,9 @@ data Frame
     --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
     --   'CapCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
     FLoadEnv TCtx CapCtx
+  | -- | We were executing a definition; next we should take the resulting value
+    --   and return a context binding the variable to the value.
+    FDef Var
   | -- | An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
     FExec
@@ -325,6 +328,7 @@ prettyFrame (FLet x t _) = "let " ++ from x ++ " = _ in " ++ prettyString t
 prettyFrame (FTry t _) = "try _ (" ++ prettyString t ++ ")"
 prettyFrame FUnionEnv {} = "_ ∪ <Env>"
 prettyFrame FLoadEnv {} = "loadEnv"
+prettyFrame (FDef x) = "def " ++ from x ++ " = _"
 prettyFrame FExec = "exec _"
 prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
 prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t

@@ -58,8 +58,9 @@ data Value where
   --   which will cause it to execute.  Otherwise (e.g. 'If'), it is
   --   not a value, and will immediately reduce.
   VCApp :: Const -> [Value] -> Value
-  -- | A definition, which is not evaluated until executed.
-  VDef :: Var -> Term -> Env -> Value
+  -- | A definition, which does not take effect until executed.
+  --   The @Bool@ indicates whether the definition is recursive.
+  VDef :: Bool -> Var -> Term -> Env -> Value
   -- | The result of a command, consisting of the result of the
   --   command as well as an environment of bindings from 'TDef'
   --   commands.
@@ -68,13 +69,13 @@ data Value where
   --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
   --   in which to interpret the commands.
   VBind :: Maybe Var -> Term -> Term -> Env -> Value
-  -- | A delayed term, along with its environment. If a term would
-  --   otherwise be evaluated but we don't want it to be (/e.g./ as in
-  --   the case of arguments to an 'if', or a recursive binding), we
-  --   can stick a 'TDelay' on it, which turns it into a value.
-  --   Delayed terms won't be evaluated until 'Force' is applied to
-  --   them.
-  VDelay :: Maybe Var -> Term -> Env -> Value
+  -- | A (non-recursive) delayed term, along with its environment. If
+  --   a term would otherwise be evaluated but we don't want it to be
+  --   (/e.g./ as in the case of arguments to an 'if', or a recursive
+  --   binding), we can stick a 'TDelay' on it, which turns it into a
+  --   value.  Delayed terms won't be evaluated until 'Force' is
+  --   applied to them.
+  VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
   deriving (Eq, Show)
@@ -97,10 +98,10 @@ valueToTerm (VClo x t e) =
     (TLam x Nothing t)
     (M.restrictKeys (unCtx e) (S.delete x (setOf fv t)))
 valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VDef x t _) = TDef False x Nothing t
+valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
-valueToTerm (VDelay _ t _) = TDelay False Nothing t
+valueToTerm (VDelay t _) = TDelay False Nothing t
 valueToTerm (VRef n) = TInt (fromIntegral n) -- XXX WRONG
 -- We really can't get away with valueToTerm any more, we need to make a proper
 -- pretty-printer for values.
