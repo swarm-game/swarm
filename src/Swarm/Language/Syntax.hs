@@ -260,6 +260,12 @@ data Const
 
     -- | If-expressions.
     If
+  | -- | Left injection.
+    Inl
+  | -- | Right injection.
+    Inr
+  | -- | Case analysis on a sum type.
+    Case
   | -- | First projection.
     Fst
   | -- | Second projection.
@@ -408,6 +414,9 @@ constInfo c = case c of
   Try -> commandLow 2
   Raise -> commandLow 1
   If -> functionLow 3
+  Inl -> functionLow 1
+  Inr -> functionLow 1
+  Case -> functionLow 3
   Fst -> functionLow 1
   Snd -> functionLow 1
   Force -> functionLow 1 -- TODO: make internal?!

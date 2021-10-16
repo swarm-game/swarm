@@ -40,6 +40,7 @@ module Swarm.Language.Types (
   pattern TyString,
   pattern TyDir,
   pattern TyBool,
+  pattern (:+:),
   pattern (:*:),
   pattern (:->:),
   pattern TyCmd,
@@ -53,6 +54,7 @@ module Swarm.Language.Types (
   pattern UTyString,
   pattern UTyDir,
   pattern UTyBool,
+  pattern UTySum,
   pattern UTyProd,
   pattern UTyFun,
   pattern UTyCmd,
@@ -127,6 +129,8 @@ data TypeF t
   | -- | Commands, with return type.  Note that
     --   commands form a monad.
     TyCmdF t
+  | -- | Sum type.
+    TySumF t t
   | -- | Product type.
     TyProdF t t
   | -- | Function type.
@@ -304,7 +308,12 @@ pattern TyDir = Fix (TyBaseF BDir)
 pattern TyBool :: Type
 pattern TyBool = Fix (TyBaseF BBool)
 
-infixl 6 :*:
+infixr 5 :+:
+
+pattern (:+:) :: Type -> Type -> Type
+pattern ty1 :+: ty2 = Fix (TySumF ty1 ty2)
+
+infixr 6 :*:
 
 pattern (:*:) :: Type -> Type -> Type
 pattern ty1 :*: ty2 = Fix (TyProdF ty1 ty2)
@@ -337,6 +346,9 @@ pattern UTyDir = UTerm (TyBaseF BDir)
 
 pattern UTyBool :: UType
 pattern UTyBool = UTerm (TyBaseF BBool)
+
+pattern UTySum :: UType -> UType -> UType
+pattern UTySum ty1 ty2 = UTerm (TySumF ty1 ty2)
 
 pattern UTyProd :: UType -> UType -> UType
 pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)

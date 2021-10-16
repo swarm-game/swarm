@@ -919,6 +919,15 @@ execConst c vs k = do
     If -> case vs of
       [VBool b, thn, els] -> return $ Out (bool els thn b) k
       _ -> badConst
+    Inl -> case vs of
+      [v] -> return $ Out (VInj False v) k
+      _ -> badConst
+    Inr -> case vs of
+      [v] -> return $ Out (VInj True v) k
+      _ -> badConst
+    Case -> case vs of
+      [VInj s v, kl, kr] -> return $ Out v (FApp (bool kl kr s) : k)
+      _ -> badConst
     Fst -> case vs of
       [VPair v _] -> return $ Out v k
       _ -> badConst
@@ -1202,6 +1211,12 @@ compareValues = \case
   VString t1 -> \case VString t2 -> Just (compare t1 t2); _ -> Nothing
   VDir d1 -> \case VDir d2 -> Just (compare d1 d2); _ -> Nothing
   VBool b1 -> \case VBool b2 -> Just (compare b1 b2); _ -> Nothing
+  VInj s1 v1 -> \case
+    VInj s2 v2 ->
+      case compare s1 s2 of
+        EQ -> compareValues v1 v2
+        o -> Just o
+    _ -> Nothing
   VPair v11 v12 -> \case
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22

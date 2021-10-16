@@ -180,6 +180,7 @@ parseType = makeExprParser parseTypeAtom table
  where
   table =
     [ [InfixR ((:*:) <$ symbol "*")]
+    , [InfixR ((:+:) <$ symbol "+")]
     , [InfixR ((:->:) <$ symbol "->")]
     ]
 
