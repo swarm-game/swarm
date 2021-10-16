@@ -877,10 +877,10 @@ execConst c vs k = do
             return $ Out VUnit k
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
-            robotDisplay . orientationMap . ix North .= nc
-            robotDisplay . orientationMap . ix East .= ec
-            robotDisplay . orientationMap . ix South .= sc
-            robotDisplay . orientationMap . ix West .= wc
+            robotDisplay . orientationMap . ix DNorth .= nc
+            robotDisplay . orientationMap . ix DEast .= ec
+            robotDisplay . orientationMap . ix DSouth .= sc
+            robotDisplay . orientationMap . ix DWest .= wc
             return $ Out VUnit k
           _other -> raise Appear [quote s, "is not a valid appearance string."]
       _ -> badConst
