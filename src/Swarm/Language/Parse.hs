@@ -37,6 +37,7 @@ module Swarm.Language.Parse (
 
 import Control.Monad.Reader
 import Data.Bifunctor
+import Data.List (nub)
 import qualified Data.List.NonEmpty (head)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text, index, toLower)
@@ -357,7 +358,7 @@ operatorSymbol :: Parser Text
 operatorSymbol = T.singleton <$> oneOf opChars
  where
   isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
-  opChars = concatMap (from . syntax) . filter isOp $ map constInfo allConst
+  opChars = nub . concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 --------------------------------------------------
 -- Utilities
