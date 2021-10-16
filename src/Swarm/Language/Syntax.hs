@@ -70,8 +70,9 @@ module Swarm.Language.Syntax (
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Data.Lens (uniplate)
 import Data.Int (Int64)
+import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.Text
+import Data.Text hiding (filter, map)
 import qualified Data.Text as T
 import Linear
 
@@ -81,7 +82,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust, fromMaybe, isJust)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -121,7 +122,7 @@ dirInfo d = case d of
   DSouth -> DirInfo directionSyntax (Just south) (const south)
   DEast -> DirInfo directionSyntax (Just east) (const east)
   DWest -> DirInfo directionSyntax (Just west) (const west)
-  DDown -> DirInfo directionSyntax Nothing (const $ V2 0 0)
+  DDown -> DirInfo directionSyntax (Just down) (const $ V2 0 0)
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
@@ -143,23 +144,29 @@ east = V2 1 0
 west :: V2 Int64
 west = V2 (-1) 0
 
+-- | The direction for moving vertically down = @V2 0 0@.
+down :: V2 Int64
+down = V2 0 0
+
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given vector or by turning to an absolute
 --   direction vector.
 applyTurn :: Direction -> V2 Int64 -> V2 Int64
 applyTurn = dirApplyTurn . dirInfo
 
+-- | Mapping from heading to their corresponding cardinal directions
+--   only directions with a 'dirAbs` value are mapped
+cardinalDirs :: M.Map (V2 Int64) Direction
+cardinalDirs = M.fromList
+                      . map (\d -> (fromJust . dirAbs . dirInfo $ d, d))
+                      . filter (isJust . dirAbs . dirInfo)
+                      $ allDirs
+
 -- | Possibly convert a vector into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
 --   directions.
 toDirection :: V2 Int64 -> Maybe Direction
-toDirection v = case v of
-  V2 0 1 -> Just DNorth
-  V2 0 (-1) -> Just DSouth
-  V2 1 0 -> Just DEast
-  V2 (-1) 0 -> Just DWest
-  V2 0 0 -> Just DDown
-  _ -> Nothing
+toDirection v = M.lookup v cardinalDirs
 
 -- | Convert a 'Direction' into a corresponding vector.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
