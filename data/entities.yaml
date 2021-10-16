@@ -184,6 +184,8 @@
   description:
   - Delicious curry cooked from wild lambdas.
   properties: [portable]
+  capabilities: [lambda] #, curry]
+
 
 - name: water
   display:

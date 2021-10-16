@@ -257,6 +257,7 @@ constCaps =
     Whereami -> [CSenseloc] -- GPS?
     Random -> [CRandom] -- randomness device (with bitcoins)?
     Neg -> [CArith] -- ALU? pocket calculator?
+    AppF -> [CLambda] -- Curry?
     Whoami -> [CWhoami] -- mirror, needs a recipe
 
     -- comparator?

@@ -64,6 +64,9 @@ parser =
                 ]
             )
         )
+    , testCase
+        "parsing operators #??? - parse valid operator ($)"
+        (valid "fst $ snd $ (1,2,3)")
     ]
  where
   valid = flip process ""

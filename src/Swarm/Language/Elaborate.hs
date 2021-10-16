@@ -61,5 +61,7 @@ elaborate =
   -- doing the reprogramming.
   rewrite (TApp (TApp (TConst Reprogram) nm) prog) =
     TApp (TApp (TConst Reprogram) nm) (TDelay prog)
+  -- Rewrite @f $ x@ to @f x@.
+  rewrite (TApp (TApp (TConst AppF) r) l) = TApp r (rewrite l)
   -- Leave any other subterms alone.
   rewrite t = t
