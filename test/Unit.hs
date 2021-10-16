@@ -61,13 +61,33 @@ parser =
                 ]
             )
         )
+    , testCase
+        "parsing operators #188 - parse valid operator (!=)"
+        (valid "1!=(2)")
+    , testCase
+        "parsing operators #236 - parse valid operator (<=)"
+        (valid "1 <= 2")
+    , testCase
+        "parsing operators #236 - report failure on invalid operator start"
+        ( process
+            "1 <== 2"
+            ( T.unlines
+                [ "1:3:"
+                , "  |"
+                , "1 | 1 <== 2"
+                , "  |   ^"
+                , "unexpected '<'"
+                ]
+            )
+        )
     ]
  where
   valid = flip process ""
+
   process :: Text -> Text -> Assertion
   process code expect = case processTerm code of
     Left e
-      | e == expect -> pure ()
+      | not (T.null expect) && expect `T.isPrefixOf` e -> pure ()
       | otherwise -> error $ "Unexpected failure: " <> show e
     Right _
       | expect == "" -> pure ()

@@ -390,7 +390,7 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
       & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
-    then case processTerm' topCtx topCapCtx entry of
+    then case processTerm' topTypeCtx topCapCtx entry of
       Right t@(ProcessedTerm _ (Module ty _) _ _) ->
         continue $
           s
@@ -400,7 +400,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiReplHistIdx .~ (-1)
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
-            & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
+            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx
             & gameState %~ execState (activateRobot "base")
       Left err ->
         continue $
@@ -412,8 +412,9 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   -- program before even starting?
 
   entry = formState (s ^. uiState . uiReplForm)
-  (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
-  topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
+  topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
@@ -430,8 +431,9 @@ validateREPLForm s =
     & uiState . uiReplForm %~ validate
     & uiState . uiReplType .~ theType
  where
-  (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
-  result = processTerm' topCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
+  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
+  result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
   theType = case result of
     Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
     _ -> Nothing
@@ -566,7 +568,7 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 --   base is not currently busy.
 makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
 makeEntity s e = do
-  let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+  let topDefCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
       mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
@@ -575,7 +577,7 @@ makeEntity s e = do
       continue $
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topDefCtx
           & gameState %~ execState (activateRobot "base")
     _ -> continueWithoutRedraw s
 
