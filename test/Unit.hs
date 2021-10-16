@@ -46,6 +46,9 @@ parser =
             )
         )
     , testCase
+        "parsing operators #188 - parse valid operator (!=)"
+        (valid "1!=(2)")
+    , testCase
         "parsing operators #236 - parse valid operator (<=)"
         (valid "1 <= 2")
     , testCase
