@@ -8,6 +8,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Swarm.Language.Syntax
@@ -82,7 +83,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
-import Data.Maybe (fromJust, fromMaybe, isJust)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -161,8 +162,7 @@ applyTurn = dirApplyTurn . dirInfo
 cardinalDirs :: M.Map (V2 Int64) Direction
 cardinalDirs =
   M.fromList
-    . map (\d -> (fromJust . dirAbs . dirInfo $ d, d))
-    . filter (isJust . dirAbs . dirInfo)
+    . mapMaybe (\d -> (, d) <$> (dirAbs . dirInfo $ d))
     $ allDirs
 
 -- | Possibly convert a vector into a 'Direction'---that is, if the
