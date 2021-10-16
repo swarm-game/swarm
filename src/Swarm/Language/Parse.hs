@@ -1,10 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE LambdaCase #-}
 
 -- |
 -- Module      :  Swarm.Language.Parse
@@ -349,10 +349,10 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
   op n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
 
 operatorSymbol :: Parser Text
-operatorSymbol = T.singleton <$> oneOf opChars 
-  where
-    isOp = \case {ConstMFunc {} -> False; _ -> True} . constMeta 
-    opChars = concatMap (from . syntax) . filter isOp $ map constInfo allConst
+operatorSymbol = T.singleton <$> oneOf opChars
+ where
+  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
+  opChars = concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
