@@ -305,9 +305,9 @@ data Const
   | -- | Arithmetic exponentiation operator
     Exp
   | -- Function composition with nice operators
-  
+
     -- | Application operator - helps to avoid parentheses:
-    --   @f $ g $ h x  =  f (g (h x))@ 
+    --   @f $ g $ h x  =  f (g (h x))@
     AppF
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 

@@ -1114,7 +1114,7 @@ execConst c vs k = do
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
           prependMsg = (\case (Fatal e) -> Fatal $ msg <> e; exn -> exn)
-      in withExceptT prependMsg badConst
+       in withExceptT prependMsg badConst
  where
   badConst :: MonadState GameState m => ExceptT Exn (StateT Robot m) a
   badConst =
