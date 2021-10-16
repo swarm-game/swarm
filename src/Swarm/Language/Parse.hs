@@ -330,14 +330,7 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (mkOp c <$ op (syntax ci))]
-  op n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
-
-operatorSymbol :: Parser Text
-operatorSymbol = T.singleton <$> oneOf opChars
- where
-  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
-  opChars = concatMap (from . syntax) . filter isOp $ map constInfo allConst
+        [assI (mkOp c <$ operatorString (syntax ci))]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
@@ -355,7 +348,16 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ symbol (syntax ci))]
+        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operatorString (syntax ci))]
+
+operatorString :: Text -> Parser Text
+operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
+
+operatorSymbol :: Parser Text
+operatorSymbol = T.singleton <$> oneOf opChars
+ where
+  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
+  opChars = concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 --------------------------------------------------
 -- Utilities
