@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -39,6 +40,7 @@ import Data.Bifunctor
 import qualified Data.List.NonEmpty (head)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text, index, toLower)
+import qualified Data.Text as T
 import Data.Void
 import Witch
 
@@ -328,7 +330,14 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (mkOp c <$ symbol (syntax ci))]
+        [assI (mkOp c <$ op (syntax ci))]
+  op n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
+
+operatorSymbol :: Parser Text
+operatorSymbol = T.singleton <$> oneOf opChars
+ where
+  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
+  opChars = concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
