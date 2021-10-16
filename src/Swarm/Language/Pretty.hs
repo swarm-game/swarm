@@ -35,7 +35,6 @@ import Control.Unification.IntVar
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Syntax
-import Swarm.Language.Syntax (DirInfo (dirSyntax))
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 
