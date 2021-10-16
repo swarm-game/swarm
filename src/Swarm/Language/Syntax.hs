@@ -7,8 +7,8 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Swarm.Language.Syntax
@@ -162,7 +162,7 @@ applyTurn = dirApplyTurn . dirInfo
 cardinalDirs :: M.Map (V2 Int64) Direction
 cardinalDirs =
   M.fromList
-    . mapMaybe (\d -> (, d) <$> (dirAbs . dirInfo $ d))
+    . mapMaybe (\d -> (,d) <$> (dirAbs . dirInfo $ d))
     $ allDirs
 
 -- | Possibly convert a vector into a 'Direction'---that is, if the
