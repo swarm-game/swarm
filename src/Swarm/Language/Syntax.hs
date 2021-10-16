@@ -157,10 +157,11 @@ applyTurn = dirApplyTurn . dirInfo
 -- | Mapping from heading to their corresponding cardinal directions
 --   only directions with a 'dirAbs` value are mapped
 cardinalDirs :: M.Map (V2 Int64) Direction
-cardinalDirs = M.fromList
-                      . map (\d -> (fromJust . dirAbs . dirInfo $ d, d))
-                      . filter (isJust . dirAbs . dirInfo)
-                      $ allDirs
+cardinalDirs =
+  M.fromList
+    . map (\d -> (fromJust . dirAbs . dirInfo $ d, d))
+    . filter (isJust . dirAbs . dirInfo)
+    $ allDirs
 
 -- | Possibly convert a vector into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
