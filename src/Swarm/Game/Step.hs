@@ -477,9 +477,9 @@ stepCESK cesk = case cesk of
   Up exn@Incapable {} s _ -> return $ Up exn s []
   Up exn@InfiniteLoop {} s _ -> return $ Up exn s []
   -- Otherwise, if we are raising an exception up the continuation
-  -- stack and come to a Try frame, execute the associated catch
+  -- stack and come to a Try frame, force and then execute the associated catch
   -- block.
-  Up _ s (FTry t e : k) -> return $ In t e s (FExec : k)
+  Up _ s (FTry c : k) -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
   -- Otherwise, keep popping from the continuation stack.
   Up exn s (_ : k) -> return $ Up exn s k
   -- Finally, if we're done evaluating and the continuation stack is
@@ -956,15 +956,8 @@ execConst c vs s k = do
           Just (V v) -> return $ Out v s k
       _ -> badConst
     If -> case vs of
-      -- XXX Need to update if to work with memoized as well as
-      -- non-memoized delays, but we don't want to replicate all the
-      -- logic here for dealing with VRef!  Need to somehow cause a
-      -- Force to be called on the output of a naive if...  note, we
-      -- can't use elaboration because we want it to work for partial
-      -- applications of if.  Just return an application of Force to
-      -- the proper value?
-      [VBool True, VDelay thn e, _] -> return $ In thn e s k
-      [VBool False, _, VDelay els e] -> return $ In els e s k
+      -- Use the boolean to pick the correct branch, and apply @force@ to it.
+      [VBool b, thn, els] -> return $ Out (bool els thn b) s (FApp (VCApp Force []) : k)
       _ -> badConst
     Fst -> case vs of
       [VPair v _] -> return $ Out v s k
@@ -973,8 +966,7 @@ execConst c vs s k = do
       [VPair _ v] -> return $ Out v s k
       _ -> badConst
     Try -> case vs of
-      -- XXX same thing goes for Try (and for Build and Reprogram) as for If.
-      [VDelay c1 e1, VDelay c2 e2] -> return $ In c1 e1 s (FExec : FTry c2 e2 : k)
+      [c1, c2] -> return $ Out c1 s (FApp (VCApp Force []) : FExec : FTry c2 : k)
       _ -> badConst
     Raise -> case vs of
       [VString msg] -> return $ Up (User msg) s k
