@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -36,9 +37,11 @@ module Swarm.Language.Parse (
 
 import Control.Monad.Reader
 import Data.Bifunctor
+import Data.List (nub)
 import qualified Data.List.NonEmpty (head)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text, index, toLower)
+import qualified Data.Text as T
 import Data.Void
 import Witch
 
@@ -328,7 +331,7 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (mkOp c <$ symbol (syntax ci))]
+        [assI (mkOp c <$ operatorString (syntax ci))]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
@@ -346,7 +349,16 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ symbol (syntax ci))]
+        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operatorString (syntax ci))]
+
+operatorString :: Text -> Parser Text
+operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
+
+operatorSymbol :: Parser Text
+operatorSymbol = T.singleton <$> oneOf opChars
+ where
+  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
+  opChars = nub . concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 --------------------------------------------------
 -- Utilities
