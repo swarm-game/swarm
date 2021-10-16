@@ -114,19 +114,21 @@ allDirs = [minBound .. maxBound]
 -- | TODO Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  DLeft -> DirInfo directionSyntax Nothing (\(V2 x y) -> V2 (- y) x)
-  DRight -> DirInfo directionSyntax Nothing (\(V2 x y) -> V2 y (- x))
-  DBack -> DirInfo directionSyntax Nothing (\(V2 x y) -> V2 (- y) (- x))
-  DForward -> DirInfo directionSyntax Nothing id
-  DNorth -> DirInfo directionSyntax (Just north) (const north)
-  DSouth -> DirInfo directionSyntax (Just south) (const south)
-  DEast -> DirInfo directionSyntax (Just east) (const east)
-  DWest -> DirInfo directionSyntax (Just west) (const west)
-  DDown -> DirInfo directionSyntax (Just down) (const $ V2 0 0)
+  DLeft -> relative (\(V2 x y) -> V2 (- y) x)
+  DRight -> relative (\(V2 x y) -> V2 y (- x))
+  DBack -> relative (\(V2 x y) -> V2 (- y) (- x))
+  DForward -> relative id
+  DNorth -> cardinal north
+  DSouth -> cardinal south
+  DEast -> cardinal east
+  DWest -> cardinal west
+  DDown -> cardinal down
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
   directionSyntax = toLower . T.tail . from . show $ d
+  cardinal d = DirInfo directionSyntax (Just d) (const d)
+  relative cd = DirInfo directionSyntax Nothing cd
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
