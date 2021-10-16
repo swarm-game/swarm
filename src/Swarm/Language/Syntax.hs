@@ -127,8 +127,8 @@ dirInfo d = case d of
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
   directionSyntax = toLower . T.tail . from . show $ d
-  cardinal d = DirInfo directionSyntax (Just d) (const d)
-  relative cd = DirInfo directionSyntax Nothing cd
+  cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
+  relative vf = DirInfo directionSyntax Nothing vf
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
