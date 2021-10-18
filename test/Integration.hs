@@ -1,19 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Swarm unit tests
+-- | Swarm integration tests
 module Main where
 
 import Control.Monad
 import Data.Either
 import Data.Functor
 import Data.Text (Text)
-import Swarm.Language.Pipeline (processTerm)
 import System.Directory (doesFileExist, listDirectory)
 import System.FilePath.Posix
 import Test.Tasty
 import Test.Tasty.HUnit
 import Witch
+
+import Swarm.Language.Pipeline (processTerm)
 
 main :: IO ()
 main = do
