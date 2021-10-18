@@ -465,6 +465,7 @@ inferConst c = toU $ case c of
   Mul -> arithBinT
   Div -> arithBinT
   Exp -> arithBinT
+  AppF -> [tyQ| (a -> b) -> a -> b |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]

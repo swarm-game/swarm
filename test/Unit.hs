@@ -23,6 +23,7 @@ import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
+import Test.Tasty (testGroup)
 
 main :: IO ()
 main = do
@@ -80,6 +81,9 @@ parser =
                 ]
             )
         )
+    , testCase
+        "parsing operators #??? - parse valid operator ($)"
+        (valid "fst $ snd $ (1,2,3)")
     ]
  where
   valid = flip process ""
@@ -213,6 +217,12 @@ eval g =
         , testCase
             "nested 2"
             ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inr \"hi\"))" `evaluatesTo` VInt 3)
+        ]
+    , testGroup
+        "operator evaluation"
+        [ testCase
+            "application operator #239"
+            ("fst $ snd $ (1,2,3)" `evaluatesTo` VInt 2)
         ]
     ]
  where
