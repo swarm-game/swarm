@@ -7,6 +7,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -20,9 +21,12 @@
 module Swarm.Language.Syntax (
   -- * Directions
   Direction (..),
+  DirInfo (..),
   applyTurn,
   toDirection,
   fromDirection,
+  allDirs,
+  dirInfo,
   north,
   south,
   east,
@@ -67,8 +71,10 @@ module Swarm.Language.Syntax (
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Data.Lens (uniplate)
 import Data.Int (Int64)
+import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.Text
+import Data.Text hiding (filter, map)
+import qualified Data.Text as T
 import Linear
 
 import Data.Aeson.Types
@@ -77,6 +83,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
+import Data.Maybe (fromMaybe, mapMaybe)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -85,8 +92,8 @@ import Swarm.Language.Types
 
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
-data Direction = Lft | Rgt | Back | Fwd | North | South | East | West | Down
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
+data Direction = DLeft | DRight | DBack | DForward | DNorth | DSouth | DEast | DWest | DDown
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
 instance ToJSONKey Direction where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
@@ -94,42 +101,35 @@ instance ToJSONKey Direction where
 instance FromJSONKey Direction where
   fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
 
--- | The 'applyTurn' function gives the meaning of each 'Direction' by
---   turning relative to the given vector or by turning to an absolute
---   direction vector.
-applyTurn :: Direction -> V2 Int64 -> V2 Int64
-applyTurn Lft (V2 x y) = V2 (- y) x
-applyTurn Rgt (V2 x y) = V2 y (- x)
-applyTurn Back (V2 x y) = V2 (- x) (- y)
-applyTurn Fwd v = v
-applyTurn North _ = north
-applyTurn South _ = south
-applyTurn East _ = east
-applyTurn West _ = west
-applyTurn Down _ = V2 0 0
+data DirInfo = DirInfo
+  { dirSyntax :: Text
+  , -- absolute direction if it exists
+    dirAbs :: Maybe (V2 Int64)
+  , -- the turning for the direction
+    dirApplyTurn :: V2 Int64 -> V2 Int64
+  }
 
--- | Possibly convert a vector into a 'Direction'---that is, if the
---   vector happens to be a unit vector in one of the cardinal
---   directions.
-toDirection :: V2 Int64 -> Maybe Direction
-toDirection v = case v of
-  V2 0 1 -> Just North
-  V2 0 (-1) -> Just South
-  V2 1 0 -> Just East
-  V2 (-1) 0 -> Just West
-  V2 0 0 -> Just Down
-  _ -> Nothing
+allDirs :: [Direction]
+allDirs = [minBound .. maxBound]
 
--- | Convert a 'Direction' into a corresponding vector.  Note that
---   this only does something reasonable for 'North', 'South', 'East',
---   and 'West'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> V2 Int64
-fromDirection d = case d of
-  North -> north
-  South -> south
-  East -> east
-  West -> west
-  _ -> V2 0 0
+-- | TODO Information about all directions
+dirInfo :: Direction -> DirInfo
+dirInfo d = case d of
+  DLeft -> relative (\(V2 x y) -> V2 (- y) x)
+  DRight -> relative (\(V2 x y) -> V2 y (- x))
+  DBack -> relative (\(V2 x y) -> V2 (- y) (- x))
+  DForward -> relative id
+  DNorth -> cardinal north
+  DSouth -> cardinal south
+  DEast -> cardinal east
+  DWest -> cardinal west
+  DDown -> cardinal down
+ where
+  -- name is generate from Direction data constuctor
+  -- e.g. DLeft becomes "left"
+  directionSyntax = toLower . T.tail . from . show $ d
+  cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
+  relative vf = DirInfo directionSyntax Nothing vf
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
@@ -146,6 +146,36 @@ east = V2 1 0
 -- | The cardinal direction west = @V2 (-1) 0@.
 west :: V2 Int64
 west = V2 (-1) 0
+
+-- | The direction for moving vertically down = @V2 0 0@.
+down :: V2 Int64
+down = V2 0 0
+
+-- | The 'applyTurn' function gives the meaning of each 'Direction' by
+--   turning relative to the given vector or by turning to an absolute
+--   direction vector.
+applyTurn :: Direction -> V2 Int64 -> V2 Int64
+applyTurn = dirApplyTurn . dirInfo
+
+-- | Mapping from heading to their corresponding cardinal directions
+--   only directions with a 'dirAbs` value are mapped
+cardinalDirs :: M.Map (V2 Int64) Direction
+cardinalDirs =
+  M.fromList
+    . mapMaybe (\d -> (,d) <$> (dirAbs . dirInfo $ d))
+    $ allDirs
+
+-- | Possibly convert a vector into a 'Direction'---that is, if the
+--   vector happens to be a unit vector in one of the cardinal
+--   directions.
+toDirection :: V2 Int64 -> Maybe Direction
+toDirection v = M.lookup v cardinalDirs
+
+-- | Convert a 'Direction' into a corresponding vector.  Note that
+--   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
+--   and 'DWest'---other 'Direction's return the zero vector.
+fromDirection :: Direction -> V2 Int64
+fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
 
 -- | Constants, representing various built-in functions and commands.
 --
@@ -230,6 +260,12 @@ data Const
 
     -- | If-expressions.
     If
+  | -- | Left injection.
+    Inl
+  | -- | Right injection.
+    Inr
+  | -- | Case analysis on a sum type.
+    Case
   | -- | First projection.
     Fst
   | -- | Second projection.
@@ -378,6 +414,9 @@ constInfo c = case c of
   Try -> commandLow 2
   Raise -> commandLow 1
   If -> functionLow 3
+  Inl -> functionLow 1
+  Inr -> functionLow 1
+  Case -> functionLow 3
   Fst -> functionLow 1
   Snd -> functionLow 1
   Force -> functionLow 1 -- TODO: make internal?!

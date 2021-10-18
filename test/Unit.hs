@@ -3,20 +3,36 @@
 -- | Swarm unit tests
 module Main where
 
+import Control.Lens ((&), (.~))
+import Control.Monad.Except
+import Control.Monad.State
 import Data.Text (Text)
 import qualified Data.Text as T
+import Linear
 import Test.Tasty
 import Test.Tasty.HUnit
+import Witch (from)
 
-import Swarm.Language.Pipeline
+import Swarm.Game.CEK
+import Swarm.Game.Exception
+import Swarm.Game.Robot
+import Swarm.Game.State
+import Swarm.Game.Step
+import Swarm.Game.Value
+import Swarm.Language.Context
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 
 main :: IO ()
-main = defaultMain tests
+main = do
+  mg <- runExceptT (initGameState 0)
+  case mg of
+    Left err -> assertFailure (from err)
+    Right g -> defaultMain (tests g)
 
-tests :: TestTree
-tests = testGroup "Tests" [parser, prettyConst]
+tests :: GameState -> TestTree
+tests g = testGroup "Tests" [parser, prettyConst, eval g]
 
 parser :: TestTree
 parser =
@@ -45,13 +61,33 @@ parser =
                 ]
             )
         )
+    , testCase
+        "parsing operators #188 - parse valid operator (!=)"
+        (valid "1!=(2)")
+    , testCase
+        "parsing operators #236 - parse valid operator (<=)"
+        (valid "1 <= 2")
+    , testCase
+        "parsing operators #236 - report failure on invalid operator start"
+        ( process
+            "1 <== 2"
+            ( T.unlines
+                [ "1:3:"
+                , "  |"
+                , "1 | 1 <== 2"
+                , "  |   ^"
+                , "unexpected '<'"
+                ]
+            )
+        )
     ]
  where
   valid = flip process ""
+
   process :: Text -> Text -> Assertion
   process code expect = case processTerm code of
     Left e
-      | e == expect -> pure ()
+      | not (T.null expect) && expect `T.isPrefixOf` e -> pure ()
       | otherwise -> error $ "Unexpected failure: " <> show e
     Right _
       | expect == "" -> pure ()
@@ -125,3 +161,77 @@ prettyConst =
  where
   equalPretty :: String -> Term -> Assertion
   equalPretty expected term = assertEqual "" expected . show $ ppr term
+
+eval :: GameState -> TestTree
+eval g =
+  testGroup
+    "Language - evaluation"
+    [ testGroup
+        "sum types #224"
+        [ testCase
+            "inl"
+            ("inl 3" `evaluatesTo` VInj False (VInt 3))
+        , testCase
+            "inr"
+            ("inr \"hi\"" `evaluatesTo` VInj True (VString "hi"))
+        , testCase
+            "inl a < inl b"
+            ("inl 3 < inl 4" `evaluatesTo` VBool True)
+        , testCase
+            "inl b < inl a"
+            ("inl 4 < inl 3" `evaluatesTo` VBool False)
+        , testCase
+            "inl < inr"
+            ("inl 3 < inr true" `evaluatesTo` VBool True)
+        , testCase
+            "inl 4 < inr 3"
+            ("inl 4 < inr 3" `evaluatesTo` VBool True)
+        , testCase
+            "inr < inl"
+            ("inr 3 < inl true" `evaluatesTo` VBool False)
+        , testCase
+            "inr 3 < inl 4"
+            ("inr 3 < inl 4" `evaluatesTo` VBool False)
+        , testCase
+            "inr a < inr b"
+            ("inr 3 < inr 4" `evaluatesTo` VBool True)
+        , testCase
+            "inr b < inr a"
+            ("inr 4 < inr 3" `evaluatesTo` VBool False)
+        , testCase
+            "case inl"
+            ("case (inl 2) {\\x. x + 1} {\\y. y * 17}" `evaluatesTo` VInt 3)
+        , testCase
+            "case inr"
+            ("case (inr 2) {\\x. x + 1} {\\y. y * 17}" `evaluatesTo` VInt 34)
+        , testCase
+            "nested 1"
+            ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inl 3)" `evaluatesTo` VInt 1)
+        , testCase
+            "nested 2"
+            ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inl false))" `evaluatesTo` VInt 2)
+        , testCase
+            "nested 2"
+            ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inr \"hi\"))" `evaluatesTo` VInt 3)
+        ]
+    ]
+ where
+  evaluatesTo :: Text -> Value -> Assertion
+  evaluatesTo tm val = do
+    let pt = processTerm tm
+    result <- either (return . Left) evalPT pt
+    assertEqual "" (Right val) result
+
+  evalPT :: ProcessedTerm -> IO (Either Text Value)
+  evalPT t = evaluateCEK (initMachine t empty)
+
+  evaluateCEK :: CEK -> IO (Either Text Value)
+  evaluateCEK cek = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCEK $ cek
+   where
+    r = mkRobot "" zero zero cek []
+
+  runCEK :: CEK -> StateT Robot (StateT GameState IO) (Either Text Value)
+  runCEK (Up exn []) = return (Left (formatExn exn))
+  runCEK cek = case finalValue cek of
+    Just v -> return (Right v)
+    Nothing -> stepCEK cek >>= runCEK

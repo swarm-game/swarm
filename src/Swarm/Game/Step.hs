@@ -19,7 +19,6 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
-import Control.Arrow ((***))
 import Control.Lens hiding (Const, from, parts)
 import Control.Monad.Except
 import Control.Monad.State
@@ -420,8 +419,9 @@ stepCEK cek = case cek of
   -- top-level environment and contexts, so they will be available to
   -- future programs.
   Out (VResult v e) (FLoadEnv ctx cctx : k) -> do
-    robotEnv %= (`union` e)
-    robotCtx %= ((`union` ctx) *** (`union` cctx))
+    robotContext . defVals %= (`union` e)
+    robotContext . defTypes %= (`union` ctx)
+    robotContext . defCaps %= (`union` cctx)
     return $ Out v k
   Out v (FLoadEnv {} : k) -> return $ Out v k
   -- Any other type of value wiwth an FExec frame is an error (should
@@ -877,10 +877,10 @@ execConst c vs k = do
             return $ Out VUnit k
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
-            robotDisplay . orientationMap . ix North .= nc
-            robotDisplay . orientationMap . ix East .= ec
-            robotDisplay . orientationMap . ix South .= sc
-            robotDisplay . orientationMap . ix West .= wc
+            robotDisplay . orientationMap . ix DNorth .= nc
+            robotDisplay . orientationMap . ix DEast .= ec
+            robotDisplay . orientationMap . ix DSouth .= sc
+            robotDisplay . orientationMap . ix DWest .= wc
             return $ Out VUnit k
           _other -> raise Appear [quote s, "is not a valid appearance string."]
       _ -> badConst
@@ -919,6 +919,15 @@ execConst c vs k = do
     If -> case vs of
       [VBool b, thn, els] -> return $ Out (bool els thn b) k
       _ -> badConst
+    Inl -> case vs of
+      [v] -> return $ Out (VInj False v) k
+      _ -> badConst
+    Inr -> case vs of
+      [v] -> return $ Out (VInj True v) k
+      _ -> badConst
+    Case -> case vs of
+      [VInj s v, kl, kr] -> return $ Out v (FApp (bool kl kr s) : k)
+      _ -> badConst
     Fst -> case vs of
       [VPair v _] -> return $ Out v k
       _ -> badConst
@@ -933,10 +942,9 @@ execConst c vs k = do
       _ -> badConst
     Reprogram -> case vs of
       [VString childRobotName, VDelay _ cmd e] -> do
+        r <- get
         em <- doOnGame $ use entityMap
         mode <- doOnGame $ use gameMode
-        rctx@(_, capCtx) <- use robotCtx
-        renv <- use robotEnv
 
         -- check if robot exists
         childRobot <-
@@ -965,7 +973,7 @@ execConst c vs k = do
         let -- Find out what capabilities are required by the program that will
             -- be run on the other robot, and what devices would provide those
             -- capabilities.
-            (caps, _capCtx) = requiredCaps capCtx cmd
+            (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
             capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
             -- device is ok if it is installed on the childRobot
@@ -984,8 +992,7 @@ execConst c vs k = do
         -- and context which collectively mean all the variables
         -- declared in the parent robot
         doOnGame $ robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
-        doOnGame $ robotMap . at childRobotName . _Just . robotEnv .= renv
-        doOnGame $ robotMap . at childRobotName . _Just . robotCtx .= rctx
+        doOnGame $ robotMap . at childRobotName . _Just . robotContext .= r ^. robotContext
 
         return $ Out VUnit k
       _ -> badConst
@@ -1005,7 +1012,7 @@ execConst c vs k = do
             -- Find out what capabilities are required by the program that will
             -- be run on the newly constructed robot, and what devices would
             -- provide those capabilities.
-            (caps, _capCtx) = requiredCaps (snd (r ^. robotCtx)) cmd
+            (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
             capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
             -- Note that _capCtx must be empty: at least at the
@@ -1204,6 +1211,12 @@ compareValues = \case
   VString t1 -> \case VString t2 -> Just (compare t1 t2); _ -> Nothing
   VDir d1 -> \case VDir d2 -> Just (compare d1 d2); _ -> Nothing
   VBool b1 -> \case VBool b2 -> Just (compare b1 b2); _ -> Nothing
+  VInj s1 v1 -> \case
+    VInj s2 v2 ->
+      case compare s1 s2 of
+        EQ -> compareValues v1 v2
+        o -> Just o
+    _ -> Nothing
   VPair v11 v12 -> \case
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22

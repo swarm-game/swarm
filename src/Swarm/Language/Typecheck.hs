@@ -425,9 +425,9 @@ inferConst c = toU $ case c of
   Give -> [tyQ| string -> string -> cmd () |]
   Install -> [tyQ| string -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
-  Reprogram -> [tyQ| forall a. string -> cmd a -> cmd () |]
+  Reprogram -> [tyQ| string -> cmd a -> cmd () |]
+  Build -> [tyQ| string -> cmd a -> cmd string |]
   Drill -> [tyQ| dir -> cmd () |]
-  Build -> [tyQ| forall a. string -> cmd a -> cmd string |]
   Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
   Log -> [tyQ| string -> cmd () |]
@@ -442,13 +442,16 @@ inferConst c = toU $ case c of
   Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
-  If -> [tyQ| forall a. bool -> a -> a -> a |]
-  Fst -> [tyQ| forall a b. a * b -> a |]
-  Snd -> [tyQ| forall a b. a * b -> b |]
-  Force -> [tyQ| forall a. a -> a |]
-  Return -> [tyQ| forall a. a -> cmd a |]
-  Try -> [tyQ| forall a. cmd a -> cmd a -> cmd a |]
-  Raise -> [tyQ| forall a. string -> cmd a |]
+  If -> [tyQ| bool -> a -> a -> a |]
+  Inl -> [tyQ| a -> a + b |]
+  Inr -> [tyQ| b -> a + b |]
+  Case -> [tyQ|a + b -> (a -> c) -> (b -> c) -> c |]
+  Fst -> [tyQ| a * b -> a |]
+  Snd -> [tyQ| a * b -> b |]
+  Force -> [tyQ| a -> a |]
+  Return -> [tyQ| a -> cmd a |]
+  Try -> [tyQ| cmd a -> cmd a -> cmd a |]
+  Raise -> [tyQ| string -> cmd a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT
@@ -463,7 +466,7 @@ inferConst c = toU $ case c of
   Div -> arithBinT
   Exp -> arithBinT
  where
-  cmpBinT = [tyQ| forall a. a -> a -> bool |]
+  cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]
 
 -- | @check t ty@ checks that @t@ has type @ty@.

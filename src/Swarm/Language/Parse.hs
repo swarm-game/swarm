@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -36,9 +37,11 @@ module Swarm.Language.Parse (
 
 import Control.Monad.Reader
 import Data.Bifunctor
+import Data.List (nub)
 import qualified Data.List.NonEmpty (head)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text, index, toLower)
+import qualified Data.Text as T
 import Data.Void
 import Witch
 
@@ -73,16 +76,8 @@ type ParserError = ParseErrorBundle Text Void
 reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
-    ++ [ "left"
-       , "right"
-       , "back"
-       , "forward"
-       , "north"
-       , "south"
-       , "east"
-       , "west"
-       , "down"
-       , "int"
+    ++ map (dirSyntax . dirInfo) allDirs
+    ++ [ "int"
        , "string"
        , "dir"
        , "bool"
@@ -185,6 +180,7 @@ parseType = makeExprParser parseTypeAtom table
  where
   table =
     [ [InfixR ((:*:) <$ symbol "*")]
+    , [InfixR ((:+:) <$ symbol "+")]
     , [InfixR ((:->:) <$ symbol "->")]
     ]
 
@@ -200,16 +196,9 @@ parseTypeAtom =
     <|> parens parseType
 
 parseDirection :: Parser Direction
-parseDirection =
-  Lft <$ reserved "left"
-    <|> Rgt <$ reserved "right"
-    <|> Back <$ reserved "back"
-    <|> Fwd <$ reserved "forward"
-    <|> North <$ reserved "north"
-    <|> South <$ reserved "south"
-    <|> East <$ reserved "east"
-    <|> West <$ reserved "west"
-    <|> Down <$ reserved "down"
+parseDirection = asum $ map alternative allDirs
+ where
+  alternative d = d <$ (reserved . dirSyntax . dirInfo) d
 
 -- | Parse Const as reserved words (e.g. @Raise <$ reserved "raise"@)
 parseConst :: Parser Const
@@ -343,7 +332,7 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (mkOp c <$ symbol (syntax ci))]
+        [assI (mkOp c <$ operatorString (syntax ci))]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
@@ -361,7 +350,16 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ symbol (syntax ci))]
+        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operatorString (syntax ci))]
+
+operatorString :: Text -> Parser Text
+operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
+
+operatorSymbol :: Parser Text
+operatorSymbol = T.singleton <$> oneOf opChars
+ where
+  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
+  opChars = nub . concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 --------------------------------------------------
 -- Utilities

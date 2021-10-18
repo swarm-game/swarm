@@ -81,6 +81,9 @@ instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) wh
 instance PrettyPrec t => PrettyPrec (TypeF t) where
   prettyPrec _ (TyBaseF b) = ppr b
   prettyPrec _ (TyVarF v) = pretty v
+  prettyPrec p (TySumF ty1 ty2) =
+    pparens (p > 1) $
+      prettyPrec 2 ty1 <+> "+" <+> prettyPrec 1 ty2
   prettyPrec p (TyProdF ty1 ty2) =
     pparens (p > 2) $
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
@@ -100,15 +103,7 @@ instance PrettyPrec t => PrettyPrec (Ctx t) where
     prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
-  prettyPrec _ Lft = "left"
-  prettyPrec _ Rgt = "right"
-  prettyPrec _ Back = "back"
-  prettyPrec _ Fwd = "forward"
-  prettyPrec _ North = "north"
-  prettyPrec _ South = "south"
-  prettyPrec _ East = "east"
-  prettyPrec _ West = "west"
-  prettyPrec _ Down = "down"
+  prettyPrec _ = pretty . dirSyntax . dirInfo
 
 instance PrettyPrec Capability where
   prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))
