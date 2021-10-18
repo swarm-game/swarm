@@ -31,7 +31,8 @@ exampleTest (path, fileContent) = do
 acquire :: IO [(FilePath, String)]
 acquire = do
   paths <- listDirectory exampleDirectory <&> map (exampleDirectory </>)
-  filePaths <- filterM doesFileExist paths
+  filePaths <- filterM (\path -> doesFileExist path <&> (&&) (swExtension path)) paths
   mapM (\path -> (,) path <$> readFile path) filePaths
  where
   exampleDirectory = "example"
+  swExtension path = takeExtension path == ".sw"
