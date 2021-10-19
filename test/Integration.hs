@@ -27,8 +27,8 @@ exampleTest :: (FilePath, String) -> TestTree
 exampleTest (path, fileContent) = do
   testCaseSteps ("processTerm for contents of " ++ show path) $ \_ -> do
     either (assertFailure . into @String) (const . return $ ()) value
-    where
-      value = processTerm $ into @Text fileContent
+ where
+  value = processTerm $ into @Text fileContent
 
 acquire :: IO [(FilePath, String)]
 acquire = do
