@@ -5,7 +5,6 @@
 module Main where
 
 import Control.Monad
-import Data.Either
 import Data.Functor
 import Data.Text (Text)
 import System.Directory (doesFileExist, listDirectory)
@@ -26,8 +25,10 @@ exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
 
 exampleTest :: (FilePath, String) -> TestTree
 exampleTest (path, fileContent) = do
-  testCase ("processTerm for contents of " ++ show path) $
-    assertBool "should return Right value" (isRight . processTerm $ into @Text fileContent)
+  testCaseSteps ("processTerm for contents of " ++ show path) $ \_ -> do
+    either (assertFailure . into @String) (const . return $ ()) value
+    where
+      value = processTerm $ into @Text fileContent
 
 acquire :: IO [(FilePath, String)]
 acquire = do
