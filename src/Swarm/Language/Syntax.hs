@@ -112,12 +112,12 @@ data DirInfo = DirInfo
 allDirs :: [Direction]
 allDirs = [minBound .. maxBound]
 
--- | TODO Information about all directions
+-- | Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
   DLeft -> relative (\(V2 x y) -> V2 (- y) x)
   DRight -> relative (\(V2 x y) -> V2 y (- x))
-  DBack -> relative (\(V2 x y) -> V2 (- y) (- x))
+  DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
   DForward -> relative id
   DNorth -> cardinal north
   DSouth -> cardinal south
