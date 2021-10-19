@@ -89,6 +89,7 @@ import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
+import Data.Bits (FiniteBits (finiteBitSize))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -198,7 +199,14 @@ data UIState = UIState
   , _lastInfoTime :: TimeSpec
   }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''UIState
+let exclude = ['_lgTicksPerSecond]
+ in makeLensesWith
+      ( lensRules
+          & generateSignatures .~ False
+          & lensField . mapped . mapped %~ \fn n ->
+            if n `elem` exclude then [] else fn n
+      )
+      ''UIState
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -255,9 +263,19 @@ uiTPF :: Lens' UIState Double
 -- | Computed frames per milli seconds
 uiFPS :: Lens' UIState Double
 
--- | The base-2 logarithm of the current game speed in ticks per
---   second.
+-- | The base-2 logarithm of the current game speed in ticks/second.
+--   Note that we cap this value to the range of +/- log2 INTMAX.
 lgTicksPerSecond :: Lens' UIState Int
+lgTicksPerSecond = lens _lgTicksPerSecond safeSetLgTicks
+ where
+  maxLog = finiteBitSize (maxBound :: Int)
+  maxTicks = maxLog - 2
+  minTicks = 2 - maxLog
+  safeSetLgTicks ui lTicks
+    | lTicks < minTicks = setLgTicks ui minTicks
+    | lTicks > maxTicks = setLgTicks ui maxTicks
+    | otherwise = setLgTicks ui lTicks
+  setLgTicks ui lTicks = ui {_lgTicksPerSecond = lTicks}
 
 -- | A counter used to track how many ticks have happened since the
 --   last time we updated the ticks/frame statistics.
