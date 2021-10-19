@@ -89,12 +89,12 @@ import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
+import Data.Bits (FiniteBits (finiteBitSize))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
-import Data.Bits (FiniteBits(finiteBitSize))
 
 ------------------------------------------------------------
 -- Custom UI label types
