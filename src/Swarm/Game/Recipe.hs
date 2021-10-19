@@ -38,7 +38,6 @@ module Swarm.Game.Recipe (
 ) where
 
 import Control.Lens hiding (from, (.=))
-import Control.Monad.Except
 import Data.Bifunctor (second)
 import Data.Either.Validation
 import Data.IntMap (IntMap)
@@ -51,6 +50,9 @@ import Witch
 
 import Data.Yaml
 
+import Control.Algebra (Has)
+import Control.Carrier.Lift (Lift, sendIO)
+import Control.Carrier.Throw.Either (runThrow)
 import Paths_swarm
 import Swarm.Game.Entity as E
 import Swarm.Util
@@ -117,11 +119,12 @@ resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (lo
 
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
-loadRecipes :: MonadIO m => EntityMap -> m (Either Text [Recipe Entity])
-loadRecipes em = runExceptT $ do
-  fileName <- liftIO $ getDataFileName "recipes.yaml"
-  res <- liftIO $ decodeFileEither @[Recipe Text] fileName
-  textRecipes <- res `isRightOr` (from . prettyPrintParseException)
+--loadRecipes :: MonadIO m => EntityMap -> m (Either Text [Recipe Entity])
+loadRecipes :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text [Recipe Entity])
+loadRecipes em = runThrow $ do
+  fileName <- sendIO $ getDataFileName "recipes.yaml"
+  res <- sendIO $ decodeFileEither @[Recipe Text] fileName
+  textRecipes <- res `isRightOr` (from @String @Text . prettyPrintParseException)
   resolveRecipes em textRecipes
     `isSuccessOr` (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
 

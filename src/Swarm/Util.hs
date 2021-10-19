@@ -46,8 +46,9 @@ module Swarm.Util (
   liftText,
 ) where
 
+import Control.Algebra (Has)
+import Control.Effect.Throw (Throw, throwError)
 import Control.Monad (unless)
-import Control.Monad.Error.Class
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
@@ -154,23 +155,23 @@ deriving instance FromJSON (V2 Int64)
 -- Validation utilities
 
 -- | Require that a Boolean value is @True@, or throw an exception.
-holdsOr :: MonadError e m => Bool -> e -> m ()
+holdsOr :: Has (Throw e) sig m => Bool -> e -> m ()
 holdsOr b e = unless b $ throwError e
 
 -- | Require that a 'Maybe' value is 'Just', or throw an exception.
-isJustOr :: MonadError e m => Maybe a -> e -> m a
+isJustOr :: Has (Throw e) sig m => Maybe a -> e -> m a
 Just a `isJustOr` _ = return a
 Nothing `isJustOr` e = throwError e
 
 -- | Require that an 'Either' value is 'Right', or throw an exception
 --   based on the value in the 'Left'.
-isRightOr :: MonadError e m => Either b a -> (b -> e) -> m a
+isRightOr :: Has (Throw e) sig m => Either b a -> (b -> e) -> m a
 Right a `isRightOr` _ = return a
 Left b `isRightOr` f = throwError (f b)
 
 -- | Require that a 'Validation' value is 'Success', or throw an exception
 --   based on the value in the 'Failure'.
-isSuccessOr :: MonadError e m => Validation b a -> (b -> e) -> m a
+isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
 

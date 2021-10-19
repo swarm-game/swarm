@@ -64,6 +64,8 @@ import Brick.Forms
 import qualified Brick.Widgets.List as BL
 import qualified Graphics.Vty as V
 
+import qualified Control.Carrier.Lift as Fused
+import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CEK (idleMachine, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -271,7 +273,10 @@ runGameTickUI s = execStateT (runGameTick >> updateUI) s >>= continue
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: StateT AppState (EventM Name) ()
-runGameTick = zoom gameState gameTick
+runGameTick = do
+  gs <- use gameState
+  gs' <- liftIO (Fused.runM (Fused.execState gs gameTick))
+  gameState .= gs'
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -329,7 +334,9 @@ updateUI = do
       False -> pure False
       True -> do
         -- Reset the log updated flag
-        zoom gameState clearFocusedRobotLogUpdated
+        gs <- use gameState
+        gs' <- liftIO (Fused.runM (Fused.execState gs clearFocusedRobotLogUpdated))
+        gameState .= gs'
 
         -- Find and focus an installed "logger" device in the inventory list.
         let isLogger (InstalledEntry e) = e ^. entityName == "logger"
