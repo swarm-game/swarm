@@ -21,6 +21,7 @@ module Swarm.TUI.Model (
 
   -- * UI state
   REPLHistItem (..),
+  firstReplEntry,
   InventoryListEntry (..),
   _Separator,
   _InventoryEntry,
@@ -158,6 +159,13 @@ data REPLHistItem
   | -- | A response printed by the system.
     REPLOutput Text
   deriving (Eq, Ord, Show, Read)
+
+-- | Given a REPL history return `Just` the most recent `Text`
+--   entered by the user or `Nothing` if there is none.
+firstReplEntry :: [REPLHistItem] -> Maybe Text
+firstReplEntry ((REPLEntry _ entry) : _) = Just entry
+firstReplEntry (_ : rest) = firstReplEntry rest
+firstReplEntry [] = Nothing
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,

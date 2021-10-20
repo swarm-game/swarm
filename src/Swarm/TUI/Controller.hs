@@ -396,7 +396,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
           s
             & uiState . uiReplForm %~ updateFormState ""
             & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ (REPLEntry True entry :)
+            & uiState . uiReplHistory %~ prependReplEntryIfNotDuplicate
             & uiState . uiReplHistIdx .~ (-1)
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
@@ -415,6 +415,9 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
+  prependReplEntryIfNotDuplicate replHistory
+    | firstReplEntry replHistory == Just entry = replHistory
+    | otherwise = REPLEntry True entry : replHistory
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
