@@ -155,7 +155,7 @@ shutdown s = do
   liftIO $ writeFile ".swarm_history" (show hist)
   halt s'
  where
-  markOld (REPLEntry _ e) = REPLEntry False e
+  markOld (REPLEntry _ d e) = REPLEntry False d e
   markOld r = r
 
   isEntry REPLEntry {} = True
@@ -396,7 +396,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
           s
             & uiState . uiReplForm %~ updateFormState ""
             & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ (REPLEntry True entry :)
+            & uiState . uiReplHistory %~ prependReplEntry
             & uiState . uiReplHistIdx .~ (-1)
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
@@ -415,6 +415,9 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
+  prependReplEntry replHistory
+    | firstReplEntry replHistory == Just entry = REPLEntry True True entry : replHistory
+    | otherwise = REPLEntry True False entry : replHistory
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
@@ -448,7 +451,7 @@ adjReplHistIndex (+/-) s =
     & validateREPLForm
  where
   saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-  entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
+  entries = [e | REPLEntry _ False e <- s ^. uiState . uiReplHistory]
   curIndex = s ^. uiState . uiReplHistIdx
   histLen = length entries
   newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))

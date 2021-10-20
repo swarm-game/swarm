@@ -21,6 +21,7 @@ module Swarm.TUI.Model (
 
   -- * UI state
   REPLHistItem (..),
+  firstReplEntry,
   InventoryListEntry (..),
   _Separator,
   _InventoryEntry,
@@ -147,17 +148,29 @@ data Modal
 
 -- | An item in the REPL history.
 data REPLHistItem
-  = -- | Something entered by the user.  The
+  = -- | Something entered by the user.  The first
     --   @Bool@ indicates whether it is
     --   something entered this session (it
     --   will be @False@ for entries that were
     --   loaded from the history file). This is
     --   so we know which ones to append to the
     --   history file on shutdown.
-    REPLEntry Bool Text
+    --   The second @Bool@ indicates whether it
+    --   is a duplicate of the preceding item (it
+    --   will be @True@ for duplicate entries).
+    --   This is so we can ignore it when scrolling
+    --   through the REPL history in the REPL window.
+    REPLEntry Bool Bool Text
   | -- | A response printed by the system.
     REPLOutput Text
   deriving (Eq, Ord, Show, Read)
+
+-- | Given a REPL history return @Just@ the most recent @Text@
+--   entered by the user or @Nothing@ if there is none.
+firstReplEntry :: [REPLHistItem] -> Maybe Text
+firstReplEntry ((REPLEntry _ _ entry) : _) = Just entry
+firstReplEntry (_ : rest) = firstReplEntry rest
+firstReplEntry [] = Nothing
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,
