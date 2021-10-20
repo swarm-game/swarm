@@ -4,7 +4,8 @@ Swarm
 [![Build Status](https://github.com/byorgey/swarm/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/byorgey/swarm/actions)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 ![GitHub Contributors](https://contrib.rocks/image?repo=byorgey/swarm)
-Other langs: [Русский](other_langs/README_RU.md)
+--
+Other langs: [ru](other_langs/README_RU.md)
 --
 Swarm is a 2D programming and resource gathering game. Program your
 robots to explore the world and collect resources, which in turn
