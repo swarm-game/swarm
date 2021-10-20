@@ -284,7 +284,7 @@ data Const
     Not
   | -- | Arithmetic negation.
     Neg
-  | -- Comparison operators (check for with isCmpBinOp)
+  | -- Comparison operators
 
     -- | Logical equality comparison
     Eq
@@ -298,7 +298,7 @@ data Const
     Leq
   | -- | Logical greater-or-equal comparison
     Geq
-  | -- Arithmetic binary operators (check for with isArithBinOp)
+  | -- Arithmetic binary operators
 
     -- | Arithmetic addition operator
     Add
@@ -310,6 +310,11 @@ data Const
     Div
   | -- | Arithmetic exponentiation operator
     Exp
+  | -- Function composition with nice operators
+
+    -- | Application operator - helps to avoid parentheses:
+    --   @f $ g $ h x  =  f (g (h x))@
+    AppF
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -433,6 +438,7 @@ constInfo c = case c of
   Gt -> binaryOp ">" 4 N
   Leq -> binaryOp "<=" 4 N
   Geq -> binaryOp ">=" 4 N
+  AppF -> binaryOp "$" 0 R
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}

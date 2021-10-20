@@ -228,6 +228,7 @@ constCaps =
     -- Some built-in constants that don't require any special capability.
     Wait -> []
     Noop -> []
+    AppF -> []
     Force -> []
     Return -> []
     Log -> [CLog]
