@@ -81,7 +81,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.Util
+import Swarm.Util hiding ((<<.=))
 
 -- | Pattern synonyms to simplify brick event handler
 pattern ControlKey, MetaKey :: Char -> BrickEvent n e
@@ -268,15 +268,19 @@ runFrameTicks dt = do
 runGameTickUI :: AppState -> EventM Name (Next AppState)
 runGameTickUI s = execStateT (runGameTick >> updateUI) s >>= continue
 
+-- | Modifies the game state using a fused-effect state action.
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m ()
+zoomGameState f = do
+  gs <- use gameState
+  gs' <- liftIO (Fused.runM (Fused.execState gs f))
+  gameState .= gs'
+
 -- | Run the game for a single tick (/without/ updating the UI).
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: StateT AppState (EventM Name) ()
-runGameTick = do
-  gs <- use gameState
-  gs' <- liftIO (Fused.runM (Fused.execState gs gameTick))
-  gameState .= gs'
+runGameTick = zoomGameState gameTick
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -334,9 +338,7 @@ updateUI = do
       False -> pure False
       True -> do
         -- Reset the log updated flag
-        gs <- use gameState
-        gs' <- liftIO (Fused.runM (Fused.execState gs clearFocusedRobotLogUpdated))
-        gameState .= gs'
+        zoomGameState clearFocusedRobotLogUpdated
 
         -- Find and focus an installed "logger" device in the inventory list.
         let isLogger (InstalledEntry e) = e ^. entityName == "logger"

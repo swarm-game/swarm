@@ -63,7 +63,7 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
-import Control.Lens hiding (use, uses, view, (%=), (+=), (.=))
+import Control.Lens hiding ((<<.=), (<+=), use, uses, view, (%=), (+=), (.=))
 import Control.Monad.Except
 import Data.Bifunctor (first)
 import Data.Int (Int64)
@@ -354,8 +354,7 @@ uniquifyRobotName name tag = do
   collision <- uses robotMap (M.member name')
   case collision of
     True -> do
-      gensym += 1
-      tag' <- use gensym
+      tag' <- gensym <+= 1
       uniquifyRobotName name (Just tag')
     False -> return name'
 
@@ -460,8 +459,7 @@ activateRobot rn = internalActiveRobots %= S.insert rn
 wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
-  mrns <- use (waitingRobots . at time)
-  waitingRobots . at time .= Nothing
+  mrns <- waitingRobots . at time <<.= Nothing
   case mrns of
     Nothing -> return ()
     Just rns -> do
@@ -472,8 +470,7 @@ wakeUpRobotsDoneSleeping = do
 deleteRobot :: Has (State GameState) sig m => Text -> m ()
 deleteRobot rn = do
   internalActiveRobots %= S.delete rn
-  mrobot <- use (robotMap . at rn)
-  robotMap . at rn .= Nothing
+  mrobot <- robotMap . at rn <<.= Nothing
   mrobot `forM_` \robot -> do
     -- Delete the robot from the index of robots by location.
     robotsByLocation . ix (robot ^. robotLocation) %= S.delete rn

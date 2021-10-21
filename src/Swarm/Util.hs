@@ -44,6 +44,13 @@ module Swarm.Util (
 
   -- * Template Haskell utilities
   liftText,
+
+  -- * Fused-Effects Lens utilities
+  (%%=),
+  (<%=),
+  (<+=),
+  (<<.=),
+  (<>=)
 ) where
 
 import Control.Algebra (Has)
@@ -61,8 +68,12 @@ import Linear (V2)
 import qualified NLP.Minimorph.English as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Directory (doesFileExist)
+import Control.Lens (LensLike', Over, LensLike, ASetter', (<>~))
+import Control.Effect.State (State, state, modify)
+import Data.Tuple (swap)
 
 infixr 1 ?
+infix  4 %%=, <+=, <%=, <<.=, <>=
 
 -- | A convenient infix flipped version of 'fromMaybe': @Just a ? b =
 --   a@, and @Nothing ? b = b@. It can also be chained, as in @x ? y ?
@@ -181,3 +192,27 @@ Failure b `isSuccessOr` f = throwError (f b)
 -- See https://stackoverflow.com/questions/38143464/cant-find-inerface-file-declaration-for-variable
 liftText :: T.Text -> Q Exp
 liftText txt = AppE (VarE 'T.pack) <$> lift (T.unpack txt)
+
+
+------------------------------------------------------------
+-- Fused-Effects Lens utilities
+
+(<+=) :: (Has (State s) sig m, Num a) => LensLike' ((,)a) s a -> a -> m a
+l <+= a = l <%= (+ a)
+{-# INLINE (<+=) #-}
+
+(<%=) :: (Has (State s) sig m) => LensLike' ((,) a) s a -> (a -> a) -> m a
+l <%= f = l %%= (\b -> (b, b)) . f
+{-# INLINE (<%=) #-}
+
+(%%=) :: (Has (State s) sig m) => Over p ((,) r) s s a b -> p a (r, b) -> m r
+l %%= f = state (swap . l f)
+{-# INLINE (%%=) #-}
+
+(<<.=) :: (Has (State s) sig m) => LensLike ((,)a) s s a b -> b -> m a
+l <<.= b = l %%= \a -> (a,b)
+{-# INLINE (<<.=) #-}
+
+(<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
+l <>= a = modify (l <>~ a)
+{-# INLINE (<>=) #-}

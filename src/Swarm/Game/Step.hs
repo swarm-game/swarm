@@ -19,10 +19,8 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
-import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=))
+import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
 
---import Control.Monad.Except
---import Control.Monad.State
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
@@ -56,8 +54,9 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Util
 
-import Control.Carrier.Error.Either (ErrorC, runError)
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
+import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -153,7 +152,7 @@ entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Throw Exn) sig m) =>
   V2 Int64 ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
@@ -198,7 +197,7 @@ traceLogShow = traceLog . from . show
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
-ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) => Const -> m ()
+ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
 ensureCanExecute c = do
   mode <- use gameMode
   sys <- use systemRobot
@@ -219,7 +218,8 @@ hasCapability cap = do
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
-hasCapabilityOr :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) => Capability -> Exn -> m ()
+hasCapabilityOr ::
+  (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Exn -> m ()
 hasCapabilityOr cap exn = do
   h <- hasCapability cap
   h `holdsOr` exn
@@ -229,16 +229,15 @@ cmdExn :: Const -> [Text] -> Exn
 cmdExn c parts = CmdFailed c (T.unwords parts)
 
 -- | Raise an exception about a command failing with a formatted error message.
-raise :: (Has (Error Exn) sig m) => Const -> [Text] -> m a
+raise :: (Has (Throw Exn) sig m) => Const -> [Text] -> m a
 raise c parts = throwError (cmdExn c parts)
 
 -- | Run a subcomputation that might throw an exception in a context
 --   where we are returning a CEK machine; any exception will be
 --   turned into an 'Up' state.
---withExceptions :: Monad m => Cont -> ExceptT Exn (StateT Robot m) CEK -> StateT Robot m CEK
-withExceptions :: Monad m => Cont -> ErrorC Exn m CEK -> m CEK
+withExceptions :: Monad m => Cont -> ThrowC Exn m CEK -> m CEK
 withExceptions k m = do
-  res <- runError m
+  res <- runThrow m
   case res of
     Left exn -> return $ Up exn k
     Right a -> return a
@@ -488,7 +487,8 @@ takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, Whereami, Blo
 --   trying to use a function constant without the proper capability
 --   (for example, trying to use `if` without having a conditional
 --   device).  Any other exceptions constitute a bug.
-evalConst :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => Const -> [Value] -> Cont -> m CEK
+evalConst ::
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => Const -> [Value] -> Cont -> m CEK
 evalConst c vs k = do
   res <- runError $ execConst c vs k
   case res of
@@ -539,7 +539,12 @@ mkSeedBot e (minT, maxT) loc =
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
-execConst :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m, Has (Lift IO) sig m) => Const -> [Value] -> Cont -> m CEK
+execConst ::
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m, Has (Lift IO) sig m) =>
+  Const ->
+  [Value] ->
+  Cont ->
+  m CEK
 execConst c vs k = do
   -- First, ensure the robot is capable of executing/evaluating this constant.
   ensureCanExecute c
@@ -837,7 +842,7 @@ execConst c vs k = do
 
         -- Upload our log
         rlog <- use robotLog
-        robotMap . at otherName . _Just . robotLog %= mappend rlog
+        robotMap . at otherName . _Just . robotLog <>= rlog
 
         return $ Out VUnit k
       _ -> badConst
@@ -1087,7 +1092,7 @@ execConst c vs k = do
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
-            when (mode == Creative || inst `E.contains` logger) $ robotLog %= mappend (target ^. robotLog)
+            when (mode == Creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Finally, delete the salvaged robot
             deleteRobot (target ^. robotName)
@@ -1131,7 +1136,7 @@ execConst c vs k = do
           prependMsg = (\case (Fatal e) -> Fatal $ msg <> e; exn -> exn)
        in catchError badConst (throwError . prependMsg)
  where
-  badConst :: (Has (State GameState) sig m, Has (Error Exn) sig m) => m a
+  badConst :: (Has (State GameState) sig m, Has (Throw Exn) sig m) => m a
   badConst =
     throwError $
       Fatal $
@@ -1140,7 +1145,7 @@ execConst c vs k = do
           , from (prettyCEK (Out (VCApp c (reverse vs)) k))
           ]
   finishCookingRecipe ::
-    (Has (State GameState) sig m, Has (Error Exn) sig m) =>
+    (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
     Recipe e ->
     WorldUpdate ->
     RobotUpdate ->
