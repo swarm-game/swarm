@@ -1,0 +1,23 @@
+
+{
+	"name": "swarm-lsp-client",
+	"description": "VSCode part of the swarm language server",
+	"author": "Ondřej Šebek",
+	"license": "MIT",
+	"version": "0.0.3",
+	"publisher": "vscode",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/byorgey/swarm"
+	},
+	"engines": {
+		"vscode": "^1.52.0"
+	},
+	"dependencies": {
+		"vscode-languageclient": "^7.0.0"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.52.0",
+		"@vscode/test-electron": "^1.6.1"
+	}
+}

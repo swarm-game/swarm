@@ -1,0 +1,109 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "swarm",
+	"patterns": [
+		{"include": "#keywords"},
+		{"include": "#comments"},
+		{"include": "#strings"},
+		{"include": "#variables"},
+		{"include": "#constants"}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+				"name": "keyword.control.dictionary.def",
+				"begin": "def\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|(\\*|->)|[a-z]\\w*)\\s*)+))?=",
+				"end": "end",
+				"beginCaptures": {
+					"1": {"name": "variable.other"},
+					"3": {"name": "storage.type"},
+					"5": {"name": "storage.modifier"}
+				},
+				"patterns": [
+					{"include": "#keywords"},
+					{"include": "#comments"},
+					{"include": "#strings"},
+					{"include": "#variables"},
+					{"include": "#constants"}
+				]
+				},
+				{
+				"name": "keyword.control.dictionary.let",
+				"begin": "let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|(\\*|->)|[a-z]\\w*)\\s*)+))?=",
+				"end": "in",
+				"beginCaptures": {
+					"1": {"name": "variable.other"},
+					"3": {"name": "storage.type"},
+					"5": {"name": "storage.modifier"}
+				},
+				"patterns": [
+					{"include": "#keywords"},
+					{"include": "#comments"},
+					{"include": "#strings"},
+					{"include": "#variables"},
+					{"include": "#constants"}
+				]
+				},
+				{
+				"name": "keyword.operator",
+				"match": "(<|>|==|<=|>=|!=|=|;|<-|-|\\+|\\*|\\^|/(?![/|*]))"
+				},
+				{
+				"name": "keyword.operator.lambda",
+				"match": "\\\\(\\w+)\\.",
+				"captures": { "1": {"name": "variable.other"} }
+				},
+				{
+				"name": "keyword.other",
+				"match": "\\b(?i)(wait|noop|selfdestruct|move|turn|grab|scan|upload|place|give|install|make|build|log|view|appear|create|whereami|whoami|blocked|ishere|rundom|not|if|fst|snd|return|try|raise)\\b"
+				}
+			]
+			},
+		"comments": {
+			"patterns": [
+				{
+				"name": "comment.line.double-slash",
+				"begin": "//",
+				"end": "\n"
+				},
+				{
+				"name":"comment.block",
+				"begin": "\/[*]",
+				"end": "[*](\/)"
+				}
+			]
+		},
+		"strings":{
+			"patterns": [
+				{
+				"name":"string.quoted.double",
+				"begin": "\"",
+				"end": "\""
+				}
+			]
+		},
+		"variables":{
+			"patterns": [
+				{
+				"name": "variable.language.dir",
+				"match": "\\b(?i)(forward|back|down|left|right|north|east|south|west)\\b"
+				},
+				{
+				"name": "variable.other"	,
+				"match": "\\b(?i)([a-z]\\w*)\\b"
+				}
+			]
+		},
+		"constants": {
+			"patterns": [
+				{
+				"name": "constant.numeric",
+				"match": "[0-9]"
+				}
+			]
+		}
+
+	},
+	"scopeName": "source.swarm"
+}
