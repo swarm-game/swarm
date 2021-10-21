@@ -49,9 +49,10 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Linear
 import System.Clock
 import Witch (into)
@@ -150,16 +151,15 @@ toggleModal s modal = do
 --   the updated REPL history to a @.swarm_history@ file.
 shutdown :: AppState -> EventM Name (Next AppState)
 shutdown s = do
+  let hist = mapMaybe getNewEntry (s ^. uiState . uiReplHistory)
+  liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
   let s' = s & uiState . uiReplHistory . traverse %~ markOld
-      hist = filter isEntry (s' ^. uiState . uiReplHistory)
-  liftIO $ writeFile ".swarm_history" (show hist)
   halt s'
  where
   markOld (REPLEntry _ d e) = REPLEntry False d e
   markOld r = r
-
-  isEntry REPLEntry {} = True
-  isEntry _ = False
+  getNewEntry (REPLEntry True _ t) = Just t
+  getNewEntry _ = Nothing
 
 ------------------------------------------------------------
 -- Handling Frame events
