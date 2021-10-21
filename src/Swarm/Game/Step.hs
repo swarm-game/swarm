@@ -131,8 +131,6 @@ gameTick = do
 -- Some utility functions
 ------------------------------------------------------------
 
--- | Perform operation on the monad with game state.
-
 -- | Set a flag telling the UI that the world needs to be redrawn.
 flagRedraw :: (Has (State GameState) sig m) => m ()
 flagRedraw = needsRedraw .= True
@@ -152,10 +150,7 @@ entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Throw Exn) sig m) =>
-  V2 Int64 ->
-  (Maybe Entity -> Maybe Entity) ->
-  m ()
+  (Has (State GameState) sig m) => V2 Int64 -> (Maybe Entity -> Maybe Entity) -> m ()
 updateEntityAt loc upd = zoomWorld (W.updateM @Int (W.locToCoords loc) upd)
 
 -- | Get the robot with a given name (if any).
