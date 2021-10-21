@@ -119,7 +119,6 @@ resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (lo
 
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
---loadRecipes :: MonadIO m => EntityMap -> m (Either Text [Recipe Entity])
 loadRecipes :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text [Recipe Entity])
 loadRecipes em = runThrow $ do
   fileName <- sendIO $ getDataFileName "recipes.yaml"
