@@ -63,9 +63,8 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
-import Control.Lens
+import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
-import Control.Monad.State
 import Data.Bifunctor (first)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
@@ -77,6 +76,9 @@ import qualified Data.Text as T
 import Linear
 import Witch (into)
 
+import Control.Algebra (Has)
+import Control.Effect.Lens
+import Control.Effect.State (State)
 import Data.Set (Set)
 import qualified Data.Set as S
 import Swarm.Game.Entity
@@ -331,14 +333,14 @@ focusedRobot :: GameState -> Maybe Robot
 focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotName)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
-clearFocusedRobotLogUpdated :: MonadState GameState m => m ()
+clearFocusedRobotLogUpdated :: Has (State GameState) sig m => m ()
 clearFocusedRobotLogUpdated = do
   n <- use focusedRobotName
   robotMap . ix n . robotLogUpdated .= False
 
 -- | Given a 'Robot', possibly modify its name to ensure that the name
 --   is unique among robots.  This is done simply by appending a new unique
-ensureUniqueName :: MonadState GameState m => Robot -> m Robot
+ensureUniqueName :: Has (State GameState) sig m => Robot -> m Robot
 ensureUniqueName newRobot = do
   let name = newRobot ^. robotName
   newName <- uniquifyRobotName name Nothing
@@ -346,7 +348,7 @@ ensureUniqueName newRobot = do
 
 -- | Given a robot name, possibly add a numeric suffix to the end to
 --   ensure it is unique.
-uniquifyRobotName :: MonadState GameState m => Text -> Maybe Int -> m Text
+uniquifyRobotName :: Has (State GameState) sig m => Text -> Maybe Int -> m Text
 uniquifyRobotName name tag = do
   let name' = name `T.append` maybe "" (into @Text . show) tag
   collision <- uses robotMap (M.member name')
@@ -359,7 +361,7 @@ uniquifyRobotName name tag = do
 -- | Add a robot to the game state, possibly updating its name to
 --   ensure it is unique, also adding it to the index of robots by
 --   location, and return the (possibly modified) robot.
-addRobot :: MonadState GameState m => Robot -> m Robot
+addRobot :: Has (State GameState) sig m => Robot -> m Robot
 addRobot r = do
   r' <- ensureUniqueName r
   robotMap %= M.insert (r' ^. robotName) r'
@@ -428,7 +430,7 @@ maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
-emitMessage :: MonadState GameState m => Text -> m ()
+emitMessage :: Has (State GameState) sig m => Text -> m ()
 emitMessage msg = do
   q <- use messageQueue
   messageQueue %= (msg :) . (if length q >= maxMessageQueueSize then init else id)
@@ -438,23 +440,23 @@ ticks :: Lens' GameState Integer
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
-sleepUntil :: MonadState GameState m => Text -> Integer -> m ()
+sleepUntil :: Has (State GameState) sig m => Text -> Integer -> m ()
 sleepUntil rn time = do
   internalActiveRobots %= S.delete rn
   waitingRobots . at time . non [] %= (rn :)
 
 -- | Takes a robot out of the activeRobots set.
-sleepForever :: MonadState GameState m => Text -> m ()
+sleepForever :: Has (State GameState) sig m => Text -> m ()
 sleepForever rn = internalActiveRobots %= S.delete rn
 
 -- | Adds a robot to the activeRobots set.
-activateRobot :: MonadState GameState m => Text -> m ()
+activateRobot :: Has (State GameState) sig m => Text -> m ()
 activateRobot rn = internalActiveRobots %= S.insert rn
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the waitingRobots queue and put them back in the activeRobots set
 --   if they still exist in the keys of robotMap.
-wakeUpRobotsDoneSleeping :: MonadState GameState m => m ()
+wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
   mrns <- waitingRobots . at time <<.= Nothing
@@ -465,7 +467,7 @@ wakeUpRobotsDoneSleeping = do
       let aliveRns = filter (`M.member` robots) rns
       internalActiveRobots %= S.union (S.fromList aliveRns)
 
-deleteRobot :: MonadState GameState m => Text -> m ()
+deleteRobot :: Has (State GameState) sig m => Text -> m ()
 deleteRobot rn = do
   internalActiveRobots %= S.delete rn
   mrobot <- robotMap . at rn <<.= Nothing
