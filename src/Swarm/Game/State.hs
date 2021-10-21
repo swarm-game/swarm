@@ -63,7 +63,7 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
-import Control.Lens hiding ((<<.=), (<+=), use, uses, view, (%=), (+=), (.=))
+import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
 import Data.Bifunctor (first)
 import Data.Int (Int64)

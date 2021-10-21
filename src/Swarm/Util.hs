@@ -50,17 +50,20 @@ module Swarm.Util (
   (<%=),
   (<+=),
   (<<.=),
-  (<>=)
+  (<>=),
 ) where
 
 import Control.Algebra (Has)
+import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
+import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
 import Control.Monad (unless)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
@@ -68,12 +71,9 @@ import Linear (V2)
 import qualified NLP.Minimorph.English as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Directory (doesFileExist)
-import Control.Lens (LensLike', Over, LensLike, ASetter', (<>~))
-import Control.Effect.State (State, state, modify)
-import Data.Tuple (swap)
 
 infixr 1 ?
-infix  4 %%=, <+=, <%=, <<.=, <>=
+infix 4 %%=, <+=, <%=, <<.=, <>=
 
 -- | A convenient infix flipped version of 'fromMaybe': @Just a ? b =
 --   a@, and @Nothing ? b = b@. It can also be chained, as in @x ? y ?
@@ -193,11 +193,10 @@ Failure b `isSuccessOr` f = throwError (f b)
 liftText :: T.Text -> Q Exp
 liftText txt = AppE (VarE 'T.pack) <$> lift (T.unpack txt)
 
-
 ------------------------------------------------------------
 -- Fused-Effects Lens utilities
 
-(<+=) :: (Has (State s) sig m, Num a) => LensLike' ((,)a) s a -> a -> m a
+(<+=) :: (Has (State s) sig m, Num a) => LensLike' ((,) a) s a -> a -> m a
 l <+= a = l <%= (+ a)
 {-# INLINE (<+=) #-}
 
@@ -209,8 +208,8 @@ l <%= f = l %%= (\b -> (b, b)) . f
 l %%= f = state (swap . l f)
 {-# INLINE (%%=) #-}
 
-(<<.=) :: (Has (State s) sig m) => LensLike ((,)a) s s a b -> b -> m a
-l <<.= b = l %%= \a -> (a,b)
+(<<.=) :: (Has (State s) sig m) => LensLike ((,) a) s s a b -> b -> m a
+l <<.= b = l %%= \a -> (a, b)
 {-# INLINE (<<.=) #-}
 
 (<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
