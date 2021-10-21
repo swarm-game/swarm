@@ -13,7 +13,7 @@
 			"patterns": [
 				{
 				"name": "keyword.control.dictionary.def",
-				"begin": "def\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|(\\*|->)|[a-z]\\w*)\\s*)+))?=",
+				"begin": "def\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
 				"end": "end",
 				"beginCaptures": {
 					"1": {"name": "variable.other"},
@@ -30,7 +30,7 @@
 				},
 				{
 				"name": "keyword.control.dictionary.let",
-				"begin": "let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|(\\*|->)|[a-z]\\w*)\\s*)+))?=",
+				"begin": "let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
 				"end": "in",
 				"beginCaptures": {
 					"1": {"name": "variable.other"},
@@ -47,7 +47,7 @@
 				},
 				{
 				"name": "keyword.operator",
-				"match": "(<|>|==|<=|>=|!=|=|;|<-|-|\\+|\\*|\\^|/(?![/|*]))"
+				"match": "(<|>|==|<=|>=|!=|=|;|<-|-|\\+|\\*|\\^|\\$|/(?![/|*]))"
 				},
 				{
 				"name": "keyword.operator.lambda",
@@ -56,7 +56,7 @@
 				},
 				{
 				"name": "keyword.other",
-				"match": "\\b(?i)(wait|noop|selfdestruct|move|turn|grab|scan|upload|place|give|install|make|build|log|view|appear|create|whereami|whoami|blocked|ishere|rundom|not|if|fst|snd|return|try|raise)\\b"
+				"match": "\\b(?i)(noop|wait|selfdestruct|move|turn|grab|place|give|install|make|drill|build|salvage|reprogram|say|log|view|appear|create|whereami|blocked|scan|upload|ishere|whoami|random|run|if|inl|inr|case|fst|snd|return|try|raise|not)\\b"
 				}
 			]
 			},
@@ -87,7 +87,7 @@
 			"patterns": [
 				{
 				"name": "variable.language.dir",
-				"match": "\\b(?i)(forward|back|down|left|right|north|east|south|west)\\b"
+				"match": "\\b(?i)(left|right|back|forward|north|south|east|west|down)\\b"
 				},
 				{
 				"name": "variable.other"	,

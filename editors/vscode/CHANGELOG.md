@@ -2,6 +2,13 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.0.3
+
+- [Highlighter] Update reserved word list (include `drill`,etc.)
+- [Highlighter] Recognize sum types (`a + b`)
+- [Highlighter] Recognize explicit `forall a b.`
+- moved the package to `byorgey/swarm` repository
+
 ## version 0.0.2
 
 - Add LSP integration (requires `swarm` executable).

@@ -10,4 +10,8 @@ There are no customizations yet, sorry.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- The highlighter expects type and `=` sign on the same line as `def`/`let`, i.e.
+  ```haskell
+  def missionImpossible : cmd a -> a = ...
+  ```
+  This regexp limitation is unlikely to impact many users, but is still a departure from real swarm.
