@@ -81,9 +81,9 @@ import Control.Monad.State
 import Data.List (findIndex, sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import System.Clock
-import Text.Read (readMaybe)
 
 import Brick
 import Brick.Focus
@@ -335,19 +335,26 @@ initReplForm =
 initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 
+createHistory :: [Text] -> [REPLHistItem]
+createHistory = map (uncurry $ REPLEntry False) . zipLines . reverse
+ where
+  zipLines ls = zipWith samePair ls $ tail ls ++ [""]
+  samePair n o = (n == o, n)
+
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file and getting the current
 --   time.
 initUIState :: ExceptT Text IO UIState
 initUIState = liftIO $ do
-  mhist <- (>>= readMaybe @[REPLHistItem]) <$> readFileMay ".swarm_history"
+  historyT <- readFileMayT =<< getSwarmHistoryPath False
+  let history = maybe [] (createHistory . T.lines) historyT
   startTime <- getTime Monotonic
   return $
     UIState
       { _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
-      , _uiReplHistory = mhist ? []
+      , _uiReplHistory = history
       , _uiReplHistIdx = -1
       , _uiReplLast = ""
       , _uiInventory = Nothing

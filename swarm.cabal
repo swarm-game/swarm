@@ -96,6 +96,7 @@ library
                       containers                    >= 0.6.2 && < 0.7,
                       directory                     >= 1.3 && < 1.4,
                       either                        >= 5.0 && < 5.1,
+                      filepath                      >= 1.4 && < 1.5,
                       fused-effects                 >= 1.1.1.1 && < 1.2,
                       fused-effects-lens            >= 1.2.0.1 && < 1.3,
                       hashable                      >= 1.3.4 && < 1.4,

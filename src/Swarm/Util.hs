@@ -24,8 +24,12 @@ module Swarm.Util (
   (?),
   maxOn,
   maximum0,
-  readFileMay,
   cycleEnum,
+
+  -- * Directory utilities
+  readFileMay,
+  readFileMayT,
+  getSwarmHistoryPath,
 
   -- * English language utilities
   quote,
@@ -57,20 +61,27 @@ import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Tuple (swap)
+import qualified Data.Text.IO as T
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import Linear (V2)
 import qualified NLP.Minimorph.English as MM
 import NLP.Minimorph.Util ((<+>))
-import System.Directory (doesFileExist)
+import System.Directory (
+  XdgDirectory (XdgData),
+  createDirectoryIfMissing,
+  getXdgDirectory,
+ )
+import System.FilePath
+import System.IO.Error (catchIOError)
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -95,19 +106,6 @@ maximum0 :: (Num a, Ord a) => [a] -> a
 maximum0 [] = 0
 maximum0 xs = maximum xs
 
--- | Safely attempt to read a file, returning @Nothing@ if the file
---   does not exist.  \"Safely\" should be read in scare quotes here,
---   since /e.g./ we do nothing to guard against the possibility of a
---   race condition where the file is deleted after the existence
---   check but before trying to read it.  But it's not like we're
---   worried about security or anything here.
-readFileMay :: FilePath -> IO (Maybe String)
-readFileMay file = do
-  b <- doesFileExist file
-  case b of
-    False -> return Nothing
-    True -> Just <$> readFile file
-
 -- | Take the successor of an 'Enum' type, wrapping around when it
 --   reaches the end.
 cycleEnum :: (Eq e, Enum e, Bounded e) => e -> e
@@ -115,7 +113,31 @@ cycleEnum e
   | e == maxBound = minBound
   | otherwise = succ e
 
---------------------------------------------------
+------------------------------------------------------------
+-- Directory stuff
+
+-- | Safely attempt to read a file.
+readFileMay :: FilePath -> IO (Maybe String)
+readFileMay = catchIO . readFile
+
+-- | Safely attempt to (efficiently) read a file.
+readFileMayT :: FilePath -> IO (Maybe Text)
+readFileMayT = catchIO . T.readFile
+
+-- | Turns any IO error into Nothing.
+catchIO :: IO a -> IO (Maybe a)
+catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
+
+-- | Get path to swarm history, optionally creating necessary
+--   directories. This could fail if user has bad permissions
+--   on his own $HOME or $XDG_DATA_HOME which is unlikely.
+getSwarmHistoryPath :: Bool -> IO FilePath
+getSwarmHistoryPath createDirs = do
+  swarmData <- getXdgDirectory XdgData "swarm"
+  when createDirs (createDirectoryIfMissing True swarmData)
+  pure (swarmData </> "history")
+
+------------------------------------------------------------
 -- Some language-y stuff
 
 -- | Prepend a noun with the proper indefinite article (\"a\" or \"an\").
