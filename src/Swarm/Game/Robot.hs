@@ -359,6 +359,6 @@ waitingUntil robot =
     _ -> Nothing
 
 -- | Get the result of the robot's computation if it is finished.
-getResult :: Robot -> Maybe Value
+getResult :: Robot -> Maybe (Value, Store)
 {-# INLINE getResult #-}
 getResult = finalValue . view machine

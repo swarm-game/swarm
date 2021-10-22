@@ -256,10 +256,10 @@ data CESK
   deriving (Eq, Show)
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
---   the final value.
-finalValue :: CESK -> Maybe Value
+--   the final value and store.
+finalValue :: CESK -> Maybe (Value, Store)
 {-# INLINE finalValue #-}
-finalValue (Out v _ []) = Just v
+finalValue (Out v s []) = Just (v, s)
 finalValue _ = Nothing
 
 -- | Initialize a machine state with a starting term along with its

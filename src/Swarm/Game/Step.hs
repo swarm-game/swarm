@@ -111,13 +111,19 @@ gameTick = do
                   sleepForever rn
 
   -- See if the base is finished with a computation, and if so, record
-  -- the result in the game state so it can be displayed by the REPL.
+  -- the result in the game state so it can be displayed by the REPL;
+  -- also save the current store into the robotContext so we can
+  -- restore it the next time we start a computation.
   mr <- use (robotMap . at "base")
   case mr of
     Just r -> do
       res <- use replStatus
       case res of
-        REPLWorking ty Nothing -> replStatus .= REPLWorking ty (getResult r)
+        REPLWorking ty Nothing -> case getResult r of
+          Just (v, s) -> do
+            replStatus .= REPLWorking ty (Just v)
+            robotMap . ix "base" . robotContext . defStore .= s
+          Nothing -> return ()
         _otherREPLStatus -> return ()
     Nothing -> return ()
 
@@ -430,10 +436,6 @@ stepCESK cesk = case cesk of
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
     robotContext . defCaps %= (`union` cctx)
-
-      -- Note, it should be safe to simply replace the defStore, because XXX
-    robotContext . defStore .= s
-
     return $ Out v s k
   Out v s (FLoadEnv {} : k) -> return $ Out v s k
   -- Any other type of value wiwth an FExec frame is an error (should

@@ -242,5 +242,5 @@ eval g =
   runCESK :: CESK -> StateT Robot (StateT GameState IO) (Either Text Value)
   runCESK (Up exn _ []) = return (Left (formatExn exn))
   runCESK cesk = case finalValue cesk of
-    Just v -> return (Right v)
+    Just (v, _) -> return (Right v)
     Nothing -> stepCESK cesk >>= runCESK

@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -51,7 +49,7 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
-import Data.Maybe (isJust, fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Linear
@@ -66,7 +64,7 @@ import qualified Graphics.Vty as V
 
 import qualified Control.Carrier.Lift as Fused
 import qualified Control.Carrier.State.Lazy as Fused
-import Swarm.Game.CESK (idleMachine, initMachine, emptyStore)
+import Swarm.Game.CESK (emptyStore, idleMachine, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -421,8 +419,9 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
-  topStore  = fromMaybe emptyStore $
-    s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
+  topStore =
+    fromMaybe emptyStore $
+      s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
   prependReplEntry replHistory
     | firstReplEntry replHistory == Just entry = REPLEntry True True entry : replHistory
     | otherwise = REPLEntry True False entry : replHistory
