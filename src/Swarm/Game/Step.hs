@@ -396,15 +396,12 @@ stepCESK cesk = case cesk of
   -- the delayed value).
   Out v s (FDef x : k) ->
     return $ Out (VResult VUnit (singleton x v)) s k
-  -- To execute a constant application, delegate to the 'execConst'
+  -- To execute a constant application, delegate to the 'evalConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) s (FExec : k) -> do
     when (takesTick c) $ tickSteps .= 0
-    res <- runError (execConst c (reverse args) s k)
-    case res of
-      Left exn -> return $ Up exn s k
-      Right cek' -> return cek'
+    evalConst c (reverse args) s k
 
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
@@ -496,27 +493,14 @@ stepCESK cesk = case cesk of
 takesTick :: Const -> Bool
 takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, Whereami, Blocked, Ishere, Try, Random, Appear])
 
--- | At the level of the CESK machine, the only difference bewteen
---   between *evaluating* a function constant and *executing* a
---   command constant is what kind of exceptions can be thrown.  When
---   evaluating, the only thing that could throw an exception is
---   trying to use a function constant without the proper capability
---   (for example, trying to use `if` without having a conditional
---   device).  Any other exceptions constitute a bug.
+-- | Eexecute a constant, catching any exception thrown and returning
+--   it via a CESK machine state.
 evalConst ::
   (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => Const -> [Value] -> Store -> Cont -> m CESK
 evalConst c vs s k = do
   res <- runError $ execConst c vs s k
   case res of
-    Left exn@Fatal {} -> return $ Up exn s k
-    Left exn@Incapable {} -> return $ Up exn s k
-    Left exn -> do
-      let msg =
-            T.unlines
-              [ "evalConst shouldn't be able to throw this kind of exception:"
-              , formatExn exn
-              ]
-      return $ Up (Fatal msg) s k
+    Left exn -> return $ Up exn s k
     Right cek' -> return cek'
 
 -- | A system program for a "seed robot", to regrow a growable entity
