@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE GADTs #-}
 
 -- |
@@ -101,7 +99,7 @@ valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
-valueToTerm (VDelay t _) = TDelay False Nothing t
+valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TInt (fromIntegral n) -- XXX WRONG
 -- We really can't get away with valueToTerm any more, we need to make a proper
 -- pretty-printer for values.

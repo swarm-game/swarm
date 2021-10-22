@@ -55,6 +55,7 @@ module Swarm.Language.Syntax (
 
   -- * Terms
   Var,
+  DelayType(..),
   Term (..),
   mkOp,
   mkOp',
@@ -470,14 +471,31 @@ pattern TBind :: Maybe Var -> Term -> Term -> Term
 pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
 
 -- | Match a TDelay without syntax
-pattern TDelay :: Bool -> Maybe Var -> Term -> Term
-pattern TDelay m x t = SDelay m x (STerm t)
+pattern TDelay :: DelayType -> Term -> Term
+pattern TDelay m t = SDelay m (STerm t)
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
 {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
+
+-- | Different runtime behaviors for delayed expressions.
+data DelayType
+  = -- | A simple delay, implemented via a (non-memoized) @VDelay@
+    --   holding the delayed expression.
+    SimpleDelay
+  | -- | A memoized delay, implemented by allocating a mutable cell
+    --   with the delayed expression and returning a reference to it.
+    --   When the @Maybe Var@ is @Just@, a recursive binding of the
+    --   variable with a reference to the delayed expression will be
+    --   provided while evaluating the delayed expression itself. Note
+    --   that there is no surface syntax for binding a variable within
+    --   a recursive delayed expression; the only way we can get
+    --   @Just@ here is when we automatically generate a delayed
+    --   expression while interpreting a recursive @let@ or @def@.
+    MemoizedDelay (Maybe Var)
+    deriving (Eq, Show, Data)
 
 -- | Terms of the Swarm language.
 data Term
@@ -523,27 +541,7 @@ data Term
     --   Note that 'Force' is just a constant, whereas 'SDelay' has to
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
-    --
-    --   The @Bool@ indicates whether this delayed term should be
-    --   /memoized/.  If @False@, the term will be put in `VDelay`
-    --   wrapper and evaluated when `force` is applied.  If @True@,
-    --   the term will be put in a newly allocated memory cell in the
-    --   store, so it will only ever be evaluated once, even if it is
-    --   shared.  Memoized delays are used automatically for recursive
-    --   bindings, or can be used explicitly via the @{{...}}@ syntax.
-    --
-    --   The variable is for /recursive/ delayed expressions.  If the
-    --   variable is @Just@, a recursive binding of the variable with
-    --   a reference to the delayed expression will be provided while
-    --   evaluating the delayed expression itself.  Note that there is
-    --   no surface syntax for binding a variable to a recursive
-    --   delayed expression; the only way we can get a @Just@ in the
-    --   @Maybe Var@ position is when we automatically generate a
-    --   delayed expression while interpreting a recursive @let@ or
-    --   @def@.  __Invariant__: if the @Maybe Var@ is @Just@ then the
-    --   @Bool@ must be @True@ (we only do memoized recursive
-    --   bindings).
-    SDelay Bool (Maybe Var) Syntax
+    SDelay DelayType Syntax
   deriving (Eq, Show, Data)
 
 instance Plated Term where
@@ -578,8 +576,8 @@ fvT f = go S.empty
       SDef r x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
     SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
       SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
-    SDelay m x (Syntax l1 t1) ->
-      SDelay m x <$> (Syntax l1 <$> go bound t1)
+    SDelay m (Syntax l1 t1) ->
+      SDelay m <$> (Syntax l1 <$> go bound t1)
 
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via

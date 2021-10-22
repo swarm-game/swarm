@@ -149,8 +149,8 @@ integer = lexeme L.decimal
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
 
-dbraces :: Parser a -> Parser a
-dbraces = between (symbol "{{") (symbol "}}")
+-- dbraces :: Parser a -> Parser a
+-- dbraces = between (symbol "{{") (symbol "}}")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -258,11 +258,11 @@ parseTermAtom =
     -- Potential syntax for explicitly requesting memoized delay.
     -- Perhaps we will not need this in the end; see the discussion at
     -- https://github.com/byorgey/swarm/issues/150 .
-    -- <|> parseLoc (TDelay False Nothing (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
-    -- <|> parseLoc (SDelay True Nothing <$> dbraces parseTerm)
+    -- <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
+    -- <|> parseLoc (SDelay MemoizedDelay <$> dbraces parseTerm)
 
-    <|> parseLoc (TDelay False Nothing (TConst Noop) <$ try (symbol "{" *> symbol "}"))
-    <|> parseLoc (SDelay False Nothing <$> braces parseTerm)
+    <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 -- | Construct an 'SLet', automatically filling in the Boolean field

@@ -352,7 +352,7 @@ stepCESK cesk = case cesk of
   -- in the let-bound expression and the body has already been
   -- rewritten by elaboration to 'force x'.
   In (TLet True x _ t1 t2) e s k ->
-    return $ In (TDelay True (Just x) t1) e s (FLet x t2 e : k)
+    return $ In (TDelay (MemoizedDelay $ Just x) t1) e s (FLet x t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
   Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
@@ -364,13 +364,12 @@ stepCESK cesk = case cesk of
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
   In (TBind mx t1 t2) e s k -> return $ Out (VBind mx t1 t2 e) s k
-  -- Non-memoized delay expressions immediately turn into VDelay values, awaiting
-  -- application of 'Force'.  Note that according to an invariant on @Delay@ nodes,
-  -- if the first field is @False@ then the second field must be @Nothing@.
-  In (TDelay False _ t) e s k -> return $ Out (VDelay t e) s k
+  -- Simple (non-memoized) delay expressions immediately turn into
+  -- VDelay values, awaiting application of 'Force'.
+  In (TDelay SimpleDelay t) e s k -> return $ Out (VDelay t e) s k
   -- For memoized delay expressions, we allocate a new cell in the store and
   -- return a reference to it.
-  In (TDelay True x t) e s k -> do
+  In (TDelay (MemoizedDelay x) t) e s k -> do
     -- Note that if the delay expression is recursive, we add a
     -- binding to the environment that wil be used to evaluate the
     -- body, binding the variable to a reference to the memory cell we
@@ -391,7 +390,7 @@ stepCESK cesk = case cesk of
   -- called.  We memoize both recursive and non-recursive definitions,
   -- since the point of a definition is that it may be used many times.
   Out (VDef r x t e) s (FExec : k) ->
-    return $ In (TDelay True (bool Nothing (Just x) r) t) e s (FDef x : k)
+    return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e s (FDef x : k)
   -- Once we have finished evaluating the (memoized, delayed) body of
   -- a definition, we return a special VResult value, which packages
   -- up the return value from the @def@ command itself (@unit@)

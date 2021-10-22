@@ -329,7 +329,7 @@ infer (Syntax _ (SPair t1 t2)) = UTyProd <$> infer t1 <*> infer t2
 -- @SDelay@ nodes are never generated from the surface syntax, only
 -- dynamically at runtime when evaluating recursive let or def expressions,
 -- so we don't have to worry about typechecking them here.
-infer (Syntax _ (SDelay _ _ t)) = UTyDelay <$> infer t
+infer (Syntax _ (SDelay _ t)) = UTyDelay <$> infer t
 -- Just look up variables in the context.
 infer (Syntax l (TVar x)) = lookup l x
 -- To infer the type of a lambda if the type of the argument is
