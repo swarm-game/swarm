@@ -266,16 +266,7 @@ stepRobot r = do
 --   machine state and figure out a single next step.
 stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CESK -> m CESK
 stepCESK cesk = case cesk of
-  -- (liftIO $ appendFile "out.txt" (prettyCESK cesk)) >>
-
-  -- It's a little unsatisfactory the way we handle having both Robot
-  -- and GameState in different states (by having one be concrete and
-  -- the other accessible via 'lift').  Having them both be capability
-  -- constraints is what we really want, but it's not possible to do
-  -- that with mtl.  Ultimately we may want to switch to an effects
-  -- library.  I am hesitant to use polysemy because of performance
-  -- issues.  Perhaps fused-effects would work.  I really want to use
-  -- 'eff' but seems like it's not ready yet.
+  -- (sendIO $ appendFile "out.txt" (prettyCESK cesk)) >>
 
   ------------------------------------------------------------
   -- Evaluation
@@ -432,13 +423,17 @@ stepCESK cesk = case cesk of
   Out v s (FUnionEnv e : k) -> return $ Out (VResult v e) s k
   -- If the top of the continuation stack contains a 'FLoadEnv' frame,
   -- it means we are supposed to load up the resulting definition
-  -- environment and type and capability contexts into the robot's
+  -- environment, store, and type and capability contexts into the robot's
   -- top-level environment and contexts, so they will be available to
   -- future programs.
   Out (VResult v e) s (FLoadEnv ctx cctx : k) -> do
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
     robotContext . defCaps %= (`union` cctx)
+
+      -- Note, it should be safe to simply replace the defStore, because XXX
+    robotContext . defStore .= s
+
     return $ Out v s k
   Out v s (FLoadEnv {} : k) -> return $ Out v s k
   -- Any other type of value wiwth an FExec frame is an error (should
@@ -527,7 +522,7 @@ mkSeedBot e (minT, maxT) loc =
     "seed"
     loc
     (V2 0 0)
-    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
+    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
     []
     & robotDisplay
       .~ ( defaultEntityDisplay '.'
@@ -1130,7 +1125,7 @@ execConst c vs s k = do
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ initMachine' t empty k
+        return $ initMachine' t empty emptyStore k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k

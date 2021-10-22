@@ -232,7 +232,7 @@ eval g =
     assertEqual "" (Right val) result
 
   evalPT :: ProcessedTerm -> IO (Either Text Value)
-  evalPT t = evaluateCESK (initMachine t empty)
+  evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
   evaluateCESK :: CESK -> IO (Either Text Value)
   evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK $ cesk

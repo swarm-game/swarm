@@ -26,6 +26,7 @@ module Swarm.Game.Robot (
   defTypes,
   defCaps,
   defVals,
+  defStore,
 
   -- ** Lenses
   robotEntity,
@@ -78,13 +79,18 @@ import Swarm.Language.Types (TCtx)
 -- | A record that stores the information
 --   for all defintions stored in a 'Robot'
 data RobotContext = RobotContext
-  { -- | maps a definition to it's type
+  { -- | Map definition names to their types.
     _defTypes :: TCtx
-  , -- | maps a defintion to the capabilities
-    --   required to compute it
+  , -- | Map defintion names to the capabilities
+    --   required to evaluate/execute them.
     _defCaps :: CapCtx
-  , -- | maps a defintion to it's value
+  , -- | Map defintion names to their values. Note that since
+    --   definitions are delayed, the values will just consist of
+    --   'VRef's pointing into the store.
     _defVals :: Env
+  , -- | A store containing memory cells allocated to hold
+    --   definitions.
+    _defStore :: Store
   }
   deriving (Show)
 
@@ -305,7 +311,7 @@ mkRobot name l d m devs =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = l
-    , _robotContext = RobotContext empty empty empty
+    , _robotContext = RobotContext empty empty empty emptyStore
     , _machine = m
     , _systemRobot = False
     , _selfDestruct = False
@@ -331,7 +337,7 @@ baseRobot devs =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = V2 0 0
-    , _robotContext = RobotContext empty empty empty
+    , _robotContext = RobotContext empty empty empty emptyStore
     , _machine = idleMachine
     , _systemRobot = False
     , _selfDestruct = False

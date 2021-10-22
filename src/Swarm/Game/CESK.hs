@@ -91,7 +91,6 @@ import Control.Lens.Combinators (pattern Empty)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
 import Data.List (intercalate)
-import qualified Data.Set as S
 import Witch (from)
 
 import Swarm.Game.Entity (Entity, Inventory)
@@ -266,27 +265,20 @@ finalValue _ = Nothing
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
 --   whether it has a command type or not.
-initMachine :: ProcessedTerm -> Env -> CESK
-initMachine t e = initMachine' t e []
+initMachine :: ProcessedTerm -> Env -> Store -> CESK
+initMachine t e s = initMachine' t e s []
 
--- | Like 'initMachine', but also take a starting continuation.
-initMachine' :: ProcessedTerm -> Env -> Cont -> CESK
-initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e k =
+-- | Like 'initMachine', but also take an explicit starting continuation.
+initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
+initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e s k =
   case ctx of
-    Empty -> In t e emptyStore (FExec : k)
-    _ -> In t e emptyStore (FExec : FLoadEnv ctx capCtx : k)
-initMachine' (ProcessedTerm t _ _ _) e k = In t e emptyStore k
+    Empty -> In t e s (FExec : k)
+    _ -> In t e s (FExec : FLoadEnv ctx capCtx : k)
+initMachine' (ProcessedTerm t _ _ _) e s k = In t e s k
 
 -- | A machine which does nothing.
 idleMachine :: CESK
-idleMachine = initMachine trivialTerm empty
- where
-  trivialTerm =
-    ProcessedTerm
-      (TConst Noop)
-      (trivMod (Forall [] (TyCmd TyUnit)))
-      S.empty
-      empty
+idleMachine = Out VUnit emptyStore []
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CESK states.  Should really make a
