@@ -254,8 +254,13 @@ parseTermAtom =
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
     <|> parens parseTerm
-    <|> parseLoc (TDelay False Nothing (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
-    <|> parseLoc (SDelay True Nothing <$> dbraces parseTerm)
+
+    -- Potential syntax for explicitly requesting memoized delay.
+    -- Perhaps we will not need this in the end; see the discussion at
+    -- https://github.com/byorgey/swarm/issues/150 .
+    -- <|> parseLoc (TDelay False Nothing (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
+    -- <|> parseLoc (SDelay True Nothing <$> dbraces parseTerm)
+
     <|> parseLoc (TDelay False Nothing (TConst Noop) <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay False Nothing <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
