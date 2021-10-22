@@ -59,7 +59,7 @@ module Swarm.Language.Syntax (
 
   -- * Terms
   Var,
-  DelayType(..),
+  DelayType (..),
   Term (..),
   mkOp,
   mkOp',
@@ -540,7 +540,7 @@ data DelayType
     --   @Just@ here is when we automatically generate a delayed
     --   expression while interpreting a recursive @let@ or @def@.
     MemoizedDelay (Maybe Var)
-    deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data)
 
 -- | Terms of the Swarm language.
 data Term

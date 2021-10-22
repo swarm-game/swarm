@@ -24,6 +24,7 @@ import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
 import Data.List (find)
+import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import qualified Data.Sequence as Seq
@@ -34,7 +35,6 @@ import Linear (V2 (..), zero, (^+^))
 import System.Random (UniformRange, uniformR)
 import Witch
 import Prelude hiding (lookup)
-import qualified Data.List as L
 
 import Swarm.Game.CESK
 import Swarm.Game.Display
