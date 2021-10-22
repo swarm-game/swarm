@@ -431,7 +431,7 @@ stepCESK cesk = case cesk of
     robotContext . defTypes %= (`union` ctx)
     robotContext . defCaps %= (`union` cctx)
 
-      -- Note, it should be safe to simply replace the defStore, because XXX
+    -- Note, it should be safe to simply replace the defStore, because XXX
     robotContext . defStore .= s
 
     return $ Out v s k
