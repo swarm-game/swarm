@@ -41,6 +41,8 @@ elaborate =
   -- any such variables must in fact refer to things previously
   -- bound by 'def'.
   rewrite (TDef True x ty t1) = TDef True x ty (mapFree1 x (TApp (TConst Force)) t1)
+  -- Rewrite @f $ x@ to @f x@.
+  rewrite (TApp (TApp (TConst AppF) r) l) = TApp r l
   -- Leave any other subterms alone.
   rewrite t = t
 

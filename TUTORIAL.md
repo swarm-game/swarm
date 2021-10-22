@@ -361,15 +361,15 @@ the log from a `logger`.
 build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
 make "log"
 make "logger"
-build "s" {turn south; move; salvage; turn back; move; upload "base"}
+build "salvager" {turn south; move; log "salvaging..."; salvage; turn back; move; upload "base"}
 ```
 The world should now look something like this:
 
 ![](images/salvaged.png)
 
 As you can see, the base's log now contains some entries from
-`crasher`!  They were copied over to `s`'s log when it salvaged
-`crasher`, and then to the base's log when `s` executed the `upload`
+`crasher`!  They were copied over to `salvager`'s log when it salvaged
+`crasher`, and then to the base's log when `salvager` executed the `upload`
 command.  We can see the initial `hi!` entry, and then we can see the
 reason that it crashed: it attempted to execute a `grab` instruction
 in a cell with nothing to grab.

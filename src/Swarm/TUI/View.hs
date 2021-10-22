@@ -560,8 +560,8 @@ drawREPL s =
         Just False -> [renderForm (s ^. uiState . uiReplForm)]
         _ -> [padRight Max $ txt "..."]
  where
-  newEntry (REPLEntry False _) = False
+  newEntry (REPLEntry False _ _) = False
   newEntry _ = True
 
-  fmt (REPLEntry _ e) = txt replPrompt <+> txt e
+  fmt (REPLEntry _ _ e) = txt replPrompt <+> txt e
   fmt (REPLOutput t) = txt t

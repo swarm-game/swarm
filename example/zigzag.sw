@@ -5,11 +5,12 @@ let rep : int -> cmd () -> cmd () = \n. \c.
 in
 turn east;
 rep 50 {
-  harvest; move;
+  grab; move;
   turn left;
-  harvest; move;
+  grab; move;
   turn right;
-  y <- getY;
+  p <- whereami;
+  let y = snd p in
   if (y >= 10) {
     turn right
   } {

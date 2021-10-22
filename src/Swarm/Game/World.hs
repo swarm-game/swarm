@@ -1,5 +1,6 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -7,6 +8,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -52,7 +54,6 @@ module Swarm.Game.World (
 
 import Control.Arrow ((&&&))
 import Control.Lens
-import Control.Monad.State.Class
 import qualified Data.Array as A
 import Data.Array.IArray
 import qualified Data.Array.Unboxed as U
@@ -64,6 +65,8 @@ import GHC.Generics (Generic)
 import Linear
 import Prelude hiding (lookup)
 
+import Control.Algebra (Has)
+import Control.Effect.State (State, get, modify)
 import Swarm.Util
 
 ------------------------------------------------------------
@@ -201,10 +204,10 @@ lookupTerrain i (World f t _) =
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
-lookupTerrainM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> m t
+lookupTerrainM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> m t
 lookupTerrainM c = do
-  modify $ loadCell c
-  lookupTerrain c <$> get
+  modify @(World t e) $ loadCell c
+  lookupTerrain c <$> get @(World t e)
 
 -- | Look up the entity at certain coordinates: first, see if it is in
 --   the map of locations with changed entities; then try looking it
@@ -222,10 +225,10 @@ lookupEntity i (World f t m) =
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
-lookupEntityM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> m (Maybe e)
+lookupEntityM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> m (Maybe e)
 lookupEntityM c = do
-  modify $ loadCell c
-  lookupEntity c <$> get
+  modify @(World t e) $ loadCell c
+  lookupEntity c <$> get @(World t e)
 
 -- | Update the entity (or absence thereof) at a certain location,
 --   returning an updated 'World'.  See also 'updateM'.
@@ -235,8 +238,8 @@ update i g w@(World f t m) =
 
 -- | A stateful variant of 'update', which also ensures the tile
 --   containing the given coordinates is loaded.
-updateM :: (MonadState (World t e) m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
-updateM c g = modify $ update c g . loadCell c
+updateM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
+updateM c g = modify @(World t e) $ update c g . loadCell c
 
 -- | Load the tile containing a specific cell.
 loadCell :: IArray U.UArray t => Coords -> World t e -> World t e

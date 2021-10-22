@@ -64,6 +64,8 @@ import Brick.Forms
 import qualified Brick.Widgets.List as BL
 import qualified Graphics.Vty as V
 
+import qualified Control.Carrier.Lift as Fused
+import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (idleMachine, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -79,7 +81,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.Util
+import Swarm.Util hiding ((<<.=))
 
 -- | Pattern synonyms to simplify brick event handler
 pattern ControlKey, MetaKey :: Char -> BrickEvent n e
@@ -155,7 +157,7 @@ shutdown s = do
   liftIO $ writeFile ".swarm_history" (show hist)
   halt s'
  where
-  markOld (REPLEntry _ e) = REPLEntry False e
+  markOld (REPLEntry _ d e) = REPLEntry False d e
   markOld r = r
 
   isEntry REPLEntry {} = True
@@ -266,12 +268,19 @@ runFrameTicks dt = do
 runGameTickUI :: AppState -> EventM Name (Next AppState)
 runGameTickUI s = execStateT (runGameTick >> updateUI) s >>= continue
 
+-- | Modifies the game state using a fused-effect state action.
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m ()
+zoomGameState f = do
+  gs <- use gameState
+  gs' <- liftIO (Fused.runM (Fused.execState gs f))
+  gameState .= gs'
+
 -- | Run the game for a single tick (/without/ updating the UI).
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: StateT AppState (EventM Name) ()
-runGameTick = zoom gameState gameTick
+runGameTick = zoomGameState gameTick
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -329,7 +338,7 @@ updateUI = do
       False -> pure False
       True -> do
         -- Reset the log updated flag
-        zoom gameState clearFocusedRobotLogUpdated
+        zoomGameState clearFocusedRobotLogUpdated
 
         -- Find and focus an installed "logger" device in the inventory list.
         let isLogger (InstalledEntry e) = e ^. entityName == "logger"
@@ -390,17 +399,17 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
       & gameState . robotMap . ix "base" . machine .~ idleMachine
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
-    then case processTerm' topCtx topCapCtx entry of
+    then case processTerm' topTypeCtx topCapCtx entry of
       Right t@(ProcessedTerm _ (Module ty _) _ _) ->
         continue $
           s
             & uiState . uiReplForm %~ updateFormState ""
             & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ (REPLEntry True entry :)
+            & uiState . uiReplHistory %~ prependReplEntry
             & uiState . uiReplHistIdx .~ (-1)
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
-            & gameState . robotMap . ix "base" . machine .~ initMachine t topEnv
+            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx
             & gameState %~ execState (activateRobot "base")
       Left err ->
         continue $
@@ -412,8 +421,12 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   -- program before even starting?
 
   entry = formState (s ^. uiState . uiReplForm)
-  (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
-  topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
+  topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
+  prependReplEntry replHistory
+    | firstReplEntry replHistory == Just entry = REPLEntry True True entry : replHistory
+    | otherwise = REPLEntry True False entry : replHistory
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex (+)
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
@@ -430,8 +443,9 @@ validateREPLForm s =
     & uiState . uiReplForm %~ validate
     & uiState . uiReplType .~ theType
  where
-  (topCtx, topCapCtx) = s ^. gameState . robotMap . ix "base" . robotCtx
-  result = processTerm' topCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
+  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
+  result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
   theType = case result of
     Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
     _ -> Nothing
@@ -446,7 +460,7 @@ adjReplHistIndex (+/-) s =
     & validateREPLForm
  where
   saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-  entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
+  entries = [e | REPLEntry _ False e <- s ^. uiState . uiReplHistory]
   curIndex = s ^. uiState . uiReplHistIdx
   histLen = length entries
   newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
@@ -566,7 +580,7 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 --   base is not currently busy.
 makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
 makeEntity s e = do
-  let topEnv = s ^. gameState . robotMap . ix "base" . robotEnv
+  let topDefCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
       mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
@@ -575,7 +589,7 @@ makeEntity s e = do
       continue $
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topEnv
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topDefCtx
           & gameState %~ execState (activateRobot "base")
     _ -> continueWithoutRedraw s
 

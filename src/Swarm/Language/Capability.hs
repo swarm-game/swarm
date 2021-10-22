@@ -227,6 +227,7 @@ constCaps =
     -- Some built-in constants that don't require any special capability.
     Wait -> []
     Noop -> []
+    AppF -> []
     Force -> []
     Return -> []
     Log -> [CLog]
@@ -277,6 +278,9 @@ constCaps =
     Run -> [] -- XXX this should also require a capability
     -- which the base starts out with.
     Not -> [] -- XXX some kind of boolean logic cap?
+    Inl -> [] -- XXX should require cap for sums
+    Inr -> []
+    Case -> []
     Fst -> [] -- XXX should require cap for pairs
     Snd -> []
     Try -> [] -- XXX these definitely need to require

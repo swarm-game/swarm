@@ -18,11 +18,13 @@ module Swarm.Game.Value (
   Env,
 ) where
 
+import Data.Bool (bool)
 import Data.List (foldl')
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
+import Prelude
 
 import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
@@ -41,6 +43,8 @@ data Value where
   VDir :: Direction -> Value
   -- | A boolean.
   VBool :: Bool -> Value
+  -- | An injection into a sum type.  False = left, True = right.
+  VInj :: Bool -> Value -> Value
   -- | A pair.
   VPair :: Value -> Value -> Value
   -- | A /closure/, representing a lambda term along with an
@@ -89,6 +93,7 @@ valueToTerm (VInt n) = TInt n
 valueToTerm (VString s) = TString s
 valueToTerm (VDir d) = TDir d
 valueToTerm (VBool b) = TBool b
+valueToTerm (VInj s v) = TApp (TConst (bool Inl Inr s)) (valueToTerm v)
 valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =
   M.foldrWithKey
