@@ -23,7 +23,6 @@ import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
-import Test.Tasty (testGroup)
 
 main :: IO ()
 main = do
