@@ -223,6 +223,12 @@ eval g =
             "application operator #239"
             ("fst $ snd $ (1,2,3)" `evaluatesTo` VInt 2)
         ]
+    , testGroup
+        "recursive bindings"
+        [ testCase
+            "factorial"
+            ("let fac = \\n. if (n==0) {1} {n * fac (n-1)} in fac 15" `evaluatesTo` VInt 1307674368000)
+        ]
     ]
  where
   evaluatesTo :: Text -> Value -> Assertion
