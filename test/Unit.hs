@@ -13,7 +13,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (from)
 
-import Swarm.Game.CEK
+import Swarm.Game.CESK
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -203,10 +203,10 @@ eval g =
             ("inr 4 < inr 3" `evaluatesTo` VBool False)
         , testCase
             "case inl"
-            ("case (inl 2) {\\x. x + 1} {\\y. y * 17}" `evaluatesTo` VInt 3)
+            ("case (inl 2) (\\x. x + 1) (\\y. y * 17)" `evaluatesTo` VInt 3)
         , testCase
             "case inr"
-            ("case (inr 2) {\\x. x + 1} {\\y. y * 17}" `evaluatesTo` VInt 34)
+            ("case (inr 2) (\\x. x + 1) (\\y. y * 17)" `evaluatesTo` VInt 34)
         , testCase
             "nested 1"
             ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inl 3)" `evaluatesTo` VInt 1)
@@ -232,15 +232,15 @@ eval g =
     assertEqual "" (Right val) result
 
   evalPT :: ProcessedTerm -> IO (Either Text Value)
-  evalPT t = evaluateCEK (initMachine t empty)
+  evalPT t = evaluateCESK (initMachine t empty)
 
-  evaluateCEK :: CEK -> IO (Either Text Value)
-  evaluateCEK cek = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCEK $ cek
+  evaluateCESK :: CESK -> IO (Either Text Value)
+  evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK $ cesk
    where
-    r = mkRobot "" zero zero cek []
+    r = mkRobot "" zero zero cesk []
 
-  runCEK :: CEK -> StateT Robot (StateT GameState IO) (Either Text Value)
-  runCEK (Up exn []) = return (Left (formatExn exn))
-  runCEK cek = case finalValue cek of
+  runCESK :: CESK -> StateT Robot (StateT GameState IO) (Either Text Value)
+  runCESK (Up exn _ []) = return (Left (formatExn exn))
+  runCESK cesk = case finalValue cesk of
     Just v -> return (Right v)
-    Nothing -> stepCEK cek >>= runCEK
+    Nothing -> stepCESK cesk >>= runCESK
