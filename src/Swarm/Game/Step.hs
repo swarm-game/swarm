@@ -1198,20 +1198,15 @@ execConst c vs s k = do
   isJustOrFail a ts = a `isJustOr` cmdExn c ts
 
   returnEvalCmp = case vs of
-    [v1, v2] ->
-      case evalCmp c v1 v2 of
-        Left exn -> return $ Up exn s k
-        Right b -> return $ Out (VBool b) s k
+    [v1, v2] -> (\b -> Out (VBool b) s k) <$> evalCmp c v1 v2
     _ -> badConst
   returnEvalArith = case vs of
-    [VInt n1, VInt n2] -> case evalArith c n1 n2 of
-      Left exn -> return $ Up exn s k
-      Right r -> return $ Out (VInt r) s k
+    [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
     _ -> badConst
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
-evalCmp :: Const -> Value -> Value -> Either Exn Bool
+evalCmp :: Has (Throw Exn) sig m => Const -> Value -> Value -> m Bool
 evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
  where
   decideCmp = \case
@@ -1221,71 +1216,73 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
     Gt -> fmap (== GT)
     Leq -> fmap (/= GT)
     Geq -> fmap (/= LT)
-    _ -> const $ Left $ Fatal $ T.append "evalCmp called on bad constant " (from (show c))
+    _ -> const $ throwError $ Fatal $ T.append "evalCmp called on bad constant " (from (show c))
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
-compareValues :: Value -> Value -> Either Exn Ordering
+compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
 compareValues = \v1 -> case v1 of
-  VUnit -> \case VUnit -> Right EQ; v2 -> Left $ incompatCmp VUnit v2
-  VInt n1 -> \case VInt n2 -> Right (compare n1 n2); v2 -> Left $ incompatCmp v1 v2
-  VString t1 -> \case VString t2 -> Right (compare t1 t2); v2 -> Left $ incompatCmp v1 v2
-  VDir d1 -> \case VDir d2 -> Right (compare d1 d2); v2 -> Left $ incompatCmp v1 v2
-  VBool b1 -> \case VBool b2 -> Right (compare b1 b2); v2 -> Left $ incompatCmp v1 v2
+  VUnit -> \case VUnit -> return EQ; v2 -> incompatCmp VUnit v2
+  VInt n1 -> \case VInt n2 -> return (compare n1 n2); v2 -> incompatCmp v1 v2
+  VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
+  VDir d1 -> \case VDir d2 -> return (compare d1 d2); v2 -> incompatCmp v1 v2
+  VBool b1 -> \case VBool b2 -> return (compare b1 b2); v2 -> incompatCmp v1 v2
   VInj s1 v1' -> \case
     VInj s2 v2' ->
       case compare s1 s2 of
         EQ -> compareValues v1' v2'
-        o -> Right o
-    v2 -> Left $ incompatCmp v1 v2
+        o -> return o
+    v2 -> incompatCmp v1 v2
   VPair v11 v12 -> \case
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
-    v2 -> Left $ incompatCmp v1 v2
-  VClo {} -> Left . incomparable v1
-  VCApp {} -> Left . incomparable v1
-  VDef {} -> Left . incomparable v1
-  VResult {} -> Left . incomparable v1
-  VBind {} -> Left . incomparable v1
-  VDelay {} -> Left . incomparable v1
-  VRef {} -> Left . incomparable v1
+    v2 -> incompatCmp v1 v2
+  VClo {} -> incomparable v1
+  VCApp {} -> incomparable v1
+  VDef {} -> incomparable v1
+  VResult {} -> incomparable v1
+  VBind {} -> incomparable v1
+  VDelay {} -> incomparable v1
+  VRef {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.
-incompatCmp :: Value -> Value -> Exn
+incompatCmp :: Has (Throw Exn) sig m => Value -> Value -> m a
 incompatCmp v1 v2 =
-  Fatal $
-    T.unwords ["Incompatible comparison of ", prettyValue v1, "and", prettyValue v2]
+  throwError $
+    Fatal $
+      T.unwords ["Incompatible comparison of ", prettyValue v1, "and", prettyValue v2]
 
 -- | Values were compared of a type which cannot be compared
 --   (e.g. functions, etc.).
-incomparable :: Value -> Value -> Exn
+incomparable :: Has (Throw Exn) sig m => Value -> Value -> m a
 incomparable v1 v2 =
-  CmdFailed Lt $
-    T.unwords ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
+  throwError $
+    CmdFailed Lt $
+      T.unwords ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
 -- | Evaluate the application of an arithmetic operator, returning
 --   an exception in the case of a failing operation, or in case we
 --   incorrectly use it on a bad 'Const' in the library.
-evalArith :: Const -> Integer -> Integer -> Either Exn Integer
+evalArith :: Has (Throw Exn) sig m => Const -> Integer -> Integer -> m Integer
 evalArith = \case
   Add -> ok (+)
   Sub -> ok (-)
   Mul -> ok (*)
   Div -> safeDiv
   Exp -> safeExp
-  c -> \_ _ -> Left $ Fatal $ T.append "evalArith called on bad constant " (from (show c))
+  c -> \_ _ -> throwError $ Fatal $ T.append "evalArith called on bad constant " (from (show c))
  where
-  ok f x y = Right $ f x y
+  ok f x y = return $ f x y
 
 -- | Perform an integer division, but return @Nothing@ for division by
 --   zero.
-safeDiv :: Integer -> Integer -> Either Exn Integer
-safeDiv _ 0 = Left $ CmdFailed Div "Division by zero"
+safeDiv :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
+safeDiv _ 0 = throwError $ CmdFailed Div "Division by zero"
 safeDiv a b = return $ a `div` b
 
 -- | Perform exponentiation, but return @Nothing@ if the power is negative.
-safeExp :: Integer -> Integer -> Either Exn Integer
+safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
-  | b < 0 = Left $ CmdFailed Exp "Negative exponent"
+  | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
   | otherwise = return $ a ^ b
