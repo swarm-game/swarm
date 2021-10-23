@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Swarm unit tests
 module Main where
@@ -228,14 +229,78 @@ eval g =
         [ testCase
             "factorial"
             ("let fac = \\n. if (n==0) {1} {n * fac (n-1)} in fac 15" `evaluatesTo` VInt 1307674368000)
+        , testCase
+            "loop detected"
+            ("let x = x in x" `throwsError` ("loop detected" `T.isInfixOf`))
+        ]
+    , testGroup
+        "delay"
+        [ testCase
+            "force / delay"
+            ("force {10}" `evaluatesTo` VInt 10)
+        , testCase
+            "force x2 / delay x2"
+            ("force (force { {10} })" `evaluatesTo` VInt 10)
+        , testCase
+            "if is lazy"
+            ("if true {1} {1/0}" `evaluatesTo` VInt 1)
+        , testCase
+            "function with if is not lazy"
+            ( "let f = \\x. \\y. if true {x} {y} in f 1 (1/0)"
+                `throwsError` ("by zero" `T.isInfixOf`)
+            )
+        ]
+    , testGroup
+        "conditions"
+        [ testCase
+            "if true"
+            ("if true {1} {2}" `evaluatesTo` VInt 1)
+        , testCase
+            "if false"
+            ("if false {1} {2}" `evaluatesTo` VInt 2)
+        , testCase
+            "if (complex condition)"
+            ("if (let x = 3 + 7 in not (x < 2^5)) {1} {2}" `evaluatesTo` VInt 2)
+        ]
+    , testGroup
+        "exceptions"
+        [ testCase
+            "raise"
+            ("raise \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
+        , testCase
+            "try / no exception 1"
+            ("try {return 1} {return 2}" `evaluatesTo` VInt 1)
+        , testCase
+            "try / no exception 2"
+            ("try {return 1} {let x = x in x}" `evaluatesTo` VInt 1)
+        , testCase
+            "try / raise"
+            ("try {raise \"foo\"} {return 3}" `evaluatesTo` VInt 3)
+        , testCase
+            "try / raise / raise"
+            ("try {raise \"foo\"} {raise \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
+        , testCase
+            "try / div by 0"
+            ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
         ]
     ]
  where
+  throwsError :: Text -> (Text -> Bool) -> Assertion
+  throwsError tm p = do
+    result <- evaluate tm
+    case result of
+      Right _ -> assertFailure "Unexpected success"
+      Left err ->
+        p err
+          @? "Expected predicate did not hold on error message " ++ from @Text @String err
+
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
-    let pt = processTerm tm
-    result <- either (return . Left) evalPT pt
+    result <- evaluate tm
     assertEqual "" (Right val) result
+
+  evaluate :: Text -> IO (Either Text Value)
+  evaluate = either (return . Left) evalPT . processTerm
 
   evalPT :: ProcessedTerm -> IO (Either Text Value)
   evalPT t = evaluateCESK (initMachine t empty emptyStore)
