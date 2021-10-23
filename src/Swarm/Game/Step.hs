@@ -1023,6 +1023,28 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Build -> case vs of
+      -- NOTE, pattern-matching on a VDelay here means we are
+      -- /relying/ on the fact that 'Build' can only be given a
+      -- /non-memoized/ delayed value.  If it were given a memoized
+      -- delayed value we would see a VRef instead of a VDelay.  If
+      -- and Try are generalized to handle any type of delayed value,
+      -- but Build and Reprogram still assume they are given a VDelay
+      -- and not a VRef.  In the future, if we enable memoized delays
+      -- by default, or allow the user to explicitly request
+      -- memoization via double braces or something similar, this will
+      -- have to be generalized.  The difficulty is that we do a
+      -- capability check on the delayed program at runtime, just
+      -- before creating the newly built robot (see the call to
+      -- 'requiredCaps' below); but if we have a VRef instead of a
+      -- VDelay, we may only be able to get a Value out of it instead
+      -- of a Term as we currently do, and capability checking a Value
+      -- is annoying and/or problematic.  One solution might be to
+      -- annotate delayed expressions with their required capabilities
+      -- at typechecking time, and carry those along so they flow to
+      -- this point. Another solution would be to just bite the bullet
+      -- and figure out how to do capability checking on Values (which
+      -- would return the capabilities needed to *execute* them),
+      -- hopefully without duplicating too much code.
       [VString name, VDelay cmd e] -> do
         r <- get
         em <- use entityMap
