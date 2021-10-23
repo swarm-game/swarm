@@ -83,31 +83,32 @@ self-destructs.
 
 You can see that a semicolon is used to chain together commands, that
 is, if `c1` and `c2` are both commands, then `c1 ; c2` is the command
-which executes first `c1` and then `c2`.  The curly braces look fancy
-but really they are the same as parentheses (parentheses would work
-here too). Ultimately, the `build` command is just a function that takes two
-arguments: a string, and a command. (Quiz: if we left out the curly
-braces around the sequence of `move` commands, as in `build "hello"
-move;move;move;move`, what do you think would happen?  Hint: function
-application has higher precedence than semicolon.  Try it and see!)
+which executes first `c1` and then `c2`.  The curly braces around the
+second argument to `build` are required; curly braces create an
+expression whose evaluation is *delayed* until later.  In this case,
+the `build` command requires a delayed expression to ensure that the
+program will be evaluated *by the newly built robot* and not
+immediately when the `build` command itself is being evaluated.
 
 Types
 -----
 
-We can actually see the type of the `build` command (or any command)
-by just typing it at the prompt, without hitting `Enter`.  Any time
-the expression currently typed at the prompt parses and type checks,
-the REPL will show you the type of the expression in the upper right,
-like this:
+Ultimately, the `build` command is not special syntax, but just a
+function that takes two arguments: a string, and a delayed command. We
+can actually see the type of the `build` command (or any command) by
+just typing it at the prompt, without hitting `Enter`.  Any time the
+expression currently typed at the prompt parses and type checks, the
+REPL will show you the type of the expression in the upper right, like
+this:
 
 ![](images/build-type.png)
 
 It will tell you that the type of `build` is
 ```
-∀ a0. string -> cmd a0 -> cmd string
+∀ a0. string -> {cmd a0} -> cmd string
 ```
 which says that `build` takes two arguments---a `string`, and a
-command that returns a value of any type---and results in a command
+delayed command that returns a value of any type---and results in a command
 which returns a `string`.  Every command returns a value, though some
 might return a value of the unit type, written `()`.  For example, if
 you type `move` at the prompt, you will see that its type is `cmd ()`,
@@ -134,18 +135,18 @@ Something you can't do yet
 
 Try entering the following at the REPL:
 ```
-build "nope" {let m : cmd () = move in m;m;m}
+build "nope" {make "curry"}
 ```
 The info panel should automatically switch to showing your `logger`
 device, with an error message at the bottom saying something like
 ```
 build: this would require installing devices you don't have:
-  dictionary
+  workbench
 ```
 This is telling you that in order to `build` a robot which has the right
 capabilities to run this program, you would need to
-install a `dictionary` device on the robot, but you don't have a
-`dictionary` in your inventory.  (You do have a `dictionary` device
+install a `workbench` device on the robot, but you don't have a
+`workbench` in your inventory.  (You do have a `workbench` device
 *installed* in your base robot, but you can't rip it out and put it in
 another robot.  You'll have to find a way to make more.)
 
@@ -157,25 +158,25 @@ We can already tell it's going to be tedious typing
 installed, let's create some definitions to make
 our life a bit easier.  To start, type the following:
 ```
-def m2 : cmd () = {move ; move} end
+def m2 : cmd () = move ; move end
 ```
 
 The `: cmd ()` annotation on `m2` is optional; in this situation the
 game could have easily figured out the type of `m2` if we had just
 written `def m2 = ...` (though there are some situations where a type
-signature may be required).  The curly braces are actually optional as
-well.  The `end` is required, and is needed to disambiguate where the
-end of the definition is.  It may not seem very ambiguous in this
-situation, but is needed especially when several definitions are
-written in sequence (such as in a file full of definitions).
+signature may be required). The `end` is required, and is needed to
+disambiguate where the end of the definition is.
 
 Now try this:
 ```
 def m4 = m2;m2 end; def m8 = m4;m4 end
 ```
 
-Great, now we have commands that will execute `move` four and eight
-times, respectively.  Finally, let's use them:
+(The semicolon between consecutive `def` commands is actually
+optional, so you can put many `def` commands in a file without having
+to worry about putting a semicolon after every `end`.)  Great, now we
+have commands that will execute `move` four and eight times,
+respectively.  Finally, let's use them:
 ```
 build "mover" {m8; m8; m2}
 ```
@@ -183,7 +184,7 @@ This should build a robot that moves eighteen steps to the east.
 
 (You might wonder at this point if it is possible to create a function
 that takes a number as input and moves that many steps forward.  It
-certainly is possible, but right now your robots would not be capable
+most certainly is, but right now your robots would not be capable
 of executing it.  You'll have to figure out how to upgrade them!)
 
 Getting the result of a command
@@ -377,16 +378,22 @@ in a cell with nothing to grab.
 Loading definitions from a file
 -------------------------------
 
-One last thing for now: it is possible to load definitions from a
-file.  Just type `run("filename")` and the contents of the file will
-be executed as if you typed it at the REPL.  For example, rather than
-typing definitions at the prompt, you could put a sequence of
-definitions in a file, separated by semicolons (note that whitespace
-is ignored, so format it however you like).  Then you can easily
-modify the definitions or add more, and just `run` the file every time
-you want to reload the definitions.  Eventually, there will be a way
-to both save and load commands, but this is better than nothing for
-now.
+One last thing for now: typing all your definitions at the REPL is
+quite tedious, and makes it difficult to go back and edit definitions.
+Instead, it is possible to load definitions from a file.  Just type
+`run("filename")` and the contents of the file will be executed as if
+you typed it at the REPL.  For example, rather than typing definitions
+at the prompt, you could put a sequence of definitions in a file,
+(note that whitespace is ignored, so format it however you like).
+Then you can easily modify the definitions or add more, and just `run`
+the file every time you want to reload the definitions.  Eventually,
+there will be a way to both save and load commands, but this is better
+than nothing for now.
+
+There is some rudimentary [Language Server-based editor
+support](https://github.com/byorgey/swarm/blob/main/docs/EDITORS.md)
+giving syntax and error highlighting for `.sw` files; at the moment
+Emacs is supported, and VSCode will be added shortly.
 
 World generation
 ----------------
