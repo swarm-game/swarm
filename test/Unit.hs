@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -297,21 +298,30 @@ eval g =
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
     result <- evaluate tm
-    assertEqual "" (Right val) result
+    assertEqual "" (Right val) (fst <$> result)
 
-  evaluate :: Text -> IO (Either Text Value)
+  evaluatesToInAtMost :: Text -> (Value, Int) -> Assertion
+  evaluatesToInAtMost tm (val, maxSteps) = do
+    result <- evaluate tm
+    case result of
+      Left err -> assertFailure ("Evaluation failed: " ++ from @Text @String err)
+      Right (v, steps) -> do
+        assertEqual "" val v
+        assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
+
+  evaluate :: Text -> IO (Either Text (Value, Int))
   evaluate = either (return . Left) evalPT . processTerm
 
-  evalPT :: ProcessedTerm -> IO (Either Text Value)
+  evalPT :: ProcessedTerm -> IO (Either Text (Value, Int))
   evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
-  evaluateCESK :: CESK -> IO (Either Text Value)
-  evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK $ cesk
+  evaluateCESK :: CESK -> IO (Either Text (Value, Int))
+  evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK 0 $ cesk
    where
     r = mkRobot "" zero zero cesk []
 
-  runCESK :: CESK -> StateT Robot (StateT GameState IO) (Either Text Value)
-  runCESK (Up exn _ []) = return (Left (formatExn exn))
-  runCESK cesk = case finalValue cesk of
-    Just (v, _) -> return (Right v)
-    Nothing -> stepCESK cesk >>= runCESK
+  runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
+  runCESK _ (Up exn _ []) = return (Left (formatExn exn))
+  runCESK !steps cesk = case finalValue cesk of
+    Just (v, _) -> return (Right (v, steps))
+    Nothing -> stepCESK cesk >>= runCESK (steps + 1)
