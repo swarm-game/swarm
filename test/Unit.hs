@@ -250,6 +250,16 @@ eval g =
             ( "let f = \\x. \\y. if true {x} {y} in f 1 (1/0)"
                 `throwsError` ("by zero" `T.isInfixOf`)
             )
+        , testCase
+            "memoization baseline"
+            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in noop"
+                `evaluatesToInAtMost` (VUnit, 535)
+            )
+        , testCase
+            "memoization"
+            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in let y = f10 in noop"
+                `evaluatesToInAtMost` (VUnit, 540)
+            )
         ]
     , testGroup
         "conditions"
