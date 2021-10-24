@@ -77,6 +77,8 @@ module Swarm.Game.CESK (
   initMachine,
   initMachine',
   idleMachine,
+  cancel,
+  resetBlackholes,
 
   -- ** Extracting information
   finalValue,
@@ -189,7 +191,12 @@ data Cell
     --   (Of course, we
     --   <http://www.lel.ed.ac.uk/~gpullum/loopsnoop.html cannot
     --   detect /all/ infinite loops this way>.)
-    Blackhole
+    --
+    --   A 'Blackhole' saves the original 'Term' and 'Env' that are
+    --   being evaluated; if Ctrl-C is used to cancel a computation
+    --   while we are in the middle of evaluating a cell, the
+    --   'Blackhole' can be reset to 'E'.
+    Blackhole Term Env
   | -- | Once evaluation is complete, we cache the final 'Value' in
     --   the 'Cell', so that subsequent lookups can just use it
     --   without recomputing anything.
@@ -279,6 +286,25 @@ initMachine' (ProcessedTerm t _ _ _) e s k = In t e s k
 -- | A machine which does nothing.
 idleMachine :: CESK
 idleMachine = Out VUnit emptyStore []
+
+-- | Cancel the currently running computation.
+cancel :: CESK -> CESK
+cancel cesk = Out VUnit s' []
+ where
+  s' = resetBlackholes $ getStore cesk
+  getStore (In _ _ s _) = s
+  getStore (Out _ s _) = s
+  getStore (Up _ s _) = s
+  getStore (Waiting _ c) = getStore c
+
+-- | Reset any 'Blackhole's in the 'Store'.  We need to use this any
+--   time a running computation is interrupted, either by an exception
+--   or by a Ctrl+C.
+resetBlackholes :: Store -> Store
+resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
+ where
+  resetBlackhole (Blackhole t e) = E t e
+  resetBlackhole c = c
 
 ------------------------------------------------------------
 -- Very crude pretty-printing of CESK states.  Should really make a

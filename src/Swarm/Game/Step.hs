@@ -458,11 +458,15 @@ stepCESK cesk = case cesk of
   -- we didn't, trying to exceute the Log command would generate
   -- another exception, which will be logged, which would generate an
   -- exception, ... etc.
+  --
+  -- Notice how we call resetBlackholes on the store, so that any
+  -- cells which were in the middle of being evaluated will be reset.
   Up exn s [] -> do
+    let s' = resetBlackholes s
     h <- hasCapability CLog
     case h of
-      True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty s [FExec]
-      False -> return $ Out VUnit s []
+      True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty s' [FExec]
+      False -> return $ Out VUnit s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
   Up exn@Fatal {} s _ -> return $ Up exn s []
@@ -933,11 +937,11 @@ execConst c vs s k = do
           -- an 'FUpdate' frame so we remember to update the location
           -- to its value once we finish evaluating it, and focus on
           -- the expression.
-          Just (E t e') -> return $ In t e' (setCell loc Blackhole s) (FUpdate loc : k)
+          Just (E t e') -> return $ In t e' (setCell loc (Blackhole t e') s) (FUpdate loc : k)
           -- If the location contains a Blackhole, that means we are
           -- already currently in the middle of evaluating it, i.e. it
           -- depends on itself, so throw an 'InfiniteLoop' error.
-          Just Blackhole -> return $ Up InfiniteLoop s k
+          Just Blackhole {} -> return $ Up InfiniteLoop s k
           -- If the location already contains a value, just return it.
           Just (V v) -> return $ Out v s k
       _ -> badConst

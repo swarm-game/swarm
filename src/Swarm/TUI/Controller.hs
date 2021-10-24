@@ -64,7 +64,7 @@ import qualified Graphics.Vty as V
 
 import qualified Control.Carrier.Lift as Fused
 import qualified Control.Carrier.State.Lazy as Fused
-import Swarm.Game.CESK (emptyStore, idleMachine, initMachine)
+import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -394,7 +394,7 @@ handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
   continue $
     s
-      & gameState . robotMap . ix "base" . machine .~ idleMachine
+      & gameState . robotMap . ix "base" . machine %~ cancel
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
