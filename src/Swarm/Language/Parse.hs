@@ -54,6 +54,7 @@ import qualified Text.Megaparsec.Pos as Pos
 
 import Data.Foldable (asum)
 import qualified Data.Set as S
+import Data.Set.Lens (setOf)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 
@@ -82,6 +83,7 @@ reservedWords =
        , "dir"
        , "bool"
        , "cmd"
+       , "delay"
        , "let"
        , "def"
        , "end"
@@ -142,6 +144,9 @@ integer = lexeme L.decimal
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
 
+-- dbraces :: Parser a -> Parser a
+-- dbraces = between (symbol "{{") (symbol "}}")
+
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
@@ -193,6 +198,7 @@ parseTypeAtom =
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
+    <|> TyDelay <$> braces parseType
     <|> parens parseType
 
 parseDirection :: Parser Direction
@@ -228,18 +234,34 @@ parseTermAtom =
         <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> SLet <$> (reserved "let" *> identifier)
+        <|> sLet <$> (reserved "let" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> SDef <$> (reserved "def" *> identifier)
+        <|> sDef <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
     <|> parens parseTerm
-    <|> parseLoc (TConst Noop <$ try (symbol "{" *> symbol "}"))
-    <|> braces parseTerm
+    -- Potential syntax for explicitly requesting memoized delay.
+    -- Perhaps we will not need this in the end; see the discussion at
+    -- https://github.com/byorgey/swarm/issues/150 .
+    -- <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
+    -- <|> parseLoc (SDelay MemoizedDelay <$> dbraces parseTerm)
+
+    <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+
+-- | Construct an 'SLet', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sLet :: Var -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet x ty t1 = SLet (x `S.member` setOf fv (sTerm t1)) x ty t1
+
+-- | Construct an 'SDef', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sDef :: Var -> Maybe Polytype -> Syntax -> Term
+sDef x ty t = SDef (x `S.member` setOf fv (sTerm t)) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =

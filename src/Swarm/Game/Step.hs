@@ -15,29 +15,28 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Facilities for stepping the robot CEK machines, /i.e./ the actual
+-- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
 import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
-
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
 import Data.List (find)
+import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
-import Linear
+import Linear (V2 (..), zero, (^+^))
 import System.Random (UniformRange, uniformR)
 import Witch
 import Prelude hiding (lookup)
 
-import qualified Data.List as L
-import Swarm.Game.CEK
+import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import qualified Swarm.Game.Entity as E
@@ -62,7 +61,7 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Monad (forM_, msum, unless, void, when)
 
--- | The maximum number of CEK machine evaluation steps each robot is
+-- | The maximum number of CESK machine evaluation steps each robot is
 --   allowed during a single game tick.
 evalStepsPerTick :: Int
 evalStepsPerTick = 100
@@ -112,13 +111,19 @@ gameTick = do
                   sleepForever rn
 
   -- See if the base is finished with a computation, and if so, record
-  -- the result in the game state so it can be displayed by the REPL.
+  -- the result in the game state so it can be displayed by the REPL;
+  -- also save the current store into the robotContext so we can
+  -- restore it the next time we start a computation.
   mr <- use (robotMap . at "base")
   case mr of
     Just r -> do
       res <- use replStatus
       case res of
-        REPLWorking ty Nothing -> replStatus .= REPLWorking ty (getResult r)
+        REPLWorking ty Nothing -> case getResult r of
+          Just (v, s) -> do
+            replStatus .= REPLWorking ty (Just v)
+            robotMap . ix "base" . robotContext . defStore .= s
+          Nothing -> return ()
         _otherREPLStatus -> return ()
     Nothing -> return ()
 
@@ -228,13 +233,13 @@ raise :: (Has (Throw Exn) sig m) => Const -> [Text] -> m a
 raise c parts = throwError (cmdExn c parts)
 
 -- | Run a subcomputation that might throw an exception in a context
---   where we are returning a CEK machine; any exception will be
+--   where we are returning a CESK machine; any exception will be
 --   turned into an 'Up' state.
-withExceptions :: Monad m => Cont -> ThrowC Exn m CEK -> m CEK
-withExceptions k m = do
+withExceptions :: Monad m => Store -> Cont -> ThrowC Exn m CESK -> m CESK
+withExceptions s k m = do
   res <- runThrow m
   case res of
-    Left exn -> return $ Up exn k
+    Left exn -> return $ Up exn s k
     Right a -> return a
 
 ------------------------------------------------------------
@@ -242,7 +247,7 @@ withExceptions k m = do
 ------------------------------------------------------------
 
 -- | Run a robot for one tick, which may consist of up to
---   'evalStepsPerTick' CEK machine steps and at most one command
+--   'evalStepsPerTick' CESK machine steps and at most one command
 --   execution.
 tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
@@ -257,138 +262,147 @@ tickRobotRec r
   | otherwise = stepRobot r >>= tickRobotRec
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
---   running its CEK machine for one step.
+--   running its CESK machine for one step.
 stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 stepRobot r = do
-  (r', cek') <- runState (r & tickSteps -~ 1) (stepCEK (r ^. machine))
-  return $ r' & machine .~ cek'
+  (r', cesk') <- runState (r & tickSteps -~ 1) (stepCESK (r ^. machine))
+  return $ r' & machine .~ cesk'
 
--- | The main CEK machine workhorse.  Given a robot, look at its CEK
+-- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
-stepCEK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CEK -> m CEK
-stepCEK cek = case cek of
-  -- (liftIO $ appendFile "out.txt" (prettyCEK cek)) >>
-
-  -- It's a little unsatisfactory the way we handle having both Robot
-  -- and GameState in different states (by having one be concrete and
-  -- the other accessible via 'lift').  Having them both be capability
-  -- constraints is what we really want, but it's not possible to do
-  -- that with mtl.  Ultimately we may want to switch to an effects
-  -- library.  I am hesitant to use polysemy because of performance
-  -- issues.  Perhaps fused-effects would work.  I really want to use
-  -- 'eff' but seems like it's not ready yet.
+stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CESK -> m CESK
+stepCESK cesk = case cesk of
+  -- (sendIO $ appendFile "out.txt" (prettyCESK cesk)) >>
 
   ------------------------------------------------------------
   -- Evaluation
 
   -- We wake up robots whose wake-up time has been reached. If it hasn't yet
-  -- then stepCEK is a no-op.
-  Waiting wakeupTime cek' -> do
+  -- then stepCESK is a no-op.
+  Waiting wakeupTime cesk' -> do
     time <- use ticks
     if wakeupTime == time
-      then stepCEK cek'
-      else return cek
-  Out v (FImmediate wf rf : k) -> do
+      then stepCESK cesk'
+      else return cesk
+  Out v s (FImmediate wf rf : k) -> do
     wc <- worldUpdate wf <$> use world
     case wc of
-      Left exn -> return $ Up exn k
+      Left exn -> return $ Up exn s k
       Right wo -> do
         robotInventory %= robotUpdateInventory rf
         world .= wo
         needsRedraw .= True
-        stepCEK (Out v k)
+        stepCESK (Out v s k)
 
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
-  In TUnit _ k -> return $ Out VUnit k
-  In (TDir d) _ k -> return $ Out (VDir d) k
-  In (TInt n) _ k -> return $ Out (VInt n) k
-  In (TString s) _ k -> return $ Out (VString s) k
-  In (TBool b) _ k -> return $ Out (VBool b) k
+  In TUnit _ s k -> return $ Out VUnit s k
+  In (TDir d) _ s k -> return $ Out (VDir d) s k
+  In (TInt n) _ s k -> return $ Out (VInt n) s k
+  In (TString str) _ s k -> return $ Out (VString str) s k
+  In (TBool b) _ s k -> return $ Out (VBool b) s k
   -- There should not be any antiquoted variables left at this point.
-  In (TAntiString v) _ k ->
-    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) k
-  In (TAntiInt v) _ k ->
-    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) k
+  In (TAntiString v) _ s k ->
+    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
+  In (TAntiInt v) _ s k ->
+    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
   -- A constant is turned into a VCApp which might be waiting for arguments.
-  In (TConst c) _ k -> return $ Out (VCApp c []) k
+  In (TConst c) _ s k -> return $ Out (VCApp c []) s k
   -- To evaluate a variable, just look it up in the context.
-  In (TVar x) e k -> withExceptions k $ do
+  In (TVar x) e s k -> withExceptions s k $ do
     v <-
       lookup x e
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
-    return $ Out v k
+    return $ Out v s k
 
   -- To evaluate a pair, start evaluating the first component.
-  In (TPair t1 t2) e k -> return $ In t1 e (FSnd t2 e : k)
+  In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
   -- Once that's done, evaluate the second component.
-  Out v1 (FSnd t2 e : k) -> return $ In t2 e (FFst v1 : k)
+  Out v1 s (FSnd t2 e : k) -> return $ In t2 e s (FFst v1 : k)
   -- Finally, put the results together into a pair value.
-  Out v2 (FFst v1 : k) -> return $ Out (VPair v1 v2) k
+  Out v2 s (FFst v1 : k) -> return $ Out (VPair v1 v2) s k
   -- Lambdas immediately turn into closures.
-  In (TLam x _ t) e k -> return $ Out (VClo x t e) k
+  In (TLam x _ t) e s k -> return $ Out (VClo x t e) s k
   -- To evaluate an application, start by focusing on the left-hand
   -- side and saving the argument for later.
-  In (TApp t1 t2) e k -> return $ In t1 e (FArg t2 e : k)
+  In (TApp t1 t2) e s k -> return $ In t1 e s (FArg t2 e : k)
   -- Once that's done, switch to evaluating the argument.
-  Out v1 (FArg t2 e : k) -> return $ In t2 e (FApp v1 : k)
+  Out v1 s (FArg t2 e : k) -> return $ In t2 e s (FApp v1 : k)
   -- We can evaluate an application of a closure in the usual way.
-  Out v2 (FApp (VClo x t e) : k) -> return $ In t (addBinding x v2 e) k
+  Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addBinding x v2 e) s k
   -- We can also evaluate an application of a constant by collecting
   -- arguments, eventually dispatching to evalConst for function
   -- constants.
-  Out v2 (FApp (VCApp c args) : k)
+  Out v2 s (FApp (VCApp c args) : k)
     | not (isCmd c)
         && arity c == length args + 1 ->
-      evalConst c (reverse (v2 : args)) k
-    | otherwise -> return $ Out (VCApp c (v2 : args)) k
-  Out _ (FApp _ : _) -> badMachineState "FApp of non-function"
-  -- To evaluate let expressions, we start by focusing on the
-  -- let-bound expression. Since it can be recursive, we wrap it in
-  -- @VDelay@ (the elaboration step wrapped all recursive references
-  -- in a corresponding @Force@).
-  In (TLet x _ t1 t2) e k ->
-    let e' = addBinding x (VDelay (Just x) t1 e) e
-     in return $ In t1 e' (FLet x t2 e : k)
+      evalConst c (reverse (v2 : args)) s k
+    | otherwise -> return $ Out (VCApp c (v2 : args)) s k
+  Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
+  -- To evaluate non-recursive let expressions, we start by focusing on the
+  -- let-bound expression.
+  In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
+  -- To evaluate recursive let expressions, we evaluate the memoized
+  -- delay of the let-bound expression.  Every free occurrence of x
+  -- in the let-bound expression and the body has already been
+  -- rewritten by elaboration to 'force x'.
+  In (TLet True x _ t1 t2) e s k ->
+    return $ In (TDelay (MemoizedDelay $ Just x) t1) e s (FLet x t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
-  Out v1 (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) k
+  Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
   -- Definitions immediately turn into VDef values, awaiting execution.
-  In tm@(TDef x _ t) e k -> withExceptions k $ do
+  In tm@(TDef r x _ t) e s k -> withExceptions s k $ do
     CEnv `hasCapabilityOr` Incapable (S.singleton CEnv) tm
-    return $ Out (VDef x t e) k
+    return $ Out (VDef r x t e) s k
 
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
-  In (TBind mx t1 t2) e k -> return $ Out (VBind mx t1 t2 e) k
-  -- Delay expressions immediately turn into VDelay values, awaiting
-  -- application of 'Force'.
-  In (TDelay t) e k -> return $ Out (VDelay Nothing t e) k
+  In (TBind mx t1 t2) e s k -> return $ Out (VBind mx t1 t2 e) s k
+  -- Simple (non-memoized) delay expressions immediately turn into
+  -- VDelay values, awaiting application of 'Force'.
+  In (TDelay SimpleDelay t) e s k -> return $ Out (VDelay t e) s k
+  -- For memoized delay expressions, we allocate a new cell in the store and
+  -- return a reference to it.
+  In (TDelay (MemoizedDelay x) t) e s k -> do
+    -- Note that if the delay expression is recursive, we add a
+    -- binding to the environment that wil be used to evaluate the
+    -- body, binding the variable to a reference to the memory cell we
+    -- just allocated for the body expression itself.  As a fun aside,
+    -- notice how Haskell's recursion and laziness play a starring
+    -- role: @loc@ is both an output from @allocate@ and used as part
+    -- of an input! =D
+    let (loc, s') = allocate (maybe id (`addBinding` VRef loc) x e) t s
+    return $ Out (VRef loc) s' k
+  -- If we see an update frame, it means we're supposed to set the value
+  -- of a particular cell to the value we just finished computing.
+  Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
   ------------------------------------------------------------
   -- Execution
 
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
-  -- called.  We return a special VResult value, which packages up the
-  -- return value from the @def@ command itself (@unit@) together with
-  -- the resulting environment (the variable bound to the delayed
-  -- value).
-  Out (VDef x t e) (FExec : k) -> do
-    return $ Out (VResult VUnit (singleton x (VDelay (Just x) t e))) k
-
-  -- To execute a constant application, delegate to the 'execConst'
+  -- called.  We memoize both recursive and non-recursive definitions,
+  -- since the point of a definition is that it may be used many times.
+  Out (VDef r x t e) s (FExec : k) ->
+    return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e s (FDef x : k)
+  -- Once we have finished evaluating the (memoized, delayed) body of
+  -- a definition, we return a special VResult value, which packages
+  -- up the return value from the @def@ command itself (@unit@)
+  -- together with the resulting environment (the variable bound to
+  -- the delayed value).
+  Out v s (FDef x : k) ->
+    return $ Out (VResult VUnit (singleton x v)) s k
+  -- To execute a constant application, delegate to the 'evalConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
-  Out (VCApp c args) (FExec : k) -> do
+  Out (VCApp c args) s (FExec : k) -> do
     when (takesTick c) $ tickSteps .= 0
-    res <- runError (execConst c (reverse args) k)
-    case res of
-      Left exn -> return $ Up exn k
-      Right cek' -> return cek'
+    evalConst c (reverse args) s k
 
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
-  Out (VBind mx c1 c2 e) (FExec : k) -> return $ In c1 e (FExec : FBind mx c2 e : k)
+  Out (VBind mx c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx c2 e : k)
   -- If first command completes with a value along with an environment
   -- resulting from definition commands, switch to evaluating the
   -- second command of the bind.  Extend the environment with both the
@@ -398,44 +412,44 @@ stepCEK cek = case cek of
   -- it has been evaluated, then union any resulting definition
   -- environment with the definition environment from the first
   -- command.
-  Out (VResult v ve) (FBind mx t2 e : k) ->
-    return $ In t2 (maybe id (`addBinding` v) mx . (`union` ve) $ e) (FExec : FUnionEnv ve : k)
+  Out (VResult v ve) s (FBind mx t2 e : k) ->
+    return $ In t2 (maybe id (`addBinding` v) mx . (`union` ve) $ e) s (FExec : FUnionEnv ve : k)
   -- On the other hand, if the first command completes with a simple value,
   -- we do something similar, but don't have to worry about the environment.
-  Out v (FBind mx t2 e : k) ->
-    return $ In t2 (maybe id (`addBinding` v) mx e) (FExec : k)
+  Out v s (FBind mx t2 e : k) ->
+    return $ In t2 (maybe id (`addBinding` v) mx e) s (FExec : k)
   -- If a command completes with a value and definition environment,
   -- and the next continuation frame contains a previous environment
   -- to union with, then pass the unioned environments along in
   -- another VResult.
 
-  Out (VResult v e2) (FUnionEnv e1 : k) -> return $ Out (VResult v (e1 `union` e2)) k
+  Out (VResult v e2) s (FUnionEnv e1 : k) -> return $ Out (VResult v (e1 `union` e2)) s k
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.
-  Out v (FUnionEnv e : k) -> return $ Out (VResult v e) k
+  Out v s (FUnionEnv e : k) -> return $ Out (VResult v e) s k
   -- If the top of the continuation stack contains a 'FLoadEnv' frame,
   -- it means we are supposed to load up the resulting definition
-  -- environment and type and capability contexts into the robot's
+  -- environment, store, and type and capability contexts into the robot's
   -- top-level environment and contexts, so they will be available to
   -- future programs.
-  Out (VResult v e) (FLoadEnv ctx cctx : k) -> do
+  Out (VResult v e) s (FLoadEnv ctx cctx : k) -> do
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
     robotContext . defCaps %= (`union` cctx)
-    return $ Out v k
-  Out v (FLoadEnv {} : k) -> return $ Out v k
+    return $ Out v s k
+  Out v s (FLoadEnv {} : k) -> return $ Out v s k
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
-  Out _ (FExec : _) -> badMachineState "FExec frame with non-executable value"
+  Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
   -- Any other frame with a VResult is an error (should never happen).
-  Out (VResult _ _) _ -> badMachineState "no appropriate stack frame to catch a VResult"
+  Out (VResult _ _) s _ -> badMachineState s "no appropriate stack frame to catch a VResult"
   ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
 
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
-  Out v (FTry _ : k) -> return $ Out v k
+  Out v s (FTry {} : k) -> return $ Out v s k
   -- If an exception rises all the way to the top level without being
   -- handled, turn it into an error message via the 'log' command.
 
@@ -444,58 +458,50 @@ stepCEK cek = case cek of
   -- we didn't, trying to exceute the Log command would generate
   -- another exception, which will be logged, which would generate an
   -- exception, ... etc.
-  Up exn [] -> do
+  --
+  -- Notice how we call resetBlackholes on the store, so that any
+  -- cells which were in the middle of being evaluated will be reset.
+  Up exn s [] -> do
+    let s' = resetBlackholes s
     h <- hasCapability CLog
     case h of
-      True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty [FExec]
-      False -> return $ Out VUnit []
-  -- Fatal errors and capability errors can't be caught; just throw
-  -- away the continuation stack.
-  Up exn@Fatal {} _ -> return $ Up exn []
-  Up exn@Incapable {} _ -> return $ Up exn []
+      True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty s' [FExec]
+      False -> return $ Out VUnit s' []
+  -- Fatal errors, capability errors, and infinite loop errors can't
+  -- be caught; just throw away the continuation stack.
+  Up exn@Fatal {} s _ -> return $ Up exn s []
+  Up exn@Incapable {} s _ -> return $ Up exn s []
+  Up exn@InfiniteLoop {} s _ -> return $ Up exn s []
   -- Otherwise, if we are raising an exception up the continuation
-  -- stack and come to a Try frame, execute the associated catch
+  -- stack and come to a Try frame, force and then execute the associated catch
   -- block.
-  Up _ (FTry c : k) -> return $ Out c (FExec : k)
+  Up _ s (FTry c : k) -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
   -- Otherwise, keep popping from the continuation stack.
-  Up exn (_ : k) -> return $ Up exn k
+  Up exn s (_ : k) -> return $ Up exn s k
   -- Finally, if we're done evaluating and the continuation stack is
   -- empty, return the machine unchanged.
-  done@(Out _ []) -> return done
+  done@(Out _ _ []) -> return done
  where
-  badMachineState msg =
+  badMachineState s msg =
     let msg' =
           T.unlines
             [ T.append "Bad machine state in stepRobot: " msg
-            , from (prettyCEK cek)
+            , from (prettyCESK cesk)
             ]
-     in return $ Up (Fatal msg') []
+     in return $ Up (Fatal msg') s []
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
 takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, Whereami, Blocked, Ishere, Try, Random, Appear])
 
--- | At the level of the CEK machine, the only difference bewteen
---   between *evaluating* a function constant and *executing* a
---   command constant is what kind of exceptions can be thrown.  When
---   evaluating, the only thing that could throw an exception is
---   trying to use a function constant without the proper capability
---   (for example, trying to use `if` without having a conditional
---   device).  Any other exceptions constitute a bug.
+-- | Eexecute a constant, catching any exception thrown and returning
+--   it via a CESK machine state.
 evalConst ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => Const -> [Value] -> Cont -> m CEK
-evalConst c vs k = do
-  res <- runError $ execConst c vs k
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => Const -> [Value] -> Store -> Cont -> m CESK
+evalConst c vs s k = do
+  res <- runError $ execConst c vs s k
   case res of
-    Left exn@Fatal {} -> return $ Up exn k
-    Left exn@Incapable {} -> return $ Up exn k
-    Left exn -> do
-      let msg =
-            T.unlines
-              [ "evalConst shouldn't be able to throw this kind of exception:"
-              , formatExn exn
-              ]
-      return $ Up (Fatal msg) k
+    Left exn -> return $ Up exn s k
     Right cek' -> return cek'
 
 -- | A system program for a "seed robot", to regrow a growable entity
@@ -522,7 +528,7 @@ mkSeedBot e (minT, maxT) loc =
     "seed"
     loc
     (V2 0 0)
-    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty)
+    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
     []
     & robotDisplay
       .~ ( defaultEntityDisplay '.'
@@ -538,27 +544,28 @@ execConst ::
   (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m, Has (Lift IO) sig m) =>
   Const ->
   [Value] ->
+  Store ->
   Cont ->
-  m CEK
-execConst c vs k = do
+  m CESK
+execConst c vs s k = do
   -- First, ensure the robot is capable of executing/evaluating this constant.
   ensureCanExecute c
 
   -- Now proceed to actually carry out the operation.
   case c of
-    Noop -> return $ Out VUnit k
+    Noop -> return $ Out VUnit s k
     Return -> case vs of
-      [v] -> return $ Out v k
+      [v] -> return $ Out v s k
       _ -> badConst
     Wait -> case vs of
       [VInt d] -> do
         time <- use ticks
-        return $ Waiting (time + d) (Out VUnit k)
+        return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
       selfDestruct .= True
       flagRedraw
-      return $ Out VUnit k
+      return $ Out VUnit s k
     Move -> do
       loc <- use robotLocation
       orient <- use robotOrientation
@@ -579,7 +586,7 @@ execConst c vs k = do
 
       robotLocation .= nextLoc
       flagRedraw
-      return $ Out VUnit k
+      return $ Out VUnit s k
     Grab -> do
       -- Ensure there is an entity here.
       loc <- use robotLocation
@@ -613,15 +620,15 @@ execConst c vs k = do
       robotInventory %= insert e'
 
       -- Return the name of the item grabbed.
-      return $ Out (VString (e ^. entityName)) k
+      return $ Out (VString (e ^. entityName)) s k
     Turn -> case vs of
       [VDir d] -> do
         robotOrientation . _Just %= applyTurn d
         flagRedraw
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Place -> case vs of
-      [VString s] -> do
+      [VString name] -> do
         inv <- use robotInventory
         loc <- use robotLocation
 
@@ -631,18 +638,18 @@ execConst c vs k = do
 
         -- Make sure the robot has the thing in its inventory
         e <-
-          listToMaybe (lookupByName s inv)
-            `isJustOrFail` ["What is", indefinite s, "?"]
+          listToMaybe (lookupByName name inv)
+            `isJustOrFail` ["What is", indefinite name, "?"]
 
         (E.lookup e inv > 0)
-          `holdsOrFail` ["You don't have", indefinite s, "to place."]
+          `holdsOrFail` ["You don't have", indefinite name, "to place."]
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
         robotInventory %= delete e
 
         flagRedraw
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Give -> case vs of
       [VString otherName, VString itemName] -> do
@@ -681,7 +688,7 @@ execConst c vs k = do
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
           when (focusedName == myName || focusedName == otherName) flagRedraw
 
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Install -> case vs of
       [VString otherName, VString itemName] -> do
@@ -729,7 +736,7 @@ execConst c vs k = do
               -- either robot's inventory
               when (focusedName == myName || focusedName == otherName) flagRedraw
 
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Make -> case vs of
       [VString name] -> do
@@ -762,7 +769,7 @@ execConst c vs k = do
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
-      return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) k
+      return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
     Drill -> case vs of
       [VDir d] -> do
         rname <- use robotName
@@ -805,7 +812,7 @@ execConst c vs k = do
       orient <- use robotOrientation
       let nextLoc = loc ^+^ (orient ? zero)
       me <- entityAt nextLoc
-      return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) k
+      return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) s k
     Scan -> case vs of
       [VDir d] -> do
         loc <- use robotLocation
@@ -816,7 +823,7 @@ execConst c vs k = do
           Nothing -> return ()
           Just e -> robotInventory %= insertCount 0 e
 
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Upload -> case vs of
       [VString otherName] -> do
@@ -839,56 +846,56 @@ execConst c vs k = do
         rlog <- use robotLog
         robotMap . at otherName . _Just . robotLog <>= rlog
 
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
         n <- uniform (0, hi - 1)
-        return $ Out (VInt n) k
+        return $ Out (VInt n) s k
       _ -> badConst
     Say -> case vs of
-      [VString s] -> do
+      [VString msg] -> do
         rn <- use robotName
-        emitMessage (T.concat [rn, ": ", s])
-        return $ Out VUnit k
+        emitMessage (T.concat [rn, ": ", msg])
+        return $ Out VUnit s k
       _ -> badConst
     Log -> case vs of
-      [VString s] -> do
+      [VString msg] -> do
         rn <- use robotName
         time <- use ticks
-        robotLog %= (Seq.|> LogEntry s rn time)
-        return $ Out VUnit k
+        robotLog %= (Seq.|> LogEntry msg rn time)
+        return $ Out VUnit s k
       _ -> badConst
     View -> case vs of
-      [VString s] -> do
+      [VString name] -> do
         _ <-
-          robotNamed s
-            >>= (`isJustOrFail` ["There is no robot named ", s, " to view."])
+          robotNamed name
+            >>= (`isJustOrFail` ["There is no robot named ", name, " to view."])
 
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
         rn <- use robotName
         when (rn == "base") $
-          viewCenterRule .= VCRobot s
+          viewCenterRule .= VCRobot name
 
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Appear -> case vs of
-      [VString s] -> do
+      [VString app] -> do
         flagRedraw
-        case into @String s of
+        case into @String app of
           [dc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap .= M.empty
-            return $ Out VUnit k
+            return $ Out VUnit s k
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap . ix DNorth .= nc
             robotDisplay . orientationMap . ix DEast .= ec
             robotDisplay . orientationMap . ix DSouth .= sc
             robotDisplay . orientationMap . ix DWest .= wc
-            return $ Out VUnit k
-          _other -> raise Appear [quote s, "is not a valid appearance string."]
+            return $ Out VUnit s k
+          _other -> raise Appear [quote app, "is not a valid appearance string."]
       _ -> badConst
     Create -> case vs of
       [VString name] -> do
@@ -898,56 +905,73 @@ execConst c vs k = do
             `isJustOrFail` ["I've never heard of", indefiniteQ name, "."]
 
         robotInventory %= insert e
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Ishere -> case vs of
-      [VString s] -> do
+      [VString name] -> do
         loc <- use robotLocation
         me <- entityAt loc
         case me of
-          Nothing -> return $ Out (VBool False) k
-          Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower s)) k
+          Nothing -> return $ Out (VBool False) s k
+          Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower name)) s k
       _ -> badConst
     Whoami -> case vs of
       [] -> do
         name <- use robotName
-        return $ Out (VString name) k
+        return $ Out (VString name) s k
       _ -> badConst
     Force -> case vs of
-      [VDelay Nothing t e] -> return $ In t e k
-      [VDelay (Just x) t e] -> return $ In t (addBinding x (VDelay (Just x) t e) e) k
+      [VDelay t e] -> return $ In t e s k
+      [VRef loc] ->
+        -- To force a VRef, we look up the location in the store.
+        case lookupCell loc s of
+          -- If there's no cell at that location, it's a bug!  It
+          -- shouldn't be possible to get a VRef to a non-existent
+          -- location, since the only way VRefs get created is at the
+          -- time we allocate a new cell.
+          Nothing ->
+            return $
+              Up (Fatal $ T.append "Reference to unknown memory cell " (from (show loc))) s k
+          -- If the location contains an unevaluated expression, it's
+          -- time to evaluate it.  Set the cell to a 'Blackhole', push
+          -- an 'FUpdate' frame so we remember to update the location
+          -- to its value once we finish evaluating it, and focus on
+          -- the expression.
+          Just (E t e') -> return $ In t e' (setCell loc (Blackhole t e') s) (FUpdate loc : k)
+          -- If the location contains a Blackhole, that means we are
+          -- already currently in the middle of evaluating it, i.e. it
+          -- depends on itself, so throw an 'InfiniteLoop' error.
+          Just Blackhole {} -> return $ Up InfiniteLoop s k
+          -- If the location already contains a value, just return it.
+          Just (V v) -> return $ Out v s k
       _ -> badConst
-    -- Note, if should evaluate the branches lazily, but since
-    -- evaluation is eager, by the time we get here thn and els have
-    -- already been fully evaluated --- what gives?  The answer is that
-    -- we rely on elaboration to add 'lazy' wrappers around the branches
-    -- (and a 'force' wrapper around the entire if).
     If -> case vs of
-      [VBool b, thn, els] -> return $ Out (bool els thn b) k
+      -- Use the boolean to pick the correct branch, and apply @force@ to it.
+      [VBool b, thn, els] -> return $ Out (bool els thn b) s (FApp (VCApp Force []) : k)
       _ -> badConst
     Inl -> case vs of
-      [v] -> return $ Out (VInj False v) k
+      [v] -> return $ Out (VInj False v) s k
       _ -> badConst
     Inr -> case vs of
-      [v] -> return $ Out (VInj True v) k
+      [v] -> return $ Out (VInj True v) s k
       _ -> badConst
     Case -> case vs of
-      [VInj s v, kl, kr] -> return $ Out v (FApp (bool kl kr s) : k)
+      [VInj side v, kl, kr] -> return $ Out v s (FApp (bool kl kr side) : k)
       _ -> badConst
     Fst -> case vs of
-      [VPair v _] -> return $ Out v k
+      [VPair v _] -> return $ Out v s k
       _ -> badConst
     Snd -> case vs of
-      [VPair _ v] -> return $ Out v k
+      [VPair _ v] -> return $ Out v s k
       _ -> badConst
     Try -> case vs of
-      [c1, c2] -> return $ Out c1 (FExec : FTry c2 : k)
+      [c1, c2] -> return $ Out c1 s (FApp (VCApp Force []) : FExec : FTry c2 : k)
       _ -> badConst
     Raise -> case vs of
-      [VString s] -> return $ Up (User s) k
+      [VString msg] -> return $ Up (User msg) s k
       _ -> badConst
     Reprogram -> case vs of
-      [VString childRobotName, VDelay _ cmd e] -> do
+      [VString childRobotName, VDelay cmd e] -> do
         r <- get
         em <- use entityMap
         mode <- use gameMode
@@ -993,17 +1017,39 @@ execConst c vs k = do
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
 
-        -- update other robot's CEK machine, environment and context
+        -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        robotMap . at childRobotName . _Just . machine .= In cmd e [FExec]
+        robotMap . at childRobotName . _Just . machine .= In cmd e s [FExec]
         robotMap . at childRobotName . _Just . robotContext .= r ^. robotContext
 
-        return $ Out VUnit k
+        return $ Out VUnit s k
       _ -> badConst
     Build -> case vs of
-      [VString name, VDelay _ cmd e] -> do
+      -- NOTE, pattern-matching on a VDelay here means we are
+      -- /relying/ on the fact that 'Build' can only be given a
+      -- /non-memoized/ delayed value.  If it were given a memoized
+      -- delayed value we would see a VRef instead of a VDelay.  If
+      -- and Try are generalized to handle any type of delayed value,
+      -- but Build and Reprogram still assume they are given a VDelay
+      -- and not a VRef.  In the future, if we enable memoized delays
+      -- by default, or allow the user to explicitly request
+      -- memoization via double braces or something similar, this will
+      -- have to be generalized.  The difficulty is that we do a
+      -- capability check on the delayed program at runtime, just
+      -- before creating the newly built robot (see the call to
+      -- 'requiredCaps' below); but if we have a VRef instead of a
+      -- VDelay, we may only be able to get a Value out of it instead
+      -- of a Term as we currently do, and capability checking a Value
+      -- is annoying and/or problematic.  One solution might be to
+      -- annotate delayed expressions with their required capabilities
+      -- at typechecking time, and carry those along so they flow to
+      -- this point. Another solution would be to just bite the bullet
+      -- and figure out how to do capability checking on Values (which
+      -- would return the capabilities needed to *execute* them),
+      -- hopefully without duplicating too much code.
+      [VString name, VDelay cmd e] -> do
         r <- get
         em <- use entityMap
         mode <- use gameMode
@@ -1049,7 +1095,7 @@ execConst c vs k = do
                 name
                 (r ^. robotLocation)
                 (r ^. robotOrientation ? east)
-                (In cmd e [FExec])
+                (In cmd e s [FExec])
                 (S.toList devices)
 
         -- Add the new robot to the world.
@@ -1063,7 +1109,7 @@ execConst c vs k = do
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
-        return $ Out (VString (newRobot' ^. robotName)) k
+        return $ Out (VString (newRobot' ^. robotName)) s k
       _ -> badConst
     Salvage -> case vs of
       [] -> do
@@ -1074,7 +1120,7 @@ execConst c vs k = do
             mtarget = find okToSalvage . mapMaybe (`M.lookup` rm) $ robotNameList
             okToSalvage r = (r ^. robotName /= "base") && (not . isActive $ r)
         case mtarget of
-          Nothing -> return $ Out VUnit k -- Nothing to salvage
+          Nothing -> return $ Out VUnit s k -- Nothing to salvage
           Just target -> do
             -- Copy over the salvaged robot's inventory
             robotInventory %= E.union (target ^. robotInventory)
@@ -1092,7 +1138,7 @@ execConst c vs k = do
             -- Finally, delete the salvaged robot
             deleteRobot (target ^. robotName)
 
-            return $ Out VUnit k
+            return $ Out VUnit s k
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in
@@ -1107,13 +1153,13 @@ execConst c vs k = do
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ initMachine' t empty k
+        return $ initMachine' t empty emptyStore k
       _ -> badConst
     Not -> case vs of
-      [VBool b] -> return $ Out (VBool (not b)) k
+      [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) k
+      [VInt n] -> return $ Out (VInt (- n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1137,19 +1183,19 @@ execConst c vs k = do
       Fatal $
         T.unlines
           [ "Bad application of execConst:"
-          , from (prettyCEK (Out (VCApp c (reverse vs)) k))
+          , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
           ]
   finishCookingRecipe ::
     (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
     Recipe e ->
     WorldUpdate ->
     RobotUpdate ->
-    m CEK
+    m CESK
   finishCookingRecipe r wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-      Out VUnit (FImmediate wf rf : k)
+      Out VUnit s (FImmediate wf rf : k)
 
   -- replace some entity in the world with another entity
   changeWorld' ::
@@ -1175,32 +1221,15 @@ execConst c vs k = do
   isJustOrFail a ts = a `isJustOr` cmdExn c ts
 
   returnEvalCmp = case vs of
-    [v1, v2] ->
-      case evalCmp c v1 v2 of
-        -- If the comparison does not make sense, just return a random result.
-        Nothing -> do
-          b <- uniform (False, True)
-          return $ Out (VBool b) k
-        Just b -> return $ Out (VBool b) k
+    [v1, v2] -> (\b -> Out (VBool b) s k) <$> evalCmp c v1 v2
     _ -> badConst
   returnEvalArith = case vs of
-    [VInt n1, VInt n2] -> case evalArith c n1 n2 of
-      Left exn -> return $ Up exn k
-      -- Note, we want to maintain the invariant that only executing
-      -- commands can throw exceptions, not evaluating pure
-      -- expressions; hence, dividing by zero and exponentiating by a
-      -- negative number have to return some value even though they
-      -- aren't sensible.  Nothing signals this type of failure; we
-      -- choose a random number to return.
-      Right Nothing -> do
-        n <- uniform (-1000000, 1000000)
-        return $ Out (VInt n) k
-      Right (Just r) -> return $ Out (VInt r) k
+    [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
     _ -> badConst
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
-evalCmp :: Const -> Value -> Value -> Maybe Bool
+evalCmp :: Has (Throw Exn) sig m => Const -> Value -> Value -> m Bool
 evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
  where
   decideCmp = \case
@@ -1210,57 +1239,73 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
     Gt -> fmap (== GT)
     Leq -> fmap (/= GT)
     Geq -> fmap (/= LT)
-    _ -> const Nothing
+    _ -> const $ throwError $ Fatal $ T.append "evalCmp called on bad constant " (from (show c))
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
-compareValues :: Value -> Value -> Maybe Ordering
-compareValues = \case
-  VUnit -> \case VUnit -> Just EQ; _ -> Nothing
-  VInt n1 -> \case VInt n2 -> Just (compare n1 n2); _ -> Nothing
-  VString t1 -> \case VString t2 -> Just (compare t1 t2); _ -> Nothing
-  VDir d1 -> \case VDir d2 -> Just (compare d1 d2); _ -> Nothing
-  VBool b1 -> \case VBool b2 -> Just (compare b1 b2); _ -> Nothing
-  VInj s1 v1 -> \case
-    VInj s2 v2 ->
+compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
+compareValues = \v1 -> case v1 of
+  VUnit -> \case VUnit -> return EQ; v2 -> incompatCmp VUnit v2
+  VInt n1 -> \case VInt n2 -> return (compare n1 n2); v2 -> incompatCmp v1 v2
+  VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
+  VDir d1 -> \case VDir d2 -> return (compare d1 d2); v2 -> incompatCmp v1 v2
+  VBool b1 -> \case VBool b2 -> return (compare b1 b2); v2 -> incompatCmp v1 v2
+  VInj s1 v1' -> \case
+    VInj s2 v2' ->
       case compare s1 s2 of
-        EQ -> compareValues v1 v2
-        o -> Just o
-    _ -> Nothing
+        EQ -> compareValues v1' v2'
+        o -> return o
+    v2 -> incompatCmp v1 v2
   VPair v11 v12 -> \case
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
-    _ -> Nothing
-  VClo {} -> const Nothing
-  VCApp {} -> const Nothing
-  VDef {} -> const Nothing
-  VResult {} -> const Nothing
-  VBind {} -> const Nothing
-  VDelay {} -> const Nothing
+    v2 -> incompatCmp v1 v2
+  VClo {} -> incomparable v1
+  VCApp {} -> incomparable v1
+  VDef {} -> incomparable v1
+  VResult {} -> incomparable v1
+  VBind {} -> incomparable v1
+  VDelay {} -> incomparable v1
+  VRef {} -> incomparable v1
+
+-- | Values with different types were compared; this should not be
+--   possible since the type system should catch it.
+incompatCmp :: Has (Throw Exn) sig m => Value -> Value -> m a
+incompatCmp v1 v2 =
+  throwError $
+    Fatal $
+      T.unwords ["Incompatible comparison of ", prettyValue v1, "and", prettyValue v2]
+
+-- | Values were compared of a type which cannot be compared
+--   (e.g. functions, etc.).
+incomparable :: Has (Throw Exn) sig m => Value -> Value -> m a
+incomparable v1 v2 =
+  throwError $
+    CmdFailed Lt $
+      T.unwords ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
 -- | Evaluate the application of an arithmetic operator, returning
---   @Nothing@ in the case of a failing operation. In case we
---   incorrectly use it on a bad 'Const' in the library, return an
---   exception.
-evalArith :: Const -> Integer -> Integer -> Either Exn (Maybe Integer)
+--   an exception in the case of a failing operation, or in case we
+--   incorrectly use it on a bad 'Const' in the library.
+evalArith :: Has (Throw Exn) sig m => Const -> Integer -> Integer -> m Integer
 evalArith = \case
   Add -> ok (+)
   Sub -> ok (-)
   Mul -> ok (*)
-  Div -> \x y -> Right (safeDiv x y)
-  Exp -> \x y -> Right (safeExp x y)
-  c -> \_ _ -> Left $ Fatal $ T.append "evalArith called on bad constant " (from (show c))
+  Div -> safeDiv
+  Exp -> safeExp
+  c -> \_ _ -> throwError $ Fatal $ T.append "evalArith called on bad constant " (from (show c))
  where
-  ok f x y = Right $ Just (f x y)
+  ok f x y = return $ f x y
 
 -- | Perform an integer division, but return @Nothing@ for division by
 --   zero.
-safeDiv :: Integer -> Integer -> Maybe Integer
-safeDiv _ 0 = Nothing
-safeDiv a b = Just $ a `div` b
+safeDiv :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
+safeDiv _ 0 = throwError $ CmdFailed Div "Division by zero"
+safeDiv a b = return $ a `div` b
 
 -- | Perform exponentiation, but return @Nothing@ if the power is negative.
-safeExp :: Integer -> Integer -> Maybe Integer
+safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
-  | b < 0 = Nothing
-  | otherwise = Just $ a ^ b
+  | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
+  | otherwise = return $ a ^ b

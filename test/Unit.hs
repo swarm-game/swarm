@@ -1,4 +1,6 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Swarm unit tests
 module Main where
@@ -13,7 +15,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (from)
 
-import Swarm.Game.CEK
+import Swarm.Game.CESK
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -203,10 +205,10 @@ eval g =
             ("inr 4 < inr 3" `evaluatesTo` VBool False)
         , testCase
             "case inl"
-            ("case (inl 2) {\\x. x + 1} {\\y. y * 17}" `evaluatesTo` VInt 3)
+            ("case (inl 2) (\\x. x + 1) (\\y. y * 17)" `evaluatesTo` VInt 3)
         , testCase
             "case inr"
-            ("case (inr 2) {\\x. x + 1} {\\y. y * 17}" `evaluatesTo` VInt 34)
+            ("case (inr 2) (\\x. x + 1) (\\y. y * 17)" `evaluatesTo` VInt 34)
         , testCase
             "nested 1"
             ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inl 3)" `evaluatesTo` VInt 1)
@@ -223,24 +225,113 @@ eval g =
             "application operator #239"
             ("fst $ snd $ (1,2,3)" `evaluatesTo` VInt 2)
         ]
+    , testGroup
+        "recursive bindings"
+        [ testCase
+            "factorial"
+            ("let fac = \\n. if (n==0) {1} {n * fac (n-1)} in fac 15" `evaluatesTo` VInt 1307674368000)
+        , testCase
+            "loop detected"
+            ("let x = x in x" `throwsError` ("loop detected" `T.isInfixOf`))
+        ]
+    , testGroup
+        "delay"
+        [ testCase
+            "force / delay"
+            ("force {10}" `evaluatesTo` VInt 10)
+        , testCase
+            "force x2 / delay x2"
+            ("force (force { {10} })" `evaluatesTo` VInt 10)
+        , testCase
+            "if is lazy"
+            ("if true {1} {1/0}" `evaluatesTo` VInt 1)
+        , testCase
+            "function with if is not lazy"
+            ( "let f = \\x. \\y. if true {x} {y} in f 1 (1/0)"
+                `throwsError` ("by zero" `T.isInfixOf`)
+            )
+        , testCase
+            "memoization baseline"
+            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in noop"
+                `evaluatesToInAtMost` (VUnit, 535)
+            )
+        , testCase
+            "memoization"
+            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in let y = f10 in noop"
+                `evaluatesToInAtMost` (VUnit, 540)
+            )
+        ]
+    , testGroup
+        "conditions"
+        [ testCase
+            "if true"
+            ("if true {1} {2}" `evaluatesTo` VInt 1)
+        , testCase
+            "if false"
+            ("if false {1} {2}" `evaluatesTo` VInt 2)
+        , testCase
+            "if (complex condition)"
+            ("if (let x = 3 + 7 in not (x < 2^5)) {1} {2}" `evaluatesTo` VInt 2)
+        ]
+    , testGroup
+        "exceptions"
+        [ testCase
+            "raise"
+            ("raise \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
+        , testCase
+            "try / no exception 1"
+            ("try {return 1} {return 2}" `evaluatesTo` VInt 1)
+        , testCase
+            "try / no exception 2"
+            ("try {return 1} {let x = x in x}" `evaluatesTo` VInt 1)
+        , testCase
+            "try / raise"
+            ("try {raise \"foo\"} {return 3}" `evaluatesTo` VInt 3)
+        , testCase
+            "try / raise / raise"
+            ("try {raise \"foo\"} {raise \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
+        , testCase
+            "try / div by 0"
+            ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
+        ]
     ]
  where
+  throwsError :: Text -> (Text -> Bool) -> Assertion
+  throwsError tm p = do
+    result <- evaluate tm
+    case result of
+      Right _ -> assertFailure "Unexpected success"
+      Left err ->
+        p err
+          @? "Expected predicate did not hold on error message " ++ from @Text @String err
+
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
-    let pt = processTerm tm
-    result <- either (return . Left) evalPT pt
-    assertEqual "" (Right val) result
+    result <- evaluate tm
+    assertEqual "" (Right val) (fst <$> result)
 
-  evalPT :: ProcessedTerm -> IO (Either Text Value)
-  evalPT t = evaluateCEK (initMachine t empty)
+  evaluatesToInAtMost :: Text -> (Value, Int) -> Assertion
+  evaluatesToInAtMost tm (val, maxSteps) = do
+    result <- evaluate tm
+    case result of
+      Left err -> assertFailure ("Evaluation failed: " ++ from @Text @String err)
+      Right (v, steps) -> do
+        assertEqual "" val v
+        assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
 
-  evaluateCEK :: CEK -> IO (Either Text Value)
-  evaluateCEK cek = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCEK $ cek
+  evaluate :: Text -> IO (Either Text (Value, Int))
+  evaluate = either (return . Left) evalPT . processTerm
+
+  evalPT :: ProcessedTerm -> IO (Either Text (Value, Int))
+  evalPT t = evaluateCESK (initMachine t empty emptyStore)
+
+  evaluateCESK :: CESK -> IO (Either Text (Value, Int))
+  evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK 0 $ cesk
    where
-    r = mkRobot "" zero zero cek []
+    r = mkRobot "" zero zero cesk []
 
-  runCEK :: CEK -> StateT Robot (StateT GameState IO) (Either Text Value)
-  runCEK (Up exn []) = return (Left (formatExn exn))
-  runCEK cek = case finalValue cek of
-    Just v -> return (Right v)
-    Nothing -> stepCEK cek >>= runCEK
+  runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
+  runCESK _ (Up exn _ []) = return (Left (formatExn exn))
+  runCESK !steps cesk = case finalValue cesk of
+    Just (v, _) -> return (Right (v, steps))
+    Nothing -> stepCESK cesk >>= runCESK (steps + 1)

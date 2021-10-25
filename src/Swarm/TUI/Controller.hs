@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -51,7 +49,7 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
-import Data.Maybe (isJust)
+import Data.Maybe (fromMaybe, isJust)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Linear
@@ -66,7 +64,7 @@ import qualified Graphics.Vty as V
 
 import qualified Control.Carrier.Lift as Fused
 import qualified Control.Carrier.State.Lazy as Fused
-import Swarm.Game.CEK (idleMachine, initMachine)
+import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -396,7 +394,7 @@ handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
   continue $
     s
-      & gameState . robotMap . ix "base" . machine .~ idleMachine
+      & gameState . robotMap . ix "base" . machine %~ cancel
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
@@ -409,7 +407,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiReplHistIdx .~ (-1)
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
-            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx
+            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
             & gameState %~ execState (activateRobot "base")
       Left err ->
         continue $
@@ -417,13 +415,13 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiError ?~ txt err
     else continueWithoutRedraw s
  where
-  -- XXX check that we have the capabilities needed to run the
-  -- program before even starting?
-
   entry = formState (s ^. uiState . uiReplForm)
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
+  topStore =
+    fromMaybe emptyStore $
+      s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
   prependReplEntry replHistory
     | firstReplEntry replHistory == Just entry = REPLEntry True True entry : replHistory
     | otherwise = REPLEntry True False entry : replHistory
@@ -580,8 +578,7 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 --   base is not currently busy.
 makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
 makeEntity s e = do
-  let topDefCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
-      mkTy = Forall [] $ TyCmd TyUnit
+  let mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
   case isActive <$> (s ^. gameState . robotMap . at "base") of
@@ -589,7 +586,7 @@ makeEntity s e = do
       continue $
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topDefCtx
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT empty emptyStore
           & gameState %~ execState (activateRobot "base")
     _ -> continueWithoutRedraw s
 

@@ -44,6 +44,7 @@ module Swarm.Language.Types (
   pattern (:*:),
   pattern (:->:),
   pattern TyCmd,
+  pattern TyDelay,
 
   -- * @UType@
   UType,
@@ -58,6 +59,7 @@ module Swarm.Language.Types (
   pattern UTyProd,
   pattern UTyFun,
   pattern UTyCmd,
+  pattern UTyDelay,
 
   -- ** Utilities
   ucata,
@@ -129,6 +131,8 @@ data TypeF t
   | -- | Commands, with return type.  Note that
     --   commands form a monad.
     TyCmdF t
+  | -- | Type of delayed computations.
+    TyDelayF t
   | -- | Sum type.
     TySumF t t
   | -- | Product type.
@@ -326,6 +330,9 @@ pattern ty1 :->: ty2 = Fix (TyFunF ty1 ty2)
 pattern TyCmd :: Type -> Type
 pattern TyCmd ty1 = Fix (TyCmdF ty1)
 
+pattern TyDelay :: Type -> Type
+pattern TyDelay ty1 = Fix (TyDelayF ty1)
+
 pattern UTyBase :: BaseTy -> UType
 pattern UTyBase b = UTerm (TyBaseF b)
 
@@ -358,3 +365,6 @@ pattern UTyFun ty1 ty2 = UTerm (TyFunF ty1 ty2)
 
 pattern UTyCmd :: UType -> UType
 pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
+
+pattern UTyDelay :: UType -> UType
+pattern UTyDelay ty1 = UTerm (TyDelayF ty1)

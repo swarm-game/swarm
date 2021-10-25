@@ -64,7 +64,7 @@ library
                       Swarm.Language.LSP
                       Swarm.Language.Pipeline
                       Swarm.Language.Pipeline.QQ
-                      Swarm.Game.CEK
+                      Swarm.Game.CESK
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception

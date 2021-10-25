@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -262,7 +260,7 @@ inferModule s@(Syntax _ t) = case t of
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef x Nothing t1 -> do
+  SDef _ x Nothing t1 -> do
     xTy <- fresh
     ty <- withBinding x (Forall [] xTy) $ infer t1
     xTy =:= ty
@@ -271,7 +269,7 @@ inferModule s@(Syntax _ t) = case t of
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef x (Just pty) t1 -> do
+  SDef _ x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
     withBinding x upty $ check t1 uty
@@ -322,8 +320,16 @@ infer (Syntax _ (TAntiString _)) = return UTyString
 infer (Syntax _ (TBool _)) = return UTyBool
 -- To infer the type of a pair, just infer both components.
 infer (Syntax _ (SPair t1 t2)) = UTyProd <$> infer t1 <*> infer t2
--- delay t has the same type as t.
-infer (Syntax l (TDelay t)) = infer (Syntax l t)
+-- if t : ty, then  {t} : {ty}.
+-- Note that in theory, if the @Maybe Var@ component of the @SDelay@
+-- is @Just@, we should typecheck the body under a context extended
+-- with a type binding for the variable, and ensure that the type of
+-- the variable is the same as the type inferred for the overall
+-- @SDelay@.  However, we rely on the invariant that such recursive
+-- @SDelay@ nodes are never generated from the surface syntax, only
+-- dynamically at runtime when evaluating recursive let or def expressions,
+-- so we don't have to worry about typechecking them here.
+infer (Syntax _ (SDelay _ t)) = UTyDelay <$> infer t
 -- Just look up variables in the context.
 infer (Syntax l (TVar x)) = lookup l x
 -- To infer the type of a lambda if the type of the argument is
@@ -353,13 +359,13 @@ infer (Syntax _ (SApp f x)) = do
 
 -- We can infer the type of a let whether a type has been provided for
 -- the variable or not.
-infer (Syntax _ (SLet x Nothing t1 t2)) = do
+infer (Syntax _ (SLet _ x Nothing t1 t2)) = do
   xTy <- fresh
   uty <- withBinding x (Forall [] xTy) $ infer t1
   xTy =:= uty
   upty <- generalize uty
   withBinding x upty $ infer t2
-infer (Syntax l (SLet x (Just pty) t1 t2)) = do
+infer (Syntax l (SLet _ x (Just pty) t1 t2)) = do
   let upty = toU pty
   -- If an explicit polytype has been provided, skolemize it and check
   -- definition and body under an extended context.
@@ -425,8 +431,8 @@ inferConst c = toU $ case c of
   Give -> [tyQ| string -> string -> cmd () |]
   Install -> [tyQ| string -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
-  Reprogram -> [tyQ| string -> cmd a -> cmd () |]
-  Build -> [tyQ| string -> cmd a -> cmd string |]
+  Reprogram -> [tyQ| string -> {cmd a} -> cmd () |]
+  Build -> [tyQ| string -> {cmd a} -> cmd string |]
   Drill -> [tyQ| dir -> cmd () |]
   Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
@@ -442,15 +448,15 @@ inferConst c = toU $ case c of
   Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
-  If -> [tyQ| bool -> a -> a -> a |]
+  If -> [tyQ| bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]
   Inr -> [tyQ| b -> a + b |]
   Case -> [tyQ|a + b -> (a -> c) -> (b -> c) -> c |]
   Fst -> [tyQ| a * b -> a |]
   Snd -> [tyQ| a * b -> b |]
-  Force -> [tyQ| a -> a |]
+  Force -> [tyQ| {a} -> a |]
   Return -> [tyQ| a -> cmd a |]
-  Try -> [tyQ| cmd a -> cmd a -> cmd a |]
+  Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
   Raise -> [tyQ| string -> cmd a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]

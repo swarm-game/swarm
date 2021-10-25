@@ -214,7 +214,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
       , hCenter $ mkTable baseCommands
       ]
   baseCommands =
-    [ ("build <name> <commands>", "Create a robot")
+    [ ("build <name> {<commands>}", "Create a robot")
     , ("make <name>", "Craft an item")
     , ("move", "Move one step in the current direction")
     , ("turn <dir>", "Change the current direction")
