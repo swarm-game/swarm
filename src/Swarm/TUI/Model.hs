@@ -20,20 +20,33 @@ module Swarm.TUI.Model (
   Modal (..),
 
   -- * UI state
+
+  -- ** REPL
   REPLHistItem (..),
   firstReplEntry,
+  replItemText,
+  isREPLEntry,
+  getREPLEntry,
+  REPLHistory,
+  replSeq,
+  replStart,
+  replIndex,
+  addREPLEntry,
+  addREPLOutput,
+  replLength,
+
+  -- ** Inventory
   InventoryListEntry (..),
   _Separator,
   _InventoryEntry,
   _InstalledEntry,
-  UIState,
 
-  -- ** Fields
+  -- ** UI Model
+  UIState,
   uiFocusRing,
   uiReplForm,
   uiReplType,
   uiReplHistory,
-  uiReplHistIdx,
   uiReplLast,
   uiInventory,
   uiMoreInfoTop,
@@ -79,7 +92,7 @@ import Control.Lens
 import Control.Monad.Except
 import Control.Monad.State
 import Data.List (findIndex, sortOn)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -91,6 +104,8 @@ import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
 import Data.Bits (FiniteBits (finiteBitSize))
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -148,29 +163,74 @@ data Modal
 
 -- | An item in the REPL history.
 data REPLHistItem
-  = -- | Something entered by the user.  The first
-    --   @Bool@ indicates whether it is
-    --   something entered this session (it
-    --   will be @False@ for entries that were
-    --   loaded from the history file). This is
-    --   so we know which ones to append to the
-    --   history file on shutdown.
-    --   The second @Bool@ indicates whether it
-    --   is a duplicate of the preceding item (it
-    --   will be @True@ for duplicate entries).
-    --   This is so we can ignore it when scrolling
-    --   through the REPL history in the REPL window.
-    REPLEntry Bool Bool Text
+  = -- | Something entered by the user.
+    REPLEntry Text
   | -- | A response printed by the system.
     REPLOutput Text
   deriving (Eq, Ord, Show, Read)
 
+getREPLEntry :: REPLHistItem -> Maybe Text
+getREPLEntry = \case
+  REPLEntry t -> Just t
+  _ -> Nothing
+
+isREPLEntry :: REPLHistItem -> Bool
+isREPLEntry = isJust . getREPLEntry
+
+replItemText :: REPLHistItem -> Text
+replItemText = \case
+  REPLEntry t -> t
+  REPLOutput t -> t
+
+-- | History of the REPL with indices (0 is first entry) to the current
+--   line and to the first entry since loading saved history.
+--   We also (ab)use the length of the REPL as the index of current
+--   input line, since that number is one past the index of last entry.
+data REPLHistory = REPLHistory
+  { _replSeq :: Seq REPLHistItem
+  , _replIndex :: Int
+  , _replStart :: Int
+  }
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''REPLHistory
+
+-- | Sequence of REPL inputs and outputs, oldest entry is leftmost.
+--
+-- TODO: The ideal would be not to expose inner storage, but currently
+-- namely the index+predicate functions on Seq are hard to resist.
+replSeq :: Lens' REPLHistory (Seq REPLHistItem)
+
+-- | The current index in the REPL history (if the user is going back
+--   through the history using up/down keys).
+replIndex :: Lens' REPLHistory Int
+
+-- | The index of the first entry since loading saved history.
+replStart :: Lens' REPLHistory Int
+
+-- | Current (vertical) length of the REPL - used as index of input buffer.
+replLength :: REPLHistory -> Int
+replLength = length . _replSeq
+
+-- | Add new REPL input - the index must have been pointing one past
+--   the last element already, so we increment it to keep it that way.
+addREPLItem :: (Text -> REPLHistItem) -> Text -> REPLHistory -> REPLHistory
+addREPLItem rc t h =
+  h
+    & replSeq %~ (|> rc t)
+    & replIndex .~ replLength h
+
+-- | Add new REPL input and increment index to last.
+addREPLEntry :: Text -> REPLHistory -> REPLHistory
+addREPLEntry = addREPLItem REPLEntry
+
+-- | Add new REPL output and increment index to last.
+addREPLOutput :: Text -> REPLHistory -> REPLHistory
+addREPLOutput = addREPLItem REPLOutput
+
 -- | Given a REPL history return @Just@ the most recent @Text@
 --   entered by the user or @Nothing@ if there is none.
-firstReplEntry :: [REPLHistItem] -> Maybe Text
-firstReplEntry ((REPLEntry _ _ entry) : _) = Just entry
-firstReplEntry (_ : rest) = firstReplEntry rest
-firstReplEntry [] = Nothing
+firstReplEntry :: REPLHistory -> Maybe Text
+firstReplEntry = foldr (const . getREPLEntry) Nothing . _replSeq
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,
@@ -192,8 +252,7 @@ data UIState = UIState
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
-  , _uiReplHistory :: [REPLHistItem]
-  , _uiReplHistIdx :: Int
+  , _uiReplHistory :: REPLHistory
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiMoreInfoTop :: Bool
   , _uiMoreInfoBot :: Bool
@@ -238,11 +297,7 @@ uiReplLast :: Lens' UIState Text
 
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
-uiReplHistory :: Lens' UIState [REPLHistItem]
-
--- | The current index in the REPL history (if the user is going back
---   through the history using up/down keys).
-uiReplHistIdx :: Lens' UIState Int
+uiReplHistory :: Lens' UIState REPLHistory
 
 -- | The hash value of the focused robot entity (so we can tell if its
 --   inventory changed) along with a list of the items in the
@@ -335,27 +390,26 @@ initReplForm =
 initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 
-createHistory :: [Text] -> [REPLHistItem]
-createHistory = map (uncurry $ REPLEntry False) . zipLines . reverse
- where
-  zipLines ls = zipWith samePair ls $ tail ls ++ [""]
-  samePair n o = (n == o, n)
-
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file and getting the current
 --   time.
 initUIState :: ExceptT Text IO UIState
 initUIState = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
-  let history = maybe [] (createHistory . T.lines) historyT
+  let history = maybe Seq.empty (Seq.fromList . map REPLEntry . T.lines) historyT
+      historyLen = length history
   startTime <- getTime Monotonic
   return $
     UIState
       { _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
-      , _uiReplHistory = history
-      , _uiReplHistIdx = -1
+      , _uiReplHistory =
+          REPLHistory
+            { _replSeq = history
+            , _replIndex = historyLen -- one past rightmost=newest
+            , _replStart = historyLen
+            }
       , _uiReplLast = ""
       , _uiInventory = Nothing
       , _uiMoreInfoTop = False

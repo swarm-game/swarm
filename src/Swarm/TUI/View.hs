@@ -47,6 +47,7 @@ import qualified Data.List as L
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
@@ -62,6 +63,7 @@ import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
 
+import Data.Foldable (toList)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
@@ -555,13 +557,12 @@ drawRobotLog s =
 drawREPL :: AppState -> Widget Name
 drawREPL s =
   vBox $
-    map fmt (reverse (take (replHeight - 1) . filter newEntry $ (s ^. uiState . uiReplHistory)))
+    map fmt (take (replHeight - 1) . toList . ignoreLoaded $ history ^. replSeq)
       ++ case isActive <$> (s ^. gameState . robotMap . at "base") of
         Just False -> [renderForm (s ^. uiState . uiReplForm)]
         _ -> [padRight Max $ txt "..."]
  where
-  newEntry (REPLEntry False _ _) = False
-  newEntry _ = True
-
-  fmt (REPLEntry _ _ e) = txt replPrompt <+> txt e
+  history = s ^. uiState . uiReplHistory
+  ignoreLoaded = snd . Seq.splitAt (history ^. replStart)
+  fmt (REPLEntry e) = txt replPrompt <+> txt e
   fmt (REPLOutput t) = txt t

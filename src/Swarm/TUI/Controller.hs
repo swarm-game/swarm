@@ -31,6 +31,7 @@ module Swarm.TUI.Controller (
   handleREPLEvent,
   validateREPLForm,
   adjReplHistIndex,
+  TimeDir (..),
 
   -- ** World panel
   handleWorldEvent,
@@ -65,6 +66,8 @@ import qualified Graphics.Vty as V
 
 import qualified Control.Carrier.Lift as Fused
 import qualified Control.Carrier.State.Lazy as Fused
+import Data.Foldable (toList)
+import qualified Data.Sequence as Seq
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -151,15 +154,12 @@ toggleModal s modal = do
 --   the updated REPL history to a @.swarm_history@ file.
 shutdown :: AppState -> EventM Name (Next AppState)
 shutdown s = do
-  let hist = mapMaybe getNewEntry (s ^. uiState . uiReplHistory)
+  let hist = mapMaybe getREPLEntry . toList . snd . Seq.splitAt (history ^. replStart) $ history ^. replSeq
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
-  let s' = s & uiState . uiReplHistory . traverse %~ markOld
+  let s' = s & uiState . uiReplHistory . replStart .~ replLength history
   halt s'
  where
-  markOld (REPLEntry _ d e) = REPLEntry False d e
-  markOld r = r
-  getNewEntry (REPLEntry True _ t) = Just t
-  getNewEntry _ = Nothing
+  history = s ^. uiState . uiReplHistory
 
 ------------------------------------------------------------
 -- Handling Frame events
@@ -320,7 +320,7 @@ updateUI = do
     -- result as a REPL output, with its type, and reset the replStatus.
     REPLWorking pty (Just v) -> do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
-      uiState . uiReplHistory %= (REPLOutput out :)
+      uiState . uiReplHistory %= addREPLOutput out
       gameState . replStatus .= REPLDone
       pure True
 
@@ -403,8 +403,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
           s
             & uiState . uiReplForm %~ updateFormState ""
             & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ prependReplEntry
-            & uiState . uiReplHistIdx .~ (-1)
+            & uiState . uiReplHistory %~ addREPLEntry entry
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
             & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
@@ -422,13 +421,10 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   topStore =
     fromMaybe emptyStore $
       s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
-  prependReplEntry replHistory
-    | firstReplEntry replHistory == Just entry = REPLEntry True True entry : replHistory
-    | otherwise = REPLEntry True False entry : replHistory
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
-  continue $ s & adjReplHistIndex (+)
+  continue $ s & adjReplHistIndex Older
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
-  continue $ s & adjReplHistIndex (-)
+  continue $ s & adjReplHistIndex Newer
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
@@ -449,22 +445,37 @@ validateREPLForm s =
     _ -> Nothing
   validate = setFieldValid (isRight result) REPLInput
 
+data TimeDir = Newer | Older deriving (Eq, Ord, Show)
+
 -- | Update our current position in the REPL history.
-adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState
-adjReplHistIndex (+/-) s =
-  s & uiState . uiReplHistIdx .~ newIndex
-    & (if curIndex == -1 then saveLastEntry else id)
+adjReplHistIndex :: TimeDir -> AppState -> AppState
+adjReplHistIndex d s =
+  s & uiState . uiReplHistory . replIndex .~ newIndex
+    & (if curIndex == historyLen then saveLastEntry else id)
     & (if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id)
     & validateREPLForm
  where
+  -- get REPL data
   saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-  entries = [e | REPLEntry _ False e <- s ^. uiState . uiReplHistory]
-  curIndex = s ^. uiState . uiReplHistIdx
-  histLen = length entries
-  newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
+  replLast = s ^. uiState . uiReplLast
+  history = s ^. uiState . uiReplHistory
+  historyLen = replLength history
+  curText = maybe replLast replItemText $ Seq.lookup curIndex entries
+  curIndex = history ^. replIndex
+  entries = history ^. replSeq
+  -- split repl at index
+  (olderP, newer) = Seq.splitAt curIndex entries
+  -- find first different entry in direction
+  notSameEntry = \case
+    REPLEntry t -> t /= curText
+    _ -> False
+  newIndex = case d of
+    Newer -> maybe historyLen (curIndex +) $ Seq.findIndexL notSameEntry newer
+    Older -> fromMaybe curIndex $ Seq.findIndexR notSameEntry olderP
+  oops = "Oops, failed to index in REPL history, please report this bug."
   newEntry
-    | newIndex == -1 = s ^. uiState . uiReplLast
-    | otherwise = entries !! newIndex
+    | newIndex == historyLen = replLast
+    | otherwise = maybe oops replItemText $ entries Seq.!? newIndex
 
 ------------------------------------------------------------
 -- World events
