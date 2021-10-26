@@ -47,6 +47,7 @@ import qualified Data.List as L
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
+import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
@@ -556,13 +557,16 @@ drawRobotLog s =
 drawREPL :: AppState -> Widget Name
 drawREPL s =
   vBox $
-    map fmt (reverse (take (replHeight - 1) . filter newEntry $ (s ^. uiState . uiReplHistory)))
-      ++ case isActive <$> (s ^. gameState . robotMap . at "base") of
+    map fmt (getLatestREPLHistoryItems (replHeight - inputLines) history)
+      ++ case isActive <$> base of
         Just False -> [renderForm (s ^. uiState . uiReplForm)]
         _ -> [padRight Max $ txt "..."]
+      ++ [padRight Max $ txt histIdx | debugging]
  where
-  newEntry (REPLEntry False _ _) = False
-  newEntry _ = True
-
-  fmt (REPLEntry _ _ e) = txt replPrompt <+> txt e
+  debugging = False -- Turn ON to get extra line with history index
+  inputLines = 1 + fromEnum debugging
+  history = s ^. uiState . uiReplHistory
+  base = s ^. gameState . robotMap . at "base"
+  histIdx = fromString $ show (history ^. replIndex)
+  fmt (REPLEntry e) = txt replPrompt <+> txt e
   fmt (REPLOutput t) = txt t
