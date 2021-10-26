@@ -67,8 +67,8 @@ import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Tuple (swap)
 import qualified Data.Text.IO as T
+import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
