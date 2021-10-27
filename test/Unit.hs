@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import Linear
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 import Witch (from)
 
 import Swarm.Game.CESK
@@ -167,11 +168,76 @@ prettyConst =
   equalPretty :: String -> Term -> Assertion
   equalPretty expected term = assertEqual "" expected . show $ ppr term
 
+binOp :: Show a => a -> String -> a -> Text
+binOp a op b = from @String (p (show a) ++ op ++ p (show b))
+ where
+  p x = "(" ++ x ++ ")"
+
 eval :: GameState -> TestTree
 eval g =
   testGroup
     "Language - evaluation"
     [ testGroup
+        "arithmetic"
+        [ testProperty
+            "addition"
+            (\a b -> binOp a "+" b `evaluatesToP` VInt (a + b))
+        , testProperty
+            "subtraction"
+            (\a b -> binOp a "-" b `evaluatesToP` VInt (a - b))
+        , testProperty
+            "multiplication"
+            (\a b -> binOp a "*" b `evaluatesToP` VInt (a * b))
+        , testProperty
+            "division"
+            (\a (NonZero b) -> binOp a "/" b `evaluatesToP` VInt (a `div` b))
+        , testProperty
+            "exponentiation"
+            (\a (NonNegative b) -> binOp a "^" b `evaluatesToP` VInt (a ^ (b :: Integer)))
+        ]
+    , testGroup
+        "int comparison"
+        [ testProperty
+            "=="
+            (\a b -> binOp a "==" b `evaluatesToP` VBool ((a :: Integer) == b))
+        , testProperty
+            "<"
+            (\a b -> binOp a "<" b `evaluatesToP` VBool ((a :: Integer) < b))
+        , testProperty
+            "<="
+            (\a b -> binOp a "<=" b `evaluatesToP` VBool ((a :: Integer) <= b))
+        , testProperty
+            ">"
+            (\a b -> binOp a ">" b `evaluatesToP` VBool ((a :: Integer) > b))
+        , testProperty
+            ">="
+            (\a b -> binOp a ">=" b `evaluatesToP` VBool ((a :: Integer) >= b))
+        , testProperty
+            "!="
+            (\a b -> binOp a "!=" b `evaluatesToP` VBool ((a :: Integer) /= b))
+        ]
+    , testGroup
+        "pair comparison"
+        [ testProperty
+            "=="
+            (\a b -> binOp a "==" b `evaluatesToP` VBool ((a :: (Integer, Integer)) == b))
+        , testProperty
+            "<"
+            (\a b -> binOp a "<" b `evaluatesToP` VBool ((a :: (Integer, Integer)) < b))
+        , testProperty
+            "<="
+            (\a b -> binOp a "<=" b `evaluatesToP` VBool ((a :: (Integer, Integer)) <= b))
+        , testProperty
+            ">"
+            (\a b -> binOp a ">" b `evaluatesToP` VBool ((a :: (Integer, Integer)) > b))
+        , testProperty
+            ">="
+            (\a b -> binOp a ">=" b `evaluatesToP` VBool ((a :: (Integer, Integer)) >= b))
+        , testProperty
+            "!="
+            (\a b -> binOp a "!=" b `evaluatesToP` VBool ((a :: (Integer, Integer)) /= b))
+        ]
+    , testGroup
         "sum types #224"
         [ testCase
             "inl"
@@ -309,6 +375,11 @@ eval g =
   evaluatesTo tm val = do
     result <- evaluate tm
     assertEqual "" (Right val) (fst <$> result)
+
+  evaluatesToP :: Text -> Value -> Property
+  evaluatesToP tm val = ioProperty $ do
+    result <- evaluate tm
+    return $ Right val == (fst <$> result)
 
   evaluatesToInAtMost :: Text -> (Value, Int) -> Assertion
   evaluatesToInAtMost tm (val, maxSteps) = do
