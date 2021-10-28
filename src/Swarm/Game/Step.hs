@@ -509,7 +509,6 @@ evalConst c vs s k = do
 seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
 seedProgram minTime randTime thing =
   [tmQ|
-  {
     r <- random (1 + $int:randTime);
     wait (r + $int:minTime);
     appear "|";
@@ -517,7 +516,6 @@ seedProgram minTime randTime thing =
     wait (r + $int:minTime);
     place $str:thing;
     selfdestruct
-  }
   |]
 
 -- | Construct a "seed robot" from entity, time range and position.
