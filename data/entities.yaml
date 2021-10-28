@@ -449,7 +449,7 @@
   - "Finally, robots can use the 'upload' command to copy their accumulated
     knowledge to another nearby robot; for example, 'upload \"base\"'."
   properties: [portable]
-  capabilities: [scan, sensefront]
+  capabilities: [scan, sensefront, sensehere]
 
 - name: flash memory
   display:
