@@ -581,12 +581,16 @@ makeEntity s e = do
   let mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
+      topStore =
+        fromMaybe emptyStore $
+          s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
+
   case isActive <$> (s ^. gameState . robotMap . at "base") of
     Just False ->
       continue $
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT empty emptyStore
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT empty topStore
           & gameState %~ execState (activateRobot "base")
     _ -> continueWithoutRedraw s
 
