@@ -267,9 +267,9 @@
   - |
     A counter enables the command 'count : string -> cmd int',
     which counts how many occurrences of an entity are currently
-    in the inventory.  Note also the 'has' command, which returns
-    a bool instead of an int and does not require any special
-    device.
+    in the inventory.  This is an upgraded version of the 'has'
+    command, which returns a bool instead of an int and does
+    not require any special device.
   properties: [portable]
   capabilities: [count]
 
