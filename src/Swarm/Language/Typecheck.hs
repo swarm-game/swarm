@@ -447,6 +447,7 @@ inferConst c = toU $ case c of
   Ishere -> [tyQ| string -> cmd bool |]
   Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
+  GetRobotLoc -> [tyQ| string -> cmd (() + int*int) |]
   Run -> [tyQ| string -> cmd () |]
   If -> [tyQ| bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]

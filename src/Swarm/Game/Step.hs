@@ -851,6 +851,15 @@ execConst c vs s k = do
         n <- uniform (0, hi - 1)
         return $ Out (VInt n) s k
       _ -> badConst
+    GetRobotLoc -> case vs of
+      [VString name] -> do
+        mr <- robotNamed name
+        case mr of
+          Nothing -> return $ Out (VInj False VUnit) s k
+          Just r -> do
+            let V2 x y = r ^. robotLocation
+            return $ Out (VInj True (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y)))) s k
+      _ -> badConst
     Say -> case vs of
       [VString msg] -> do
         rn <- use robotName

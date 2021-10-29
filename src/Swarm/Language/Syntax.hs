@@ -254,6 +254,8 @@ data Const
     Whoami
   | -- | Get a uniformly random integer.
     Random
+  | -- | Get the location of a robot.
+    GetRobotLoc
   | -- Modules
 
     -- | Run a program loaded from a file.
@@ -416,6 +418,7 @@ constInfo c = case c of
   Ishere -> commandLow 1
   Whoami -> commandLow 0
   Random -> commandLow 1
+  GetRobotLoc -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1
   Try -> commandLow 2

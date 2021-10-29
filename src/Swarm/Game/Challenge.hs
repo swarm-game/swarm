@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -70,15 +71,17 @@ sampleChallenge em =
     { _challengeName = "Sample challenge"
     , _challengeWorld = worldFunFromArray arr (fromEnum StoneT, Nothing)
     , _challengeRobots =
-        [baseRobot [] & robotLocation .~ V2 2 2]
+        [baseRobot [] & robotLocation .~ V2 0 0]
     , _challengeWin =
-        [tmQ| return false |]
+        [tmQ| loc <- getRobotLoc "base";
+              return (loc == inr (4,4))
+            |]
         -- We will need to add some powerful "God-like" sensing
         -- commands to be used only for challenge win conditions...
     }
  where
   arr =
-    listArray ((0, 0), (5, 5)) . map toEntity . concat $
+    listArray ((0, 0), (4, 4)) . map toEntity . concat $
       [ "  T  "
       , " T   "
       , "     "
