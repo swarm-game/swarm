@@ -280,10 +280,10 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    (a,ctx1) <- (`catchError` addLocToTypeErr c1) $ do
-      Module cmda ctx1 <- inferModule c1 
+    (a, ctx1) <- (`catchError` addLocToTypeErr c1) $ do
+      Module cmda ctx1 <- inferModule c1
       a <- decomposeCmdTy cmda
-      pure (a,ctx1)
+      pure (a, ctx1)
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
