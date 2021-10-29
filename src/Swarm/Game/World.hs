@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -34,6 +32,7 @@ module Swarm.Game.World (
 
   -- * Worlds
   WorldFun,
+  worldFunFromArray,
   World,
 
   -- ** Tile management
@@ -90,15 +89,27 @@ locToCoords (V2 x y) = Coords (- y, x)
 coordsToLoc :: Coords -> V2 Int64
 coordsToLoc (Coords (r, c)) = V2 c (- r)
 
+------------------------------------------------------------
+-- World function
+------------------------------------------------------------
+
 -- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
 -- (exactly one per cell) and entities of type @e@ (at most one per
 -- cell).
 type WorldFun t e = Coords -> (t, Maybe e)
 
--- XXX Allow smaller, finite worlds Too?  Maybe add a variant of
--- newWorld that creates a finite world from an array.  This could
--- be used e.g. to create puzzle levels, which can be loaded from a
--- file instead of generated via noise functions.
+-- | Create a world function from a finite array of specified cells
+--   plus a single default cell to use everywhere else.
+worldFunFromArray :: Array (Int64, Int64) (t, Maybe e) -> (t, Maybe e) -> WorldFun t e
+worldFunFromArray arr def (Coords (r, c))
+  | inRange bnds (r, c) = arr ! (r, c)
+  | otherwise = def
+ where
+  bnds = bounds arr
+
+------------------------------------------------------------
+-- Tiles and coordinates
+------------------------------------------------------------
 
 -- | The number of bits we need in each coordinate to represent all
 --   the locations in a tile.  In other words, each tile has a size of

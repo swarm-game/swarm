@@ -65,6 +65,7 @@ library
                       Swarm.Language.Pipeline
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
+                      Swarm.Game.Challenge
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception
