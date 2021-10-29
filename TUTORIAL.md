@@ -76,11 +76,6 @@ always returns a string which is the name of the robot that was built;
 it may be different than the name you specified if there is already
 another robot with that name.
 
-Note that if you don't want a robot to hang around after completing
-its job, you can add the `selfdestruct` command to the end of its
-program.  Try building a robot that moves a few steps and then
-self-destructs.
-
 You can see that a semicolon is used to chain together commands, that
 is, if `c1` and `c2` are both commands, then `c1 ; c2` is the command
 which executes first `c1` and then `c2`.  The curly braces around the
@@ -231,7 +226,7 @@ have learned to the base.
 
 Let's build a robot to learn about those green `T` things to the west:
 ```
-build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"; selfdestruct}
+build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"}
 ```
 The `turn` command causes a robot to turn, of course. It takes a
 direction as an argument, which can be either an absolute direction
@@ -261,7 +256,7 @@ Getting some resources
 
 So those tree things look like they might be useful.  Let's get one!
 ```
-build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
+build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing}
 ```
 You can see that the
 `grab` command returns the name of the thing it grabbed, which is
@@ -303,10 +298,10 @@ Debugging and cleaning up
 -------------------------
 
 You may have noticed that robots which finish running their programs
-just sit there forever if they didn't self-destruct.  Relatedly,
-various conditions can cause a robot to crash, which would also leave
-it stranded.  Let's see both how to clean up leftover robots, and a
-simple way to diagnose when something goes wrong.
+just sit there forever.  Relatedly, various conditions can cause a
+robot to crash, which would also leave it stranded.  Let's see both
+how to clean up leftover robots, and a simple way to diagnose when
+something goes wrong.
 
 When a robot program crashes, it prints a message to a log which can
 later be used to help diagnose the error---that is, *if* the robot has
@@ -359,7 +354,7 @@ the `upload` command, which we have seen before.  In addition to
 uploading knowledge about entities, it turns out that it also uploads
 the log from a `logger`.
 ```
-build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
+build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing}
 make "log"
 make "logger"
 build "salvager" {turn south; move; log "salvaging..."; salvage; turn back; move; upload "base"}
