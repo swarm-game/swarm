@@ -255,7 +255,7 @@ inferTop ctx = runInfer ctx . inferModule
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
 inferModule :: Syntax -> Infer UModule
-inferModule s@(Syntax _ t) = case t of
+inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
@@ -398,7 +398,7 @@ infer (Syntax _ (SBind mx c1 c2)) = do
 
 addLocToTypeErr :: Syntax -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
-  Mismatch _ a b -> throwError $ Mismatch (sLoc s) a b
+  Mismatch NoLoc a b -> throwError $ Mismatch (sLoc s) a b
   _ -> throwError te
 
 -- | Decompose a type that is supposed to be a command type.
