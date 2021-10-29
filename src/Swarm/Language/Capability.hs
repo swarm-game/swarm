@@ -57,6 +57,8 @@ data Capability
     CInstall
   | -- | Execute the 'Make' command
     CMake
+  | -- | Execute the 'Count' command
+    CCount
   | -- | Execute the 'Build' command
     CBuild
   | -- | Execute the 'Salvage' command
@@ -241,7 +243,7 @@ constCaps =
     Install -> [CInstall]
     Make -> [CMake]
     Has -> []
-    Count -> []
+    Count -> [CCount]
     If -> [CCond]
     Create -> [CCreate]
     Blocked -> [CSensefront]

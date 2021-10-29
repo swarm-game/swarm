@@ -265,6 +265,7 @@
   description:
   - An 8-bit counter.
   properties: [portable]
+  capabilities: [count]
 
 - name: Linux
   display:
