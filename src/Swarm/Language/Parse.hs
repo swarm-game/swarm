@@ -329,13 +329,13 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
 exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
 exprLoc2 p = do
   f <- p
-  pure $ \s1 s2 -> noLoc $ f s1 s2
+  pure $ \s1 s2 -> Syntax (sLoc s1 <> sLoc s2) $ f s1 s2
 
 -- | Utility to add empty location for ExprParser
 exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
 exprLoc1 p = do
   f <- p
-  pure $ \s -> noLoc $ f s
+  pure $ \s -> s {sTerm = f s}
 
 -- | Precedences and parsers of binary operators.
 --
