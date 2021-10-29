@@ -279,7 +279,7 @@ mkBindChain stmts = case last stmts of
  where
   mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
   mkBind (Binder x t1) t2 = loc t1 t2 $ SBind (Just x) t1 t2
-  loc a b = Syntax $ sLoc a <> sLoc b 
+  loc a b = Syntax $ sLoc a <> sLoc b
 
 data Stmt
   = BareTerm Syntax
