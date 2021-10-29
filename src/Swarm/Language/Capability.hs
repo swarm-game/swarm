@@ -240,6 +240,8 @@ constCaps =
     Give -> [CGive]
     Install -> [CInstall]
     Make -> [CMake]
+    Has -> []
+    Count -> []
     If -> [CCond]
     Create -> [CCreate]
     Blocked -> [CSensefront]

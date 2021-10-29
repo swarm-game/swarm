@@ -218,6 +218,10 @@ data Const
     Install
   | -- | Make an item.
     Make
+  | -- | Sense whether we have a certain item.
+    Has
+  | -- | Sense how many of a certain item we have.
+    Count
   | -- | Drill through an entity.
     Drill
   | -- | Construct a new robot.
@@ -400,6 +404,8 @@ constInfo c = case c of
   Give -> commandLow 2
   Install -> commandLow 2
   Make -> commandLow 1
+  Has -> commandLow 1
+  Count -> commandLow 1
   Reprogram -> commandLow 2
   Drill -> commandLow 1
   Build -> commandLow 2

@@ -20,6 +20,7 @@
 module Swarm.Game.Step where
 
 import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
+import Control.Monad (forM_, msum, unless, void, when)
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
@@ -59,7 +60,6 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Monad (forM_, msum, unless, void, when)
 
 -- | The maximum number of CESK machine evaluation steps each robot is
 --   allowed during a single game tick.
@@ -764,6 +764,16 @@ execConst c vs s k = do
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
+      _ -> badConst
+    Has -> case vs of
+      [VString name] -> do
+        inv <- use robotInventory
+        return $ Out (VBool ((> 0) $ countByName name inv)) s k
+      _ -> badConst
+    Count -> case vs of
+      [VString name] -> do
+        inv <- use robotInventory
+        return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
