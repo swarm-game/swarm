@@ -220,6 +220,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("turn <dir>", "Change the current direction")
     , ("grab", "Grab whatver is available")
     , ("give <robot> <item>", "Give an item to another robot")
+    , ("has <item>", "Check for an item in the inventory")
     ]
 
 -- | Draw the error dialog window, if it should be displayed right now.
