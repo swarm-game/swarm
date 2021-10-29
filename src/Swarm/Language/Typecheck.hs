@@ -310,72 +310,80 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
 
 -- | Infer the type of a term which does not contain definitions.
 infer :: Syntax -> Infer UType
-infer (Syntax _ TUnit) = return UTyUnit
-infer (Syntax _ (TConst c)) = instantiate $ inferConst c
-infer (Syntax _ (TDir _)) = return UTyDir
-infer (Syntax _ (TInt _)) = return UTyInt
-infer (Syntax _ (TAntiInt _)) = return UTyInt
-infer (Syntax _ (TString _)) = return UTyString
-infer (Syntax _ (TAntiString _)) = return UTyString
-infer (Syntax _ (TBool _)) = return UTyBool
--- To infer the type of a pair, just infer both components.
-infer (Syntax _ (SPair t1 t2)) = UTyProd <$> infer t1 <*> infer t2
--- if t : ty, then  {t} : {ty}.
--- Note that in theory, if the @Maybe Var@ component of the @SDelay@
--- is @Just@, we should typecheck the body under a context extended
--- with a type binding for the variable, and ensure that the type of
--- the variable is the same as the type inferred for the overall
--- @SDelay@.  However, we rely on the invariant that such recursive
--- @SDelay@ nodes are never generated from the surface syntax, only
--- dynamically at runtime when evaluating recursive let or def expressions,
--- so we don't have to worry about typechecking them here.
-infer (Syntax _ (SDelay _ t)) = UTyDelay <$> infer t
--- Just look up variables in the context.
-infer (Syntax l (TVar x)) = lookup l x
--- To infer the type of a lambda if the type of the argument is
--- provided, just infer the body under an extended context and return
--- the appropriate function type.
-infer (Syntax _ (SLam x (Just argTy) t)) = do
-  let uargTy = toU argTy
-  resTy <- withBinding x (Forall [] uargTy) $ infer t
-  return $ UTyFun uargTy resTy
+infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
+  TUnit -> return UTyUnit
+  TConst c -> instantiate $ inferConst c
+  TDir _ -> return UTyDir
+  TInt _ -> return UTyInt
+  TAntiInt _ -> return UTyInt
+  TString _ -> return UTyString
+  TAntiString _ -> return UTyString
+  TBool _ -> return UTyBool
+  -- To infer the type of a pair, just infer both components.
+  SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
+  -- if t : ty, then  {t} : {ty}.
+  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
+  -- is @Just@, we should typecheck the body under a context extended
+  -- with a type binding for the variable, and ensure that the type of
+  -- the variable is the same as the type inferred for the overall
+  -- @SDelay@.  However, we rely on the invariant that such recursive
+  -- @SDelay@ nodes are never generated from the surface syntax, only
+  -- dynamically at runtime when evaluating recursive let or def expressions,
+  -- so we don't have to worry about typechecking them here.
+  SDelay _ dt -> UTyDelay <$> infer dt
+  -- Just look up variables in the context.
+  TVar x -> lookup l x
+  -- To infer the type of a lambda if the type of the argument is
+  -- provided, just infer the body under an extended context and return
+  -- the appropriate function type.
+  SLam x (Just argTy) lt -> do
+    let uargTy = toU argTy
+    resTy <- withBinding x (Forall [] uargTy) $ infer lt
+    return $ UTyFun uargTy resTy
 
--- If the type of the argument is not provided, create a fresh
--- unification variable for it and proceed.
-infer (Syntax _ (SLam x Nothing t)) = do
-  argTy <- fresh
-  resTy <- withBinding x (Forall [] argTy) $ infer t
-  return $ UTyFun argTy resTy
+  -- If the type of the argument is not provided, create a fresh
+  -- unification variable for it and proceed.
+  SLam x Nothing lt -> do
+    argTy <- fresh
+    resTy <- withBinding x (Forall [] argTy) $ infer lt
+    return $ UTyFun argTy resTy
 
--- To infer the type of an application:
-infer (Syntax _ (SApp f x)) = do
-  -- Infer the type of the left-hand side and make sure it has a function type.
-  fTy <- infer f
-  (ty1, ty2) <- decomposeFunTy fTy
+  -- To infer the type of an application:
+  SApp f x -> do
+    -- Infer the type of the left-hand side and make sure it has a function type.
+    fTy <- infer f
+    (ty1, ty2) <- decomposeFunTy fTy
 
-  -- Then check that the argument has the right type.
-  check x ty1 `catchError` addLocToTypeErr x
-  return ty2
+    -- Then check that the argument has the right type.
+    check x ty1 `catchError` addLocToTypeErr x
+    return ty2
 
--- We can infer the type of a let whether a type has been provided for
--- the variable or not.
-infer (Syntax _ (SLet _ x Nothing t1 t2)) = do
-  xTy <- fresh
-  uty <- withBinding x (Forall [] xTy) $ infer t1
-  xTy =:= uty
-  upty <- generalize uty
-  withBinding x upty $ infer t2
-infer (Syntax l (SLet _ x (Just pty) t1 t2)) = do
-  let upty = toU pty
-  -- If an explicit polytype has been provided, skolemize it and check
-  -- definition and body under an extended context.
-  uty <- skolemize upty
-  resTy <- withBinding x upty $ do
-    check t1 uty `catchError` addLocToTypeErr t1
-    infer t2
-  -- Make sure no skolem variables have escaped.
-  ask >>= mapM_ noSkolems
-  return resTy
+  -- We can infer the type of a let whether a type has been provided for
+  -- the variable or not.
+  SLet _ x Nothing t1 t2 -> do
+    xTy <- fresh
+    uty <- withBinding x (Forall [] xTy) $ infer t1
+    xTy =:= uty
+    upty <- generalize uty
+    withBinding x upty $ infer t2
+  SLet _ x (Just pty) t1 t2 -> do
+    let upty = toU pty
+    -- If an explicit polytype has been provided, skolemize it and check
+    -- definition and body under an extended context.
+    uty <- skolemize upty
+    resTy <- withBinding x upty $ do
+      check t1 uty `catchError` addLocToTypeErr t1
+      infer t2
+    -- Make sure no skolem variables have escaped.
+    ask >>= mapM_ noSkolems
+    return resTy
+  SDef {} -> throwError $ DefNotTopLevel l t
+  SBind mx c1 c2 -> do
+    ty1 <- infer c1
+    a <- decomposeCmdTy ty1
+    ty2 <- maybe id (`withBinding` Forall [] a) mx $ infer c2
+    _ <- decomposeCmdTy ty2
+    return ty2
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -388,13 +396,6 @@ infer (Syntax l (SLet _ x (Just pty) t1 t2)) = do
         ftyvs = tyvs `S.difference` S.fromList xs
     unless (S.null ftyvs) $
       throwError $ EscapedSkolem l (head (S.toList ftyvs))
-infer (Syntax l t@SDef {}) = throwError $ DefNotTopLevel l t
-infer (Syntax _ (SBind mx c1 c2)) = do
-  ty1 <- infer c1
-  a <- decomposeCmdTy ty1
-  ty2 <- maybe id (`withBinding` Forall [] a) mx $ infer c2
-  _ <- decomposeCmdTy ty2
-  return ty2
 
 addLocToTypeErr :: Syntax -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
