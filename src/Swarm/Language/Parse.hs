@@ -277,8 +277,9 @@ mkBindChain stmts = case last stmts of
   Binder _ _ -> fail "Last command in a chain must not have a binder"
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = noLoc $ SBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = noLoc $ SBind (Just x) t1 t2
+  mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = loc t1 t2 $ SBind (Just x) t1 t2
+  loc a b = Syntax $ sLoc a <> sLoc b 
 
 data Stmt
   = BareTerm Syntax
