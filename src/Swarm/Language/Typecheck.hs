@@ -280,10 +280,8 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    (a, ctx1) <- (`catchError` addLocToTypeErr c1) $ do
-      Module cmda ctx1 <- inferModule c1
-      a <- decomposeCmdTy cmda
-      pure (a, ctx1)
+    Module cmda ctx1 <- inferModule c1
+    a <- decomposeCmdTy cmda
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
@@ -292,7 +290,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
     -- c1 could define something with the same name as x, in which
     -- case the bound x should shadow the defined one; hence, we apply
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
-    (`catchError` addLocToTypeErr c2) . withBindings ctx1 $
+    withBindings ctx1 $
       maybe id (`withBinding` Forall [] a) mx $ do
         Module cmdb ctx2 <- inferModule c2
 
