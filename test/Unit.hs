@@ -86,6 +86,23 @@ parser =
     , testCase
         "parsing operators #??? - parse valid operator ($)"
         (valid "fst $ snd $ (1,2,3)")
+    , testCase
+        "Allow ' in variable names #269 - parse variable name containing '"
+        (valid "def a'_' = 0 end")
+    , testCase
+        "Allow ' in variable names #269 - do not parse variable starting with '"
+        ( process
+            "def 'a = 0 end"
+            ( T.unlines
+                [ "1:5:"
+                , "  |"
+                , "1 | def 'a = 0 end"
+                , "  |     ^"
+                , "unexpected '''"
+                , "expecting variable name"
+                ]
+            )
+        )
     ]
  where
   valid = flip process ""

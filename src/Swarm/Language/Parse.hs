@@ -124,7 +124,7 @@ reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char 
 identifier :: Parser Text
 identifier = (lexeme . try) (p >>= check) <?> "variable name"
  where
-  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_')
+  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
     | toLower t `elem` reservedWords =
       fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
