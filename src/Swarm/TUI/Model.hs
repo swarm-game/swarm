@@ -78,6 +78,7 @@ module Swarm.TUI.Model (
 import Control.Lens
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Bits (FiniteBits (finiteBitSize))
 import Data.List (findIndex, sortOn)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -90,7 +91,7 @@ import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
-import Data.Bits (FiniteBits (finiteBitSize))
+import Swarm.Game.Challenge (sampleChallenge)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -438,7 +439,9 @@ uiState :: Lens' AppState UIState
 
 -- | Initialize the 'AppState'.
 initAppState :: Seed -> ExceptT Text IO AppState
-initAppState seed = AppState <$> initGameState seed <*> initUIState
+initAppState _seed = AppState <$> initGameState (ChallengeGame sampleChallenge) <*> initUIState
+
+-- XXX above is for testing only, make configurable
 
 ------------------------------------------------------------
 --

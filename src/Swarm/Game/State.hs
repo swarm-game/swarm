@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -20,6 +18,7 @@ module Swarm.Game.State (
   GameMode (..),
   REPLStatus (..),
   RunStatus (..),
+  GameType (..),
   GameState,
   Seed,
   initGameState,
@@ -63,6 +62,7 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
+import Control.Arrow (Arrow ((&&&)))
 import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
 import Data.Bifunctor (first)
@@ -71,16 +71,20 @@ import Data.IntMap (IntMap)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set (Set)
+import qualified Data.Set as S
+import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
+import System.Random (StdGen, mkStdGen)
 import Witch (into)
 
 import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
-import Data.Set (Set)
-import qualified Data.Set as S
+
+import Swarm.Game.Challenge
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -89,7 +93,6 @@ import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
 import Swarm.Language.Types
 import Swarm.Util
-import System.Random (StdGen, mkStdGen)
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -370,14 +373,31 @@ addRobot r = do
   internalActiveRobots %= S.insert (r' ^. robotName)
   return r'
 
--- | Create an initial game state record, first loading entities and
---   recipies from disk.
-initGameState :: Seed -> ExceptT Text IO GameState
-initGameState seed = do
+-- | What type of game does the user want to start?
+data GameType
+  = ClassicGame Seed
+  | ChallengeGame Challenge
+
+-- | The 'GameType', instantiated with loaded entites and records.
+data InstGameType
+  = IClassicGame Seed
+  | IChallengeGame ChallengeRecord
+
+instGameType :: EntityMap -> [Recipe Entity] -> GameType -> InstGameType
+instGameType em rs gt = case gt of
+  ClassicGame s -> IClassicGame s
+  ChallengeGame (Challenge c) -> IChallengeGame (c em rs)
+
+-- | Create an initial game state record for a particular game type,
+--   first loading entities and recipies from disk.
+initGameState :: GameType -> ExceptT Text IO GameState
+initGameState gtype = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
+
+  let iGameType = instGameType entities recipes gtype
 
   let baseDeviceNames =
         [ "solar panel"
@@ -389,30 +409,44 @@ initGameState seed = do
         , "logger"
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
-
-  let baseName = "base"
+      baseName = "base"
       theBase = baseRobot baseDevices
 
+      robotList = case iGameType of
+        IClassicGame _ -> [theBase]
+        IChallengeGame c -> c ^. challengeRobots
+
+      theWorld = case iGameType of
+        IClassicGame seed ->
+          W.newWorld
+            . fmap ((lkup entities <$>) . first fromEnum)
+            . findGoodOrigin
+            $ testWorld2 seed
+        IChallengeGame c -> W.newWorld (c ^. challengeWorld)
+
+  seed <- case iGameType of
+    IClassicGame s -> return s
+    IChallengeGame c -> case c ^. challengeSeed of
+      Just s -> return s
+      Nothing -> return 0 -- XXX use a random seed
   liftIO $ putStrLn ("Using seed... " <> show seed)
 
   return $
     GameState
       { _gameMode = Classic
       , _runStatus = Running
-      , _robotMap = M.singleton baseName theBase
-      , _robotsByLocation = M.singleton zero (S.singleton baseName)
-      , _activeRobots = S.singleton baseName
+      , _robotMap = M.fromList $ map (view robotName &&& id) robotList
+      , _robotsByLocation =
+          M.fromListWith S.union $
+            map (view robotLocation &&& (S.singleton . view robotName)) robotList
+      , _activeRobots = setOf (traverse . robotName) robotList
       , _waitingRobots = M.empty
       , _gensym = 0
       , _randGen = mkStdGen seed
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
-      , _world =
-          W.newWorld
-            . fmap ((lkup entities <$>) . first fromEnum)
-            . findGoodOrigin
-            $ testWorld2 seed
+      , _world = theWorld
       , _viewCenterRule = VCRobot baseName
       , _viewCenter = V2 0 0
       , _needsRedraw = False
