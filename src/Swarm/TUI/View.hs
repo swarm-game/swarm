@@ -175,6 +175,13 @@ chooseCursor s locs = case s ^. uiState . uiModal of
 errorDialog :: Dialog ()
 errorDialog = dialog (Just "Error") Nothing 80
 
+-- | Render the error dialog window with a given error message
+renderErrorDialog :: Text -> Widget Name
+renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing requiredWidth) errContent
+ where
+  errContent = txtWrapWith indent2 {preserveIndentation = True} err
+  requiredWidth = 2 + maximum (textWidth <$> T.lines err)
+
 -- | Render a fullscreen widget with some padding
 renderModal :: Modal -> Widget Name
 renderModal modal = renderDialog (dialog (Just modalTitle) Nothing 500) modalWidget
@@ -227,9 +234,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
 drawDialog :: UIState -> Widget Name
 drawDialog s = case s ^. uiModal of
   Just m -> renderModal m
-  Nothing -> case s ^. uiError of
-    Just d -> renderDialog errorDialog $ txt d
-    Nothing -> emptyWidget
+  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
