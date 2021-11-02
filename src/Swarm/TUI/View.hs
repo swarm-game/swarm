@@ -14,7 +14,6 @@ module Swarm.TUI.View (
   drawTPS,
 
   -- * Error dialog
-  errorDialog,
   drawDialog,
   chooseCursor,
 
@@ -170,10 +169,6 @@ chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
 chooseCursor s locs = case s ^. uiState . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
-
--- | The error dialog window.
-errorDialog :: Dialog ()
-errorDialog = dialog (Just "Error") Nothing 80
 
 -- | Render the error dialog window with a given error message
 renderErrorDialog :: Text -> Widget Name
