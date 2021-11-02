@@ -198,7 +198,7 @@ data UIState = UIState
   , _uiMoreInfoTop :: Bool
   , _uiMoreInfoBot :: Bool
   , _uiScrollToEnd :: Bool
-  , _uiError :: Maybe (Widget Name)
+  , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiShowFPS :: Bool
   , _uiTPF :: Double
@@ -261,7 +261,7 @@ uiScrollToEnd :: Lens' UIState Bool
 
 -- | When this is @Just@, it represents a popup box containing an
 --   error message that is shown on top of the rest of the UI.
-uiError :: Lens' UIState (Maybe (Widget Name))
+uiError :: Lens' UIState (Maybe Text)
 
 -- | When this is @Just@, it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.

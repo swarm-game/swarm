@@ -412,7 +412,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
       Left err ->
         continue $
           s
-            & uiState . uiError ?~ txt err
+            & uiState . uiError ?~ err
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)

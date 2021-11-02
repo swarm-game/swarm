@@ -228,7 +228,7 @@ drawDialog :: UIState -> Widget Name
 drawDialog s = case s ^. uiModal of
   Just m -> renderModal m
   Nothing -> case s ^. uiError of
-    Just d -> renderDialog errorDialog d
+    Just d -> renderDialog errorDialog $ txt d
     Nothing -> emptyWidget
 
 -- | Draw a menu explaining what key commands are available for the
