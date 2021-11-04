@@ -314,7 +314,7 @@ drawWorld g =
 
   drawLoc :: W.Coords -> Widget Name
   drawLoc coords =
-    let (ePrio, eWidget) = drawCell coords (g ^. world)
+    let (ePrio, eWidget) = drawCell (g ^. world) (focusedRobot g) coords
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
             | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
@@ -323,11 +323,16 @@ drawWorld g =
                 str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
           Nothing -> eWidget
 
--- | Draw a single cell of the world.
-drawCell :: W.Coords -> W.World Int Entity -> (Int, Widget Name)
-drawCell i w = case W.lookupEntity i w of
-  Just e -> (e ^. entityDisplay . displayPriority, displayEntity e)
+-- | Draw a single cell of the world, hiding those that current robot does not know.
+drawCell :: W.World Int Entity -> Maybe Robot -> W.Coords -> (Int, Widget Name)
+drawCell w mr i = case W.lookupEntity i w of
   Nothing -> (0, displayTerrain (toEnum (W.lookupTerrain i w)))
+  Just e ->
+    let known = maybe False (`robotKnows` e) mr
+        hide = if known then id else entityDisplay . defaultChar %~ const '?'
+     in ( e ^. entityDisplay . displayPriority
+        , displayEntity (hide e)
+        )
 
 ------------------------------------------------------------
 -- Robot inventory panel
