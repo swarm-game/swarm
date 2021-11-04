@@ -93,7 +93,7 @@ parser =
                 "3: Can't unify {u0} and cmd ()"
             )
         , testCase
-        "parsing operators #236 - report failure on invalid operator start"
+            "parsing operators #236 - report failure on invalid operator start"
             ( process
                 "1 <== 2"
                 ( T.unlines
