@@ -1066,7 +1066,7 @@ execConst c vs s k = do
             -- XXX in the future, make a way to build these and just start the base
             -- out with a large supply of each?
             stdDeviceList =
-              ["treads", "grabber", "solar panel", "detonator", "scanner", "plasma cutter"]
+              ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
 
             -- Find out what capabilities are required by the program that will
