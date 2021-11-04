@@ -44,7 +44,6 @@ parser =
   testGroup
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
-    , testCase "located type error" (process "def a =\n 42 + \"oops\"\nend" "2: Can't unify int and string")
     , testCase
         "quantification #148 - implicit"
         (valid "def id : a -> a = \\x. x end; id move")
@@ -73,20 +72,7 @@ parser =
         "parsing operators #236 - parse valid operator (<=)"
         (valid "1 <= 2")
     , testCase
-        "parsing operators #236 - report failure on invalid operator start"
-        ( process
-            "1 <== 2"
-            ( T.unlines
-                [ "1:3:"
-                , "  |"
-                , "1 | 1 <== 2"
-                , "  |   ^"
-                , "unexpected '<'"
-                ]
-            )
-        )
-    , testCase
-        "parsing operators #??? - parse valid operator ($)"
+        "parsing operators #239 - parse valid operator ($)"
         (valid "fst $ snd $ (1,2,3)")
     , testCase
         "Allow ' in variable names #269 - parse variable name containing '"
@@ -105,6 +91,40 @@ parser =
                 ]
             )
         )
+    , testGroup
+        "failure location - #268"
+        [ testCase
+            "located type error"
+            ( process
+                "def a =\n 42 + \"oops\"\nend"
+                "2: Can't unify int and string"
+            )
+        , testCase
+            "failure inside bind chain"
+            ( process
+                "move;\n1;\nmove"
+                "2: Can't unify int and cmd"
+            )
+        , testCase
+            "failure inside function call"
+            ( process
+                "if true \n{} \n(move)"
+                "3: Can't unify {u0} and cmd ()"
+            )
+        , testCase
+            "parsing operators #236 - report failure on invalid operator start"
+            ( process
+                "1 <== 2"
+                ( T.unlines
+                    [ "1:3:"
+                    , "  |"
+                    , "1 | 1 <== 2"
+                    , "  |   ^"
+                    , "unexpected '<'"
+                    ]
+                )
+            )
+        ]
     ]
  where
   valid = flip process ""
