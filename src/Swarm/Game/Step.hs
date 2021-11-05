@@ -150,7 +150,7 @@ zoomWorld n = do
   return a
 
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => V2 Int64 -> m (Maybe Entity)
+entityAt :: (Has (State GameState) sig m, Has (Lift IO) sig m) => V2 Int64 -> m (Maybe Entity)
 entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.

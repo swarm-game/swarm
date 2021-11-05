@@ -298,7 +298,7 @@ drawWorld g =
           let w = ctx ^. availWidthL
               h = ctx ^. availHeightL
               ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-          render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
+          render . vBox . map hBox . chunksOf w <$> mapM drawLoc $ ixs
  where
   -- XXX update how this works!  Gather all displays, all
   -- entities...  Should make a Display remember which is the
@@ -312,22 +312,30 @@ drawWorld g =
       . M.elems
       $ g ^. robotMap
 
-  drawLoc :: W.Coords -> Widget Name
+  drawLoc :: W.Coords -> IO (Widget Name)
   drawLoc coords =
-    let (ePrio, eWidget) = drawCell coords (g ^. world)
-     in case M.lookup (W.coordsToLoc coords) robotsByLoc of
-          Just r
-            | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
-            | otherwise ->
-              withAttr (r ^. robotDisplay . displayAttr) $
-                str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
-          Nothing -> eWidget
+    drawLoc_ coords <$> drawCell coords (g ^. world)
+
+  drawLoc_ :: W.Coords -> (Int, Widget Name) -> Widget Name
+  drawLoc_ coords (ePrio, eWidget) =
+    case M.lookup (W.coordsToLoc coords) robotsByLoc of
+      Just r
+        | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
+        | otherwise ->
+          withAttr (r ^. robotDisplay . displayAttr) $
+            str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
+      Nothing -> eWidget
 
 -- | Draw a single cell of the world.
-drawCell :: W.Coords -> W.World Int Entity -> (Int, Widget Name)
-drawCell i w = case W.lookupEntity i w of
-  Just e -> (e ^. entityDisplay . displayPriority, displayEntity e)
-  Nothing -> (0, displayTerrain (toEnum (W.lookupTerrain i w)))
+drawCell :: W.Coords -> W.World Int Entity -> IO (Int, Widget Name)
+-- drawCell i w = case W.lookupEntity i w of
+--   Just e -> (e ^. entityDisplay . displayPriority, displayEntity e)
+--   Nothing -> (0, displayTerrain (toEnum (W.lookupTerrain i w)))
+drawCell i w = do
+  entity <- W.lookupEntity i w
+  case entity of
+    Just e -> return (e ^. entityDisplay . displayPriority, displayEntity e)
+    Nothing -> return (0, displayTerrain (toEnum (W.lookupTerrain i w)))
 
 ------------------------------------------------------------
 -- Robot inventory panel

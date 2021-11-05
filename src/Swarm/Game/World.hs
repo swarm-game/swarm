@@ -10,6 +10,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 -- |
 -- Module      :  Swarm.Game.World
@@ -53,9 +54,11 @@ module Swarm.Game.World (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens
+import Control.Lens hiding (index)
 import qualified Data.Array as A
 import Data.Array.IArray
+import qualified Data.Array.IO as IOA
+import Data.Array.MArray
 import qualified Data.Array.Unboxed as U
 import Data.Bits
 import Data.Foldable (foldl')
@@ -66,7 +69,11 @@ import Linear
 import Prelude hiding (lookup)
 
 import Control.Algebra (Has)
+import Control.Carrier.Lift (Lift, runM, sendM)
+import Control.Effect.Lift (sendIO)
 import Control.Effect.State (State, get, modify)
+import Control.Monad (void)
+import Data.Array.Base (MArray (unsafeRead))
 import Swarm.Util
 
 ------------------------------------------------------------
@@ -148,6 +155,10 @@ tileBounds = (TileOffset (Coords (0, 0)), TileOffset (Coords (tileMask, tileMask
 tileOffset :: Coords -> TileOffset
 tileOffset = TileOffset . over (_Wrapped . both) (.&. tileMask)
 
+-- | Compute the index of given coordinates within the given tile
+tileIndex :: Coords -> Int
+tileIndex = index tileBounds . tileOffset
+
 -- | Add a tile offset to the coordinates of the tile's upper left
 --   corner.  NOTE that for efficiency, this function only works when
 --   the first argument is in fact the coordinates of a tile's
@@ -166,7 +177,7 @@ type TerrainTile t = U.UArray TileOffset t
 -- | An entity tile is an array of possible entity values.  Note it
 --   cannot be an unboxed array since entities are complex records
 --   which have to be boxed.
-type EntityTile e = A.Array TileOffset (Maybe e)
+type EntityTile e = IOA.IOArray TileOffset (Maybe e)
 
 -- | A 'World' consists of a 'WorldFun' that specifies the initial
 --   world, a cache of loaded square tiles to make lookups faster, and
@@ -204,10 +215,11 @@ lookupTerrain i (World f t _) =
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
-lookupTerrainM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> m t
+lookupTerrainM :: forall t e sig m. (Has (State (World t e)) sig m, Has (Lift IO) sig m, IArray U.UArray t) => Coords -> m t
 lookupTerrainM c = do
-  modify @(World t e) $ loadCell c
-  lookupTerrain c <$> get @(World t e)
+  world <- get @(World t e)
+  world' <- sendIO $ loadCell c world
+  return $ lookupTerrain c world'
 
 -- | Look up the entity at certain coordinates: first, see if it is in
 --   the map of locations with changed entities; then try looking it
@@ -216,49 +228,70 @@ lookupTerrainM c = do
 --
 --   This function does /not/ ensure that the tile containing the
 --   given coordinates is loaded.  For that, see 'lookupEntityM'.
-lookupEntity :: Coords -> World t e -> Maybe e
-lookupEntity i (World f t m) =
-  M.lookup i m
-    ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t)
-    ? snd (f i)
+-- lookupEntity :: Coords -> World t e -> Maybe e
+-- lookupEntity i (World f t m) =
+--   M.lookup i m -- look up cached tiles
+--     ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t) -- look up tiles from entity array
+--     ? snd (f i) -- generate tiles from world function
+lookupEntity :: forall t e. Coords -> World t e -> IO (Maybe e)
+lookupEntity i (World f t m) = case cachedTile of
+  Just entity -> return entity
+  Nothing -> do
+    findTile <- mapM (`unsafeRead` tileIndex i) entityTileArray
+    return $ findTile ? genTile
+ where
+  cachedTile = M.lookup i m
+  genTile = snd (f i)
+  entityTileArray = snd <$> M.lookup (tileCoords i) t
 
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
-lookupEntityM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> m (Maybe e)
+lookupEntityM :: forall t e sig m. (Has (State (World t e)) sig m, Has (Lift IO) sig m, IArray U.UArray t) => Coords -> m (Maybe e)
 lookupEntityM c = do
-  modify @(World t e) $ loadCell c
-  lookupEntity c <$> get @(World t e)
+  world <- get @(World t e)
+  world' <- sendIO $ loadCell c world
+  sendIO $ lookupEntity c world'
 
 -- | Update the entity (or absence thereof) at a certain location,
 --   returning an updated 'World'.  See also 'updateM'.
-update :: Coords -> (Maybe e -> Maybe e) -> World t e -> World t e
-update i g w@(World f t m) =
-  World f t (M.insert i (g (lookupEntity i w)) m)
+update :: Coords -> (Maybe e -> Maybe e) -> World t e -> IO (World t e)
+update i g w@(World f t m) = do
+  entity <- lookupEntity i w
+  return $ World f t (M.insert i (g entity) m)
 
 -- | A stateful variant of 'update', which also ensures the tile
 --   containing the given coordinates is loaded.
-updateM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
-updateM c g = modify @(World t e) $ update c g . loadCell c
+updateM :: forall t e sig m. (Has (State (World t e)) sig m, Has (Lift IO) sig m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
+-- updateM c g = modify @(World t e) $ update c g . loadCell c
+updateM c g = do
+  world <- get @(World t e)
+  world' <- sendIO $ loadCell c world
+  void . sendIO $ update c g world'
 
 -- | Load the tile containing a specific cell.
-loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
+loadCell :: IArray U.UArray t => Coords -> World t e -> IO (World t e)
 loadCell c = loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner).
-loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
-loadRegion reg (World f t m) = World f t' m
+loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> IO (World t e)
+loadRegion reg (World f t m) = do
+  loadedTiles <- mapM loadTile tiles
+  let withCoords = zip tiles loadedTiles
+      t' = foldl' (\hm (i, tile) -> maybeInsert i tile hm) t withCoords
+  return $ World f t' m
  where
   tiles = range (over both tileCoords reg)
-  t' = foldl' (\hm (i, tile) -> maybeInsert i tile hm) t (map (id &&& loadTile) tiles)
 
   maybeInsert k v tm
     | k `M.member` tm = tm
     | otherwise = M.insert k v tm
 
-  loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
-  loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
+  loadTile :: TileCoords -> IO (TerrainTile t, EntityTile e)
+  loadTile tc = do
+    entityTiles <- newListArray tileBounds entities
+    return (listArray tileBounds terrain, entityTiles)
    where
     tileCorner = tileOrigin tc
     (terrain, entities) = unzip $ map (f . plusOffset tileCorner) (range tileBounds)
