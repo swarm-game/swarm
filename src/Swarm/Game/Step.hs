@@ -129,8 +129,47 @@ gameTick = do
 
   -- Possibly update the view center.
   modify recalcViewCenter
+
+  -- Possibly see if the winning condition for challenge mode is met.
+  wc <- use winCondition
+  case wc of
+    WinCondition t -> do
+      v <- runThrow @Exn $ evalPT t
+      case v of
+        Left _exn -> return () -- XXX
+        Right (VBool True) -> winCondition .= Won
+        _ -> return ()
+    _ -> return ()
+
   -- Advance the game time by one.
   ticks += 1
+
+evalPT ::
+  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  ProcessedTerm ->
+  m Value
+evalPT t = evaluateCESK (initMachine t empty emptyStore)
+
+evaluateCESK ::
+  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  CESK ->
+  m Value
+evaluateCESK cesk = evalState r . runCESK $ cesk
+ where
+  r = mkRobot "" zero zero cesk [] & systemRobot .~ True
+
+runCESK ::
+  ( Has (Lift IO) sig m
+  , Has (Throw Exn) sig m
+  , Has (State GameState) sig m
+  , Has (State Robot) sig m
+  ) =>
+  CESK ->
+  m Value
+runCESK (Up exn _ []) = throwError exn
+runCESK cesk = case finalValue cesk of
+  Just (v, _) -> return v
+  Nothing -> stepCESK cesk >>= runCESK
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -203,7 +242,7 @@ ensureCanExecute c = do
   sys <- use systemRobot
   robotCaps <- use robotCapabilities
   let missingCaps = constCaps c `S.difference` robotCaps
-  (sys || mode == Creative || S.null missingCaps)
+  (sys || mode == CreativeMode || S.null missingCaps)
     `holdsOr` Incapable missingCaps (TConst c)
 
 -- | Test whether the current robot has a given capability (either
@@ -214,7 +253,7 @@ hasCapability cap = do
   mode <- use gameMode
   sys <- use systemRobot
   caps <- use robotCapabilities
-  return (sys || mode == Creative || cap `S.member` caps)
+  return (sys || mode == CreativeMode || cap `S.member` caps)
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
@@ -1002,7 +1041,7 @@ execConst c vs s k = do
         -- a robot can program adjacent robots
         -- creative mode ignores distance checks
         loc <- use robotLocation
-        ( mode == Creative
+        ( mode == CreativeMode
             || (childRobot ^. robotLocation) `manhattan` loc <= 1
           )
           `holdsOrFail` ["You can only program adjacent robot"]
@@ -1019,7 +1058,7 @@ execConst c vs s k = do
             missingDevices = S.filter (not . deviceOK) capDevices
 
         -- check if robot has all devices to execute new command
-        (mode == Creative || S.null missingDevices)
+        (mode == CreativeMode || S.null missingDevices)
           `holdsOrFail` [ "the target robot does not have required devices:\n"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
@@ -1091,7 +1130,7 @@ execConst c vs s k = do
             missingDevices = S.filter (not . deviceOK) capDevices
 
         -- Make sure we're not missing any required devices.
-        (mode == Creative || S.null missingDevices)
+        (mode == CreativeMode || S.null missingDevices)
           `holdsOrFail` [ "this would require installing devices you don't have:\n"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
@@ -1110,7 +1149,7 @@ execConst c vs s k = do
 
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.
-        unless (mode == Creative) $
+        unless (mode == CreativeMode) $
           forM_ (devices `S.difference` stdDevices) $ \d ->
             robotInventory %= delete d
 
@@ -1140,7 +1179,7 @@ execConst c vs s k = do
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
-            when (mode == Creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
+            when (mode == CreativeMode || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Finally, delete the salvaged robot
             deleteRobot (target ^. robotName)

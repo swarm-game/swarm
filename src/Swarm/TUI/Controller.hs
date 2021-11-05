@@ -477,7 +477,7 @@ worldScrollDist = 8
 handleWorldEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 -- scrolling the world view in Creative mode
 handleWorldEvent s (VtyEvent (V.EvKey k []))
-  | (s ^. gameState . gameMode) == Creative
+  | (s ^. gameState . gameMode) == CreativeMode
       && k
         `elem` [ V.KUp
                , V.KDown

@@ -62,6 +62,7 @@ import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
 
+import Control.Lens.Extras (is)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
@@ -109,12 +110,7 @@ drawUI s =
                 WorldPanel
                 (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
                 (drawWorld $ s ^. gameState)
-            , drawMenu
-                (s ^. gameState . replWorking)
-                (s ^. gameState . paused)
-                ((s ^. gameState . viewCenterRule) == VCRobot "base")
-                (s ^. gameState . gameMode)
-                (s ^. uiState)
+            , drawMenu s
             , panel
                 highlightAttr
                 fr
@@ -233,8 +229,8 @@ drawDialog s = case s ^. uiModal of
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
-drawMenu :: Bool -> Bool -> Bool -> GameMode -> UIState -> Widget Name
-drawMenu isReplWorking isPaused viewingBase mode =
+drawMenu :: AppState -> Widget Name
+drawMenu s =
   vLimit 1
     . hBox
     . (++ [gameModeWidget])
@@ -242,15 +238,23 @@ drawMenu isReplWorking isPaused viewingBase mode =
     . (globalKeyCmds ++)
     . keyCmdsFor
     . focusGetCurrent
-    . view uiFocusRing
+    . view (uiState . uiFocusRing)
+    $ s
  where
+  isReplWorking = s ^. gameState . replWorking
+  isPaused = s ^. gameState . paused
+  viewingBase = (s ^. gameState . viewCenterRule) == VCRobot "base"
+  mode = s ^. gameState . gameMode
+  hasWon = is _Won (s ^. gameState . winCondition)
+
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
       . (<> " mode")
       $ case mode of
-        Classic -> "Classic"
-        Creative -> "Creative"
+        ClassicMode -> "Classic"
+        CreativeMode -> "Creative"
+        ChallengeMode -> T.append "Challenge" (if hasWon then "!" else "")
   globalKeyCmds =
     [ ("F1", "help")
     , ("Tab", "cycle panels")
@@ -261,7 +265,7 @@ drawMenu isReplWorking isPaused viewingBase mode =
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
-    [ ("←↓↑→ / hjkl", "scroll") | mode == Creative
+    [ ("←↓↑→ / hjkl", "scroll") | mode == CreativeMode
     ]
       ++ [ ("<>", "slower/faster")
          , ("p", if isPaused then "unpause" else "pause")

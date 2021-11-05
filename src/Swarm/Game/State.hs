@@ -17,6 +17,10 @@ module Swarm.Game.State (
   ViewCenterRule (..),
   GameMode (..),
   REPLStatus (..),
+  WinCondition (..),
+  _NoWinCondition,
+  _WinCondition,
+  _Won,
   RunStatus (..),
   GameType (..),
   GameState,
@@ -25,6 +29,7 @@ module Swarm.Game.State (
 
   -- ** GameState fields
   gameMode,
+  winCondition,
   runStatus,
   paused,
   robotMap,
@@ -91,6 +96,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
+import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -110,9 +116,11 @@ makePrisms ''ViewCenterRule
 --   in the future.
 data GameMode
   = -- | Explore an open world, gather resources, and upgrade your programming abilities.
-    Classic
+    ClassicMode
   | -- | Like 'Classic' mode, but there are no constraints on the programs you can write.
-    Creative
+    CreativeMode
+  | -- | Challenge mode: try to achieve a specific objective.
+    ChallengeMode
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 -- | A data type to represent the current status of the REPL.
@@ -125,6 +133,17 @@ data REPLStatus
     --   filled in with a result once the command completes.
     REPLWorking Polytype (Maybe Value)
   deriving (Eq, Show)
+
+data WinCondition
+  = -- | There is no winning condition (e.g. we are in Classic or Creative mode).
+    NoWinCondition
+  | -- | The player has not won yet; this 'ProcessedTerm' of type @cmd
+    --   bool@ is run every tick to determine whether they have won.
+    WinCondition ProcessedTerm
+  | -- | The player has won!
+    Won
+
+makePrisms ''WinCondition
 
 -- | A data type to keep track of the pause mode.
 data RunStatus
@@ -142,6 +161,7 @@ data RunStatus
 --   fields.
 data GameState = GameState
   { _gameMode :: GameMode
+  , _winCondition :: WinCondition
   , _runStatus :: RunStatus
   , _robotMap :: Map Text Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -189,6 +209,10 @@ let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule, '_activeRobot
 
 -- | The current 'GameMode'.
 gameMode :: Lens' GameState GameMode
+
+-- | How to determine whether the player has won (e.g. when in
+--   challenge mode).
+winCondition :: Lens' GameState WinCondition
 
 -- | The current 'RunStatus'.
 runStatus :: Lens' GameState RunStatus
@@ -416,6 +440,10 @@ initGameState gtype = do
         IClassicGame _ -> [theBase]
         IChallengeGame c -> c ^. challengeRobots
 
+      theMode = case iGameType of
+        IClassicGame _ -> ClassicMode
+        IChallengeGame _ -> ChallengeMode
+
       theWorld = case iGameType of
         IClassicGame seed ->
           W.newWorld
@@ -423,6 +451,10 @@ initGameState gtype = do
             . findGoodOrigin
             $ testWorld2 seed
         IChallengeGame c -> W.newWorld (c ^. challengeWorld)
+
+      theWinCondition = case iGameType of
+        IClassicGame _ -> NoWinCondition
+        IChallengeGame c -> WinCondition (c ^. challengeWin)
 
   seed <- case iGameType of
     IClassicGame s -> return s
@@ -433,7 +465,8 @@ initGameState gtype = do
 
   return $
     GameState
-      { _gameMode = Classic
+      { _gameMode = theMode
+      , _winCondition = theWinCondition
       , _runStatus = Running
       , _robotMap = M.fromList $ map (view robotName &&& id) robotList
       , _robotsByLocation =
