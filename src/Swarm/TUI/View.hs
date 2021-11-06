@@ -315,9 +315,10 @@ drawWorld g =
   drawLoc :: W.Coords -> Widget Name
   drawLoc coords =
     let (ePrio, eWidget) = drawCell (g ^. world) hidingR coords
-        hidingR = if g ^. gameMode == Creative
-          then Left False
-          else maybe (Left True) Right $ focusedRobot g
+        hidingR =
+          if g ^. gameMode == Creative
+            then Left False
+            else maybe (Left True) Right $ focusedRobot g
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
             | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
