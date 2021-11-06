@@ -19,14 +19,21 @@ on:
   push: 
     paths:
       - '**.hs'
+      - '**.sw'
       - '**.cabal'
-      - 'stack.yaml'
+      - '*.yaml'
+      - 'data/**.yaml'
+      - 'cabal.project*'
   # reuse the same filter for pull-requests
   pull_request:
     paths:
       - '**.hs'
+      - '**.sw'
       - '**.cabal'
       - 'stack.yaml'
+      - '*.yaml'
+      - 'data/**.yaml'
+      - 'cabal.project*'
 jobs:
   linux:
     # when changing the name or adding ghc version, please don't forget to update
