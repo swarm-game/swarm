@@ -44,7 +44,7 @@ Getting started
 When you first start up Swarm, you should be greeted by a screen that
 looks something like this:
 
-![World with seed 0](images/world0.png)
+![World with seed 0](images/tutorial/world0.png)
 
 In the world view, you see the default [*World 0*](./TUTORIAL.md#world-generation)
 and the little white `Ω` in the middle represents your base. You will
@@ -69,7 +69,7 @@ build "hello" {turn north; move}
 then hit Enter.  You should see a robot appear and travel to the
 north one step before stopping.  It should look something like this:
 
-![Hello robot!](images/hello.png)
+![Hello robot!](images/tutorial/hello.png)
 
 You can also see that on the next line after your input, the REPL printed out
 ```
@@ -100,7 +100,7 @@ expression currently typed at the prompt parses and type checks, the
 REPL will show you the type of the expression in the upper right, like
 this:
 
-![Build type](images/build.png)
+![Build type](images/tutorial/build.png)
 
 It will tell you that the type of `build` is
 ```
@@ -125,7 +125,7 @@ parse error or a type error).  If you want to see what the error is,
 just hit `Enter`: a dialog box will pop up with a (somewhat) more
 informative error message.
 
-![Hi error](images/hi.png)
+![Hi error](images/tutorial/hi.png)
 
 To get rid of the error dialog, just hit the `Esc` key.
 
@@ -212,7 +212,7 @@ as the newly built robot *starts* executing its program.  So we get to
 watch the new robot as it goes about its business.  Afterwards, the
 view should look something like this:
 
-![View a robot](images/viewr.png)
+![View a robot](images/tutorial/viewr.png)
 
 The view is now centered on `runner1` instead of on our `base`, and the
 top-left panel shows `runner1`'s inventory and installed devices
@@ -248,7 +248,7 @@ the base.
 
 After this robot finishes, you should have a new entry in your inventory:
 
-![Scan a tree](images/scantree.png)
+![Scan a tree](images/tutorial/scantree.png)
 
 Apparently those things are trees!  Although you do not actually have
 any trees yet, you can tab over to your inventory to read about them.
@@ -291,7 +291,7 @@ Note that since the `make` command takes a `string` as an argument,
 You should now have two branches and a log in your inventory.  Take a
 look at them and see what recipes they enable!
 
-![Make a log](images/log.png)
+![Make a log](images/tutorial/log.png)
 
 By this time you may also notice that the tree has grown back (whether
 it has finished growing back depends on how long you took to read the
@@ -332,7 +332,7 @@ The world should now look something like the below.  Notice that the
 on `crasher`.  Notice also that `crasher` only moved one unit south,
 even though we told it to move two steps!  What went wrong?
 
-![Let's crash a robot!](images/crasher.png)
+![Let's crash a robot!](images/tutorial/crasher.png)
 
 One thing we could do at this point is to `view "crasher"`.  However,
 it will probably become a bit more difficult to use the `view` command in
@@ -366,7 +366,7 @@ build "salvager" {turn south; move; log "salvaging..."; salvage; turn back; move
 ```
 The world should now look something like this:
 
-![Salvaging a crashed robot.](images/salvaged.png)
+![Salvaging a crashed robot.](images/tutorial/salvaged.png)
 
 As you can see, the base's log now contains some entries from
 `crasher`!  They were copied over to `salvager`'s log when it salvaged
