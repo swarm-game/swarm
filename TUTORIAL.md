@@ -411,7 +411,7 @@ lakes or in the middle of a plain. Either way, you have established
 your base in the shade of what you assume is a tree and now can send
 out robots to explore!
 
-![World generated with seed 16](./images/world16.png)
+![World generated with seed 16](images/tutorial/world16.png)
 
 Creative Mode
 -------------
