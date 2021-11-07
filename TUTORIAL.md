@@ -127,7 +127,7 @@ informative error message.
 
 ![Hi error](images/tutorial/hi.png)
 
-To get rid of the error dialog, just hit the `Esc` key.
+To get rid of the error dialog, just hit the <kbd>Esc</kbd> key.
 
 Something you can't do yet
 --------------------------
@@ -206,7 +206,7 @@ Then we can use the `view` command to focus on it instead of the base:
 ```
 r <- build "runner" { turn west; m4; m }; view r
 ```
-Note that `base` executes the `view name` command as soon as it
+Note that `base` executes the `view r` command as soon as it
 finishes executing the `build` command, which is about the same time
 as the newly built robot *starts* executing its program.  So we get to
 watch the new robot as it goes about its business.  Afterwards, the
@@ -231,7 +231,7 @@ which you may have noticed in `runner1`'s inventory.  You can `scan`
 items in the world to learn about them, and later `upload` what you
 have learned to the base.
 
-Let's build a robot to learn about those green `T` things to the west:
+Let's build a robot to learn about those green `?` things to the west:
 ```
 build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"}
 ```
@@ -240,7 +240,7 @@ argument, which can be either an absolute direction
 (`north`, `south`, `east`, or `west`) or a relative direction
 (`forward`, `back`, `left`, `right`, or `down`).
 
-Notice that the robot did not actually need to walk on top of a `T` to
+Notice that the robot did not actually need to walk on top of a `?` to
 learn about it, since it could `scan west` to scan the cell one unit
 to the west (you can also `scan down` to scan an item directly underneath the
 robot).  Also, it was able to `upload` at a distance of one cell away from
@@ -341,7 +341,7 @@ or remember the name of the robot that crashed?  Fortunately, there is
 something else we can do: send out another robot to `salvage` the
 crashed robot.
 
-The `salvage` command can be executed by any robot with a `grabber`,
+The `salvage` command can be executed by any robot with a `plasma cutter`,
 which is one of the devices installed on new robots by default.  It
 takes no arguments, and simply looks for any idle robot in the same
 cell; if it finds one, it disassembles the idle robot, transferring
@@ -421,7 +421,9 @@ Creative mode.  In Classic mode, the kinds of actions your robots can
 do, and the kinds of programs they can interpret, is restricted by
 what devices they have installed.  In Creative mode you can do
 anything you like, including fabricate arbitrary items out of thin air
-using the `create` command.  To switch, highlight the world view
-panel, then hit the `m` key.
+using the `create` command. Also it will not hide unknown entities,
+as you can see in the World 16 above.
+
+To switch, highlight the world view panel, then hit the <kbd>M</kbd> key.
 
 Now go forth and build your swarm!
