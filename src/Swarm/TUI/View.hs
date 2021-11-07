@@ -314,11 +314,11 @@ drawWorld g =
 
   drawLoc :: W.Coords -> Widget Name
   drawLoc coords =
-    let (ePrio, eWidget) = drawCell (g ^. world) hidingR coords
-        hidingR =
+    let (ePrio, eWidget) = drawCell hiding (g ^. world) coords
+        hiding =
           if g ^. gameMode == Creative
-            then Left False
-            else maybe (Left True) Right $ focusedRobot g
+            then HideNoEntity
+            else maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
             | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
@@ -327,17 +327,23 @@ drawWorld g =
                 str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
           Nothing -> eWidget
 
--- | Draw a single cell of the world, either hiding those that current robot does not know,
+data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
+
+-- | Draw a single cell of the world, either hiding entities that current robot does not know,
 --   or hiding all/none depending on Left value (True/False).
-drawCell :: W.World Int Entity -> Either Bool Robot -> W.Coords -> (Int, Widget Name)
-drawCell w edr i = case W.lookupEntity i w of
+drawCell :: HideEntity -> W.World Int Entity -> W.Coords -> (Int, Widget Name)
+drawCell edr w i = case W.lookupEntity i w of
   Nothing -> (0, displayTerrain (toEnum (W.lookupTerrain i w)))
   Just e ->
-    let known = either not (`robotKnows` e) edr
-        hide = if known then id else entityDisplay . defaultChar %~ const '?'
-     in ( e ^. entityDisplay . displayPriority
-        , displayEntity (hide e)
-        )
+    ( e ^. entityDisplay . displayPriority
+    , displayEntity (hide e)
+    )
+ where
+  known e = case edr of
+    HideAllEntities -> False
+    HideNoEntity -> True
+    HideEntityUnknownTo ro -> ro `robotKnows` e
+  hide e = (if known e then id else entityDisplay . defaultChar %~ const '?') e
 
 ------------------------------------------------------------
 -- Robot inventory panel
