@@ -7,7 +7,14 @@ pull_request_rules:
   name: Automatically merge pull requests
   conditions:
   - or:
-    - check-success=Co-Haskell-CI
+    - and:
+      - -files~=\.hs$
+      - -files~=\.sw$
+      - -files~=\.cabal$
+      - -files=stack.yaml
+      - -files~=cabal.project.*
+      - -files~=^[^/]*\.yaml$
+      - -files~=^data/.*\.yaml$
     - and:
       - check-success=Haskell-CI - Linux - ghc-9.0.1
       - check-success=Haskell-CI - Linux - ghc-8.10.4
