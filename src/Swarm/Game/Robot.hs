@@ -51,6 +51,7 @@ module Swarm.Game.Robot (
   baseRobot,
 
   -- ** Query
+  robotKnows,
   isActive,
   waitingUntil,
   getResult,
@@ -226,6 +227,10 @@ inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `h
 --   installed devices.
 inventoryCapabilities :: Inventory -> Set Capability
 inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
+
+-- | Does the robot know of the entity's existence.
+robotKnows :: Robot -> Entity -> Bool
+robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. installedDevices)
 
 -- | Get the set of capabilities this robot possesses.  This is only a
 --   getter, not a lens, because it is automatically generated from
