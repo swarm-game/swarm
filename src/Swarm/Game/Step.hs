@@ -20,6 +20,7 @@
 module Swarm.Game.Step where
 
 import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
+import Control.Monad (forM_, msum, unless, void, when)
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
@@ -59,7 +60,6 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Monad (forM_, msum, unless, void, when)
 
 -- | The maximum number of CESK machine evaluation steps each robot is
 --   allowed during a single game tick.
@@ -804,6 +804,16 @@ execConst c vs s k = do
         robotInventory .= invTaken
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
+    Has -> case vs of
+      [VString name] -> do
+        inv <- use robotInventory
+        return $ Out (VBool ((> 0) $ countByName name inv)) s k
+      _ -> badConst
+    Count -> case vs of
+      [VString name] -> do
+        inv <- use robotInventory
+        return $ Out (VInt (fromIntegral $ countByName name inv)) s k
+      _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
@@ -1104,7 +1114,7 @@ execConst c vs s k = do
             -- XXX in the future, make a way to build these and just start the base
             -- out with a large supply of each?
             stdDeviceList =
-              ["treads", "grabber", "solar panel", "detonator", "scanner", "plasma cutter"]
+              ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
 
             -- Find out what capabilities are required by the program that will
