@@ -94,7 +94,7 @@ sampleChallenge = Challenge $ \em _ ->
             |]
     }
  where
-  startDevices em = mapMaybe (`lookupEntityName` em) ["treads"]
+  startDevices em = mapMaybe (`lookupEntityName` em) ["treads", "dictionary", "scanner"]
 
   arr em =
     listArray ((-4, 0), (0, 4)) . map (toEntity em) . concat $
