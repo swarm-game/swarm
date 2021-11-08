@@ -97,7 +97,7 @@ sampleChallenge = Challenge $ \em _ ->
   startDevices em = mapMaybe (`lookupEntityName` em) ["treads"]
 
   arr em =
-    listArray ((0, 0), (4, 4)) . map (toEntity em) . concat $
+    listArray ((-4, 0), (0, 4)) . map (toEntity em) . concat $
       [ "  T  "
       , " T   "
       , "     "
