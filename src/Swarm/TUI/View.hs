@@ -320,7 +320,7 @@ drawWorld g =
   drawLoc coords =
     let (ePrio, eWidget) = drawCell hiding (g ^. world) coords
         hiding =
-          if g ^. gameMode == Creative
+          if g ^. gameMode == CreativeMode
             then HideNoEntity
             else maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
