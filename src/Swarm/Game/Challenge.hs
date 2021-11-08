@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.Game.Challenge
@@ -36,6 +37,8 @@ import Data.Array
 import Data.Functor.Compose
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 import Data.Yaml
 import GHC.Generics (Generic)
 import Linear.V2
@@ -99,8 +102,14 @@ instance FromJSON Challenge where
         <$> pureEP (v .: "name")
         <*> pureEP (v .:? "seed")
         <*> pure (const (fromEnum StoneT, Nothing)) -- XXX
-        <*> EP ((v .: "robots") >>= withArray "robots" _) -- XXX
+        <*> EP ((v .: "robots") >>= withArray "robots" parseRobotArray)
         <*> pureEP (v .: "win")
+   where
+    parseRobotArray :: Vector Value -> Parser (EntityMap -> [Recipe Entity] -> [Robot])
+    parseRobotArray (V.toList -> robots) = runEP $ traverse parseRobot robots
+
+    parseRobot :: Value -> EntityParser Robot
+    parseRobot = _
 
 -- ( worldFunFromArray
 --                <$> _
