@@ -52,7 +52,7 @@ data ProcessedTerm
       -- ^ Capabilities required by the term
       CapCtx
       -- ^ Capability context for any definitions embedded in the term
-  deriving (Data)
+  deriving (Data, Show)
 
 -- | Given a 'Text' value representing a Swarm program,
 --

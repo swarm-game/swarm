@@ -1,0 +1,5 @@
+name: Sample challenge
+seed: 0
+win: |
+  loc <- getRobotLoc "base";
+  return (loc == inr (4,4))

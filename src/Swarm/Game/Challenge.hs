@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -29,18 +31,22 @@ module Swarm.Game.Challenge (
 ) where
 
 import Control.Arrow ((***))
-import Control.Lens
+import Control.Lens hiding (from)
 import Data.Array
+import Data.Functor.Compose
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import Data.Yaml
+import GHC.Generics (Generic)
 import Linear.V2
+import Witch (from)
 
 import Swarm.Game.Entity
 import Swarm.Game.Recipe (Recipe)
 import Swarm.Game.Robot (Robot, baseRobot, robotLocation)
 import Swarm.Game.Terrain
 import Swarm.Game.World
-import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pipeline (ProcessedTerm, processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 
 -- | A challenge can be instantiated to a 'ChallengeRecord' once we
@@ -56,10 +62,52 @@ data ChallengeRecord = ChallengeRecord
   , _challengeRobots :: [Robot]
   , _challengeWin :: ProcessedTerm
   }
+  deriving (Generic)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''ChallengeRecord
 
--- | The name of the challenge.
+-- XXX better name
+newtype EntityParser a = EP {runEP :: Parser (EntityMap -> [Recipe Entity] -> a)}
+  deriving (Functor)
+
+instance Applicative EntityParser where
+  pure = EP . pure . pure . pure
+  p1 <*> p2 = gc (c p1 <*> c p2)
+   where
+    gc = EP . getCompose . getCompose
+    c = Compose . Compose . runEP
+
+pureEP :: Parser a -> EntityParser a
+pureEP p = EP (fmap (\a _ _ -> a) p)
+
+toChallenge :: EntityParser ChallengeRecord -> Parser Challenge
+toChallenge = fmap Challenge . runEP
+
+-- XXX move this somewhere else
+instance FromJSON ProcessedTerm where
+  parseJSON = withText "Term" tryProcess
+   where
+    tryProcess :: Text -> Parser ProcessedTerm
+    tryProcess t = case processTerm t of
+      Left err -> fail $ "Error while processing win condition: " ++ from err
+      Right pt -> return pt
+
+instance FromJSON Challenge where
+  parseJSON = withObject "Challenge" $ \v ->
+    toChallenge $
+      ChallengeRecord
+        <$> pureEP (v .: "name")
+        <*> pureEP (v .:? "seed")
+        <*> pure (const (fromEnum StoneT, Nothing)) -- XXX
+        <*> EP ((v .: "robots") >>= withArray "robots" _) -- XXX
+        <*> pureEP (v .: "win")
+
+-- ( worldFunFromArray
+--                <$> _
+--                <*> _
+--            )
+
+-- | the name of the challenge.
 challengeName :: Lens' ChallengeRecord Text
 
 -- | The seed used for the random number generator.  If @Nothing@, use
