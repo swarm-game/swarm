@@ -393,7 +393,7 @@ than nothing for now.
 There is some rudimentary [Language Server-based editor
 support](https://github.com/byorgey/swarm/blob/main/docs/EDITORS.md)
 giving syntax and error highlighting for `.sw` files; at the moment
-Emacs is supported, and VSCode will be added shortly.
+Emacs is supported along with VSCode.
 
 World generation
 ----------------
