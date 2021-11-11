@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -102,19 +104,20 @@ import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
-import Linear
+import Linear (V2)
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
 
 import Data.Yaml
+import Swarm.Util.Yaml
 
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (toDirection)
+import Swarm.Util (plural)
 
 import Paths_swarm
-import Swarm.Util (plural)
 
 ------------------------------------------------------------
 -- Properties
@@ -328,6 +331,14 @@ instance FromJSON Entity where
           )
    where
     reflow = T.unwords . T.words
+
+-- | If we have access to an 'EntityMap', we can parse the name of an
+--   'Entity' as a string and look it up in the map.
+instance FromJSONE EntityMap Entity where
+  parseJSONE = withTextE "entity name" $ \name ->
+    E $ \em -> case lookupEntityName name em of
+      Nothing -> fail $ "Unknown entity: " ++ from @Text name
+      Just e -> return e
 
 instance ToJSON Entity where
   toJSON e =

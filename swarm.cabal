@@ -86,6 +86,7 @@ library
                       Swarm.TUI.Controller
                       Swarm.App
                       Swarm.Util
+                      Swarm.Util.Yaml
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
 

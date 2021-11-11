@@ -400,17 +400,17 @@ addRobot r = do
 -- | What type of game does the user want to start?
 data GameType
   = ClassicGame Seed
-  | ChallengeGame Challenge
+  | ChallengeGame (EntityMap -> Challenge)
 
 -- | The 'GameType', instantiated with loaded entites and records.
 data InstGameType
   = IClassicGame Seed
-  | IChallengeGame ChallengeRecord
+  | IChallengeGame Challenge
 
 instGameType :: EntityMap -> [Recipe Entity] -> GameType -> InstGameType
-instGameType em rs gt = case gt of
+instGameType em _rs gt = case gt of
   ClassicGame s -> IClassicGame s
-  ChallengeGame (Challenge c) -> IChallengeGame (c em rs)
+  ChallengeGame c -> IChallengeGame (c em)
 
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.

@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -66,6 +67,9 @@ import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Linear
+
+import Data.Yaml ((.:))
+import Swarm.Util.Yaml
 
 import Data.Hashable (hashWithSalt)
 import Swarm.Game.CESK
@@ -350,6 +354,22 @@ baseRobot devs =
     }
  where
   inst = fromList devs
+
+-- | We can parse a robot from a YAML file if we have access to an
+--   'EntityMap' in which we can look up the names of entities.
+instance FromJSONE EntityMap Robot where
+  parseJSONE = withObjectE "robot" $ \v ->
+    mkRobot
+      <$> liftE (v .: "name")
+      <*> liftE (v .: "loc")
+      <*> liftE (v .: "dir")
+      <*> liftE ((\pt -> initMachine pt mempty emptyStore) <$> (v .: "program"))
+      <*> v ..:? "devices" ..!= []
+
+-- XXX make a more general "mkRobot" function
+-- XXX add fields for:
+--   - instantiating inventory
+--   - setting system robot flag
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool

@@ -29,6 +29,7 @@ import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Set (Set)
 import Data.Text (Text)
+import Data.Yaml as Y
 import Witch
 
 import Swarm.Language.Capability
@@ -53,6 +54,14 @@ data ProcessedTerm
       CapCtx
       -- ^ Capability context for any definitions embedded in the term
   deriving (Data, Show)
+
+instance FromJSON ProcessedTerm where
+  parseJSON = withText "Term" tryProcess
+   where
+    tryProcess :: Text -> Y.Parser ProcessedTerm
+    tryProcess t = case processTerm t of
+      Left err -> fail $ "Error while processing win condition: " ++ from err
+      Right pt -> return pt
 
 -- | Given a 'Text' value representing a Swarm program,
 --

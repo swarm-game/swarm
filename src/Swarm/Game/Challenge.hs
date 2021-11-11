@@ -1,9 +1,13 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Game.Challenge
@@ -18,7 +22,6 @@
 module Swarm.Game.Challenge (
   -- * The Challenge type
   Challenge (..),
-  ChallengeRecord,
 
   -- ** Fields
   challengeName,
@@ -34,133 +37,85 @@ module Swarm.Game.Challenge (
 import Control.Arrow ((***))
 import Control.Lens hiding (from)
 import Data.Array
-import Data.Functor.Compose
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Data.Vector (Vector)
-import qualified Data.Vector as V
-import Data.Yaml
-import GHC.Generics (Generic)
+import Data.Yaml as Y
 import Linear.V2
-import Witch (from)
 
 import Swarm.Game.Entity
-import Swarm.Game.Recipe (Recipe)
 import Swarm.Game.Robot (Robot, baseRobot, robotLocation)
 import Swarm.Game.Terrain
 import Swarm.Game.World
-import Swarm.Language.Pipeline (ProcessedTerm, processTerm)
+import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Util.Yaml
 
--- | A challenge can be instantiated to a 'ChallengeRecord' once we
---   have loaded entities and recipes.
-newtype Challenge = Challenge (EntityMap -> [Recipe Entity] -> ChallengeRecord)
-
--- | A 'ChallengeRecord' contains all the information to describe a
+-- | A 'Challenge' contains all the information to describe a
 --   challenge.
-data ChallengeRecord = ChallengeRecord
+data Challenge = Challenge
   { _challengeName :: Text
   , _challengeSeed :: Maybe Int
   , _challengeWorld :: WorldFun Int Entity
   , _challengeRobots :: [Robot]
   , _challengeWin :: ProcessedTerm
   }
-  deriving (Generic)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''ChallengeRecord
+makeLensesWith (lensRules & generateSignatures .~ False) ''Challenge
 
--- XXX better name
-newtype EntityParser a = EP {runEP :: Parser (EntityMap -> [Recipe Entity] -> a)}
-  deriving (Functor)
-
-instance Applicative EntityParser where
-  pure = EP . pure . pure . pure
-  p1 <*> p2 = gc (c p1 <*> c p2)
-   where
-    gc = EP . getCompose . getCompose
-    c = Compose . Compose . runEP
-
-pureEP :: Parser a -> EntityParser a
-pureEP p = EP (fmap (\a _ _ -> a) p)
-
-toChallenge :: EntityParser ChallengeRecord -> Parser Challenge
-toChallenge = fmap Challenge . runEP
-
--- XXX move this somewhere else
-instance FromJSON ProcessedTerm where
-  parseJSON = withText "Term" tryProcess
-   where
-    tryProcess :: Text -> Parser ProcessedTerm
-    tryProcess t = case processTerm t of
-      Left err -> fail $ "Error while processing win condition: " ++ from err
-      Right pt -> return pt
-
-instance FromJSON Challenge where
-  parseJSON = withObject "Challenge" $ \v ->
-    toChallenge $
-      ChallengeRecord
-        <$> pureEP (v .: "name")
-        <*> pureEP (v .:? "seed")
-        <*> pure (const (fromEnum StoneT, Nothing)) -- XXX
-        <*> EP ((v .: "robots") >>= withArray "robots" parseRobotArray)
-        <*> pureEP (v .: "win")
-   where
-    parseRobotArray :: Vector Value -> Parser (EntityMap -> [Recipe Entity] -> [Robot])
-    parseRobotArray (V.toList -> robots) = runEP $ traverse parseRobot robots
-
-    parseRobot :: Value -> EntityParser Robot
-    parseRobot = _
-
--- ( worldFunFromArray
---                <$> _
---                <*> _
---            )
+instance FromJSONE EntityMap Challenge where
+  parseJSONE = withObjectE "challenge" $ \v ->
+    Challenge
+      <$> liftE (v .: "name")
+      <*> liftE (v .:? "seed")
+      <*> pure (const (fromEnum StoneT, Nothing)) -- XXX
+      <*> v ..: "robots"
+      <*> liftE (v .: "win")
 
 -- | the name of the challenge.
-challengeName :: Lens' ChallengeRecord Text
+challengeName :: Lens' Challenge Text
 
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed.
-challengeSeed :: Lens' ChallengeRecord (Maybe Int)
+challengeSeed :: Lens' Challenge (Maybe Int)
 
 -- | The starting world for the challenge.
-challengeWorld :: Lens' ChallengeRecord (WorldFun Int Entity)
+challengeWorld :: Lens' Challenge (WorldFun Int Entity)
 
 -- | The starting robots for the challenge.  Note this should
 --   include the "base".
-challengeRobots :: Lens' ChallengeRecord [Robot]
+challengeRobots :: Lens' Challenge [Robot]
 
 -- | The winning condition for the challenge, expressed as a
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-challengeWin :: Lens' ChallengeRecord ProcessedTerm
+challengeWin :: Lens' Challenge ProcessedTerm
 
 -- | A sample challenge.
-sampleChallenge :: Challenge
-sampleChallenge = Challenge $ \em _ ->
-  ChallengeRecord
+sampleChallenge :: EntityMap -> Challenge
+sampleChallenge em =
+  Challenge
     { _challengeName = "Sample challenge"
     , _challengeSeed = Just 0
-    , _challengeWorld = worldFunFromArray (arr em) (fromEnum StoneT, Nothing)
+    , _challengeWorld = worldFunFromArray arr (fromEnum StoneT, Nothing)
     , _challengeRobots =
-        [baseRobot (startDevices em) & robotLocation .~ V2 0 0]
+        [baseRobot startDevices & robotLocation .~ V2 0 0]
     , _challengeWin =
         [tmQ| loc <- getRobotLoc "base";
               return (loc == inr (4,4))
             |]
     }
  where
-  startDevices em = mapMaybe (`lookupEntityName` em) ["treads", "dictionary", "scanner"]
+  startDevices = mapMaybe (`lookupEntityName` em) ["treads", "dictionary", "scanner"]
 
-  arr em =
-    listArray ((-4, 0), (0, 4)) . map (toEntity em) . concat $
+  arr =
+    listArray ((-4, 0), (0, 4)) . map toEntity . concat $
       [ "  T  "
       , " T   "
       , "     "
       , "   T "
       , "T    "
       ]
-  toEntity em c = (fromEnum *** (`lookupEntityName` em)) $ case c of
+  toEntity c = (fromEnum *** (`lookupEntityName` em)) $ case c of
     'T' -> (DirtT, "tree")
     _ -> (StoneT, "nothing")
