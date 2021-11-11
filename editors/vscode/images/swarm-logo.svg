@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg5"
+   inkscape:export-filename="/home/sebeko/Pictures/swarm-logo.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   inkscape:version="1.1 (c68e22c387, 2021-05-23)"
+   sodipodi:docname="swarm-logo.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.69130191"
+     inkscape:cx="611.16568"
+     inkscape:cy="549.68747"
+     inkscape:window-width="1920"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer2" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer 2">
+    <circle
+       style="fill:#000000;stroke-width:0.26543;fill-opacity:1"
+       id="path1259"
+       cx="104.08221"
+       cy="99.740601"
+       r="80" />
+    <rect
+       style="fill:#d4aa00;stroke-width:0.21937"
+       id="rect8750"
+       width="96"
+       height="96"
+       x="96.124489"
+       y="-51.069984"
+       transform="rotate(45)" />
+    <rect
+       style="fill:#000000;stroke-width:0.187561"
+       id="rect8750-4"
+       width="82.080002"
+       height="82.080002"
+       x="103.0845"
+       y="-44.109989"
+       transform="rotate(45)" />
+    <rect
+       style="fill:#000000;stroke-width:0.235961"
+       id="rect8899"
+       width="11.058861"
+       height="151.99393"
+       x="139.36646"
+       y="-77.826645"
+       transform="rotate(45)" />
+    <rect
+       style="fill:#000000;stroke-width:0.235961"
+       id="rect8899-3"
+       width="11.058861"
+       height="151.99393"
+       x="-7.3591065"
+       y="-220.89285"
+       transform="rotate(135)" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="omega">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:75.9353px;line-height:1.25;font-family:sans-serif;fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-width:1.89839"
+       x="74.614418"
+       y="127.18298"
+       id="text5375"
+       transform="scale(1.0203302,0.98007488)"><tspan
+         sodipodi:role="line"
+         id="tspan5373"
+         style="fill:#e6e6e6;stroke-width:1.89839"
+         x="74.614418"
+         y="127.18298">Ω</tspan></text>
+  </g>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1" />
+</svg>
