@@ -13,7 +13,7 @@
 			"patterns": [
 				{
 				"name": "keyword.control.dictionary.def",
-				"begin": "def\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
+				"begin": "def\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
 				"end": "end",
 				"beginCaptures": {
 					"1": {"name": "variable.other"},
@@ -56,7 +56,7 @@
 				},
 				{
 				"name": "keyword.other",
-				"match": "\\b(?i)(noop|wait|selfdestruct|move|turn|grab|place|give|install|make|drill|build|salvage|reprogram|say|log|view|appear|create|whereami|blocked|scan|upload|ishere|whoami|random|run|if|inl|inr|case|fst|snd|return|try|raise|not)\\b"
+				"match": "\\b(?i)(noop|wait|selfdestruct|move|turn|grab|place|give|install|make|has|count|drill|build|salvage|reprogram|say|log|view|appear|create|whereami|blocked|scan|upload|ishere|whoami|random|run|if|inl|inr|case|fst|snd|force|return|try|raise|not)\\b"
 				}
 			]
 			},
