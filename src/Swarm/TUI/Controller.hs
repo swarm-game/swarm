@@ -399,7 +399,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
       Right t@(ProcessedTerm _ (Module ty _) _ _) ->
         continue $
           s
-            & uiState . uiReplForm %~ updateFormState ""
+            & uiState . uiReplForm %~ updateFormState (CmdPrompt "")
             & uiState . uiReplType .~ Nothing
             & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
             & uiState . uiError .~ Nothing
@@ -412,7 +412,7 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiError ?~ txt err
     else continueWithoutRedraw s
  where
-  entry = formState (s ^. uiState . uiReplForm)
+  entry = s ^. uiState . uiReplForm . to formState . promptText
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
@@ -437,7 +437,7 @@ validateREPLForm s =
  where
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
-  result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
+  result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState . promptText)
   theType = case result of
     Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
     _ -> Nothing
@@ -458,8 +458,8 @@ adjReplHistIndex d s =
   repl = uiState . uiReplHistory
 
   replLast = s ^. uiState . uiReplLast
-  saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-  showNewEntry = uiState . uiReplForm %~ updateFormState newEntry
+  saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState . promptText)
+  showNewEntry = uiState . uiReplForm %~ updateFormState (CmdPrompt newEntry)
   -- get REPL data
   getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
   oldEntry = getCurrEntry s

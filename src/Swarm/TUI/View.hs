@@ -584,5 +584,5 @@ drawREPL s =
   history = s ^. uiState . uiReplHistory
   base = s ^. gameState . robotMap . at "base"
   histIdx = fromString $ show (history ^. replIndex)
-  fmt (REPLEntry e) = txt replPrompt <+> txt e
+  fmt (REPLEntry e) = txt (printPrompt replPrompt) <+> txt e
   fmt (REPLOutput t) = txt t
