@@ -36,7 +36,12 @@ module Swarm.TUI.Model (
   moveReplHistIndex,
   getCurrentItemText,
   replIndexIsAtInput,
+  searchInHistory,
   TimeDir (..),
+
+  REPLPrompt(..),
+  printPrompt,
+  promptText,
 
   -- ** Inventory
   InventoryListEntry (..),
@@ -270,6 +275,44 @@ getCurrentItemText history = replItemText <$> Seq.lookup (history ^. replIndex) 
 replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
+-- | Given a text, it search in the REPLHistory the inputs which start with that text.
+searchInHistory :: Text -> REPLHistory -> Seq REPLHistItem 
+searchInHistory t (REPLHistory s _ _) = Seq.filter matchesText s -- If the REPLHistory is too long, maybe this suffers, I don't know how lazy filter is for Seq. If performance issues are found, we should manualy build a lazy list.
+ where 
+   matchesText histItem = (t `T.isPrefixOf` replItemText histItem) && isREPLEntry histItem
+
+
+------------------------------------------------------------
+-- Repl Prompt
+------------------------------------------------------------
+
+-- | This data type represent what is prompted to the player
+--   and how the REPL show interpret the user input.
+--   For example:
+--      - CmdPrompt means that the input text should be interpreted as a game command 
+--      - SearchPrompt means that the input text should be interpreted as text to look for in the history
+data REPLPrompt = CmdPrompt Text | SearchPrompt Text
+
+printPrompt :: REPLPrompt -> Text
+printPrompt (CmdPrompt _) = "> "
+printPrompt (SearchPrompt t) = "(search in history: " <> t <> ")"
+
+-- | The default REPL prompt.
+replPrompt :: REPLPrompt
+replPrompt = CmdPrompt ""
+
+-- | Lens for accesing the text
+promptText :: Lens' REPLPrompt Text
+promptText = lens g s
+  where 
+    g :: REPLPrompt -> Text
+    g (CmdPrompt t) = t
+    g (SearchPrompt t) = t
+
+    s :: REPLPrompt -> Text -> REPLPrompt
+    s (CmdPrompt _)    t = CmdPrompt t
+    s (SearchPrompt _) t = SearchPrompt t
+
 ------------------------------------------------------------
 -- UI state
 ------------------------------------------------------------
@@ -295,7 +338,7 @@ makePrisms ''InventoryListEntry
 -- see the lenses below.
 data UIState = UIState
   { _uiFocusRing :: FocusRing Name
-  , _uiReplForm :: Form Text AppEvent Name
+  , _uiReplForm :: Form REPLPrompt AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
   , _uiReplHistory :: REPLHistory
@@ -331,7 +374,7 @@ let exclude = ['_lgTicksPerSecond]
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The form where the user can type input at the REPL.
-uiReplForm :: Lens' UIState (Form Text AppEvent Name)
+uiReplForm :: Lens' UIState (Form REPLPrompt AppEvent Name)
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).
@@ -421,16 +464,12 @@ accumulatedTime :: Lens' UIState TimeSpec
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
--- | The default REPL prompt.
-replPrompt :: Text
-replPrompt = "> "
-
 -- | The initial state of the REPL entry form.
-initReplForm :: Form Text AppEvent Name
+initReplForm :: Form REPLPrompt AppEvent Name
 initReplForm =
   newForm
-    [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
-    ""
+    [(txt (printPrompt replPrompt) <+>) @@= editTextField promptText REPLInput (Just 1)]
+    (CmdPrompt "")
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int
