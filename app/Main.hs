@@ -14,7 +14,7 @@ import Swarm.Language.Pipeline (processTerm)
 import System.Exit
 
 data CLI
-  = Run Int
+  = Run Int (Maybe FilePath)
   | Format Input
   | LSP
 
@@ -24,14 +24,16 @@ cliParser =
     ( command "format" (info (format <**> helper) (progDesc "Format a file"))
         <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
     )
-    <|> Run <$> seed
+    <|> Run <$> seed <*> challenge
  where
   format :: Parser CLI
   format =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
   seed :: Parser Int
-  seed = option auto (long "seed" <> short 's' <> value 0 <> help "Seed for world generation")
+  seed = option auto (long "seed" <> short 's' <> value 0 <> metavar "INT" <> help "Seed for world generation")
+  challenge :: Parser (Maybe String)
+  challenge = optional $ strOption (long "challenge" <> short 'c' <> metavar "FILE" <> help "Name of a challenge to load")
 
 cliInfo :: ParserInfo CLI
 cliInfo =
@@ -68,6 +70,6 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run seed -> appMain seed
+    Run seed challenge -> appMain seed challenge
     Format fo -> formatFile fo
     LSP -> lspMain

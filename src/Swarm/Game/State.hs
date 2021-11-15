@@ -400,17 +400,17 @@ addRobot r = do
 -- | What type of game does the user want to start?
 data GameType
   = ClassicGame Seed
-  | ChallengeGame (EntityMap -> Challenge)
+  | ChallengeGame (EntityMap -> ExceptT Text IO Challenge)
 
 -- | The 'GameType', instantiated with loaded entites and records.
 data InstGameType
   = IClassicGame Seed
   | IChallengeGame Challenge
 
-instGameType :: EntityMap -> [Recipe Entity] -> GameType -> InstGameType
+instGameType :: EntityMap -> [Recipe Entity] -> GameType -> ExceptT Text IO InstGameType
 instGameType em _rs gt = case gt of
-  ClassicGame s -> IClassicGame s
-  ChallengeGame c -> IChallengeGame (c em)
+  ClassicGame s -> return $ IClassicGame s
+  ChallengeGame c -> IChallengeGame <$> c em
 
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
@@ -421,7 +421,7 @@ initGameState gtype = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
-  let iGameType = instGameType entities recipes gtype
+  iGameType <- instGameType entities recipes gtype
 
   let baseDeviceNames =
         [ "solar panel"

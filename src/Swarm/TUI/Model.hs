@@ -91,7 +91,7 @@ module Swarm.TUI.Model (
   Seed,
 ) where
 
-import Control.Lens
+import Control.Lens hiding (from)
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
@@ -104,18 +104,21 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import System.Clock
+import Witch (from)
 
 import Brick
 import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
-import Swarm.Game.Challenge (sampleChallenge)
+import Data.Yaml (prettyPrintParseException)
+import Paths_swarm (getDataFileName)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
+import Swarm.Util.Yaml
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -539,10 +542,17 @@ gameState :: Lens' AppState GameState
 uiState :: Lens' AppState UIState
 
 -- | Initialize the 'AppState'.
-initAppState :: Seed -> ExceptT Text IO AppState
-initAppState _seed = AppState <$> initGameState (ChallengeGame sampleChallenge) <*> initUIState
+initAppState :: Seed -> Maybe String -> ExceptT Text IO AppState
+initAppState seed challenge = do
+  let gtype = initGameType seed challenge
+  AppState <$> initGameState gtype <*> initUIState
 
--- XXX above is for testing only, make configurable
-
-------------------------------------------------------------
---
+initGameType :: Seed -> Maybe String -> GameType
+initGameType seed Nothing = ClassicGame seed
+initGameType _ (Just challenge) =
+  ChallengeGame $ \em -> do
+    fileName <- lift $ getDataFileName $ "challenges/" ++ challenge ++ ".yaml"
+    res <- lift $ decodeFileEitherE em fileName
+    case res of
+      Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
+      Right c -> return c

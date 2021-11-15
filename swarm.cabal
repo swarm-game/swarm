@@ -22,7 +22,7 @@ tested-with:        GHC ==8.10.4 || ==9.0.1
 extra-source-files: CHANGELOG.md
                     example/*.sw
 data-dir:           data/
-data-files:         *.yaml
+data-files:         *.yaml, challenges/*.yaml
 
 source-repository head
     type:     git
