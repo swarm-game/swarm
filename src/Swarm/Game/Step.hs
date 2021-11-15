@@ -20,7 +20,7 @@
 module Swarm.Game.Step where
 
 import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
-import Control.Monad (forM_, msum, unless, void, when)
+import Control.Monad (forM_, guard, msum, unless, void, when)
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
@@ -1150,7 +1150,9 @@ execConst c vs s k = do
               mkRobot
                 name
                 (r ^. robotLocation)
-                (r ^. robotOrientation ? east)
+                ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
+                    ? east
+                )
                 (In cmd e s [FExec])
                 (S.toList devices)
 
