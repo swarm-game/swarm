@@ -31,7 +31,7 @@ import Swarm.TUI.Model
 
 main :: IO ()
 main = do
-  mg <- runExceptT (initGameState 0)
+  mg <- runExceptT (initGameState (ClassicGame 0))
   case mg of
     Left err -> assertFailure (from err)
     Right g -> defaultMain (tests g)
@@ -436,7 +436,7 @@ eval g =
   evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
-  evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK 0 $ cesk
+  evaluateCESK cesk = flip evalStateT (g & gameMode .~ CreativeMode) . flip evalStateT r . runCESK 0 $ cesk
    where
     r = mkRobot "" zero zero cesk []
 
