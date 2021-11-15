@@ -4,6 +4,12 @@ win: |
   loc <- getRobotLoc "base";
   return (loc == inr (4,4))
 robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,0]
+    devices:
+      - 3D printer
+      - logger
   - name: Fred
     loc: [1,2]
     dir: [1,0]

@@ -68,7 +68,7 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Linear
 
-import Data.Yaml ((.:))
+import Data.Yaml ((.:), (.:?))
 import Swarm.Util.Yaml
 
 import Data.Hashable (hashWithSalt)
@@ -363,8 +363,11 @@ instance FromJSONE EntityMap Robot where
       <$> liftE (v .: "name")
       <*> liftE (v .: "loc")
       <*> liftE (v .: "dir")
-      <*> liftE ((\pt -> initMachine pt mempty emptyStore) <$> (v .: "program"))
+      <*> liftE (mkMachine <$> (v .:? "program"))
       <*> v ..:? "devices" ..!= []
+   where
+    mkMachine Nothing = idleMachine
+    mkMachine (Just pt) = initMachine pt mempty emptyStore
 
 -- XXX make a more general "mkRobot" function
 -- XXX add fields for:

@@ -1,0 +1,10 @@
+name: Moving
+win: |
+  loc <- getRobotLoc "base";
+  return (loc == inr (2,0))
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
