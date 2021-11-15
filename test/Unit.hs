@@ -21,7 +21,7 @@ import Swarm.Game.CESK
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
-import Swarm.Game.Step
+import Swarm.Game.Step (stepCESK)
 import Swarm.Game.Value
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
