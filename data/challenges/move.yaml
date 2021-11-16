@@ -8,3 +8,12 @@ robots:
     dir: [1,0]
     devices:
       - treads
+world:
+  palette:
+    'T': [grass, tree]
+    '.': [grass, null]
+  upperleft: [-2, 2]
+  map: |
+    T.T.T
+    .T.T.
+    T.T.T

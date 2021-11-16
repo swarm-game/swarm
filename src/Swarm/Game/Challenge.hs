@@ -37,10 +37,15 @@ module Swarm.Game.Challenge (
 import Control.Arrow ((***))
 import Control.Lens hiding (from)
 import Data.Array
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HM
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Yaml as Y
+import GHC.Int (Int64)
 import Linear.V2
+import Witch (from, into)
 
 import Swarm.Game.Entity
 import Swarm.Game.Robot (Robot, baseRobot, robotLocation)
@@ -67,7 +72,7 @@ instance FromJSONE EntityMap Challenge where
     Challenge
       <$> liftE (v .: "name")
       <*> liftE (v .:? "seed")
-      <*> pure (const (fromEnum StoneT, Nothing)) -- XXX
+      <*> mkWorldFun (v .: "world")
       <*> v ..: "robots"
       <*> liftE (v .: "win")
 
@@ -90,6 +95,57 @@ challengeRobots :: Lens' Challenge [Robot]
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
 challengeWin :: Lens' Challenge ProcessedTerm
+
+-- | A description of a world parsed from a YAML file.  The
+--   'mkWorldFun' function is used to turn a 'WorldDescription' into a
+--   'WorldFun'.
+data WorldDescription = WorldDescription
+  { defaultTerrain :: (TerrainType, Maybe Text)
+  , palette :: WorldPalette
+  , ul :: V2 Int64
+  , area :: Text
+  }
+
+instance FromJSON WorldDescription where
+  parseJSON = withObject "world description" $ \v ->
+    WorldDescription
+      <$> v .:? "default" .!= (BlankT, Nothing)
+      <*> v .: "palette"
+      <*> v .: "upperleft"
+      <*> v .: "map"
+
+newtype WorldPalette = WorldPalette
+  {unPalette :: HashMap Text (TerrainType, Maybe Text)}
+
+instance FromJSON WorldPalette where
+  parseJSON = withObject "palette" $ fmap WorldPalette . mapM parseJSON
+
+mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (WorldFun Int Entity)
+mkWorldFun pwd = E $ \em -> do
+  wd <- pwd
+  let toEntity :: Char -> Parser (Int, Maybe Entity)
+      toEntity c = case HM.lookup (into @Text [c]) (unPalette (palette wd)) of
+        Nothing -> fail $ "Char not in entity palette: " ++ [c]
+        Just (t, mt) -> case mt of
+          Nothing -> return (fromEnum t, Nothing)
+          Just name -> case lookupEntityName name em of
+            Nothing -> fail $ "Unknown entity name: " ++ from @Text name
+            Just e -> return (fromEnum t, Just e)
+
+      grid = map (into @String) . T.lines $ area wd
+
+      rs = fromIntegral $ length grid
+      cs = fromIntegral $ length (head grid)
+
+      Coords (ulr, ulc) = locToCoords (ul wd)
+
+  arr <-
+    fmap (listArray ((ulr, ulc), (ulr + rs -1, ulc + cs -1)))
+      . mapM toEntity
+      . concat
+      $ grid
+  let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) (defaultTerrain wd)
+  return $ worldFunFromArray arr defTerrain
 
 -- | A sample challenge.
 sampleChallenge :: EntityMap -> Challenge
