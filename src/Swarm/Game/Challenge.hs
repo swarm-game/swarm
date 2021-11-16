@@ -29,9 +29,6 @@ module Swarm.Game.Challenge (
   challengeWorld,
   challengeRobots,
   challengeWin,
-
-  -- * A sample challenge (for testing)
-  sampleChallenge,
 ) where
 
 import Control.Arrow ((***))
@@ -39,7 +36,6 @@ import Control.Lens hiding (from)
 import Data.Array
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml as Y
@@ -48,11 +44,10 @@ import Linear.V2
 import Witch (from, into)
 
 import Swarm.Game.Entity
-import Swarm.Game.Robot (Robot, baseRobot, robotLocation)
+import Swarm.Game.Robot (Robot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Util.Yaml
 
 -- | A 'Challenge' contains all the information to describe a
@@ -146,32 +141,3 @@ mkWorldFun pwd = E $ \em -> do
       $ grid
   let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) (defaultTerrain wd)
   return $ worldFunFromArray arr defTerrain
-
--- | A sample challenge.
-sampleChallenge :: EntityMap -> Challenge
-sampleChallenge em =
-  Challenge
-    { _challengeName = "Sample challenge"
-    , _challengeSeed = Just 0
-    , _challengeWorld = worldFunFromArray arr (fromEnum StoneT, Nothing)
-    , _challengeRobots =
-        [baseRobot startDevices & robotLocation .~ V2 0 0]
-    , _challengeWin =
-        [tmQ| loc <- getRobotLoc "base";
-              return (loc == inr (4,4))
-            |]
-    }
- where
-  startDevices = mapMaybe (`lookupEntityName` em) ["treads", "dictionary", "scanner"]
-
-  arr =
-    listArray ((-4, 0), (0, 4)) . map toEntity . concat $
-      [ "  T  "
-      , " T   "
-      , "     "
-      , "   T "
-      , "T    "
-      ]
-  toEntity c = (fromEnum *** (`lookupEntityName` em)) $ case c of
-    'T' -> (DirtT, "tree")
-    _ -> (StoneT, "nothing")

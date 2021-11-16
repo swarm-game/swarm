@@ -259,7 +259,7 @@ constCaps =
     Reprogram -> [CReprogram]
     Drill -> [CDrill]
     -- Some God-like sensing abilities.
-    GetRobotLoc -> [CGod]
+    As -> [CGod]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.

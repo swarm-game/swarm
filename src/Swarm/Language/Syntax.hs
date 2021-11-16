@@ -258,8 +258,6 @@ data Const
     Whoami
   | -- | Get a uniformly random integer.
     Random
-  | -- | Get the location of a robot.
-    GetRobotLoc
   | -- Modules
 
     -- | Run a program loaded from a file.
@@ -323,6 +321,10 @@ data Const
     -- | Application operator - helps to avoid parentheses:
     --   @f $ g $ h x  =  f (g (h x))@
     AppF
+  | -- God-like sensing operations
+
+    -- | Run a command as if you were another robot.
+    As
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -424,7 +426,6 @@ constInfo c = case c of
   Ishere -> commandLow 1
   Whoami -> commandLow 0
   Random -> commandLow 1
-  GetRobotLoc -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1
   Try -> commandLow 2
@@ -450,6 +451,7 @@ constInfo c = case c of
   Leq -> binaryOp "<=" 4 N
   Geq -> binaryOp ">=" 4 N
   AppF -> binaryOp "$" 0 R
+  As -> commandLow 2
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}

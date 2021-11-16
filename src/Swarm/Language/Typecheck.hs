@@ -450,7 +450,6 @@ inferConst c = toU $ case c of
   Ishere -> [tyQ| string -> cmd bool |]
   Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
-  GetRobotLoc -> [tyQ| string -> cmd (() + int*int) |]
   Run -> [tyQ| string -> cmd () |]
   If -> [tyQ| bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]
@@ -476,6 +475,7 @@ inferConst c = toU $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   AppF -> [tyQ| (a -> b) -> a -> b |]
+  As -> [tyQ| string -> {cmd a} -> cmd a |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]

@@ -1,7 +1,9 @@
 name: Moving
 win: |
-  loc <- getRobotLoc "base";
-  return (loc == inr (2,0))
+  try {
+    loc <- as "base" {whereami};
+    return (loc == (2,0))
+  } { return false }
 robots:
   - name: base
     loc: [0,0]

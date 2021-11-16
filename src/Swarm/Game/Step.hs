@@ -900,14 +900,25 @@ execConst c vs s k = do
         n <- uniform (0, hi - 1)
         return $ Out (VInt n) s k
       _ -> badConst
-    GetRobotLoc -> case vs of
-      [VString name] -> do
-        mr <- robotNamed name
-        case mr of
-          Nothing -> return $ Out (VInj False VUnit) s k
-          Just r -> do
-            let V2 x y = r ^. robotLocation
-            return $ Out (VInj True (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y)))) s k
+    As -> case vs of
+      [VString name, prog] -> do
+        -- Get the named robot and current game state
+        r <- robotNamed name >>= (`isJustOrFail` ["There is no robot named ", name])
+        g <- get @GameState
+
+        -- Execute the given program *hypothetically*: i.e. in a fresh
+        -- CESK machine, using *copies* of the current store, robot
+        -- and game state.  We discard the state afterwards so any
+        -- modifications made by prog do not persist.  Note we also
+        -- set the copied robot to be a "system" robot so it is
+        -- capable of executing any commands; the As command
+        -- already requires "God" capability.
+        v <-
+          evalState @Robot (r & systemRobot .~ True) . evalState @GameState g $
+            runCESK (Out prog s [FApp (VCApp Force []), FExec])
+
+        -- Return the value returned by the hypothetical command.
+        return $ Out v s k
       _ -> badConst
     Say -> case vs of
       [VString msg] -> do
