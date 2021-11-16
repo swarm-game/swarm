@@ -13,7 +13,7 @@ import Data.Int (Int64)
 import Linear.V2 (V2 (V2))
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Robot (Robot, mkRobot)
-import Swarm.Game.State (GameMode (Creative), GameState, addRobot, gameMode, initGameState, world)
+import Swarm.Game.State (GameMode (CreativeMode), GameState, GameType (ClassicGame), addRobot, gameMode, initGameState, world)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.World (newWorld)
@@ -77,11 +77,11 @@ initRobot prog loc = mkRobot "" north loc (initMachine prog Context.empty emptyS
 mkGameState :: (V2 Int64 -> Robot) -> Int -> IO GameState
 mkGameState robotMaker numRobots = do
   let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0 .. numRobots -1]]
-  Right initState <- runExceptT (initGameState 0)
+  Right initState <- runExceptT (initGameState (ClassicGame 0))
   execStateT
     (mapM addRobot robots)
     ( initState
-        & gameMode .~ Creative
+        & gameMode .~ CreativeMode
         & world .~ newWorld (const (fromEnum DirtT, Nothing))
     )
 
