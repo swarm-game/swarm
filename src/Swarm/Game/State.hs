@@ -135,12 +135,14 @@ data REPLStatus
   deriving (Eq, Show)
 
 data WinCondition
-  = -- | There is no winning condition (e.g. we are in Classic or Creative mode).
+  = -- | There is no winning condition (e.g. we are in Classic or
+    --   Creative mode, or the player has already won and been
+    --   congratulated).
     NoWinCondition
   | -- | The player has not won yet; this 'ProcessedTerm' of type @cmd
     --   bool@ is run every tick to determine whether they have won.
     WinCondition ProcessedTerm
-  | -- | The player has won!
+  | -- | The player has won, and we should congratulate them!
     Won
 
 makePrisms ''WinCondition

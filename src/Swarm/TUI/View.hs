@@ -63,7 +63,6 @@ import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
 
-import Control.Lens.Extras (is)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
@@ -185,6 +184,7 @@ renderModal modal = renderDialog (dialog (Just modalTitle) Nothing 500) modalWid
   (modalTitle, modalContent) =
     case modal of
       HelpModal -> ("Help", helpWidget)
+      WinModal -> ("", txt "Congratulations!")
 
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
@@ -247,7 +247,6 @@ drawMenu s =
   isPaused = s ^. gameState . paused
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot "base"
   mode = s ^. gameState . gameMode
-  hasWon = is _Won (s ^. gameState . winCondition)
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -256,7 +255,7 @@ drawMenu s =
       $ case mode of
         ClassicMode -> "Classic"
         CreativeMode -> "Creative"
-        ChallengeMode -> T.append "Challenge" (if hasWon then "!" else "")
+        ChallengeMode -> "Challenge"
   globalKeyCmds =
     [ ("F1", "help")
     , ("Tab", "cycle panels")

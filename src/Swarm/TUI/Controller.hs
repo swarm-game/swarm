@@ -103,6 +103,7 @@ handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . 
 handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
+  | isJust (s ^. uiState . uiModal) = continue $ s & uiState . uiModal .~ Nothing
 handleEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
@@ -365,7 +366,18 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated
+  -- Decide whether to show a pop-up modal congratulating the user on
+  -- successfully completing the current challenge.
+  winModalUpdated <- do
+    w <- use (gameState . winCondition)
+    case w of
+      Won -> do
+        gameState . winCondition .= NoWinCondition
+        uiState . uiModal .= Just WinModal
+        return True
+      _ -> return False
+
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || winModalUpdated
   pure redraw
 
 -- | Make sure all tiles covering the visible part of the world are

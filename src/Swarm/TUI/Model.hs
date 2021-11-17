@@ -280,6 +280,7 @@ replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 data Modal
   = HelpModal
+  | WinModal
   deriving (Eq, Show)
 
 -- | An entry in the inventory list displayed in the info panel.  We
