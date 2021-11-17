@@ -44,28 +44,32 @@ Getting started
 When you first start up Swarm, you should be greeted by a screen that
 looks something like this:
 
-![](images/initial.png)
+![World with seed 0](images/tutorial/world0.png)
 
 In the world view, you see the default [*World 0*](./TUTORIAL.md#world-generation)
-and the little white `Ω` in the middle represents your base. Start by
-using the Tab key to cycle through the four panels (the REPL, the
-info panel, the inventory panel, and the world panel), and read about the various devices
-installed on your base.  There is a lot to take in at first so feel
-free to just skim; this tutorial will cover the use of your devices in
-more detail.
+and the little white `Ω` in the middle represents your base. You will
+need to [explore](./TUTORIAL.md#exploring) to find out what all the `?` are.
+
+Start by using the <kbd>Tab</kbd> key to cycle through the four panels
+(the REPL, the info panel, the inventory panel, and the world panel),
+and read about the various devices installed on your base.
+
+There is a lot to take in at first so feel free to just skim; this tutorial
+will cover the use of your devices in more detail.
 
 Building your first robot
 -------------------------
 
 Pretty much the only thing you can do is build robots.  Let's build
-one!  Tab back to the REPL (or hit the `Meta-r` shortcut) and type
+one!  Tab back to the REPL (or hit the <kbd>Meta</kbd>+<kbd>R</kbd>
+shortcut) and type
 ```
-build "hello" {move; move; move; move}
+build "hello" {turn north; move}
 ```
 then hit Enter.  You should see a robot appear and travel to the
-east four steps before stopping.  It should look something like this:
+north one step before stopping.  It should look something like this:
 
-![](images/firstrobot.png)
+![Hello robot!](images/tutorial/hello.png)
 
 You can also see that on the next line after your input, the REPL printed out
 ```
@@ -76,38 +80,34 @@ always returns a string which is the name of the robot that was built;
 it may be different than the name you specified if there is already
 another robot with that name.
 
-Note that if you don't want a robot to hang around after completing
-its job, you can add the `selfdestruct` command to the end of its
-program.  Try building a robot that moves a few steps and then
-self-destructs.
-
 You can see that a semicolon is used to chain together commands, that
-is, if `c1` and `c2` are both commands, then `c1 ; c2` is the command
-which executes first `c1` and then `c2`.  The curly braces look fancy
-but really they are the same as parentheses (parentheses would work
-here too). Ultimately, the `build` command is just a function that takes two
-arguments: a string, and a command. (Quiz: if we left out the curly
-braces around the sequence of `move` commands, as in `build "hello"
-move;move;move;move`, what do you think would happen?  Hint: function
-application has higher precedence than semicolon.  Try it and see!)
+is, if `c1` and `c2` are both commands, then `c1; c2` is the command
+which executes first `c1` and then `c2`.  The curly braces around the
+second argument to `build` are required; curly braces create an
+expression whose evaluation is *delayed* until later.  In this case,
+the `build` command requires a delayed expression to ensure that the
+program will be evaluated *by the newly built robot* and not
+immediately when the `build` command itself is being evaluated.
 
 Types
 -----
 
-We can actually see the type of the `build` command (or any command)
-by just typing it at the prompt, without hitting `Enter`.  Any time
-the expression currently typed at the prompt parses and type checks,
-the REPL will show you the type of the expression in the upper right,
-like this:
+Ultimately, the `build` command is not special syntax, but just a
+function that takes two arguments: a string, and a delayed command. We
+can actually see the type of the `build` command (or any command) by
+just typing it at the prompt, without hitting `Enter`.  Any time the
+expression currently typed at the prompt parses and type checks, the
+REPL will show you the type of the expression in the upper right, like
+this:
 
-![](images/build-type.png)
+![Build type](images/tutorial/build.png)
 
 It will tell you that the type of `build` is
 ```
-∀ a0. string -> cmd a0 -> cmd string
+∀ a0. string -> {cmd a0} -> cmd string
 ```
 which says that `build` takes two arguments---a `string`, and a
-command that returns a value of any type---and results in a command
+delayed command that returns a value of any type---and results in a command
 which returns a `string`.  Every command returns a value, though some
 might return a value of the unit type, written `()`.  For example, if
 you type `move` at the prompt, you will see that its type is `cmd ()`,
@@ -125,66 +125,67 @@ parse error or a type error).  If you want to see what the error is,
 just hit `Enter`: a dialog box will pop up with a (somewhat) more
 informative error message.
 
-![](images/type-error.png)
+![Hi error](images/tutorial/hi.png)
 
-To get rid of the error dialog, just hit the `Esc` key.
+To get rid of the error dialog, just hit the <kbd>Esc</kbd> key.
 
 Something you can't do yet
 --------------------------
 
 Try entering the following at the REPL:
 ```
-build "nope" {let m : cmd () = move in m;m;m}
+build "nope" {make "curry"}
 ```
 The info panel should automatically switch to showing your `logger`
 device, with an error message at the bottom saying something like
 ```
 build: this would require installing devices you don't have:
-  dictionary
+  workbench
 ```
 This is telling you that in order to `build` a robot which has the right
 capabilities to run this program, you would need to
-install a `dictionary` device on the robot, but you don't have a
-`dictionary` in your inventory.  (You do have a `dictionary` device
+install a `workbench` device on the robot, but you don't have a
+`workbench` in your inventory.  (You do have a `workbench` device
 *installed* in your base robot, but you can't rip it out and put it in
 another robot.  You'll have to find a way to make more.)
 
 Creating definitions
 --------------------
 
-We can already tell it's going to be tedious typing
-`move;move;move;move;...`.  Since your base has a `dictionary`
-installed, let's create some definitions to make
+We can already tell it's going to be tedious getting the robots
+anywhere with `move;move;move;move;...`.  Since your base has
+a `dictionary` installed, let's create some definitions to make
 our life a bit easier.  To start, type the following:
 ```
-def m2 : cmd () = {move ; move} end
+def m : cmd () = move end
 ```
 
-The `: cmd ()` annotation on `m2` is optional; in this situation the
-game could have easily figured out the type of `m2` if we had just
-written `def m2 = ...` (though there are some situations where a type
-signature may be required).  The curly braces are actually optional as
-well.  The `end` is required, and is needed to disambiguate where the
-end of the definition is.  It may not seem very ambiguous in this
-situation, but is needed especially when several definitions are
-written in sequence (such as in a file full of definitions).
+The `: cmd ()` annotation on `m` is optional; in this situation the
+game could have easily figured out the type of `m` if we had just
+written `def m = ...` (though there are some situations where a type
+signature may be required). The `end` is required, and is needed to
+disambiguate where the end of the definition is.
 
 Now try this:
 ```
-def m4 = m2;m2 end; def m8 = m4;m4 end
+def m2 = m; m end;   def m4 = m2; m2 end;   def m8 = m4; m4 end
 ```
 
-Great, now we have commands that will execute `move` four and eight
-times, respectively.  Finally, let's use them:
-```
-build "mover" {m8; m8; m2}
-```
-This should build a robot that moves eighteen steps to the east.
+<sup>The semicolon between `def` commands is optional, so you can put
+`def` commands in a file and not write a semicolon after every `end`.
+</sup>
 
-(You might wonder at this point if it is possible to create a function
+Great, now we have commands that will execute `move` multiple times.
+Now let's use them:
+```
+build "runner" { turn west; m4; m }
+```
+This should build a robot that moves to the green mass to the west.
+
+You might wonder at this point if it is possible to create a function
 that takes a number as input and moves that many steps forward.  It
-certainly is possible, but right now your robots would not be capable
-of executing it.  You'll have to figure out how to upgrade them!)
+most certainly is, but right now your robots would not be capable
+of executing it.  You'll have to figure out how to upgrade them!
 
 Getting the result of a command
 -------------------------------
@@ -194,58 +195,60 @@ arrow, like so:
 ```
 var <- command; ... more commands that can refer to var ...
 ```
-(Yes, this is just like Haskell's `do`-notation; and yes, `cmd` is a
-monad, similar to the `IO` monad in Haskell. But if that doesn't mean
-anything to you, don't worry about it!)  Let's build one more
-robot called `"mover"`. It will get renamed to something else to avoid
-a name conflict, but we can capture its name in a variable using the
-above syntax.  Then we can use the `view` command to focus on it
-instead of the base.  Like so:
+<sup>Yes, it's like Haskell's `do`-notation; and yes, `cmd` is a
+monad, similar to the `IO` in Haskell. But if that doesn't mean
+anything to you, don't worry about it!</sup>
+
+Let's build one more robot called `"runner"`. It will get renamed
+to something else to avoid a name conflict, but we can capture its
+name in a variable using the above syntax.
+Then we can use the `view` command to focus on it instead of the base:
 ```
-name <- build "mover" {m8; m8; m4}; view name
+r <- build "runner" { turn west; m4; m }; view r
 ```
-Note that `base` executes the `view name` command as soon as it
+Note that `base` executes the `view r` command as soon as it
 finishes executing the `build` command, which is about the same time
 as the newly built robot *starts* executing its program.  So we get to
 watch the new robot as it goes about its business.  Afterwards, the
 view should look something like this:
 
-![](images/mover1.png)
+![View a robot](images/tutorial/viewr.png)
 
-The view is now centered on `mover1` instead of on our `base`, and the
-top-left panel shows `mover1`'s inventory and installed devices
+The view is now centered on `runner1` instead of on our `base`, and the
+top-left panel shows `runner1`'s inventory and installed devices
 instead of `base`'s.  (However, commands entered at the REPL will
 still be executed by `base`.)  To return to viewing `base` and its
 inventory, you can type `view "base"` at the prompt, or focus the
-world panel (either using `Tab` or `Meta-w`) and hit `c`.
+world panel (either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>)
+and hit <kbd>C</kbd>.
 
 Exploring
 ---------
 
 So what is all this stuff everywhere?  Let's find out!  When you
 `build` a robot, by default it starts out with a `scanner` device,
-which you may have noticed in `mover1`'s inventory.  You can `scan`
+which you may have noticed in `runner1`'s inventory.  You can `scan`
 items in the world to learn about them, and later `upload` what you
 have learned to the base.
 
-Let's build a robot to learn about those green `T` things to the west:
+Let's build a robot to learn about those green `?` things to the west:
 ```
-build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"; selfdestruct}
+build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"}
 ```
-The `turn` command causes a robot to turn, of course. It takes a
-direction as an argument, which can be either an absolute direction
+The `turn` command we used to turn the robot takes a direction as an
+argument, which can be either an absolute direction
 (`north`, `south`, `east`, or `west`) or a relative direction
 (`forward`, `back`, `left`, `right`, or `down`).
 
-Notice that the robot did not actually need to walk on top of a `T` to
+Notice that the robot did not actually need to walk on top of a `?` to
 learn about it, since it could `scan west` to scan the cell one unit
 to the west (you can also `scan down` to scan an item directly underneath the
 robot).  Also, it was able to `upload` at a distance of one cell away from
 the base.
 
-After this robot finishes, the UI should look like this:
+After this robot finishes, you should have a new entry in your inventory:
 
-![](images/scantree.png)
+![Scan a tree](images/tutorial/scantree.png)
 
 Apparently those things are trees!  Although you do not actually have
 any trees yet, you can tab over to your inventory to read about them.
@@ -253,14 +256,12 @@ In the bottom left corner you will see a description of trees along
 with some *recipes* involving trees.  There is only one recipe,
 showing that we can use a tree to construct two branches and a log.
 
-![](images/viewtree.png)
-
 Getting some resources
 ----------------------
 
 So those tree things look like they might be useful.  Let's get one!
 ```
-build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
+build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing }
 ```
 You can see that the
 `grab` command returns the name of the thing it grabbed, which is
@@ -290,7 +291,7 @@ Note that since the `make` command takes a `string` as an argument,
 You should now have two branches and a log in your inventory.  Take a
 look at them and see what recipes they enable!
 
-![](images/log.png)
+![Make a log](images/tutorial/log.png)
 
 By this time you may also notice that the tree has grown back (whether
 it has finished growing back depends on how long you took to read the
@@ -302,10 +303,10 @@ Debugging and cleaning up
 -------------------------
 
 You may have noticed that robots which finish running their programs
-just sit there forever if they didn't self-destruct.  Relatedly,
-various conditions can cause a robot to crash, which would also leave
-it stranded.  Let's see both how to clean up leftover robots, and a
-simple way to diagnose when something goes wrong.
+just sit there forever.  Relatedly, various conditions can cause a
+robot to crash, which would also leave it stranded.  Let's see both
+how to clean up leftover robots, and a simple way to diagnose when
+something goes wrong.
 
 When a robot program crashes, it prints a message to a log which can
 later be used to help diagnose the error---that is, *if* the robot has
@@ -331,7 +332,7 @@ The world should now look something like the below.  Notice that the
 on `crasher`.  Notice also that `crasher` only moved one unit south,
 even though we told it to move two steps!  What went wrong?
 
-![](images/crasher1.png)
+![Let's crash a robot!](images/tutorial/crasher.png)
 
 One thing we could do at this point is to `view "crasher"`.  However,
 it will probably become a bit more difficult to use the `view` command in
@@ -340,7 +341,7 @@ or remember the name of the robot that crashed?  Fortunately, there is
 something else we can do: send out another robot to `salvage` the
 crashed robot.
 
-The `salvage` command can be executed by any robot with a `grabber`,
+The `salvage` command can be executed by any robot with a `plasma cutter`,
 which is one of the devices installed on new robots by default.  It
 takes no arguments, and simply looks for any idle robot in the same
 cell; if it finds one, it disassembles the idle robot, transferring
@@ -358,14 +359,14 @@ the `upload` command, which we have seen before.  In addition to
 uploading knowledge about entities, it turns out that it also uploads
 the log from a `logger`.
 ```
-build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing; selfdestruct}
+build "fetch" {turn west; m8; m; thing <- grab; turn back; m8; m; give "base" thing}
 make "log"
 make "logger"
 build "salvager" {turn south; move; log "salvaging..."; salvage; turn back; move; upload "base"}
 ```
 The world should now look something like this:
 
-![](images/salvaged.png)
+![Salvaging a crashed robot.](images/tutorial/salvaged.png)
 
 As you can see, the base's log now contains some entries from
 `crasher`!  They were copied over to `salvager`'s log when it salvaged
@@ -377,16 +378,22 @@ in a cell with nothing to grab.
 Loading definitions from a file
 -------------------------------
 
-One last thing for now: it is possible to load definitions from a
-file.  Just type `run("filename")` and the contents of the file will
-be executed as if you typed it at the REPL.  For example, rather than
-typing definitions at the prompt, you could put a sequence of
-definitions in a file, separated by semicolons (note that whitespace
-is ignored, so format it however you like).  Then you can easily
-modify the definitions or add more, and just `run` the file every time
-you want to reload the definitions.  Eventually, there will be a way
-to both save and load commands, but this is better than nothing for
-now.
+One last thing for now: typing all your definitions at the REPL is
+quite tedious, and makes it difficult to go back and edit definitions.
+Instead, it is possible to load definitions from a file.  Just type
+`run("filename")` and the contents of the file will be executed as if
+you typed it at the REPL.  For example, rather than typing definitions
+at the prompt, you could put a sequence of definitions in a file,
+(note that whitespace is ignored, so format it however you like).
+Then you can easily modify the definitions or add more, and just `run`
+the file every time you want to reload the definitions.  Eventually,
+there will be a way to both save and load commands, but this is better
+than nothing for now.
+
+There is some rudimentary [Language Server-based editor
+support](https://github.com/byorgey/swarm/blob/main/docs/EDITORS.md)
+giving syntax and error highlighting for `.sw` files; at the moment
+Emacs is supported along with VSCode.
 
 World generation
 ----------------
@@ -404,7 +411,7 @@ lakes or in the middle of a plain. Either way, you have established
 your base in the shade of what you assume is a tree and now can send
 out robots to explore!
 
-![World generated with seed 16](./images/world16.png)
+![World generated with seed 16](images/tutorial/world16.png)
 
 Creative Mode
 -------------
@@ -414,7 +421,9 @@ Creative mode.  In Classic mode, the kinds of actions your robots can
 do, and the kinds of programs they can interpret, is restricted by
 what devices they have installed.  In Creative mode you can do
 anything you like, including fabricate arbitrary items out of thin air
-using the `create` command.  To switch, highlight the world view
-panel, then hit the `m` key.
+using the `create` command. Also it will not hide unknown entities,
+as you can see in the World 16 above.
+
+To switch, highlight the world view panel, then hit the <kbd>M</kbd> key.
 
 Now go forth and build your swarm!

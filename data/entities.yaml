@@ -263,8 +263,15 @@
     attr: device
     char: 'C'
   description:
-  - An 8-bit counter.
+  - "Increment and reset, what more could you want?"
+  - |
+    A counter enables the command 'count : string -> cmd int',
+    which counts how many occurrences of an entity are currently
+    in the inventory.  This is an upgraded version of the 'has'
+    command, which returns a bool instead of an int and does
+    not require any special device.
   properties: [portable]
+  capabilities: [count]
 
 - name: Linux
   display:
@@ -449,7 +456,7 @@
   - "Finally, robots can use the 'upload' command to copy their accumulated
     knowledge to another nearby robot; for example, 'upload \"base\"'."
   properties: [portable]
-  capabilities: [scan, sensefront]
+  capabilities: [scan, sensefront, sensehere]
 
 - name: flash memory
   display:

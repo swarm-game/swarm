@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -88,6 +86,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
     pparens (p > 2) $
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
+  prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
     pparens (p > 0) $
       prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
@@ -121,7 +120,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TAntiString v) = "$str:" <> pretty v
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec p (TDelay t) = pparens (p > 10) $ "delay" <+> prettyPrec 11 t
+  prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
@@ -147,12 +146,12 @@ instance PrettyPrec Term where
             ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
-  prettyPrec _ (TLet x mty t1 t2) =
+  prettyPrec _ (TLet _ x mty t1 t2) =
     hsep $
       ["let", pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty
         ++ ["=", ppr t1, "in", ppr t2]
-  prettyPrec _ (TDef x mty t1) =
+  prettyPrec _ (TDef _ x mty t1) =
     hsep $
       ["def", pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty

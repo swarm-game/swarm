@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Game.CEK
+-- Module      :  Swarm.Game.Exception
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -31,6 +31,9 @@ data Exn
     --   be caught by a @try@ block (but at least it will not crash
     --   the entire UI).
     Fatal Text
+  | -- | An infinite loop was detected via a blackhole.  This cannot
+    --   be caught by a @try@ block.
+    InfiniteLoop
   | -- | A robot tried to do something for which it does not have some
     --   of the required capabilities.  This cannot be caught by a
     --   @try@ block.
@@ -50,6 +53,7 @@ formatExn (Fatal t) =
     [ T.append "fatal error: " t
     , "Please report this as a bug at https://github.com/byorgey/swarm/issues/new ."
     ]
+formatExn InfiniteLoop = "Infinite loop detected!"
 formatExn (Incapable caps tm) =
   T.unlines
     [ T.concat

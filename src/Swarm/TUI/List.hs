@@ -1,7 +1,3 @@
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Swarm.TUI.List
 -- Copyright   :  Brent Yorgey
@@ -43,10 +39,8 @@ handleListEventWithSeparators e isSep theList =
           BL.listMoveToBeginning theList
     V.EvKey V.KEnd [] ->
       return $
-        listFindByStrategy bwdInclusive isItem
-        -- work around https://github.com/jtdaugherty/brick/issues/337 for now
-        $
-          BL.listMoveTo (max 0 $ length (BL.listElements theList) - 1) theList
+        listFindByStrategy bwdInclusive isItem $
+          BL.listMoveToEnd theList
     V.EvKey V.KPageDown [] ->
       listFindByStrategy bwdInclusive isItem <$> BL.listMovePageDown theList
     V.EvKey V.KPageUp [] ->

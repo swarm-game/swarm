@@ -56,12 +56,13 @@ data Value where
   --   application is fully saturated (as defined by its 'arity'),
   --   whether it is a value or not depends on whether or not it
   --   represents a command (as defined by 'isCmd').  If a command
-  --   (e.g. 'Build'), it is a value, and awaits an 'Swarm.Game.CEK.FExec' frame
+  --   (e.g. 'Build'), it is a value, and awaits an 'Swarm.Game.CESK.FExec' frame
   --   which will cause it to execute.  Otherwise (e.g. 'If'), it is
   --   not a value, and will immediately reduce.
   VCApp :: Const -> [Value] -> Value
-  -- | A definition, which is not evaluated until executed.
-  VDef :: Var -> Term -> Env -> Value
+  -- | A definition, which does not take effect until executed.
+  --   The @Bool@ indicates whether the definition is recursive.
+  VDef :: Bool -> Var -> Term -> Env -> Value
   -- | The result of a command, consisting of the result of the
   --   command as well as an environment of bindings from 'TDef'
   --   commands.
@@ -70,19 +71,15 @@ data Value where
   --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
   --   in which to interpret the commands.
   VBind :: Maybe Var -> Term -> Term -> Env -> Value
-  -- | A delayed term, along with its environment. If a term would
-  --   otherwise be evaluated but we don't want it to be (/e.g./ as in
-  --   the case of arguments to an 'if', or a recursive binding), we
-  --   can stick a 'TDelay' on it, which turns it into a value.
-  --   Delayed terms won't be evaluated until 'Force' is applied to
-  --   them.
-  --
-  --   Delayed terms are also how we implement recursion.  If the
-  --   variable is @Just@, it indicates a recursive binding.  When the
-  --   @Term@ is evaluated, it should be evaluated in the given
-  --   environment /plus/ a binding of the variable to the entire
-  --   @VDelay@ itself.
-  VDelay :: Maybe Var -> Term -> Env -> Value
+  -- | A (non-recursive) delayed term, along with its environment. If
+  --   a term would otherwise be evaluated but we don't want it to be
+  --   (/e.g./ as in the case of arguments to an 'if', or a recursive
+  --   binding), we can stick a 'TDelay' on it, which turns it into a
+  --   value.  Delayed terms won't be evaluated until 'Force' is
+  --   applied to them.
+  VDelay :: Term -> Env -> Value
+  -- | A reference to a memory cell in the store.
+  VRef :: Int -> Value
   deriving (Eq, Show)
 
 -- | Pretty-print a value.
@@ -100,14 +97,17 @@ valueToTerm (VInj s v) = TApp (TConst (bool Inl Inr s)) (valueToTerm v)
 valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =
   M.foldrWithKey
-    (\y v -> TLet y Nothing (valueToTerm v))
+    (\y v -> TLet False y Nothing (valueToTerm v))
     (TLam x Nothing t)
     (M.restrictKeys (unCtx e) (S.delete x (setOf fv t)))
 valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VDef x t _) = TDef x Nothing t
+valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
-valueToTerm (VDelay _ t _) = TDelay t
+valueToTerm (VDelay t _) = TDelay SimpleDelay t
+valueToTerm (VRef n) = TInt (fromIntegral n) -- XXX WRONG
+-- We really can't get away with valueToTerm any more, we need to make a proper
+-- pretty-printer for values.
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value

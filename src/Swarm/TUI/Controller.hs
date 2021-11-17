@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -33,6 +31,7 @@ module Swarm.TUI.Controller (
   handleREPLEvent,
   validateREPLForm,
   adjReplHistIndex,
+  TimeDir (..),
 
   -- ** World panel
   handleWorldEvent,
@@ -51,9 +50,10 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
-import Data.Maybe (isJust)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Linear
 import System.Clock
 import Witch (into)
@@ -64,7 +64,9 @@ import Brick.Forms
 import qualified Brick.Widgets.List as BL
 import qualified Graphics.Vty as V
 
-import Swarm.Game.CEK (idleMachine, initMachine)
+import qualified Control.Carrier.Lift as Fused
+import qualified Control.Carrier.State.Lazy as Fused
+import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -79,7 +81,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.Util
+import Swarm.Util hiding ((<<.=))
 
 -- | Pattern synonyms to simplify brick event handler
 pattern ControlKey, MetaKey :: Char -> BrickEvent n e
@@ -150,16 +152,12 @@ toggleModal s modal = do
 --   the updated REPL history to a @.swarm_history@ file.
 shutdown :: AppState -> EventM Name (Next AppState)
 shutdown s = do
-  let s' = s & uiState . uiReplHistory . traverse %~ markOld
-      hist = filter isEntry (s' ^. uiState . uiReplHistory)
-  liftIO $ writeFile ".swarm_history" (show hist)
+  let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
+  liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
+  let s' = s & uiState . uiReplHistory %~ restartREPLHistory
   halt s'
  where
-  markOld (REPLEntry _ e) = REPLEntry False e
-  markOld r = r
-
-  isEntry REPLEntry {} = True
-  isEntry _ = False
+  history = s ^. uiState . uiReplHistory
 
 ------------------------------------------------------------
 -- Handling Frame events
@@ -266,12 +264,19 @@ runFrameTicks dt = do
 runGameTickUI :: AppState -> EventM Name (Next AppState)
 runGameTickUI s = execStateT (runGameTick >> updateUI) s >>= continue
 
+-- | Modifies the game state using a fused-effect state action.
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m ()
+zoomGameState f = do
+  gs <- use gameState
+  gs' <- liftIO (Fused.runM (Fused.execState gs f))
+  gameState .= gs'
+
 -- | Run the game for a single tick (/without/ updating the UI).
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: StateT AppState (EventM Name) ()
-runGameTick = zoom gameState gameTick
+runGameTick = zoomGameState gameTick
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -313,7 +318,7 @@ updateUI = do
     -- result as a REPL output, with its type, and reset the replStatus.
     REPLWorking pty (Just v) -> do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
-      uiState . uiReplHistory %= (REPLOutput out :)
+      uiState . uiReplHistory %= addREPLItem (REPLOutput out)
       gameState . replStatus .= REPLDone
       pure True
 
@@ -329,7 +334,7 @@ updateUI = do
       False -> pure False
       True -> do
         -- Reset the log updated flag
-        zoom gameState clearFocusedRobotLogUpdated
+        zoomGameState clearFocusedRobotLogUpdated
 
         -- Find and focus an installed "logger" device in the inventory list.
         let isLogger (InstalledEntry e) = e ^. entityName == "logger"
@@ -387,7 +392,7 @@ handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
   continue $
     s
-      & gameState . robotMap . ix "base" . machine .~ idleMachine
+      & gameState . robotMap . ix "base" . machine %~ cancel
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
@@ -396,11 +401,10 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
           s
             & uiState . uiReplForm %~ updateFormState ""
             & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ (REPLEntry True entry :)
-            & uiState . uiReplHistIdx .~ (-1)
+            & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
             & uiState . uiError .~ Nothing
             & gameState . replStatus .~ REPLWorking ty Nothing
-            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx
+            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
             & gameState %~ execState (activateRobot "base")
       Left err ->
         continue $
@@ -408,17 +412,17 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
             & uiState . uiError ?~ txt err
     else continueWithoutRedraw s
  where
-  -- XXX check that we have the capabilities needed to run the
-  -- program before even starting?
-
   entry = formState (s ^. uiState . uiReplForm)
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
+  topStore =
+    fromMaybe emptyStore $
+      s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
-  continue $ s & adjReplHistIndex (+)
+  continue $ s & adjReplHistIndex Older
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
-  continue $ s & adjReplHistIndex (-)
+  continue $ s & adjReplHistIndex Newer
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
@@ -440,21 +444,26 @@ validateREPLForm s =
   validate = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
-adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState
-adjReplHistIndex (+/-) s =
-  s & uiState . uiReplHistIdx .~ newIndex
-    & (if curIndex == -1 then saveLastEntry else id)
-    & (if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id)
+adjReplHistIndex :: TimeDir -> AppState -> AppState
+adjReplHistIndex d s =
+  ns
+    & (if replIndexIsAtInput (s ^. repl) then saveLastEntry else id)
+    & (if oldEntry /= newEntry then showNewEntry else id)
     & validateREPLForm
  where
+  -- new AppState after moving the repl index
+  ns = s & repl %~ moveReplHistIndex d oldEntry
+
+  repl :: Lens' AppState REPLHistory
+  repl = uiState . uiReplHistory
+
+  replLast = s ^. uiState . uiReplLast
   saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-  entries = [e | REPLEntry _ e <- s ^. uiState . uiReplHistory]
-  curIndex = s ^. uiState . uiReplHistIdx
-  histLen = length entries
-  newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
-  newEntry
-    | newIndex == -1 = s ^. uiState . uiReplLast
-    | otherwise = entries !! newIndex
+  showNewEntry = uiState . uiReplForm %~ updateFormState newEntry
+  -- get REPL data
+  getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
+  oldEntry = getCurrEntry s
+  newEntry = getCurrEntry ns
 
 ------------------------------------------------------------
 -- World events
@@ -568,16 +577,19 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 --   base is not currently busy.
 makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
 makeEntity s e = do
-  let topDefCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
-      mkTy = Forall [] $ TyCmd TyUnit
+  let mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
+      topStore =
+        fromMaybe emptyStore $
+          s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
+
   case isActive <$> (s ^. gameState . robotMap . at "base") of
     Just False ->
       continue $
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT topDefCtx
+          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT empty topStore
           & gameState %~ execState (activateRobot "base")
     _ -> continueWithoutRedraw s
 

@@ -4,7 +4,7 @@ let rep : int -> cmd () -> cmd () = \n. \c.
     { c; rep (n-1) c }
 in
 turn east;
-rep 50 {
+rep 50 (
   grab; move;
   turn left;
   grab; move;
@@ -16,4 +16,4 @@ rep 50 {
   } {
     if (y <= 0) { turn left } {}
   }
-}
+)

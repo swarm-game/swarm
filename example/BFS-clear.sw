@@ -19,26 +19,26 @@ def gotoX : int -> cmd () = \tgt.
   cur <- getX;
   if (cur == tgt)
     {}
-    (if (cur < tgt)
+    {if (cur < tgt)
        {turn east}
        {turn west};
-     try move {turn south; move};
+     try {move} {turn south; move};
      gotoX tgt
-    )
+    }
 end;
 def gotoY : int -> cmd () = \tgt.
   cur <- getY;
   if (cur == tgt)
     {}
-    (if (cur < tgt)
+    {if (cur < tgt)
        {turn north}
        {turn south};
-     try move {turn east; move};
+     try {move} {turn east; move};
      gotoY tgt
-    )
+    }
 end;
 def goto : int -> int -> cmd () = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
-def spawnfwd : cmd () -> cmd () = \c.
+def spawnfwd : {cmd ()} -> cmd () = \c.
    try {
      move;
      b <- isHere "tree";
@@ -51,10 +51,10 @@ def spawnfwd : cmd () -> cmd () = \c.
 end;
 def clear : cmd () =
   grab;
-  repeat 4 {
-    spawnfwd clear;
+  repeat 4 (
+    spawnfwd {clear};
     turn left
-  };
+  );
   goto 0 0;
   give "base" "tree";
   selfdestruct;

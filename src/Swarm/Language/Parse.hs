@@ -54,6 +54,7 @@ import qualified Text.Megaparsec.Pos as Pos
 
 import Data.Foldable (asum)
 import qualified Data.Set as S
+import Data.Set.Lens (setOf)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 
@@ -82,6 +83,7 @@ reservedWords =
        , "dir"
        , "bool"
        , "cmd"
+       , "delay"
        , "let"
        , "def"
        , "end"
@@ -122,7 +124,7 @@ reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char 
 identifier :: Parser Text
 identifier = (lexeme . try) (p >>= check) <?> "variable name"
  where
-  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_')
+  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
     | toLower t `elem` reservedWords =
       fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
@@ -141,6 +143,9 @@ integer = lexeme L.decimal
 
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
+
+-- dbraces :: Parser a -> Parser a
+-- dbraces = between (symbol "{{") (symbol "}}")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -193,6 +198,7 @@ parseTypeAtom =
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
+    <|> TyDelay <$> braces parseType
     <|> parens parseType
 
 parseDirection :: Parser Direction
@@ -207,13 +213,17 @@ parseConst = asum $ map alternative consts
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
+-- | Add 'Location' to a parser
+parseLocG :: Parser a -> Parser (Location, a)
+parseLocG pa = do
+  start <- getOffset
+  a <- pa
+  end <- getOffset
+  pure (Location start end, a)
+
 -- | Add 'Location' to a 'Term' parser
 parseLoc :: Parser Term -> Parser Syntax
-parseLoc pterm = do
-  start <- getOffset
-  term <- pterm
-  end <- getOffset
-  pure $ Syntax (Location start end) term
+parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
 parseTermAtom :: Parser Syntax
 parseTermAtom =
@@ -228,18 +238,34 @@ parseTermAtom =
         <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> SLet <$> (reserved "let" *> identifier)
+        <|> sLet <$> (reserved "let" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> SDef <$> (reserved "def" *> identifier)
+        <|> sDef <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
     )
     <|> parens parseTerm
-    <|> parseLoc (TConst Noop <$ try (symbol "{" *> symbol "}"))
-    <|> braces parseTerm
+    -- Potential syntax for explicitly requesting memoized delay.
+    -- Perhaps we will not need this in the end; see the discussion at
+    -- https://github.com/byorgey/swarm/issues/150 .
+    -- <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
+    -- <|> parseLoc (SDelay MemoizedDelay <$> dbraces parseTerm)
+
+    <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+
+-- | Construct an 'SLet', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sLet :: Var -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet x ty t1 = SLet (x `S.member` setOf fv (sTerm t1)) x ty t1
+
+-- | Construct an 'SDef', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sDef :: Var -> Maybe Polytype -> Syntax -> Term
+sDef x ty t = SDef (x `S.member` setOf fv (sTerm t)) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
@@ -255,8 +281,9 @@ mkBindChain stmts = case last stmts of
   Binder _ _ -> fail "Last command in a chain must not have a binder"
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = noLoc $ SBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = noLoc $ SBind (Just x) t1 t2
+  mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = loc t1 t2 $ SBind (Just x) t1 t2
+  loc a b = Syntax $ sLoc a <> sLoc b
 
 data Stmt
   = BareTerm Syntax
@@ -303,17 +330,11 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
       , Map.singleton 2 [InfixR (exprLoc2 $ SPair <$ symbol ",")]
       ]
 
--- | Utility to add empty location for ExprParser
-exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
-exprLoc2 p = do
-  f <- p
-  pure $ \s1 s2 -> noLoc $ f s1 s2
-
--- | Utility to add empty location for ExprParser
-exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
-exprLoc1 p = do
-  f <- p
-  pure $ \s -> noLoc $ f s
+  -- add location for ExprParser by combining all
+  exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
+  exprLoc2 p = do
+    (l, f) <- parseLocG p
+    pure $ \s1 s2 -> Syntax (l <> sLoc s1 <> sLoc s2) $ f s1 s2
 
 -- | Precedences and parsers of binary operators.
 --
@@ -351,6 +372,12 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
       Map.singleton
         (fixity ci)
         [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operatorString (syntax ci))]
+
+  -- combine location for ExprParser
+  exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
+  exprLoc1 p = do
+    (l, f) <- parseLocG p
+    pure $ \s -> Syntax (l <> sLoc s) $ f s
 
 operatorString :: Text -> Parser Text
 operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)

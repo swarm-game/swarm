@@ -26,7 +26,6 @@ import Data.Hashable (Hashable)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
-import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Read (readMaybe)
@@ -58,6 +57,8 @@ data Capability
     CInstall
   | -- | Execute the 'Make' command
     CMake
+  | -- | Execute the 'Count' command
+    CCount
   | -- | Execute the 'Build' command
     CBuild
   | -- | Execute the 'Salvage' command
@@ -137,8 +138,8 @@ requiredCaps ctx tm = case tm of
   -- recursion capability, if the definition is recursive).  However,
   -- we also return a map which associates the defined name to the
   -- capabilities it requires.
-  TDef x _ t ->
-    let bodyCaps = (if x `S.member` setOf fv t then S.insert CRecursion else id) (requiredCaps' ctx t)
+  TDef r x _ t ->
+    let bodyCaps = (if r then S.insert CRecursion else id) (requiredCaps' ctx t)
      in (S.singleton CEnv, singleton x bodyCaps)
   TBind _ t1 t2 ->
     -- First, see what capabilities are required to execute the
@@ -209,13 +210,13 @@ requiredCaps' ctx = go
     TApp t1 t2 -> go t1 `S.union` go t2
     -- Similarly, for a let, we assume that the let-bound expression
     -- will be used at least once in the body.
-    TLet x _ t1 t2 ->
-      (if x `S.member` setOf fv t1 then S.insert CRecursion else id) $
+    TLet r _ _ t1 t2 ->
+      (if r then S.insert CRecursion else id) $
         S.insert CEnv $ go t1 `S.union` go t2
     -- Everything else is straightforward.
     TPair t1 t2 -> go t1 `S.union` go t2
     TBind _ t1 t2 -> go t1 `S.union` go t2
-    TDelay t -> go t
+    TDelay _ t -> go t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning S.empty is safe.
@@ -228,6 +229,7 @@ constCaps =
     -- Some built-in constants that don't require any special capability.
     Wait -> []
     Noop -> []
+    AppF -> []
     Force -> []
     Return -> []
     Log -> [CLog]
@@ -240,6 +242,8 @@ constCaps =
     Give -> [CGive]
     Install -> [CInstall]
     Make -> [CMake]
+    Has -> []
+    Count -> [CCount]
     If -> [CCond]
     Create -> [CCreate]
     Blocked -> [CSensefront]

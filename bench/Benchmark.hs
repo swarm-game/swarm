@@ -11,7 +11,7 @@ import Criterion.Main (Benchmark, bench, bgroup, defaultConfig, defaultMainWith,
 import Criterion.Types (Config (timeLimit))
 import Data.Int (Int64)
 import Linear.V2 (V2 (V2))
-import Swarm.Game.CEK (initMachine)
+import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Robot (Robot, mkRobot)
 import Swarm.Game.State (GameMode (Creative), GameState, addRobot, gameMode, initGameState, world)
 import Swarm.Game.Step (gameTick)
@@ -47,7 +47,7 @@ treeProgram =
 moverProgram :: ProcessedTerm
 moverProgram =
   [tmQ|
-    let forever : cmd () -> cmd () = \c. { c; forever c }
+    let forever : cmd () -> cmd () = \c. c; forever c
     in forever move
   |]
 
@@ -55,8 +55,8 @@ moverProgram =
 circlerProgram :: ProcessedTerm
 circlerProgram =
   [tmQ|
-    let forever : cmd () -> cmd () = \c. { c; forever c }
-    in forever {
+    let forever : cmd () -> cmd () = \c. c; forever c
+    in forever (
       move;
       turn east;
       move;
@@ -65,12 +65,12 @@ circlerProgram =
       turn west;
       move;
       turn north
-    }
+    )
   |]
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> V2 Int64 -> Robot
-initRobot prog loc = mkRobot "" north loc (initMachine prog Context.empty) []
+initRobot prog loc = mkRobot "" north loc (initMachine prog Context.empty emptyStore) []
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.

@@ -70,6 +70,7 @@ module Swarm.Game.Entity (
   lookupByName,
   countByName,
   contains,
+  contains0plus,
   elems,
 
   -- ** Modification
@@ -508,6 +509,10 @@ insertCount cnt e (Inventory cs byN) =
 -- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
 contains inv e = lookup e inv > 0
+
+-- | Check whether an inventory has an entry for entity (used by robots).
+contains0plus :: Entity -> Inventory -> Bool
+contains0plus e = isJust . IM.lookup (e ^. entityHash) . counts
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory

@@ -24,8 +24,13 @@ module Swarm.Util (
   (?),
   maxOn,
   maximum0,
-  readFileMay,
   cycleEnum,
+
+  -- * Directory utilities
+  readFileMay,
+  readFileMayT,
+  getSwarmDataPath,
+  getSwarmHistoryPath,
 
   -- * English language utilities
   quote,
@@ -44,24 +49,43 @@ module Swarm.Util (
 
   -- * Template Haskell utilities
   liftText,
+
+  -- * Fused-Effects Lens utilities
+  (%%=),
+  (<%=),
+  (<+=),
+  (<<.=),
+  (<>=),
 ) where
 
-import Control.Monad (unless)
-import Control.Monad.Error.Class
+import Control.Algebra (Has)
+import Control.Effect.State (State, modify, state)
+import Control.Effect.Throw (Throw, throwError)
+import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
+import Control.Monad (unless, when)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import Linear (V2)
 import qualified NLP.Minimorph.English as MM
 import NLP.Minimorph.Util ((<+>))
-import System.Directory (doesFileExist)
+import System.Directory (
+  XdgDirectory (XdgData),
+  createDirectoryIfMissing,
+  getXdgDirectory,
+ )
+import System.FilePath
+import System.IO.Error (catchIOError)
 
 infixr 1 ?
+infix 4 %%=, <+=, <%=, <<.=, <>=
 
 -- | A convenient infix flipped version of 'fromMaybe': @Just a ? b =
 --   a@, and @Nothing ? b = b@. It can also be chained, as in @x ? y ?
@@ -83,19 +107,6 @@ maximum0 :: (Num a, Ord a) => [a] -> a
 maximum0 [] = 0
 maximum0 xs = maximum xs
 
--- | Safely attempt to read a file, returning @Nothing@ if the file
---   does not exist.  \"Safely\" should be read in scare quotes here,
---   since /e.g./ we do nothing to guard against the possibility of a
---   race condition where the file is deleted after the existence
---   check but before trying to read it.  But it's not like we're
---   worried about security or anything here.
-readFileMay :: FilePath -> IO (Maybe String)
-readFileMay file = do
-  b <- doesFileExist file
-  case b of
-    False -> return Nothing
-    True -> Just <$> readFile file
-
 -- | Take the successor of an 'Enum' type, wrapping around when it
 --   reaches the end.
 cycleEnum :: (Eq e, Enum e, Bounded e) => e -> e
@@ -103,7 +114,37 @@ cycleEnum e
   | e == maxBound = minBound
   | otherwise = succ e
 
---------------------------------------------------
+------------------------------------------------------------
+-- Directory stuff
+
+-- | Safely attempt to read a file.
+readFileMay :: FilePath -> IO (Maybe String)
+readFileMay = catchIO . readFile
+
+-- | Safely attempt to (efficiently) read a file.
+readFileMayT :: FilePath -> IO (Maybe Text)
+readFileMayT = catchIO . T.readFile
+
+-- | Turns any IO error into Nothing.
+catchIO :: IO a -> IO (Maybe a)
+catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
+
+-- | Get path to swarm data, optionally creating necessary
+--   directories.
+getSwarmDataPath :: Bool -> IO FilePath
+getSwarmDataPath createDirs = do
+  swarmData <- getXdgDirectory XdgData "swarm"
+  when createDirs (createDirectoryIfMissing True swarmData)
+  pure swarmData
+
+-- | Get path to swarm history, optionally creating necessary
+--   directories. This could fail if user has bad permissions
+--   on his own $HOME or $XDG_DATA_HOME which is unlikely.
+getSwarmHistoryPath :: Bool -> IO FilePath
+getSwarmHistoryPath createDirs =
+  (</> "history") <$> getSwarmDataPath createDirs
+
+------------------------------------------------------------
 -- Some language-y stuff
 
 -- | Prepend a noun with the proper indefinite article (\"a\" or \"an\").
@@ -154,23 +195,23 @@ deriving instance FromJSON (V2 Int64)
 -- Validation utilities
 
 -- | Require that a Boolean value is @True@, or throw an exception.
-holdsOr :: MonadError e m => Bool -> e -> m ()
+holdsOr :: Has (Throw e) sig m => Bool -> e -> m ()
 holdsOr b e = unless b $ throwError e
 
 -- | Require that a 'Maybe' value is 'Just', or throw an exception.
-isJustOr :: MonadError e m => Maybe a -> e -> m a
+isJustOr :: Has (Throw e) sig m => Maybe a -> e -> m a
 Just a `isJustOr` _ = return a
 Nothing `isJustOr` e = throwError e
 
 -- | Require that an 'Either' value is 'Right', or throw an exception
 --   based on the value in the 'Left'.
-isRightOr :: MonadError e m => Either b a -> (b -> e) -> m a
+isRightOr :: Has (Throw e) sig m => Either b a -> (b -> e) -> m a
 Right a `isRightOr` _ = return a
 Left b `isRightOr` f = throwError (f b)
 
 -- | Require that a 'Validation' value is 'Success', or throw an exception
 --   based on the value in the 'Failure'.
-isSuccessOr :: MonadError e m => Validation b a -> (b -> e) -> m a
+isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
 
@@ -180,3 +221,26 @@ Failure b `isSuccessOr` f = throwError (f b)
 -- See https://stackoverflow.com/questions/38143464/cant-find-inerface-file-declaration-for-variable
 liftText :: T.Text -> Q Exp
 liftText txt = AppE (VarE 'T.pack) <$> lift (T.unpack txt)
+
+------------------------------------------------------------
+-- Fused-Effects Lens utilities
+
+(<+=) :: (Has (State s) sig m, Num a) => LensLike' ((,) a) s a -> a -> m a
+l <+= a = l <%= (+ a)
+{-# INLINE (<+=) #-}
+
+(<%=) :: (Has (State s) sig m) => LensLike' ((,) a) s a -> (a -> a) -> m a
+l <%= f = l %%= (\b -> (b, b)) . f
+{-# INLINE (<%=) #-}
+
+(%%=) :: (Has (State s) sig m) => Over p ((,) r) s s a b -> p a (r, b) -> m r
+l %%= f = state (swap . l f)
+{-# INLINE (%%=) #-}
+
+(<<.=) :: (Has (State s) sig m) => LensLike ((,) a) s s a b -> b -> m a
+l <<.= b = l %%= \a -> (a, b)
+{-# INLINE (<<.=) #-}
+
+(<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
+l <>= a = modify (l <>~ a)
+{-# INLINE (<>=) #-}
