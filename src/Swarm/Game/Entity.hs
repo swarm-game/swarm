@@ -67,6 +67,7 @@ module Swarm.Game.Entity (
   empty,
   singleton,
   fromList,
+  fromElems,
 
   -- ** Lookup
   lookup,
@@ -515,6 +516,10 @@ insert = insertCount 1
 -- | Create an inventory from a list of entities.
 fromList :: [Entity] -> Inventory
 fromList = foldl' (flip insert) empty
+
+-- | Create an inventory from a list of entities and their counts.
+fromElems :: [(Count, Entity)] -> Inventory
+fromElems = foldl' (flip (uncurry insertCount)) empty
 
 -- | Insert a certain number of copies of an entity into an inventory.
 --   If the inventory already contains this entity, then only its

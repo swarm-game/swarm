@@ -47,7 +47,7 @@ import Data.Yaml as Y
 --   value of type @e@.
 newtype With e f a = E {runE :: e -> f a}
   deriving (Functor)
-  deriving (Applicative, Monad) via (ReaderT e f)
+  deriving (Applicative, Monad, MonadFail) via (ReaderT e f)
 
 -- | A 'ParserE' is a YAML 'Parser' that can also depend on knowing an
 --   value of type @e@.  The @E@ used to stand for @EntityMap@, but now
@@ -73,7 +73,7 @@ withE e (E f) = E (f . (<> e))
 --   For things that don't care about the environment, the default
 --   implementation of 'parseJSONE' simply calls 'parseJSON' from a
 --   'FromJSON' instance.
-class FromJSONE e a | a -> e where
+class FromJSONE e a where
   parseJSONE :: Value -> ParserE e a
   default parseJSONE :: FromJSON a => Value -> ParserE e a
   parseJSONE = liftE . parseJSON
@@ -81,8 +81,20 @@ class FromJSONE e a | a -> e where
   parseJSONE' :: e -> Value -> Parser a
   parseJSONE' e = ($e) . runE . parseJSONE
 
+instance FromJSONE e Int
+
 instance FromJSONE e a => FromJSONE e [a] where
-  parseJSONE = withArrayE "list" (traverse parseJSONE . V.toList)
+  parseJSONE = withArrayE "[]" (traverse parseJSONE . V.toList)
+
+instance (FromJSONE e a, FromJSONE e b) => FromJSONE e (a, b) where
+  parseJSONE = withArrayE "(a, b)" $ \t ->
+    let n = V.length t
+     in if n == 2
+          then
+            (,)
+              <$> parseJSONE (V.unsafeIndex t 0)
+              <*> parseJSONE (V.unsafeIndex t 1)
+          else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 2"
 
 ------------------------------------------------------------
 -- Decoding
