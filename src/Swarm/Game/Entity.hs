@@ -54,6 +54,7 @@ module Swarm.Game.Entity (
 
   -- ** Entity map
   EntityMap,
+  buildEntityMap,
   loadEntities,
   lookupEntityName,
   deviceForCap,
@@ -289,6 +290,13 @@ data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
   , entitiesByCap :: Map Capability Entity
   }
+
+instance Semigroup EntityMap where
+  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)
+
+instance Monoid EntityMap where
+  mempty = EntityMap M.empty M.empty
+  mappend = (<>)
 
 -- | Find an entity with the given name.
 lookupEntityName :: Text -> EntityMap -> Maybe Entity

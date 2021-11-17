@@ -20,6 +20,7 @@ module Swarm.Util.Yaml (
   With (..),
   ParserE,
   liftE,
+  withE,
   FromJSONE (..),
   decodeFileEitherE,
   (..:),
@@ -57,6 +58,9 @@ type ParserE e = With e Parser
 --   value.
 liftE :: Functor f => f a -> With e f a
 liftE = E . const
+
+withE :: Semigroup e => e -> With e f a -> With e f a
+withE e (E f) = E (f . (<> e))
 
 ------------------------------------------------------------
 -- FromJSONE

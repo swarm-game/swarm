@@ -26,6 +26,7 @@ module Swarm.Game.Challenge (
   -- ** Fields
   challengeName,
   challengeSeed,
+  challengeEntities,
   challengeWorld,
   challengeRobots,
   challengeWin,
@@ -55,6 +56,7 @@ import Swarm.Util.Yaml
 data Challenge = Challenge
   { _challengeName :: Text
   , _challengeSeed :: Maybe Int
+  , _challengeEntities :: EntityMap
   , _challengeWorld :: WorldFun Int Entity
   , _challengeRobots :: [Robot]
   , _challengeWin :: ProcessedTerm
@@ -63,12 +65,14 @@ data Challenge = Challenge
 makeLensesWith (lensRules & generateSignatures .~ False) ''Challenge
 
 instance FromJSONE EntityMap Challenge where
-  parseJSONE = withObjectE "challenge" $ \v ->
+  parseJSONE = withObjectE "challenge" $ \v -> do
+    em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     Challenge
       <$> liftE (v .: "name")
       <*> liftE (v .:? "seed")
-      <*> mkWorldFun (v .: "world")
-      <*> v ..: "robots"
+      <*> pure em
+      <*> withE em (mkWorldFun (v .: "world"))
+      <*> withE em (v ..: "robots")
       <*> liftE (v .: "win")
 
 -- | the name of the challenge.
@@ -77,6 +81,9 @@ challengeName :: Lens' Challenge Text
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed.
 challengeSeed :: Lens' Challenge (Maybe Int)
+
+-- | Any custom entities used for this challenge.
+challengeEntities :: Lens' Challenge EntityMap
 
 -- | The starting world for the challenge.
 challengeWorld :: Lens' Challenge (WorldFun Int Entity)
