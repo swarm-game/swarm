@@ -1031,6 +1031,7 @@ execConst c vs s k = do
         -- declared in the parent robot
         robotMap . at childRobotName . _Just . machine .= In cmd e s [FExec]
         robotMap . at childRobotName . _Just . robotContext .= r ^. robotContext
+        activateRobot childRobotName
 
         return $ Out VUnit s k
       _ -> badConst
