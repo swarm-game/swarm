@@ -136,6 +136,8 @@ data EntityProperty
     Growable
   | -- | Robots drown if they walk on this.
     Liquid
+  | -- | Robots automatically know what this is without having to scan it.
+    Known
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON EntityProperty where

@@ -342,10 +342,12 @@ drawCell edr w i = case W.lookupEntity i w of
     , displayEntity (hide e)
     )
  where
-  known e = case edr of
-    HideAllEntities -> False
-    HideNoEntity -> True
-    HideEntityUnknownTo ro -> ro `robotKnows` e
+  known e =
+    e `hasProperty` Known
+      || case edr of
+        HideAllEntities -> False
+        HideNoEntity -> True
+        HideEntityUnknownTo ro -> ro `robotKnows` e
   hide e = (if known e then id else entityDisplay . defaultChar %~ const '?') e
 
 ------------------------------------------------------------
