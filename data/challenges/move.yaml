@@ -1,6 +1,6 @@
 name: Moving, part 1
 entities:
-  - name: codex
+  - name: challenge
     display:
       attr: device
       char: 'X'
