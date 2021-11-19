@@ -282,6 +282,58 @@
   properties: [portable]
 
 ############################################################
+### Utility ################################################
+############################################################
+
+- name: upper left corner
+  display:
+    attr: entity
+    char: '┌'
+  description:
+    - Upper left corner.
+  properties: [unwalkable, known]
+
+- name: upper right corner
+  display:
+    attr: entity
+    char: '┐'
+  description:
+    - An upper right corner wall.
+  properties: [unwalkable, known]
+
+- name: lower left corner
+  display:
+    attr: entity
+    char: '└'
+  description:
+    - A lower left corner wall.
+  properties: [unwalkable, known]
+
+- name: lower right corner
+  display:
+    attr: entity
+    char: '┘'
+  description:
+    - A lower right corner wall.
+  properties: [unwalkable, known]
+
+- name: horizontal wall
+  display:
+    attr: entity
+    char: '─'
+  description:
+    - A horizontal wall.
+  properties: [unwalkable, known]
+
+- name: vertical wall
+  display:
+    attr: entity
+    char: '│'
+  description:
+    - A vertical wall.
+  properties: [unwalkable, known]
+
+############################################################
 ### Devices ################################################
 ############################################################
 

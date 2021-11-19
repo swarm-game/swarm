@@ -1,4 +1,16 @@
-name: Moving
+name: Moving, part 1
+entities:
+  - name: codex
+    display:
+      attr: device
+      char: 'X'
+    description:
+    - |
+      Robots can use the 'move' command to move forward one unit
+      in the direction they are currently facing.  To complete
+      this challenge, move your robot two spaces to the right, to
+      the coordinates (2,0).
+    properties: [portable]
 win: |
   try {
     loc <- as "base" {whereami};
@@ -10,12 +22,20 @@ robots:
     dir: [1,0]
     devices:
       - treads
+      - logger
+    inventory:
+      - [1, codex]
 world:
   palette:
-    'T': [grass, tree]
     '.': [grass, null]
-  upperleft: [-2, 2]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
   map: |
-    T.T.T
-    .T.T.
-    T.T.T
+    ┌───┐
+    │...│
+    └───┘
