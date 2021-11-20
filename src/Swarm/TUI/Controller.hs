@@ -371,8 +371,8 @@ updateUI = do
   winModalUpdated <- do
     w <- use (gameState . winCondition)
     case w of
-      Won -> do
-        gameState . winCondition .= NoWinCondition
+      Won False -> do
+        gameState . winCondition .= Won True
         uiState . uiModal .= Just WinModal
         return True
       _ -> return False

@@ -137,7 +137,7 @@ gameTick = do
       v <- runThrow @Exn $ evalPT t
       case v of
         Left _exn -> return () -- XXX
-        Right (VBool True) -> winCondition .= Won
+        Right (VBool True) -> winCondition .= Won False
         _ -> return ()
     _ -> return ()
 
