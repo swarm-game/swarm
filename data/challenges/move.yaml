@@ -24,7 +24,7 @@ robots:
       - treads
       - logger
     inventory:
-      - [1, codex]
+      - [1, challenge]
 world:
   palette:
     '.': [grass, null]
