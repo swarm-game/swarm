@@ -60,7 +60,7 @@ instance FromJSON ProcessedTerm where
    where
     tryProcess :: Text -> Y.Parser ProcessedTerm
     tryProcess t = case processTerm t of
-      Left err -> fail $ "Error while processing win condition: " ++ from err
+      Left err -> fail $ "Could not parse term: " ++ from err
       Right pt -> return pt
 
 -- | Given a 'Text' value representing a Swarm program,
