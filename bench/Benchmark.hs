@@ -13,7 +13,7 @@ import Data.Int (Int64)
 import Linear.V2 (V2 (V2))
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Robot (Robot, mkRobot)
-import Swarm.Game.State (GameMode (CreativeMode), GameState, GameType (ClassicGame), addRobot, gameMode, initGameState, world)
+import Swarm.Game.State (GameState, GameType (ClassicGame), addRobot, creativeMode, initGameState, world)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.World (newWorld)
@@ -81,7 +81,7 @@ mkGameState robotMaker numRobots = do
   execStateT
     (mapM addRobot robots)
     ( initState
-        & gameMode .~ CreativeMode
+        & creativeMode .~ True
         & world .~ newWorld (const (fromEnum DirtT, Nothing))
     )
 
