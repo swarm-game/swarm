@@ -436,7 +436,7 @@ eval g =
   evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
-  evaluateCESK cesk = flip evalStateT (g & gameMode .~ CreativeMode) . flip evalStateT r . runCESK 0 $ cesk
+  evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
    where
     r = mkRobot "" zero zero cesk []
 
