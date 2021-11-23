@@ -488,7 +488,7 @@ worldScrollDist = 8
 handleWorldEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 -- scrolling the world view in Creative mode
 handleWorldEvent s (VtyEvent (V.EvKey k []))
-  | (s ^. gameState . gameMode) == CreativeMode
+  | s ^. gameState . creativeMode
       && k
         `elem` [ V.KUp
                , V.KDown
@@ -532,7 +532,7 @@ handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'f') [])) =
   continue $ (s & uiState . uiShowFPS %~ not)
 -- for testing only: toggle between classic & creative modes
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') [])) =
-  continue (s & gameState . gameMode %~ cycleEnum)
+  continue (s & gameState . creativeMode %~ not)
 -- Fall-through case: don't do anything.
 handleWorldEvent s _ = continueWithoutRedraw s
 

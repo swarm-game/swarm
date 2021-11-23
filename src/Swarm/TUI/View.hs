@@ -246,16 +246,15 @@ drawMenu s =
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot "base"
-  mode = s ^. gameState . gameMode
+  creative = s ^. gameState . creativeMode
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
       . (<> " mode")
-      $ case mode of
-        ClassicMode -> "Classic"
-        CreativeMode -> "Creative"
-        ChallengeMode -> "Challenge"
+      $ case creative of
+        False -> "Classic"
+        True -> "Creative"
   globalKeyCmds =
     [ ("F1", "help")
     , ("Tab", "cycle panels")
@@ -266,7 +265,7 @@ drawMenu s =
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
-    [ ("←↓↑→ / hjkl", "scroll") | mode == CreativeMode
+    [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
       ++ [ ("<>", "slower/faster")
          , ("p", if isPaused then "unpause" else "pause")
@@ -319,7 +318,7 @@ drawWorld g =
   drawLoc coords =
     let (ePrio, eWidget) = drawCell hiding (g ^. world) coords
         hiding =
-          if g ^. gameMode == CreativeMode
+          if g ^. creativeMode
             then HideNoEntity
             else maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of

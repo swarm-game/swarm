@@ -15,7 +15,6 @@
 module Swarm.Game.State (
   -- * Game state record
   ViewCenterRule (..),
-  GameMode (..),
   REPLStatus (..),
   WinCondition (..),
   _NoWinCondition,
@@ -28,7 +27,7 @@ module Swarm.Game.State (
   initGameState,
 
   -- ** GameState fields
-  gameMode,
+  creativeMode,
   winCondition,
   runStatus,
   paused,
@@ -111,18 +110,6 @@ data ViewCenterRule
 
 makePrisms ''ViewCenterRule
 
--- | The game mode determines various aspects of how the game works.
---   At the moment, there are only two modes, but more will be added
---   in the future.
-data GameMode
-  = -- | Explore an open world, gather resources, and upgrade your programming abilities.
-    ClassicMode
-  | -- | Like 'Classic' mode, but there are no constraints on the programs you can write.
-    CreativeMode
-  | -- | Challenge mode: try to achieve a specific objective.
-    ChallengeMode
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
 -- | A data type to represent the current status of the REPL.
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
@@ -162,7 +149,7 @@ data RunStatus
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
-  { _gameMode :: GameMode
+  { _creativeMode :: Bool
   , _winCondition :: WinCondition
   , _runStatus :: RunStatus
   , _robotMap :: Map Text Robot
@@ -209,8 +196,8 @@ let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule, '_activeRobot
       )
       ''GameState
 
--- | The current 'GameMode'.
-gameMode :: Lens' GameState GameMode
+-- | Is the user in creative mode (i.e. able to do anything without restriction)?
+creativeMode :: Lens' GameState Bool
 
 -- | How to determine whether the player has won (e.g. when in
 --   challenge mode).
@@ -442,9 +429,7 @@ initGameState gtype = do
         IClassicGame _ -> [theBase]
         IChallengeGame c -> c ^. challengeRobots
 
-      theMode = case iGameType of
-        IClassicGame _ -> ClassicMode
-        IChallengeGame _ -> ChallengeMode
+      creative = False
 
       theWorld = case iGameType of
         IClassicGame seed ->
@@ -467,7 +452,7 @@ initGameState gtype = do
 
   return $
     GameState
-      { _gameMode = theMode
+      { _creativeMode = creative
       , _winCondition = theWinCondition
       , _runStatus = Running
       , _robotMap = M.fromList $ map (view robotName &&& id) robotList
