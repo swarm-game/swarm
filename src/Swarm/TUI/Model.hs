@@ -91,19 +91,22 @@ module Swarm.TUI.Model (
   Seed,
 ) where
 
-import Control.Lens hiding (from)
+import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Data.Yaml (prettyPrintParseException)
 import System.Clock
+import System.Directory (doesFileExist)
+import System.FilePath ((<.>), (</>))
 import Witch (from)
 
 import Brick
@@ -111,7 +114,6 @@ import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
 
-import Data.Yaml (prettyPrintParseException)
 import Paths_swarm (getDataFileName)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
@@ -552,8 +554,17 @@ initGameType :: Seed -> Maybe String -> GameType
 initGameType seed Nothing = ClassicGame seed
 initGameType _ (Just challenge) =
   ChallengeGame $ \em -> do
-    fileName <- lift $ getDataFileName $ "challenges/" ++ challenge ++ ".yaml"
-    res <- lift $ decodeFileEitherE em fileName
-    case res of
-      Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
-      Right c -> return c
+    libChallenge <- lift $ getDataFileName $ "challenges" </> challenge
+    libChallengeExt <- lift $ getDataFileName $ "challenges" </> challenge <.> "yaml"
+
+    mfileName <-
+      lift $
+        listToMaybe <$> filterM doesFileExist [challenge, libChallengeExt, libChallenge]
+
+    case mfileName of
+      Nothing -> throwError $ "Challenge not found: " <> from @String challenge
+      Just fileName -> do
+        res <- lift $ decodeFileEitherE em fileName
+        case res of
+          Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
+          Right c -> return c
