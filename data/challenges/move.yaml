@@ -1,6 +1,6 @@
 name: Moving, part 1
 entities:
-  - name: challenge
+  - name: goal
     display:
       attr: device
       char: 'X'
@@ -24,7 +24,7 @@ robots:
       - treads
       - logger
     inventory:
-      - [1, challenge]
+      - [1, goal]
 world:
   palette:
     '.': [grass, null]
