@@ -177,6 +177,7 @@ test-suite swarm-integration
                       lens,
                       swarm,
                       text,
+                      yaml,
                       witch
     hs-source-dirs:   test
     default-language: Haskell2010
