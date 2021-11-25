@@ -928,7 +928,7 @@ execConst c vs s k = do
         return $ Out v s k
       _ -> badConst
     Async -> case vs of
-      [VString name, prog@(VDelay t e)] -> do
+      [VString name, prog@(VDelay t _)] -> do
         -- Get the named robot and current game state
         r <- robotNamed name >>= (`isJustOrFail` ["There is no robot named ", name])
         g <- get @GameState
@@ -956,19 +956,18 @@ execConst c vs s k = do
         return $ Out (VAsync t $ GAsync va) s k
       _ -> badConst
     Await -> case vs of
-      [VInt waitTime, va@(VAsync t ga@(GAsync a))] -> do
-        rn <- use robotName
+      [va@(VAsync t (GAsync a))] -> do
         time <- use ticks
         mv <- sendIO $ Async.poll a
         return $ case mv of
-          Nothing -> Waiting (time + waitTime) (Out va s (FApp (VCApp Await []) : k))
+          Nothing -> Waiting (time + 8) (Out va s (FApp (VCApp Await []) : k))
           Just (Left e) -> Up (Fatal $ "Error in computation " <> fs (ppr t) <> ":\n" <> fs e) s k
           Just (Right retA) -> case retA of
             Left exn -> Up exn s k
             Right v -> Out v s k
       _ -> badConst
     Poll -> case vs of
-      [va@(VAsync t ga@(GAsync a))] -> do
+      [VAsync t (GAsync a)] -> do
         mv <- sendIO $ Async.poll a
         return $ case mv of
           Nothing -> Out (VInj False VUnit) s k
@@ -978,7 +977,7 @@ execConst c vs s k = do
             Right v -> Out (VInj True v) s k
       _ -> badConst
     Cancel -> case vs of
-      [VAsync t ga@(GAsync va)] -> do
+      [VAsync _ (GAsync va)] -> do
         sendIO $ Async.cancel va
         return $ Out VUnit s k
       _ -> badConst

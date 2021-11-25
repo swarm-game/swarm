@@ -478,8 +478,8 @@ inferConst c = toU $ case c of
   AppF -> [tyQ| (a -> b) -> a -> b |]
   As -> [tyQ| string -> {cmd a} -> cmd a |]
   Async -> [tyQ| string -> {cmd a} -> cmd (future a) |]
-  Await -> [tyQ| int -> future a -> cmd a |]
-  Poll -> [tyQ| future a -> cmd (string * a) |]
+  Await -> [tyQ| future a -> cmd a |]
+  Poll -> [tyQ| future a -> cmd (() + a) |]
   Cancel -> [tyQ| future a -> cmd () |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
