@@ -32,7 +32,7 @@ module Swarm.Game.Challenge (
   challengeWin,
 ) where
 
-import Control.Arrow ((***), Arrow (first))
+import Control.Arrow (Arrow (first), (***))
 import Control.Lens hiding (from)
 import Data.Array
 import Data.HashMap.Strict (HashMap)
@@ -49,9 +49,9 @@ import Swarm.Game.Entity
 import Swarm.Game.Robot (Robot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
+import Swarm.Game.WorldGen (testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
-import Swarm.Game.WorldGen (testWorld2FromArray)
 
 -- | A 'Challenge' contains all the information to describe a
 --   challenge.
@@ -154,11 +154,11 @@ mkWorldFun pwd = E $ \em -> do
     Left seed -> return $ \entities ->
       let emPlus = em <> entities
           arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
-      in (lkup emPlus <$>) . first fromEnum <$> testWorld2FromArray arr2 seed
+       in (lkup emPlus <$>) . first fromEnum <$> testWorld2FromArray arr2 seed
     Right def ->
-        let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
-        in return . const $ worldFunFromArray arr defTerrain
-  where
-      lkup :: EntityMap -> Maybe Text -> Maybe Entity
-      lkup _ Nothing = Nothing
-      lkup em (Just t) = lookupEntityName t em
+      let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
+       in return . const $ worldFunFromArray arr defTerrain
+ where
+  lkup :: EntityMap -> Maybe Text -> Maybe Entity
+  lkup _ Nothing = Nothing
+  lkup em (Just t) = lookupEntityName t em
