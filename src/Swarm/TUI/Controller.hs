@@ -62,6 +62,7 @@ import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
 import qualified Brick.Widgets.List as BL
+import Data.Map ((!))
 import qualified Graphics.Vty as V
 
 import qualified Control.Carrier.Lift as Fused
@@ -401,28 +402,37 @@ stripCmd pty = pty
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
-  continue $
-    s
-      & gameState . robotMap . ix "base" . machine %~ cancel
-handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
-  if not $ s ^. gameState . replWorking
-    then case processTerm' topTypeCtx topCapCtx entry of
-      Right t@(ProcessedTerm _ (Module ty _) _ _) ->
-        continue $
-          s
-            & uiState . uiReplForm %~ updateFormState ""
-            & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
-            & uiState . uiError .~ Nothing
-            & gameState . replStatus .~ REPLWorking ty Nothing
-            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
-            & gameState %~ execState (activateRobot "base")
-      Left err ->
-        continue $
-          s
-            & uiState . uiError ?~ txt err
-    else continueWithoutRedraw s
+handleREPLEvent s = \case
+  (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) ->
+    let cancel' = do
+          cm <- let m = s ^. gameState . robotMap . to (! "base") . machine in cancel m
+          pure (s & gameState . robotMap . ix "base" . machine .~ cm)
+     in continue =<< liftIO cancel'
+  (VtyEvent (V.EvKey V.KEnter [])) ->
+    if not $ s ^. gameState . replWorking
+      then case processTerm' topTypeCtx topCapCtx entry of
+        Right t@(ProcessedTerm _ (Module ty _) _ _) ->
+          continue $
+            s
+              & uiState . uiReplForm %~ updateFormState ""
+              & uiState . uiReplType .~ Nothing
+              & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
+              & uiState . uiError .~ Nothing
+              & gameState . replStatus .~ REPLWorking ty Nothing
+              & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
+              & gameState %~ execState (activateRobot "base")
+        Left err ->
+          continue $
+            s
+              & uiState . uiError ?~ txt err
+      else continueWithoutRedraw s
+  (VtyEvent (V.EvKey V.KUp [])) ->
+    continue $ s & adjReplHistIndex Older
+  (VtyEvent (V.EvKey V.KDown [])) ->
+    continue $ s & adjReplHistIndex Newer
+  ev -> do
+    f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
+    continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
  where
   entry = formState (s ^. uiState . uiReplForm)
   topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
@@ -431,13 +441,6 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   topStore =
     fromMaybe emptyStore $
       s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
-handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
-  continue $ s & adjReplHistIndex Older
-handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
-  continue $ s & adjReplHistIndex Newer
-handleREPLEvent s ev = do
-  f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.

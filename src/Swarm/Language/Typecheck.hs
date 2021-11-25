@@ -331,6 +331,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- dynamically at runtime when evaluating recursive let or def expressions,
   -- so we don't have to worry about typechecking them here.
   SDelay _ dt -> UTyDelay <$> infer dt
+  SFuture dt -> UTyFuture <$> infer dt
   -- Just look up variables in the context.
   TVar x -> lookup l x
   -- To infer the type of a lambda if the type of the argument is
@@ -476,6 +477,10 @@ inferConst c = toU $ case c of
   Exp -> arithBinT
   AppF -> [tyQ| (a -> b) -> a -> b |]
   As -> [tyQ| string -> {cmd a} -> cmd a |]
+  Async -> [tyQ| string -> {cmd a} -> cmd (future a) |]
+  Await -> [tyQ| int -> future a -> cmd a |]
+  Poll -> [tyQ| future a -> cmd (string * a) |]
+  Cancel -> [tyQ| future a -> cmd () |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]

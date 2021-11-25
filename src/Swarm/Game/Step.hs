@@ -19,8 +19,10 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
-import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
+import Control.Concurrent.Async as Async
+import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, guard, msum, unless, void, when)
+import Control.Monad.State (StateT, evalStateT)
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
@@ -51,6 +53,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Util
 
@@ -145,13 +148,19 @@ gameTick = do
   ticks += 1
 
 evalPT ::
-  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  ( Has (Lift IO) sig m
+  , Has (Throw Exn) sig m
+  , Has (State GameState) sig m
+  ) =>
   ProcessedTerm ->
   m Value
 evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
 evaluateCESK ::
-  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  ( Has (Lift IO) sig m
+  , Has (Throw Exn) sig m
+  , Has (State GameState) sig m
+  ) =>
   CESK ->
   m Value
 evaluateCESK cesk = evalState r . runCESK $ cesk
@@ -373,9 +382,7 @@ stepCESK cesk = case cesk of
   -- arguments, eventually dispatching to evalConst for function
   -- constants.
   Out v2 s (FApp (VCApp c args) : k)
-    | not (isCmd c)
-        && arity c == length args + 1 ->
-      evalConst c (reverse (v2 : args)) s k
+    | not (isCmd c) && arity c == length args + 1 -> evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
   -- To evaluate non-recursive let expressions, we start by focusing on the
@@ -920,6 +927,61 @@ execConst c vs s k = do
         -- Return the value returned by the hypothetical command.
         return $ Out v s k
       _ -> badConst
+    Async -> case vs of
+      [VString name, prog@(VDelay t e)] -> do
+        -- Get the named robot and current game state
+        r <- robotNamed name >>= (`isJustOrFail` ["There is no robot named ", name])
+        g <- get @GameState
+        -- -----------------------------------------------------------------------------
+        -- TODO: move this code out
+        -- Slightly edited copy of Unit.hs version of runCESK:
+        let runCESK' :: CESK -> StateT Robot (StateT GameState IO) (Either Exn Value)
+            runCESK' (Up exn _ []) = return (Left exn)
+            runCESK' cesk = case finalValue cesk of
+              Just (v, _) -> return (Right v)
+              Nothing -> do
+                cesk1 <- stepCESK cesk
+                ticks += 1
+                runCESK' cesk1
+        -- -----------------------------------------------------------------------------
+        let evalAs :: IO (Either Exn Value)
+            evalAs =
+              Out prog s [FApp (VCApp Force []), FExec]
+                & runCESK'
+                & flip evalStateT (r & systemRobot .~ True)
+                & flip evalStateT (g & creativeMode .~ True)
+
+        va <- sendIO $ Async.async evalAs
+
+        return $ Out (VAsync t $ GAsync va) s k
+      _ -> badConst
+    Await -> case vs of
+      [VInt waitTime, va@(VAsync t ga@(GAsync a))] -> do
+        rn <- use robotName
+        time <- use ticks
+        mv <- sendIO $ Async.poll a
+        return $ case mv of
+          Nothing -> Waiting (time + waitTime) (Out va s (FApp (VCApp Await []) : k))
+          Just (Left e) -> Up (Fatal $ "Error in computation " <> fs (ppr t) <> ":\n" <> fs e) s k
+          Just (Right retA) -> case retA of
+            Left exn -> Up exn s k
+            Right v -> Out v s k
+      _ -> badConst
+    Poll -> case vs of
+      [va@(VAsync t ga@(GAsync a))] -> do
+        mv <- sendIO $ Async.poll a
+        return $ case mv of
+          Nothing -> Out (VInj False VUnit) s k
+          Just (Left e) -> Up (Fatal $ "Error in computation " <> fs (ppr t) <> ":\n" <> fs e) s k
+          Just (Right retA) -> case retA of
+            Left exn -> Up exn s k
+            Right v -> Out (VInj True v) s k
+      _ -> badConst
+    Cancel -> case vs of
+      [VAsync t ga@(GAsync va)] -> do
+        sendIO $ Async.cancel va
+        return $ Out VUnit s k
+      _ -> badConst
     Say -> case vs of
       [VString msg] -> do
         rn <- use robotName
@@ -1252,6 +1314,9 @@ execConst c vs s k = do
           [ "Bad application of execConst:"
           , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
           ]
+
+  fs :: Show a => a -> Text
+  fs = from . show
   finishCookingRecipe ::
     (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
     Recipe e ->
@@ -1311,12 +1376,13 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
 compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
-compareValues = \v1 -> case v1 of
+compareValues v1 = case v1 of
   VUnit -> \case VUnit -> return EQ; v2 -> incompatCmp VUnit v2
   VInt n1 -> \case VInt n2 -> return (compare n1 n2); v2 -> incompatCmp v1 v2
   VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
   VDir d1 -> \case VDir d2 -> return (compare d1 d2); v2 -> incompatCmp v1 v2
   VBool b1 -> \case VBool b2 -> return (compare b1 b2); v2 -> incompatCmp v1 v2
+  VAsync _ a1 -> \case VAsync _ a2 -> return $ compare a1 a2; v2 -> incompatCmp v1 v2
   VInj s1 v1' -> \case
     VInj s2 v2' ->
       case compare s1 s2 of

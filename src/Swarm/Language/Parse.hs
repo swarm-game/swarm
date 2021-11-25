@@ -83,6 +83,7 @@ reservedWords =
        , "dir"
        , "bool"
        , "cmd"
+       , "future"
        , "delay"
        , "let"
        , "def"
@@ -199,6 +200,7 @@ parseTypeAtom =
     <|> TyBool <$ reserved "bool"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
+    <|> TyFuture <$> (reserved "future" *> parseTypeAtom)
     <|> parens parseType
 
 parseDirection :: Parser Direction

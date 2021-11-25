@@ -89,6 +89,7 @@ module Swarm.Game.CESK (
   prettyCESK,
 ) where
 
+import qualified Control.Concurrent.Async as Async
 import Control.Lens.Combinators (pattern Empty)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
@@ -288,13 +289,14 @@ idleMachine :: CESK
 idleMachine = Out VUnit emptyStore []
 
 -- | Cancel the currently running computation.
-cancel :: CESK -> CESK
-cancel cesk = Out VUnit s' []
+cancel :: CESK -> IO CESK
+cancel cesk = (\s -> Out VUnit s []) <$> s'
  where
-  s' = resetBlackholes $ getStore cesk
-  getStore (In _ _ s _) = s
-  getStore (Out _ s _) = s
-  getStore (Up _ s _) = s
+  s' = resetBlackholes <$> getStore cesk
+  getStore :: CESK -> IO Store
+  getStore (In _ _ s _) = pure s
+  getStore (Out v s _) = (case v of VAsync _ (GAsync as) -> Async.cancel as; _ -> pure ()) >> pure s
+  getStore (Up _ s _) = pure s
   getStore (Waiting _ c) = getStore c
 
 -- | Reset any 'Blackhole's in the 'Store'.  We need to use this any

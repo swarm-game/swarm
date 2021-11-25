@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GADTs #-}
 
 -- |
@@ -11,6 +12,7 @@
 module Swarm.Game.Value (
   -- * Values
   Value (..),
+  GAsync (..),
   prettyValue,
   valueToTerm,
 
@@ -18,14 +20,16 @@ module Swarm.Game.Value (
   Env,
 ) where
 
+import Control.Concurrent.Async as Async
 import Data.Bool (bool)
 import Data.List (foldl')
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
-import Prelude
 
+import Data.Hashable (Hashable (hash))
+import Swarm.Game.Exception (Exn)
 import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
@@ -80,7 +84,16 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
+  -- | A computation running in another thread.
+  VAsync :: Term -> GAsync Value -> Value
   deriving (Eq, Show)
+
+-- | Type for asynchronous computation which may raise an Exn.
+newtype GAsync a = GAsync {asyncComp :: Async.Async (Either Exn a)}
+  deriving (Eq, Ord, Functor)
+
+instance Show (GAsync a) where
+  show (GAsync a) = "(__" <> show (hash a) <> "__)"
 
 -- | Pretty-print a value.
 prettyValue :: Value -> Text
@@ -105,9 +118,11 @@ valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
-valueToTerm (VRef n) = TInt (fromIntegral n) -- XXX WRONG
--- We really can't get away with valueToTerm any more, we need to make a proper
--- pretty-printer for values.
+valueToTerm (VRef n) = TInt $ fromIntegral n
+valueToTerm (VAsync t _) = TFuture t
+
+-- TODO: We really can't get away with valueToTerm any more,
+-- we need to make a proper pretty-printer for values.
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value

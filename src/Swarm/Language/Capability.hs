@@ -260,6 +260,10 @@ constCaps =
     Drill -> [CDrill]
     -- Some God-like sensing abilities.
     As -> [CGod]
+    Async -> [CGod]
+    Await -> [CGod]
+    Poll -> [CGod]
+    Cancel -> [CGod]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.

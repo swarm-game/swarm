@@ -56,6 +56,7 @@ module Swarm.Language.Syntax (
   pattern TDef,
   pattern TBind,
   pattern TDelay,
+  pattern TFuture,
 
   -- * Terms
   Var,
@@ -323,8 +324,17 @@ data Const
     AppF
   | -- God-like sensing operations
 
-    -- | Run a command as if you were another robot.
+    -- | Hypothetically run a command as if you were another robot.
     As
+  | -- | Hypothetically run a command as if you were another robot,
+    --   returning a result in the future.
+    Async
+  | -- | Wait for the future result, checking in regular intervals.
+    Await
+  | -- | Check if the running command has finished.
+    Poll
+  | -- | Stop the hypothetical computation.
+    Cancel
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -452,6 +462,10 @@ constInfo c = case c of
   Geq -> binaryOp ">=" 4 N
   AppF -> binaryOp "$" 0 R
   As -> commandLow 2
+  Async -> commandLow 2
+  Await -> commandLow 2
+  Poll -> commandLow 1
+  Cancel -> commandLow 1
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}
@@ -530,6 +544,10 @@ pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
+-- | Match a TDelay without syntax
+pattern TFuture :: Term -> Term
+pattern TFuture t = SFuture (STerm t)
+
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
 {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
@@ -598,6 +616,8 @@ data Term
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType Syntax
+  | -- | TODO: describe
+    SFuture Syntax
   deriving (Eq, Show, Data)
 
 instance Plated Term where
@@ -634,6 +654,8 @@ fvT f = go S.empty
       SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
     SDelay m (Syntax l1 t1) ->
       SDelay m <$> (Syntax l1 <$> go bound t1)
+    SFuture (Syntax l1 t1) ->
+      SFuture <$> (Syntax l1 <$> go bound t1)
 
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via

@@ -87,6 +87,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
+  prettyPrec p (TyFutureF ty) = pparens (p > 9) $ "future" <+> prettyPrec 10 ty
   prettyPrec p (TyFunF ty1 ty2) =
     pparens (p > 0) $
       prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
@@ -111,57 +112,59 @@ instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
 instance PrettyPrec Term where
-  prettyPrec _ TUnit = "()"
-  prettyPrec p (TConst c) = prettyPrec p c
-  prettyPrec _ (TDir d) = ppr d
-  prettyPrec _ (TInt n) = pretty n
-  prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
-  prettyPrec _ (TString s) = fromString (show s)
-  prettyPrec _ (TAntiString v) = "$str:" <> pretty v
-  prettyPrec _ (TBool b) = bool "false" "true" b
-  prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (TDelay _ t) = braces $ ppr t
-  prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
-  prettyPrec _ (TLam x mty body) =
-    "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
-  -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
-  prettyPrec p (TApp t@(TApp (TConst c) l) r) =
-    let ci = constInfo c
-        pC = fixity ci
-     in case constMeta ci of
-          ConstMBinOp assoc ->
-            pparens (p > pC) $
-              hsep
-                [ prettyPrec (pC + fromEnum (assoc == R)) l
-                , ppr c
-                , prettyPrec (pC + fromEnum (assoc == L)) r
-                ]
-          _ -> prettyPrecApp p t r
-  prettyPrec p (TApp t1 t2) = case t1 of
-    TConst c ->
+  prettyPrec p term = case term of
+    TUnit -> "()"
+    (TConst c) -> prettyPrec p c
+    (TDir d) -> ppr d
+    (TInt n) -> pretty n
+    (TAntiInt v) -> "$int:" <> pretty v
+    (TString s) -> fromString (show s)
+    (TAntiString v) -> "$str:" <> pretty v
+    (TBool b) -> bool "false" "true" b
+    (TVar s) -> pretty s
+    (TDelay _ t) -> braces $ ppr t
+    (TFuture t) -> "async" <+> braces (ppr t)
+    (TPair t1 t2) -> pparens True $ ppr t1 <> "," <+> ppr t2
+    (TLam x mty body) ->
+      "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
+    -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
+    (TApp t@(TApp (TConst c) l) r) ->
       let ci = constInfo c
           pC = fixity ci
        in case constMeta ci of
-            ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
-            ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
-            _ -> prettyPrecApp p t1 t2
-    _ -> prettyPrecApp p t1 t2
-  prettyPrec _ (TLet _ x mty t1 t2) =
-    hsep $
-      ["let", pretty x]
-        ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["=", ppr t1, "in", ppr t2]
-  prettyPrec _ (TDef _ x mty t1) =
-    hsep $
-      ["def", pretty x]
-        ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["=", ppr t1, "end"]
-  prettyPrec p (TBind Nothing t1 t2) =
-    pparens (p > 0) $
-      prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
-  prettyPrec p (TBind (Just x) t1 t2) =
-    pparens (p > 0) $
-      pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+            ConstMBinOp assoc ->
+              pparens (p > pC) $
+                hsep
+                  [ prettyPrec (pC + fromEnum (assoc == R)) l
+                  , ppr c
+                  , prettyPrec (pC + fromEnum (assoc == L)) r
+                  ]
+            _ -> prettyPrecApp p t r
+    (TApp t1 t2) -> case t1 of
+      TConst c ->
+        let ci = constInfo c
+            pC = fixity ci
+         in case constMeta ci of
+              ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
+              ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
+              _ -> prettyPrecApp p t1 t2
+      _ -> prettyPrecApp p t1 t2
+    (TLet _ x mty t1 t2) ->
+      hsep $
+        ["let", pretty x]
+          ++ maybe [] (\ty -> [":", ppr ty]) mty
+          ++ ["=", ppr t1, "in", ppr t2]
+    (TDef _ x mty t1) ->
+      hsep $
+        ["def", pretty x]
+          ++ maybe [] (\ty -> [":", ppr ty]) mty
+          ++ ["=", ppr t1, "end"]
+    (TBind Nothing t1 t2) ->
+      pparens (p > 0) $
+        prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+    (TBind (Just x) t1 t2) ->
+      pparens (p > 0) $
+        pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
 prettyPrecApp p t1 t2 =
