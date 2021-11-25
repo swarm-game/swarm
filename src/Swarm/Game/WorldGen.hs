@@ -26,6 +26,9 @@ import Witch
 
 import Swarm.Game.Terrain
 import Swarm.Game.World
+import qualified Data.Array as A
+import Data.Array.IArray
+import qualified Data.Array.Unboxed as U
 
 -- | A simple test world I used for a while during early development.
 testWorld1 :: WorldFun TerrainType Text
@@ -102,6 +105,16 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
   clumps seed = perlin (seed + baseSeed) 4 0.08 0.5
 
   cl0 = clumps 0
+
+-- | Create a world function from a finite array of specified cells
+--   plus a seed to randomly generate the rest.
+testWorld2FromArray :: Array (Int64, Int64) (TerrainType, Maybe Text) -> Seed -> WorldFun TerrainType Text
+testWorld2FromArray arr seed co@(Coords (r, c))
+  | inRange bnds (r, c) = arr ! (r, c)
+  | otherwise = tw2 co
+ where
+  tw2 = testWorld2 seed
+  bnds = bounds arr
 
 -- | Offset the world so the base starts on empty spot next to tree and grass.
 findGoodOrigin :: WorldFun t Text -> WorldFun t Text

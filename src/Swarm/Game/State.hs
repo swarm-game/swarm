@@ -437,7 +437,7 @@ initGameState gtype = do
             . fmap ((lkup entities <$>) . first fromEnum)
             . findGoodOrigin
             $ testWorld2 seed
-        IChallengeGame c -> W.newWorld (c ^. challengeWorld)
+        IChallengeGame c -> W.newWorld $ (c ^. challengeWorld) entities
 
       theWinCondition = case iGameType of
         IClassicGame _ -> NoWinCondition

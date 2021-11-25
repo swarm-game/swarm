@@ -32,7 +32,7 @@ module Swarm.Game.Challenge (
   challengeWin,
 ) where
 
-import Control.Arrow ((***))
+import Control.Arrow ((***), Arrow (first))
 import Control.Lens hiding (from)
 import Data.Array
 import Data.HashMap.Strict (HashMap)
@@ -44,12 +44,14 @@ import GHC.Int (Int64)
 import Linear.V2
 import Witch (from, into)
 
+import GHC.Base ((<|>))
 import Swarm.Game.Entity
 import Swarm.Game.Robot (Robot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
+import Swarm.Game.WorldGen (testWorld2FromArray)
 
 -- | A 'Challenge' contains all the information to describe a
 --   challenge.
@@ -57,7 +59,7 @@ data Challenge = Challenge
   { _challengeName :: Text
   , _challengeSeed :: Maybe Int
   , _challengeEntities :: EntityMap
-  , _challengeWorld :: WorldFun Int Entity
+  , _challengeWorld :: EntityMap -> WorldFun Int Entity
   , _challengeRobots :: [Robot]
   , _challengeWin :: ProcessedTerm
   }
@@ -69,7 +71,7 @@ instance FromJSONE EntityMap Challenge where
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     Challenge
       <$> liftE (v .: "name")
-      <*> liftE (v .:? "seed")
+      <*> liftE (v .:? "seed") -- TODO: avoid two seeds
       <*> pure em
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
@@ -86,7 +88,7 @@ challengeSeed :: Lens' Challenge (Maybe Int)
 challengeEntities :: Lens' Challenge EntityMap
 
 -- | The starting world for the challenge.
-challengeWorld :: Lens' Challenge (WorldFun Int Entity)
+challengeWorld :: Lens' Challenge (EntityMap -> WorldFun Int Entity)
 
 -- | The starting robots for the challenge.  Note this should
 --   include the "base".
@@ -102,7 +104,7 @@ challengeWin :: Lens' Challenge ProcessedTerm
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a
 --   'WorldFun'.
 data WorldDescription = WorldDescription
-  { defaultTerrain :: (TerrainType, Maybe Text)
+  { defaultTerrain :: Either Int (TerrainType, Maybe Text)
   , palette :: WorldPalette
   , ul :: V2 Int64
   , area :: Text
@@ -111,7 +113,9 @@ data WorldDescription = WorldDescription
 instance FromJSON WorldDescription where
   parseJSON = withObject "world description" $ \v ->
     WorldDescription
-      <$> v .:? "default" .!= (BlankT, Nothing)
+      <$> ( Left <$> v .: "seed"
+              <|> Right <$> v .:? "default" .!= (BlankT, Nothing)
+          )
       <*> v .: "palette"
       <*> v .: "upperleft"
       <*> v .: "map"
@@ -122,7 +126,7 @@ newtype WorldPalette = WorldPalette
 instance FromJSON WorldPalette where
   parseJSON = withObject "palette" $ fmap WorldPalette . mapM parseJSON
 
-mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (WorldFun Int Entity)
+mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (EntityMap -> WorldFun Int Entity)
 mkWorldFun pwd = E $ \em -> do
   wd <- pwd
   let toEntity :: Char -> Parser (Int, Maybe Entity)
@@ -146,5 +150,15 @@ mkWorldFun pwd = E $ \em -> do
       . mapM toEntity
       . concat
       $ grid
-  let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) (defaultTerrain wd)
-  return $ worldFunFromArray arr defTerrain
+  case defaultTerrain wd of
+    Left seed -> return $ \entities ->
+      let emPlus = em <> entities
+          arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
+      in (lkup emPlus <$>) . first fromEnum <$> testWorld2FromArray arr2 seed
+    Right def ->
+        let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
+        in return . const $ worldFunFromArray arr defTerrain
+  where
+      lkup :: EntityMap -> Maybe Text -> Maybe Entity
+      lkup _ Nothing = Nothing
+      lkup em (Just t) = lookupEntityName t em
