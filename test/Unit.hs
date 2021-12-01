@@ -429,8 +429,13 @@ eval g =
         assertEqual "" val v
         assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
 
+  processTerm1 :: Text -> Either Text ProcessedTerm
+  processTerm1 txt = processTerm txt >>= maybe wsErr Right
+    where
+      wsErr = Left "expecting a term, but got only whitespace"
+
   evaluate :: Text -> IO (Either Text (Value, Int))
-  evaluate = either (return . Left) evalPT . processTerm
+  evaluate = either (return . Left) evalPT . processTerm1
 
   evalPT :: ProcessedTerm -> IO (Either Text (Value, Int))
   evalPT t = evaluateCESK (initMachine t empty emptyStore)

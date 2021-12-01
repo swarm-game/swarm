@@ -430,17 +430,24 @@ runParserTH (file, line, col) p s =
 fully :: Parser a -> Parser a
 fully p = sc *> p <* eof
 
+-- | Run a parser "fully", consuming leading whitespace (including the
+--   possibility that the input is nothing but whitespace) and
+--   ensuring that the parser extends all the way to eof.
+fullyMaybe :: Parser a -> Parser (Maybe a)
+fullyMaybe = fully . optional
+
 -- | Parse some input 'Text' completely as a 'Term', consuming leading
 --   whitespace and ensuring the parsing extends all the way to the
---   end of the input 'Text'.  Returns either the resulting 'Term' or
---   a pretty-printed parse error message.
-readTerm :: Text -> Either Text Syntax
-readTerm = runParser (fully parseTerm)
+--   end of the input 'Text'.  Returns either the resulting 'Term' (or
+--   @Nothing@ if the input was only whitespace) or a pretty-printed
+--   parse error message.
+readTerm :: Text -> Either Text (Maybe Syntax)
+readTerm = runParser (fullyMaybe parseTerm)
 
--- | A lower-level readTerm which returns the megaparsec bundle error
+-- | A lower-level `readTerm` which returns the megaparsec bundle error
 --   for precise error reporting.
-readTerm' :: Text -> Either ParserError Syntax
-readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
+readTerm' :: Text -> Either ParserError (Maybe Syntax)
+readTerm' = parse (runReaderT (fullyMaybe parseTerm) DisallowAntiquoting) ""
 
 -- | A utility for converting a ParserError into a one line message:
 --   <line-nr>: <error-msg>
