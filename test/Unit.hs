@@ -431,8 +431,8 @@ eval g =
 
   processTerm1 :: Text -> Either Text ProcessedTerm
   processTerm1 txt = processTerm txt >>= maybe wsErr Right
-    where
-      wsErr = Left "expecting a term, but got only whitespace"
+   where
+    wsErr = Left "expecting a term, but got only whitespace"
 
   evaluate :: Text -> IO (Either Text (Value, Int))
   evaluate = either (return . Left) evalPT . processTerm1

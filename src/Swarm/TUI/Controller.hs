@@ -397,19 +397,20 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
       Right mt -> do
-        let s' = s
-              & uiState . uiReplForm %~ updateFormState ""
-              & uiState . uiReplType .~ Nothing
-              & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
-              & uiState . uiError .~ Nothing
+        let s' =
+              s
+                & uiState . uiReplForm %~ updateFormState ""
+                & uiState . uiReplType .~ Nothing
+                & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
+                & uiState . uiError .~ Nothing
         let s'' = case mt of
-              Nothing -> s'  -- user entered only whitespace
-              Just t@(ProcessedTerm _ (Module ty _) _ _) -> s'
-                & gameState . replStatus .~ REPLWorking ty Nothing
-                & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
-                & gameState %~ execState (activateRobot "base")
+              Nothing -> s' -- user entered only whitespace
+              Just t@(ProcessedTerm _ (Module ty _) _ _) ->
+                s'
+                  & gameState . replStatus .~ REPLWorking ty Nothing
+                  & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
+                  & gameState %~ execState (activateRobot "base")
         continue s''
-
       Left err ->
         continue $
           s
