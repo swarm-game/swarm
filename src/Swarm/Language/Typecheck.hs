@@ -445,7 +445,7 @@ inferConst c = toU $ case c of
   Create -> [tyQ| string -> cmd () |]
   Whereami -> [tyQ| cmd (int * int) |]
   Blocked -> [tyQ| cmd bool |]
-  Scan -> [tyQ| dir -> cmd () |]
+  Scan -> [tyQ| dir -> cmd (() + string) |]
   Upload -> [tyQ| string -> cmd () |]
   Ishere -> [tyQ| string -> cmd bool |]
   Whoami -> [tyQ| cmd string |]
