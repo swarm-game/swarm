@@ -399,6 +399,21 @@ eval g =
             "try / div by 0"
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
         ]
+    , testGroup
+        "strings"
+        [ testCase
+            "fmt int"
+            ("fmt 1" `evaluatesTo` VString "1")
+        , testCase
+            "fmt sum"
+            ("fmt (inl 1)" `evaluatesTo` VString "inl 1")
+        , testCase
+            "fmt function"
+            ("fmt (\\x. x + 1)" `evaluatesTo` VString "\\x. x + 1")
+        , testCase
+            "concat"
+            ("\"x = \" <> fmt 1 <> \"!\"" `evaluatesTo` VString "x = 1!")
+        ]
     ]
  where
   throwsError :: Text -> (Text -> Bool) -> Assertion
