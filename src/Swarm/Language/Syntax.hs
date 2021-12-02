@@ -319,7 +319,7 @@ data Const
   | -- String operators
 
     -- | Turn an arbitrary value into a string
-    Fmt
+    Format
   | -- | Concatenate string values
     Concat
   | -- Function composition with nice operators
@@ -452,8 +452,8 @@ constInfo c = case c of
   Gt -> binaryOp ">" 4 N
   Leq -> binaryOp "<=" 4 N
   Geq -> binaryOp ">=" 4 N
-  Fmt -> functionLow 1
-  Concat -> binaryOp "<>" 6 R
+  Format -> functionLow 1
+  Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}

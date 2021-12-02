@@ -1181,7 +1181,7 @@ execConst c vs s k = do
     Mul -> returnEvalArith
     Div -> returnEvalArith
     Exp -> returnEvalArith
-    Fmt -> case vs of
+    Format -> case vs of
       [v] -> return $ Out (VString (prettyValue v)) s k
       _ -> badConst
     Concat -> case vs of

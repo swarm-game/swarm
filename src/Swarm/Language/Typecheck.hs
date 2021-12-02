@@ -474,7 +474,7 @@ inferConst c = toU $ case c of
   Mul -> arithBinT
   Div -> arithBinT
   Exp -> arithBinT
-  Fmt -> [tyQ| a -> string |]
+  Format -> [tyQ| a -> string |]
   Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
  where

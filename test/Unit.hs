@@ -402,17 +402,17 @@ eval g =
     , testGroup
         "strings"
         [ testCase
-            "fmt int"
-            ("fmt 1" `evaluatesTo` VString "1")
+            "format int"
+            ("format 1" `evaluatesTo` VString "1")
         , testCase
-            "fmt sum"
-            ("fmt (inl 1)" `evaluatesTo` VString "inl 1")
+            "format sum"
+            ("format (inl 1)" `evaluatesTo` VString "inl 1")
         , testCase
-            "fmt function"
-            ("fmt (\\x. x + 1)" `evaluatesTo` VString "\\x. x + 1")
+            "format function"
+            ("format (\\x. x + 1)" `evaluatesTo` VString "\\x. x + 1")
         , testCase
             "concat"
-            ("\"x = \" <> fmt 1 <> \"!\"" `evaluatesTo` VString "x = 1!")
+            ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VString "x = 5!")
         ]
     ]
  where

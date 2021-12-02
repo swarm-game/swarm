@@ -255,7 +255,7 @@ constCaps =
     Reprogram -> [CReprogram]
     Drill -> [CDrill]
     -- String operations, which for now are enabled by CLog
-    Fmt -> [CLog]
+    Format -> [CLog]
     Concat -> [CLog]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
