@@ -827,11 +827,13 @@ execConst c vs s k = do
         orient <- use robotOrientation
         let scanLoc = loc ^+^ applyTurn d (orient ? zero)
         me <- entityAt scanLoc
-        case me of
-          Nothing -> return ()
-          Just e -> robotInventory %= insertCount 0 e
+        res <- case me of
+          Nothing -> return $ VInj False VUnit
+          Just e -> do
+            robotInventory %= insertCount 0 e
+            return $ VInj True (VString (e ^. entityName))
 
-        return $ Out VUnit s k
+        return $ Out res s k
       _ -> badConst
     Upload -> case vs of
       [VString otherName] -> do
