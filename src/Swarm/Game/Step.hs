@@ -1160,11 +1160,13 @@ execConst c vs s k = do
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
-        t <-
+        mt <-
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ initMachine' t empty emptyStore k
+        return $ case mt of
+          Nothing -> idleMachine
+          Just t -> initMachine' t empty emptyStore k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k

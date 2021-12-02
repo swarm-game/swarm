@@ -396,16 +396,21 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
-      Right t@(ProcessedTerm _ (Module ty _) _ _) ->
-        continue $
-          s
-            & uiState . uiReplForm %~ updateFormState ""
-            & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
-            & uiState . uiError .~ Nothing
-            & gameState . replStatus .~ REPLWorking ty Nothing
-            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
-            & gameState %~ execState (activateRobot "base")
+      Right mt -> do
+        let s' =
+              s
+                & uiState . uiReplForm %~ updateFormState ""
+                & uiState . uiReplType .~ Nothing
+                & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
+                & uiState . uiError .~ Nothing
+        let s'' = case mt of
+              Nothing -> s' -- user entered only whitespace
+              Just t@(ProcessedTerm _ (Module ty _) _ _) ->
+                s'
+                  & gameState . replStatus .~ REPLWorking ty Nothing
+                  & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
+                  & gameState %~ execState (activateRobot "base")
+        continue s''
       Left err ->
         continue $
           s
@@ -439,7 +444,7 @@ validateREPLForm s =
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
   theType = case result of
-    Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
+    Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
     _ -> Nothing
   validate = setFieldValid (isRight result) REPLInput
 

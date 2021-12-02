@@ -69,7 +69,8 @@ validateSwarmCode doc version content = do
   -- debug $ "Validating: " <> from (show doc) <> " ( " <> content <> ")"
   flushDiagnosticsBySource 0 (Just "swarm-lsp")
   let err = case readTerm' content of
-        Right term -> case processParsedTerm' mempty mempty term of
+        Right Nothing -> Nothing
+        Right (Just term) -> case processParsedTerm' mempty mempty term of
           Right _ -> Nothing
           Left e -> Just $ showTypeErrorPos content e
         Left e -> Just $ showErrorPos e
