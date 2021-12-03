@@ -202,13 +202,13 @@ parseTypeAtom =
     <|> parens parseType
 
 parseDirection :: Parser Direction
-parseDirection = asum $ map alternative allDirs
+parseDirection = asum (map alternative allDirs) <?> "direction constant"
  where
   alternative d = d <$ (reserved . dirSyntax . dirInfo) d
 
 -- | Parse Const as reserved words (e.g. @Raise <$ reserved "raise"@)
 parseConst :: Parser Const
-parseConst = asum $ map alternative consts
+parseConst = asum (map alternative consts) <?> "built-in user function"
  where
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
