@@ -213,13 +213,17 @@ parseConst = asum (map alternative consts) <?> "built-in user function"
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
+-- | Add 'Location' to a parser
+parseLocG :: Parser a -> Parser (Location, a)
+parseLocG pa = do
+  start <- getOffset
+  a <- pa
+  end <- getOffset
+  pure (Location start end, a)
+
 -- | Add 'Location' to a 'Term' parser
 parseLoc :: Parser Term -> Parser Syntax
-parseLoc pterm = do
-  start <- getOffset
-  term <- pterm
-  end <- getOffset
-  pure $ Syntax (Location start end) term
+parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
 parseTermAtom :: Parser Syntax
 parseTermAtom =
@@ -277,8 +281,9 @@ mkBindChain stmts = case last stmts of
   Binder _ _ -> fail "Last command in a chain must not have a binder"
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = noLoc $ SBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = noLoc $ SBind (Just x) t1 t2
+  mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = loc t1 t2 $ SBind (Just x) t1 t2
+  loc a b = Syntax $ sLoc a <> sLoc b
 
 data Stmt
   = BareTerm Syntax
@@ -325,17 +330,11 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
       , Map.singleton 2 [InfixR (exprLoc2 $ SPair <$ symbol ",")]
       ]
 
--- | Utility to add empty location for ExprParser
-exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
-exprLoc2 p = do
-  f <- p
-  pure $ \s1 s2 -> noLoc $ f s1 s2
-
--- | Utility to add empty location for ExprParser
-exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
-exprLoc1 p = do
-  f <- p
-  pure $ \s -> noLoc $ f s
+  -- add location for ExprParser by combining all
+  exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
+  exprLoc2 p = do
+    (l, f) <- parseLocG p
+    pure $ \s1 s2 -> Syntax (l <> sLoc s1 <> sLoc s2) $ f s1 s2
 
 -- | Precedences and parsers of binary operators.
 --
@@ -373,6 +372,12 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
       Map.singleton
         (fixity ci)
         [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operatorString (syntax ci))]
+
+  -- combine location for ExprParser
+  exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
+  exprLoc1 p = do
+    (l, f) <- parseLocG p
+    pure $ \s -> Syntax (l <> sLoc s) $ f s
 
 operatorString :: Text -> Parser Text
 operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
@@ -425,17 +430,24 @@ runParserTH (file, line, col) p s =
 fully :: Parser a -> Parser a
 fully p = sc *> p <* eof
 
+-- | Run a parser "fully", consuming leading whitespace (including the
+--   possibility that the input is nothing but whitespace) and
+--   ensuring that the parser extends all the way to eof.
+fullyMaybe :: Parser a -> Parser (Maybe a)
+fullyMaybe = fully . optional
+
 -- | Parse some input 'Text' completely as a 'Term', consuming leading
 --   whitespace and ensuring the parsing extends all the way to the
---   end of the input 'Text'.  Returns either the resulting 'Term' or
---   a pretty-printed parse error message.
-readTerm :: Text -> Either Text Syntax
-readTerm = runParser (fully parseTerm)
+--   end of the input 'Text'.  Returns either the resulting 'Term' (or
+--   @Nothing@ if the input was only whitespace) or a pretty-printed
+--   parse error message.
+readTerm :: Text -> Either Text (Maybe Syntax)
+readTerm = runParser (fullyMaybe parseTerm)
 
--- | A lower-level readTerm which returns the megaparsec bundle error
+-- | A lower-level `readTerm` which returns the megaparsec bundle error
 --   for precise error reporting.
-readTerm' :: Text -> Either ParserError Syntax
-readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
+readTerm' :: Text -> Either ParserError (Maybe Syntax)
+readTerm' = parse (runReaderT (fullyMaybe parseTerm) DisallowAntiquoting) ""
 
 -- | A utility for converting a ParserError into a one line message:
 --   <line-nr>: <error-msg>

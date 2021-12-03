@@ -31,6 +31,7 @@ module Swarm.TUI.Controller (
   handleREPLEvent,
   validateREPLForm,
   adjReplHistIndex,
+  TimeDir (..),
 
   -- ** World panel
   handleWorldEvent,
@@ -49,9 +50,10 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Linear
 import System.Clock
 import Witch (into)
@@ -150,16 +152,12 @@ toggleModal s modal = do
 --   the updated REPL history to a @.swarm_history@ file.
 shutdown :: AppState -> EventM Name (Next AppState)
 shutdown s = do
-  let s' = s & uiState . uiReplHistory . traverse %~ markOld
-      hist = filter isEntry (s' ^. uiState . uiReplHistory)
-  liftIO $ writeFile ".swarm_history" (show hist)
+  let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
+  liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
+  let s' = s & uiState . uiReplHistory %~ restartREPLHistory
   halt s'
  where
-  markOld (REPLEntry _ d e) = REPLEntry False d e
-  markOld r = r
-
-  isEntry REPLEntry {} = True
-  isEntry _ = False
+  history = s ^. uiState . uiReplHistory
 
 ------------------------------------------------------------
 -- Handling Frame events
@@ -320,7 +318,7 @@ updateUI = do
     -- result as a REPL output, with its type, and reset the replStatus.
     REPLWorking pty (Just v) -> do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
-      uiState . uiReplHistory %= (REPLOutput out :)
+      uiState . uiReplHistory %= addREPLItem (REPLOutput out)
       gameState . replStatus .= REPLDone
       pure True
 
@@ -398,17 +396,21 @@ handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
-      Right t@(ProcessedTerm _ (Module ty _) _ _) ->
-        continue $
-          s
-            & uiState . uiReplForm %~ updateFormState ""
-            & uiState . uiReplType .~ Nothing
-            & uiState . uiReplHistory %~ prependReplEntry
-            & uiState . uiReplHistIdx .~ (-1)
-            & uiState . uiError .~ Nothing
-            & gameState . replStatus .~ REPLWorking ty Nothing
-            & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
-            & gameState %~ execState (activateRobot "base")
+      Right mt -> do
+        let s' =
+              s
+                & uiState . uiReplForm %~ updateFormState ""
+                & uiState . uiReplType .~ Nothing
+                & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
+                & uiState . uiError .~ Nothing
+        let s'' = case mt of
+              Nothing -> s' -- user entered only whitespace
+              Just t@(ProcessedTerm _ (Module ty _) _ _) ->
+                s'
+                  & gameState . replStatus .~ REPLWorking ty Nothing
+                  & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
+                  & gameState %~ execState (activateRobot "base")
+        continue s''
       Left err ->
         continue $
           s
@@ -422,13 +424,10 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   topStore =
     fromMaybe emptyStore $
       s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
-  prependReplEntry replHistory
-    | firstReplEntry replHistory == Just entry = REPLEntry True True entry : replHistory
-    | otherwise = REPLEntry True False entry : replHistory
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
-  continue $ s & adjReplHistIndex (+)
+  continue $ s & adjReplHistIndex Older
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
-  continue $ s & adjReplHistIndex (-)
+  continue $ s & adjReplHistIndex Newer
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
@@ -445,26 +444,31 @@ validateREPLForm s =
   topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
   result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
   theType = case result of
-    Right (ProcessedTerm _ (Module ty _) _ _) -> Just ty
+    Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
     _ -> Nothing
   validate = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
-adjReplHistIndex :: (Int -> Int -> Int) -> AppState -> AppState
-adjReplHistIndex (+/-) s =
-  s & uiState . uiReplHistIdx .~ newIndex
-    & (if curIndex == -1 then saveLastEntry else id)
-    & (if newIndex /= curIndex then uiState . uiReplForm %~ updateFormState newEntry else id)
+adjReplHistIndex :: TimeDir -> AppState -> AppState
+adjReplHistIndex d s =
+  ns
+    & (if replIndexIsAtInput (s ^. repl) then saveLastEntry else id)
+    & (if oldEntry /= newEntry then showNewEntry else id)
     & validateREPLForm
  where
+  -- new AppState after moving the repl index
+  ns = s & repl %~ moveReplHistIndex d oldEntry
+
+  repl :: Lens' AppState REPLHistory
+  repl = uiState . uiReplHistory
+
+  replLast = s ^. uiState . uiReplLast
   saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-  entries = [e | REPLEntry _ False e <- s ^. uiState . uiReplHistory]
-  curIndex = s ^. uiState . uiReplHistIdx
-  histLen = length entries
-  newIndex = min (histLen - 1) (max (-1) (curIndex +/- 1))
-  newEntry
-    | newIndex == -1 = s ^. uiState . uiReplLast
-    | otherwise = entries !! newIndex
+  showNewEntry = uiState . uiReplForm %~ updateFormState newEntry
+  -- get REPL data
+  getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
+  oldEntry = getCurrEntry s
+  newEntry = getCurrEntry ns
 
 ------------------------------------------------------------
 -- World events

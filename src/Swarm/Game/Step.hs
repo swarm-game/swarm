@@ -827,11 +827,13 @@ execConst c vs s k = do
         orient <- use robotOrientation
         let scanLoc = loc ^+^ applyTurn d (orient ? zero)
         me <- entityAt scanLoc
-        case me of
-          Nothing -> return ()
-          Just e -> robotInventory %= insertCount 0 e
+        res <- case me of
+          Nothing -> return $ VInj False VUnit
+          Just e -> do
+            robotInventory %= insertCount 0 e
+            return $ VInj True (VString (e ^. entityName))
 
-        return $ Out VUnit s k
+        return $ Out res s k
       _ -> badConst
     Upload -> case vs of
       [VString otherName] -> do
@@ -1031,6 +1033,7 @@ execConst c vs s k = do
         -- declared in the parent robot
         robotMap . at childRobotName . _Just . machine .= In cmd e s [FExec]
         robotMap . at childRobotName . _Just . robotContext .= r ^. robotContext
+        activateRobot childRobotName
 
         return $ Out VUnit s k
       _ -> badConst
@@ -1066,7 +1069,7 @@ execConst c vs s k = do
             -- XXX in the future, make a way to build these and just start the base
             -- out with a large supply of each?
             stdDeviceList =
-              ["treads", "grabber", "solar panel", "detonator", "scanner", "plasma cutter"]
+              ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
 
             -- Find out what capabilities are required by the program that will
@@ -1157,11 +1160,13 @@ execConst c vs s k = do
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
-        t <-
+        mt <-
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ initMachine' t empty emptyStore k
+        return $ case mt of
+          Nothing -> idleMachine
+          Just t -> initMachine' t empty emptyStore k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k

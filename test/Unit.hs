@@ -8,6 +8,7 @@ module Main where
 import Control.Lens ((&), (.~))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
@@ -26,6 +27,7 @@ import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
+import Swarm.TUI.Model
 
 main :: IO ()
 main = do
@@ -35,14 +37,13 @@ main = do
     Right g -> defaultMain (tests g)
 
 tests :: GameState -> TestTree
-tests g = testGroup "Tests" [parser, prettyConst, eval g]
+tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel]
 
 parser :: TestTree
 parser =
   testGroup
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
-    , testCase "located type error" (process "def a =\n 42 + \"oops\"\nend" "2: Can't unify int and string")
     , testCase
         "quantification #148 - implicit"
         (valid "def id : a -> a = \\x. x end; id move")
@@ -71,20 +72,7 @@ parser =
         "parsing operators #236 - parse valid operator (<=)"
         (valid "1 <= 2")
     , testCase
-        "parsing operators #236 - report failure on invalid operator start"
-        ( process
-            "1 <== 2"
-            ( T.unlines
-                [ "1:3:"
-                , "  |"
-                , "1 | 1 <== 2"
-                , "  |   ^"
-                , "unexpected '<'"
-                ]
-            )
-        )
-    , testCase
-        "parsing operators #??? - parse valid operator ($)"
+        "parsing operators #239 - parse valid operator ($)"
         (valid "fst $ snd $ (1,2,3)")
     , testCase
         "Allow ' in variable names #269 - parse variable name containing '"
@@ -103,6 +91,40 @@ parser =
                 ]
             )
         )
+    , testGroup
+        "failure location - #268"
+        [ testCase
+            "located type error"
+            ( process
+                "def a =\n 42 + \"oops\"\nend"
+                "2: Can't unify int and string"
+            )
+        , testCase
+            "failure inside bind chain"
+            ( process
+                "move;\n1;\nmove"
+                "2: Can't unify int and cmd"
+            )
+        , testCase
+            "failure inside function call"
+            ( process
+                "if true \n{} \n(move)"
+                "3: Can't unify {u0} and cmd ()"
+            )
+        , testCase
+            "parsing operators #236 - report failure on invalid operator start"
+            ( process
+                "1 <== 2"
+                ( T.unlines
+                    [ "1:3:"
+                    , "  |"
+                    , "1 | 1 <== 2"
+                    , "  |   ^"
+                    , "unexpected '<'"
+                    ]
+                )
+            )
+        ]
     ]
  where
   valid = flip process ""
@@ -407,8 +429,13 @@ eval g =
         assertEqual "" val v
         assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
 
+  processTerm1 :: Text -> Either Text ProcessedTerm
+  processTerm1 txt = processTerm txt >>= maybe wsErr Right
+   where
+    wsErr = Left "expecting a term, but got only whitespace"
+
   evaluate :: Text -> IO (Either Text (Value, Int))
-  evaluate = either (return . Left) evalPT . processTerm
+  evaluate = either (return . Left) evalPT . processTerm1
 
   evalPT :: ProcessedTerm -> IO (Either Text (Value, Int))
   evalPT t = evaluateCESK (initMachine t empty emptyStore)
@@ -423,3 +450,81 @@ eval g =
   runCESK !steps cesk = case finalValue cesk of
     Just (v, _) -> return (Right (v, steps))
     Nothing -> stepCESK cesk >>= runCESK (steps + 1)
+
+testModel :: TestTree
+testModel =
+  testGroup
+    "TUI Model"
+    [ testCase
+        "latest repl lines at start"
+        ( assertEqual
+            "get 5 history [0] --> []"
+            []
+            (getLatestREPLHistoryItems 5 history0)
+        )
+    , testCase
+        "latest repl lines after one input"
+        ( assertEqual
+            "get 5 history [0|()] --> [()]"
+            [REPLEntry "()"]
+            (getLatestREPLHistoryItems 5 (addREPLItem (REPLEntry "()") history0))
+        )
+    , testCase
+        "latest repl lines after one input and output"
+        ( assertEqual
+            "get 5 history [0|1,1:int] --> [1,1:int]"
+            [REPLEntry "1", REPLOutput "1:int"]
+            (getLatestREPLHistoryItems 5 (addInOutInt 1 history0))
+        )
+    , testCase
+        "latest repl lines after nine inputs and outputs"
+        ( assertEqual
+            "get 6 history [0|1,1:int .. 9,9:int] --> [7,7:int..9,9:int]"
+            (concat [[REPLEntry (toT x), REPLOutput (toT x <> ":int")] | x <- [7 .. 9]])
+            (getLatestREPLHistoryItems 6 (foldl (flip addInOutInt) history0 [1 .. 9]))
+        )
+    , testCase
+        "latest repl after restart"
+        ( assertEqual
+            "get 5 history (restart [0|()]) --> []"
+            []
+            (getLatestREPLHistoryItems 5 (restartREPLHistory $ addREPLItem (REPLEntry "()") history0))
+        )
+    , testCase
+        "current item at start"
+        (assertEqual "getText [0] --> Nothing" (getCurrentItemText history0) Nothing)
+    , testCase
+        "current item after move to older"
+        ( assertEqual
+            "getText ([0]<=='') --> Just 0"
+            (Just "0")
+            (getCurrentItemText $ moveReplHistIndex Older "" history0)
+        )
+    , testCase
+        "current item after move to newer"
+        ( assertEqual
+            "getText ([0]==>'') --> Nothing"
+            Nothing
+            (getCurrentItemText $ moveReplHistIndex Newer "" history0)
+        )
+    , testCase
+        "current item after move past output"
+        ( assertEqual
+            "getText ([0,1,1:int]<=='') --> Just 1"
+            (Just "1")
+            (getCurrentItemText $ moveReplHistIndex Older "" (addInOutInt 1 history0))
+        )
+    , testCase
+        "current item after move past same"
+        ( assertEqual
+            "getText ([0,1,1:int]<=='1') --> Just 0"
+            (Just "0")
+            (getCurrentItemText $ moveReplHistIndex Older "1" (addInOutInt 1 history0))
+        )
+    ]
+ where
+  history0 = newREPLHistory [REPLEntry "0"]
+  toT :: Int -> Text
+  toT = fromString . show
+  addInOutInt :: Int -> REPLHistory -> REPLHistory
+  addInOutInt i = addREPLItem (REPLOutput $ toT i <> ":int") . addREPLItem (REPLEntry $ toT i)
