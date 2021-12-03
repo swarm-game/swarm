@@ -1023,7 +1023,7 @@ execConst c vs s k = do
 
         -- check if robot has all devices to execute new command
         (mode == Creative || S.null missingDevices)
-          `holdsOrFail` [ "the target robot does not have required devices:\n"
+          `holdsOrFail` [ "the target robot does not have required devices:"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
 
@@ -1096,7 +1096,7 @@ execConst c vs s k = do
 
         -- Make sure we're not missing any required devices.
         (mode == Creative || S.null missingDevices)
-          `holdsOrFail` [ "this would require installing devices you don't have:\n"
+          `holdsOrFail` [ "this would require installing devices you don't have:"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
 

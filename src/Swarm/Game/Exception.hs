@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -16,7 +14,6 @@ module Swarm.Game.Exception (
 ) where
 
 import Data.Set (Set)
-import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -54,16 +51,10 @@ formatExn (Fatal t) =
     , "Please report this as a bug at https://github.com/byorgey/swarm/issues/new ."
     ]
 formatExn InfiniteLoop = "Infinite loop detected!"
-formatExn (Incapable caps tm) =
-  T.unlines
-    [ T.concat
-        [ "missing "
-        , number (S.size caps) "capability"
-        , " "
-        , (commaList . map (squote . prettyText) . S.toList) caps
-        , " needed to execute:"
-        ]
-    , prettyText tm
+formatExn (Incapable _caps tm) =
+  T.concat
+    [ "missing device(s) needed to execute command "
+    , squote (prettyText tm)
     ]
 formatExn (CmdFailed c t) = T.concat [prettyText c, ": ", t]
 formatExn (User t) = T.concat ["user exception: ", t]
