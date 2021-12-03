@@ -397,24 +397,11 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
       Right mt -> do
-        let s' =
-              s
-                & uiState . uiReplForm %~ updateFormState ""
-                & uiState . uiReplType .~ Nothing
-                & uiState . uiReplHistory %~ addREPLItem (REPLEntry entry)
-                & uiState . uiError .~ Nothing
-        let s'' = case mt of
-              Nothing -> s' -- user entered only whitespace
-              Just t@(ProcessedTerm _ (Module ty _) _ _) ->
-                s'
-                  & gameState . replStatus .~ REPLWorking ty Nothing
-                  & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
-                  & gameState %~ execState (activateRobot "base")
+        let s' = advanceREPL s
+            s'' = maybe id startBaseProgram mt s'
         continue s''
       Left err ->
-        continue $
-          s
-            & uiState . uiError ?~ err
+        continue $ s & uiState . uiError ?~ err
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)
@@ -424,6 +411,15 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   topStore =
     fromMaybe emptyStore $
       s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
+  advanceREPL =
+    (uiState . uiReplForm %~ updateFormState "")
+      . (uiState . uiReplType .~ Nothing)
+      . (uiState . uiReplHistory %~ addREPLItem (REPLEntry entry))
+      . (uiState . uiError .~ Nothing)
+  startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
+    (gameState . replStatus .~ REPLWorking ty Nothing)
+      . (gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore)
+      . (gameState %~ execState (activateRobot "base"))
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex Older
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
