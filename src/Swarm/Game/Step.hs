@@ -1185,6 +1185,12 @@ execConst c vs s k = do
     Mul -> returnEvalArith
     Div -> returnEvalArith
     Exp -> returnEvalArith
+    Format -> case vs of
+      [v] -> return $ Out (VString (prettyValue v)) s k
+      _ -> badConst
+    Concat -> case vs of
+      [VString v1, VString v2] -> return $ Out (VString (v1 <> v2)) s k
+      _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
           prependMsg = (\case (Fatal e) -> Fatal $ msg <> e; exn -> exn)

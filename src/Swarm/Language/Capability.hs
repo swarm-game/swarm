@@ -232,8 +232,8 @@ constCaps =
     AppF -> []
     Force -> []
     Return -> []
-    Log -> [CLog]
     -- Some straightforward ones.
+    Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]
     Move -> [CMove]
     Turn -> [CTurn]
@@ -254,6 +254,9 @@ constCaps =
     Salvage -> [CSalvage]
     Reprogram -> [CReprogram]
     Drill -> [CDrill]
+    -- String operations, which for now are enabled by CLog
+    Format -> [CLog]
+    Concat -> [CLog]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.
