@@ -827,11 +827,13 @@ execConst c vs s k = do
         orient <- use robotOrientation
         let scanLoc = loc ^+^ applyTurn d (orient ? zero)
         me <- entityAt scanLoc
-        case me of
-          Nothing -> return ()
-          Just e -> robotInventory %= insertCount 0 e
+        res <- case me of
+          Nothing -> return $ VInj False VUnit
+          Just e -> do
+            robotInventory %= insertCount 0 e
+            return $ VInj True (VString (e ^. entityName))
 
-        return $ Out VUnit s k
+        return $ Out res s k
       _ -> badConst
     Upload -> case vs of
       [VString otherName] -> do
@@ -1021,7 +1023,7 @@ execConst c vs s k = do
 
         -- check if robot has all devices to execute new command
         (mode == Creative || S.null missingDevices)
-          `holdsOrFail` [ "the target robot does not have required devices:\n"
+          `holdsOrFail` [ "the target robot does not have required devices:"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
 
@@ -1094,7 +1096,7 @@ execConst c vs s k = do
 
         -- Make sure we're not missing any required devices.
         (mode == Creative || S.null missingDevices)
-          `holdsOrFail` [ "this would require installing devices you don't have:\n"
+          `holdsOrFail` [ "this would require installing devices you don't have:"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
 
@@ -1158,11 +1160,13 @@ execConst c vs s k = do
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
-        t <-
+        mt <-
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ initMachine' t empty emptyStore k
+        return $ case mt of
+          Nothing -> idleMachine
+          Just t -> initMachine' t empty emptyStore k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
