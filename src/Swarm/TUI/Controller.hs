@@ -416,10 +416,22 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
       . (uiState . uiReplType .~ Nothing)
       . (uiState . uiReplHistory %~ addREPLItem (REPLEntry entry))
       . (uiState . uiError .~ Nothing)
-  startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
-    (gameState . replStatus .~ REPLWorking ty Nothing)
-      . (gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore)
-      . (gameState %~ execState (activateRobot "base"))
+  startBaseProgram t@(ProcessedTerm _ (Module ty _) caps _) st
+    | caps `S.isSubsetOf` baseCaps =
+      st
+        & gameState . replStatus .~ REPLWorking ty Nothing
+        & gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore
+        & gameState %~ execState (activateRobot "base")
+    | otherwise =
+      st
+        & uiState . uiError
+          ?~ T.unlines
+            [ "Missing device(s) needed to execute program"
+            , T.intercalate ", " $ map prettyText (S.toList caps)
+            ]
+   where
+    baseCaps :: S.Set Capability
+    baseCaps = fromMaybe S.empty $ st ^? gameState . robotMap . at "base" . _Just . robotCapabilities
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex Older
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
