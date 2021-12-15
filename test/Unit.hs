@@ -91,6 +91,12 @@ parser =
                 ]
             )
         )
+    , testCase
+        "Parse pair syntax #225"
+        (valid "def f : (int -> bool) * (int -> bool) = (\\x. false, \\x. true) end")
+    , testCase
+        "Nested pair syntax"
+        (valid "(1,2,3,4)")
     , testGroup
         "failure location - #268"
         [ testCase
@@ -201,6 +207,11 @@ prettyConst =
         "operators #8 - infix operator right associativity not applied to left"
         ( equalPretty "(2 ^ 4) ^ 8" $
             mkOp' Exp (mkOp' Exp (TInt 2) (TInt 4)) (TInt 8)
+        )
+    , testCase
+        "pairs #225 - nested pairs are printed right-associative"
+        ( equalPretty "(1, 2, 3)" $
+            (TPair (TInt 1) (TPair (TInt 2) (TInt 3)))
         )
     ]
  where

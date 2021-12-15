@@ -245,8 +245,8 @@ parseTermAtom =
         <|> sDef <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
+        <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
-    <|> parens parseTerm
     -- Potential syntax for explicitly requesting memoized delay.
     -- Perhaps we will not need this in the end; see the discussion at
     -- https://github.com/byorgey/swarm/issues/150 .
@@ -256,6 +256,11 @@ parseTermAtom =
     <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+
+mkTuple :: [Syntax] -> Term
+mkTuple [] = TUnit
+mkTuple [STerm x] = x
+mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
@@ -327,7 +332,6 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
       [ Map.singleton 9 [InfixL (exprLoc2 $ SApp <$ string "")]
       , binOps
       , unOps
-      , Map.singleton 2 [InfixR (exprLoc2 $ SPair <$ symbol ",")]
       ]
 
   -- add location for ExprParser by combining all

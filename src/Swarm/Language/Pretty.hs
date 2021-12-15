@@ -121,7 +121,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
-  prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
+  prettyPrec _ t@TPair {} = prettyTuple t
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
@@ -162,6 +162,12 @@ instance PrettyPrec Term where
   prettyPrec p (TBind (Just x) t1 t2) =
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+
+prettyTuple :: Term -> Doc a
+prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
+ where
+  unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
+  unnestTuple t = [t]
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
 prettyPrecApp p t1 t2 =
