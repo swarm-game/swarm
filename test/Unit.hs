@@ -6,10 +6,10 @@
 -- | Swarm unit tests
 module Main where
 
-import Data.Hashable
 import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Hashable
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -554,25 +554,32 @@ inventory =
     "Inventory"
     [ testCase
         "insert / hash"
-        (assertEqual
-          "insert x empty has same hash as x"
-          (x ^. E.entityHash) (hash (E.insert x E.empty)))
+        ( assertEqual
+            "insert x empty has same hash as x"
+            (x ^. E.entityHash)
+            (hash (E.insert x E.empty))
+        )
     , testCase
         "insert / insert"
-        (assertEqual
-          "insert x y gives same hash as insert y x"
-          (hash (E.insert x (E.insert y E.empty))) (hash (E.insert y (E.insert x E.empty))))
+        ( assertEqual
+            "insert x y gives same hash as insert y x"
+            (hash (E.insert x (E.insert y E.empty)))
+            (hash (E.insert y (E.insert x E.empty)))
+        )
     , testCase
         "insert 2 / delete"
-        (assertEqual
-          "insert 2, delete 1 gives same hash as insert 1"
-          (hash (E.insert x E.empty))
-          (hash (E.delete x (E.insertCount 2 x E.empty))))
+        ( assertEqual
+            "insert 2, delete 1 gives same hash as insert 1"
+            (hash (E.insert x E.empty))
+            (hash (E.delete x (E.insertCount 2 x E.empty)))
+        )
     , testCase
         "insert 2 / delete 3"
-        (assertEqual
-          "insert 2, delete 3 gives hash 0"
-          0 (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty))))
+        ( assertEqual
+            "insert 2, delete 3 gives hash 0"
+            0
+            (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty)))
+        )
     ]
  where
   x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] []
