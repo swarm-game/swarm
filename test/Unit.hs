@@ -1,16 +1,18 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- | Swarm unit tests
 module Main where
 
-import Control.Lens ((&), (.~))
+import Data.Hashable
+import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Linear
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -18,6 +20,8 @@ import Test.Tasty.QuickCheck
 import Witch (from)
 
 import Swarm.Game.CESK
+import Swarm.Game.Display
+import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
@@ -37,7 +41,7 @@ main = do
     Right g -> defaultMain (tests g)
 
 tests :: GameState -> TestTree
-tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel]
+tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory]
 
 parser :: TestTree
 parser =
@@ -543,3 +547,34 @@ testModel =
   toT = fromString . show
   addInOutInt :: Int -> REPLHistory -> REPLHistory
   addInOutInt i = addREPLItem (REPLOutput $ toT i <> ":int") . addREPLItem (REPLEntry $ toT i)
+
+inventory :: TestTree
+inventory =
+  testGroup
+    "Inventory"
+    [ testCase
+        "insert / hash"
+        (assertEqual
+          "insert x empty has same hash as x"
+          (x ^. E.entityHash) (hash (E.insert x E.empty)))
+    , testCase
+        "insert / insert"
+        (assertEqual
+          "insert x y gives same hash as insert y x"
+          (hash (E.insert x (E.insert y E.empty))) (hash (E.insert y (E.insert x E.empty))))
+    , testCase
+        "insert 2 / delete"
+        (assertEqual
+          "insert 2, delete 1 gives same hash as insert 1"
+          (hash (E.insert x E.empty))
+          (hash (E.delete x (E.insertCount 2 x E.empty))))
+    , testCase
+        "insert 2 / delete 3"
+        (assertEqual
+          "insert 2, delete 3 gives hash 0"
+          0 (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty))))
+    ]
+ where
+  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] []
+  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] []
+  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] []
