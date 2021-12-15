@@ -534,11 +534,13 @@ deleteCount k e (Inventory cs byN h) = Inventory cs' byN h'
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
-deleteAll e (Inventory cs byN _) =
+deleteAll e (Inventory cs byN h) =
   Inventory
     (IM.adjust (first (const 0)) (e ^. entityHash) cs)
     byN
-    0
+    (h - n * (e ^. entityHash))
+ where
+  n = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
@@ -550,6 +552,4 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   Inventory
     (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
     (M.unionWith IS.union byN1 byN2)
-    (h1 + h2 - sum (map (\(h, (k, _)) -> k * h) (IM.assocs both)))
- where
-  both = IM.intersectionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2
+    (h1 + h2)
