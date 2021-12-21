@@ -1,0 +1,34 @@
+cabal-version:      2.4
+name:               cap-check
+version:            0.1.0.0
+synopsis:
+
+-- A longer description of the package.
+-- description:
+homepage:
+
+-- A URL where users can report bugs.
+-- bug-reports:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Brent Yorgey
+maintainer:         byorgey@gmail.com
+
+-- A copyright notice.
+-- copyright:
+category:           Language
+extra-source-files: CHANGELOG.md
+
+executable cap-check
+    main-is:          Caps.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base ^>=4.14.3.0, witch, megaparsec, text >= 1.1.2, containers, parser-combinators
+
+    -- Directories containing source files.
+    -- hs-source-dirs:
+    default-language: Haskell2010
