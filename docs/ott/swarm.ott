@@ -35,6 +35,7 @@ grammar
     | |>                  ::   :: cons       {{ tex \triangleright }}
     | |-                  ::   :: shows      {{ tex \vdash }}
     | elem                ::   :: in         {{ tex \in }}
+    | ;;                  ::   :: bind       {{ tex \fatsemi }}
 
   const :: 'const_' ::=                                 {{ com constants }}
     | noop                ::   :: noop                    {{ com no-op }}
@@ -70,6 +71,7 @@ grammar
     | inl                 ::   :: inl                     {{ com left injection }}
     | inr                 ::   :: inr                     {{ com right injection }}
     | case                ::   :: case                    {{ com case analysis }}
+    | pair                ::   :: pair                    {{ com pair formation }}
     | fst                 ::   :: fst                     {{ com first projection }}
     | snd                 ::   :: snd                     {{ com second projection }}
     | force               ::   :: force                   {{ com force }}
@@ -113,7 +115,7 @@ grammar
     | t1 t2               ::   :: app                     {{ com function application }}
     | let x = t1 in t2    ::   :: let (+ bind x in t2 +)  {{ com let }}
     | def x = t end       ::   :: def                     {{ com definition }}
-    | x <- t1 ; t2        ::   :: bind (+ bind x in t2 +) {{ com bind }}
+    | x <- t1 ;; t2       ::   :: bind (+ bind x in t2 +) {{ com bind }}
     | { t }               ::   :: delay                   {{ com delay }}
     | ( t )               :: S :: paren
 
@@ -141,7 +143,7 @@ grammar
     | cmd ^ D T           ::   :: cmd                     {{ com command type }}
        {{ tex [[cmd]]^{[[D]]}\;[[T]] }}
     | { T ^ D }           ::   :: delay                   {{ com delay type }}
-       {{ tex \{ [[T]]^{[[D]]}
+       {{ tex \{ [[T]]^{[[D]]} \} }}
     | T1 + T2             ::   :: sum                     {{ com sum type }}
     | T1 * T2             ::   :: product                 {{ com product type }}
     | T1 -- D --> T2      ::   :: arrow                   {{ com function type }}
@@ -154,7 +156,7 @@ grammar
     | GOD                 ::   :: god                     {{ tex \mathsf{GOD} }}
     | BUILD               ::   :: build                   {{ tex \mathsf{BUILD} }}
 
-  capset, D :: 'Cset_' ::=                              {{ com capability set }}
+  capset, D {{ tex \Delta }} :: 'Cset_' ::=             {{ com capability set }}
     | empty               ::   :: em
     | D , C               ::   :: snoc
     | D1 U D2             :: M :: union
@@ -216,7 +218,7 @@ defns
     ---------------------- :: var
     G |- x : T ; empty
 
-    G , x T1 |- t : T2 ; D
+    G , x : T1 |- t : T2 ; D
     ------------------------------- :: lam
     G |- \ x . t : T1 -- D --> T2 ; empty
 
@@ -228,17 +230,17 @@ defns
     ------------------------------------------------------------------- :: let
     G |- let x = t1 in t2 : T2 ; D1 U D2
 
-    G- |- t : T ; D
+    G |- t : T ; D
     -------------------------------------------- :: delay
     G |- { t } : { T ^ D } ; empty
 
     G |- t : { T ^ D1 } ; D2
     ------------------------------------------------------------ :: force
-    G- |- force t : T ; D1 U D2
+    G |- force t : T ; D1 U D2
 
     G |- t1 : cmd ^ D11 T1 ; D12          G , x : T1 |- t2 : cmd ^ D21 T2 ; D22
     ----------------------------------------------------------------------------- :: bind
-    G |- x <- t1 ; t2 : cmd ^ (D11 U D12 U D21 U D22) T2 ; empty
+    G |- x <- t1 ;; t2 : cmd ^ (D11 U D12 U D21 U D22) T2 ; empty
 
 % defns
 %   Jsub :: '' ::=
