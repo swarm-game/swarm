@@ -9,8 +9,11 @@ embed
 metavar termvar, x, f ::=
   {{ tex \mathit{[[termvar]]} }} {{ com  term variable  }}
 
-metavar typevar, a {{ tex \alpha }} ::=
+metavar typevar, a {{ tex \alpha }}, bb {{ tex \beta }} ::=
   {{ tex \mathit{[[typevar]]} }} {{ com  type variable  }}
+
+metavar capvar, dd {{ tex \delta }} ::=
+  {{ tex \mathit{[[capvar]]} }} {{ com   capability variable }}
 
 metavar integer, i ::=
   {{ tex \mathit{[[integer]]} }} {{ com  integer }}
@@ -21,7 +24,7 @@ metavar s ::=
 metavar b ::=
   {{ tex \mathit{[[b]]} }} {{ com boolean }}
 
-indexvar k ::=
+indexvar j, k ::=
   {{ com  index }}
 
 grammar
@@ -34,10 +37,12 @@ grammar
     | U                   ::   :: union      {{ tex \cup }}
     | |>                  ::   :: cons       {{ tex \triangleright }}
     | |-                  ::   :: shows      {{ tex \vdash }}
+    | |-c                 ::   :: showsc     {{ tex \vdash_c }}
     | elem                ::   :: in         {{ tex \in }}
     | ;;                  ::   :: bind       {{ tex \fatsemi }}
+    | forall              ::   :: forall     {{ tex \forall }}
 
-  const :: 'const_' ::=                                 {{ com constants }}
+  const, K :: 'const_' ::=                              {{ com constants }}
     | noop                ::   :: noop                    {{ com no-op }}
     | wait                ::   :: wait                    {{ com wait }}
     | selfdestruct        ::   :: selfdestruct            {{ com self destruct }}
@@ -105,7 +110,7 @@ grammar
 
   term, t :: 't_' ::=                                   {{ com term }}
     | ()                  ::   :: unit                    {{ com unit value }}
-    | const               ::   :: const                   {{ com constant }}
+    | K                   ::   :: const                   {{ com constant }}
     | d                   ::   :: dir                     {{ com direction literal }}
     | i                   ::   :: int                     {{ com integer literal }}
     | s                   ::   :: str                     {{ com string literal }}
@@ -142,33 +147,64 @@ grammar
     | B                   ::   :: base                    {{ com base type }}
     | cmd ^ D T           ::   :: cmd                     {{ com command type }}
        {{ tex [[cmd]]^{[[D]]}\;[[T]] }}
-    | { T ^ D }           ::   :: delay                   {{ com delay type }}
-       {{ tex \{ [[T]]^{[[D]]} \} }}
+    | { T } ^ D           ::   :: delay                   {{ com delay type }}
+       {{ tex \{ [[T]] \}^{[[D]]} }}
     | T1 + T2             ::   :: sum                     {{ com sum type }}
     | T1 * T2             ::   :: product                 {{ com product type }}
     | T1 -- D --> T2      ::   :: arrow                   {{ com function type }}
       {{ tex [[T1]] \xrightarrow{[[D]]} [[T2]] }}
+    | T1 -> T2            ::   :: earrow                  {{ com function type with empty capability set }}
     | ( T )               :: S :: paren
 
     % | { T / X } T'        :: M :: tysub
 
-  capability, C {{ tex \kappa }} :: 'C_' ::=            {{ com capability }}
-    | GOD                 ::   :: god                     {{ tex \mathsf{GOD} }}
-    | BUILD               ::   :: build                   {{ tex \mathsf{BUILD} }}
+  polytype, S {{ tex \sigma }} :: 'S_' ::=              {{ com polytype }}
+    | T                   ::   :: mono                    {{ com monotype }}
+    | forall a1 .. aj dd1 .. ddk . T ::   :: poly         {{ com quantified type }}
 
-  capset, D {{ tex \Delta }} :: 'Cset_' ::=             {{ com capability set }}
-    | empty               ::   :: em
-    | D , C               ::   :: snoc
+  capability, C {{ tex \kappa }} :: 'cap_' ::=            {{ com capability }}
+    | GOD                 ::   :: god                     {{ tex \mathsf{GOD} }}
+    | SELFDESTRUCT        ::   :: selfdestruct            {{ tex \mathsf{SELFDESTRUCT} }}
+    | MOVE                ::   :: move                    {{ tex \mathsf{MOVE} }}
+    | TURN                ::   :: turn                    {{ tex \mathsf{TURN} }}
+    | GRAB                ::   :: grab                    {{ tex \mathsf{GRAB} }}
+    | PLACE               ::   :: place                   {{ tex \mathsf{PLACE} }}
+    | GIVE                ::   :: give                    {{ tex \mathsf{GIVE} }}
+    | INSTALL             ::   :: install                 {{ tex \mathsf{INSTALL} }}
+    | MAKE                ::   :: make                    {{ tex \mathsf{MAKE} }}
+    | COUNT               ::   :: count                   {{ tex \mathsf{COUNT} }}
+    | BUILD               ::   :: build                   {{ tex \mathsf{BUILD} }}
+    | SALVAGE             ::   :: salvage                 {{ tex \mathsf{SALVAGE} }}
+    | DRILL               ::   :: drill                   {{ tex \mathsf{DRILL} }}
+    | SENSELOC            ::   :: senseloc                {{ tex \mathsf{SENSELOC} }}
+    | SENSEFRONT          ::   :: sensefront              {{ tex \mathsf{SENSEFRONT} }}
+    | SENSEHERE           ::   :: sensehere               {{ tex \mathsf{SENSEHERE} }}
+    | SCAN                ::   :: scan                    {{ tex \mathsf{SCAN} }}
+    | RANDOM              ::   :: random                  {{ tex \mathsf{RANDOM} }}
+    | APPEAR              ::   :: appear                  {{ tex \mathsf{APPEAR} }}
+    | CREATE              ::   :: create                  {{ tex \mathsf{CREATE} }}
+    | LOG                 ::   :: log                     {{ tex \mathsf{LOG} }}
+    | FLOAT               ::   :: float                   {{ tex \mathsf{FLOAT} }}
+    | COND                ::   :: cond                    {{ tex \mathsf{COND} }}
+    | COMPARE             ::   :: compare                 {{ tex \mathsf{COMPARE} }}
+    | ARITH               ::   :: arith                   {{ tex \mathsf{ARITH} }}
+    | ENV                 ::   :: env                     {{ tex \mathsf{ENV} }}
+    | LAMBDA              ::   :: lambda                  {{ tex \mathsf{LAMBDA} }}
+    | RECURSION           ::   :: recursion               {{ tex \mathsf{RECURSION} }}
+    | REPROGRAM           ::   :: reprogram               {{ tex \mathsf{REPROGRAM} }}
+    | WHOAMI              ::   :: whoami                  {{ tex \mathsf{WHOAMI} }}
+
+capset, D {{ tex \Delta }} :: 'Cset_' ::=             {{ com capability set }}
+    | empty               ::   :: em                      {{ com empty }}
+    | dd                  ::   :: var                     {{ com variable }}
+    | C                   ::   :: sing                    {{ com singleton }}
+    | D , C               ::   :: snoc                    {{ com snoc }}
     | D1 U D2             :: M :: union
     | ( D )               :: S :: parens
 
   G {{ tex \Gamma }} :: G_ ::=                          {{ com type context }}
     | empty               ::   :: em                      {{ com empty context }}
     | G , x : T           ::   :: snoc
-
-%   polytype, S {{ tex \sigma }} :: 'S_' ::=              {{ com polytype }}
-%     | T                   ::   :: mono                    {{ com monotype }}
-%     | forall a1 .. ak . T ::   :: poly                    {{ com forall }}
 
 
   formula :: 'formula_' ::=
@@ -178,7 +214,10 @@ grammar
     | ( formula )          :: S :: parens
 
 
-% parsing
+parsing
+  T_arrow left T_earrow
+  T_sum left T_arrow
+
 %   uop_neg left t_app    % t1 - t2  should parse as  minus(t1, t2), not app(t1,neg(t2))
 %   formula_dots left formula_not
 
@@ -196,8 +235,132 @@ defns
   Jsub :: '' ::=
 
   defn
-    G |- t : T ; D :: :: hastype :: type_
-      {{ com In context $[[G]]$, $[[t]]$ has type $[[T]]$, and its evaluation requires capabilites $[[D]]$ }} by
+    |-c K : S :: :: consttype :: ctype_
+      {{ com Constant $[[K]]$ has type $[[S]]$ }} by
+
+    ---------------------- :: noop
+    |-c noop : cmd ^ empty ()
+
+    ---------------------- :: wait
+    |-c wait : int -> cmd ^ empty ()
+
+    ---------------------- :: selfdestruct
+    |-c selfdestruct : cmd ^ SELFDESTRUCT ()
+
+    ---------------------- :: move
+    |-c move : cmd ^ MOVE ()
+
+    ---------------------- :: turn
+    |-c turn : dir -> cmd ^ TURN ()
+
+    ---------------------- :: grab
+    |-c grab : cmd ^ GRAB string
+
+    ---------------------- :: place
+    |-c place : string -> cmd ^ PLACE ()
+
+    ---------------------- :: give
+    |-c give : string -> string -> cmd ^ GIVE ()
+
+    ---------------------- :: install
+    |-c install : string -> string -> cmd ^ INSTALL ()
+
+    ---------------------- :: make
+    |-c make : string -> cmd ^ MAKE ()
+
+    ---------------------- :: has
+    |-c has : string -> cmd ^ empty bool
+
+    ---------------------- :: count
+    |-c count : string -> cmd ^ COUNT int
+
+    ---------------------- :: drill
+    |-c drill : dir -> cmd ^ DRILL ()
+
+    ---------------------- :: build
+    |-c build : forall a dd1 dd2. string -> { cmd ^ dd1 a } ^ dd2 -> cmd ^ BUILD string
+
+    ---------------------- :: salvage
+    |-c salvage : cmd ^ SALVAGE ()
+
+    ---------------------- :: reprogram
+    |-c reprogram : forall a dd1 dd2. string -> { cmd ^ dd1 a } ^ dd2 -> cmd ^ BUILD ()
+
+    ---------------------- :: say
+    |-c say : string -> cmd ^ empty ()
+
+    ---------------------- :: log
+    |-c log : string -> cmd ^ LOG ()
+
+    ---------------------- :: view
+    |-c view : string -> cmd ^ empty ()
+
+    ---------------------- :: appear
+    |-c appear : string -> cmd ^ APPEAR ()
+
+    ---------------------- :: create
+    |-c create : string -> cmd ^ GOD ()
+
+    ---------------------- :: blocked
+    |-c blocked : cmd ^ SENSEFRONT bool
+
+    ---------------------- :: scan
+    |-c scan : dir -> cmd ^ SCAN (() + string)
+
+    ---------------------- :: upload
+    |-c upload : string -> cmd ^ SCAN ()
+
+    ---------------------- :: ishere
+    |-c ishere : string -> cmd ^ SENSEHERE bool
+
+    ---------------------- :: whereami
+    |-c whereami : cmd ^ SENSELOC (int * int)
+
+    ---------------------- :: whoami
+    |-c whoami : cmd ^ WHOAMI string
+
+    ---------------------- :: random
+    |-c random : int -> cmd ^ RANDOM int
+
+    ---------------------- :: run
+    |-c run : string -> cmd ^ empty ()
+
+    ---------------------- :: if
+    |-c if : forall a dd . bool -> { a } ^ dd -> { a } ^ dd -- dd --> a
+
+    ---------------------- :: inl
+    |-c inl : forall a bb. a -> a + bb
+
+    ---------------------- :: inr
+    |-c inr : forall a bb. bb -> a + bb
+
+    ---------------------- :: case
+    |-c case : forall a1 a2 bb dd. (a1 -- dd --> bb) -> (a2 -- dd --> bb) -> (a1 + a2 -- dd --> bb)
+
+    % | pair                ::   :: pair                    {{ com pair formation }}
+    % | fst                 ::   :: fst                     {{ com first projection }}
+    % | snd                 ::   :: snd                     {{ com second projection }}
+    % | force               ::   :: force                   {{ com force }}
+    % | return              ::   :: return                  {{ com return }}
+    % | try                 ::   :: try                     {{ com try }}
+    % | raise               ::   :: raise                   {{ com raise exception }}
+    % | not                 ::   :: not                     {{ com not }}
+    % | neg                 ::   :: neg                     {{ com negate }}
+    % | eq                  ::   :: eq                      {{ com equal to }}
+    % | neq                 ::   :: neq                     {{ com not equal to }}
+    % | lt                  ::   :: lt                      {{ com less than }}
+    % | gt                  ::   :: gt                      {{ com greater than }}
+    % | leq                 ::   :: leq                     {{ com less-or-equal }}
+    % | geq                 ::   :: geq                     {{ com greater-or-equal }}
+    % | add                 ::   :: add                     {{ com addition }}
+    % | sub                 ::   :: sub                     {{ com subtraction }}
+    % | mul                 ::   :: mul                     {{ com multiplication }}
+    % | div                 ::   :: div                     {{ com division }}
+    % | exp                 ::   :: exp                     {{ com exponentiation }}
+
+  defn
+    G |- t : S ; D :: :: hastype :: type_
+      {{ com In context $[[G]]$, $[[t]]$ has type $[[S]]$, and its evaluation requires capabilites $[[D]]$ }} by
 
     ---------------------------- :: unit
     G |- () : () ; empty
@@ -213,6 +376,10 @@ defns
 
     ---------------------------- :: bool
     G |- b : bool ; empty
+
+    |-c K : T
+    ---------------------------- :: const
+    G |- K : T ; empty
 
     x : T elem G
     ---------------------- :: var
@@ -232,9 +399,9 @@ defns
 
     G |- t : T ; D
     -------------------------------------------- :: delay
-    G |- { t } : { T ^ D } ; empty
+    G |- { t } : { T } ^ D ; empty
 
-    G |- t : { T ^ D1 } ; D2
+    G |- t : { T } ^ D1 ; D2
     ------------------------------------------------------------ :: force
     G |- force t : T ; D1 U D2
 
