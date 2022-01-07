@@ -27,7 +27,7 @@ executable cap-check
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.14.3.0, witch, megaparsec, text >= 1.1.2, containers, parser-combinators
+    build-depends:    base >= 4.14.3.0, witch, megaparsec, text >= 1.1.2, containers, parser-combinators
 
     -- Directories containing source files.
     -- hs-source-dirs:

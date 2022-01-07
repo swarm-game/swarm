@@ -1,22 +1,24 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE TypeApplications    #-}
 
-import Control.Monad.Combinators.Expr
-import Text.Megaparsec
-import Text.Megaparsec.Char
-import Text.Megaparsec.Char.Lexer qualified as L
+import           Control.Monad.Combinators.Expr
+import           Text.Megaparsec
+import           Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer     as L
 
-import Data.Map qualified as M
-import Data.Maybe
-import Data.Set (Set)
-import Data.Set qualified as S
-import Data.Text (Text, toLower)
-import Data.Text.IO qualified as T
-import Data.Void
-import Text.Printf
-import Witch
+import qualified Data.Map                       as M
+import           Data.Maybe
+import           Data.Set                       (Set)
+import qualified Data.Set                       as S
+import           Data.Text                      (Text)
+import qualified Data.Text                      as T
+import qualified Data.Text.IO                   as T
+import           Data.Void
+import           Text.Megaparsec.Error          (errorBundlePretty)
+import           Text.Printf
+import           Witch
 
 ------------------------------------------------------------
 -- Type declarations
@@ -51,8 +53,9 @@ type CapSet = Set Capability
 
 data Type where
   TyInt :: Type
-  TyFun :: Type -> CapSet -> Type -> Type
-  TyDelay :: Type -> CapSet -> Type
+  TyFun :: CapSet -> Type -> Type -> Type
+  TyDelay :: CapSet -> Type -> Type
+  TyCmd :: CapSet -> Type -> Type
   deriving (Show, Eq)
 
 type Ctx = M.Map Var Type
@@ -90,7 +93,7 @@ identifier = (lexeme . try) (p >>= checkReserved) <?> "variable name"
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   checkReserved s
-    | toLower t `elem` reservedWords =
+    | T.toLower t `elem` reservedWords =
       fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
     | otherwise = return t
    where
@@ -111,12 +114,36 @@ parseAtom =
     <|> EInt <$> integer
     <|> ELam <$> (symbol "\\" *> identifier)
       <*> optional (symbol ":" *> parseType)
-      <*> (symbol "." *> parseExpr)
+      <*> (symbol "." *> parseTerm)
     <|> EForce <$ reserved "force"
     <|> EMove <$ reserved "move"
     <|> EBuild <$ reserved "build"
-    <|> EDelay <$> braces parseExpr
-    <|> parens parseExpr
+    <|> EDelay <$> braces parseTerm
+    <|> parens parseTerm
+
+parseTerm :: Parser Expr
+parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
+
+mkBindChain :: [Stmt] -> Parser Expr
+mkBindChain stmts = case last stmts of
+  Binder _ _ -> fail "Last command in a chain must not have a binder"
+  BareTerm t -> return $ foldr mkBind t (init stmts)
+ where
+  mkBind (BareTerm t1) t2 = EBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = EBind (Just x) t1 t2
+
+data Stmt
+  = BareTerm Expr
+  | Binder Text Expr
+  deriving (Show)
+
+parseStmt :: Parser Stmt
+parseStmt =
+  mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseExpr
+
+mkStmt :: Maybe Text -> Expr -> Stmt
+mkStmt Nothing  = BareTerm
+mkStmt (Just x) = Binder x
 
 parseExpr :: Parser Expr
 parseExpr = makeExprParser parseAtom table
@@ -128,22 +155,23 @@ parseExpr = makeExprParser parseAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyInt <$ reserved "Int"
-    <|> TyDelay <$> braces parseType
+  TyInt <$ reserved "int"
+    <|> TyDelay S.empty <$> braces parseType
+    <|> TyCmd S.empty <$> (reserved "cmd" *> parseTypeAtom)
     <|> parens parseType
 
 parseType :: Parser Type
 parseType = makeExprParser parseTypeAtom table
  where
-  table = [[InfixR (TyFun <$ symbol "->")]]
+  table = [[InfixR (TyFun S.empty <$ symbol "->")]]
 
-expr :: Parser Expr
-expr = sc *> parseExpr <* eof
+term :: Parser Expr
+term = sc *> parseTerm <* eof
 
 tm :: Text -> Expr
-tm s = case parse expr "" s of
-  Left err -> error (show err)
-  Right e -> e
+tm s = case parse term "" s of
+  Left err -> error (errorBundlePretty err)
+  Right e  -> e
 
 ------------------------------------------------------------
 -- Pretty printing
@@ -156,11 +184,28 @@ prettyType = prettyTyPrec 0
  where
   prettyTyPrec :: Prec -> Type -> Text
   prettyTyPrec _ TyInt = "Int"
-  prettyTyPrec p (TyFun ty1 ty2) =
-    mparens (p > 0) $ prettyTyPrec 1 ty1 <> " -> " <> prettyTyPrec 0 ty2
+  prettyTyPrec p (TyFun c ty1 ty2) =
+    mparens (p > 0) $ prettyTyPrec 1 ty1 <> prettyArrow c <> prettyTyPrec 0 ty2
+  prettyTyPrec _ (TyDelay c ty) =
+    "{" <> prettyTyPrec 0 ty <> "}" <> (if S.null c then "" else prettyCapSet c)
+  prettyTyPrec _ (TyCmd c ty)
+    | S.null c  = "cmd " <> prettyTyPrec 2 ty
+    | otherwise = "cmd " <> prettyCapSet c <> " " <> prettyTyPrec 2 ty
+
+  prettyArrow :: CapSet -> Text
+  prettyArrow s
+    | S.null s = " -> "
+    | otherwise = " -" <> prettyCapSet s <> "-> "
+
+prettyCapSet :: CapSet -> Text
+prettyCapSet s = "[" <> T.intercalate "," (map prettyCap (S.toList s)) <> "]"
+
+prettyCap :: Capability -> Text
+prettyCap CMove  = "m"
+prettyCap CBuild = "b"
 
 mparens :: Bool -> Text -> Text
-mparens True = ("(" <>) . (<> ")")
+mparens True  = ("(" <>) . (<> ")")
 mparens False = id
 
 data Associativity = L | R
@@ -281,7 +326,7 @@ interp' _ (EInt n) = VInt n
 interp' env (EPlus ea eb) =
   case (interp' env ea, interp' env eb) of
     (VInt va, VInt vb) -> VInt (va + vb)
-    _ -> error "Impossible! interp' EPlus on non-Ints"
+    _                  -> error "Impossible! interp' EPlus on non-Ints"
 interp' env (ELam x _ body) = VClosure env x body
 interp' env (EApp fun arg) =
   case interp' env fun of
@@ -289,12 +334,12 @@ interp' env (EApp fun arg) =
       interp' (M.insert x (interp' env arg) env') body
     _ -> error "Impossible! interp' EApp on non-closure"
 
-eval :: String -> IO ()
-eval s = case parse expr "" (into @Text s) of
-  Left err -> print err
-  Right e -> case infer M.empty e of
-    Left tyerr -> T.putStrLn $ prettyTypeError tyerr
-    Right _ -> putStrLn $ prettyValue (interp e)
+-- eval :: String -> IO ()
+-- eval s = case parse expr "" (into @Text s) of
+--   Left err -> print err
+--   Right e -> case infer M.empty e of
+--     Left tyerr -> T.putStrLn $ prettyTypeError tyerr
+--     Right _    -> putStrLn $ prettyValue (interp e)
 
 -- Example to show that closures are working properly:
 --
@@ -304,4 +349,5 @@ eval s = case parse expr "" (into @Text s) of
 -- (a) crash, or (b) 7.
 
 main :: IO ()
-main = getLine >>= eval
+main = putStrLn "hi!"
+  -- getLine >>= eval
