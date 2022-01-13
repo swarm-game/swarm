@@ -23,7 +23,7 @@ executable cap-check
     main-is:          Caps.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:    SubsetSolver
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -32,3 +32,8 @@ executable cap-check
     -- Directories containing source files.
     -- hs-source-dirs:
     default-language: Haskell2010
+
+test-suite solver-tests
+  type: exitcode-stdio-1.0
+  main-is: SolverTests.hs
+  build-depends: base, QuickCheck, tasty, tasty-quickcheck, containers
