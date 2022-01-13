@@ -33,7 +33,7 @@ data Expr where
   ELam :: Var -> Maybe Type -> Expr -> Expr
   EApp :: Expr -> Expr -> Expr
   EDelay :: Expr -> Expr
-  EForce :: Expr
+  EForce :: Expr -> Expr
   EMove :: Expr
   EBuild :: Expr
   EBind :: Maybe Var -> Expr -> Expr -> Expr
@@ -47,9 +47,12 @@ data Value where
 
 type Env = M.Map Text Value
 
-data Capability = CMove | CBuild deriving (Eq, Ord, Read, Show, Enum, Bounded)
+data Capability = CMove | CBuild | CArith | CLambda deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 type CapSet = Set Capability
+
+noCaps :: CapSet
+noCaps = S.empty
 
 data Type where
   TyInt :: Type
@@ -115,7 +118,7 @@ parseAtom =
     <|> ELam <$> (symbol "\\" *> identifier)
       <*> optional (symbol ":" *> parseType)
       <*> (symbol "." *> parseTerm)
-    <|> EForce <$ reserved "force"
+    <|> EForce <$> (reserved "force" *> parseAtom)
     <|> EMove <$ reserved "move"
     <|> EBuild <$ reserved "build"
     <|> EDelay <$> braces parseTerm
@@ -243,6 +246,8 @@ data TypeError where
   MismatchFun :: Expr -> Type -> TypeError
   CantInfer :: Expr -> TypeError
   NotAFunction :: Expr -> Type -> TypeError
+  NotDelay :: Expr -> Type -> TypeError
+  NotCmd :: Expr -> Type -> TypeError
 
 prettyTypeError :: TypeError -> Text
 prettyTypeError (UnboundVar x) = "Unbound variable " <> x
@@ -265,37 +270,59 @@ prettyTypeError (NotAFunction e ty) =
       "Type error: %s should be a function, but has type %s."
       (pretty e)
       (prettyType ty)
+prettyTypeError (NotDelay e ty) =
+  from @String $
+    printf
+      "Type error: %s should be a delayed expression, but has type %s."
+      (pretty e)
+      (prettyType ty)
+prettyTypeError (NotCmd e ty) =
+  from @String $
+    printf
+      "Type error: %s should be a command, but has type %s."
+      (pretty e)
+      (prettyType ty)
 prettyTypeError (CantInfer e) =
   from @String $
     printf
       "Can't infer the type of %s."
       (pretty e)
 
--- infer :: Ctx -> Expr -> Either TypeError Type
--- infer ctx (EVar x) =
---   case M.lookup x ctx of
---     Just ty -> return ty
---     Nothing -> Left $ UnboundVar x
--- infer _ (EInt _) = return TyInt
--- infer ctx (EPlus e1 e2) = do
---   check ctx e1 TyInt
---   check ctx e2 TyInt
---   return TyInt
--- infer ctx (EApp e1 e2) = do
---   (argTy, resTy) <- checkFun ctx e1
---   check ctx e2 argTy
---   return resTy
--- infer ctx (ELam x (Just argTy) body) = do
---   resTy <- infer (M.insert x argTy ctx) body
---   return $ TyFun argTy resTy
+infer :: Ctx -> Expr -> Either TypeError (Type, CapSet)
+infer ctx (EVar x) =
+  case M.lookup x ctx of
+    Just ty -> return (ty, noCaps)
+    Nothing -> Left $ UnboundVar x
+infer _ (EInt _) = return (TyInt, noCaps)
+infer ctx (EPlus e1 e2) = do
+  c1 <- check ctx e1 TyInt
+  c2 <- check ctx e2 TyInt
+  return (TyInt, S.insert CArith (c1 `S.union` c2))
+infer ctx (ELam x (Just argTy) body) = do
+  (resTy, d) <- infer (M.insert x argTy ctx) body
+  return (TyFun d argTy resTy, S.singleton CLambda)
+infer _ e@(ELam _ Nothing _) = Left $ CantInfer e
+infer ctx (EApp e1 e2) = do
+  (d1, argTy, resTy, d2) <- checkFun ctx e1
+  d3 <- check ctx e2 argTy
+  return (resTy, S.unions [d1,d2,d3])
+infer ctx (EDelay e) = do
+  (ty, d) <- infer ctx e
+  return (TyDelay d ty, noCaps)
+infer ctx (EForce e) = do
+  (dty, d2) <- infer ctx e
+  (ty, d1) <- checkDelay e dty
+  return (ty, d1 `S.union` d2)
+infer ctx (EBind mx c1 c2) = do
+  (ty1, d11, d12) <- checkCmd ctx c1
+  (ty2, d21, d22) <- checkCmd (maybe id (`M.insert` ty1) mx ctx) c2
+  return (TyCmd noCaps ty2, S.unions [d11, d12, d21, d22])
 
--- -- Can't infer type of a bare lambda
--- infer _ e = Left $ CantInfer e
-
--- check :: Ctx -> Expr -> Type -> Either TypeError ()
+check :: Ctx -> Expr -> Type -> Either TypeError CapSet
+check = undefined
 -- check ctx e@(ELam x Nothing body) ty =
 --   case ty of
---     TyFun argTy resTy -> check (M.insert x argTy ctx) body resTy
+--     TyFun d argTy resTy -> check (M.insert x argTy ctx) body resTy
 --     _ -> Left $ MismatchFun e ty
 -- check ctx e ty = do
 --   ty' <- infer ctx e
@@ -303,12 +330,23 @@ prettyTypeError (CantInfer e) =
 --     True -> return ()
 --     False -> Left $ Mismatch e ty ty'
 
--- checkFun :: Ctx -> Expr -> Either TypeError (Type, Type)
--- checkFun ctx e = do
---   ty <- infer ctx e
---   case ty of
---     TyFun argTy resTy -> return (argTy, resTy)
---     _ -> Left $ NotAFunction e ty
+checkFun :: Ctx -> Expr -> Either TypeError (CapSet, Type, Type, CapSet)
+checkFun ctx e = do
+  (ty, d2) <- infer ctx e
+  case ty of
+    TyFun d1 argTy resTy -> return (d1, argTy, resTy, d2)
+    _                    -> Left $ NotAFunction e ty
+
+checkDelay :: Expr -> Type -> Either TypeError (Type, CapSet)
+checkDelay _ (TyDelay d ty) = return (ty, d)
+checkDelay e ty             = Left $ NotDelay e ty
+
+checkCmd :: Ctx -> Expr -> Either TypeError (Type, CapSet, CapSet)
+checkCmd ctx e = do
+  (ty, d2) <- infer ctx e
+  case ty of
+    TyCmd d1 ty1 -> return (ty1, d1, d2)
+    _            -> Left $ NotCmd e ty
 
 ------------------------------------------------------------
 -- Interpreter
