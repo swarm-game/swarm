@@ -29,6 +29,9 @@ fromList = partitionEithers >>> (S.fromList *** S.fromList) >>> uncurry Subset
 eval :: (Ord v, Ord c) => Map v (Set c) -> Subset v c -> Set c
 eval m (Subset vs cs) = cs `S.union` (S.unions . map (m!) $ S.toList vs)
 
+evalIneq :: (Ord v, Ord c) => Map v (Set c) -> Ineq v c -> Bool
+evalIneq m (s1 :<: s2) = eval m s1 `S.isSubsetOf` eval m s2
+
 union :: (Ord v, Ord c) => Subset v c -> Subset v c -> Subset v c
 union (Subset vs1 cs1) (Subset vs2 cs2) = Subset (S.union vs1 vs2) (S.union cs1 cs2)
 
