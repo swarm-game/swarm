@@ -8,6 +8,11 @@ import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
 
+import           SubsetSolver
+
+import           Control.Monad.Except
+import           Control.Monad.Reader
+import           Control.Monad.Writer
 import qualified Data.Map                       as M
 import           Data.Maybe
 import           Data.Set                       (Set)
@@ -204,8 +209,10 @@ prettyCapSet :: CapSet -> Text
 prettyCapSet s = "[" <> T.intercalate "," (map prettyCap (S.toList s)) <> "]"
 
 prettyCap :: Capability -> Text
-prettyCap CMove  = "m"
-prettyCap CBuild = "b"
+prettyCap CMove   = "m"
+prettyCap CBuild  = "b"
+prettyCap CArith  = "a"
+prettyCap CLambda = "λ"
 
 mparens :: Bool -> Text -> Text
 mparens True  = ("(" <>) . (<> ")")
@@ -288,37 +295,43 @@ prettyTypeError (CantInfer e) =
       "Can't infer the type of %s."
       (pretty e)
 
-infer :: Ctx -> Expr -> Either TypeError (Type, CapSet)
-infer ctx (EVar x) =
+type TCM a = WriterT [Ineq Var Capability] (ReaderT Ctx (Except TypeError)) a
+
+runTCM :: TCM a -> Either TypeError (a, [Ineq Var Capability])
+runTCM = runExcept . flip runReaderT M.empty . runWriterT
+
+infer :: Expr -> TCM (Type, CapSet)
+infer (EVar x) = do
+  ctx <- ask
   case M.lookup x ctx of
     Just ty -> return (ty, noCaps)
-    Nothing -> Left $ UnboundVar x
-infer _ (EInt _) = return (TyInt, noCaps)
-infer ctx (EPlus e1 e2) = do
-  c1 <- check ctx e1 TyInt
-  c2 <- check ctx e2 TyInt
+    Nothing -> throwError $ UnboundVar x
+infer (EInt _) = return (TyInt, noCaps)
+infer (EPlus e1 e2) = do
+  c1 <- check e1 TyInt
+  c2 <- check e2 TyInt
   return (TyInt, S.insert CArith (c1 `S.union` c2))
-infer ctx (ELam x (Just argTy) body) = do
-  (resTy, d) <- infer (M.insert x argTy ctx) body
+infer (ELam x (Just argTy) body) = do
+  (resTy, d) <- local (M.insert x argTy) $ infer body
   return (TyFun d argTy resTy, S.singleton CLambda)
-infer _ e@(ELam _ Nothing _) = Left $ CantInfer e
-infer ctx (EApp e1 e2) = do
-  (d1, argTy, resTy, d2) <- checkFun ctx e1
-  d3 <- check ctx e2 argTy
+infer e@(ELam _ Nothing _) = throwError $ CantInfer e
+infer (EApp e1 e2) = do
+  (d1, argTy, resTy, d2) <- checkFun e1
+  d3 <- check e2 argTy
   return (resTy, S.unions [d1,d2,d3])
-infer ctx (EDelay e) = do
-  (ty, d) <- infer ctx e
+infer (EDelay e) = do
+  (ty, d) <- infer e
   return (TyDelay d ty, noCaps)
-infer ctx (EForce e) = do
-  (dty, d2) <- infer ctx e
+infer (EForce e) = do
+  (dty, d2) <- infer e
   (ty, d1) <- checkDelay e dty
   return (ty, d1 `S.union` d2)
-infer ctx (EBind mx c1 c2) = do
-  (ty1, d11, d12) <- checkCmd ctx c1
-  (ty2, d21, d22) <- checkCmd (maybe id (`M.insert` ty1) mx ctx) c2
+infer (EBind mx c1 c2) = do
+  (ty1, d11, d12) <- checkCmd c1
+  (ty2, d21, d22) <- local (maybe id (`M.insert` ty1) mx) $ checkCmd c2
   return (TyCmd noCaps ty2, S.unions [d11, d12, d21, d22])
 
-check :: Ctx -> Expr -> Type -> Either TypeError CapSet
+check :: Expr -> Type -> TCM CapSet
 check = undefined
 -- check ctx e@(ELam x Nothing body) ty =
 --   case ty of
@@ -330,23 +343,23 @@ check = undefined
 --     True -> return ()
 --     False -> Left $ Mismatch e ty ty'
 
-checkFun :: Ctx -> Expr -> Either TypeError (CapSet, Type, Type, CapSet)
-checkFun ctx e = do
-  (ty, d2) <- infer ctx e
+checkFun :: Expr -> TCM (CapSet, Type, Type, CapSet)
+checkFun e = do
+  (ty, d2) <- infer e
   case ty of
     TyFun d1 argTy resTy -> return (d1, argTy, resTy, d2)
-    _                    -> Left $ NotAFunction e ty
+    _                    -> throwError $ NotAFunction e ty
 
-checkDelay :: Expr -> Type -> Either TypeError (Type, CapSet)
+checkDelay :: Expr -> Type -> TCM (Type, CapSet)
 checkDelay _ (TyDelay d ty) = return (ty, d)
-checkDelay e ty             = Left $ NotDelay e ty
+checkDelay e ty             = throwError $ NotDelay e ty
 
-checkCmd :: Ctx -> Expr -> Either TypeError (Type, CapSet, CapSet)
-checkCmd ctx e = do
-  (ty, d2) <- infer ctx e
+checkCmd :: Expr -> TCM (Type, CapSet, CapSet)
+checkCmd e = do
+  (ty, d2) <- infer e
   case ty of
     TyCmd d1 ty1 -> return (ty1, d1, d2)
-    _            -> Left $ NotCmd e ty
+    _            -> throwError $ NotCmd e ty
 
 ------------------------------------------------------------
 -- Interpreter
