@@ -8,15 +8,13 @@ import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer     as L
 
-import           SubsetSolver
+import           SubsetSolver                   as S
 
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.Writer
 import qualified Data.Map                       as M
 import           Data.Maybe
-import           Data.Set                       (Set)
-import qualified Data.Set                       as S
 import           Data.Text                      (Text)
 import qualified Data.Text                      as T
 import qualified Data.Text.IO                   as T
@@ -54,12 +52,19 @@ type Env = M.Map Text Value
 
 data Capability = CMove | CBuild | CArith | CLambda deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
-type CapSet = Set Capability
+type CapSet = Subset Var Capability
 
 noCaps :: CapSet
 noCaps = S.empty
 
+-- For now, the variables are ONLY capset variables, there are no type variables.
+-- If there were, we would add them as a separate [Var].
+data PolyType = Forall [Var] Type
+  deriving (Show, Eq)
+
+-- Note, no type variables for now
 data Type where
+  TyUnit :: Type
   TyInt :: Type
   TyFun :: CapSet -> Type -> Type -> Type
   TyDelay :: CapSet -> Type -> Type
@@ -191,6 +196,7 @@ prettyType :: Type -> Text
 prettyType = prettyTyPrec 0
  where
   prettyTyPrec :: Prec -> Type -> Text
+  prettyTyPrec _ TyUnit = "()"
   prettyTyPrec _ TyInt = "Int"
   prettyTyPrec p (TyFun c ty1 ty2) =
     mparens (p > 0) $ prettyTyPrec 1 ty1 <> prettyArrow c <> prettyTyPrec 0 ty2
@@ -330,6 +336,8 @@ infer (EBind mx c1 c2) = do
   (ty1, d11, d12) <- checkCmd c1
   (ty2, d21, d22) <- local (maybe id (`M.insert` ty1) mx) $ checkCmd c2
   return (TyCmd noCaps ty2, S.unions [d11, d12, d21, d22])
+infer EMove = return (TyCmd (S.singleton CMove) TyUnit, noCaps)
+infer EBuild = return (TyFun
 
 check :: Expr -> Type -> TCM CapSet
 check = undefined
