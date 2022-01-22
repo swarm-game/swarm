@@ -65,6 +65,7 @@ instance PrettyPrec BaseTy where
   prettyPrec _ BDir = "dir"
   prettyPrec _ BString = "string"
   prettyPrec _ BBool = "bool"
+  prettyPrec _ BRobot = "robot"
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"

@@ -116,6 +116,8 @@ data BaseTy
     BDir
   | -- | Booleans.
     BBool
+  | -- | Robots.
+    BRobot
   deriving (Eq, Ord, Show, Data)
 
 -- | A "structure functor" encoding the shape of type expressions.
