@@ -86,7 +86,7 @@ import Brick (Widget)
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
-import Data.Bifunctor (bimap, first, second)
+import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Hashable
@@ -98,7 +98,7 @@ import qualified Data.IntSet as IS
 import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (fromMaybe, isJust, listToMaybe)
+import Data.Maybe (isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -114,7 +114,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Syntax (toDirection)
 
 import Paths_swarm
-import Swarm.Util (plural)
+import Swarm.Util (plural, (?))
 
 ------------------------------------------------------------
 -- Properties
@@ -445,22 +445,25 @@ type Count = Int
 --   it contains some entities, along with the number of times each
 --   occurs.  Entities can be looked up directly, or by name.
 data Inventory = Inventory
-  { counts :: IntMap (Count, Entity) -- main map
-  , byName :: Map Text IntSet -- Mirrors the main map; just
-  -- caching the ability to
-  -- look up by name.
+  { -- Main map
+    counts :: IntMap (Count, Entity)
+  , -- Mirrors the main map; just caching the ability to look up by
+    -- name.
+    byName :: Map Text IntSet
+  , -- Cached hash of the inventory.
+    inventoryHash :: Int
   }
   deriving (Show, Generic)
 
 instance Hashable Inventory where
-  -- Don't look at Entity records themselves --- just hash their keys,
-  -- which are already a hash.
-  hashWithSalt = hashUsing (map (second fst) . IM.assocs . counts)
+  -- Just return cached hash value.
+  hash = inventoryHash
+  hashWithSalt s = hashWithSalt s . inventoryHash
 
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
 lookup :: Entity -> Inventory -> Count
-lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
+lookup e (Inventory cs _ _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 
 -- | Look up an entity by name in an inventory, returning a list of
 --   matching entities.  Note, if this returns some entities, it does
@@ -469,7 +472,7 @@ lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 --   any, use 'lookup' and see whether the resulting 'Count' is
 --   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
-lookupByName name (Inventory cs byN) =
+lookupByName name (Inventory cs byN _) =
   maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
 
 -- | Look up an entity by name and see how many there are in the
@@ -477,12 +480,11 @@ lookupByName name (Inventory cs byN) =
 --   just picks the first one returned from 'lookupByName'.
 countByName :: Text -> Inventory -> Count
 countByName name inv =
-  fromMaybe 0 $
-    flip lookup inv <$> listToMaybe (lookupByName name inv)
+  maybe 0 (`lookup` inv) (listToMaybe (lookupByName name inv))
 
 -- | The empty inventory.
 empty :: Inventory
-empty = Inventory IM.empty M.empty
+empty = Inventory IM.empty M.empty 0
 
 -- | Create an inventory containing one entity.
 singleton :: Entity -> Inventory
@@ -501,10 +503,11 @@ fromList = foldl' (flip insert) empty
 --   If the inventory already contains this entity, then only its
 --   count will be incremented.
 insertCount :: Count -> Entity -> Inventory -> Inventory
-insertCount cnt e (Inventory cs byN) =
+insertCount k e (Inventory cs byN h) =
   Inventory
-    (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (cnt, e) cs)
+    (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (k, e) cs)
     (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
+    (h + k * (e ^. entityHash)) -- homomorphic hashing
 
 -- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
@@ -520,28 +523,33 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount k e (Inventory cs byN) = Inventory cs' byN
+deleteCount k e (Inventory cs byN h) = Inventory cs' byN h'
  where
-  cs' = IM.alter removeCount (e ^. entityHash) cs
+  m = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
+  cs' = IM.adjust removeCount (e ^. entityHash) cs
+  h' = h - min k m * (e ^. entityHash)
 
-  removeCount :: Maybe (Count, a) -> Maybe (Count, a)
-  removeCount Nothing = Nothing
-  removeCount (Just (n, a)) = Just (max 0 (n - k), a)
+  removeCount :: (Count, a) -> (Count, a)
+  removeCount (n, a) = (max 0 (n - k), a)
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
-deleteAll e (Inventory cs byN) =
+deleteAll e (Inventory cs byN h) =
   Inventory
     (IM.adjust (first (const 0)) (e ^. entityHash) cs)
     byN
+    (h - n * (e ^. entityHash))
+ where
+  n = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
-elems (Inventory cs _) = IM.elems cs
+elems (Inventory cs _ _) = IM.elems cs
 
 -- | Union two inventories.
 union :: Inventory -> Inventory -> Inventory
-union (Inventory cs1 byN1) (Inventory cs2 byN2) =
+union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   Inventory
     (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
     (M.unionWith IS.union byN1 byN2)
+    (h1 + h2)
