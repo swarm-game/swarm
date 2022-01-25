@@ -24,9 +24,7 @@ import Numeric.Noise.Perlin
 import Numeric.Noise.Ridged
 import Witch
 
-import qualified Data.Array as A
 import Data.Array.IArray
-import qualified Data.Array.Unboxed as U
 import Swarm.Game.Terrain
 import Swarm.Game.World
 
