@@ -1,7 +1,13 @@
+queue_rules:
+  - name: default
+    conditions:
+      - check-success=Haskell-CI - Linux - ghc-9.0.1
+      - check-success=Haskell-CI - Linux - ghc-8.10.4
+
 pull_request_rules:
 - actions:
-    merge:
-      strict: smart
+    queue:
+      name: default
       method: squash
       commit_message: title+body
   name: Automatically merge pull requests

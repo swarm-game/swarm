@@ -32,9 +32,11 @@ module Swarm.Game.Challenge (
   challengeWin,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Arrow ((***))
 import Control.Lens hiding (from)
 import Data.Array
+import Data.Bifunctor (first)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.Text (Text)
@@ -48,6 +50,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Robot (Robot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
+import Swarm.Game.WorldGen (testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
 
@@ -69,7 +72,7 @@ instance FromJSONE EntityMap Challenge where
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     Challenge
       <$> liftE (v .: "name")
-      <*> liftE (v .:? "seed")
+      <*> liftE (v .:? "seed") -- TODO: avoid two seeds
       <*> pure em
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
@@ -102,7 +105,7 @@ challengeWin :: Lens' Challenge ProcessedTerm
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a
 --   'WorldFun'.
 data WorldDescription = WorldDescription
-  { defaultTerrain :: (TerrainType, Maybe Text)
+  { defaultTerrain :: Either Int (TerrainType, Maybe Text)
   , palette :: WorldPalette
   , ul :: V2 Int64
   , area :: Text
@@ -111,7 +114,9 @@ data WorldDescription = WorldDescription
 instance FromJSON WorldDescription where
   parseJSON = withObject "world description" $ \v ->
     WorldDescription
-      <$> v .:? "default" .!= (BlankT, Nothing)
+      <$> ( Left <$> v .: "seed"
+              <|> Right <$> v .:? "default" .!= (BlankT, Nothing)
+          )
       <*> v .: "palette"
       <*> v .: "upperleft"
       <*> v .: "map"
@@ -146,5 +151,14 @@ mkWorldFun pwd = E $ \em -> do
       . mapM toEntity
       . concat
       $ grid
-  let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) (defaultTerrain wd)
-  return $ worldFunFromArray arr defTerrain
+  case defaultTerrain wd of
+    Left seed -> do
+      let arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
+      return $ (lkup em <$>) . first fromEnum <$> testWorld2FromArray arr2 seed
+    Right def -> do
+      let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
+      return $ worldFunFromArray arr defTerrain
+ where
+  lkup :: EntityMap -> Maybe Text -> Maybe Entity
+  lkup _ Nothing = Nothing
+  lkup em (Just t) = lookupEntityName t em
