@@ -202,13 +202,13 @@ parseTypeAtom =
     <|> parens parseType
 
 parseDirection :: Parser Direction
-parseDirection = asum $ map alternative allDirs
+parseDirection = asum (map alternative allDirs) <?> "direction constant"
  where
   alternative d = d <$ (reserved . dirSyntax . dirInfo) d
 
 -- | Parse Const as reserved words (e.g. @Raise <$ reserved "raise"@)
 parseConst :: Parser Const
-parseConst = asum $ map alternative consts
+parseConst = asum (map alternative consts) <?> "built-in user function"
  where
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
@@ -245,8 +245,8 @@ parseTermAtom =
         <|> sDef <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
+        <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
-    <|> parens parseTerm
     -- Potential syntax for explicitly requesting memoized delay.
     -- Perhaps we will not need this in the end; see the discussion at
     -- https://github.com/byorgey/swarm/issues/150 .
@@ -256,6 +256,11 @@ parseTermAtom =
     <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+
+mkTuple :: [Syntax] -> Term
+mkTuple [] = TUnit
+mkTuple [STerm x] = x
+mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
@@ -327,7 +332,6 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
       [ Map.singleton 9 [InfixL (exprLoc2 $ SApp <$ string "")]
       , binOps
       , unOps
-      , Map.singleton 2 [InfixR (exprLoc2 $ SPair <$ symbol ",")]
       ]
 
   -- add location for ExprParser by combining all
@@ -430,17 +434,24 @@ runParserTH (file, line, col) p s =
 fully :: Parser a -> Parser a
 fully p = sc *> p <* eof
 
+-- | Run a parser "fully", consuming leading whitespace (including the
+--   possibility that the input is nothing but whitespace) and
+--   ensuring that the parser extends all the way to eof.
+fullyMaybe :: Parser a -> Parser (Maybe a)
+fullyMaybe = fully . optional
+
 -- | Parse some input 'Text' completely as a 'Term', consuming leading
 --   whitespace and ensuring the parsing extends all the way to the
---   end of the input 'Text'.  Returns either the resulting 'Term' or
---   a pretty-printed parse error message.
-readTerm :: Text -> Either Text Syntax
-readTerm = runParser (fully parseTerm)
+--   end of the input 'Text'.  Returns either the resulting 'Term' (or
+--   @Nothing@ if the input was only whitespace) or a pretty-printed
+--   parse error message.
+readTerm :: Text -> Either Text (Maybe Syntax)
+readTerm = runParser (fullyMaybe parseTerm)
 
--- | A lower-level readTerm which returns the megaparsec bundle error
+-- | A lower-level `readTerm` which returns the megaparsec bundle error
 --   for precise error reporting.
-readTerm' :: Text -> Either ParserError Syntax
-readTerm' = parse (runReaderT (fully parseTerm) DisallowAntiquoting) ""
+readTerm' :: Text -> Either ParserError (Maybe Syntax)
+readTerm' = parse (runReaderT (fullyMaybe parseTerm) DisallowAntiquoting) ""
 
 -- | A utility for converting a ParserError into a one line message:
 --   <line-nr>: <error-msg>

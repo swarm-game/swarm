@@ -316,6 +316,12 @@ data Const
     Div
   | -- | Arithmetic exponentiation operator
     Exp
+  | -- String operators
+
+    -- | Turn an arbitrary value into a string
+    Format
+  | -- | Concatenate string values
+    Concat
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -450,6 +456,8 @@ constInfo c = case c of
   Gt -> binaryOp ">" 4 N
   Leq -> binaryOp "<=" 4 N
   Geq -> binaryOp ">=" 4 N
+  Format -> functionLow 1
+  Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
   As -> commandLow 2
  where

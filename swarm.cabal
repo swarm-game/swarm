@@ -153,6 +153,7 @@ test-suite swarm-unit
                       -- Imports shared with the library don't need bounds
                       base,
                       filepath,
+                      hashable,
                       lens,
                       linear,
                       mtl,

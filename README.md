@@ -79,6 +79,38 @@ The recommended way to install Swarm at the moment is as follows:
    tutorial](TUTORIAL.md) to help get you started.  Eventually there
    will be an in-game tutorial.
 
+
+Programming swarm
+=================
+
+Your base has a dictionary to store definitions, like this one:
+
+```
+def moveUntil : cmd bool -> cmd () = \predicate.
+  res <- predicate;
+  if res {
+    noop
+  } {
+    moveUntil predicate
+  }
+end
+```
+
+<sup>The indentation is not required but `;` is, as it is similar
+to Haskell `>>` - that is the command monad, which imperative
+programmers can ignore. :wink:
+</sup>
+
+This allows you to program robots to perform complicated tasks.
+
+While you can write commands and definitions like the one above
+in the REPL, swarm also has a editor support with highlighting
+and LSP integration:
+
+![Editor with problem popup](images/editor.png)
+
+See the `editors` folder for details on how to configure your editor.
+
 Community
 =========
 

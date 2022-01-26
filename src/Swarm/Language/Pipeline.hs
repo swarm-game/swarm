@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
@@ -70,8 +68,9 @@ instance FromJSON ProcessedTerm where
 --   3. Elaborate it (see "Swarm.Language.Elaborate")
 --   4. Check what capabilities it requires (see "Swarm.Language.Capability")
 --
---   Return either the end result or a pretty-printed error message.
-processTerm :: Text -> Either Text ProcessedTerm
+--   Return either the end result (or @Nothing@ if the input was only
+--   whitespace) or a pretty-printed error message.
+processTerm :: Text -> Either Text (Maybe ProcessedTerm)
 processTerm = processTerm' empty empty
 
 -- | Like 'processTerm', but use a term that has already been parsed.
@@ -79,10 +78,10 @@ processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
-processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm
+processTerm' :: TCtx -> CapCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
-  t <- readTerm txt
-  first (prettyTypeErr txt) $ processParsedTerm' ctx capCtx t
+  mt <- readTerm txt
+  first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
 
 prettyTypeErr :: Text -> TypeErr -> Text
 prettyTypeErr code te = teLoc <> prettyText te
