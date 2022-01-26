@@ -59,7 +59,8 @@ instance FromJSON ProcessedTerm where
     tryProcess :: Text -> Y.Parser ProcessedTerm
     tryProcess t = case processTerm t of
       Left err -> fail $ "Could not parse term: " ++ from err
-      Right pt -> return pt
+      Right Nothing -> fail "Term was only whitespace"
+      Right (Just pt) -> return pt
 
 -- | Given a 'Text' value representing a Swarm program,
 --
