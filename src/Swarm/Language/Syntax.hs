@@ -327,6 +327,10 @@ data Const
     -- | Application operator - helps to avoid parentheses:
     --   @f $ g $ h x  =  f (g (h x))@
     AppF
+  | -- God-like sensing operations
+
+    -- | Run a command as if you were another robot.
+    As
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -455,6 +459,7 @@ constInfo c = case c of
   Format -> functionLow 1
   Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
+  As -> commandLow 2
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}

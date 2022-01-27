@@ -99,6 +99,10 @@ data Capability
     CReprogram
   | -- | Capability to introspect and see it's own name
     CWhoami
+  | -- | God-like capabilities.  For e.g. commands intended only for
+    --   checking challenge mode win conditions, and not for use by
+    --   players.
+    CGod
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
 
 instance ToJSON Capability where
@@ -254,6 +258,8 @@ constCaps =
     Salvage -> [CSalvage]
     Reprogram -> [CReprogram]
     Drill -> [CDrill]
+    -- Some God-like sensing abilities.
+    As -> [CGod]
     -- String operations, which for now are enabled by CLog
     Format -> [CLog]
     Concat -> [CLog]

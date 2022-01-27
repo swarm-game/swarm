@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -17,15 +15,20 @@
 module Swarm.Game.State (
   -- * Game state record
   ViewCenterRule (..),
-  GameMode (..),
   REPLStatus (..),
+  WinCondition (..),
+  _NoWinCondition,
+  _WinCondition,
+  _Won,
   RunStatus (..),
+  GameType (..),
   GameState,
   Seed,
   initGameState,
 
   -- ** GameState fields
-  gameMode,
+  creativeMode,
+  winCondition,
   runStatus,
   paused,
   robotMap,
@@ -63,6 +66,7 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
+import Control.Arrow (Arrow ((&&&)))
 import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
 import Data.Bifunctor (first)
@@ -71,25 +75,29 @@ import Data.IntMap (IntMap)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set (Set)
+import qualified Data.Set as S
+import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
+import System.Random (StdGen, mkStdGen)
 import Witch (into)
 
 import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
-import Data.Set (Set)
-import qualified Data.Set as S
+
+import Swarm.Game.Challenge
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
+import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Types
 import Swarm.Util
-import System.Random (StdGen, mkStdGen)
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -102,16 +110,6 @@ data ViewCenterRule
 
 makePrisms ''ViewCenterRule
 
--- | The game mode determines various aspects of how the game works.
---   At the moment, there are only two modes, but more will be added
---   in the future.
-data GameMode
-  = -- | Explore an open world, gather resources, and upgrade your programming abilities.
-    Classic
-  | -- | Like 'Classic' mode, but there are no constraints on the programs you can write.
-    Creative
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
 -- | A data type to represent the current status of the REPL.
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
@@ -122,6 +120,19 @@ data REPLStatus
     --   filled in with a result once the command completes.
     REPLWorking Polytype (Maybe Value)
   deriving (Eq, Show)
+
+data WinCondition
+  = -- | There is no winning condition (e.g. we are in Classic or
+    --   Creative mode).
+    NoWinCondition
+  | -- | The player has not won yet; this 'ProcessedTerm' of type @cmd
+    --   bool@ is run every tick to determine whether they have won.
+    WinCondition ProcessedTerm
+  | -- | The player has won. The boolean indicates whether they have
+    --   already been congratulated.
+    Won Bool
+
+makePrisms ''WinCondition
 
 -- | A data type to keep track of the pause mode.
 data RunStatus
@@ -138,7 +149,8 @@ data RunStatus
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
-  { _gameMode :: GameMode
+  { _creativeMode :: Bool
+  , _winCondition :: WinCondition
   , _runStatus :: RunStatus
   , _robotMap :: Map Text Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -184,8 +196,12 @@ let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule, '_activeRobot
       )
       ''GameState
 
--- | The current 'GameMode'.
-gameMode :: Lens' GameState GameMode
+-- | Is the user in creative mode (i.e. able to do anything without restriction)?
+creativeMode :: Lens' GameState Bool
+
+-- | How to determine whether the player has won (e.g. when in
+--   challenge mode).
+winCondition :: Lens' GameState WinCondition
 
 -- | The current 'RunStatus'.
 runStatus :: Lens' GameState RunStatus
@@ -370,14 +386,31 @@ addRobot r = do
   internalActiveRobots %= S.insert (r' ^. robotName)
   return r'
 
--- | Create an initial game state record, first loading entities and
---   recipies from disk.
-initGameState :: Seed -> ExceptT Text IO GameState
-initGameState seed = do
+-- | What type of game does the user want to start?
+data GameType
+  = ClassicGame Seed
+  | ChallengeGame (EntityMap -> ExceptT Text IO Challenge)
+
+-- | The 'GameType', instantiated with loaded entites and records.
+data InstGameType
+  = IClassicGame Seed
+  | IChallengeGame Challenge
+
+instGameType :: EntityMap -> [Recipe Entity] -> GameType -> ExceptT Text IO InstGameType
+instGameType em _rs gt = case gt of
+  ClassicGame s -> return $ IClassicGame s
+  ChallengeGame c -> IChallengeGame <$> c em
+
+-- | Create an initial game state record for a particular game type,
+--   first loading entities and recipies from disk.
+initGameState :: GameType -> ExceptT Text IO GameState
+initGameState gtype = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
+
+  iGameType <- instGameType entities recipes gtype
 
   let baseDeviceNames =
         [ "solar panel"
@@ -389,30 +422,51 @@ initGameState seed = do
         , "logger"
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
-
-  let baseName = "base"
+      baseName = "base"
       theBase = baseRobot baseDevices
 
+      robotList = case iGameType of
+        IClassicGame _ -> [theBase]
+        IChallengeGame c -> c ^. challengeRobots
+
+      creative = False
+
+      theWorld = case iGameType of
+        IClassicGame seed ->
+          W.newWorld
+            . fmap ((lkup entities <$>) . first fromEnum)
+            . findGoodOrigin
+            $ testWorld2 seed
+        IChallengeGame c -> W.newWorld (c ^. challengeWorld)
+
+      theWinCondition = case iGameType of
+        IClassicGame _ -> NoWinCondition
+        IChallengeGame c -> WinCondition (c ^. challengeWin)
+
+  seed <- case iGameType of
+    IClassicGame s -> return s
+    IChallengeGame c -> case c ^. challengeSeed of
+      Just s -> return s
+      Nothing -> return 0 -- XXX use a random seed
   liftIO $ putStrLn ("Using seed... " <> show seed)
 
   return $
     GameState
-      { _gameMode = Classic
+      { _creativeMode = creative
+      , _winCondition = theWinCondition
       , _runStatus = Running
-      , _robotMap = M.singleton baseName theBase
-      , _robotsByLocation = M.singleton zero (S.singleton baseName)
-      , _activeRobots = S.singleton baseName
+      , _robotMap = M.fromList $ map (view robotName &&& id) robotList
+      , _robotsByLocation =
+          M.fromListWith S.union $
+            map (view robotLocation &&& (S.singleton . view robotName)) robotList
+      , _activeRobots = setOf (traverse . robotName) robotList
       , _waitingRobots = M.empty
       , _gensym = 0
       , _randGen = mkStdGen seed
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
-      , _world =
-          W.newWorld
-            . fmap ((lkup entities <$>) . first fromEnum)
-            . findGoodOrigin
-            $ testWorld2 seed
+      , _world = theWorld
       , _viewCenterRule = VCRobot baseName
       , _viewCenter = V2 0 0
       , _needsRedraw = False

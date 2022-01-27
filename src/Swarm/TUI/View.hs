@@ -109,12 +109,7 @@ drawUI s =
                 WorldPanel
                 (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
                 (drawWorld $ s ^. gameState)
-            , drawMenu
-                (s ^. gameState . replWorking)
-                (s ^. gameState . paused)
-                ((s ^. gameState . viewCenterRule) == VCRobot "base")
-                (s ^. gameState . gameMode)
-                (s ^. uiState)
+            , drawMenu s
             , panel
                 highlightAttr
                 fr
@@ -195,6 +190,7 @@ renderModal modal = renderDialog (dialog (Just modalTitle) Nothing maxModalWindo
   (modalTitle, modalContent) =
     case modal of
       HelpModal -> ("Help", helpWidget)
+      WinModal -> ("", txt "Congratulations!")
 
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
@@ -239,8 +235,8 @@ drawDialog s = case s ^. uiModal of
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
-drawMenu :: Bool -> Bool -> Bool -> GameMode -> UIState -> Widget Name
-drawMenu isReplWorking isPaused viewingBase mode =
+drawMenu :: AppState -> Widget Name
+drawMenu s =
   vLimit 1
     . hBox
     . (++ [gameModeWidget])
@@ -248,15 +244,21 @@ drawMenu isReplWorking isPaused viewingBase mode =
     . (globalKeyCmds ++)
     . keyCmdsFor
     . focusGetCurrent
-    . view uiFocusRing
+    . view (uiState . uiFocusRing)
+    $ s
  where
+  isReplWorking = s ^. gameState . replWorking
+  isPaused = s ^. gameState . paused
+  viewingBase = (s ^. gameState . viewCenterRule) == VCRobot "base"
+  creative = s ^. gameState . creativeMode
+
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
       . (<> " mode")
-      $ case mode of
-        Classic -> "Classic"
-        Creative -> "Creative"
+      $ case creative of
+        False -> "Classic"
+        True -> "Creative"
   globalKeyCmds =
     [ ("F1", "help")
     , ("Tab", "cycle panels")
@@ -267,7 +269,7 @@ drawMenu isReplWorking isPaused viewingBase mode =
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
-    [ ("←↓↑→ / hjkl", "scroll") | mode == Creative
+    [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
       ++ [ ("<>", "slower/faster")
          , ("p", if isPaused then "unpause" else "pause")
@@ -320,7 +322,7 @@ drawWorld g =
   drawLoc coords =
     let (ePrio, eWidget) = drawCell hiding (g ^. world) coords
         hiding =
-          if g ^. gameMode == Creative
+          if g ^. creativeMode
             then HideNoEntity
             else maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
@@ -343,10 +345,12 @@ drawCell edr w i = case W.lookupEntity i w of
     , displayEntity (hide e)
     )
  where
-  known e = case edr of
-    HideAllEntities -> False
-    HideNoEntity -> True
-    HideEntityUnknownTo ro -> ro `robotKnows` e
+  known e =
+    e `hasProperty` Known
+      || case edr of
+        HideAllEntities -> False
+        HideNoEntity -> True
+        HideEntityUnknownTo ro -> ro `robotKnows` e
   hide e = (if known e then id else entityDisplay . defaultChar %~ const '?') e
 
 ------------------------------------------------------------

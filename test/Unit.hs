@@ -25,7 +25,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
-import Swarm.Game.Step
+import Swarm.Game.Step (stepCESK)
 import Swarm.Game.Value
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -35,7 +35,7 @@ import Swarm.TUI.Model
 
 main :: IO ()
 main = do
-  mg <- runExceptT (initGameState 0)
+  mg <- runExceptT (initGameState (ClassicGame 0))
   case mg of
     Left err -> assertFailure (from err)
     Right g -> defaultMain (tests g)
@@ -471,7 +471,7 @@ eval g =
   evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
-  evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK 0 $ cesk
+  evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
    where
     r = mkRobot "" zero zero cesk []
 

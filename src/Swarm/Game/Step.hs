@@ -20,7 +20,7 @@
 module Swarm.Game.Step where
 
 import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
-import Control.Monad (forM_, msum, unless, void, when)
+import Control.Monad (forM_, guard, msum, unless, void, when)
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
@@ -129,8 +129,47 @@ gameTick = do
 
   -- Possibly update the view center.
   modify recalcViewCenter
+
+  -- Possibly see if the winning condition for challenge mode is met.
+  wc <- use winCondition
+  case wc of
+    WinCondition t -> do
+      v <- runThrow @Exn $ evalPT t
+      case v of
+        Left _exn -> return () -- XXX
+        Right (VBool True) -> winCondition .= Won False
+        _ -> return ()
+    _ -> return ()
+
   -- Advance the game time by one.
   ticks += 1
+
+evalPT ::
+  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  ProcessedTerm ->
+  m Value
+evalPT t = evaluateCESK (initMachine t empty emptyStore)
+
+evaluateCESK ::
+  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  CESK ->
+  m Value
+evaluateCESK cesk = evalState r . runCESK $ cesk
+ where
+  r = mkRobot "" zero zero cesk [] & systemRobot .~ True
+
+runCESK ::
+  ( Has (Lift IO) sig m
+  , Has (Throw Exn) sig m
+  , Has (State GameState) sig m
+  , Has (State Robot) sig m
+  ) =>
+  CESK ->
+  m Value
+runCESK (Up exn _ []) = throwError exn
+runCESK cesk = case finalValue cesk of
+  Just (v, _) -> return v
+  Nothing -> stepCESK cesk >>= runCESK
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -199,11 +238,11 @@ traceLogShow = traceLog . from . show
 --   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
 ensureCanExecute c = do
-  mode <- use gameMode
+  creative <- use creativeMode
   sys <- use systemRobot
   robotCaps <- use robotCapabilities
   let missingCaps = constCaps c `S.difference` robotCaps
-  (sys || mode == Creative || S.null missingCaps)
+  (sys || creative || S.null missingCaps)
     `holdsOr` Incapable missingCaps (TConst c)
 
 -- | Test whether the current robot has a given capability (either
@@ -211,10 +250,10 @@ ensureCanExecute c = do
 --   system robot, or we are in creative mode).
 hasCapability :: (Has (State Robot) sig m, Has (State GameState) sig m) => Capability -> m Bool
 hasCapability cap = do
-  mode <- use gameMode
+  creative <- use creativeMode
   sys <- use systemRobot
   caps <- use robotCapabilities
-  return (sys || mode == Creative || cap `S.member` caps)
+  return (sys || creative || cap `S.member` caps)
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
@@ -863,6 +902,26 @@ execConst c vs s k = do
         n <- uniform (0, hi - 1)
         return $ Out (VInt n) s k
       _ -> badConst
+    As -> case vs of
+      [VString name, prog] -> do
+        -- Get the named robot and current game state
+        r <- robotNamed name >>= (`isJustOrFail` ["There is no robot named ", name])
+        g <- get @GameState
+
+        -- Execute the given program *hypothetically*: i.e. in a fresh
+        -- CESK machine, using *copies* of the current store, robot
+        -- and game state.  We discard the state afterwards so any
+        -- modifications made by prog do not persist.  Note we also
+        -- set the copied robot to be a "system" robot so it is
+        -- capable of executing any commands; the As command
+        -- already requires "God" capability.
+        v <-
+          evalState @Robot (r & systemRobot .~ True) . evalState @GameState g $
+            runCESK (Out prog s [FApp (VCApp Force []), FExec])
+
+        -- Return the value returned by the hypothetical command.
+        return $ Out v s k
+      _ -> badConst
     Say -> case vs of
       [VString msg] -> do
         rn <- use robotName
@@ -984,7 +1043,7 @@ execConst c vs s k = do
       [VString childRobotName, VDelay cmd e] -> do
         r <- get
         em <- use entityMap
-        mode <- use gameMode
+        creative <- use creativeMode
 
         -- check if robot exists
         childRobot <-
@@ -1005,9 +1064,7 @@ execConst c vs s k = do
         -- a robot can program adjacent robots
         -- creative mode ignores distance checks
         loc <- use robotLocation
-        ( mode == Creative
-            || (childRobot ^. robotLocation) `manhattan` loc <= 1
-          )
+        (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["You can only program adjacent robot"]
 
         let -- Find out what capabilities are required by the program that will
@@ -1022,7 +1079,7 @@ execConst c vs s k = do
             missingDevices = S.filter (not . deviceOK) capDevices
 
         -- check if robot has all devices to execute new command
-        (mode == Creative || S.null missingDevices)
+        (creative || S.null missingDevices)
           `holdsOrFail` [ "the target robot does not have required devices:"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
@@ -1063,7 +1120,7 @@ execConst c vs s k = do
       [VString name, VDelay cmd e] -> do
         r <- get
         em <- use entityMap
-        mode <- use gameMode
+        creative <- use creativeMode
 
         let -- Standard devices that are always installed.
             -- XXX in the future, make a way to build these and just start the base
@@ -1095,7 +1152,7 @@ execConst c vs s k = do
             missingDevices = S.filter (not . deviceOK) capDevices
 
         -- Make sure we're not missing any required devices.
-        (mode == Creative || S.null missingDevices)
+        (creative || S.null missingDevices)
           `holdsOrFail` [ "this would require installing devices you don't have:"
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
@@ -1105,7 +1162,9 @@ execConst c vs s k = do
               mkRobot
                 name
                 (r ^. robotLocation)
-                (r ^. robotOrientation ? east)
+                ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
+                    ? east
+                )
                 (In cmd e s [FExec])
                 (S.toList devices)
 
@@ -1114,7 +1173,7 @@ execConst c vs s k = do
 
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.
-        unless (mode == Creative) $
+        unless creative $
           forM_ (devices `S.difference` stdDevices) $ \d ->
             robotInventory %= delete d
 
@@ -1140,11 +1199,11 @@ execConst c vs s k = do
             -- Also copy over its log, if we have one
             inst <- use installedDevices
             em <- use entityMap
-            mode <- use gameMode
+            creative <- use creativeMode
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
-            when (mode == Creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
+            when (creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Finally, delete the salvaged robot
             deleteRobot (target ^. robotName)

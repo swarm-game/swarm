@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -52,6 +54,7 @@ module Swarm.Game.Entity (
 
   -- ** Entity map
   EntityMap,
+  buildEntityMap,
   loadEntities,
   lookupEntityName,
   deviceForCap,
@@ -64,6 +67,7 @@ module Swarm.Game.Entity (
   empty,
   singleton,
   fromList,
+  fromElems,
 
   -- ** Lookup
   lookup,
@@ -102,19 +106,20 @@ import Data.Maybe (isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
-import Linear
+import Linear (V2)
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
 
 import Data.Yaml
+import Swarm.Util.Yaml
 
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (toDirection)
+import Swarm.Util (plural, (?))
 
 import Paths_swarm
-import Swarm.Util (plural, (?))
 
 ------------------------------------------------------------
 -- Properties
@@ -131,6 +136,8 @@ data EntityProperty
     Growable
   | -- | Robots drown if they walk on this.
     Liquid
+  | -- | Robots automatically know what this is without having to scan it.
+    Known
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON EntityProperty where
@@ -287,6 +294,13 @@ data EntityMap = EntityMap
   , entitiesByCap :: Map Capability Entity
   }
 
+instance Semigroup EntityMap where
+  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)
+
+instance Monoid EntityMap where
+  mempty = EntityMap M.empty M.empty
+  mappend = (<>)
+
 -- | Find an entity with the given name.
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
 lookupEntityName nm = M.lookup nm . entitiesByName
@@ -328,6 +342,14 @@ instance FromJSON Entity where
           )
    where
     reflow = T.unwords . T.words
+
+-- | If we have access to an 'EntityMap', we can parse the name of an
+--   'Entity' as a string and look it up in the map.
+instance FromJSONE EntityMap Entity where
+  parseJSONE = withTextE "entity name" $ \name ->
+    E $ \em -> case lookupEntityName name em of
+      Nothing -> fail $ "Unknown entity: " ++ from @Text name
+      Just e -> return e
 
 instance ToJSON Entity where
   toJSON e =
@@ -498,6 +520,10 @@ insert = insertCount 1
 -- | Create an inventory from a list of entities.
 fromList :: [Entity] -> Inventory
 fromList = foldl' (flip insert) empty
+
+-- | Create an inventory from a list of entities and their counts.
+fromElems :: [(Count, Entity)] -> Inventory
+fromElems = foldl' (flip (uncurry insertCount)) empty
 
 -- | Insert a certain number of copies of an entity into an inventory.
 --   If the inventory already contains this entity, then only its

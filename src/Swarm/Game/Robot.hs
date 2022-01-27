@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -48,6 +49,7 @@ module Swarm.Game.Robot (
 
   -- ** Create
   mkRobot,
+  mkRobot',
   baseRobot,
 
   -- ** Query
@@ -66,6 +68,9 @@ import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Linear
+
+import Data.Yaml ((.!=), (.:), (.:?))
+import Swarm.Util.Yaml
 
 import Data.Hashable (hashWithSalt)
 import Swarm.Game.CESK
@@ -325,6 +330,47 @@ mkRobot name l d m devs =
  where
   inst = fromList devs
 
+-- | A more general function for creating robots.
+mkRobot' ::
+  -- | Name of the robot.
+  Text ->
+  -- | Description of the robot.
+  [Text] ->
+  -- | Initial location.
+  V2 Int64 ->
+  -- | Initial heading/direction.
+  V2 Int64 ->
+  -- | Robot display.
+  Display ->
+  -- | Initial CESK machine.
+  CESK ->
+  -- | Installed devices.
+  [Entity] ->
+  -- | Initial inventory.
+  [(Count, Entity)] ->
+  -- | Should this be a system robot?
+  Bool ->
+  Robot
+mkRobot' name descr loc dir disp m devs inv sys =
+  Robot
+    { _robotEntity =
+        mkEntity disp name descr []
+          & entityOrientation ?~ dir
+          & entityInventory .~ fromElems inv
+    , _installedDevices = inst
+    , _robotCapabilities = inventoryCapabilities inst
+    , _robotLog = Seq.empty
+    , _robotLogUpdated = False
+    , _robotLocation = loc
+    , _robotContext = RobotContext empty empty empty emptyStore
+    , _machine = m
+    , _systemRobot = sys
+    , _selfDestruct = False
+    , _tickSteps = 0
+    }
+ where
+  inst = fromList devs
+
 -- | The initial robot representing your "base".
 baseRobot :: [Entity] -> Robot
 baseRobot devs =
@@ -350,6 +396,24 @@ baseRobot devs =
     }
  where
   inst = fromList devs
+
+-- | We can parse a robot from a YAML file if we have access to an
+--   'EntityMap' in which we can look up the names of entities.
+instance FromJSONE EntityMap Robot where
+  parseJSONE = withObjectE "robot" $ \v ->
+    mkRobot'
+      <$> liftE (v .: "name")
+      <*> liftE (v .:? "description" .!= [])
+      <*> liftE (v .: "loc")
+      <*> liftE (v .: "dir")
+      <*> liftE (v .:? "display" .!= defaultRobotDisplay)
+      <*> liftE (mkMachine <$> (v .:? "program"))
+      <*> v ..:? "devices" ..!= []
+      <*> v ..:? "inventory" ..!= []
+      <*> liftE (v .:? "system" .!= False)
+   where
+    mkMachine Nothing = idleMachine
+    mkMachine (Just pt) = initMachine pt mempty emptyStore
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
