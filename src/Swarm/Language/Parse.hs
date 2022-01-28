@@ -82,6 +82,7 @@ reservedWords =
        , "string"
        , "dir"
        , "bool"
+       , "robot"
        , "cmd"
        , "delay"
        , "let"
@@ -197,6 +198,7 @@ parseTypeAtom =
     <|> TyString <$ reserved "string"
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
+    <|> TyRobot <$ reserved "robot"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> parens parseType
