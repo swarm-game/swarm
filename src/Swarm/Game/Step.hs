@@ -548,12 +548,14 @@ evalConst c vs s k = do
 seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
 seedProgram minTime randTime thing =
   [tmQ|
-    r <- random (1 + $int:randTime);
-    wait (r + $int:minTime);
-    appear "|";
-    r <- random (1 + $int:randTime);
-    wait (r + $int:minTime);
-    place $str:thing;
+    try {
+      r <- random (1 + $int:randTime);
+      wait (r + $int:minTime);
+      appear "|";
+      r <- random (1 + $int:randTime);
+      wait (r + $int:minTime);
+      place $str:thing;
+    } {};
     selfdestruct
   |]
 
