@@ -43,6 +43,8 @@ data Value where
   VDir :: Direction -> Value
   -- | A boolean.
   VBool :: Bool -> Value
+  -- | A reference to a robot.
+  VRobot :: Int -> Value
   -- | An injection into a sum type.  False = left, True = right.
   VInj :: Bool -> Value -> Value
   -- | A pair.
@@ -93,6 +95,7 @@ valueToTerm (VInt n) = TInt n
 valueToTerm (VString s) = TString s
 valueToTerm (VDir d) = TDir d
 valueToTerm (VBool b) = TBool b
+valueToTerm (VRobot r) = TInt (fromIntegral r) -- XXX WRONG
 valueToTerm (VInj s v) = TApp (TConst (bool Inl Inr s)) (valueToTerm v)
 valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =

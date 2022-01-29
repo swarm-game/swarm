@@ -374,12 +374,16 @@ uniquifyRobotName name tag = do
       uniquifyRobotName name (Just tag')
     False -> return name'
 
+-- XXX store robots by ID, not by name
+
 -- | Add a robot to the game state, possibly updating its name to
 --   ensure it is unique, also adding it to the index of robots by
 --   location, and return the (possibly modified) robot.
 addRobot :: Has (State GameState) sig m => Robot -> m Robot
 addRobot r = do
-  r' <- ensureUniqueName r
+  rid <- gensym <+= 1
+
+  r' <- unsafeSetRobotID rid <$> ensureUniqueName r
   robotMap %= M.insert (r' ^. robotName) r'
   robotsByLocation
     %= M.insertWith S.union (r' ^. robotLocation) (S.singleton (r' ^. robotName))

@@ -448,6 +448,8 @@ inferConst c = toU $ case c of
   Scan -> [tyQ| dir -> cmd (() + string) |]
   Upload -> [tyQ| string -> cmd () |]
   Ishere -> [tyQ| string -> cmd bool |]
+  Self -> [tyQ| robot |]
+  Parent -> [tyQ| robot |]
   Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]

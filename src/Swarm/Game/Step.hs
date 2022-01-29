@@ -27,7 +27,7 @@ import Data.Int (Int64)
 import Data.List (find)
 import qualified Data.List as L
 import qualified Data.Map as M
-import Data.Maybe (isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import Data.Text (Text)
@@ -156,7 +156,7 @@ evaluateCESK ::
   m Value
 evaluateCESK cesk = evalState r . runCESK $ cesk
  where
-  r = mkRobot "" zero zero cesk [] & systemRobot .~ True
+  r = mkRobot Nothing "" zero zero cesk [] & systemRobot .~ True
 
 runCESK ::
   ( Has (Lift IO) sig m
@@ -345,8 +345,12 @@ stepCESK cesk = case cesk of
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
-  -- A constant is turned into a VCApp which might be waiting for arguments.
-  In (TConst c) _ s k -> return $ Out (VCApp c []) s k
+  -- Function constants of arity 0 are evaluated immediately
+  -- (e.g. parent, self).  Any other constant is turned into a VCApp,
+  -- which is waiting for arguments and/or an FExec frame.
+  In (TConst c) _ s k
+    | arity c == 0 && not (isCmd c) -> evalConst c [] s k
+    | otherwise -> return $ Out (VCApp c []) s k
   -- To evaluate a variable, just look it up in the context.
   In (TVar x) e s k -> withExceptions s k $ do
     v <-
@@ -562,6 +566,7 @@ seedProgram minTime randTime thing =
 mkSeedBot :: Entity -> (Integer, Integer) -> V2 Int64 -> Robot
 mkSeedBot e (minT, maxT) loc =
   mkRobot
+    Nothing
     "seed"
     loc
     (V2 0 0)
@@ -984,6 +989,13 @@ execConst c vs s k = do
           Nothing -> return $ Out (VBool False) s k
           Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower name)) s k
       _ -> badConst
+    Self -> do
+      rid <- use robotID
+      return $ Out (VRobot rid) s k
+    Parent -> do
+      mp <- use robotParentID
+      rid <- use robotID
+      return $ Out (VRobot (fromMaybe rid mp)) s k
     Whoami -> case vs of
       [] -> do
         name <- use robotName
@@ -1122,6 +1134,8 @@ execConst c vs s k = do
         em <- use entityMap
         creative <- use creativeMode
 
+        pid <- use robotID
+
         let -- Standard devices that are always installed.
             -- XXX in the future, make a way to build these and just start the base
             -- out with a large supply of each?
@@ -1160,6 +1174,7 @@ execConst c vs s k = do
         -- Construct the new robot.
         let newRobot =
               mkRobot
+                (Just pid)
                 name
                 (r ^. robotLocation)
                 ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
@@ -1328,6 +1343,7 @@ compareValues = \v1 -> case v1 of
   VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
   VDir d1 -> \case VDir d2 -> return (compare d1 d2); v2 -> incompatCmp v1 v2
   VBool b1 -> \case VBool b2 -> return (compare b1 b2); v2 -> incompatCmp v1 v2
+  VRobot r1 -> \case VRobot r2 -> return (compare r1 r2); v2 -> incompatCmp v1 v2
   VInj s1 v1' -> \case
     VInj s2 v2' ->
       case compare s1 s2 of

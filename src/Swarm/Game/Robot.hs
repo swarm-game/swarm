@@ -42,6 +42,8 @@ module Swarm.Game.Robot (
   inventoryHash,
   robotCapabilities,
   robotContext,
+  robotID,
+  robotParentID,
   machine,
   systemRobot,
   selfDestruct,
@@ -51,6 +53,7 @@ module Swarm.Game.Robot (
   mkRobot,
   mkRobot',
   baseRobot,
+  unsafeSetRobotID,
 
   -- ** Query
   robotKnows,
@@ -127,6 +130,8 @@ data Robot = Robot
   , _robotLogUpdated :: Bool
   , _robotLocation :: V2 Int64
   , _robotContext :: RobotContext
+  , _robotID :: Int
+  , _robotParentID :: Maybe Int
   , _machine :: CESK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
@@ -137,7 +142,7 @@ data Robot = Robot
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog]
+let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -180,6 +185,24 @@ robotInventory = robotEntity . entityInventory
 
 -- | The robot's context
 robotContext :: Lens' Robot RobotContext
+
+-- | The (unique) ID number of the robot.  This is only a Getter since it
+--   should be immutable.
+robotID :: Getter Robot Int
+robotID = to _robotID
+
+-- | Set the ID number of a robot.  This is "unsafe" since robots
+--   should be uniquely identified by their ID, and are stored using
+--   the ID as a key, etc.  In practice, the ID will be set once, when
+--   adding the robot to the world for the first time, and then never
+--   touched again.
+unsafeSetRobotID :: Int -> Robot -> Robot
+unsafeSetRobotID i r = r {_robotID = i}
+
+-- | The ID number of the robot's parent, that is, the robot that
+--   built (or most recently reprogrammed) this robot, if there is
+--   one.
+robotParentID :: Lens' Robot (Maybe Int)
 
 -- | A separate inventory for "installed devices", which provide the
 --   robot with certain capabilities.
@@ -295,8 +318,9 @@ tickSteps :: Lens' Robot Int
 
 -- | Create a robot.
 mkRobot ::
-  -- | Name of the robot.  Precondition: it should not be the same as any
-  --   other robot name.
+  -- | ID of the robot's parent, if it has one.
+  Maybe Int ->
+  -- | Name of the robot.
   Text ->
   -- | Initial location.
   V2 Int64 ->
@@ -307,7 +331,7 @@ mkRobot ::
   -- | Installed devices.
   [Entity] ->
   Robot
-mkRobot name l d m devs =
+mkRobot mp name l d m devs =
   Robot
     { _robotEntity =
         mkEntity
@@ -322,6 +346,10 @@ mkRobot name l d m devs =
     , _robotLogUpdated = False
     , _robotLocation = l
     , _robotContext = RobotContext empty empty empty emptyStore
+    , -- A unique robot ID will be generated when the
+      -- robot is added to the robot map
+      _robotID = -1
+    , _robotParentID = mp
     , _machine = m
     , _systemRobot = False
     , _selfDestruct = False
@@ -332,6 +360,8 @@ mkRobot name l d m devs =
 
 -- | A more general function for creating robots.
 mkRobot' ::
+  -- | ID number of the robot's parent, if it has one.
+  Maybe Int ->
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
@@ -351,7 +381,7 @@ mkRobot' ::
   -- | Should this be a system robot?
   Bool ->
   Robot
-mkRobot' name descr loc dir disp m devs inv sys =
+mkRobot' pid name descr loc dir disp m devs inv sys =
   Robot
     { _robotEntity =
         mkEntity disp name descr []
@@ -363,6 +393,10 @@ mkRobot' name descr loc dir disp m devs inv sys =
     , _robotLogUpdated = False
     , _robotLocation = loc
     , _robotContext = RobotContext empty empty empty emptyStore
+    , -- A unique robot ID will be generated when the
+      -- robot is added to the robot map
+      _robotID = -1
+    , _robotParentID = pid
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
@@ -389,6 +423,8 @@ baseRobot devs =
     , _robotLogUpdated = False
     , _robotLocation = V2 0 0
     , _robotContext = RobotContext empty empty empty emptyStore
+    , _robotID = 0
+    , _robotParentID = Nothing
     , _machine = idleMachine
     , _systemRobot = False
     , _selfDestruct = False
@@ -401,7 +437,7 @@ baseRobot devs =
 --   'EntityMap' in which we can look up the names of entities.
 instance FromJSONE EntityMap Robot where
   parseJSONE = withObjectE "robot" $ \v ->
-    mkRobot'
+    mkRobot' Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
       <*> liftE (v .: "loc")

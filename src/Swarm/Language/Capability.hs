@@ -236,6 +236,8 @@ constCaps =
     AppF -> []
     Force -> []
     Return -> []
+    Self -> []
+    Parent -> []
     -- Some straightforward ones.
     Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]
