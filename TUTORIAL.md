@@ -64,21 +64,22 @@ Pretty much the only thing you can do is build robots.  Let's build
 one!  Tab back to the REPL (or hit the <kbd>Meta</kbd>+<kbd>R</kbd>
 shortcut) and type
 ```
-build "hello" {turn north; move}
+build {turn north; move}
 ```
 then hit Enter.  You should see a robot appear and travel to the
 north one step before stopping.  It should look something like this:
 
 ![Hello robot!](images/tutorial/hello.png)
 
-You can also see that on the next line after your input, the REPL printed out
+You can also see that on the next line after your input, the REPL
+printed out something like XXX
 ```
-"hello" : string
+<r01> : robot
 ```
-which is the result of your command, along with its type.  The `build` command
-always returns a string which is the name of the robot that was built;
-it may be different than the name you specified if there is already
-another robot with that name.
+which is the result of your command, along with its type.  The `build`
+command always returns a reference to the robot that it built.
+
+XXX can't actually type
 
 You can see that a semicolon is used to chain together commands, that
 is, if `c1` and `c2` are both commands, then `c1; c2` is the command
@@ -178,7 +179,7 @@ def m2 = m; m end;   def m4 = m2; m2 end;   def m8 = m4; m4 end
 Great, now we have commands that will execute `move` multiple times.
 Now let's use them:
 ```
-build "runner" { turn west; m4; m }
+build { turn west; m4; m }
 ```
 This should build a robot that moves to the green mass to the west.
 
@@ -199,12 +200,11 @@ var <- command; ... more commands that can refer to var ...
 monad, similar to the `IO` in Haskell. But if that doesn't mean
 anything to you, don't worry about it!</sup>
 
-Let's build one more robot called `"runner"`. It will get renamed
-to something else to avoid a name conflict, but we can capture its
-name in a variable using the above syntax.
-Then we can use the `view` command to focus on it instead of the base:
+Let's build another robot, but this time we will capture it in a
+variable using the above syntax.  Then we can use the `view` command
+to focus on it instead of the base:
 ```
-r <- build "runner" { turn west; m4; m }; view r
+r <- build { turn west; m4; m }; view r
 ```
 Note that `base` executes the `view r` command as soon as it
 finishes executing the `build` command, which is about the same time
@@ -214,26 +214,28 @@ view should look something like this:
 
 ![View a robot](images/tutorial/viewr.png)
 
-The view is now centered on `runner1` instead of on our `base`, and the
-top-left panel shows `runner1`'s inventory and installed devices
+The view is now centered on the other robot instead of on our `base`, and the
+top-left panel shows its inventory and installed devices
 instead of `base`'s.  (However, commands entered at the REPL will
 still be executed by `base`.)  To return to viewing `base` and its
-inventory, you can type `view "base"` at the prompt, or focus the
+inventory, you can type `view base` at the prompt, or focus the
 world panel (either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>)
 and hit <kbd>C</kbd>.
+
+XXX how to set other robot's names?
 
 Exploring
 ---------
 
 So what is all this stuff everywhere?  Let's find out!  When you
 `build` a robot, by default it starts out with a `scanner` device,
-which you may have noticed in `runner1`'s inventory.  You can `scan`
+which you may have noticed in XXX's inventory.  You can `scan`
 items in the world to learn about them, and later `upload` what you
 have learned to the base.
 
 Let's build a robot to learn about those green `?` things to the west:
 ```
-build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"}
+build {turn west; m4; move; scan west; turn back; m4; upload base}
 ```
 The `turn` command we used to turn the robot takes a direction as an
 argument, which can be either an absolute direction
@@ -245,6 +247,8 @@ learn about it, since it could `scan west` to scan the cell one unit
 to the west (you can also `scan down` to scan an item directly underneath the
 robot).  Also, it was able to `upload` at a distance of one cell away from
 the base.
+
+XXX mention `parent`?  Mention `self`?
 
 After this robot finishes, you should have a new entry in your inventory:
 
@@ -261,7 +265,7 @@ Getting some resources
 
 So those tree things look like they might be useful.  Let's get one!
 ```
-build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing }
+build {turn west; m8; thing <- grab; turn back; m8; give base thing }
 ```
 You can see that the
 `grab` command returns the name of the thing it grabbed, which is
