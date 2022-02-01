@@ -24,6 +24,8 @@ import Control.Monad (forM_, guard, msum, unless, void, when)
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
+import qualified Data.IntMap as IM
+import qualified Data.IntSet as IS
 import Data.List (find)
 import qualified Data.List as L
 import qualified Data.Map as M
@@ -76,8 +78,8 @@ gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
 gameTick = do
   wakeUpRobotsDoneSleeping
   robotNames <- use activeRobots
-  forM_ robotNames $ \rn -> do
-    mr <- uses robotMap (M.lookup rn)
+  forM_ (IS.toList robotNames) $ \rn -> do
+    mr <- uses robotMap (IM.lookup rn)
     case mr of
       Nothing -> return ()
       Just curRobot -> do
@@ -85,7 +87,7 @@ gameTick = do
         if curRobot' ^. selfDestruct
           then deleteRobot rn
           else do
-            robotMap %= M.insert rn curRobot'
+            robotMap %= IM.insert rn curRobot'
             let oldLoc = curRobot ^. robotLocation
                 newLoc = curRobot' ^. robotLocation
 
@@ -95,14 +97,14 @@ gameTick = do
                 -- visited!
                 deleteOne _ Nothing = Nothing
                 deleteOne x (Just s)
-                  | S.null s' = Nothing
+                  | IS.null s' = Nothing
                   | otherwise = Just s'
                  where
-                  s' = S.delete x s
+                  s' = IS.delete x s
 
             when (newLoc /= oldLoc) $ do
               robotsByLocation . at oldLoc %= deleteOne rn
-              robotsByLocation . at newLoc . non Empty %= S.insert rn
+              robotsByLocation . at newLoc . non Empty %= IS.insert rn
             case waitingUntil curRobot' of
               Just wakeUpTime ->
                 sleepUntil rn wakeUpTime
@@ -114,7 +116,7 @@ gameTick = do
   -- the result in the game state so it can be displayed by the REPL;
   -- also save the current store into the robotContext so we can
   -- restore it the next time we start a computation.
-  mr <- use (robotMap . at "base")
+  mr <- use (robotMap . at 0)
   case mr of
     Just r -> do
       res <- use replStatus
@@ -122,7 +124,7 @@ gameTick = do
         REPLWorking ty Nothing -> case getResult r of
           Just (v, s) -> do
             replStatus .= REPLWorking ty (Just v)
-            robotMap . ix "base" . robotContext . defStore .= s
+            robotMap . ix 0 . robotContext . defStore .= s
           Nothing -> return ()
         _otherREPLStatus -> return ()
     Nothing -> return ()
@@ -197,9 +199,9 @@ updateEntityAt ::
   (Has (State GameState) sig m) => V2 Int64 -> (Maybe Entity -> Maybe Entity) -> m ()
 updateEntityAt loc upd = zoomWorld (W.updateM @Int (W.locToCoords loc) upd)
 
--- | Get the robot with a given name (if any).
-robotNamed :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
-robotNamed nm = use (robotMap . at nm)
+-- | Get the robot with a given ID.
+robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
+robotWithID rid = use (robotMap . at rid)
 
 -- | Manhattan distance between world locations.
 manhattan :: V2 Int64 -> V2 Int64 -> Int64
@@ -694,16 +696,16 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Give -> case vs of
-      [VString otherName, VString itemName] -> do
+      [VRobot otherID, VString itemName] -> do
         -- Make sure the other robot exists
         other <-
-          robotNamed otherName
-            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
+          robotWithID otherID
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID), "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot with ID", from (show otherID), "is not close enough."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
@@ -720,29 +722,29 @@ execConst c vs s k = do
         -- return a modified Robot which gets put back in the
         -- robotMap, overwriting any changes to this robot made
         -- directly in the robotMap during the tick.
-        myName <- use robotName
-        focusedName <- use focusedRobotName
-        when (otherName /= myName) $ do
+        myID <- use robotID
+        focusedID <- use focusedRobotID
+        when (otherID /= myID) $ do
           -- Make the exchange
-          robotMap . at otherName . _Just . robotInventory %= insert item
+          robotMap . at otherID . _Just . robotInventory %= insert item
           robotInventory %= delete item
 
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
-          when (focusedName == myName || focusedName == otherName) flagRedraw
+          when (focusedID == myID || focusedID == otherID) flagRedraw
 
         return $ Out VUnit s k
       _ -> badConst
     Install -> case vs of
-      [VString otherName, VString itemName] -> do
+      [VRobot otherID, VString itemName] -> do
         -- Make sure the other robot exists
         other <-
-          robotNamed otherName
-            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
+          robotWithID otherID
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID), "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot with ID", from (show otherID), "is not close enough."]
 
         -- Make sure we have the required item
         inv <- use robotInventory
@@ -753,9 +755,9 @@ execConst c vs s k = do
         (E.lookup item inv > 0)
           `holdsOrFail` ["You don't have", indefinite itemName, "to install."]
 
-        myName <- use robotName
-        focusedName <- use focusedRobotName
-        case otherName == myName of
+        myID <- use robotID
+        focusedID <- use focusedRobotID
+        case otherID == myID of
           -- We have to special case installing something on ourselves
           -- for the same reason as Give.
           True -> do
@@ -766,17 +768,17 @@ execConst c vs s k = do
               robotInventory %= delete item
 
               -- Flag the UI for a redraw if we are currently showing our inventory
-              when (focusedName == myName) flagRedraw
+              when (focusedID == myID) flagRedraw
           False -> do
-            let otherDevices = robotMap . at otherName . _Just . installedDevices
+            let otherDevices = robotMap . at otherID . _Just . installedDevices
             already <- use $ pre (otherDevices . to (`E.contains` item))
             unless (already == Just True) $ do
-              robotMap . at otherName . _Just . installedDevices %= insert item
+              robotMap . at otherID . _Just . installedDevices %= insert item
               robotInventory %= delete item
 
               -- Flag the UI for a redraw if we are currently showing
               -- either robot's inventory
-              when (focusedName == myName || focusedName == otherName) flagRedraw
+              when (focusedID == myID || focusedID == otherID) flagRedraw
 
         return $ Out VUnit s k
       _ -> badConst
@@ -880,25 +882,25 @@ execConst c vs s k = do
         return $ Out res s k
       _ -> badConst
     Upload -> case vs of
-      [VString otherName] -> do
+      [VRobot otherID] -> do
         -- Make sure the other robot exists
         other <-
-          robotNamed otherName
-            >>= (`isJustOrFail` ["There is no robot named", otherName, "."])
+          robotWithID otherID
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID), "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
         ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["The robot named", otherName, "is not close enough."]
+          `holdsOrFail` ["The robot with ID", from (show otherID), "is not close enough."]
 
         -- Upload knowledge of everything in our inventory
         inv <- use robotInventory
         forM_ (elems inv) $ \(_, e) ->
-          robotMap . at otherName . _Just . robotInventory %= insertCount 0 e
+          robotMap . at otherID . _Just . robotInventory %= insertCount 0 e
 
         -- Upload our log
         rlog <- use robotLog
-        robotMap . at otherName . _Just . robotLog <>= rlog
+        robotMap . at otherID . _Just . robotLog <>= rlog
 
         return $ Out VUnit s k
       _ -> badConst
@@ -908,9 +910,9 @@ execConst c vs s k = do
         return $ Out (VInt n) s k
       _ -> badConst
     As -> case vs of
-      [VString name, prog] -> do
+      [VRobot rid, prog] -> do
         -- Get the named robot and current game state
-        r <- robotNamed name >>= (`isJustOrFail` ["There is no robot named ", name])
+        r <- robotWithID rid >>= (`isJustOrFail` ["There is no robot with ID", from (show rid)])
         g <- get @GameState
 
         -- Execute the given program *hypothetically*: i.e. in a fresh
@@ -929,7 +931,7 @@ execConst c vs s k = do
       _ -> badConst
     Say -> case vs of
       [VString msg] -> do
-        rn <- use robotName
+        rn <- use robotName -- XXX use robot name + ID
         emitMessage (T.concat [rn, ": ", msg])
         return $ Out VUnit s k
       _ -> badConst
@@ -941,16 +943,16 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     View -> case vs of
-      [VString name] -> do
+      [VRobot rid] -> do
         _ <-
-          robotNamed name
-            >>= (`isJustOrFail` ["There is no robot named ", name, " to view."])
+          robotWithID rid
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show rid), "to view."])
 
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
-        rn <- use robotName
-        when (rn == "base") $
-          viewCenterRule .= VCRobot name
+        rn <- use robotID
+        when (rn == 0) $
+          viewCenterRule .= VCRobot rid
 
         return $ Out VUnit s k
       _ -> badConst
@@ -1052,19 +1054,19 @@ execConst c vs s k = do
       [VString msg] -> return $ Up (User msg) s k
       _ -> badConst
     Reprogram -> case vs of
-      [VString childRobotName, VDelay cmd e] -> do
+      [VRobot childRobotID, VDelay cmd e] -> do
         r <- get
         em <- use entityMap
         creative <- use creativeMode
 
         -- check if robot exists
         childRobot <-
-          robotNamed childRobotName
-            >>= (`isJustOrFail` ["There is no robot named", childRobotName, "."])
+          robotWithID childRobotID
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show childRobotID), "."])
 
         -- check that current robot is not trying to reprogram self
-        myName <- use robotName
-        (childRobotName /= myName)
+        myID <- use robotID
+        (childRobotID /= myID)
           `holdsOrFail` ["You cannot make a robot reprogram itself"]
 
         -- check if robot has completed executing it's current command
@@ -1100,9 +1102,9 @@ execConst c vs s k = do
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        robotMap . at childRobotName . _Just . machine .= In cmd e s [FExec]
-        robotMap . at childRobotName . _Just . robotContext .= r ^. robotContext
-        activateRobot childRobotName
+        robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
+        robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
+        activateRobot childRobotID
 
         return $ Out VUnit s k
       _ -> badConst
@@ -1129,7 +1131,7 @@ execConst c vs s k = do
       -- and figure out how to do capability checking on Values (which
       -- would return the capabilities needed to *execute* them),
       -- hopefully without duplicating too much code.
-      [VString name, VDelay cmd e] -> do
+      [VDelay cmd e] -> do
         r <- get
         em <- use entityMap
         creative <- use creativeMode
@@ -1175,7 +1177,7 @@ execConst c vs s k = do
         let newRobot =
               mkRobot
                 (Just pid)
-                name
+                "robot" -- default name
                 (r ^. robotLocation)
                 ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                     ? east
@@ -1194,16 +1196,16 @@ execConst c vs s k = do
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
-        return $ Out (VString (newRobot' ^. robotName)) s k
+        return $ Out (VRobot (newRobot' ^. robotID)) s k
       _ -> badConst
     Salvage -> case vs of
       [] -> do
         loc <- use robotLocation
         rm <- use robotMap
         robotSet <- use (robotsByLocation . at loc)
-        let robotNameList = maybe [] S.toList robotSet
-            mtarget = find okToSalvage . mapMaybe (`M.lookup` rm) $ robotNameList
-            okToSalvage r = (r ^. robotName /= "base") && (not . isActive $ r)
+        let robotIDList = maybe [] IS.toList robotSet
+            mtarget = find okToSalvage . mapMaybe (`IM.lookup` rm) $ robotIDList
+            okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
         case mtarget of
           Nothing -> return $ Out VUnit s k -- Nothing to salvage
           Just target -> do
@@ -1221,7 +1223,7 @@ execConst c vs s k = do
             when (creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Finally, delete the salvaged robot
-            deleteRobot (target ^. robotName)
+            deleteRobot (target ^. robotID)
 
             return $ Out VUnit s k
       _ -> badConst

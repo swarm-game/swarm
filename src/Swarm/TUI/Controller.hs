@@ -404,7 +404,7 @@ handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
   continue $
     s
-      & gameState . robotMap . ix "base" . machine %~ cancel
+      & gameState . robotMap . ix 0 . machine %~ cancel
 handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
@@ -417,12 +417,12 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)
-  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
-  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
-  topValCtx = s ^. gameState . robotMap . ix "base" . robotContext . defVals
+  topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
+  topValCtx = s ^. gameState . robotMap . ix 0 . robotContext . defVals
   topStore =
     fromMaybe emptyStore $
-      s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
+      s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
   advanceREPL =
     (uiState . uiReplForm %~ updateFormState "")
       . (uiState . uiReplType .~ Nothing)
@@ -430,8 +430,8 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
       . (uiState . uiError .~ Nothing)
   startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
     (gameState . replStatus .~ REPLWorking ty Nothing)
-      . (gameState . robotMap . ix "base" . machine .~ initMachine t topValCtx topStore)
-      . (gameState %~ execState (activateRobot "base"))
+      . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
+      . (gameState %~ execState (activateRobot 0))
 handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
   continue $ s & adjReplHistIndex Older
 handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
@@ -448,8 +448,8 @@ validateREPLForm s =
     & uiState . uiReplForm %~ validate
     & uiState . uiReplType .~ theType
  where
-  topTypeCtx = s ^. gameState . robotMap . ix "base" . robotContext . defTypes
-  topCapCtx = s ^. gameState . robotMap . ix "base" . robotContext . defCaps
+  topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
+  topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
   result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
   theType = case result of
     Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
@@ -503,7 +503,7 @@ handleWorldEvent s (VtyEvent (V.EvKey k []))
     scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
   invalidateCacheEntry WorldCache
-  continue $ s & gameState . viewCenterRule .~ VCRobot "base"
+  continue $ s & gameState . viewCenterRule .~ VCRobot 0
 
 -- pausing and stepping
 handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') [])) = do
@@ -595,15 +595,15 @@ makeEntity s e = do
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
       topStore =
         fromMaybe emptyStore $
-          s ^? gameState . robotMap . at "base" . _Just . robotContext . defStore
+          s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
 
-  case isActive <$> (s ^. gameState . robotMap . at "base") of
+  case isActive <$> (s ^. gameState . robotMap . at 0) of
     Just False ->
       continue $
         s
           & gameState . replStatus .~ REPLWorking mkTy Nothing
-          & gameState . robotMap . ix "base" . machine .~ initMachine mkPT empty topStore
-          & gameState %~ execState (activateRobot "base")
+          & gameState . robotMap . ix 0 . machine .~ initMachine mkPT empty topStore
+          & gameState %~ execState (activateRobot 0)
     _ -> continueWithoutRedraw s
 
 ------------------------------------------------------------

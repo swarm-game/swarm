@@ -20,6 +20,7 @@ module Swarm.Game.Robot (
   leTime,
 
   -- * Robots
+  RID,
   Robot,
 
   -- * Robot context
@@ -118,6 +119,9 @@ data LogEntry = LogEntry
 
 makeLenses ''LogEntry
 
+-- | A unique identifier for a robot.
+type RID = Int
+
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
@@ -130,8 +134,8 @@ data Robot = Robot
   , _robotLogUpdated :: Bool
   , _robotLocation :: V2 Int64
   , _robotContext :: RobotContext
-  , _robotID :: Int
-  , _robotParentID :: Maybe Int
+  , _robotID :: RID
+  , _robotParentID :: Maybe RID
   , _machine :: CESK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
@@ -188,7 +192,7 @@ robotContext :: Lens' Robot RobotContext
 
 -- | The (unique) ID number of the robot.  This is only a Getter since it
 --   should be immutable.
-robotID :: Getter Robot Int
+robotID :: Getter Robot RID
 robotID = to _robotID
 
 -- | Set the ID number of a robot.  This is "unsafe" since robots
@@ -196,13 +200,13 @@ robotID = to _robotID
 --   the ID as a key, etc.  In practice, the ID will be set once, when
 --   adding the robot to the world for the first time, and then never
 --   touched again.
-unsafeSetRobotID :: Int -> Robot -> Robot
+unsafeSetRobotID :: RID -> Robot -> Robot
 unsafeSetRobotID i r = r {_robotID = i}
 
 -- | The ID number of the robot's parent, that is, the robot that
 --   built (or most recently reprogrammed) this robot, if there is
 --   one.
-robotParentID :: Lens' Robot (Maybe Int)
+robotParentID :: Lens' Robot (Maybe RID)
 
 -- | A separate inventory for "installed devices", which provide the
 --   robot with certain capabilities.
@@ -319,7 +323,7 @@ tickSteps :: Lens' Robot Int
 -- | Create a robot.
 mkRobot ::
   -- | ID of the robot's parent, if it has one.
-  Maybe Int ->
+  Maybe RID ->
   -- | Name of the robot.
   Text ->
   -- | Initial location.
