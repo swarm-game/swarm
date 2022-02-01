@@ -279,6 +279,7 @@ drawMenu s =
   keyCmdsFor (Just RobotPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
     , ("Enter", "make")
+    , ("0", "hide/show 0")
     ]
   keyCmdsFor (Just InfoPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "scroll")
