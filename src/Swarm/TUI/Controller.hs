@@ -578,7 +578,7 @@ handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
     Just (_, Separator _) -> continueWithoutRedraw s
     Just (_, InventoryEntry _ e) -> makeEntity s e
     Just (_, InstalledEntry e) -> makeEntity s e
-handleRobotPanelEvent s (VtyEvent (V.EvKey (V.KChar '0' )[])) = do
+handleRobotPanelEvent s (VtyEvent (V.EvKey (V.KChar '0') [])) = do
   continue $ s & (uiState . uiShowZero %~ not) . (uiState . uiInventoryShouldUpdate .~ True)
 handleRobotPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2

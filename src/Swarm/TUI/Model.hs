@@ -512,7 +512,7 @@ populateInventoryList (Just r) = do
       -- aren't an installed device.  In other words we don't need to
       -- display installed devices twice unless we actually have some
       -- in our inventory in addition to being installed.
-      shouldDisplay (n, e) = n > 0 || showZero && not ((r ^. installedDevices) `E.contains` e) 
+      shouldDisplay (n, e) = n > 0 || showZero && not ((r ^. installedDevices) `E.contains` e)
 
       items =
         (r ^. robotInventory . to (itemList mkInvEntry "Inventory"))
