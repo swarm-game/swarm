@@ -238,6 +238,7 @@ constCaps =
     Return -> []
     Self -> []
     Parent -> []
+    Base -> []
     -- Some straightforward ones.
     Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]

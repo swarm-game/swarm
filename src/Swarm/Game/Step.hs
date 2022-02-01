@@ -998,6 +998,7 @@ execConst c vs s k = do
       mp <- use robotParentID
       rid <- use robotID
       return $ Out (VRobot (fromMaybe rid mp)) s k
+    Base -> return $ Out (VRobot 0) s k
     Whoami -> case vs of
       [] -> do
         name <- use robotName

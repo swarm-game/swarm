@@ -258,6 +258,8 @@ data Const
     Self
   | -- | Get the robot's parent
     Parent
+  | -- | Get a reference to the base
+    Base
   | -- | Find it's own name
     Whoami
   | -- | Get a uniformly random integer.
@@ -436,6 +438,7 @@ constInfo c = case c of
   Ishere -> commandLow 1
   Self -> functionLow 0
   Parent -> functionLow 0
+  Base -> functionLow 0
   Whoami -> commandLow 0
   Random -> commandLow 1
   Run -> commandLow 1

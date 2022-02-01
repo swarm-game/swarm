@@ -450,6 +450,7 @@ inferConst c = toU $ case c of
   Ishere -> [tyQ| string -> cmd bool |]
   Self -> [tyQ| robot |]
   Parent -> [tyQ| robot |]
+  Base -> [tyQ| robot |]
   Whoami -> [tyQ| cmd string |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
