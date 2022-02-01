@@ -379,13 +379,13 @@ uiError :: Lens' UIState (Maybe Text)
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
 
--- | A togle to show the FPS by pressing `f`
+-- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
 
--- | A togle to show inventoy items whith count 0 by pressing `0`
+-- | A toggle to show inventoy items whith count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
 
--- |
+-- | Whether the Inventory ui panel should update
 uiInventoryShouldUpdate :: Lens' UIState Bool
 
 -- | Computed ticks per milli seconds
