@@ -36,6 +36,7 @@ module Swarm.Game.State (
   activeRobots,
   gensym,
   randGen,
+  nameList,
   entityMap,
   recipesOut,
   recipesIn,
@@ -68,6 +69,7 @@ module Swarm.Game.State (
 import Control.Arrow (Arrow ((&&&)))
 import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
+import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
@@ -79,6 +81,8 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
+import qualified Data.Text as T (lines)
+import qualified Data.Text.IO as T (readFile)
 import Linear
 import System.Random (StdGen, mkStdGen)
 
@@ -86,6 +90,7 @@ import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 
+import Paths_swarm (getDataFileName)
 import Swarm.Game.Challenge
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
@@ -168,6 +173,7 @@ data GameState = GameState
   , _robotsByLocation :: Map (V2 Int64) IntSet
   , _gensym :: Int
   , _randGen :: StdGen
+  , _nameList :: Array Int Text
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
@@ -185,7 +191,7 @@ data GameState = GameState
 -- it as a Getter externally to protect invariants.
 makeLensesFor [("_activeRobots", "internalActiveRobots")] ''GameState
 
-let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots]
+let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_nameList]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -235,6 +241,10 @@ gensym :: Lens' GameState Int
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
+
+-- | Read-only list of words, for use as random robot names.
+nameList :: Getter GameState (Array Int Text)
+nameList = to _nameList
 
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
@@ -410,6 +420,11 @@ initGameState gtype = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
+  names <- liftIO $ do
+    putStrLn "Loading robot names..."
+    namesFile <- getDataFileName "names.txt"
+    T.lines <$> T.readFile namesFile
+
   iGameType <- instGameType entities recipes gtype
 
   let baseDeviceNames =
@@ -464,6 +479,7 @@ initGameState gtype = do
       , _waitingRobots = M.empty
       , _gensym = 0
       , _randGen = mkStdGen seed
+      , _nameList = listArray (0, length names - 1) names
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes

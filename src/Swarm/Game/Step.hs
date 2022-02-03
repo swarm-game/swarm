@@ -21,6 +21,7 @@ module Swarm.Game.Step where
 
 import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
 import Control.Monad (forM_, guard, msum, unless, void, when)
+import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (rights)
 import Data.Int (Int64)
@@ -1179,11 +1180,16 @@ execConst c vs s k = do
                         , commaList (map (^. entityName) (S.toList missingDevices))
                         ]
 
+        -- Pick a random display name.
+        names <- use @GameState nameList
+        n <- uniform (bounds names)
+        let displayName = names ! n
+
         -- Construct the new robot.
         let newRobot =
               mkRobot
                 (Just pid)
-                "robot" -- default name
+                displayName
                 (r ^. robotLocation)
                 ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                     ? east
