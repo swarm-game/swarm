@@ -260,8 +260,10 @@ data Const
     Parent
   | -- | Get a reference to the base
     Base
-  | -- | Find it's own name
+  | -- | Get the robot's display name
     Whoami
+  | -- | Set the robot's display name
+    Setname
   | -- | Get a uniformly random integer.
     Random
   | -- Modules
@@ -440,6 +442,7 @@ constInfo c = case c of
   Parent -> functionLow 0
   Base -> functionLow 0
   Whoami -> commandLow 0
+  Setname -> commandLow 1
   Random -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1

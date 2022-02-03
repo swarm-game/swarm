@@ -452,6 +452,7 @@ inferConst c = toU $ case c of
   Parent -> [tyQ| robot |]
   Base -> [tyQ| robot |]
   Whoami -> [tyQ| cmd string |]
+  Setname -> [tyQ| string -> cmd () |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
   If -> [tyQ| bool -> {a} -> {a} -> a |]

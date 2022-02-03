@@ -1004,6 +1004,11 @@ execConst c vs s k = do
         name <- use robotName
         return $ Out (VString name) s k
       _ -> badConst
+    Setname -> case vs of
+      [VString name] -> do
+        robotName .= name
+        return $ Out VUnit s k
+      _ -> badConst
     Force -> case vs of
       [VDelay t e] -> return $ In t e s k
       [VRef loc] ->
