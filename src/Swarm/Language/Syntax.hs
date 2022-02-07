@@ -591,6 +591,13 @@ data Term
     TAntiString Text
   | -- | A Boolean literal.
     TBool Bool
+  | -- | A robot value.  These never show up in surface syntax, but are
+    --   here so we can factor pretty-printing for Values through
+    --   pretty-printing for Terms.
+    TRobot Int
+  | -- | A memory reference.  These likewise never show up in surface syntax,
+    --   but are here to facilitate pretty-printing.
+    TRef Int
   | -- | A variable.
     TVar Var
   | -- | A pair.
@@ -637,6 +644,8 @@ fvT f = go S.empty
     TString {} -> pure t
     TAntiString {} -> pure t
     TBool {} -> pure t
+    TRobot {} -> pure t
+    TRef {} -> pure t
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)

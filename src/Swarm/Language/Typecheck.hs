@@ -229,6 +229,9 @@ data TypeErr
     Mismatch Location (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel Location Term
+  | -- | A term was encountered which we cannot infer the type of.
+    --   This should never happen.
+    CantInfer Location Term
   deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
@@ -242,6 +245,7 @@ getTypeErrLocation te = case te of
   Infinite _ _ -> Nothing
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
+  CantInfer l _ -> Just l
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -319,6 +323,11 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TString _ -> return UTyString
   TAntiString _ -> return UTyString
   TBool _ -> return UTyBool
+  TRobot _ -> return UTyRobot
+  -- We should never encounter a TRef since they do not show up in
+  -- surface syntax, only as values while evaluating (*after*
+  -- typechecking).
+  TRef _ -> throwError $ CantInfer l t
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
   -- if t : ty, then  {t} : {ty}.

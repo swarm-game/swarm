@@ -120,6 +120,8 @@ instance PrettyPrec Term where
   prettyPrec _ (TString s) = fromString (show s)
   prettyPrec _ (TAntiString v) = "$str:" <> pretty v
   prettyPrec _ (TBool b) = bool "false" "true" b
+  prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
+  prettyPrec _ (TRef r) = "@" <> pretty r
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
@@ -192,3 +194,5 @@ instance PrettyPrec TypeErr where
     "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
   prettyPrec _ (DefNotTopLevel _ t) =
     "Definitions may only be at the top level:" <+> ppr t
+  prettyPrec _ (CantInfer _ t) =
+    "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t

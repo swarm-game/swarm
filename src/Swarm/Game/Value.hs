@@ -95,7 +95,7 @@ valueToTerm (VInt n) = TInt n
 valueToTerm (VString s) = TString s
 valueToTerm (VDir d) = TDir d
 valueToTerm (VBool b) = TBool b
-valueToTerm (VRobot r) = TInt (fromIntegral r) -- XXX WRONG
+valueToTerm (VRobot r) = TRobot r
 valueToTerm (VInj s v) = TApp (TConst (bool Inl Inr s)) (valueToTerm v)
 valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =
@@ -108,9 +108,7 @@ valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
-valueToTerm (VRef n) = TInt (fromIntegral n) -- XXX WRONG
--- We really can't get away with valueToTerm any more, we need to make a proper
--- pretty-printer for values.
+valueToTerm (VRef n) = TRef n
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value
