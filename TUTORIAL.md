@@ -72,14 +72,15 @@ north one step before stopping.  It should look something like this:
 ![Hello robot!](images/tutorial/hello.png)
 
 You can also see that on the next line after your input, the REPL
-printed out something like XXX
+printed out something like
 ```
-<r01> : robot
+<r1> : robot
 ```
-which is the result of your command, along with its type.  The `build`
-command always returns a reference to the robot that it built.
 
-XXX can't actually type
+which is the result of your command, along with its type.  The `build`
+command always returns a reference to the robot that it built. Note
+that `<r1>` is not special syntax, just an opaque name for the robot
+with ID 1.
 
 You can see that a semicolon is used to chain together commands, that
 is, if `c1` and `c2` are both commands, then `c1; c2` is the command
@@ -94,9 +95,9 @@ Types
 -----
 
 Ultimately, the `build` command is not special syntax, but just a
-function that takes two arguments: a string, and a delayed command. We
+function that takes an argument representing a delayed command. We
 can actually see the type of the `build` command (or any command) by
-just typing it at the prompt, without hitting `Enter`.  Any time the
+typing it at the prompt, without hitting `Enter`.  Any time the
 expression currently typed at the prompt parses and type checks, the
 REPL will show you the type of the expression in the upper right, like
 this:
@@ -105,11 +106,11 @@ this:
 
 It will tell you that the type of `build` is
 ```
-∀ a0. string -> {cmd a0} -> cmd string
+∀ a0. {cmd a0} -> cmd robot
 ```
-which says that `build` takes two arguments---a `string`, and a
+which says that `build` takes one argument---a
 delayed command that returns a value of any type---and results in a command
-which returns a `string`.  Every command returns a value, though some
+which returns a `robot`.  Every command returns a value, though some
 might return a value of the unit type, written `()`.  For example, if
 you type `move` at the prompt, you will see that its type is `cmd ()`,
 since `move` does not return any interesting result after executing.
@@ -135,7 +136,7 @@ Something you can't do yet
 
 Try entering the following at the REPL:
 ```
-build "nope" {make "curry"}
+build {make "curry"}
 ```
 The info panel should automatically switch to showing your `logger`
 device, with an error message at the bottom saying something like
@@ -214,24 +215,24 @@ view should look something like this:
 
 ![View a robot](images/tutorial/viewr.png)
 
-The view is now centered on the other robot instead of on our `base`, and the
-top-left panel shows its inventory and installed devices
+The view is now centered on the other robot instead of on our `base`,
+and the top-left panel shows its inventory and installed devices
 instead of `base`'s.  (However, commands entered at the REPL will
-still be executed by `base`.)  To return to viewing `base` and its
-inventory, you can type `view base` at the prompt, or focus the
-world panel (either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>)
-and hit <kbd>C</kbd>.
-
-XXX how to set other robot's names?
+still be executed by `base`.)  The name of your robot will likely be
+different than `tragicomedy`; otherwise unnamed robots are given
+randomly chosen names.  To return to viewing `base` and its inventory,
+you can type `view base` at the prompt, or focus the world panel
+(either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
+<kbd>C</kbd>.
 
 Exploring
 ---------
 
 So what is all this stuff everywhere?  Let's find out!  When you
 `build` a robot, by default it starts out with a `scanner` device,
-which you may have noticed in XXX's inventory.  You can `scan`
-items in the world to learn about them, and later `upload` what you
-have learned to the base.
+which you may have noticed in the recently viewed robot's inventory.
+You can `scan` items in the world to learn about them, and later
+`upload` what you have learned to the base.
 
 Let's build a robot to learn about those green `?` things to the west:
 ```
