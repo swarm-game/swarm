@@ -450,20 +450,24 @@ stepCESK cesk = case cesk of
   -- command, and remember the second for execution later.
   Out (VBind mx c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx c2 e : k)
   -- If first command completes with a value along with an environment
-  -- resulting from definition commands, switch to evaluating the
-  -- second command of the bind.  Extend the environment with both the
-  -- definition environment resulting from the first command, as well
-  -- as a binding for the result (if the bind was of the form @x <-
-  -- c1; c2@).  Remember that we must execute the second command once
-  -- it has been evaluated, then union any resulting definition
-  -- environment with the definition environment from the first
-  -- command.
-  Out (VResult v ve) s (FBind mx t2 e : k) ->
-    return $ In t2 (maybe id (`addBinding` v) mx . (`union` ve) $ e) s (FExec : FUnionEnv ve : k)
-  -- On the other hand, if the first command completes with a simple value,
-  -- we do something similar, but don't have to worry about the environment.
-  Out v s (FBind mx t2 e : k) ->
-    return $ In t2 (maybe id (`addBinding` v) mx e) s (FExec : k)
+  -- resulting from definition commands and/or binds, switch to
+  -- evaluating the second command of the bind.  Extend the
+  -- environment with both the environment resulting from the first
+  -- command, as well as a binding for the result (if the bind was of
+  -- the form @x <- c1; c2@).  Remember that we must execute the
+  -- second command once it has been evaluated, then union any
+  -- resulting definition environment with the definition environment
+  -- from the first command.
+  Out (VResult v ve) s (FBind mx t2 e : k) -> do
+    let ve' = maybe id (`addBinding` v) mx ve
+    return $ In t2 (e `union` ve') s (FExec : FUnionEnv ve' : k)
+  -- If the first command completes with a simple value and there is no binder,
+  -- then we just continue without worrying about the environment.
+  Out _ s (FBind Nothing t2 e : k) -> return $ In t2 e s (FExec : k)
+  -- If the first command completes with a simple value and there is a binder,
+  -- we promote it to the returned environment as well.
+  Out v s (FBind (Just x) t2 e : k) -> do
+    return $ In t2 (addBinding x v e) s (FExec : FUnionEnv (singleton x v) : k)
   -- If a command completes with a value and definition environment,
   -- and the next continuation frame contains a previous environment
   -- to union with, then pass the unioned environments along in
@@ -1034,6 +1038,11 @@ execConst c vs s k = do
           Just Blackhole {} -> return $ Up InfiniteLoop s k
           -- If the location already contains a value, just return it.
           Just (V v) -> return $ Out v s k
+      -- If a force is applied to any other kind of value, just ignore it.
+      -- This is needed because of the way we wrap all free variables in @force@
+      -- in case they come from a @def@ which are always wrapped in @delay@.
+      -- But binders (i.e. @x <- ...@) are also exported to the global context.
+      [v] -> return $ Out v s k
       _ -> badConst
     If -> case vs of
       -- Use the boolean to pick the correct branch, and apply @force@ to it.

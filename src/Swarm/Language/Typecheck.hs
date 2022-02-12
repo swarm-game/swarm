@@ -305,8 +305,12 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
         _ <- decomposeCmdTy cmdb
 
         -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
-        -- definitions will shadow previous ones.
-        return $ Module cmdb (ctx1 `Ctx.union` ctx2)
+        -- definitions will shadow previous ones.  Include the binder
+        -- (if any) as well, since binders are made available at the top
+        -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
+        -- then they will be able to refer to r again later.
+        let ctxX = maybe Ctx.empty (`Ctx.singleton` Forall [] a) mx
+        return $ Module cmdb (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.
