@@ -96,7 +96,7 @@ Types
 
 Ultimately, the `build` command is not special syntax, but just a
 function that takes an argument representing a delayed command. We
-can actually see the type of the `build` command (or any command) by
+can actually see the type of `build` (or anything else) by
 typing it at the prompt, without hitting `Enter`.  Any time the
 expression currently typed at the prompt parses and type checks, the
 REPL will show you the type of the expression in the upper right, like
@@ -104,7 +104,7 @@ this:
 
 ![Build type](images/tutorial/build.png)
 
-It will tell you that the type of `build` is
+In this case, we can see that the type of `build` is
 ```
 ∀ a0. {cmd a0} -> cmd robot
 ```
@@ -162,11 +162,11 @@ our life a bit easier.  To start, type the following:
 def m : cmd () = move end
 ```
 
-The `: cmd ()` annotation on `m` is optional; in this situation the
-game could have easily figured out the type of `m` if we had just
-written `def m = ...` (though there are some situations where a type
-signature may be required). The `end` is required, and is needed to
-disambiguate where the end of the definition is.
+The `: cmd ()` annotation on `m` is optional; in this case the game
+can easily figure out the type of `m` if we just write `def m = move end`
+(though there are some situations where a type signature may be
+required). The `end` is required, and is needed to disambiguate where
+the end of the definition is.
 
 Now try this:
 ```
@@ -182,12 +182,13 @@ Now let's use them:
 ```
 build { turn west; m4; m }
 ```
-This should build a robot that moves to the green mass to the west.
+This should build a robot that moves toward the green mass to the west.
 
 You might wonder at this point if it is possible to create a function
-that takes a number as input and moves that many steps forward.  It
-most certainly is, but right now your robots would not be capable
-of executing it.  You'll have to figure out how to upgrade them!
+that takes a number as input and moves that many steps forward, like
+`go : int -> cmd ()`.  Well, it most certainly is possible, but right
+now your robots would not be capable of executing it.  You'll have to
+figure out how to upgrade them!
 
 Getting the result of a command
 -------------------------------
@@ -223,7 +224,13 @@ different than `tragicomedy`; otherwise unnamed robots are given
 randomly chosen names.  To return to viewing `base` and its inventory,
 you can type `view base` at the prompt, or focus the world panel
 (either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
-<kbd>C</kbd>.
+<kbd>C</kbd>.  If you ever want to view the other robot again, you can
+type `view r`: the variable `r` will be in scope at the REPL prompt
+from now on.
+
+You can set the display name of a robot using the `setname` command.
+The randomly generated names are amusing, but being able to set the
+display name explicitly can help with debugging.
 
 Exploring
 ---------
@@ -241,18 +248,23 @@ build {turn west; m4; move; scan west; turn back; m4; upload base}
 The `turn` command we used to turn the robot takes a direction as an
 argument, which can be either an absolute direction
 (`north`, `south`, `east`, or `west`) or a relative direction
-(`forward`, `back`, `left`, `right`, or `down`).
+(`forward`, `back`, `left`, `right`, or `down`).  Instead of `upload
+base` we could have also written `upload parent`; every robot has a
+special variable `parent` which refers to the robot that built it.
 
 Notice that the robot did not actually need to walk on top of a `?` to
 learn about it, since it could `scan west` to scan the cell one unit
-to the west (you can also `scan down` to scan an item directly underneath the
+to the west (you can also `scan down` to scan an item directly beneath the
 robot).  Also, it was able to `upload` at a distance of one cell away from
 the base.
 
-XXX mention `parent`?  Mention `self`?
+After this robot finishes, you should have a new entry in your
+inventory:
 
-After this robot finishes, you should have a new entry in your inventory:
+XXX make sure this is actually true!  Set inventory_needs_update flag
+or whatever from https://github.com/byorgey/swarm/pull/301
 
+XXX then update this image
 ![Scan a tree](images/tutorial/scantree.png)
 
 Apparently those things are trees!  Although you do not actually have
@@ -330,19 +342,22 @@ any devices that will be necessary to execute it.  (It is also
 possible to manually install devices with the `install` command.)  So
 let's type the following:
 ```
-build "crasher" {log "hi!"; turn south; move; grab; move}
+crasher <- build {setname "crasher"; log "hi!"; turn south; move; grab; move}
 ```
-The world should now look something like the below.  Notice that the
+(The `setname "crasher"` command is not strictly necessary, but will
+help us understand the logs we look at later --- otherwise the log
+entries would be indexed by some randomly generated robot name.)  The
+world should now look something like the below.  Notice that the
 `logger` is gone from your inventory---it was automatically installed
 on `crasher`.  Notice also that `crasher` only moved one unit south,
 even though we told it to move two steps!  What went wrong?
 
 ![Let's crash a robot!](images/tutorial/crasher.png)
 
-One thing we could do at this point is to `view "crasher"`.  However,
+One thing we could do at this point is to `view crasher`.  However,
 it will probably become a bit more difficult to use the `view` command in
-future versions of the game, and in any case, what if we didn't know
-or remember the name of the robot that crashed?  Fortunately, there is
+future versions of the game, and in any case, what if we didn't have
+a referenceto the robot that crashed?  Fortunately, there is
 something else we can do: send out another robot to `salvage` the
 crashed robot.
 
@@ -364,10 +379,9 @@ the `upload` command, which we have seen before.  In addition to
 uploading knowledge about entities, it turns out that it also uploads
 the log from a `logger`.
 ```
-build "fetch" {turn west; m8; m; thing <- grab; turn back; m8; m; give "base" thing}
-make "log"
-make "logger"
-build "salvager" {turn south; move; log "salvaging..."; salvage; turn back; move; upload "base"}
+build {turn west; m8; m; thing <- grab; turn back; m8; m; give base thing}
+make "log"; make "logger"
+build {setname "salvager"; turn south; move; log "salvaging..."; salvage; turn back; move; upload base}
 ```
 The world should now look something like this:
 
