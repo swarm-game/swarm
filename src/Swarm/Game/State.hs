@@ -362,26 +362,6 @@ clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
 
--- -- | Given a 'Robot', possibly modify its name to ensure that the name
--- --   is unique among robots.  This is done simply by appending a new unique
--- ensureUniqueName :: Has (State GameState) sig m => Robot -> m Robot
--- ensureUniqueName newRobot = do
---   let name = newRobot ^. robotName
---   newName <- uniquifyRobotName name Nothing
---   return $ newRobot & robotName .~ newName
-
--- -- | Given a robot name, possibly add a numeric suffix to the end to
--- --   ensure it is unique.
--- uniquifyRobotName :: Has (State GameState) sig m => Text -> Maybe Int -> m Text
--- uniquifyRobotName name tag = do
---   let name' = name `T.append` maybe "" (into @Text . show) tag
---   collision <- uses robotMap (M.member name')
---   case collision of
---     True -> do
---       tag' <- gensym <+= 1
---       uniquifyRobotName name (Just tag')
---     False -> return name'
-
 -- | Add a robot to the game state, generating a unique ID number for
 --   it, also adding it to the index of robots by location, and return
 --   the robot updated with its unqiue ID.
