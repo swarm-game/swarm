@@ -261,10 +261,6 @@ the base.
 After this robot finishes, you should have a new entry in your
 inventory:
 
-XXX make sure this is actually true!  Set inventory_needs_update flag
-or whatever from https://github.com/byorgey/swarm/pull/301
-
-XXX then update this image
 ![Scan a tree](images/tutorial/scantree.png)
 
 Apparently those things are trees!  Although you do not actually have

@@ -564,10 +564,17 @@ inventory =
   testGroup
     "Inventory"
     [ testCase
+        "insert 0 / hash"
+        ( assertEqual
+            "insertCount 0 x empty has same hash as x"
+            (x ^. E.entityHash)
+            (hash (E.insertCount 0 x E.empty))
+        )
+    , testCase
         "insert / hash"
         ( assertEqual
-            "insert x empty has same hash as x"
-            (x ^. E.entityHash)
+            "insert x empty has same hash as 2*x"
+            (2 * (x ^. E.entityHash))
             (hash (E.insert x E.empty))
         )
     , testCase
@@ -587,15 +594,15 @@ inventory =
     , testCase
         "insert 2 / delete 3"
         ( assertEqual
-            "insert 2, delete 3 gives hash 0"
-            0
+            "insert 2, delete 3 gives hash of x"
+            (x ^. E.entityHash)
             (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty)))
         )
     , testCase
         "deleteAll"
         ( assertEqual
-            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y"
-            (hash (E.insertCount 2 y E.empty))
+            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insertCount 0 x"
+            (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
             (hash (E.deleteAll x (E.insertCount 2 y (E.insertCount 2 x E.empty))))
         )
     , testCase
