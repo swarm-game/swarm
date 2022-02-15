@@ -594,9 +594,9 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
     (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
     (M.unionWith IS.union byN1 byN2)
     (h1 + h2 - common)
-  where
-    -- Need to subtract off the sum of the hashes in common, because
-    -- of the way each entity with count k contributes (k+1) times its
-    -- hash.  So if the two inventories share an entity e, just adding their
-    -- hashes would mean e now contributes (k+2) times its hash.
-    common = IS.foldl' (+) 0 $ (IM.keysSet cs1) `IS.intersection` (IM.keysSet cs2)
+ where
+  -- Need to subtract off the sum of the hashes in common, because
+  -- of the way each entity with count k contributes (k+1) times its
+  -- hash.  So if the two inventories share an entity e, just adding their
+  -- hashes would mean e now contributes (k+2) times its hash.
+  common = IS.foldl' (+) 0 $ (IM.keysSet cs1) `IS.intersection` (IM.keysSet cs2)
