@@ -353,7 +353,7 @@ even though we told it to move two steps!  What went wrong?
 One thing we could do at this point is to `view crasher`.  However,
 it will probably become a bit more difficult to use the `view` command in
 future versions of the game, and in any case, what if we didn't have
-a referenceto the robot that crashed?  Fortunately, there is
+a reference to the robot that crashed?  Fortunately, there is
 something else we can do: send out another robot to `salvage` the
 crashed robot.
 
