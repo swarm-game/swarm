@@ -101,6 +101,9 @@ parser =
     , testCase
         "Nested pair syntax"
         (valid "(1,2,3,4)")
+    , testCase
+        "Binder at end of block"
+        (valid "r <- build {move}")
     , testGroup
         "failure location - #268"
         [ testCase
