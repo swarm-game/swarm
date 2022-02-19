@@ -65,6 +65,8 @@ module Swarm.TUI.Model (
   frameTickCount,
   lastInfoTime,
   uiShowFPS,
+  uiShowZero,
+  uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
 
@@ -313,6 +315,8 @@ data UIState = UIState
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiShowFPS :: Bool
+  , _uiShowZero :: Bool
+  , _uiInventoryShouldUpdate :: Bool
   , _uiTPF :: Double
   , _uiFPS :: Double
   , _lgTicksPerSecond :: Int
@@ -375,8 +379,14 @@ uiError :: Lens' UIState (Maybe Text)
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
 
--- | A togle to show the FPS by pressing `f`
+-- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
+
+-- | A toggle to show or hide inventory items with count 0 by pressing `0`
+uiShowZero :: Lens' UIState Bool
+
+-- | Whether the Inventory ui panel should update
+uiInventoryShouldUpdate :: Lens' UIState Bool
 
 -- | Computed ticks per milli seconds
 uiTPF :: Lens' UIState Double
@@ -465,6 +475,8 @@ initUIState = liftIO $ do
       , _uiError = Nothing
       , _uiModal = Nothing
       , _uiShowFPS = False
+      , _uiShowZero = True
+      , _uiInventoryShouldUpdate = False
       , _uiTPF = 0
       , _uiFPS = 0
       , _lgTicksPerSecond = initLgTicksPerSecond
@@ -486,6 +498,7 @@ populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
 populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
+  showZero <- use uiShowZero
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = InstalledEntry e
       itemList mk label =
@@ -499,7 +512,7 @@ populateInventoryList (Just r) = do
       -- aren't an installed device.  In other words we don't need to
       -- display installed devices twice unless we actually have some
       -- in our inventory in addition to being installed.
-      shouldDisplay (n, e) = n > 0 || not ((r ^. installedDevices) `E.contains` e)
+      shouldDisplay (n, e) = n > 0 || showZero && not ((r ^. installedDevices) `E.contains` e)
 
       items =
         (r ^. robotInventory . to (itemList mkInvEntry "Inventory"))
