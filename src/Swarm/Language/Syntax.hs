@@ -305,12 +305,12 @@ data Const
   | -- | Logical greater-or-equal comparison
     Geq
   | -- Arithmetic binary operators
-   
+
     -- | Logical or.
     Or
   | -- | Logical and.
     And
-  |  -- | Arithmetic addition operator
+  | -- | Arithmetic addition operator
     Add
   | -- | Arithmetic subtraction operator
     Sub
