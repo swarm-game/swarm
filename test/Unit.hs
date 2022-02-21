@@ -292,6 +292,15 @@ eval g =
             (\a b -> binOp a "!=" b `evaluatesToP` VBool ((a :: (Integer, Integer)) /= b))
         ]
     , testGroup
+        "boolean operators"
+        [ testCase
+            "and"
+            ("true && false" `evaluatesTo` VBool False)
+        , testCase
+            "or"
+            ("true || false" `evaluatesTo` VBool True)
+        ]
+    , testGroup
         "sum types #224"
         [ testCase
             "inl"
