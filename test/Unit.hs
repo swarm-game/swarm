@@ -476,7 +476,7 @@ eval g =
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
   evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
    where
-    r = mkRobot Nothing "" zero zero cesk []
+    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False
 
   runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
   runCESK _ (Up exn _ []) = return (Left (formatExn exn))

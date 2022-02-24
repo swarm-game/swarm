@@ -362,19 +362,23 @@ clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
 
--- | Add a robot to the game state, generating a unique ID number for
---   it, also adding it to the index of robots by location, and return
---   the robot updated with its unqiue ID.
-addRobot :: Has (State GameState) sig m => Robot -> m Robot
+-- | Add a robot to the game state, adding it to the main robot map,
+--   the active robot set, and to to the index of robots by
+--   location. If it doesn't already have a unique ID number, generate
+--   one for it.
+addRobot :: Has (State GameState) sig m => Robot -> m ()
 addRobot r = do
-  rid <- gensym <+= 1
+  r' <- case r ^. robotID of
+    (-1) -> do
+      rid <- gensym <+= 1
+      return (unsafeSetRobotID rid r)
+    _ -> return r
+  let rid = r' ^. robotID
 
-  let r' = unsafeSetRobotID rid r
   robotMap %= IM.insert rid r'
   robotsByLocation
     %= M.insertWith IS.union (r' ^. robotLocation) (IS.singleton rid)
   internalActiveRobots %= IS.insert rid
-  return r'
 
 -- | What type of game does the user want to start?
 data GameType

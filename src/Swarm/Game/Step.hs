@@ -19,8 +19,8 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
-import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<>=))
-import Control.Monad (forM_, guard, msum, unless, void, when)
+import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
+import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (rights)
@@ -159,7 +159,7 @@ evaluateCESK ::
   m Value
 evaluateCESK cesk = evalState r . runCESK $ cesk
  where
-  r = mkRobot Nothing "" zero zero cesk [] & systemRobot .~ True
+  r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True
 
 runCESK ::
   ( Has (Lift IO) sig m
@@ -216,6 +216,41 @@ uniform bnds = do
   let (n, g) = uniformR bnds rand
   randGen .= g
   return n
+
+-- | Generate a robot with a unique ID number.
+genRobot ::
+  (Has (State GameState) sig m) =>
+  -- | ID of the robot's parent, if it has one.
+  Maybe RID ->
+  -- | Name of the robot.
+  Text ->
+  -- | Initial location.
+  V2 Int64 ->
+  -- | Initial heading/direction.
+  V2 Int64 ->
+  -- | Initial CESK machine.
+  CESK ->
+  -- | Installed devices.
+  [Entity] ->
+  -- | Should this be a system robot?
+  Bool ->
+  m Robot
+genRobot mp name l d m devs sys = do
+  rid <- gensym <+= 1
+  let robot =
+        mkRobot
+          rid
+          mp
+          name
+          ["A generic robot."]
+          l
+          d
+          defaultRobotDisplay
+          m
+          devs
+          []
+          sys
+  return robot
 
 ------------------------------------------------------------
 -- Debugging
@@ -568,24 +603,29 @@ seedProgram minTime randTime thing =
     selfdestruct
   |]
 
--- | Construct a "seed robot" from entity, time range and position.
---   It has low priority and will be covered by placed entities.
-mkSeedBot :: Entity -> (Integer, Integer) -> V2 Int64 -> Robot
-mkSeedBot e (minT, maxT) loc =
-  mkRobot
-    Nothing
-    "seed"
-    loc
-    (V2 0 0)
-    (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
-    []
-    & robotDisplay
-      .~ ( defaultEntityDisplay '.'
-            & displayAttr .~ (e ^. entityDisplay . displayAttr)
-            & displayPriority .~ 0
-         )
-    & robotInventory .~ E.singleton e
-    & systemRobot .~ True
+-- | Construct a "seed robot" from entity, time range and position,
+--   and add it to the world.  It has low priority and will be covered
+--   by placed entities.
+addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> m ()
+addSeedBot e (minT, maxT) loc = do
+  r <-
+    genRobot
+      Nothing
+      "seed"
+      loc
+      (V2 0 0)
+      (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
+      []
+      True
+  let r' =
+        r
+          & robotDisplay
+            .~ ( defaultEntityDisplay '.'
+                  & displayAttr .~ (e ^. entityDisplay . displayAttr)
+                  & displayPriority .~ 0
+               )
+          & robotInventory .~ E.singleton e
+  addRobot r'
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
@@ -657,7 +697,7 @@ execConst c vs s k = do
           then -- Special case: if the time is zero, growth is instant.
             updateEntityAt loc (const (Just e))
           else -- Otherwise, grow a new entity from a seed.
-            void $ addRobot $ mkSeedBot e (minT, maxT) loc
+            addSeedBot e (minT, maxT) loc
 
       -- Add the picked up item to the robot's inventory.  If the
       -- entity yields something different, add that instead.
@@ -1195,19 +1235,20 @@ execConst c vs s k = do
         let displayName = names ! n
 
         -- Construct the new robot.
-        let newRobot =
-              mkRobot
-                (Just pid)
-                displayName
-                (r ^. robotLocation)
-                ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
-                    ? east
-                )
-                (In cmd e s [FExec])
-                (S.toList devices)
+        newRobot <-
+          genRobot
+            (Just pid)
+            displayName
+            (r ^. robotLocation)
+            ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
+                ? east
+            )
+            (In cmd e s [FExec])
+            (S.toList devices)
+            False
 
-        -- Add the new robot to the world.
-        newRobot' <- addRobot newRobot
+        -- Add it to the world.
+        addRobot newRobot
 
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.
@@ -1217,7 +1258,7 @@ execConst c vs s k = do
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
-        return $ Out (VRobot (newRobot' ^. robotID)) s k
+        return $ Out (VRobot (newRobot ^. robotID)) s k
       _ -> badConst
     Salvage -> case vs of
       [] -> do
