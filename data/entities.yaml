@@ -365,10 +365,10 @@
     place.  The item is removed from the robot's inventory and placed
     in the robot's current cell (which must be empty).  Raises an
     exception if the operation fails.
-  - "The 'give' command takes two arguments: the name of the robot to
+  - "The 'give' command takes two arguments: the robot to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
-  - "The 'install' command takes two arguments: the name of the robot
+  - "The 'install' command takes two arguments: the robot
     on which to install a device (which can be at most 1 cell away),
     and the name of the device to install."
 
@@ -418,17 +418,14 @@
   - A 3D printer gives you the capability of printing more robots! You
     can access the 3D printer via the 'build' command.
   - 'Example:'
-  - '  build "fred" {move; grab; turn back; move; give "base"
-    "tree"}'
+  - '  build {move; grab; turn back; move; give base "tree"}'
   - |
-    builds a robot named "fred" to get the tree on the cell to the
-    east (if there is one) and bring it back to you. Note that if
-    there is already a robot named "fred", the new robot will be given
-    a similar but unique name.  The 'build' command always returns the
-    name of the newly constructed robot. For example,
-  - '  name <- build "fred" {move}; view name'
+    builds a robot to get the tree on the cell to the
+    east (if there is one) and bring it back to the base. The 'build' command
+    always returns a reference to the newly constructed robot. For example,
+  - '  r <- build {move}; view r'
   - |
-    builds a robot and then views it (no matter what it ends up being named).
+    builds a robot and then views it.
 
   properties: [portable]
   capabilities: [build]
@@ -461,9 +458,9 @@
     A branch predictor is a device which allows a robot to interpret
     conditional expressions.  The syntax for a conditional expression
     is 'if' followed by three arguments: a boolean test and then
-    two expressions of the same type.
+    two delayed expressions of the same type.
   - 'Example:'
-  - 'if (x > 3) move {turn west; move}'
+  - 'if (x > 3) {move} {turn west; move}'
   properties: [portable]
   capabilities: [cond]
 
@@ -506,7 +503,7 @@
      boolean value indicating whether the robot's path is blocked
      (i.e. whether executing a 'move' command would fail)."
   - "Finally, robots can use the 'upload' command to copy their accumulated
-    knowledge to another nearby robot; for example, 'upload \"base\"'."
+    knowledge to another nearby robot; for example, 'upload base'."
   properties: [portable]
   capabilities: [scan, sensefront, sensehere]
 
@@ -519,8 +516,8 @@
      'reprogram' command."
   - "Only robots that have completed executing their previous command
      can be reprogrammed."
-  - "The robot must possess enough capabilities to run the new command
-     otherwise it will fail."
+  - "The robot being reprogrammed must possess enough capabilities to run the new command;
+     otherwise reprogramming will fail."
   properties: [portable]
   capabilities: [reprogram]
 
