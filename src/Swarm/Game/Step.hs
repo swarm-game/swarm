@@ -259,7 +259,7 @@ randomName = do
   names <- use @GameState nameList
   i <- uniform (bounds adjs)
   j <- uniform (bounds names)
-  return $ T.concat [adjs!i, "_", names!j]
+  return $ T.concat [adjs ! i, "_", names ! j]
 
 ------------------------------------------------------------
 -- Debugging
