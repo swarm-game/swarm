@@ -252,6 +252,15 @@ genRobot mp name l d m devs sys = do
           sys
   return robot
 
+-- | Generate a random robot name in the form adjective_name.
+randomName :: Has (State GameState) sig m => m Text
+randomName = do
+  adjs <- use @GameState adjList
+  names <- use @GameState nameList
+  i <- uniform (bounds adjs)
+  j <- uniform (bounds names)
+  return $ T.concat [adjs!i, "_", names!j]
+
 ------------------------------------------------------------
 -- Debugging
 ------------------------------------------------------------
@@ -1230,9 +1239,7 @@ execConst c vs s k = do
                         ]
 
         -- Pick a random display name.
-        names <- use @GameState nameList
-        n <- uniform (bounds names)
-        let displayName = names ! n
+        displayName <- randomName
 
         -- Construct the new robot.
         newRobot <-

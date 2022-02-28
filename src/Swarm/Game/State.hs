@@ -36,6 +36,7 @@ module Swarm.Game.State (
   activeRobots,
   gensym,
   randGen,
+  adjList,
   nameList,
   entityMap,
   recipesOut,
@@ -173,6 +174,7 @@ data GameState = GameState
   , _robotsByLocation :: Map (V2 Int64) IntSet
   , _gensym :: Int
   , _randGen :: StdGen
+  , _adjList :: Array Int Text
   , _nameList :: Array Int Text
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
@@ -191,7 +193,7 @@ data GameState = GameState
 -- it as a Getter externally to protect invariants.
 makeLensesFor [("_activeRobots", "internalActiveRobots")] ''GameState
 
-let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_nameList]
+let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_adjList, '_nameList]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -242,7 +244,11 @@ gensym :: Lens' GameState Int
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
 
--- | Read-only list of words, for use as random robot names.
+-- | Read-only list of words, for use in building random robot names.
+adjList :: Getter GameState (Array Int Text)
+adjList = to _adjList
+
+-- | Read-only list of words, for use in building random robot names.
 nameList :: Getter GameState (Array Int Text)
 nameList = to _nameList
 
@@ -404,10 +410,13 @@ initGameState gtype = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
-  names <- liftIO $ do
-    putStrLn "Loading robot names..."
+  (adjs, names) <- liftIO $ do
+    putStrLn "Loading name generation data..."
+    adjsFile <- getDataFileName "adjectives.txt"
+    as <- tail . T.lines <$> T.readFile adjsFile
     namesFile <- getDataFileName "names.txt"
-    T.lines <$> T.readFile namesFile
+    ns <- tail . T.lines <$> T.readFile namesFile
+    return (as,ns)
 
   iGameType <- instGameType entities recipes gtype
 
@@ -463,6 +472,7 @@ initGameState gtype = do
       , _waitingRobots = M.empty
       , _gensym = 0
       , _randGen = mkStdGen seed
+      , _adjList = listArray (0, length adjs - 1) adjs
       , _nameList = listArray (0, length names - 1) names
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes

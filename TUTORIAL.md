@@ -220,7 +220,7 @@ The view is now centered on the other robot instead of on our `base`,
 and the top-left panel shows its inventory and installed devices
 instead of `base`'s.  (However, commands entered at the REPL will
 still be executed by `base`.)  The name of your robot will likely be
-different than `tragicomedy`; otherwise unnamed robots are given
+different than `sleepy_austin`; otherwise unnamed robots are given
 randomly chosen names.  To return to viewing `base` and its inventory,
 you can type `view base` at the prompt, or focus the world panel
 (either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
