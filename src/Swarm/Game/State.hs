@@ -416,7 +416,7 @@ initGameState gtype = do
     as <- tail . T.lines <$> T.readFile adjsFile
     namesFile <- getDataFileName "names.txt"
     ns <- tail . T.lines <$> T.readFile namesFile
-    return (as,ns)
+    return (as, ns)
 
   iGameType <- instGameType entities recipes gtype
 
