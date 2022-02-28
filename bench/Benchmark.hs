@@ -12,6 +12,7 @@ import Criterion.Types (Config (timeLimit))
 import Data.Int (Int64)
 import Linear.V2 (V2 (V2))
 import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Robot (Robot, mkRobot)
 import Swarm.Game.State (GameState, GameType (ClassicGame), addRobot, creativeMode, initGameState, world)
 import Swarm.Game.Step (gameTick)
@@ -70,7 +71,7 @@ circlerProgram =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> V2 Int64 -> Robot
-initRobot prog loc = mkRobot Nothing "" north loc (initMachine prog Context.empty emptyStore) []
+initRobot prog loc = mkRobot (-1) Nothing "" [] north loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
