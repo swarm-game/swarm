@@ -298,13 +298,15 @@ updateUI = do
   let focusedRobotHash = view inventoryHash <$> fr
   -- The hash of the focused robot (if any)
 
+  shouldUpdate <- use (uiState . uiInventoryShouldUpdate)
   -- If the hashes don't match (either because which robot (or
   -- whether any robot) is focused changed, or the focused robot's
   -- inventory changed), regenerate the list.
   inventoryUpdated <-
-    if listRobotHash /= focusedRobotHash
+    if listRobotHash /= focusedRobotHash || shouldUpdate
       then do
         zoom uiState $ populateInventoryList fr
+        (uiState . uiInventoryShouldUpdate) .= False
         pure True
       else pure False
 
@@ -576,6 +578,8 @@ handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
     Just (_, Separator _) -> continueWithoutRedraw s
     Just (_, InventoryEntry _ e) -> makeEntity s e
     Just (_, InstalledEntry e) -> makeEntity s e
+handleRobotPanelEvent s (VtyEvent (V.EvKey (V.KChar '0') [])) = do
+  continue $ s & (uiState . uiShowZero %~ not) . (uiState . uiInventoryShouldUpdate .~ True)
 handleRobotPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
   case mList of
