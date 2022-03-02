@@ -36,6 +36,8 @@ module Swarm.Game.State (
   activeRobots,
   gensym,
   randGen,
+  adjList,
+  nameList,
   entityMap,
   recipesOut,
   recipesIn,
@@ -46,7 +48,7 @@ module Swarm.Game.State (
   replStatus,
   replWorking,
   messageQueue,
-  focusedRobotName,
+  focusedRobotID,
   ticks,
 
   -- * Utilities
@@ -56,7 +58,6 @@ module Swarm.Game.State (
   viewingRegion,
   focusedRobot,
   clearFocusedRobotLogUpdated,
-  ensureUniqueName,
   addRobot,
   emitMessage,
   sleepUntil,
@@ -69,25 +70,28 @@ module Swarm.Game.State (
 import Control.Arrow (Arrow ((&&&)))
 import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
+import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
+import qualified Data.IntMap as IM
+import Data.IntSet (IntSet)
+import qualified Data.IntSet as IS
+import Data.IntSet.Lens (setOf)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Set (Set)
-import qualified Data.Set as S
-import Data.Set.Lens (setOf)
 import Data.Text (Text)
-import qualified Data.Text as T
+import qualified Data.Text as T (lines)
+import qualified Data.Text.IO as T (readFile)
 import Linear
 import System.Random (StdGen, mkStdGen)
-import Witch (into)
 
 import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 
+import Paths_swarm (getDataFileName)
 import Swarm.Game.Challenge
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
@@ -105,7 +109,7 @@ data ViewCenterRule
   = -- | The view should be centered on an absolute position.
     VCLocation (V2 Int64)
   | -- | The view should be centered on a certain robot.
-    VCRobot Text
+    VCRobot RID
   deriving (Eq, Ord, Show)
 
 makePrisms ''ViewCenterRule
@@ -152,12 +156,12 @@ data GameState = GameState
   { _creativeMode :: Bool
   , _winCondition :: WinCondition
   , _runStatus :: RunStatus
-  , _robotMap :: Map Text Robot
+  , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
     -- be a subset of the keys of robotMap. It may contain waiting or idle
     -- robots. But robots that are present in robotMap and not in activeRobots
     -- are guaranteed to be either waiting or idle.
-    _activeRobots :: Set Text
+    _activeRobots :: IntSet
   , -- A set of probably waiting robots, indexed by probable wake-up time. It
     -- may contain robots that are in fact active or idle, as well as robots
     -- that do not exist anymore. Its only guarantee is that once a robot name
@@ -166,10 +170,12 @@ data GameState = GameState
     -- wakeUpRobotsDoneSleeping.
     -- Waiting robots for a given time are a list because it is cheaper to
     -- append to a list than to a Set.
-    _waitingRobots :: Map Integer [Text]
-  , _robotsByLocation :: Map (V2 Int64) (Set Text)
+    _waitingRobots :: Map Integer [RID]
+  , _robotsByLocation :: Map (V2 Int64) IntSet
   , _gensym :: Int
   , _randGen :: StdGen
+  , _adjList :: Array Int Text
+  , _nameList :: Array Int Text
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
@@ -179,7 +185,7 @@ data GameState = GameState
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
   , _messageQueue :: [Text]
-  , _focusedRobotName :: Text
+  , _focusedRobotID :: RID
   , _ticks :: Integer
   }
 
@@ -187,7 +193,7 @@ data GameState = GameState
 -- it as a Getter externally to protect invariants.
 makeLensesFor [("_activeRobots", "internalActiveRobots")] ''GameState
 
-let exclude = ['_viewCenter, '_focusedRobotName, '_viewCenterRule, '_activeRobots]
+let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_adjList, '_nameList]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -211,7 +217,7 @@ paused :: Getter GameState Bool
 paused = to (\s -> s ^. runStatus /= Running)
 
 -- | All the robots that currently exist in the game, indexed by name.
-robotMap :: Lens' GameState (Map Text Robot)
+robotMap :: Lens' GameState (IntMap Robot)
 
 -- | The names of all robots that currently exist in the game, indexed by
 --   location (which we need both for /e.g./ the 'Salvage' command as
@@ -222,21 +228,29 @@ robotMap :: Lens' GameState (Map Text Robot)
 --   location of a robot changes, or a robot is created or destroyed.
 --   Fortunately, there are relatively few ways for these things to
 --   happen.
-robotsByLocation :: Lens' GameState (Map (V2 Int64) (Set Text))
+robotsByLocation :: Lens' GameState (Map (V2 Int64) IntSet)
 
 -- | The names of the robots that are currently not sleeping.
-activeRobots :: Getter GameState (Set Text)
+activeRobots :: Getter GameState IntSet
 activeRobots = internalActiveRobots
 
 -- | The names of the robots that are currently sleeping, indexed by wake up
 -- | time. Internal.
-waitingRobots :: Lens' GameState (Map Integer [Text])
+waitingRobots :: Lens' GameState (Map Integer [RID])
 
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
+
+-- | Read-only list of words, for use in building random robot names.
+adjList :: Getter GameState (Array Int Text)
+adjList = to _adjList
+
+-- | Read-only list of words, for use in building random robot names.
+nameList :: Getter GameState (Array Int Text)
+nameList = to _nameList
 
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
@@ -266,11 +280,11 @@ viewCenterRule = lens getter setter
   setter g rule =
     case rule of
       VCLocation v2 -> g {_viewCenterRule = rule, _viewCenter = v2}
-      VCRobot txt ->
-        let robotcenter = g ^? robotMap . ix txt <&> view robotLocation -- retrive the loc of the robot if it exist, Nothing otherwise.  sometimes, lenses are amazing...
+      VCRobot rid ->
+        let robotcenter = g ^? robotMap . ix rid <&> view robotLocation -- retrive the loc of the robot if it exist, Nothing otherwise.  sometimes, lenses are amazing...
          in case robotcenter of
               Nothing -> g
-              Just v2 -> g {_viewCenterRule = rule, _viewCenter = v2, _focusedRobotName = txt}
+              Just v2 -> g {_viewCenterRule = rule, _viewCenter = v2, _focusedRobotID = rid}
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -297,14 +311,14 @@ messageQueue :: Lens' GameState [Text]
 
 -- | The current robot in focus. It is only a Getter because
 --   this value should be updated only when viewCenterRule is.
-focusedRobotName :: Getter GameState Text
-focusedRobotName = to _focusedRobotName
+focusedRobotID :: Getter GameState RID
+focusedRobotID = to _focusedRobotID
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
 --   is @Maybe@ because the rule may refer to a robot which does not
 --   exist.
-applyViewCenterRule :: ViewCenterRule -> Map Text Robot -> Maybe (V2 Int64)
+applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (V2 Int64)
 applyViewCenterRule (VCLocation l) _ = Just l
 applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 
@@ -346,45 +360,31 @@ viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
 -- | Find out which robot is currently specified by the
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
-focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotName)
+focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotID)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
 clearFocusedRobotLogUpdated :: Has (State GameState) sig m => m ()
 clearFocusedRobotLogUpdated = do
-  n <- use focusedRobotName
+  n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
 
--- | Given a 'Robot', possibly modify its name to ensure that the name
---   is unique among robots.  This is done simply by appending a new unique
-ensureUniqueName :: Has (State GameState) sig m => Robot -> m Robot
-ensureUniqueName newRobot = do
-  let name = newRobot ^. robotName
-  newName <- uniquifyRobotName name Nothing
-  return $ newRobot & robotName .~ newName
-
--- | Given a robot name, possibly add a numeric suffix to the end to
---   ensure it is unique.
-uniquifyRobotName :: Has (State GameState) sig m => Text -> Maybe Int -> m Text
-uniquifyRobotName name tag = do
-  let name' = name `T.append` maybe "" (into @Text . show) tag
-  collision <- uses robotMap (M.member name')
-  case collision of
-    True -> do
-      tag' <- gensym <+= 1
-      uniquifyRobotName name (Just tag')
-    False -> return name'
-
--- | Add a robot to the game state, possibly updating its name to
---   ensure it is unique, also adding it to the index of robots by
---   location, and return the (possibly modified) robot.
-addRobot :: Has (State GameState) sig m => Robot -> m Robot
+-- | Add a robot to the game state, adding it to the main robot map,
+--   the active robot set, and to to the index of robots by
+--   location. If it doesn't already have a unique ID number, generate
+--   one for it.
+addRobot :: Has (State GameState) sig m => Robot -> m ()
 addRobot r = do
-  r' <- ensureUniqueName r
-  robotMap %= M.insert (r' ^. robotName) r'
+  r' <- case r ^. robotID of
+    (-1) -> do
+      rid <- gensym <+= 1
+      return (unsafeSetRobotID rid r)
+    _ -> return r
+  let rid = r' ^. robotID
+
+  robotMap %= IM.insert rid r'
   robotsByLocation
-    %= M.insertWith S.union (r' ^. robotLocation) (S.singleton (r' ^. robotName))
-  internalActiveRobots %= S.insert (r' ^. robotName)
-  return r'
+    %= M.insertWith IS.union (r' ^. robotLocation) (IS.singleton rid)
+  internalActiveRobots %= IS.insert rid
 
 -- | What type of game does the user want to start?
 data GameType
@@ -410,6 +410,14 @@ initGameState gtype = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
 
+  (adjs, names) <- liftIO $ do
+    putStrLn "Loading name generation data..."
+    adjsFile <- getDataFileName "adjectives.txt"
+    as <- tail . T.lines <$> T.readFile adjsFile
+    namesFile <- getDataFileName "names.txt"
+    ns <- tail . T.lines <$> T.readFile namesFile
+    return (as, ns)
+
   iGameType <- instGameType entities recipes gtype
 
   let baseDeviceNames =
@@ -422,7 +430,8 @@ initGameState gtype = do
         , "logger"
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
-      baseName = "base"
+      -- baseName = "base"
+      baseID = 0
       theBase = baseRobot baseDevices
 
       robotList = case iGameType of
@@ -455,24 +464,26 @@ initGameState gtype = do
       { _creativeMode = creative
       , _winCondition = theWinCondition
       , _runStatus = Running
-      , _robotMap = M.fromList $ map (view robotName &&& id) robotList
+      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
       , _robotsByLocation =
-          M.fromListWith S.union $
-            map (view robotLocation &&& (S.singleton . view robotName)) robotList
-      , _activeRobots = setOf (traverse . robotName) robotList
+          M.fromListWith IS.union $
+            map (view robotLocation &&& (IS.singleton . view robotID)) robotList
+      , _activeRobots = setOf (traverse . robotID) robotList
       , _waitingRobots = M.empty
       , _gensym = 0
       , _randGen = mkStdGen seed
+      , _adjList = listArray (0, length adjs - 1) adjs
+      , _nameList = listArray (0, length names - 1) names
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
       , _world = theWorld
-      , _viewCenterRule = VCRobot baseName
+      , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
       , _needsRedraw = False
       , _replStatus = REPLDone
       , _messageQueue = []
-      , _focusedRobotName = baseName
+      , _focusedRobotID = baseID
       , _ticks = 0
       }
  where
@@ -494,18 +505,18 @@ ticks :: Lens' GameState Integer
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
-sleepUntil :: Has (State GameState) sig m => Text -> Integer -> m ()
-sleepUntil rn time = do
-  internalActiveRobots %= S.delete rn
-  waitingRobots . at time . non [] %= (rn :)
+sleepUntil :: Has (State GameState) sig m => RID -> Integer -> m ()
+sleepUntil rid time = do
+  internalActiveRobots %= IS.delete rid
+  waitingRobots . at time . non [] %= (rid :)
 
 -- | Takes a robot out of the activeRobots set.
-sleepForever :: Has (State GameState) sig m => Text -> m ()
-sleepForever rn = internalActiveRobots %= S.delete rn
+sleepForever :: Has (State GameState) sig m => RID -> m ()
+sleepForever rid = internalActiveRobots %= IS.delete rid
 
 -- | Adds a robot to the activeRobots set.
-activateRobot :: Has (State GameState) sig m => Text -> m ()
-activateRobot rn = internalActiveRobots %= S.insert rn
+activateRobot :: Has (State GameState) sig m => RID -> m ()
+activateRobot rid = internalActiveRobots %= IS.insert rid
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the waitingRobots queue and put them back in the activeRobots set
@@ -513,18 +524,18 @@ activateRobot rn = internalActiveRobots %= S.insert rn
 wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
-  mrns <- waitingRobots . at time <<.= Nothing
-  case mrns of
+  mrids <- waitingRobots . at time <<.= Nothing
+  case mrids of
     Nothing -> return ()
-    Just rns -> do
+    Just rids -> do
       robots <- use robotMap
-      let aliveRns = filter (`M.member` robots) rns
-      internalActiveRobots %= S.union (S.fromList aliveRns)
+      let aliveRids = filter (`IM.member` robots) rids
+      internalActiveRobots %= IS.union (IS.fromList aliveRids)
 
-deleteRobot :: Has (State GameState) sig m => Text -> m ()
+deleteRobot :: Has (State GameState) sig m => RID -> m ()
 deleteRobot rn = do
-  internalActiveRobots %= S.delete rn
+  internalActiveRobots %= IS.delete rn
   mrobot <- robotMap . at rn <<.= Nothing
   mrobot `forM_` \robot -> do
     -- Delete the robot from the index of robots by location.
-    robotsByLocation . ix (robot ^. robotLocation) %= S.delete rn
+    robotsByLocation . ix (robot ^. robotLocation) %= IS.delete rn

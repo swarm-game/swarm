@@ -42,6 +42,7 @@ import Control.Arrow ((&&&))
 import Control.Lens
 import Data.Array (range)
 import qualified Data.Foldable as F
+import qualified Data.IntMap as IM
 import qualified Data.List as L
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
@@ -249,7 +250,7 @@ drawMenu s =
  where
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
-  viewingBase = (s ^. gameState . viewCenterRule) == VCRobot "base"
+  viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
 
   gameModeWidget =
@@ -316,7 +317,7 @@ drawWorld g =
 
   robotsByLoc =
     M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
-      . M.elems
+      . IM.elems
       $ g ^. robotMap
 
   drawLoc :: W.Coords -> Widget Name
@@ -591,7 +592,7 @@ drawREPL s =
   debugging = False -- Turn ON to get extra line with history index
   inputLines = 1 + fromEnum debugging
   history = s ^. uiState . uiReplHistory
-  base = s ^. gameState . robotMap . at "base"
+  base = s ^. gameState . robotMap . at 0
   histIdx = fromString $ show (history ^. replIndex)
   fmt (REPLEntry e) = txt replPrompt <+> txt e
   fmt (REPLOutput t) = txt t

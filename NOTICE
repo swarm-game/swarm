@@ -1,0 +1,6 @@
+Swarm
+Copyright 2022 Swarm contributors
+
+This product includes data from the "namesgenerator" package, found at
+  https://github.com/moby/moby/blob/master/pkg/namesgenerator/names-generator.go
+  and used under the terms of the Apache 2.0 License, https://www.apache.org/licenses/

@@ -82,6 +82,7 @@ reservedWords =
        , "string"
        , "dir"
        , "bool"
+       , "robot"
        , "cmd"
        , "delay"
        , "let"
@@ -197,6 +198,7 @@ parseTypeAtom =
     <|> TyString <$ reserved "string"
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
+    <|> TyRobot <$ reserved "robot"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> parens parseType
@@ -283,7 +285,7 @@ parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
 mkBindChain :: [Stmt] -> Parser Syntax
 mkBindChain stmts = case last stmts of
-  Binder _ _ -> fail "Last command in a chain must not have a binder"
+  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar x))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
   mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2

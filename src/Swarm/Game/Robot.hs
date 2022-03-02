@@ -20,6 +20,7 @@ module Swarm.Game.Robot (
   leTime,
 
   -- * Robots
+  RID,
   Robot,
 
   -- * Robot context
@@ -42,6 +43,8 @@ module Swarm.Game.Robot (
   inventoryHash,
   robotCapabilities,
   robotContext,
+  robotID,
+  robotParentID,
   machine,
   systemRobot,
   selfDestruct,
@@ -49,8 +52,8 @@ module Swarm.Game.Robot (
 
   -- ** Create
   mkRobot,
-  mkRobot',
   baseRobot,
+  unsafeSetRobotID,
 
   -- ** Query
   robotKnows,
@@ -115,6 +118,9 @@ data LogEntry = LogEntry
 
 makeLenses ''LogEntry
 
+-- | A unique identifier for a robot.
+type RID = Int
+
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot = Robot
@@ -127,6 +133,8 @@ data Robot = Robot
   , _robotLogUpdated :: Bool
   , _robotLocation :: V2 Int64
   , _robotContext :: RobotContext
+  , _robotID :: RID
+  , _robotParentID :: Maybe RID
   , _machine :: CESK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
@@ -137,7 +145,7 @@ data Robot = Robot
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog]
+let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -180,6 +188,28 @@ robotInventory = robotEntity . entityInventory
 
 -- | The robot's context
 robotContext :: Lens' Robot RobotContext
+
+-- | The (unique) ID number of the robot.  This is only a Getter since
+--   the robot ID is immutable.
+robotID :: Getter Robot RID
+robotID = to _robotID
+
+-- | Set the ID number of a robot.  This is "unsafe" since robots
+--   should be uniquely identified by their ID, and are stored using
+--   the ID as a key, etc.  The only place this is ever needed is when
+--   reading robots from a `.yaml` file (*e.g.* in a challenge
+--   description), we cannot fill in a unique ID at parse time since
+--   we don't have access to a `State Game` effect; when later adding
+--   such robots to the world we generate and fill in a unique ID.
+--   Otherwise, all robots are created via 'mkRobot', which requires
+--   an ID number up front.
+unsafeSetRobotID :: RID -> Robot -> Robot
+unsafeSetRobotID i r = r {_robotID = i}
+
+-- | The ID number of the robot's parent, that is, the robot that
+--   built (or most recently reprogrammed) this robot, if there is
+--   one.
+robotParentID :: Lens' Robot (Maybe RID)
 
 -- | A separate inventory for "installed devices", which provide the
 --   robot with certain capabilities.
@@ -293,45 +323,12 @@ selfDestruct :: Lens' Robot Bool
 --   can tell when the counter increments.
 tickSteps :: Lens' Robot Int
 
--- | Create a robot.
+-- | A general function for creating robots.
 mkRobot ::
-  -- | Name of the robot.  Precondition: it should not be the same as any
-  --   other robot name.
-  Text ->
-  -- | Initial location.
-  V2 Int64 ->
-  -- | Initial heading/direction.
-  V2 Int64 ->
-  -- | Initial CESK machine.
-  CESK ->
-  -- | Installed devices.
-  [Entity] ->
-  Robot
-mkRobot name l d m devs =
-  Robot
-    { _robotEntity =
-        mkEntity
-          defaultRobotDisplay
-          name
-          ["A generic robot."]
-          []
-          & entityOrientation ?~ d
-    , _installedDevices = inst
-    , _robotCapabilities = inventoryCapabilities inst
-    , _robotLog = Seq.empty
-    , _robotLogUpdated = False
-    , _robotLocation = l
-    , _robotContext = RobotContext empty empty empty emptyStore
-    , _machine = m
-    , _systemRobot = False
-    , _selfDestruct = False
-    , _tickSteps = 0
-    }
- where
-  inst = fromList devs
-
--- | A more general function for creating robots.
-mkRobot' ::
+  -- | ID number of the robot.
+  Int ->
+  -- | ID number of the robot's parent, if it has one.
+  Maybe Int ->
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
@@ -351,7 +348,7 @@ mkRobot' ::
   -- | Should this be a system robot?
   Bool ->
   Robot
-mkRobot' name descr loc dir disp m devs inv sys =
+mkRobot rid pid name descr loc dir disp m devs inv sys =
   Robot
     { _robotEntity =
         mkEntity disp name descr []
@@ -363,6 +360,8 @@ mkRobot' name descr loc dir disp m devs inv sys =
     , _robotLogUpdated = False
     , _robotLocation = loc
     , _robotContext = RobotContext empty empty empty emptyStore
+    , _robotID = rid
+    , _robotParentID = pid
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
@@ -389,6 +388,8 @@ baseRobot devs =
     , _robotLogUpdated = False
     , _robotLocation = V2 0 0
     , _robotContext = RobotContext empty empty empty emptyStore
+    , _robotID = 0
+    , _robotParentID = Nothing
     , _machine = idleMachine
     , _systemRobot = False
     , _selfDestruct = False
@@ -401,7 +402,10 @@ baseRobot devs =
 --   'EntityMap' in which we can look up the names of entities.
 instance FromJSONE EntityMap Robot where
   parseJSONE = withObjectE "robot" $ \v ->
-    mkRobot'
+    -- Note we can't generate a unique ID here since we don't have
+    -- access to a 'State GameState' effect; a unique ID will be
+    -- filled in later when adding the robot to the world.
+    mkRobot (-1) Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
       <*> liftE (v .: "loc")

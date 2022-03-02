@@ -7,6 +7,6 @@ in
 rep 4 (
   rep 10 move;
   turn left;
-  build "sq" {run("square.sw")};
+  build {run("square.sw")};
   return ()
 )

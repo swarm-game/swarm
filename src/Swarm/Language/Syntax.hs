@@ -254,8 +254,16 @@ data Const
     Upload
   | -- | See if a specific entity is here. (This may be removed.)
     Ishere
-  | -- | Find it's own name
+  | -- | Get a reference to oneself
+    Self
+  | -- | Get the robot's parent
+    Parent
+  | -- | Get a reference to the base
+    Base
+  | -- | Get the robot's display name
     Whoami
+  | -- | Set the robot's display name
+    Setname
   | -- | Get a uniformly random integer.
     Random
   | -- Modules
@@ -430,7 +438,11 @@ constInfo c = case c of
   Scan -> commandLow 0
   Upload -> commandLow 1
   Ishere -> commandLow 1
+  Self -> functionLow 0
+  Parent -> functionLow 0
+  Base -> functionLow 0
   Whoami -> commandLow 0
+  Setname -> commandLow 1
   Random -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1
@@ -579,6 +591,13 @@ data Term
     TAntiString Text
   | -- | A Boolean literal.
     TBool Bool
+  | -- | A robot value.  These never show up in surface syntax, but are
+    --   here so we can factor pretty-printing for Values through
+    --   pretty-printing for Terms.
+    TRobot Int
+  | -- | A memory reference.  These likewise never show up in surface syntax,
+    --   but are here to facilitate pretty-printing.
+    TRef Int
   | -- | A variable.
     TVar Var
   | -- | A pair.
@@ -625,6 +644,8 @@ fvT f = go S.empty
     TString {} -> pure t
     TAntiString {} -> pure t
     TBool {} -> pure t
+    TRobot {} -> pure t
+    TRef {} -> pure t
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)
