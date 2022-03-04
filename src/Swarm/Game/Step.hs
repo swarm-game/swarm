@@ -24,6 +24,7 @@ import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (rights)
+import qualified Data.Functor.Const as F
 import Data.Int (Int64)
 import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
@@ -63,6 +64,7 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
+import Data.Functor (void)
 
 -- | The maximum number of CESK machine evaluation steps each robot is
 --   allowed during a single game tick.
@@ -159,7 +161,7 @@ evaluateCESK ::
   m Value
 evaluateCESK cesk = evalState r . runCESK $ cesk
  where
-  r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True
+  r = mkRobot (Identity 0) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True
 
 runCESK ::
   ( Has (Lift IO) sig m
@@ -216,41 +218,6 @@ uniform bnds = do
   let (n, g) = uniformR bnds rand
   randGen .= g
   return n
-
--- | Generate a robot with a unique ID number.
-genRobot ::
-  (Has (State GameState) sig m) =>
-  -- | ID of the robot's parent, if it has one.
-  Maybe RID ->
-  -- | Name of the robot.
-  Text ->
-  -- | Initial location.
-  V2 Int64 ->
-  -- | Initial heading/direction.
-  V2 Int64 ->
-  -- | Initial CESK machine.
-  CESK ->
-  -- | Installed devices.
-  [Entity] ->
-  -- | Should this be a system robot?
-  Bool ->
-  m Robot
-genRobot mp name l d m devs sys = do
-  rid <- gensym <+= 1
-  let robot =
-        mkRobot
-          rid
-          mp
-          name
-          ["A generic robot."]
-          l
-          d
-          defaultRobotDisplay
-          m
-          devs
-          []
-          sys
-  return robot
 
 -- | Generate a random robot name in the form adjective_name.
 randomName :: Has (State GameState) sig m => m Text
@@ -618,25 +585,24 @@ seedProgram minTime randTime thing =
 --   and add it to the world.  It has low priority and will be covered
 --   by placed entities.
 addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> m ()
-addSeedBot e (minT, maxT) loc = do
-  r <-
-    genRobot
-      Nothing
-      "seed"
-      loc
-      (V2 0 0)
-      (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
-      []
-      True
-  let r' =
-        r
-          & robotDisplay
-            .~ ( defaultEntityDisplay '.'
-                  & displayAttr .~ (e ^. entityDisplay . displayAttr)
-                  & displayPriority .~ 0
-               )
-          & robotInventory .~ E.singleton e
-  addRobot r'
+addSeedBot e (minT, maxT) loc =
+  void $
+    addURobot $
+      mkRobot
+        (F.Const ())
+        Nothing
+        "seed"
+        ["A growing seed."]
+        loc
+        (V2 0 0)
+        ( defaultEntityDisplay '.'
+            & displayAttr .~ (e ^. entityDisplay . displayAttr)
+            & displayPriority .~ 0
+        )
+        (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
+        []
+        [(1, e)]
+        True
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
@@ -1243,21 +1209,23 @@ execConst c vs s k = do
         -- Pick a random display name.
         displayName <- randomName
 
-        -- Construct the new robot.
+        -- Construct the new robot and add it to the world.
         newRobot <-
-          genRobot
-            (Just pid)
-            displayName
-            (r ^. robotLocation)
-            ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
-                ? east
-            )
-            (In cmd e s [FExec])
-            (S.toList devices)
-            False
-
-        -- Add it to the world.
-        addRobot newRobot
+          addURobot $
+            mkRobot
+              (F.Const ())
+              (Just pid)
+              displayName
+              ["A robot."]
+              (r ^. robotLocation)
+              ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
+                  ? east
+              )
+              defaultRobotDisplay
+              (In cmd e s [FExec])
+              (S.toList devices)
+              []
+              False
 
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.

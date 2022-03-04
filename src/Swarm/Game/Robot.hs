@@ -1,6 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Swarm.Game.Robot
@@ -21,7 +25,9 @@ module Swarm.Game.Robot (
 
   -- * Robots
   RID,
+  RobotR,
   Robot,
+  URobot,
 
   -- * Robot context
   RobotContext,
@@ -53,7 +59,7 @@ module Swarm.Game.Robot (
   -- ** Create
   mkRobot,
   baseRobot,
-  unsafeSetRobotID,
+  setRobotID,
 
   -- ** Query
   robotKnows,
@@ -121,9 +127,10 @@ makeLenses ''LogEntry
 -- | A unique identifier for a robot.
 type RID = Int
 
--- | A value of type 'Robot' is a record representing the state of a
---   single robot.
-data Robot = Robot
+-- | A value of type 'RobotR' is a record representing the state of a
+--   single robot.  The @f@ parameter is for tracking whether or not
+--   the robot has been assigned a unique ID.
+data RobotR f = RobotR
   { _robotEntity :: Entity
   , _installedDevices :: Inventory
   , -- | A cached view of the capabilities this robot has.
@@ -133,14 +140,15 @@ data Robot = Robot
   , _robotLogUpdated :: Bool
   , _robotLocation :: V2 Int64
   , _robotContext :: RobotContext
-  , _robotID :: RID
+  , _robotID :: f RID -- Might or might not have an ID yet!
   , _robotParentID :: Maybe RID
   , _machine :: CESK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _tickSteps :: Int
   }
-  deriving (Show)
+
+deriving instance Show (f RID) => Show (RobotR f)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -152,7 +160,17 @@ let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID]
           & lensField . mapped . mapped %~ \fn n ->
             if n `elem` exclude then [] else fn n
       )
-      ''Robot
+      ''RobotR
+
+-- | An Unidentified robot, i.e. a robot record without a unique ID number.
+type URobot = RobotR (Const ())
+
+-- | A robot with a unique ID number.
+type Robot = RobotR Identity
+
+-- In theory we could make all these lenses over (RobotR f), but that
+-- leads to lots of type ambiguity problems later.  In practice we
+-- only need lenses for Robots.
 
 -- | Robots are not entities, but they have almost all the
 --   characteristics of one (or perhaps we could think of robots as
@@ -192,19 +210,12 @@ robotContext :: Lens' Robot RobotContext
 -- | The (unique) ID number of the robot.  This is only a Getter since
 --   the robot ID is immutable.
 robotID :: Getter Robot RID
-robotID = to _robotID
+robotID = to (runIdentity . _robotID)
 
--- | Set the ID number of a robot.  This is "unsafe" since robots
---   should be uniquely identified by their ID, and are stored using
---   the ID as a key, etc.  The only place this is ever needed is when
---   reading robots from a `.yaml` file (*e.g.* in a challenge
---   description), we cannot fill in a unique ID at parse time since
---   we don't have access to a `State Game` effect; when later adding
---   such robots to the world we generate and fill in a unique ID.
---   Otherwise, all robots are created via 'mkRobot', which requires
---   an ID number up front.
-unsafeSetRobotID :: RID -> Robot -> Robot
-unsafeSetRobotID i r = r {_robotID = i}
+-- | Set the ID number of a robot, changing it from unidentified to
+--   identified.
+setRobotID :: RID -> URobot -> Robot
+setRobotID i r = r {_robotID = Identity i}
 
 -- | The ID number of the robot's parent, that is, the robot that
 --   built (or most recently reprogrammed) this robot, if there is
@@ -263,7 +274,7 @@ inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `h
 inventoryCapabilities :: Inventory -> Set Capability
 inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
 
--- | Does the robot know of the entity's existence.
+-- | Does a robot know of an entity's existence?
 robotKnows :: Robot -> Entity -> Bool
 robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. installedDevices)
 
@@ -326,7 +337,7 @@ tickSteps :: Lens' Robot Int
 -- | A general function for creating robots.
 mkRobot ::
   -- | ID number of the robot.
-  Int ->
+  f Int ->
   -- | ID number of the robot's parent, if it has one.
   Maybe Int ->
   -- | Name of the robot.
@@ -347,9 +358,9 @@ mkRobot ::
   [(Count, Entity)] ->
   -- | Should this be a system robot?
   Bool ->
-  Robot
+  RobotR f
 mkRobot rid pid name descr loc dir disp m devs inv sys =
-  Robot
+  RobotR
     { _robotEntity =
         mkEntity disp name descr []
           & entityOrientation ?~ dir
@@ -373,7 +384,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys =
 -- | The initial robot representing your "base".
 baseRobot :: [Entity] -> Robot
 baseRobot devs =
-  Robot
+  RobotR
     { _robotEntity =
         mkEntity
           defaultRobotDisplay
@@ -400,12 +411,12 @@ baseRobot devs =
 
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
-instance FromJSONE EntityMap Robot where
+instance FromJSONE EntityMap URobot where
   parseJSONE = withObjectE "robot" $ \v ->
     -- Note we can't generate a unique ID here since we don't have
     -- access to a 'State GameState' effect; a unique ID will be
     -- filled in later when adding the robot to the world.
-    mkRobot (-1) Nothing
+    mkRobot (Const ()) Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
       <*> liftE (v .: "loc")
