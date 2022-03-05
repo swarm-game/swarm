@@ -14,8 +14,8 @@ import Swarm.Language.Pipeline (processTerm)
 import System.Exit
 
 data CLI
-  -- seed, challenge file, run file
-  = Run Int (Maybe FilePath) (Maybe FilePath)
+  = -- seed, challenge file, run file
+    Run Int (Maybe FilePath) (Maybe FilePath)
   | Format Input
   | LSP
 
