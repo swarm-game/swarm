@@ -78,7 +78,7 @@ initRobot prog loc = mkRobot (-1) Nothing "" [] north loc defaultRobotDisplay (i
 mkGameState :: (V2 Int64 -> Robot) -> Int -> IO GameState
 mkGameState robotMaker numRobots = do
   let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0 .. numRobots -1]]
-  Right initState <- runExceptT (initGameState (ClassicGame 0))
+  Right initState <- runExceptT (initGameState (ClassicGame 0) Nothing)
   execStateT
     (mapM addRobot robots)
     ( initState

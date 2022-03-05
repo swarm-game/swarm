@@ -1,6 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.Game.Robot
@@ -63,6 +66,7 @@ module Swarm.Game.Robot (
 ) where
 
 import Control.Lens hiding (contains)
+import Data.Hashable (hashWithSalt)
 import Data.Int (Int64)
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq)
@@ -71,18 +75,19 @@ import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Linear
+import Witch (into)
 
 import Data.Yaml ((.!=), (.:), (.:?))
 import Swarm.Util.Yaml
 
-import Data.Hashable (hashWithSalt)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability
 import Swarm.Language.Context
-import Swarm.Language.Syntax (east)
+import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax (Term (TString), east)
 import Swarm.Language.Types (TCtx)
 
 -- | A record that stores the information
@@ -371,8 +376,8 @@ mkRobot rid pid name descr loc dir disp m devs inv sys =
   inst = fromList devs
 
 -- | The initial robot representing your "base".
-baseRobot :: [Entity] -> Robot
-baseRobot devs =
+baseRobot :: [Entity] -> Maybe FilePath -> Robot
+baseRobot devs toRun =
   Robot
     { _robotEntity =
         mkEntity
@@ -390,7 +395,9 @@ baseRobot devs =
     , _robotContext = RobotContext empty empty empty emptyStore
     , _robotID = 0
     , _robotParentID = Nothing
-    , _machine = idleMachine
+    , _machine = case toRun of
+        Nothing -> idleMachine
+        Just (into @Text -> f) -> initMachine [tmQ| run($str:f) |] empty emptyStore
     , _systemRobot = False
     , _selfDestruct = False
     , _tickSteps = 0
