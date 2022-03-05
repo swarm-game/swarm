@@ -79,7 +79,7 @@ initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDi
 mkGameState :: (V2 Int64 -> URobot) -> Int -> IO GameState
 mkGameState robotMaker numRobots = do
   let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0 .. numRobots -1]]
-  Right initState <- runExceptT (initGameState (ClassicGame 0))
+  Right initState <- runExceptT (initGameState (ClassicGame 0) Nothing)
   execStateT
     (mapM addURobot robots)
     ( initState

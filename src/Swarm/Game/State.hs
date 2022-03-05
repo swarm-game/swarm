@@ -411,8 +411,8 @@ instGameType em _rs gt = case gt of
 
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
-initGameState :: GameType -> ExceptT Text IO GameState
-initGameState gtype = do
+initGameState :: GameType -> Maybe String -> ExceptT Text IO GameState
+initGameState gtype toRun = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -439,7 +439,7 @@ initGameState gtype = do
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
       baseID = 0
-      theBase = baseRobot baseDevices
+      theBase = baseRobot baseDevices toRun
 
       robotList = case iGameType of
         IClassicGame _ -> [theBase]
