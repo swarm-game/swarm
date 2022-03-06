@@ -59,6 +59,7 @@ module Swarm.Game.State (
   focusedRobot,
   clearFocusedRobotLogUpdated,
   addRobot,
+  addURobot,
   emitMessage,
   sleepUntil,
   sleepForever,
@@ -281,8 +282,10 @@ viewCenterRule = lens getter setter
     case rule of
       VCLocation v2 -> g {_viewCenterRule = rule, _viewCenter = v2}
       VCRobot rid ->
-        let robotcenter = g ^? robotMap . ix rid <&> view robotLocation -- retrive the loc of the robot if it exist, Nothing otherwise.  sometimes, lenses are amazing...
-         in case robotcenter of
+        let robotcenter = g ^? robotMap . ix rid <&> view robotLocation
+         in -- retrieve the loc of the robot if it exists, Nothing otherwise.
+            -- sometimes, lenses are amazing...
+            case robotcenter of
               Nothing -> g
               Just v2 -> g {_viewCenterRule = rule, _viewCenter = v2, _focusedRobotID = rid}
 
@@ -368,22 +371,27 @@ clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
 
+-- | Add an unidentified to the game state: first, generate a unique
+--   ID number for it.  Then, add it to the main robot map, the active
+--   robot set, and to to the index of robots by location. Return the
+--   updated robot.
+addURobot :: Has (State GameState) sig m => URobot -> m Robot
+addURobot r = do
+  rid <- gensym <+= 1
+  let r' = setRobotID rid r
+  addRobot r'
+  return r'
+
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by
---   location. If it doesn't already have a unique ID number, generate
---   one for it.
+--   location.
 addRobot :: Has (State GameState) sig m => Robot -> m ()
 addRobot r = do
-  r' <- case r ^. robotID of
-    (-1) -> do
-      rid <- gensym <+= 1
-      return (unsafeSetRobotID rid r)
-    _ -> return r
-  let rid = r' ^. robotID
+  let rid = r ^. robotID
 
-  robotMap %= IM.insert rid r'
+  robotMap %= IM.insert rid r
   robotsByLocation
-    %= M.insertWith IS.union (r' ^. robotLocation) (IS.singleton rid)
+    %= M.insertWith IS.union (r ^. robotLocation) (IS.singleton rid)
   internalActiveRobots %= IS.insert rid
 
 -- | What type of game does the user want to start?
@@ -430,13 +438,12 @@ initGameState gtype = do
         , "logger"
         ]
       baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
-      -- baseName = "base"
       baseID = 0
       theBase = baseRobot baseDevices
 
       robotList = case iGameType of
         IClassicGame _ -> [theBase]
-        IChallengeGame c -> c ^. challengeRobots
+        IChallengeGame c -> zipWith setRobotID [0 ..] (c ^. challengeRobots)
 
       creative = False
 
@@ -459,6 +466,8 @@ initGameState gtype = do
       Nothing -> return 0 -- XXX use a random seed
   liftIO $ putStrLn ("Using seed... " <> show seed)
 
+  let initGensym = length robotList - 1
+
   return $
     GameState
       { _creativeMode = creative
@@ -470,7 +479,7 @@ initGameState gtype = do
             map (view robotLocation &&& (IS.singleton . view robotID)) robotList
       , _activeRobots = setOf (traverse . robotID) robotList
       , _waitingRobots = M.empty
-      , _gensym = 0
+      , _gensym = initGensym
       , _randGen = mkStdGen seed
       , _adjList = listArray (0, length adjs - 1) adjs
       , _nameList = listArray (0, length names - 1) names
