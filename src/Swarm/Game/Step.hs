@@ -1295,6 +1295,12 @@ execConst c vs s k = do
     Gt -> returnEvalCmp
     Leq -> returnEvalCmp
     Geq -> returnEvalCmp
+    And -> case vs of
+      [VBool a, VBool b] -> return $ Out (VBool (a && b)) s k
+      _ -> badConst
+    Or -> case vs of
+      [VBool a, VBool b] -> return $ Out (VBool (a || b)) s k
+      _ -> badConst
     Add -> returnEvalArith
     Sub -> returnEvalArith
     Mul -> returnEvalArith

@@ -314,7 +314,11 @@ data Const
     Geq
   | -- Arithmetic binary operators
 
-    -- | Arithmetic addition operator
+    -- | Logical or.
+    Or
+  | -- | Logical and.
+    And
+  | -- | Arithmetic addition operator
     Add
   | -- | Arithmetic subtraction operator
     Sub
@@ -458,6 +462,8 @@ constInfo c = case c of
   Not -> functionLow 1
   Neg -> unaryOp "-" 7 P
   Add -> binaryOp "+" 6 L
+  And -> binaryOp "&&" 3 R
+  Or -> binaryOp "||" 2 R
   Sub -> binaryOp "-" 6 L
   Mul -> binaryOp "*" 7 L
   Div -> binaryOp "/" 7 L

@@ -285,6 +285,8 @@ constCaps =
     Gt -> [CCompare]
     Leq -> [CCompare]
     Geq -> [CCompare]
+    And -> []
+    Or -> []
     Add -> [CArith]
     Sub -> [CArith]
     Mul -> [CArith]

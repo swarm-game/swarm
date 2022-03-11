@@ -486,6 +486,8 @@ inferConst c = toU $ case c of
   Gt -> cmpBinT
   Leq -> cmpBinT
   Geq -> cmpBinT
+  And -> [tyQ| bool -> bool -> bool|]
+  Or -> [tyQ| bool -> bool -> bool|]
   Add -> arithBinT
   Sub -> arithBinT
   Mul -> arithBinT
