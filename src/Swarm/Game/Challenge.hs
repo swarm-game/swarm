@@ -47,7 +47,7 @@ import Linear.V2
 import Witch (from, into)
 
 import Swarm.Game.Entity
-import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot (URobot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Game.WorldGen (testWorld2FromArray)
@@ -61,7 +61,7 @@ data Challenge = Challenge
   , _challengeSeed :: Maybe Int
   , _challengeEntities :: EntityMap
   , _challengeWorld :: WorldFun Int Entity
-  , _challengeRobots :: [Robot]
+  , _challengeRobots :: [URobot]
   , _challengeWin :: ProcessedTerm
   }
 
@@ -93,7 +93,7 @@ challengeWorld :: Lens' Challenge (WorldFun Int Entity)
 
 -- | The starting robots for the challenge.  Note this should
 --   include the "base".
-challengeRobots :: Lens' Challenge [Robot]
+challengeRobots :: Lens' Challenge [URobot]
 
 -- | The winning condition for the challenge, expressed as a
 --   program of type @cmd bool@.  By default, this program will be

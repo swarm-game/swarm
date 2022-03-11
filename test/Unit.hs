@@ -35,7 +35,7 @@ import Swarm.TUI.Model
 
 main :: IO ()
 main = do
-  mg <- runExceptT (initGameState (ClassicGame 0))
+  mg <- runExceptT (initGameState (ClassicGame 0) Nothing)
   case mg of
     Left err -> assertFailure (from err)
     Right g -> defaultMain (tests g)
@@ -101,6 +101,9 @@ parser =
     , testCase
         "Nested pair syntax"
         (valid "(1,2,3,4)")
+    , testCase
+        "Binder at end of block"
+        (valid "r <- build {move}")
     , testGroup
         "failure location - #268"
         [ testCase
@@ -482,7 +485,7 @@ eval g =
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
   evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
    where
-    r = mkRobot "" zero zero cesk []
+    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False
 
   runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
   runCESK _ (Up exn _ []) = return (Left (formatExn exn))
@@ -573,10 +576,17 @@ inventory =
   testGroup
     "Inventory"
     [ testCase
+        "insert 0 / hash"
+        ( assertEqual
+            "insertCount 0 x empty has same hash as x"
+            (x ^. E.entityHash)
+            (hash (E.insertCount 0 x E.empty))
+        )
+    , testCase
         "insert / hash"
         ( assertEqual
-            "insert x empty has same hash as x"
-            (x ^. E.entityHash)
+            "insert x empty has same hash as 2*x"
+            (2 * (x ^. E.entityHash))
             (hash (E.insert x E.empty))
         )
     , testCase
@@ -596,15 +606,15 @@ inventory =
     , testCase
         "insert 2 / delete 3"
         ( assertEqual
-            "insert 2, delete 3 gives hash 0"
-            0
+            "insert 2, delete 3 gives hash of x"
+            (x ^. E.entityHash)
             (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty)))
         )
     , testCase
         "deleteAll"
         ( assertEqual
-            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y"
-            (hash (E.insertCount 2 y E.empty))
+            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insertCount 0 x"
+            (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
             (hash (E.deleteAll x (E.insertCount 2 y (E.insertCount 2 x E.empty))))
         )
     , testCase

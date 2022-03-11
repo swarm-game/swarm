@@ -13,7 +13,7 @@ entities:
     properties: [portable]
 win: |
   try {
-    loc <- as "base" {whereami};
+    loc <- as base {whereami};
     return (loc == (2,0))
   } { return false }
 robots:

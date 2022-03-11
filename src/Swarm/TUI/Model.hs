@@ -558,10 +558,10 @@ gameState :: Lens' AppState GameState
 uiState :: Lens' AppState UIState
 
 -- | Initialize the 'AppState'.
-initAppState :: Seed -> Maybe String -> ExceptT Text IO AppState
-initAppState seed challenge = do
+initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
+initAppState seed challenge toRun = do
   let gtype = initGameType seed challenge
-  AppState <$> initGameState gtype <*> initUIState
+  AppState <$> initGameState gtype toRun <*> initUIState
 
 initGameType :: Seed -> Maybe String -> GameType
 initGameType seed Nothing = ClassicGame seed

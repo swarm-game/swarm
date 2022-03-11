@@ -472,7 +472,12 @@ data Inventory = Inventory
   , -- Mirrors the main map; just caching the ability to look up by
     -- name.
     byName :: Map Text IntSet
-  , -- Cached hash of the inventory.
+  , -- Cached hash of the inventory, using a homomorphic hashing scheme
+    -- (see https://github.com/byorgey/swarm/issues/229).
+    --
+    -- Invariant: equal to Sum_{(k,e) \in counts} (k+1) * (e ^. entityHash).
+    -- The k+1 is so the hash distinguishes between having a 0 count of something
+    -- and not having it as a key in the map at all.
     inventoryHash :: Int
   }
   deriving (Show, Generic)
@@ -533,7 +538,17 @@ insertCount k e (Inventory cs byN h) =
   Inventory
     (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (k, e) cs)
     (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
-    (h + k * (e ^. entityHash)) -- homomorphic hashing
+    (h + (k + extra) * (e ^. entityHash)) -- homomorphic hashing
+ where
+  -- Include the hash of an entity once just for "knowing about" it;
+  -- then include the hash once per actual copy of the entity.  In
+  -- other words, having k copies of e in the inventory contributes
+  -- (k+1)*(e ^. entityHash) to the inventory hash.  The reason for
+  -- doing this is so that the inventory hash changes even when we
+  -- insert 0 copies of something, since having 0 copies of something
+  -- is different than not having it as a key at all; having 0 copies
+  -- signals that we at least "know about" the entity.
+  extra = if (e ^. entityHash) `IM.member` cs then 0 else 1
 
 -- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
@@ -578,4 +593,10 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   Inventory
     (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
     (M.unionWith IS.union byN1 byN2)
-    (h1 + h2)
+    (h1 + h2 - common)
+ where
+  -- Need to subtract off the sum of the hashes in common, because
+  -- of the way each entity with count k contributes (k+1) times its
+  -- hash.  So if the two inventories share an entity e, just adding their
+  -- hashes would mean e now contributes (k+2) times its hash.
+  common = IS.foldl' (+) 0 $ (IM.keysSet cs1) `IS.intersection` (IM.keysSet cs2)

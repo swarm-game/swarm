@@ -97,8 +97,10 @@ data Capability
     CRecursion
   | -- | Execute the 'Reprogram' command
     CReprogram
-  | -- | Capability to introspect and see it's own name
+  | -- | Capability to introspect and see its own name
     CWhoami
+  | -- | Capability to set its own name
+    CSetname
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -236,6 +238,10 @@ constCaps =
     AppF -> []
     Force -> []
     Return -> []
+    Self -> []
+    Parent -> []
+    Base -> []
+    Setname -> []
     -- Some straightforward ones.
     Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]

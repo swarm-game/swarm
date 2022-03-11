@@ -43,7 +43,7 @@ def spawnfwd : {cmd ()} -> cmd () = \c.
      move;
      b <- isHere "tree";
      if b
-       { build "s" c; return () }
+       { build c; return () }
        {};
      turn back;
      move
@@ -56,7 +56,7 @@ def clear : cmd () =
     turn left
   );
   goto 0 0;
-  give "base" "tree";
+  give base "tree";
   selfdestruct;
 end;
-def start : cmd string = build "h" {turn west; repeat 7 move; clear} end
+def start : cmd robot = build {turn west; repeat 7 move; clear} end
