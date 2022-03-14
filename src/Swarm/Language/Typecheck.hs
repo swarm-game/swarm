@@ -478,6 +478,8 @@ inferConst c = toU $ case c of
   Return -> [tyQ| a -> cmd a |]
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
   Raise -> [tyQ| string -> cmd a |]
+  Undefined -> [tyQ| a |]
+  ErrorStr -> [tyQ| string -> a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT

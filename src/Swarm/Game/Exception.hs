@@ -39,7 +39,7 @@ data Exn
     --   command could not move, or a 'Grab' command found nothing to
     --   grab, /etc./).
     CmdFailed Const Text
-  | -- | The user program explicitly called 'Raise'.
+  | -- | The user program explicitly called 'Raise', 'Undefined', or 'ErrorStr'.
     User Text
   deriving (Eq, Show)
 

@@ -1086,6 +1086,10 @@ execConst c vs s k = do
     Raise -> case vs of
       [VString msg] -> return $ Up (User msg) s k
       _ -> badConst
+    Undefined -> return $ Up (User "undefined") s k
+    ErrorStr -> case vs of
+      [VString msg] -> return $ Up (User msg) s k
+      _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
         r <- get
