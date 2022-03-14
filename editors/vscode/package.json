@@ -6,7 +6,7 @@
     "icon": "images/swarm-logo.png",
     "publisher": "xsebek",
     "repository": {
-        "url": "https://github.com/byorgey/swarm"
+        "url": "https://github.com/swarm-game/swarm"
     },
     "engines": {
         "vscode": "^1.61.0"

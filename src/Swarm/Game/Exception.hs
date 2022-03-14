@@ -48,7 +48,7 @@ formatExn :: Exn -> Text
 formatExn (Fatal t) =
   T.unlines
     [ T.append "fatal error: " t
-    , "Please report this as a bug at https://github.com/byorgey/swarm/issues/new ."
+    , "Please report this as a bug at https://github.com/swarm-game/swarm/issues/new ."
     ]
 formatExn InfiniteLoop = "Infinite loop detected!"
 formatExn (Incapable _caps tm) =

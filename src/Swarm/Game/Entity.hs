@@ -473,7 +473,7 @@ data Inventory = Inventory
     -- name.
     byName :: Map Text IntSet
   , -- Cached hash of the inventory, using a homomorphic hashing scheme
-    -- (see https://github.com/byorgey/swarm/issues/229).
+    -- (see https://github.com/swarm-game/swarm/issues/229).
     --
     -- Invariant: equal to Sum_{(k,e) \in counts} (k+1) * (e ^. entityHash).
     -- The k+1 is so the hash distinguishes between having a 0 count of something

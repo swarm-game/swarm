@@ -8,11 +8,11 @@ slightly different), but the intention is to keep it updated as the
 game evolves.  If you find any mistakes, or things that are confusing,
 or ways that the tutorial no longer corresponds to the game, please
 [file a bug
-report](https://github.com/byorgey/swarm/issues/new/choose) or [open a
+report](https://github.com/swarm-game/swarm/issues/new/choose) or [open a
 pull
-request](https://github.com/byorgey/swarm/blob/main/CONTRIBUTING.md)!
+request](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md)!
 Eventually, this tutorial file should be [replaced by an in-game
-tutorial](https://github.com/byorgey/swarm/issues/25).
+tutorial](https://github.com/swarm-game/swarm/issues/25).
 
 It is recommended that you use a relatively large terminal window
 (*e.g.* 132 x 43 at a minimum, ideally larger).  On the other hand,
@@ -406,7 +406,7 @@ there will be a way to both save and load commands, but this is better
 than nothing for now.
 
 There is some rudimentary [Language Server-based editor
-support](https://github.com/byorgey/swarm/blob/main/docs/EDITORS.md)
+support](https://github.com/swarm-game/swarm/blob/main/docs/EDITORS.md)
 giving syntax and error highlighting for `.sw` files; at the moment
 Emacs is supported along with VSCode.
 

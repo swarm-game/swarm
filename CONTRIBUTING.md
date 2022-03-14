@@ -6,7 +6,7 @@ a bug or fixing a single punctuation mark, contributing to
 game design, or implementing a complex new feature.
 
 The following is a set of guidelines for contributing to Swarm, which
-is hosted in the [`byorgey/swarm` repository](https://github.com/byorgey/swarm)
+is hosted in the [`swarm-game/swarm` repository](https://github.com/swarm-game/swarm)
 on GitHub. These are mostly guidelines, not rules. In particular, you
 don't need to worry that your contribution will be ignored or rejected
 in some way if you don't follow the guidelines. Use your best
@@ -40,7 +40,7 @@ you are expected to uphold this code. Please report unacceptable behavior to
 ## Quick Links
 
 - Bug to report or feature to request? Try the
-  [GitHub issue tracker](https://github.com/byorgey/swarm/swarm/issues).
+  [GitHub issue tracker](https://github.com/swarm-game/swarm/swarm/issues).
 - Questions? Join the
   `#swarm` IRC channel on the [Libera.Chat
   network](https://libera.chat/). If you're not familiar with IRC you
@@ -66,7 +66,7 @@ reporting any problems that you find or suggestions you have along the
 way is an immensely valuable way to help make the game better.
 
 Feel free to [submit a bug
-report](https://github.com/byorgey/swarm/issues) for anything that
+report](https://github.com/swarm-game/swarm/issues) for anything that
 seems like it's not the way it should be, such as a typo or
 inconsistency in some in-game text, a robot program that yields an
 error even though you think it should be accepted, or a robot program
@@ -76,9 +76,9 @@ contribution, since it may point out a way that the documentation or
 interface could be improved to help reduce similar confusion in the
 future.
 
-Bugs are tracked as [GitHub issues](https://github.com/byorgey/swarm/issues).
+Bugs are tracked as [GitHub issues](https://github.com/swarm-game/swarm/issues).
 Before creating a new issue, you can
-[do a quick search](https://github.com/byorgey/swarm/issues?q=is%3Aissue+is%3Aopen)
+[do a quick search](https://github.com/swarm-game/swarm/issues?q=is%3Aissue+is%3Aopen)
 to see if the problem has already been reported. If it has and the issue is
 still open, feel free add a comment to the existing issue instead of opening a
 new one.
@@ -104,7 +104,7 @@ information.
 
 If you have an idea for a way Swarm could be better, or a super-cool new feature
 you'd like to see, you can
-[submit it on the GitHub issue tracker](https://github.com/byorgey/swarm/issues),
+[submit it on the GitHub issue tracker](https://github.com/swarm-game/swarm/issues),
 the same as a bug report. Just describe your idea in as much detail as you can.
 
 ### Contributing to Game Design
@@ -122,7 +122,7 @@ implementing it and opening a pull request.  However, if you have an
 idea you are unsure about, or if you just want to help think through
 some ideas but lack the skill, time, or desire to implement them, feel
 free to just [open an
-issue](https://github.com/byorgey/swarm/issues/new/choose) with a
+issue](https://github.com/swarm-game/swarm/issues/new/choose) with a
 description of your ideas to create a space for discussion.
 
 ### Making a Code Contribution
@@ -140,7 +140,7 @@ materials](https://www.cis.upenn.edu/~cis194/spring13/).
 
 If you'd like to contribute some code but are unsure where to begin,
 you can start by looking through [issues tagged "Low-Hanging
-Fruit"](https://github.com/byorgey/swarm/issues?q=is%3Aissue+is%3Aopen+label%3A%22C-Low+Hanging+Fruit%22)
+Fruit"](https://github.com/swarm-game/swarm/issues?q=is%3Aissue+is%3Aopen+label%3A%22C-Low+Hanging+Fruit%22)
 in the issue tracker. These are bugs and features which should be
 appropriate for someone just getting started to tackle. If you want
 help understanding or getting started on a particular issue, feel free
@@ -155,7 +155,7 @@ already comfortable contributing to open source, you can skip to the [Convention
 
 1. Find an issue that you are interested in addressing or a feature that you
    would like to add.
-1. _Fork_ [the `swarm` repository](https://github.com/byorgey/swarm) (by
+1. _Fork_ [the `swarm` repository](https://github.com/swarm-game/swarm) (by
    clicking the "Fork" button in the upper-right corner). This will make a copy
    of the repository in your personal GitHub account, that is, you will have
    your own personal copy of the repository under
@@ -178,7 +178,7 @@ already comfortable contributing to open source, you can skip to the [Convention
    store the contents of the index with a descriptive message.
 1. Push the changes to your fork on GitHub using `git push origin BRANCH-NAME`.
 1. [Submit a pull request](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork)
-   from your fork to the `byorgey/swarm` repository.
+   from your fork to the `swarm-game/swarm` repository.
 1. Title the pull request with a short description of the changes made and the
    issue or bug number associated with your change (if any). For example, you
    can title an issue like so "Added more log output to resolve #4352".
@@ -194,7 +194,7 @@ already comfortable contributing to open source, you can skip to the [Convention
    will automatically be included in the pull request.
 1. Celebrate your success after your pull request is merged!
 1. After your first pull request is merged, it is very likely that you will be
-   granted push access to the `byorgey/swarm` repository. This means that
+   granted push access to the `swarm-game/swarm` repository. This means that
    from now on you can create branches directly within the `swarm` repository
    rather than working in your own fork. For more information, see
    [I have push access to the Swarm repository, now what?](#i-have-push-access-to-the-swarm-repository-now-what).
@@ -212,7 +212,7 @@ suggestions.
 
 * We use [`fourmolu`](https://hackage.haskell.org/package/fourmolu)
   with a [custom
-  configuration](https://github.com/byorgey/swarm/blob/main/fourmolu.yaml)
+  configuration](https://github.com/swarm-game/swarm/blob/main/fourmolu.yaml)
   for formatting Haskell code.  There is probably a way
   to configure your favorite editor to have `fourmolu` automatically
   applied to your code; but if you don't know how to set that up, don't

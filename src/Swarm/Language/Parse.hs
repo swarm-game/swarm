@@ -251,7 +251,7 @@ parseTermAtom =
     )
     -- Potential syntax for explicitly requesting memoized delay.
     -- Perhaps we will not need this in the end; see the discussion at
-    -- https://github.com/byorgey/swarm/issues/150 .
+    -- https://github.com/swarm-game/swarm/issues/150 .
     -- <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
     -- <|> parseLoc (SDelay MemoizedDelay <$> dbraces parseTerm)
 

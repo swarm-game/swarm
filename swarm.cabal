@@ -15,7 +15,7 @@ license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Brent Yorgey
 maintainer:         byorgey@gmail.com
-bug-reports:        https://github.com/byorgey/swarm/issues
+bug-reports:        https://github.com/swarm-game/swarm/issues
 copyright:          Brent Yorgey 2021
 category:           Game
 tested-with:        GHC ==8.10.4 || ==9.0.1
@@ -26,7 +26,7 @@ data-files:         *.yaml, challenges/*.yaml, adjectives.txt, names.txt
 
 source-repository head
     type:     git
-    location: git://github.com/byorgey/swarm.git
+    location: git://github.com/swarm-game/swarm.git
 
 flag ci
   description: Make warnings error

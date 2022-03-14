@@ -1,9 +1,9 @@
 Swarm
 =====
 
-[![Build Status](https://github.com/byorgey/swarm/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/byorgey/swarm/actions)
+[![Build Status](https://github.com/swarm-game/swarm/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/swarm-game/swarm/actions)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
-![GitHub Contributors](https://contrib.rocks/image?repo=byorgey/swarm)
+![GitHub Contributors](https://contrib.rocks/image?repo=swarm-game/swarm)
 
 Swarm is a 2D programming and resource gathering game. Program your
 robots to explore the world and collect resources, which in turn
@@ -47,14 +47,14 @@ that's all that really matters, right?
 **NOTE**: Swarm requires a POSIX-style environment that supports
 `terminfo`.  On Linux and OSX, the below instructions should work
 natively.  On Windows, see [the comments on this GitHub
-issue](https://github.com/byorgey/swarm/issues/53) for instructions
+issue](https://github.com/swarm-game/swarm/issues/53) for instructions
 getting it to work under the Windows Subsystem for Linux.
 
 The recommended way to install Swarm at the moment is as follows:
 
 1. Clone the Swarm repository, e.g.
 
-       git clone https://github.com/byorgey/swarm.git
+       git clone https://github.com/swarm-game/swarm.git
 
 1. If you don't already have the `stack` tool:
     1. Get the [`ghcup` tool](https://www.haskell.org/ghcup/), a handy
