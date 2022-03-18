@@ -242,6 +242,8 @@ constCaps =
     Parent -> []
     Base -> []
     Setname -> []
+    Undefined -> []
+    ErrorStr -> []
     -- Some straightforward ones.
     Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]
