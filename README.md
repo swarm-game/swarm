@@ -25,14 +25,14 @@ The implementation is still in an early stage, but these are some of the (planne
       basic, limited robots; collecting resources allows you to
       bootstrap your way into programming more sophisticated robots
       that can explore more of the world, collect more resources, etc.
-    - Creatrive mode places no restrictions: program robots to your
+    - Creative mode places no restrictions: program robots to your
       heart's content using whatever language features you want,
       without worrying about collecting resources.
-    - (**TBD**) Hardcore mode like Classic mode, but you start
+    - In Challenge mode, you attempt to program robots
+      in order to solve pre-designed puzzles or challenges.
+    - (**TBD**) Hardcore mode is like Classic mode, but you start
       with only a limited number of robots.  If they get stuck or
       you run out of resources, it's game over!
-    - (**TBD**) In Challenge mode, where you attempt to program robots
-      in order to solve pre-designed puzzles or challenges.
     - (**TBD**) Future versions might also have multiplayer modes,
       with co-op or PvP play over a network...?
 
