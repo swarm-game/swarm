@@ -1,0 +1,2 @@
+loops:
+  test: stack test --fast --flag=swarm:ci
