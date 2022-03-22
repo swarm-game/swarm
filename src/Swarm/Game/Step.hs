@@ -629,7 +629,7 @@ execConst c vs s k = do
         return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
-      selfDestruct .= True
+      destroyIfNotBase
       flagRedraw
       return $ Out VUnit s k
     Move -> do
@@ -647,8 +647,9 @@ execConst c vs s k = do
 
           -- Robots drown if they walk over liquid
           caps <- use robotCapabilities
-          when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
-            selfDestruct .= True
+          when
+            (e `hasProperty` Liquid && CFloat `S.notMember` caps)
+            destroyIfNotBase
 
       robotLocation .= nextLoc
       flagRedraw
@@ -1357,6 +1358,13 @@ execConst c vs s k = do
               [] -> Right Nothing
               [de] -> Right $ Just $ snd de
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
+
+  destroyIfNotBase :: (Has (State Robot) sig m, Has (Error Exn) sig m) => m ()
+  destroyIfNotBase = do
+    rid <- use robotID
+    if rid == 0
+      then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
+      else selfDestruct .= True
 
   -- update some tile in the world setting it to entity or making it empty
   updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
