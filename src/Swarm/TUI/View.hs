@@ -13,7 +13,7 @@ module Swarm.TUI.View (
   drawUI,
   drawTPS,
 
-  -- * Error dialog
+  -- * Dialog box
   drawDialog,
   chooseCursor,
 
@@ -180,18 +180,19 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
 
 -- | Render a fullscreen widget with some padding
 renderModal :: Modal -> Widget Name
-renderModal modal = renderDialog (dialog (Just modalTitle) Nothing maxModalWindowWidth) modalWidget
+renderModal modal = renderDialog (dialog (Just modalTitle) modalButtons (maxModalWindowWidth `min` requiredWidth)) modalWidget
  where
-  modalWidget = Widget Fixed Fixed $ do
-    ctx <- getContext
-    let w = ctx ^. availWidthL
-        h = ctx ^. availHeightL
-        padding = 10
-    render $ setAvailableSize (w - padding, h - padding) modalContent
-  (modalTitle, modalContent) =
+  (modalTitle, modalWidget, modalButtons, requiredWidth) =
     case modal of
-      HelpModal -> ("Help", helpWidget)
-      WinModal -> ("", txt "Congratulations!")
+      HelpModal -> ("Help", helpWidget, Nothing, maxModalWindowWidth)
+      WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
+      QuitModal ->
+        let quitMsg = "Are you sure you want to quit?"
+         in ( ""
+            , padBottom (Pad 1) $ hCenter $ txt quitMsg
+            , Just (0, [("Cancel", False), ("Quit", True)])
+            , T.length quitMsg + 4
+            )
 
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')

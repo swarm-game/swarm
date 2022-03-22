@@ -107,7 +107,7 @@ handleEvent s (VtyEvent (V.EvKey V.KEsc []))
 handleEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
-    ControlKey 'q' -> shutdown s
+    ControlKey 'q' -> toggleModal s QuitModal -- shutdown s
     MetaKey 'w' -> setFocus s WorldPanel
     MetaKey 'e' -> setFocus s RobotPanel
     MetaKey 'r' -> setFocus s REPLPanel
