@@ -62,7 +62,6 @@ module Swarm.TUI.Model (
   uiScrollToEnd,
   uiError,
   uiModal,
-  uiDialog,
   lgTicksPerSecond,
   lastFrameTime,
   accumulatedTime,
@@ -334,7 +333,6 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
-  , _uiDialog :: Maybe (Dialog Bool)
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
   , _uiInventoryShouldUpdate :: Bool
@@ -399,11 +397,6 @@ uiError :: Lens' UIState (Maybe Text)
 -- | When this is @Just@, it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
-
--- | When this is @Just@, it represents the dialog state (i.e. the
---   state of the buttons) for the modal to be displayed on top of the
---   UI.
-uiDialog :: Lens' UIState (Maybe (Dialog Bool))
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -500,7 +493,6 @@ initUIState = liftIO $ do
       , _uiScrollToEnd = False
       , _uiError = Nothing
       , _uiModal = Nothing
-      , _uiDialog = Nothing
       , _uiShowFPS = False
       , _uiShowZero = True
       , _uiInventoryShouldUpdate = False
