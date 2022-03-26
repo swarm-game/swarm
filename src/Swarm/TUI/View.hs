@@ -58,7 +58,7 @@ import Text.Wrap
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
-import Brick.Widgets.Border (borderAttr, hBorder, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
 import Brick.Widgets.Center (center, hCenter)
 import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
@@ -177,7 +177,7 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
 
 -- | Draw the error dialog window, if it should be displayed right now.
 drawDialog :: UIState -> Widget Name
-drawDialog s = overrideAttr borderAttr highlightAttr $ case s ^. uiModal of
+drawDialog s = case s ^. uiModal of
   Just (Modal _ d w) -> renderDialog d w
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
 
