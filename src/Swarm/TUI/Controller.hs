@@ -106,15 +106,13 @@ handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
   | isJust (s ^. uiState . uiModal) = continue $ s & uiState . uiModal .~ Nothing
 handleEvent s (VtyEvent vev)
-  | isJust (s ^. uiState . uiModal) = do
-    s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent vev
-    continue s'
+  | isJust (s ^. uiState . uiModal) = handleModalEvent s vev
 handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
 handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
-    ControlKey 'q' -> toggleModal s QuitModal -- shutdown s
+    ControlKey 'q' -> toggleModal s QuitModal
     MetaKey 'w' -> setFocus s WorldPanel
     MetaKey 'e' -> setFocus s RobotPanel
     MetaKey 'r' -> setFocus s REPLPanel
