@@ -173,14 +173,10 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
   errContent = txtWrapWith indent2 {preserveIndentation = True} err
   requiredWidth = 2 + maximum (textWidth <$> T.lines err)
 
--- | Render a fullscreen modal widget.
-renderModal :: Modal -> Widget Name
-renderModal (Modal _ d w) = renderDialog d w
-
 -- | Draw the error dialog window, if it should be displayed right now.
 drawDialog :: UIState -> Widget Name
 drawDialog s = overrideAttr borderAttr highlightAttr $ case s ^. uiModal of
-  Just m -> renderModal m
+  Just (Modal _ d w) -> renderDialog d w
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
 
 -- | Draw a menu explaining what key commands are available for the
