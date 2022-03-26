@@ -194,14 +194,24 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
       , hCenter $ mkTable baseCommands
       ]
   baseCommands =
-    [ ("build <name> {<commands>}", "Create a robot")
-    , ("make <name>", "Craft an item")
+    [ ("build {<commands>}", "Create a robot")
+    , ("make \"<name>\"", "Craft an item")
     , ("move", "Move one step in the current direction")
     , ("turn <dir>", "Change the current direction")
     , ("grab", "Grab whatver is available")
-    , ("give <robot> <item>", "Give an item to another robot")
-    , ("has <item>", "Check for an item in the inventory")
+    , ("give <robot> \"<item>\"", "Give an item to another robot")
+    , ("has \"<item>\"", "Check for an item in the inventory")
     ]
+
+handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
+handleModalEvent s ev = case ev of
+  V.EvKey V.KEnter [] ->
+    case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelectedIndex of
+      Just (Just 1) -> shutdown s
+      _ -> toggleModal s QuitModal
+  _ -> do
+    s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
+    continue s'
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
