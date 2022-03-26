@@ -17,7 +17,12 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   Name (..),
+  ModalType (..),
   Modal (..),
+  maxModalWindowWidth,
+  modalType,
+  modalDialog,
+  modalWidget,
 
   -- * UI state
 
@@ -57,6 +62,7 @@ module Swarm.TUI.Model (
   uiScrollToEnd,
   uiError,
   uiModal,
+  uiDialog,
   lgTicksPerSecond,
   lastFrameTime,
   accumulatedTime,
@@ -114,6 +120,7 @@ import Witch (from)
 import Brick
 import Brick.Focus
 import Brick.Forms
+import Brick.Widgets.Dialog (Dialog)
 import qualified Brick.Widgets.List as BL
 
 import Paths_swarm (getDataFileName)
@@ -282,11 +289,23 @@ replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 -- UI state
 ------------------------------------------------------------
 
-data Modal
+data ModalType
   = HelpModal
   | WinModal
   | QuitModal
   deriving (Eq, Show)
+
+data Modal = Modal
+  { _modalType :: ModalType
+  , _modalDialog :: Dialog Bool
+  , _modalWidget :: Widget Name
+  }
+
+makeLenses ''Modal
+
+-- | Width cap for modal and error message windows
+maxModalWindowWidth :: Int
+maxModalWindowWidth = 500
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,
@@ -315,6 +334,7 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
+  , _uiDialog :: Maybe (Dialog Bool)
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
   , _uiInventoryShouldUpdate :: Bool
@@ -379,6 +399,11 @@ uiError :: Lens' UIState (Maybe Text)
 -- | When this is @Just@, it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
+
+-- | When this is @Just@, it represents the dialog state (i.e. the
+--   state of the buttons) for the modal to be displayed on top of the
+--   UI.
+uiDialog :: Lens' UIState (Maybe (Dialog Bool))
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -475,6 +500,7 @@ initUIState = liftIO $ do
       , _uiScrollToEnd = False
       , _uiError = Nothing
       , _uiModal = Nothing
+      , _uiDialog = Nothing
       , _uiShowFPS = False
       , _uiShowZero = True
       , _uiInventoryShouldUpdate = False

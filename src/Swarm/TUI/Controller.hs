@@ -61,7 +61,10 @@ import Witch (into)
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
+import Brick.Widgets.Center (hCenter)
+import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
+import qualified Brick.Widgets.Table as BT
 import qualified Graphics.Vty as V
 
 import qualified Control.Carrier.Lift as Fused
@@ -99,11 +102,15 @@ handleEvent s (AppEvent Frame)
 handleEvent s (VtyEvent (V.EvResize _ _)) = do
   invalidateCacheEntry WorldCache
   continue s
-handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
-handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
   | isJust (s ^. uiState . uiModal) = continue $ s & uiState . uiModal .~ Nothing
+handleEvent s (VtyEvent vev)
+  | isJust (s ^. uiState . uiModal) = do
+    s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent vev
+    continue s'
+handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
+handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
@@ -113,26 +120,24 @@ handleEvent s ev = do
     MetaKey 'r' -> setFocus s REPLPanel
     MetaKey 't' -> setFocus s InfoPanel
     FKey 1 -> toggleModal s HelpModal
-    _anyOtherEvent
-      | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
-      | otherwise ->
-        -- and dispatch the other to the focused panel handler
-        case focusGetCurrent (s ^. uiState . uiFocusRing) of
-          Just REPLPanel -> handleREPLEvent s ev
-          Just WorldPanel -> handleWorldEvent s ev
-          Just RobotPanel -> handleRobotPanelEvent s ev
-          Just InfoPanel -> handleInfoPanelEvent s ev
-          _ -> continueWithoutRedraw s
+    _anyOtherEvent ->
+      -- and dispatch the other to the focused panel handler
+      case focusGetCurrent (s ^. uiState . uiFocusRing) of
+        Just REPLPanel -> handleREPLEvent s ev
+        Just WorldPanel -> handleWorldEvent s ev
+        Just RobotPanel -> handleRobotPanelEvent s ev
+        Just InfoPanel -> handleInfoPanelEvent s ev
+        _ -> continueWithoutRedraw s
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
-toggleModal :: AppState -> Modal -> EventM Name (Next AppState)
-toggleModal s modal = do
+toggleModal :: AppState -> ModalType -> EventM Name (Next AppState)
+toggleModal s mt = do
   curTime <- liftIO $ getTime Monotonic
   continue $
     s & case s ^. uiState . uiModal of
-      Nothing -> (uiState . uiModal ?~ modal) . ensurePause
+      Nothing -> (uiState . uiModal ?~ generateModal mt) . ensurePause
       Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
  where
   -- Set the game to AutoPause if needed
@@ -148,6 +153,55 @@ toggleModal s modal = do
   -- TODO: manage unpause more safely to also cover
   -- the world event handler for the KChar 'p'.
   resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
+
+generateModal :: ModalType -> Modal
+generateModal mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
+ where
+  (title, widget, buttons, requiredWidth) =
+    case mt of
+      HelpModal -> ("Help", helpWidget, Nothing, maxModalWindowWidth)
+      WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
+      QuitModal ->
+        let quitMsg = "Are you sure you want to quit?"
+         in ( ""
+            , padBottom (Pad 1) $ hCenter $ txt quitMsg
+            , Just (0, [("Cancel", False), ("Quit", True)])
+            , T.length quitMsg + 4
+            )
+
+helpWidget :: Widget Name
+helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
+ where
+  helpKeys =
+    vBox
+      [ hCenter $ txt "Global Keybindings"
+      , hCenter $ mkTable glKeyBindings
+      ]
+  mkTable = BT.renderTable . BT.table . map toWidgets
+  toWidgets (k, v) = [txt k, txt v]
+  glKeyBindings =
+    [ ("F1", "Help")
+    , ("Ctrl-q", "quit the game")
+    , ("Tab", "cycle panel focus")
+    , ("Meta-w", "focus on the world map")
+    , ("Meta-e", "focus on the robot inventory")
+    , ("Meta-r", "focus on the REPL")
+    , ("Meta-t", "focus on the info panel")
+    ]
+  helpCommands =
+    vBox
+      [ hCenter $ txt "Commands"
+      , hCenter $ mkTable baseCommands
+      ]
+  baseCommands =
+    [ ("build <name> {<commands>}", "Create a robot")
+    , ("make <name>", "Craft an item")
+    , ("move", "Move one step in the current direction")
+    , ("turn <dir>", "Change the current direction")
+    , ("grab", "Grab whatver is available")
+    , ("give <robot> <item>", "Give an item to another robot")
+    , ("has <item>", "Check for an item in the inventory")
+    ]
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
@@ -375,7 +429,7 @@ updateUI = do
     case w of
       Won False -> do
         gameState . winCondition .= Won True
-        uiState . uiModal .= Just WinModal
+        uiState . uiModal .= Just (generateModal WinModal)
         return True
       _ -> return False
 
