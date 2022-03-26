@@ -15,6 +15,7 @@ module Swarm.TUI.View (
 
   -- * Dialog box
   drawDialog,
+  generateModal,
   chooseCursor,
 
   -- * Key hint menu
@@ -61,6 +62,7 @@ import Brick.Widgets.Border (borderAttr, hBorder, hBorderWithLabel, joinableBord
 import Brick.Widgets.Center (center, hCenter)
 import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
+import qualified Brick.Widgets.Table as BT
 
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
@@ -178,6 +180,56 @@ drawDialog :: UIState -> Widget Name
 drawDialog s = overrideAttr borderAttr highlightAttr $ case s ^. uiModal of
   Just (Modal _ d w) -> renderDialog d w
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
+
+-- | Generate a fresh modal window of the requested type.
+generateModal :: ModalType -> Modal
+generateModal mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
+ where
+  (title, widget, buttons, requiredWidth) =
+    case mt of
+      HelpModal -> ("Help", helpWidget, Nothing, maxModalWindowWidth)
+      WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
+      QuitModal ->
+        let quitMsg = "Are you sure you want to quit?"
+         in ( ""
+            , padBottom (Pad 1) $ hCenter $ txt quitMsg
+            , Just (0, [("Cancel", False), ("Quit", True)])
+            , T.length quitMsg + 4
+            )
+
+helpWidget :: Widget Name
+helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
+ where
+  helpKeys =
+    vBox
+      [ hCenter $ txt "Global Keybindings"
+      , hCenter $ mkTable glKeyBindings
+      ]
+  mkTable = BT.renderTable . BT.table . map toWidgets
+  toWidgets (k, v) = [txt k, txt v]
+  glKeyBindings =
+    [ ("F1", "Help")
+    , ("Ctrl-q", "quit the game")
+    , ("Tab", "cycle panel focus")
+    , ("Meta-w", "focus on the world map")
+    , ("Meta-e", "focus on the robot inventory")
+    , ("Meta-r", "focus on the REPL")
+    , ("Meta-t", "focus on the info panel")
+    ]
+  helpCommands =
+    vBox
+      [ hCenter $ txt "Commands"
+      , hCenter $ mkTable baseCommands
+      ]
+  baseCommands =
+    [ ("build {<commands>}", "Create a robot")
+    , ("make \"<name>\"", "Craft an item")
+    , ("move", "Move one step in the current direction")
+    , ("turn <dir>", "Change the current direction")
+    , ("grab", "Grab whatver is available")
+    , ("give <robot> \"<item>\"", "Give an item to another robot")
+    , ("has \"<item>\"", "Check for an item in the inventory")
+    ]
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
