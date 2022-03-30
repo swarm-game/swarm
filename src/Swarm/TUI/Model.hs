@@ -18,6 +18,7 @@ module Swarm.TUI.Model (
   AppEvent (..),
   Name (..),
   ModalType (..),
+  ButtonSelection (..),
   Modal (..),
   modalType,
   modalDialog,
@@ -293,9 +294,12 @@ data ModalType
   | QuitModal
   deriving (Eq, Show)
 
+data ButtonSelection = Cancel | Confirm
+  deriving (Eq, Show)
+
 data Modal = Modal
   { _modalType :: ModalType
-  , _modalDialog :: Dialog Bool
+  , _modalDialog :: Dialog ButtonSelection
   , _modalWidget :: Widget Name
   }
 

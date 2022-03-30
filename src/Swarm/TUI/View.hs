@@ -197,7 +197,7 @@ generateModal mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `m
         let quitMsg = "Are you sure you want to quit?"
          in ( ""
             , padBottom (Pad 1) $ hCenter $ txt quitMsg
-            , Just (0, [("Cancel", False), ("Quit", True)])
+            , Just (0, [("Cancel", Cancel), ("Quit", Confirm)])
             , T.length quitMsg + 4
             )
 
