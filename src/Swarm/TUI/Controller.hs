@@ -154,8 +154,8 @@ toggleModal s mt = do
 handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s ev = case ev of
   V.EvKey V.KEnter [] ->
-    case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelectedIndex of
-      Just (Just 1) -> shutdown s
+    case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
+      Just (Just Confirm) -> shutdown s
       _ -> toggleModal s QuitModal
   _ -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
