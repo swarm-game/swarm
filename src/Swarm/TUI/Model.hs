@@ -17,7 +17,12 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   Name (..),
+  ModalType (..),
+  ButtonSelection (..),
   Modal (..),
+  modalType,
+  modalDialog,
+  modalWidget,
 
   -- * UI state
 
@@ -114,6 +119,7 @@ import Witch (from)
 import Brick
 import Brick.Focus
 import Brick.Forms
+import Brick.Widgets.Dialog (Dialog)
 import qualified Brick.Widgets.List as BL
 
 import Paths_swarm (getDataFileName)
@@ -282,10 +288,22 @@ replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 -- UI state
 ------------------------------------------------------------
 
-data Modal
+data ModalType
   = HelpModal
   | WinModal
+  | QuitModal
   deriving (Eq, Show)
+
+data ButtonSelection = Cancel | Confirm
+  deriving (Eq, Show)
+
+data Modal = Modal
+  { _modalType :: ModalType
+  , _modalDialog :: Dialog ButtonSelection
+  , _modalWidget :: Widget Name
+  }
+
+makeLenses ''Modal
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,

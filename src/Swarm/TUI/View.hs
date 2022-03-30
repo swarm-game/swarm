@@ -13,8 +13,9 @@ module Swarm.TUI.View (
   drawUI,
   drawTPS,
 
-  -- * Error dialog
+  -- * Dialog box
   drawDialog,
+  generateModal,
   chooseCursor,
 
   -- * Key hint menu
@@ -178,20 +179,27 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
   errContent = txtWrapWith indent2 {preserveIndentation = True} err
   requiredWidth = 2 + maximum (textWidth <$> T.lines err)
 
--- | Render a fullscreen widget with some padding
-renderModal :: Modal -> Widget Name
-renderModal modal = renderDialog (dialog (Just modalTitle) Nothing maxModalWindowWidth) modalWidget
+-- | Draw the error dialog window, if it should be displayed right now.
+drawDialog :: UIState -> Widget Name
+drawDialog s = case s ^. uiModal of
+  Just (Modal _ d w) -> renderDialog d w
+  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
+
+-- | Generate a fresh modal window of the requested type.
+generateModal :: ModalType -> Modal
+generateModal mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
  where
-  modalWidget = Widget Fixed Fixed $ do
-    ctx <- getContext
-    let w = ctx ^. availWidthL
-        h = ctx ^. availHeightL
-        padding = 10
-    render $ setAvailableSize (w - padding, h - padding) modalContent
-  (modalTitle, modalContent) =
-    case modal of
-      HelpModal -> ("Help", helpWidget)
-      WinModal -> ("", txt "Congratulations!")
+  (title, widget, buttons, requiredWidth) =
+    case mt of
+      HelpModal -> ("Help", helpWidget, Nothing, maxModalWindowWidth)
+      WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
+      QuitModal ->
+        let quitMsg = "Are you sure you want to quit?"
+         in ( ""
+            , padBottom (Pad 1) $ hCenter $ txt quitMsg
+            , Just (0, [("Cancel", Cancel), ("Quit", Confirm)])
+            , T.length quitMsg + 4
+            )
 
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
@@ -218,20 +226,14 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
       , hCenter $ mkTable baseCommands
       ]
   baseCommands =
-    [ ("build <name> {<commands>}", "Create a robot")
-    , ("make <name>", "Craft an item")
+    [ ("build {<commands>}", "Create a robot")
+    , ("make \"<name>\"", "Craft an item")
     , ("move", "Move one step in the current direction")
     , ("turn <dir>", "Change the current direction")
     , ("grab", "Grab whatver is available")
-    , ("give <robot> <item>", "Give an item to another robot")
-    , ("has <item>", "Check for an item in the inventory")
+    , ("give <robot> \"<item>\"", "Give an item to another robot")
+    , ("has \"<item>\"", "Check for an item in the inventory")
     ]
-
--- | Draw the error dialog window, if it should be displayed right now.
-drawDialog :: UIState -> Widget Name
-drawDialog s = case s ^. uiModal of
-  Just m -> renderModal m
-  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in

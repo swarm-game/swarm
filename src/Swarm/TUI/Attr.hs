@@ -17,6 +17,7 @@ module Swarm.TUI.Attr where
 
 import Brick
 import Brick.Forms
+import Brick.Widgets.Dialog
 import Brick.Widgets.List
 import qualified Graphics.Vty as V
 
@@ -53,6 +54,7 @@ swarmAttrMap =
     , (focusedFormInputAttr, V.defAttr)
     , (listSelectedFocusedAttr, bg V.blue)
     , (infoAttr, fg (V.rgbColor @Int 50 50 50))
+    , (buttonSelectedAttr, bg V.blue)
     , -- Default attribute
       (defAttr, V.defAttr)
     ]

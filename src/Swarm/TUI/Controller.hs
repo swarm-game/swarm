@@ -61,6 +61,7 @@ import Witch (into)
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
+import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Graphics.Vty as V
 
@@ -81,6 +82,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 
 -- | Pattern synonyms to simplify brick event handler
@@ -99,40 +101,40 @@ handleEvent s (AppEvent Frame)
 handleEvent s (VtyEvent (V.EvResize _ _)) = do
   invalidateCacheEntry WorldCache
   continue s
-handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
-handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
   | isJust (s ^. uiState . uiModal) = continue $ s & uiState . uiModal .~ Nothing
+handleEvent s (VtyEvent vev)
+  | isJust (s ^. uiState . uiModal) = handleModalEvent s vev
+handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
+handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
 handleEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
-    ControlKey 'q' -> shutdown s
+    ControlKey 'q' -> toggleModal s QuitModal
     MetaKey 'w' -> setFocus s WorldPanel
     MetaKey 'e' -> setFocus s RobotPanel
     MetaKey 'r' -> setFocus s REPLPanel
     MetaKey 't' -> setFocus s InfoPanel
     FKey 1 -> toggleModal s HelpModal
-    _anyOtherEvent
-      | isJust (s ^. uiState . uiModal) -> continueWithoutRedraw s
-      | otherwise ->
-        -- and dispatch the other to the focused panel handler
-        case focusGetCurrent (s ^. uiState . uiFocusRing) of
-          Just REPLPanel -> handleREPLEvent s ev
-          Just WorldPanel -> handleWorldEvent s ev
-          Just RobotPanel -> handleRobotPanelEvent s ev
-          Just InfoPanel -> handleInfoPanelEvent s ev
-          _ -> continueWithoutRedraw s
+    _anyOtherEvent ->
+      -- and dispatch the other to the focused panel handler
+      case focusGetCurrent (s ^. uiState . uiFocusRing) of
+        Just REPLPanel -> handleREPLEvent s ev
+        Just WorldPanel -> handleWorldEvent s ev
+        Just RobotPanel -> handleRobotPanelEvent s ev
+        Just InfoPanel -> handleInfoPanelEvent s ev
+        _ -> continueWithoutRedraw s
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
-toggleModal :: AppState -> Modal -> EventM Name (Next AppState)
-toggleModal s modal = do
+toggleModal :: AppState -> ModalType -> EventM Name (Next AppState)
+toggleModal s mt = do
   curTime <- liftIO $ getTime Monotonic
   continue $
     s & case s ^. uiState . uiModal of
-      Nothing -> (uiState . uiModal ?~ modal) . ensurePause
+      Nothing -> (uiState . uiModal ?~ generateModal mt) . ensurePause
       Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
  where
   -- Set the game to AutoPause if needed
@@ -148,6 +150,16 @@ toggleModal s modal = do
   -- TODO: manage unpause more safely to also cover
   -- the world event handler for the KChar 'p'.
   resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
+
+handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
+handleModalEvent s ev = case ev of
+  V.EvKey V.KEnter [] ->
+    case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
+      Just (Just Confirm) -> shutdown s
+      _ -> toggleModal s QuitModal
+  _ -> do
+    s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
+    continue s'
 
 -- | Shut down the application.  Currently all it does is write out
 --   the updated REPL history to a @.swarm_history@ file.
@@ -375,7 +387,7 @@ updateUI = do
     case w of
       Won False -> do
         gameState . winCondition .= Won True
-        uiState . uiModal .= Just WinModal
+        uiState . uiModal .= Just (generateModal WinModal)
         return True
       _ -> return False
 
