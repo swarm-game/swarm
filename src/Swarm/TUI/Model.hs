@@ -19,7 +19,6 @@ module Swarm.TUI.Model (
   Name (..),
   ModalType (..),
   Modal (..),
-  maxModalWindowWidth,
   modalType,
   modalDialog,
   modalWidget,
@@ -301,10 +300,6 @@ data Modal = Modal
   }
 
 makeLenses ''Modal
-
--- | Width cap for modal and error message windows
-maxModalWindowWidth :: Int
-maxModalWindowWidth = 500
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,

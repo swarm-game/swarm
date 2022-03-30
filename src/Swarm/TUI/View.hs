@@ -168,6 +168,10 @@ chooseCursor s locs = case s ^. uiState . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
 
+-- | Width cap for modal and error message windows
+maxModalWindowWidth :: Int
+maxModalWindowWidth = 500
+
 -- | Render the error dialog window with a given error message
 renderErrorDialog :: Text -> Widget Name
 renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
