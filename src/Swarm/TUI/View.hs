@@ -19,7 +19,7 @@ module Swarm.TUI.View (
   chooseCursor,
 
   -- * Key hint menu
-  drawMenu,
+  drawKeyMenu,
   drawKeyCmd,
 
   -- * World
@@ -85,7 +85,21 @@ import Swarm.Util
 --   generate two layers: the main layer and a floating dialog that
 --   can be on top.
 drawUI :: AppState -> [Widget Name]
-drawUI s =
+drawUI s
+  | s ^. uiState . uiMenuMode = drawMenuUI s
+  | otherwise = drawGameUI s
+
+drawMenuUI :: AppState -> [Widget Name]
+drawMenuUI _s = [txt "hi"]
+
+-- New game        --> dialog for choosing creative vs classic mode, seed?
+-- Load game       --> dialog for choosing save file
+-- Tutorial
+-- Challenges      --> picker for choosing a challenge
+-- About
+
+drawGameUI :: AppState -> [Widget Name]
+drawGameUI s =
   [ drawDialog (s ^. uiState)
   , joinBorders $
       hBox
@@ -111,7 +125,7 @@ drawUI s =
                 WorldPanel
                 (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
                 (drawWorld $ s ^. gameState)
-            , drawMenu s
+            , drawKeyMenu s
             , panel
                 highlightAttr
                 fr
@@ -238,8 +252,8 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
-drawMenu :: AppState -> Widget Name
-drawMenu s =
+drawKeyMenu :: AppState -> Widget Name
+drawKeyMenu s =
   vLimit 1
     . hBox
     . (++ [gameModeWidget])

@@ -51,6 +51,8 @@ module Swarm.TUI.Model (
 
   -- ** UI Model
   UIState,
+  uiMenuMode,
+  uiMenu,
   uiFocusRing,
   uiReplForm,
   uiReplType,
@@ -104,7 +106,7 @@ import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
-import Data.Maybe (fromMaybe, isJust, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
@@ -164,6 +166,8 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
+  | -- | The list of main menu choices.
+    MenuList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -321,7 +325,9 @@ makePrisms ''InventoryListEntry
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
 data UIState = UIState
-  { _uiFocusRing :: FocusRing Name
+  { _uiMenuMode :: Bool
+  , _uiMenu :: BL.List Name Text
+  , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
@@ -354,6 +360,12 @@ let exclude = ['_lgTicksPerSecond]
             if n `elem` exclude then [] else fn n
       )
       ''UIState
+
+-- | Should we be showing the main game menu?
+uiMenuMode :: Lens' UIState Bool
+
+-- | XXX
+uiMenu :: Lens' UIState (BL.List Name Text)
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -473,15 +485,18 @@ initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file and getting the current
---   time.
-initUIState :: ExceptT Text IO UIState
-initUIState = liftIO $ do
+--   time.  The @Bool@ parameter indicates whether we should start off
+--   by showing the menu.
+initUIState :: Bool -> ExceptT Text IO UIState
+initUIState showMenu = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiFocusRing = initFocusRing
+      { _uiMenuMode = showMenu
+      , _uiMenu = initMenu
+      , _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
       , _uiReplHistory = newREPLHistory history
@@ -505,6 +520,9 @@ initUIState = liftIO $ do
       , _frameCount = 0
       , _frameTickCount = 0
       }
+
+initMenu :: BL.List Name Text
+initMenu = BL.list MenuList (V.fromList ["New game", "About"]) 1
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
@@ -579,7 +597,8 @@ uiState :: Lens' AppState UIState
 initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
 initAppState seed challenge toRun = do
   let gtype = initGameType seed challenge
-  AppState <$> initGameState gtype toRun <*> initUIState
+      showMenu = isNothing challenge && isNothing toRun
+  AppState <$> initGameState gtype toRun <*> initUIState showMenu
 
 initGameType :: Seed -> Maybe String -> GameType
 initGameType seed Nothing = ClassicGame seed
