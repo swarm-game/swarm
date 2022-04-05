@@ -289,7 +289,7 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 ------------------------------------------------------------
--- UI state
+-- UI state + AppState
 ------------------------------------------------------------
 
 data ModalType
@@ -326,7 +326,7 @@ makePrisms ''InventoryListEntry
 -- see the lenses below.
 data UIState = UIState
   { _uiMenuMode :: Bool
-  , _uiMenu :: BL.List Name Text
+  , _uiMenu :: BL.List Name (Text, AppState -> AppState)
   , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
@@ -352,6 +352,15 @@ data UIState = UIState
   , _lastInfoTime :: TimeSpec
   }
 
+-- | The 'AppState' just stores together the game state and UI state.
+data AppState = AppState
+  { _gameState :: GameState
+  , _uiState :: UIState
+  }
+
+--------------------------------------------------
+-- Lenses for UIState
+
 let exclude = ['_lgTicksPerSecond]
  in makeLensesWith
       ( lensRules
@@ -364,8 +373,8 @@ let exclude = ['_lgTicksPerSecond]
 -- | Should we be showing the main game menu?
 uiMenuMode :: Lens' UIState Bool
 
--- | XXX
-uiMenu :: Lens' UIState (BL.List Name Text)
+-- | The list of main menu options.
+uiMenu :: Lens' UIState (BL.List Name (Text, AppState -> AppState))
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -464,6 +473,20 @@ lastFrameTime :: Lens' UIState TimeSpec
 --   See https://gafferongames.com/post/fix_your_timestep/ .
 accumulatedTime :: Lens' UIState TimeSpec
 
+--------------------------------------------------
+-- Lenses for AppState
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
+
+-- | The 'GameState' record.
+gameState :: Lens' AppState GameState
+
+-- | The 'UIState' record.
+uiState :: Lens' AppState UIState
+
+--------------------------------------------------
+-- UIState initialization
+
 -- | The initial state of the focus ring.
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
@@ -521,8 +544,16 @@ initUIState showMenu = liftIO $ do
       , _frameTickCount = 0
       }
 
-initMenu :: BL.List Name Text
-initMenu = BL.list MenuList (V.fromList ["New game", "About"]) 1
+initMenu :: BL.List Name (Text, AppState -> AppState)
+initMenu =
+  BL.list
+    MenuList
+    ( V.fromList
+        [ ("New game", uiState . uiMenuMode .~ False)
+        , ("About", id)
+        ]
+    )
+    1
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
@@ -576,22 +607,8 @@ populateInventoryList (Just r) = do
   uiInventory .= Just (r ^. inventoryHash, lst)
 
 ------------------------------------------------------------
--- App state (= UI state + game state)
+-- App state (= UI state + game state) initialization
 ------------------------------------------------------------
-
--- | The 'AppState' just stores together the game state and UI state.
-data AppState = AppState
-  { _gameState :: GameState
-  , _uiState :: UIState
-  }
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
-
--- | The 'GameState' record.
-gameState :: Lens' AppState GameState
-
--- | The 'UIState' record.
-uiState :: Lens' AppState UIState
 
 -- | Initialize the 'AppState'.
 initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState

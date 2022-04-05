@@ -59,7 +59,7 @@ import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
-import Brick.Widgets.Center (center, hCenter)
+import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
@@ -90,7 +90,9 @@ drawUI s
   | otherwise = drawGameUI s
 
 drawMenuUI :: AppState -> [Widget Name]
-drawMenuUI _s = [txt "hi"]
+drawMenuUI s =
+  [ centerLayer . vLimit 5 . hLimit 20 $ BL.renderList (const (hCenter . txt . fst)) True (s ^. uiState . uiMenu)
+  ]
 
 -- New game        --> dialog for choosing creative vs classic mode, seed?
 -- Load game       --> dialog for choosing save file

@@ -65,6 +65,7 @@ import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Graphics.Vty as V
 
+import Brick.Widgets.List (handleListEvent)
 import qualified Control.Carrier.Lift as Fused
 import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
@@ -95,20 +96,38 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleEvent s (AppEvent Frame)
+handleEvent s
+  | s ^. uiState . uiMenuMode = handleMenuEvent s
+  | otherwise = handleMainEvent s
+
+-- | The event handler for the main menu.
+handleMenuEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleMenuEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
+  let menuAction = snd . snd <$> BL.listSelectedElement (s ^. uiState . uiMenu)
+  case menuAction of
+    Just f -> continue $ f s
+    _ -> continueWithoutRedraw s
+handleMenuEvent s (VtyEvent ev) = do
+  menu' <- handleListEvent ev (s ^. uiState . uiMenu)
+  continue $ s & uiState . uiMenu .~ menu'
+handleMenuEvent s _ = continueWithoutRedraw s
+
+-- | The top-level event handler while we are running the game itself.
+handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleMainEvent s (AppEvent Frame)
   | s ^. gameState . paused = continueWithoutRedraw s
   | otherwise = runFrameUI s
-handleEvent s (VtyEvent (V.EvResize _ _)) = do
+handleMainEvent s (VtyEvent (V.EvResize _ _)) = do
   invalidateCacheEntry WorldCache
   continue s
-handleEvent s (VtyEvent (V.EvKey V.KEsc []))
+handleMainEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
   | isJust (s ^. uiState . uiModal) = continue $ s & uiState . uiModal .~ Nothing
-handleEvent s (VtyEvent vev)
+handleMainEvent s (VtyEvent vev)
   | isJust (s ^. uiState . uiModal) = handleModalEvent s vev
-handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
-handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
-handleEvent s ev = do
+handleMainEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
+handleMainEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
+handleMainEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
     ControlKey 'q' -> toggleModal s QuitModal
