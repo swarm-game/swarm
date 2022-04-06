@@ -91,14 +91,9 @@ drawUI s
 
 drawMenuUI :: AppState -> [Widget Name]
 drawMenuUI s =
-  [ centerLayer . vLimit 5 . hLimit 20 $ BL.renderList (const (hCenter . txt . fst)) True (s ^. uiState . uiMenu)
+  [ centerLayer . vLimit 5 . hLimit 20 $
+      BL.renderList (const (hCenter . txt . fst)) True (s ^. uiState . uiMenu)
   ]
-
--- New game        --> dialog for choosing creative vs classic mode, seed?
--- Load game       --> dialog for choosing save file
--- Tutorial
--- Challenges      --> picker for choosing a challenge
--- About
 
 drawGameUI :: AppState -> [Widget Name]
 drawGameUI s =

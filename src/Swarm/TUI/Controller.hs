@@ -105,8 +105,9 @@ handleMenuEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleMenuEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
   let menuAction = snd . snd <$> BL.listSelectedElement (s ^. uiState . uiMenu)
   case menuAction of
-    Just f -> continue $ f s
+    Just f -> f s
     _ -> continueWithoutRedraw s
+handleMenuEvent s (ControlKey 'q') = halt s
 handleMenuEvent s (VtyEvent ev) = do
   menu' <- handleListEvent ev (s ^. uiState . uiMenu)
   continue $ s & uiState . uiMenu .~ menu'

@@ -326,7 +326,7 @@ makePrisms ''InventoryListEntry
 -- see the lenses below.
 data UIState = UIState
   { _uiMenuMode :: Bool
-  , _uiMenu :: BL.List Name (Text, AppState -> AppState)
+  , _uiMenu :: BL.List Name (Text, AppState -> EventM Name (Next AppState))
   , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
@@ -374,7 +374,7 @@ let exclude = ['_lgTicksPerSecond]
 uiMenuMode :: Lens' UIState Bool
 
 -- | The list of main menu options.
-uiMenu :: Lens' UIState (BL.List Name (Text, AppState -> AppState))
+uiMenu :: Lens' UIState (BL.List Name (Text, AppState -> EventM Name (Next AppState)))
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -544,16 +544,29 @@ initUIState showMenu = liftIO $ do
       , _frameTickCount = 0
       }
 
-initMenu :: BL.List Name (Text, AppState -> AppState)
+initMenu :: BL.List Name (Text, AppState -> EventM Name (Next AppState))
 initMenu =
   BL.list
     MenuList
     ( V.fromList
-        [ ("New game", uiState . uiMenuMode .~ False)
-        , ("About", id)
+        [ ("New game", \s -> continue $ s & uiState . uiMenuMode .~ False)
+        , ("Tutorial", continueWithoutRedraw)
+        , ("Challenges", continueWithoutRedraw)
+        , ("About", continueWithoutRedraw)
+        , ("Quit", halt)
+        -- Should this be shutdown instead of halt?  Difference is
+        -- whether we write out the REPL history.  I guess we want to
+        -- make sure that we write out REPL history BEFORE returning
+        -- to the main menu.
         ]
     )
     1
+
+-- New game        --> dialog for choosing creative vs classic mode, seed?
+-- Load game       --> dialog for choosing save file
+-- Tutorial
+-- Challenges      --> picker for choosing a challenge
+-- About
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
