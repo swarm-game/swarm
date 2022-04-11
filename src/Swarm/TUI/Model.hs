@@ -26,6 +26,7 @@ module Swarm.TUI.Model (
   modalDialog,
   modalWidget,
   MainMenuEntry (..),
+  mainMenu,
   Menu (..),
 
   -- * UI state
@@ -318,9 +319,10 @@ data MainMenuEntry = NewGame | Tutorial | Challenges | About | Quit
 data Menu
   = NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
+  | AboutMenu
 
-initMainMenu :: BL.List Name MainMenuEntry
-initMainMenu = BL.list MenuList (V.fromList [NewGame .. Quit]) 1
+mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
+mainMenu e = BL.list MenuList (V.fromList [minBound .. maxBound]) 1 & BL.listMoveToElement e
 
 makePrisms ''Menu
 
@@ -536,7 +538,7 @@ initUIState showMainMenu = liftIO $ do
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiMenu = if showMainMenu then MainMenu initMainMenu else NoMenu
+      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
