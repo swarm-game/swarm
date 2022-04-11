@@ -96,22 +96,27 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleEvent s
-  | s ^. uiState . uiMenuMode = handleMenuEvent s
-  | otherwise = handleMainEvent s
+handleEvent s = case s ^. uiState . uiMenu of
+  NoMenu -> handleMainEvent s
+  MainMenu l -> handleMainMenuEvent l s
 
 -- | The event handler for the main menu.
-handleMenuEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleMenuEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
-  let menuAction = snd . snd <$> BL.listSelectedElement (s ^. uiState . uiMenu)
-  case menuAction of
-    Just f -> f s
-    _ -> continueWithoutRedraw s
-handleMenuEvent s (ControlKey 'q') = halt s
-handleMenuEvent s (VtyEvent ev) = do
-  menu' <- handleListEvent ev (s ^. uiState . uiMenu)
-  continue $ s & uiState . uiMenu .~ menu'
-handleMenuEvent s _ = continueWithoutRedraw s
+handleMainMenuEvent ::
+  BL.List Name MainMenuEntry -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleMainMenuEvent l s (VtyEvent (V.EvKey V.KEnter [])) =
+  case snd <$> BL.listSelectedElement l of
+    Nothing -> continueWithoutRedraw s
+    Just x0 -> case x0 of
+      NewGame -> continue $ s & uiState . uiMenu .~ NoMenu
+      Tutorial -> continueWithoutRedraw s
+      Challenges -> continueWithoutRedraw s
+      About -> continueWithoutRedraw s
+      Quit -> halt s
+handleMainMenuEvent _ s (ControlKey 'q') = halt s
+handleMainMenuEvent menu s (VtyEvent ev) = do
+  menu' <- handleListEvent ev menu
+  continue $ s & uiState . uiMenu .~ MainMenu menu'
+handleMainMenuEvent _ s _ = continueWithoutRedraw s
 
 -- | The top-level event handler while we are running the game itself.
 handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)

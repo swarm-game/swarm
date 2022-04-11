@@ -80,21 +80,29 @@ import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
 
--- | The main entry point for drawing the entire UI.  Generates a list
---   of widgets, where each represents a layer.  Right now we just
---   generate two layers: the main layer and a floating dialog that
---   can be on top.
+-- | The main entry point for drawing the entire UI.  Figures out
+--   which menu screen we should show (if any), or just the game itself.
 drawUI :: AppState -> [Widget Name]
-drawUI s
-  | s ^. uiState . uiMenuMode = drawMenuUI s
-  | otherwise = drawGameUI s
+drawUI s = case s ^. uiState . uiMenu of
+  NoMenu -> drawGameUI s
+  MainMenu l -> drawMainMenuUI l
 
-drawMenuUI :: AppState -> [Widget Name]
-drawMenuUI s =
+drawMainMenuUI :: BL.List Name MainMenuEntry -> [Widget Name]
+drawMainMenuUI l =
   [ centerLayer . vLimit 5 . hLimit 20 $
-      BL.renderList (const (hCenter . txt . fst)) True (s ^. uiState . uiMenu)
+      BL.renderList (const (hCenter . drawMainMenuEntry)) True l
   ]
 
+drawMainMenuEntry :: MainMenuEntry -> Widget Name
+drawMainMenuEntry NewGame = txt "New game"
+drawMainMenuEntry Tutorial = txt "Tutorial"
+drawMainMenuEntry Challenges = txt "Challenges"
+drawMainMenuEntry About = txt "About"
+drawMainMenuEntry Quit = txt "Quit"
+
+-- | Draw the main game UI.  Generates a list of widgets, where each
+--   represents a layer.  Right now we just generate two layers: the
+--   main layer and a layer for a floating dialog that can be on top.
 drawGameUI :: AppState -> [Widget Name]
 drawGameUI s =
   [ drawDialog (s ^. uiState)

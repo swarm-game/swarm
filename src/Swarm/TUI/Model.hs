@@ -17,12 +17,16 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   Name (..),
+
+  -- * Menus and dialogs
   ModalType (..),
   ButtonSelection (..),
   Modal (..),
   modalType,
   modalDialog,
   modalWidget,
+  MainMenuEntry (..),
+  Menu (..),
 
   -- * UI state
 
@@ -51,7 +55,6 @@ module Swarm.TUI.Model (
 
   -- ** UI Model
   UIState,
-  uiMenuMode,
   uiMenu,
   uiFocusRing,
   uiReplForm,
@@ -289,7 +292,7 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 ------------------------------------------------------------
--- UI state + AppState
+-- Menus and dialogs
 ------------------------------------------------------------
 
 data ModalType
@@ -309,6 +312,22 @@ data Modal = Modal
 
 makeLenses ''Modal
 
+data MainMenuEntry = NewGame | Tutorial | Challenges | About | Quit
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+data Menu
+  = NoMenu
+  | MainMenu (BL.List Name MainMenuEntry)
+
+initMainMenu :: BL.List Name MainMenuEntry
+initMainMenu = BL.list MenuList (V.fromList [NewGame .. Quit]) 1
+
+makePrisms ''Menu
+
+------------------------------------------------------------
+-- Inventory list entries
+------------------------------------------------------------
+
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,
 --   an entity installed on the robot, or a labelled separator.  The
@@ -322,11 +341,14 @@ data InventoryListEntry
 
 makePrisms ''InventoryListEntry
 
+------------------------------------------------------------
+-- UI state + AppState
+------------------------------------------------------------
+
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
 data UIState = UIState
-  { _uiMenuMode :: Bool
-  , _uiMenu :: BL.List Name (Text, AppState -> EventM Name (Next AppState))
+  { _uiMenu :: Menu
   , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
@@ -370,11 +392,8 @@ let exclude = ['_lgTicksPerSecond]
       )
       ''UIState
 
--- | Should we be showing the main game menu?
-uiMenuMode :: Lens' UIState Bool
-
--- | The list of main menu options.
-uiMenu :: Lens' UIState (BL.List Name (Text, AppState -> EventM Name (Next AppState)))
+-- | The current menu state.
+uiMenu :: Lens' UIState Menu
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -509,16 +528,15 @@ initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file and getting the current
 --   time.  The @Bool@ parameter indicates whether we should start off
---   by showing the menu.
+--   by showing the main menu.
 initUIState :: Bool -> ExceptT Text IO UIState
-initUIState showMenu = liftIO $ do
+initUIState showMainMenu = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiMenuMode = showMenu
-      , _uiMenu = initMenu
+      { _uiMenu = if showMainMenu then MainMenu initMainMenu else NoMenu
       , _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
@@ -543,30 +561,6 @@ initUIState showMenu = liftIO $ do
       , _frameCount = 0
       , _frameTickCount = 0
       }
-
-initMenu :: BL.List Name (Text, AppState -> EventM Name (Next AppState))
-initMenu =
-  BL.list
-    MenuList
-    ( V.fromList
-        [ ("New game", \s -> continue $ s & uiState . uiMenuMode .~ False)
-        , ("Tutorial", continueWithoutRedraw)
-        , ("Challenges", continueWithoutRedraw)
-        , ("About", continueWithoutRedraw)
-        , ("Quit", halt)
-        -- Should this be shutdown instead of halt?  Difference is
-        -- whether we write out the REPL history.  I guess we want to
-        -- make sure that we write out REPL history BEFORE returning
-        -- to the main menu.
-        ]
-    )
-    1
-
--- New game        --> dialog for choosing creative vs classic mode, seed?
--- Load game       --> dialog for choosing save file
--- Tutorial
--- Challenges      --> picker for choosing a challenge
--- About
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
