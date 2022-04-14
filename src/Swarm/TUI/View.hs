@@ -86,6 +86,8 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = case s ^. uiState . uiMenu of
   NoMenu -> drawGameUI s
   MainMenu l -> [drawMainMenuUI l]
+  TutorialMenu -> [drawTutorialMenuUI]
+  ChallengesMenu -> [drawChallengesMenuUI]
   AboutMenu -> [drawAboutMenuUI]
 
 drawMainMenuUI :: BL.List Name MainMenuEntry -> Widget Name
@@ -116,8 +118,22 @@ drawMainMenuEntry Challenges = txt "Challenges"
 drawMainMenuEntry About = txt "About"
 drawMainMenuEntry Quit = txt "Quit"
 
+drawTutorialMenuUI :: Widget Name
+drawTutorialMenuUI = centerLayer $ vBox . map hCenter $
+  [ txt "Coming soon!"
+  , txt "https://github.com/swarm-game/swarm/issues/25"
+  , txt "https://github.com/swarm-game/swarm/issues/296"
+  ]
+
+drawChallengesMenuUI :: Widget Name
+drawChallengesMenuUI = centerLayer $ vBox . map hCenter $
+  [ txt "Coming soon!"
+  , txt "https://github.com/swarm-game/swarm/issues/296"
+  ]
+
+
 drawAboutMenuUI :: Widget Name
-drawAboutMenuUI = txt "About swarm!"
+drawAboutMenuUI = centerLayer $ txt "About swarm!"
 
 -- | Draw the main game UI.  Generates a list of widgets, where each
 --   represents a layer.  Right now we just generate two layers: the

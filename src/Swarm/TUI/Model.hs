@@ -319,6 +319,8 @@ data MainMenuEntry = NewGame | Tutorial | Challenges | About | Quit
 data Menu
   = NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
+  | TutorialMenu
+  | ChallengesMenu
   | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry

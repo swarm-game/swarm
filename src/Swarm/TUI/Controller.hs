@@ -99,6 +99,8 @@ handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppStat
 handleEvent s = case s ^. uiState . uiMenu of
   NoMenu -> handleMainEvent s
   MainMenu l -> handleMainMenuEvent l s
+  TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
+  ChallengesMenu -> pressAnyKey (MainMenu (mainMenu Challenges)) s
   AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
 
 -- | The event handler for the main menu.
@@ -109,8 +111,8 @@ handleMainMenuEvent l s (VtyEvent (V.EvKey V.KEnter [])) =
     Nothing -> continueWithoutRedraw s
     Just x0 -> case x0 of
       NewGame -> continue $ s & uiState . uiMenu .~ NoMenu
-      Tutorial -> continueWithoutRedraw s
-      Challenges -> continueWithoutRedraw s
+      Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
+      Challenges -> continue $ s & uiState . uiMenu .~ ChallengesMenu
       About -> continue $ s & uiState . uiMenu .~ AboutMenu
       Quit -> halt s
 handleMainMenuEvent _ s (ControlKey 'q') = halt s
