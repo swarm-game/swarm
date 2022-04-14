@@ -90,8 +90,24 @@ drawUI s = case s ^. uiState . uiMenu of
 
 drawMainMenuUI :: BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI l =
-  centerLayer . vLimit 5 . hLimit 20 $
-    BL.renderList (const (hCenter . drawMainMenuEntry)) True l
+  vBox
+    [ logo
+    , centerLayer . vLimit 5 . hLimit 20 $
+        BL.renderList (const (hCenter . drawMainMenuEntry)) True l
+    ]
+
+logo :: Widget Name
+logo = centerLayer . vBox $ map txt
+  [ "                     v                                      "
+  , "                                                            "
+  , "   v<^vv<<@   ^^     vv    >^v^T    ^^^v<     <><      v   >"
+  , " T  ^<        >^  <  >>   v>   v<   >T   <v>  <<░^  @><>    "
+  , "    <@v^^>>   @v  >  <T  <v<T<^^>   v><v<     << <<T^ v<    "
+  , "   >     >>   v@ @@> <<   ~v   <    >~  ^~    >>  @^  >v    "
+  , "    >>^v^^^    < ~ T~v    v<   <~   >>T  <v   vv      ░>    "
+  , "                              ░                             "
+  , "                     ^      ^     v       >      >          "
+  ]
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
