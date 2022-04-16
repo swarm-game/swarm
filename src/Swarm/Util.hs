@@ -257,7 +257,7 @@ l %%= f = state (swap . l f)
 {-# INLINE (%%=) #-}
 
 (<<.=) :: (Has (State s) sig m) => LensLike ((,) a) s s a b -> b -> m a
-l <<.= b = l %%= \a -> (a, b)
+l <<.= b = l %%= (,b)
 {-# INLINE (<<.=) #-}
 
 (<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
