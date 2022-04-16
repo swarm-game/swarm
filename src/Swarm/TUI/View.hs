@@ -85,31 +85,18 @@ import Swarm.Util
 drawUI :: AppState -> [Widget Name]
 drawUI s = case s ^. uiState . uiMenu of
   NoMenu -> drawGameUI s
-  MainMenu l -> [drawMainMenuUI l]
+  MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
   TutorialMenu -> [drawTutorialMenuUI]
   ChallengesMenu -> [drawChallengesMenuUI]
-  AboutMenu -> [drawAboutMenuUI]
+  AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
-drawMainMenuUI :: BL.List Name MainMenuEntry -> Widget Name
-drawMainMenuUI l =
+drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
+drawMainMenuUI logo l =
   vBox
-    [ logo
+    [ centerLayer . vBox . map txt . maybe [] T.lines $ logo
     , centerLayer . vLimit 5 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry)) True l
     ]
-
-logo :: Widget Name
-logo = centerLayer . vBox $ map txt
-  [ "                     v                                      "
-  , "                                                            "
-  , "   v<^vv<<@   ^^     vv    >^v^T    ^^^v<     <><      v   >"
-  , " T  ^<        >^  <  >>   v>   v<   >T   <v>  <<░^  @><>    "
-  , "    <@v^^>>   @v  >  <T  <v<T<^^>   v><v<     << <<T^ v<    "
-  , "   >     >>   v@ @@> <<   ~v   <    >~  ^~    >>  @^  >v    "
-  , "    >>^v^^^    < ~ T~v    v<   <~   >>T  <v   vv      ░>    "
-  , "                              ░                             "
-  , "                     ^      ^     v       >      >          "
-  ]
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
@@ -119,21 +106,29 @@ drawMainMenuEntry About = txt "About"
 drawMainMenuEntry Quit = txt "Quit"
 
 drawTutorialMenuUI :: Widget Name
-drawTutorialMenuUI = centerLayer $ vBox . map hCenter $
-  [ txt "Coming soon!"
-  , txt "https://github.com/swarm-game/swarm/issues/25"
-  , txt "https://github.com/swarm-game/swarm/issues/296"
-  ]
+drawTutorialMenuUI =
+  centerLayer $
+    vBox . map hCenter $
+      [ txt "Coming soon!"
+      , txt "https://github.com/swarm-game/swarm/issues/25"
+      , txt "https://github.com/swarm-game/swarm/issues/296"
+      ]
 
 drawChallengesMenuUI :: Widget Name
-drawChallengesMenuUI = centerLayer $ vBox . map hCenter $
-  [ txt "Coming soon!"
-  , txt "https://github.com/swarm-game/swarm/issues/296"
-  ]
+drawChallengesMenuUI =
+  centerLayer $
+    vBox . map hCenter $
+      [ txt "Coming soon!"
+      , txt "https://github.com/swarm-game/swarm/issues/296"
+      ]
 
-
-drawAboutMenuUI :: Widget Name
-drawAboutMenuUI = centerLayer $ txt "About swarm!"
+drawAboutMenuUI :: Maybe Text -> Widget Name
+drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
+drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $ T.lines t
+ where
+  -- Turn blank lines into a space so they will take up vertical space as widgets
+  nonblank "" = " "
+  nonblank s = s
 
 -- | Draw the main game UI.  Generates a list of widgets, where each
 --   represents a layer.  Right now we just generate two layers: the
