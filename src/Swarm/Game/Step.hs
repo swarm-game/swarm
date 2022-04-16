@@ -1286,7 +1286,7 @@ execConst c vs s k = do
 
         return $ case mt of
           Nothing -> idleMachine
-          Just t -> initMachine' t empty emptyStore k
+          Just t -> initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
