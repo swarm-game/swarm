@@ -80,6 +80,7 @@ module Swarm.TUI.Model (
   uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
+  appData,
 
   -- ** Initialization
   initFocusRing,
@@ -110,6 +111,7 @@ import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
+import Data.Map (Map)
 import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
@@ -376,6 +378,7 @@ data UIState = UIState
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
+  , _appData :: Map Text Text
   }
 
 -- | The 'AppState' just stores together the game state and UI state.
@@ -496,6 +499,10 @@ lastFrameTime :: Lens' UIState TimeSpec
 --   See https://gafferongames.com/post/fix_your_timestep/ .
 accumulatedTime :: Lens' UIState TimeSpec
 
+-- | Free-form data loaded from the @data@ directory, for things like
+--   the logo, about page, tutorial story, etc.
+appData :: Lens' UIState (Map Text Text)
+
 --------------------------------------------------
 -- Lenses for AppState
 
@@ -530,12 +537,14 @@ initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
---   it involves reading a REPL history file and getting the current
---   time.  The @Bool@ parameter indicates whether we should start off
---   by showing the main menu.
+--   it involves reading a REPL history file, getting the current
+--   time, and loading text files from the data directory.  The @Bool@
+--   parameter indicates whether we should start off by showing the
+--   main menu.
 initUIState :: Bool -> ExceptT Text IO UIState
 initUIState showMainMenu = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
+  appDataMap <- readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- getTime Monotonic
   return $
@@ -564,6 +573,7 @@ initUIState showMainMenu = liftIO $ do
       , _tickCount = 0
       , _frameCount = 0
       , _frameTickCount = 0
+      , _appData = appDataMap
       }
 
 ------------------------------------------------------------
