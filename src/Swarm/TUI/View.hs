@@ -93,10 +93,25 @@ drawUI s = case s ^. uiState . uiMenu of
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI logo l =
   vBox
-    [ centerLayer . vBox . map txt . maybe [] T.lines $ logo
+    [ maybe emptyWidget drawLogo logo
     , centerLayer . vLimit 5 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry)) True l
     ]
+
+drawLogo :: Text -> Widget Name
+drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) []) . T.lines
+ where
+  drawThing :: Char -> Widget Name
+  drawThing c = withAttr (attrFor c) $ str [c]
+
+  attrFor :: Char -> AttrName
+  attrFor c
+    | c `elem` ("<>v^" :: String) = robotAttr
+  attrFor 'T' = plantAttr
+  attrFor '@' = rockAttr
+  attrFor '~' = waterAttr
+  attrFor '░' = dirtAttr
+  attrFor _ = defAttr
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
