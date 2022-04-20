@@ -17,7 +17,7 @@
 module Swarm.TUI.Controller (
   -- * Event handling
   handleEvent,
-  shutdown,
+  quitGame,
 
   -- ** Handling 'Frame' events
   runFrameUI,
@@ -187,20 +187,22 @@ handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s ev = case ev of
   V.EvKey V.KEnter [] ->
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
-      Just (Just Confirm) -> shutdown s
+      Just (Just Confirm) -> quitGame s
       _ -> toggleModal s QuitModal
   _ -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
     continue s'
 
--- | Shut down the application.  Currently all it does is write out
---   the updated REPL history to a @.swarm_history@ file.
-shutdown :: AppState -> EventM Name (Next AppState)
-shutdown s = do
+-- | Quit a game.  Currently all it does is write out the updated REPL
+--   history to a @.swarm_history@ file, and return to the main menu.
+quitGame :: AppState -> EventM Name (Next AppState)
+quitGame s = do
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
-  let s' = s & uiState . uiReplHistory %~ restartREPLHistory
-  halt s'
+  let s' =
+        s & uiState . uiReplHistory %~ restartREPLHistory
+          & uiState . uiMenu .~ MainMenu (mainMenu NewGame)
+  continue s'
  where
   history = s ^. uiState . uiReplHistory
 
