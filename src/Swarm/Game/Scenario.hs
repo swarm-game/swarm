@@ -10,26 +10,26 @@
 {-# LANGUAGE TypeApplications #-}
 
 -- |
--- Module      :  Swarm.Game.Challenge
+-- Module      :  Swarm.Game.Scenario
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Challenges are standalone worlds with specific starting and winning
+-- Scenarios are standalone worlds with specific starting and winning
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
-module Swarm.Game.Challenge (
-  -- * The Challenge type
-  Challenge (..),
+module Swarm.Game.Scenario (
+  -- * The Scenario type
+  Scenario (..),
 
   -- ** Fields
-  challengeName,
-  challengeSeed,
-  challengeEntities,
-  challengeWorld,
-  challengeRobots,
-  challengeWin,
+  scenarioName,
+  scenarioSeed,
+  scenarioEntities,
+  scenarioWorld,
+  scenarioRobots,
+  scenarioWin,
 ) where
 
 import Control.Applicative ((<|>))
@@ -54,23 +54,23 @@ import Swarm.Game.WorldGen (testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
 
--- | A 'Challenge' contains all the information to describe a
---   challenge.
-data Challenge = Challenge
-  { _challengeName :: Text
-  , _challengeSeed :: Maybe Int
-  , _challengeEntities :: EntityMap
-  , _challengeWorld :: WorldFun Int Entity
-  , _challengeRobots :: [URobot]
-  , _challengeWin :: ProcessedTerm
+-- | A 'Scenario' contains all the information to describe a
+--   scenario.
+data Scenario = Scenario
+  { _scenarioName :: Text
+  , _scenarioSeed :: Maybe Int
+  , _scenarioEntities :: EntityMap
+  , _scenarioWorld :: WorldFun Int Entity
+  , _scenarioRobots :: [URobot]
+  , _scenarioWin :: ProcessedTerm
   }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Challenge
+makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 
-instance FromJSONE EntityMap Challenge where
-  parseJSONE = withObjectE "challenge" $ \v -> do
+instance FromJSONE EntityMap Scenario where
+  parseJSONE = withObjectE "scenario" $ \v -> do
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
-    Challenge
+    Scenario
       <$> liftE (v .: "name")
       <*> liftE (v .:? "seed") -- TODO: avoid two seeds
       <*> pure em
@@ -78,28 +78,28 @@ instance FromJSONE EntityMap Challenge where
       <*> withE em (v ..: "robots")
       <*> liftE (v .: "win")
 
--- | the name of the challenge.
-challengeName :: Lens' Challenge Text
+-- | the name of the scenario.
+scenarioName :: Lens' Scenario Text
 
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed.
-challengeSeed :: Lens' Challenge (Maybe Int)
+scenarioSeed :: Lens' Scenario (Maybe Int)
 
--- | Any custom entities used for this challenge.
-challengeEntities :: Lens' Challenge EntityMap
+-- | Any custom entities used for this scenario.
+scenarioEntities :: Lens' Scenario EntityMap
 
--- | The starting world for the challenge.
-challengeWorld :: Lens' Challenge (WorldFun Int Entity)
+-- | The starting world for the scenario.
+scenarioWorld :: Lens' Scenario (WorldFun Int Entity)
 
--- | The starting robots for the challenge.  Note this should
+-- | The starting robots for the scenario.  Note this should
 --   include the "base".
-challengeRobots :: Lens' Challenge [URobot]
+scenarioRobots :: Lens' Scenario [URobot]
 
--- | The winning condition for the challenge, expressed as a
+-- | The winning condition for the scenario, expressed as a
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-challengeWin :: Lens' Challenge ProcessedTerm
+scenarioWin :: Lens' Scenario ProcessedTerm
 
 -- | A description of a world parsed from a YAML file.  The
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a

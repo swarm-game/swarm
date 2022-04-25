@@ -22,7 +22,7 @@ tested-with:        GHC ==8.10.4 || ==9.0.1
 extra-source-files: CHANGELOG.md
                     example/*.sw
 data-dir:           data/
-data-files:         *.yaml, challenges/*.yaml, *.txt
+data-files:         *.yaml, scenarios/*.yaml, *.txt
 
 source-repository head
     type:     git
@@ -65,7 +65,7 @@ library
                       Swarm.Language.Pipeline
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
-                      Swarm.Game.Challenge
+                      Swarm.Game.Scenario
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception

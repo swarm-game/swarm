@@ -633,24 +633,24 @@ populateInventoryList (Just r) = do
 
 -- | Initialize the 'AppState'.
 initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
-initAppState seed challenge toRun = do
-  let gtype = initGameType seed challenge
-      showMenu = isNothing challenge && isNothing toRun
+initAppState seed scenario toRun = do
+  let gtype = initGameType seed scenario
+      showMenu = isNothing scenario && isNothing toRun
   AppState <$> initGameState gtype toRun <*> initUIState showMenu
 
 initGameType :: Seed -> Maybe String -> GameType
 initGameType seed Nothing = ClassicGame seed
-initGameType _ (Just challenge) =
-  ChallengeGame $ \em -> do
-    libChallenge <- lift $ getDataFileName $ "challenges" </> challenge
-    libChallengeExt <- lift $ getDataFileName $ "challenges" </> challenge <.> "yaml"
+initGameType _ (Just scenario) =
+  ScenarioGame $ \em -> do
+    libScenario <- lift $ getDataFileName $ "scenarios" </> scenario
+    libScenarioExt <- lift $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
 
     mfileName <-
       lift $
-        listToMaybe <$> filterM doesFileExist [challenge, libChallengeExt, libChallenge]
+        listToMaybe <$> filterM doesFileExist [scenario, libScenarioExt, libScenario]
 
     case mfileName of
-      Nothing -> throwError $ "Challenge not found: " <> from @String challenge
+      Nothing -> throwError $ "Scenario not found: " <> from @String scenario
       Just fileName -> do
         res <- lift $ decodeFileEitherE em fileName
         case res of

@@ -93,10 +93,10 @@ import Control.Effect.Lens
 import Control.Effect.State (State)
 
 import Paths_swarm (getDataFileName)
-import Swarm.Game.Challenge
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Scenario
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
@@ -206,8 +206,7 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
 
--- | How to determine whether the player has won (e.g. when in
---   challenge mode).
+-- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
 
 -- | The current 'RunStatus'.
@@ -397,17 +396,17 @@ addRobot r = do
 -- | What type of game does the user want to start?
 data GameType
   = ClassicGame Seed
-  | ChallengeGame (EntityMap -> ExceptT Text IO Challenge)
+  | ScenarioGame (EntityMap -> ExceptT Text IO Scenario)
 
 -- | The 'GameType', instantiated with loaded entites and records.
 data InstGameType
   = IClassicGame Seed
-  | IChallengeGame Challenge
+  | IScenarioGame Scenario
 
 instGameType :: EntityMap -> [Recipe Entity] -> GameType -> ExceptT Text IO InstGameType
 instGameType em _rs gt = case gt of
   ClassicGame s -> return $ IClassicGame s
-  ChallengeGame c -> IChallengeGame <$> c em
+  ScenarioGame c -> IScenarioGame <$> c em
 
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
@@ -443,7 +442,7 @@ initGameState gtype toRun = do
 
       robotList = case iGameType of
         IClassicGame _ -> [theBase]
-        IChallengeGame c -> zipWith setRobotID [0 ..] (c ^. challengeRobots)
+        IScenarioGame c -> zipWith setRobotID [0 ..] (c ^. scenarioRobots)
 
       creative = False
 
@@ -453,15 +452,15 @@ initGameState gtype toRun = do
             . fmap ((lkup entities <$>) . first fromEnum)
             . findGoodOrigin
             $ testWorld2 seed
-        IChallengeGame c -> W.newWorld (c ^. challengeWorld)
+        IScenarioGame c -> W.newWorld (c ^. scenarioWorld)
 
       theWinCondition = case iGameType of
         IClassicGame _ -> NoWinCondition
-        IChallengeGame c -> WinCondition (c ^. challengeWin)
+        IScenarioGame c -> WinCondition (c ^. scenarioWin)
 
   seed <- case iGameType of
     IClassicGame s -> return s
-    IChallengeGame c -> case c ^. challengeSeed of
+    IScenarioGame c -> case c ^. scenarioSeed of
       Just s -> return s
       Nothing -> return 0 -- XXX use a random seed
   liftIO $ putStrLn ("Using seed... " <> show seed)
