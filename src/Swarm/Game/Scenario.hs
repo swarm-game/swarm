@@ -62,7 +62,7 @@ data Scenario = Scenario
   , _scenarioEntities :: EntityMap
   , _scenarioWorld :: WorldFun Int Entity
   , _scenarioRobots :: [URobot]
-  , _scenarioWin :: ProcessedTerm
+  , _scenarioWin :: Maybe ProcessedTerm
   }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
@@ -78,7 +78,7 @@ instance FromJSONE EntityMap Scenario where
       <*> withE em (v ..: "robots")
       <*> liftE (v .: "win")
 
--- | the name of the scenario.
+-- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
 
 -- | The seed used for the random number generator.  If @Nothing@, use
@@ -92,14 +92,14 @@ scenarioEntities :: Lens' Scenario EntityMap
 scenarioWorld :: Lens' Scenario (WorldFun Int Entity)
 
 -- | The starting robots for the scenario.  Note this should
---   include the "base".
+--   include the base.
 scenarioRobots :: Lens' Scenario [URobot]
 
--- | The winning condition for the scenario, expressed as a
+-- | An optional winning condition for the scenario, expressed as a
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-scenarioWin :: Lens' Scenario ProcessedTerm
+scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
 
 -- | A description of a world parsed from a YAML file.  The
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a

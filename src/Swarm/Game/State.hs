@@ -456,7 +456,7 @@ initGameState gtype toRun = do
 
       theWinCondition = case iGameType of
         IClassicGame _ -> NoWinCondition
-        IScenarioGame c -> WinCondition (c ^. scenarioWin)
+        IScenarioGame c -> maybe NoWinCondition WinCondition (c ^. scenarioWin)
 
   seed <- case iGameType of
     IClassicGame s -> return s
