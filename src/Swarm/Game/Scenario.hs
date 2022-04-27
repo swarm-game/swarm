@@ -76,7 +76,7 @@ instance FromJSONE EntityMap Scenario where
       <*> pure em
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
-      <*> liftE (v .: "win")
+      <*> liftE (v .:? "win")
 
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
