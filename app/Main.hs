@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
@@ -7,6 +8,7 @@ import Data.Text (
   pack,
  )
 import qualified Data.Text.IO as Text
+import GitHash
 import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.Language.LSP (lspMain)
@@ -42,10 +44,12 @@ cliInfo :: ParserInfo CLI
 cliInfo =
   info
     (cliParser <**> helper)
-    ( header "Swarm game - pre-alpha version"
+    ( header ("Swarm game - pre-alpha version (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")")
         <> progDesc "To play the game simply run without any command."
         <> fullDesc
     )
+ where
+  git = $$tGitInfoCwd
 
 data Input = Stdin | File FilePath
 
