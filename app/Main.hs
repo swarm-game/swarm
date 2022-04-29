@@ -44,12 +44,15 @@ cliInfo :: ParserInfo CLI
 cliInfo =
   info
     (cliParser <**> helper)
-    ( header ("Swarm game - pre-alpha version (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")")
+    ( header ("Swarm game - pre-alpha version" <> commitInfo)
         <> progDesc "To play the game simply run without any command."
         <> fullDesc
     )
  where
-  git = $$tGitInfoCwd
+  mgit = $$tGitInfoCwdTry
+  commitInfo = case mgit of
+    Left _ -> ""
+    Right git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
 data Input = Stdin | File FilePath
 
