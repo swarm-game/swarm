@@ -506,8 +506,21 @@ stepCESK cesk = case cesk of
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
-  -- Any other frame with a VResult is an error (should never happen).
-  Out (VResult _ _) s _ -> badMachineState s "no appropriate stack frame to catch a VResult"
+  -- If we see a VResult in any other context, simply discard it.  For
+  -- example, this is what happens when there are binders (i.e. a "do
+  -- block") nested inside another block instead of at the top level.
+  -- It used to be that (1) only 'def' could generate a VResult, and
+  -- (2) 'def' was guaranteed to only occur at the top level, hence
+  -- any VResult would be caught by a FLoadEnv frame, and seeing a
+  -- VResult anywhere else was an error.  But
+  -- https://github.com/swarm-game/swarm/commit/b62d27e566565aa9a3ff351d91b23d2589b068dc
+  -- made top-level binders export a variable binding, also via the
+  -- VResult mechanism, and unlike 'def', binders do not have to occur
+  -- at the top level only.  This led to
+  -- https://github.com/swarm-game/swarm/issues/327 , which was fixed
+  -- by changing this case from an error to simply ignoring the
+  -- VResult wrapper.
+  Out (VResult v _) s k -> return $ Out v s k
   ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
