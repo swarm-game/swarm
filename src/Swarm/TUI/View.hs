@@ -19,7 +19,7 @@ module Swarm.TUI.View (
   chooseCursor,
 
   -- * Key hint menu
-  drawMenu,
+  drawKeyMenu,
   drawKeyCmd,
 
   -- * World
@@ -59,7 +59,7 @@ import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
-import Brick.Widgets.Center (center, hCenter)
+import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
@@ -80,12 +80,76 @@ import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
 
--- | The main entry point for drawing the entire UI.  Generates a list
---   of widgets, where each represents a layer.  Right now we just
---   generate two layers: the main layer and a floating dialog that
---   can be on top.
+-- | The main entry point for drawing the entire UI.  Figures out
+--   which menu screen we should show (if any), or just the game itself.
 drawUI :: AppState -> [Widget Name]
-drawUI s =
+drawUI s = case s ^. uiState . uiMenu of
+  NoMenu -> drawGameUI s
+  MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+  TutorialMenu -> [drawTutorialMenuUI]
+  ChallengesMenu -> [drawChallengesMenuUI]
+  AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+
+drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
+drawMainMenuUI logo l =
+  vBox
+    [ maybe emptyWidget drawLogo logo
+    , centerLayer . vLimit 5 . hLimit 20 $
+        BL.renderList (const (hCenter . drawMainMenuEntry)) True l
+    ]
+
+drawLogo :: Text -> Widget Name
+drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) []) . T.lines
+ where
+  drawThing :: Char -> Widget Name
+  drawThing c = withAttr (attrFor c) $ str [c]
+
+  attrFor :: Char -> AttrName
+  attrFor c
+    | c `elem` ("<>v^" :: String) = robotAttr
+  attrFor 'T' = plantAttr
+  attrFor '@' = rockAttr
+  attrFor '~' = waterAttr
+  attrFor '░' = dirtAttr
+  attrFor _ = defAttr
+
+drawMainMenuEntry :: MainMenuEntry -> Widget Name
+drawMainMenuEntry NewGame = txt "New game"
+drawMainMenuEntry Tutorial = txt "Tutorial"
+drawMainMenuEntry Challenges = txt "Challenges"
+drawMainMenuEntry About = txt "About"
+drawMainMenuEntry Quit = txt "Quit"
+
+drawTutorialMenuUI :: Widget Name
+drawTutorialMenuUI =
+  centerLayer $
+    vBox . map hCenter $
+      [ txt "Coming soon!"
+      , txt "https://github.com/swarm-game/swarm/issues/25"
+      , txt "https://github.com/swarm-game/swarm/issues/296"
+      ]
+
+drawChallengesMenuUI :: Widget Name
+drawChallengesMenuUI =
+  centerLayer $
+    vBox . map hCenter $
+      [ txt "Coming soon!"
+      , txt "https://github.com/swarm-game/swarm/issues/296"
+      ]
+
+drawAboutMenuUI :: Maybe Text -> Widget Name
+drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
+drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $ T.lines t
+ where
+  -- Turn blank lines into a space so they will take up vertical space as widgets
+  nonblank "" = " "
+  nonblank s = s
+
+-- | Draw the main game UI.  Generates a list of widgets, where each
+--   represents a layer.  Right now we just generate two layers: the
+--   main layer and a layer for a floating dialog that can be on top.
+drawGameUI :: AppState -> [Widget Name]
+drawGameUI s =
   [ drawDialog (s ^. uiState)
   , joinBorders $
       hBox
@@ -111,7 +175,7 @@ drawUI s =
                 WorldPanel
                 (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
                 (drawWorld $ s ^. gameState)
-            , drawMenu s
+            , drawKeyMenu s
             , panel
                 highlightAttr
                 fr
@@ -238,8 +302,8 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
-drawMenu :: AppState -> Widget Name
-drawMenu s =
+drawKeyMenu :: AppState -> Widget Name
+drawKeyMenu s =
   vLimit 1
     . hBox
     . (++ [gameModeWidget])

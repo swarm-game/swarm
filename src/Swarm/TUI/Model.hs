@@ -17,12 +17,17 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   Name (..),
+
+  -- * Menus and dialogs
   ModalType (..),
   ButtonSelection (..),
   Modal (..),
   modalType,
   modalDialog,
   modalWidget,
+  MainMenuEntry (..),
+  mainMenu,
+  Menu (..),
 
   -- * UI state
 
@@ -51,6 +56,7 @@ module Swarm.TUI.Model (
 
   -- ** UI Model
   UIState,
+  uiMenu,
   uiFocusRing,
   uiReplForm,
   uiReplType,
@@ -74,6 +80,7 @@ module Swarm.TUI.Model (
   uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
+  appData,
 
   -- ** Initialization
   initFocusRing,
@@ -104,7 +111,8 @@ import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
-import Data.Maybe (fromMaybe, isJust, listToMaybe)
+import Data.Map (Map)
+import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
@@ -164,6 +172,8 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
+  | -- | The list of main menu choices.
+    MenuList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -285,7 +295,7 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 ------------------------------------------------------------
--- UI state
+-- Menus and dialogs
 ------------------------------------------------------------
 
 data ModalType
@@ -305,6 +315,25 @@ data Modal = Modal
 
 makeLenses ''Modal
 
+data MainMenuEntry = NewGame | Tutorial | Challenges | About | Quit
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+data Menu
+  = NoMenu
+  | MainMenu (BL.List Name MainMenuEntry)
+  | TutorialMenu
+  | ChallengesMenu
+  | AboutMenu
+
+mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
+mainMenu e = BL.list MenuList (V.fromList [minBound .. maxBound]) 1 & BL.listMoveToElement e
+
+makePrisms ''Menu
+
+------------------------------------------------------------
+-- Inventory list entries
+------------------------------------------------------------
+
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,
 --   an entity installed on the robot, or a labelled separator.  The
@@ -318,10 +347,15 @@ data InventoryListEntry
 
 makePrisms ''InventoryListEntry
 
+------------------------------------------------------------
+-- UI state + AppState
+------------------------------------------------------------
+
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
 data UIState = UIState
-  { _uiFocusRing :: FocusRing Name
+  { _uiMenu :: Menu
+  , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
@@ -344,7 +378,17 @@ data UIState = UIState
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
+  , _appData :: Map Text Text
   }
+
+-- | The 'AppState' just stores together the game state and UI state.
+data AppState = AppState
+  { _gameState :: GameState
+  , _uiState :: UIState
+  }
+
+--------------------------------------------------
+-- Lenses for UIState
 
 let exclude = ['_lgTicksPerSecond]
  in makeLensesWith
@@ -354,6 +398,9 @@ let exclude = ['_lgTicksPerSecond]
             if n `elem` exclude then [] else fn n
       )
       ''UIState
+
+-- | The current menu state.
+uiMenu :: Lens' UIState Menu
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -452,6 +499,24 @@ lastFrameTime :: Lens' UIState TimeSpec
 --   See https://gafferongames.com/post/fix_your_timestep/ .
 accumulatedTime :: Lens' UIState TimeSpec
 
+-- | Free-form data loaded from the @data@ directory, for things like
+--   the logo, about page, tutorial story, etc.
+appData :: Lens' UIState (Map Text Text)
+
+--------------------------------------------------
+-- Lenses for AppState
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
+
+-- | The 'GameState' record.
+gameState :: Lens' AppState GameState
+
+-- | The 'UIState' record.
+uiState :: Lens' AppState UIState
+
+--------------------------------------------------
+-- UIState initialization
+
 -- | The initial state of the focus ring.
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
@@ -472,16 +537,20 @@ initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
---   it involves reading a REPL history file and getting the current
---   time.
-initUIState :: ExceptT Text IO UIState
-initUIState = liftIO $ do
+--   it involves reading a REPL history file, getting the current
+--   time, and loading text files from the data directory.  The @Bool@
+--   parameter indicates whether we should start off by showing the
+--   main menu.
+initUIState :: Bool -> ExceptT Text IO UIState
+initUIState showMainMenu = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
+  appDataMap <- readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiFocusRing = initFocusRing
+      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      , _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
       , _uiReplHistory = newREPLHistory history
@@ -504,6 +573,7 @@ initUIState = liftIO $ do
       , _tickCount = 0
       , _frameCount = 0
       , _frameTickCount = 0
+      , _appData = appDataMap
       }
 
 ------------------------------------------------------------
@@ -558,28 +628,15 @@ populateInventoryList (Just r) = do
   uiInventory .= Just (r ^. inventoryHash, lst)
 
 ------------------------------------------------------------
--- App state (= UI state + game state)
+-- App state (= UI state + game state) initialization
 ------------------------------------------------------------
-
--- | The 'AppState' just stores together the game state and UI state.
-data AppState = AppState
-  { _gameState :: GameState
-  , _uiState :: UIState
-  }
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
-
--- | The 'GameState' record.
-gameState :: Lens' AppState GameState
-
--- | The 'UIState' record.
-uiState :: Lens' AppState UIState
 
 -- | Initialize the 'AppState'.
 initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
 initAppState seed challenge toRun = do
   let gtype = initGameType seed challenge
-  AppState <$> initGameState gtype toRun <*> initUIState
+      showMenu = isNothing challenge && isNothing toRun
+  AppState <$> initGameState gtype toRun <*> initUIState showMenu
 
 initGameType :: Seed -> Maybe String -> GameType
 initGameType seed Nothing = ClassicGame seed

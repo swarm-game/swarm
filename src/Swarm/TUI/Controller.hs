@@ -17,7 +17,7 @@
 module Swarm.TUI.Controller (
   -- * Event handling
   handleEvent,
-  shutdown,
+  quitGame,
 
   -- ** Handling 'Frame' events
   runFrameUI,
@@ -65,6 +65,7 @@ import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Graphics.Vty as V
 
+import Brick.Widgets.List (handleListEvent)
 import qualified Control.Carrier.Lift as Fused
 import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
@@ -95,20 +96,51 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleEvent s (AppEvent Frame)
+handleEvent s = case s ^. uiState . uiMenu of
+  NoMenu -> handleMainEvent s
+  MainMenu l -> handleMainMenuEvent l s
+  TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
+  ChallengesMenu -> pressAnyKey (MainMenu (mainMenu Challenges)) s
+  AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
+
+-- | The event handler for the main menu.
+handleMainMenuEvent ::
+  BL.List Name MainMenuEntry -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleMainMenuEvent l s (VtyEvent (V.EvKey V.KEnter [])) =
+  case snd <$> BL.listSelectedElement l of
+    Nothing -> continueWithoutRedraw s
+    Just x0 -> case x0 of
+      NewGame -> continue $ s & uiState . uiMenu .~ NoMenu
+      Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
+      Challenges -> continue $ s & uiState . uiMenu .~ ChallengesMenu
+      About -> continue $ s & uiState . uiMenu .~ AboutMenu
+      Quit -> halt s
+handleMainMenuEvent _ s (ControlKey 'q') = halt s
+handleMainMenuEvent menu s (VtyEvent ev) = do
+  menu' <- handleListEvent ev menu
+  continue $ s & uiState . uiMenu .~ MainMenu menu'
+handleMainMenuEvent _ s _ = continueWithoutRedraw s
+
+pressAnyKey :: Menu -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+pressAnyKey m s (VtyEvent (V.EvKey _ _)) = continue $ s & uiState . uiMenu .~ m
+pressAnyKey _ s _ = continueWithoutRedraw s
+
+-- | The top-level event handler while we are running the game itself.
+handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleMainEvent s (AppEvent Frame)
   | s ^. gameState . paused = continueWithoutRedraw s
   | otherwise = runFrameUI s
-handleEvent s (VtyEvent (V.EvResize _ _)) = do
+handleMainEvent s (VtyEvent (V.EvResize _ _)) = do
   invalidateCacheEntry WorldCache
   continue s
-handleEvent s (VtyEvent (V.EvKey V.KEsc []))
+handleMainEvent s (VtyEvent (V.EvKey V.KEsc []))
   | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
   | isJust (s ^. uiState . uiModal) = continue $ s & uiState . uiModal .~ Nothing
-handleEvent s (VtyEvent vev)
+handleMainEvent s (VtyEvent vev)
   | isJust (s ^. uiState . uiModal) = handleModalEvent s vev
-handleEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
-handleEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
-handleEvent s ev = do
+handleMainEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
+handleMainEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
+handleMainEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
     ControlKey 'q' -> toggleModal s QuitModal
@@ -155,20 +187,22 @@ handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s ev = case ev of
   V.EvKey V.KEnter [] ->
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
-      Just (Just Confirm) -> shutdown s
+      Just (Just Confirm) -> quitGame s
       _ -> toggleModal s QuitModal
   _ -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
     continue s'
 
--- | Shut down the application.  Currently all it does is write out
---   the updated REPL history to a @.swarm_history@ file.
-shutdown :: AppState -> EventM Name (Next AppState)
-shutdown s = do
+-- | Quit a game.  Currently all it does is write out the updated REPL
+--   history to a @.swarm_history@ file, and return to the main menu.
+quitGame :: AppState -> EventM Name (Next AppState)
+quitGame s = do
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
-  let s' = s & uiState . uiReplHistory %~ restartREPLHistory
-  halt s'
+  let s' =
+        s & uiState . uiReplHistory %~ restartREPLHistory
+          & uiState . uiMenu .~ MainMenu (mainMenu NewGame)
+  continue s'
  where
   history = s ^. uiState . uiReplHistory
 
