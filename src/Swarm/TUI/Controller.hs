@@ -143,12 +143,12 @@ handleMainEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . 
 handleMainEvent s ev = do
   -- intercept special keys that works on all panels
   case ev of
-    ControlKey 'q' -> toggleModal s QuitModal
+    ControlKey 'q' -> toggleModal s QuitModal >>= continue
     MetaKey 'w' -> setFocus s WorldPanel
     MetaKey 'e' -> setFocus s RobotPanel
     MetaKey 'r' -> setFocus s REPLPanel
     MetaKey 't' -> setFocus s InfoPanel
-    FKey 1 -> toggleModal s HelpModal
+    FKey 1 -> toggleModal s HelpModal >>= continue
     _anyOtherEvent ->
       -- and dispatch the other to the focused panel handler
       case focusGetCurrent (s ^. uiState . uiFocusRing) of
@@ -161,10 +161,10 @@ handleMainEvent s ev = do
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
-toggleModal :: AppState -> ModalType -> EventM Name (Next AppState)
+toggleModal :: AppState -> ModalType -> EventM Name AppState
 toggleModal s mt = do
   curTime <- liftIO $ getTime Monotonic
-  continue $
+  return $
     s & case s ^. uiState . uiModal of
       Nothing -> (uiState . uiModal ?~ generateModal mt) . ensurePause
       Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
@@ -185,10 +185,11 @@ toggleModal s mt = do
 
 handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s ev = case ev of
-  V.EvKey V.KEnter [] ->
+  V.EvKey V.KEnter [] -> do
+    s' <- toggleModal s QuitModal
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
-      Just (Just Confirm) -> quitGame s
-      _ -> toggleModal s QuitModal
+      Just (Just Confirm) -> quitGame s'
+      _ -> continue s'
   _ -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
     continue s'
