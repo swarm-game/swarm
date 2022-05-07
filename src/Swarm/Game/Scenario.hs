@@ -25,6 +25,7 @@ module Swarm.Game.Scenario (
 
   -- ** Fields
   scenarioName,
+  scenarioDescription,
   scenarioCreative,
   scenarioSeed,
   scenarioEntities,
@@ -59,6 +60,7 @@ import Swarm.Util.Yaml
 --   scenario.
 data Scenario = Scenario
   { _scenarioName :: Text
+  , _scenarioDescription :: Text
   , _scenarioCreative :: Bool -- Maybe generalize this to a mode enumeration
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
@@ -74,6 +76,7 @@ instance FromJSONE EntityMap Scenario where
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     Scenario
       <$> liftE (v .: "name")
+      <*> liftE (v .:? "description" .!= "")
       <*> liftE (v .:? "creative" .!= False)
       <*> liftE (v .:? "seed") -- TODO: avoid two seeds
       <*> pure em
@@ -84,11 +87,14 @@ instance FromJSONE EntityMap Scenario where
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
 
+-- | A description of the scenario.
+scenarioDescription :: Lens' Scenario Text
+
 -- | Whether the scenario should start in creative mode.
 scenarioCreative :: Lens' Scenario Bool
 
 -- | The seed used for the random number generator.  If @Nothing@, use
---   a random seed.
+--   a random seed / prompt the user for the seed.
 scenarioSeed :: Lens' Scenario (Maybe Int)
 
 -- | Any custom entities used for this scenario.
