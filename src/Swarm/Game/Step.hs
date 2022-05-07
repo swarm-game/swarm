@@ -359,6 +359,10 @@ stepCESK cesk = case cesk of
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
+  -- Normally it's not possible to have a TRobot value in surface
+  -- syntax, but the salvage command generates a program that needs to
+  -- refer directly to the salvaging robot.
+  In (TRobot rid) _ s k -> return $ Out (VRobot rid) s k
   -- Function constants of arity 0 are evaluated immediately
   -- (e.g. parent, self).  Any other constant is turned into a VCApp,
   -- which is waiting for arguments and/or an FExec frame.
@@ -502,8 +506,21 @@ stepCESK cesk = case cesk of
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
-  -- Any other frame with a VResult is an error (should never happen).
-  Out (VResult _ _) s _ -> badMachineState s "no appropriate stack frame to catch a VResult"
+  -- If we see a VResult in any other context, simply discard it.  For
+  -- example, this is what happens when there are binders (i.e. a "do
+  -- block") nested inside another block instead of at the top level.
+  -- It used to be that (1) only 'def' could generate a VResult, and
+  -- (2) 'def' was guaranteed to only occur at the top level, hence
+  -- any VResult would be caught by a FLoadEnv frame, and seeing a
+  -- VResult anywhere else was an error.  But
+  -- https://github.com/swarm-game/swarm/commit/b62d27e566565aa9a3ff351d91b23d2589b068dc
+  -- made top-level binders export a variable binding, also via the
+  -- VResult mechanism, and unlike 'def', binders do not have to occur
+  -- at the top level only.  This led to
+  -- https://github.com/swarm-game/swarm/issues/327 , which was fixed
+  -- by changing this case from an error to simply ignoring the
+  -- VResult wrapper.
+  Out (VResult v _) s k -> return $ Out v s k
   ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
@@ -1253,11 +1270,15 @@ execConst c vs s k = do
         case mtarget of
           Nothing -> return $ Out VUnit s k -- Nothing to salvage
           Just target -> do
-            -- Copy over the salvaged robot's inventory
-            robotInventory %= E.union (target ^. robotInventory)
-            robotInventory %= E.union (target ^. installedDevices)
+            -- Copy the salvaged robot's installed devices into its inventory, in preparation
+            -- for transferring it.
+            let salvageInventory = E.union (target ^. robotInventory) (target ^. installedDevices)
+            robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
 
-            -- Also copy over its log, if we have one
+            let salvageItems = concatMap (\(n, e) -> replicate n (e ^. entityName)) (E.elems salvageInventory)
+                numItems = length salvageItems
+
+            -- Copy over the salvaged robot's log, if we have one
             inst <- use installedDevices
             em <- use entityMap
             creative <- use creativeMode
@@ -1266,10 +1287,27 @@ execConst c vs s k = do
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
             when (creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
-            -- Finally, delete the salvaged robot
-            deleteRobot (target ^. robotID)
+            -- Now reprogram the robot being salvaged to 'give' each
+            -- item in its inventory to us, one at a time, then
+            -- self-destruct at the end.  Make it a system robot so we
+            -- don't have to worry about capabilities.
+            robotMap . at (target ^. robotID) . traverse . systemRobot .= True
 
-            return $ Out VUnit s k
+            ourID <- use @Robot robotID
+
+            -- The program for the salvaged robot to run
+            let giveInventory =
+                  foldr (TBind Nothing . giveItem) (TConst Selfdestruct) salvageItems
+                giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TString item)
+
+            -- Reprogram and activate the salvaged robot
+            robotMap . at (target ^. robotID) . traverse . machine
+              .= In giveInventory empty emptyStore [FExec]
+            activateRobot (target ^. robotID)
+
+            -- Now wait the right amount of time for it to finish.
+            time <- use ticks
+            return $ Waiting (time + fromIntegral numItems + 1) (Out VUnit s k)
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in
@@ -1286,7 +1324,7 @@ execConst c vs s k = do
 
         return $ case mt of
           Nothing -> idleMachine
-          Just t -> initMachine' t empty emptyStore k
+          Just t -> initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k

@@ -134,7 +134,8 @@ executable swarm
     import:           stan-config, common
     main-is:          Main.hs
     build-depends:    optparse-applicative          >= 0.16 && < 0.17,
-                      -- Import shared with the library don't need bounds
+                      githash                       >= 0.1.6 && < 0.2,
+                      -- Imports shared with the library don't need bounds
                       base,
                       text,
                       swarm
