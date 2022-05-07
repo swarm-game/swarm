@@ -41,6 +41,7 @@ import Data.Array
 import Data.Bifunctor (first)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml as Y
@@ -117,11 +118,14 @@ scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a
 --   'WorldFun'.
 data WorldDescription = WorldDescription
-  { defaultTerrain :: Either Int (TerrainType, Maybe Text)
+  -- XXX if Left Nothing, pick a random seed / prompt the user for one
+  { defaultTerrain :: Either (Maybe Int) (TerrainType, Maybe Text)
   , palette :: WorldPalette
   , ul :: V2 Int64
   , area :: Text
   }
+
+-- XXX how to make sure base is relocated when loading from scenario?
 
 instance FromJSON WorldDescription where
   parseJSON = withObject "world description" $ \v ->
@@ -129,9 +133,9 @@ instance FromJSON WorldDescription where
       <$> ( Left <$> v .: "seed"
               <|> Right <$> v .:? "default" .!= (BlankT, Nothing)
           )
-      <*> v .: "palette"
-      <*> v .: "upperleft"
-      <*> v .: "map"
+      <*> v .:? "palette" .!= WorldPalette HM.empty
+      <*> v .:? "upperleft" .!= V2 0 0
+      <*> v .:? "map" .!= ""
 
 newtype WorldPalette = WorldPalette
   {unPalette :: HashMap Text (TerrainType, Maybe Text)}
@@ -166,7 +170,7 @@ mkWorldFun pwd = E $ \em -> do
   case defaultTerrain wd of
     Left seed -> do
       let arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
-      return $ (lkup em <$>) . first fromEnum <$> testWorld2FromArray arr2 seed
+      return $ (lkup em <$>) . first fromEnum <$> testWorld2FromArray arr2 (fromMaybe 0 seed)
     Right def -> do
       let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
       return $ worldFunFromArray arr defTerrain

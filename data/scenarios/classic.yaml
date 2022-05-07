@@ -1,0 +1,16 @@
+name: Classic game
+description: The classic game.  Foo bar.
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,0]
+    devices:
+      - 3D printer
+      - dictionary
+      - grabber
+      - life support system
+      - logger
+      - solar panel
+      - workbench
+world:
+  seed: null
