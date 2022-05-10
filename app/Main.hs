@@ -36,7 +36,7 @@ cliParser =
   seed :: Parser Int
   seed = option auto (long "seed" <> short 's' <> value 0 <> metavar "INT" <> help "Seed for world generation")
   challenge :: Parser (Maybe String)
-  challenge = optional $ strOption (long "challenge" <> short 'c' <> metavar "FILE" <> help "Name of a challenge to load")
+  challenge = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
 
