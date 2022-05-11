@@ -102,6 +102,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
+  initScenario,
   Seed,
 ) where
 
@@ -133,6 +134,7 @@ import qualified Brick.Widgets.List as BL
 import Paths_swarm (getDataFileName)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
@@ -633,26 +635,24 @@ populateInventoryList (Just r) = do
 
 -- | Initialize the 'AppState'.
 initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
-initAppState seed scenario toRun = do
-  let gtype = initGameType seed scenario
-      showMenu = isNothing scenario && isNothing toRun
-  AppState <$> initGameState gtype toRun <*> initUIState showMenu
+initAppState seed scenarioName toRun = do
+  let scenario = initScenario seed (fromMaybe "classic" scenarioName)
+      showMenu = isNothing scenarioName && isNothing toRun
+  AppState <$> initGameState scenario toRun <*> initUIState showMenu
 
-initGameType :: Seed -> Maybe String -> GameType
-initGameType seed Nothing = ClassicGame seed
-initGameType _ (Just scenario) =
-  ScenarioGame $ \em -> do
-    libScenario <- lift $ getDataFileName $ "scenarios" </> scenario
-    libScenarioExt <- lift $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
+initScenario :: Seed -> String -> (EntityMap -> ExceptT Text IO Scenario)
+initScenario _ scenario em = do
+  libScenario <- lift $ getDataFileName $ "scenarios" </> scenario
+  libScenarioExt <- lift $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
 
-    mfileName <-
-      lift $
-        listToMaybe <$> filterM doesFileExist [scenario, libScenarioExt, libScenario]
+  mfileName <-
+    lift $
+      listToMaybe <$> filterM doesFileExist [scenario, libScenarioExt, libScenario]
 
-    case mfileName of
-      Nothing -> throwError $ "Scenario not found: " <> from @String scenario
-      Just fileName -> do
-        res <- lift $ decodeFileEitherE em fileName
-        case res of
-          Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
-          Right c -> return c
+  case mfileName of
+    Nothing -> throwError $ "Scenario not found: " <> from @String scenario
+    Just fileName -> do
+      res <- lift $ decodeFileEitherE em fileName
+      case res of
+        Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
+        Right c -> return c

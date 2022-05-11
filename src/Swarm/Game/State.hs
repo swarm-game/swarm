@@ -21,7 +21,6 @@ module Swarm.Game.State (
   _WinCondition,
   _Won,
   RunStatus (..),
-  GameType (..),
   GameState,
   Seed,
   initGameState,
@@ -72,7 +71,6 @@ import Control.Arrow (Arrow ((&&&)))
 import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
 import Data.Array (Array, listArray)
-import Data.Bifunctor (first)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM
@@ -81,7 +79,7 @@ import qualified Data.IntSet as IS
 import Data.IntSet.Lens (setOf)
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T (lines)
 import qualified Data.Text.IO as T (readFile)
@@ -99,7 +97,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
-import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2)
+import Swarm.Game.WorldGen (Seed)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Types
 import Swarm.Util
@@ -393,25 +391,13 @@ addRobot r = do
     %= M.insertWith IS.union (r ^. robotLocation) (IS.singleton rid)
   internalActiveRobots %= IS.insert rid
 
--- | What type of game does the user want to start?
-data GameType
-  = ClassicGame Seed
-  | ScenarioGame (EntityMap -> ExceptT Text IO Scenario)
-
--- | The 'GameType', instantiated with loaded entites and records.
-data InstGameType
-  = IClassicGame Seed
-  | IScenarioGame Scenario
-
-instGameType :: EntityMap -> [Recipe Entity] -> GameType -> ExceptT Text IO InstGameType
-instGameType em _rs gt = case gt of
-  ClassicGame s -> return $ IClassicGame s
-  ScenarioGame c -> IScenarioGame <$> c em
+-- XXX the type of the first argument to initGameState seems
+-- unnecessarily complex.
 
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
-initGameState :: GameType -> Maybe String -> ExceptT Text IO GameState
-initGameState gtype toRun = do
+initGameState :: (EntityMap -> ExceptT Text IO Scenario) -> Maybe String -> ExceptT Text IO GameState
+initGameState scenarioWith _toRun = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -425,44 +411,24 @@ initGameState gtype toRun = do
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
-  iGameType <- instGameType entities recipes gtype
+  scenario <- scenarioWith entities
 
-  let baseDeviceNames =
-        [ "solar panel"
-        , "3D printer"
-        , "dictionary"
-        , "workbench"
-        , "grabber"
-        , "life support system"
-        , "logger"
-        ]
-      baseDevices = mapMaybe (`lookupEntityName` entities) baseDeviceNames
-      baseID = 0
-      theBase = baseRobot baseDevices toRun
+  let baseID = 0
+      -- XXX deal with 'toRun'.  How is base robot generated from
+      -- scenario descriptions?
 
-      robotList = case iGameType of
-        IClassicGame _ -> [theBase]
-        IScenarioGame c -> zipWith setRobotID [0 ..] (c ^. scenarioRobots)
+      robotList = zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
 
+      -- XXX get this from scenario
       creative = False
 
-      theWorld = case iGameType of
-        IClassicGame seed ->
-          W.newWorld
-            . fmap ((lkup entities <$>) . first fromEnum)
-            . findGoodOrigin
-            $ testWorld2 seed
-        IScenarioGame c -> W.newWorld (c ^. scenarioWorld)
+      theWorld = W.newWorld (scenario ^. scenarioWorld)
 
-      theWinCondition = case iGameType of
-        IClassicGame _ -> NoWinCondition
-        IScenarioGame c -> maybe NoWinCondition WinCondition (c ^. scenarioWin)
+      theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
 
-  seed <- case iGameType of
-    IClassicGame s -> return s
-    IScenarioGame c -> case c ^. scenarioSeed of
-      Just s -> return s
-      Nothing -> return 0 -- XXX use a random seed
+  seed <- case scenario ^. scenarioSeed of
+    Just s -> return s
+    Nothing -> return 0 -- XXX use a random seed
   liftIO $ putStrLn ("Using seed... " <> show seed)
 
   let initGensym = length robotList - 1
@@ -494,10 +460,6 @@ initGameState gtype toRun = do
       , _focusedRobotID = baseID
       , _ticks = 0
       }
- where
-  lkup :: EntityMap -> Maybe Text -> Maybe Entity
-  lkup _ Nothing = Nothing
-  lkup em (Just t) = lookupEntityName t em
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
