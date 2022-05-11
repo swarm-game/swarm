@@ -419,9 +419,6 @@ initGameState scenarioWith _toRun = do
 
       robotList = zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
 
-      -- XXX get this from scenario
-      creative = False
-
       theWorld = W.newWorld (scenario ^. scenarioWorld)
 
       theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
@@ -435,7 +432,7 @@ initGameState scenarioWith _toRun = do
 
   return $
     GameState
-      { _creativeMode = creative
+      { _creativeMode = scenario ^. scenarioCreative
       , _winCondition = theWinCondition
       , _runStatus = Running
       , _robotMap = IM.fromList $ map (view robotID &&& id) robotList

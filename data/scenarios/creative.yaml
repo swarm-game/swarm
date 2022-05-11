@@ -1,0 +1,10 @@
+name: Creative game
+description: The creative game.  Foo bar.
+creative: true
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,0]
+world:
+  seed: null
+  offset: true
