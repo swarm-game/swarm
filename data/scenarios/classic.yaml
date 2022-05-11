@@ -14,3 +14,4 @@ robots:
       - workbench
 world:
   seed: null
+  offset: true

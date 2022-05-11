@@ -53,7 +53,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Robot (URobot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
-import Swarm.Game.WorldGen (testWorld2FromArray)
+import Swarm.Game.WorldGen (findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
 
@@ -120,6 +120,7 @@ scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
 data WorldDescription = WorldDescription
   -- XXX if Left Nothing, pick a random seed / prompt the user for one
   { defaultTerrain :: Either (Maybe Int) (TerrainType, Maybe Text)
+  , offsetOrigin :: Bool
   , palette :: WorldPalette
   , ul :: V2 Int64
   , area :: Text
@@ -133,6 +134,7 @@ instance FromJSON WorldDescription where
       <$> ( Left <$> v .: "seed"
               <|> Right <$> v .:? "default" .!= (BlankT, Nothing)
           )
+      <*> v .:? "offset" .!= False
       <*> v .:? "palette" .!= WorldPalette HM.empty
       <*> v .:? "upperleft" .!= V2 0 0
       <*> v .:? "map" .!= ""
@@ -170,7 +172,11 @@ mkWorldFun pwd = E $ \em -> do
   case defaultTerrain wd of
     Left seed -> do
       let arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
-      return $ (lkup em <$>) . first fromEnum <$> testWorld2FromArray arr2 (fromMaybe 0 seed)
+      return $
+        fmap ((lkup em <$>) . first fromEnum)
+          . (if offsetOrigin wd then findGoodOrigin else id)
+          . testWorld2FromArray arr2
+          $ fromMaybe 0 seed
     Right def -> do
       let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
       return $ worldFunFromArray arr defTerrain
