@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.Game.State
@@ -85,12 +87,14 @@ import qualified Data.Text as T (lines)
 import qualified Data.Text.IO as T (readFile)
 import Linear
 import System.Random (StdGen, mkStdGen)
+import Witch (into)
 
 import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 
 import Paths_swarm (getDataFileName)
+import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -98,7 +102,10 @@ import Swarm.Game.Scenario
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed)
+import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax (Term (TString))
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -397,7 +404,7 @@ addRobot r = do
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
 initGameState :: (EntityMap -> ExceptT Text IO Scenario) -> Maybe String -> ExceptT Text IO GameState
-initGameState scenarioWith _toRun = do
+initGameState scenarioWith toRun = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -414,13 +421,16 @@ initGameState scenarioWith _toRun = do
   scenario <- scenarioWith entities
 
   let baseID = 0
-      -- XXX deal with 'toRun'.  How is base robot generated from
-      -- scenario descriptions?
-
-      robotList = zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
+      robotList =
+        zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
+          -- If the  --run flag was used, use it to replace the CESK machine of the
+          -- robot whose id is 0, i.e. the first robot listed in the scenario.
+          & ix 0 . machine
+            %~ case toRun of
+              Nothing -> id
+              Just (into @Text -> f) -> const (initMachine [tmQ| run($str:f) |] Ctx.empty emptyStore)
 
       theWorld = W.newWorld (scenario ^. scenarioWorld)
-
       theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
 
   seed <- case scenario ^. scenarioSeed of
