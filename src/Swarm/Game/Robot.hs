@@ -61,7 +61,6 @@ module Swarm.Game.Robot (
 
   -- ** Create
   mkRobot,
-  baseRobot,
   setRobotID,
 
   -- ** Query
@@ -81,7 +80,6 @@ import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Linear
-import Witch (into)
 
 import Data.Yaml ((.!=), (.:), (.:?))
 import Swarm.Util.Yaml
@@ -92,8 +90,6 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability
 import Swarm.Language.Context
-import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Term (TString), east)
 import Swarm.Language.Types (TCtx)
 
 -- | A record that stores the information
@@ -380,36 +376,6 @@ mkRobot rid pid name descr loc dir disp m devs inv sys =
     , _robotParentID = pid
     , _machine = m
     , _systemRobot = sys
-    , _selfDestruct = False
-    , _tickSteps = 0
-    }
- where
-  inst = fromList devs
-
--- | The initial robot representing your "base".
-baseRobot :: [Entity] -> Maybe FilePath -> Robot
-baseRobot devs toRun =
-  RobotR
-    { _robotEntity =
-        mkEntity
-          defaultRobotDisplay
-          "base"
-          ["Your base of operations."]
-          []
-          & entityOrientation ?~ east
-          & entityDisplay . orientationMap .~ Empty
-    , _installedDevices = inst
-    , _robotCapabilities = inventoryCapabilities inst
-    , _robotLog = Seq.empty
-    , _robotLogUpdated = False
-    , _robotLocation = V2 0 0
-    , _robotContext = RobotContext empty empty empty emptyStore
-    , _robotID = 0
-    , _robotParentID = Nothing
-    , _machine = case toRun of
-        Nothing -> idleMachine
-        Just (into @Text -> f) -> initMachine [tmQ| run($str:f) |] empty emptyStore
-    , _systemRobot = False
     , _selfDestruct = False
     , _tickSteps = 0
     }

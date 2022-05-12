@@ -3,7 +3,10 @@ description: The classic game.  Foo bar.
 robots:
   - name: base
     loc: [0,0]
-    dir: [0,0]
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
     devices:
       - 3D printer
       - dictionary
