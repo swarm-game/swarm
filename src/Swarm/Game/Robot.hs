@@ -400,7 +400,7 @@ instance FromJSONE EntityMap URobot where
       <*> v ..:? "inventory" ..!= []
       <*> liftE (v .:? "system" .!= False)
    where
-    mkMachine Nothing = idleMachine
+    mkMachine Nothing = Out VUnit emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore
 
 -- | Is the robot actively in the middle of a computation?
