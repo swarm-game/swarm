@@ -103,6 +103,10 @@ module Swarm.TUI.Model (
   -- ** Initialization
   initAppState,
   Seed,
+
+  -- ** Utility
+  focusedItem,
+  focusedEntity,
 ) where
 
 import Control.Lens hiding (from, (<.>))
@@ -302,6 +306,7 @@ data ModalType
   = HelpModal
   | WinModal
   | QuitModal
+  | DescriptionModal Entity
   deriving (Eq, Show)
 
 data ButtonSelection = Cancel | Confirm
@@ -513,6 +518,27 @@ gameState :: Lens' AppState GameState
 
 -- | The 'UIState' record.
 uiState :: Lens' AppState UIState
+
+--------------------------------------------------
+-- Utility functions
+
+-- | Get the currently focused 'InventoryListEntry' from the robot
+--   info panel (if any).
+focusedItem :: AppState -> Maybe InventoryListEntry
+focusedItem s = do
+  list <- s ^? uiState . uiInventory . _Just . _2
+  (_, entry) <- BL.listSelectedElement list
+  return entry
+
+-- | Get the currently focused entity from the robot info panel (if
+--   any).  This is just like 'focusedItem' but forgets the
+--   distinction between plain inventory items and installed devices.
+focusedEntity :: AppState -> Maybe Entity
+focusedEntity =
+  focusedItem >=> \case
+    Separator _ -> Nothing
+    InventoryEntry _ e -> Just e
+    InstalledEntry e -> Just e
 
 --------------------------------------------------
 -- UIState initialization

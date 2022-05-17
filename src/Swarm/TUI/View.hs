@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.TUI.View
@@ -40,7 +41,7 @@ module Swarm.TUI.View (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens
+import Control.Lens hiding (from)
 import Data.Array (range)
 import qualified Data.Foldable as F
 import qualified Data.IntMap as IM
@@ -54,6 +55,7 @@ import qualified Data.Text as T
 import Linear
 import Text.Printf
 import Text.Wrap
+import Witch (from)
 
 import Brick hiding (Direction)
 import Brick.Focus
@@ -257,6 +259,7 @@ generateModal mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `m
     case mt of
       HelpModal -> ("Help", helpWidget, Nothing, maxModalWindowWidth)
       WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
+      DescriptionModal e -> (from @Text (e ^. entityName), descriptionWidget e, Nothing, maxModalWindowWidth)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit?"
          in ( ""
@@ -299,6 +302,13 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
+descriptionWidget :: Entity -> Widget Name
+descriptionWidget _e = undefined
+
+-- XXX need to call something like explainEntry; problem is that
+-- depends on knowing the AppState to be able to color the recipes
+-- appropriately
+
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
@@ -328,12 +338,12 @@ drawKeyMenu s =
         True -> "Creative"
   globalKeyCmds =
     [ ("F1", "help")
-    , ("Tab", "cycle panels")
+    , ("Tab", "cycle")
     ]
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
-      ++ [("Enter", "execute") | not isReplWorking]
+      ++ [("Ret", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll") | creative
@@ -345,7 +355,8 @@ drawKeyMenu s =
       ++ [("c", "recenter") | not viewingBase]
   keyCmdsFor (Just RobotPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
-    , ("Enter", "make")
+    , ("Ret", "focus")
+    , ("m", "make")
     , ("0", "hide/show 0")
     ]
   keyCmdsFor (Just InfoPanel) =
@@ -492,20 +503,18 @@ drawInfoPanel s =
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
 explainFocusedItem :: AppState -> Widget Name
-explainFocusedItem s = case mItem of
-  Nothing -> txt " "
-  Just (Separator _) -> txt " "
-  Just (InventoryEntry _ e) ->
-    vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
-      <=> explainRecipes e
+explainFocusedItem s = case focusedItem s of
+  Just (InventoryEntry _ e) -> explainEntry e
   Just (InstalledEntry e) ->
-    vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
-      <=> explainRecipes e
+    explainEntry e
       -- Special case: installed logger device displays the robot's log.
       <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
+  _ -> txt " "
  where
-  mList = s ^? uiState . uiInventory . _Just . _2
-  mItem = mList >>= BL.listSelectedElement >>= (Just . snd)
+  explainEntry :: Entity -> Widget Name
+  explainEntry e =
+    vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
+      <=> explainRecipes e
 
   explainRecipes :: Entity -> Widget Name
   explainRecipes e
