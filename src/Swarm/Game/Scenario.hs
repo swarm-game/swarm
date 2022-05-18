@@ -1,6 +1,5 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -45,7 +44,7 @@ import Data.Array
 import Data.Bifunctor (first)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml as Y
@@ -60,9 +59,10 @@ import Swarm.Game.Entity
 import Swarm.Game.Robot (URobot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
-import Swarm.Game.WorldGen (findGoodOrigin, testWorld2FromArray)
+import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
+import System.Random (randomRIO)
 
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
@@ -72,7 +72,7 @@ data Scenario = Scenario
   , _scenarioCreative :: Bool -- Maybe generalize this to a mode enumeration
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
-  , _scenarioWorld :: WorldFun Int Entity
+  , _scenarioWorld :: Seed -> WorldFun Int Entity
   , _scenarioRobots :: [URobot]
   , _scenarioWin :: Maybe ProcessedTerm
   }
@@ -86,7 +86,7 @@ instance FromJSONE EntityMap Scenario where
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= "")
       <*> liftE (v .:? "creative" .!= False)
-      <*> liftE (v .:? "seed") -- TODO: avoid two seeds
+      <*> liftE (v .:? "seed")
       <*> pure em
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
@@ -109,7 +109,7 @@ scenarioSeed :: Lens' Scenario (Maybe Int)
 scenarioEntities :: Lens' Scenario EntityMap
 
 -- | The starting world for the scenario.
-scenarioWorld :: Lens' Scenario (WorldFun Int Entity)
+scenarioWorld :: Lens' Scenario (Seed -> WorldFun Int Entity)
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.
@@ -125,8 +125,7 @@ scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a
 --   'WorldFun'.
 data WorldDescription = WorldDescription
-  -- XXX if Left Nothing, pick a random seed / prompt the user for one
-  { defaultTerrain :: Either (Maybe Int) (TerrainType, Maybe Text)
+  { defaultTerrain :: Maybe (TerrainType, Maybe Text)
   , offsetOrigin :: Bool
   , palette :: WorldPalette
   , ul :: V2 Int64
@@ -136,9 +135,7 @@ data WorldDescription = WorldDescription
 instance FromJSON WorldDescription where
   parseJSON = withObject "world description" $ \v ->
     WorldDescription
-      <$> ( Left <$> v .: "seed"
-              <|> Right <$> v .:? "default" .!= (BlankT, Nothing)
-          )
+      <$> v .:? "default"
       <*> v .:? "offset" .!= False
       <*> v .:? "palette" .!= WorldPalette HM.empty
       <*> v .:? "upperleft" .!= V2 0 0
@@ -150,7 +147,7 @@ newtype WorldPalette = WorldPalette
 instance FromJSON WorldPalette where
   parseJSON = withObject "palette" $ fmap WorldPalette . mapM parseJSON
 
-mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (WorldFun Int Entity)
+mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (Seed -> WorldFun Int Entity)
 mkWorldFun pwd = E $ \em -> do
   wd <- pwd
   let toEntity :: Char -> Parser (Int, Maybe Entity)
@@ -175,16 +172,15 @@ mkWorldFun pwd = E $ \em -> do
       . concat
       $ grid
   case defaultTerrain wd of
-    Left seed -> do
+    Nothing -> do
       let arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
       return $
         fmap ((lkup em <$>) . first fromEnum)
           . (if offsetOrigin wd then findGoodOrigin else id)
           . testWorld2FromArray arr2
-          $ fromMaybe 0 seed
-    Right def -> do
+    Just def -> do
       let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
-      return $ worldFunFromArray arr defTerrain
+      return $ \_ -> worldFunFromArray arr defTerrain
  where
   lkup :: EntityMap -> Maybe Text -> Maybe Entity
   lkup _ Nothing = Nothing
@@ -192,8 +188,8 @@ mkWorldFun pwd = E $ \em -> do
 
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.
-loadScenario :: String -> EntityMap -> ExceptT Text IO Scenario
-loadScenario scenario em = do
+loadScenario :: Maybe Seed -> String -> EntityMap -> ExceptT Text IO Scenario
+loadScenario userSeed scenario em = do
   libScenario <- lift $ getDataFileName $ "scenarios" </> scenario
   libScenarioExt <- lift $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
 
@@ -207,4 +203,12 @@ loadScenario scenario em = do
       res <- lift $ decodeFileEitherE em fileName
       case res of
         Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
-        Right c -> return c
+        Right c -> do
+          -- Decide on a seed.  In order of preference, we will use:
+          --   1. seed value provided by the user
+          --   2. seed value specified in the scenario description
+          --   3. randomly chosen seed value
+          seed <- case userSeed <|> c ^. scenarioSeed of
+            Just s -> return s
+            Nothing -> randomRIO (0, maxBound :: Int)
+          return (c & scenarioSeed ?~ seed)

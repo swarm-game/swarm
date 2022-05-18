@@ -93,7 +93,6 @@ import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 
-import Control.Applicative ((<|>))
 import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
@@ -416,7 +415,8 @@ initGameState cmdlineSeed sName toRun = do
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
-  scenario <- loadScenario (fromMaybe "classic" sName) entities
+  scenario <- loadScenario cmdlineSeed (fromMaybe "classic" sName) entities
+  let seed = fromMaybe 0 (scenario ^. scenarioSeed)
 
   let baseID = 0
       robotList =
@@ -428,17 +428,8 @@ initGameState cmdlineSeed sName toRun = do
               Nothing -> id
               Just (into @Text -> f) -> const (initMachine [tmQ| run($str:f) |] Ctx.empty emptyStore)
 
-      theWorld = W.newWorld (scenario ^. scenarioWorld)
+      theWorld = W.newWorld ((scenario ^. scenarioWorld) (fromMaybe 0 (scenario ^. scenarioSeed)))
       theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
-
-  -- Decide on a seed.  In order of preference, we will use:
-  --   1. seed value provided on the command line
-  --   2. seed value specified in the scenario description
-  --   3. randomly chosen value
-  seed <- case cmdlineSeed <|> scenario ^. scenarioSeed of
-    Just s -> return s
-    Nothing -> return 0 -- XXX use a random seed
-  liftIO $ putStrLn ("Using seed... " <> show seed)
 
   let initGensym = length robotList - 1
 
