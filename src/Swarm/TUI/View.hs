@@ -252,14 +252,14 @@ drawDialog s = case s ^. uiModal of
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
 
 -- | Generate a fresh modal window of the requested type.
-generateModal :: ModalType -> Modal
-generateModal mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
+generateModal :: AppState -> ModalType -> Modal
+generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
  where
   (title, widget, buttons, requiredWidth) =
     case mt of
-      HelpModal -> ("Help", helpWidget, Nothing, maxModalWindowWidth)
+      HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
       WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
-      DescriptionModal e -> (from @Text (e ^. entityName), descriptionWidget e, Nothing, maxModalWindowWidth)
+      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, maxModalWindowWidth)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit?"
          in ( ""
@@ -302,12 +302,12 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
-descriptionWidget :: Entity -> Widget Name
-descriptionWidget _e = undefined
+descriptionTitle :: Entity -> String
+descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 
--- XXX need to call something like explainEntry; problem is that
--- depends on knowing the AppState to be able to color the recipes
--- appropriately
+-- | Generate a pop-up widget to display the description of an entity.
+descriptionWidget :: AppState -> Entity -> Widget Name
+descriptionWidget s e = padLeftRight 1 (explainEntry s e)
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
@@ -504,49 +504,49 @@ drawInfoPanel s =
 --   such as its description and relevant recipes.
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case focusedItem s of
-  Just (InventoryEntry _ e) -> explainEntry e
+  Just (InventoryEntry _ e) -> explainEntry s e
   Just (InstalledEntry e) ->
-    explainEntry e
+    explainEntry s e
       -- Special case: installed logger device displays the robot's log.
       <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
   _ -> txt " "
+
+explainEntry :: AppState -> Entity -> Widget Name
+explainEntry s e =
+  vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
+    <=> explainRecipes s e
+
+explainRecipes :: AppState -> Entity -> Widget Name
+explainRecipes s e
+  | null recipes = emptyWidget
+  | otherwise =
+    vBox
+      [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
+      , padLeftRight 2 $
+          hCenter $
+            vBox $
+              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
+      ]
  where
-  explainEntry :: Entity -> Widget Name
-  explainEntry e =
-    vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
-      <=> explainRecipes e
+  recipes = recipesWith s e
 
-  explainRecipes :: Entity -> Widget Name
-  explainRecipes e
-    | null recipes = emptyWidget
-    | otherwise =
-      vBox
-        [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
-        , padLeftRight 2 $
-            hCenter $
-              vBox $
-                map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
-        ]
-   where
-    recipes = recipesWith e
+  inv = fromMaybe E.empty $ s ^? gameState . to focusedRobot . _Just . robotInventory
 
-    inv = fromMaybe E.empty $ s ^? gameState . to focusedRobot . _Just . robotInventory
+  width (n, ingr) =
+    length (show n) + 1 + maximum0 (map T.length . T.words $ ingr ^. entityName)
 
-    width (n, ingr) =
-      length (show n) + 1 + maximum0 (map T.length . T.words $ ingr ^. entityName)
+  maxInputWidth =
+    fromMaybe 0 $
+      maximumOf (traverse . recipeInputs . traverse . to width) recipes
+  maxOutputWidth =
+    fromMaybe 0 $
+      maximumOf (traverse . recipeOutputs . traverse . to width) recipes
+  widthLimit = 2 * max maxInputWidth maxOutputWidth + 11
 
-    maxInputWidth =
-      fromMaybe 0 $
-        maximumOf (traverse . recipeInputs . traverse . to width) recipes
-    maxOutputWidth =
-      fromMaybe 0 $
-        maximumOf (traverse . recipeOutputs . traverse . to width) recipes
-    widthLimit = 2 * max maxInputWidth maxOutputWidth + 11
-
-  recipesWith :: Entity -> [Recipe Entity]
-  recipesWith e =
-    let getRecipes select = recipesFor (s ^. gameState . select) e
-     in L.nub $ getRecipes recipesOut ++ getRecipes recipesIn
+recipesWith :: AppState -> Entity -> [Recipe Entity]
+recipesWith s e =
+  let getRecipes select = recipesFor (s ^. gameState . select) e
+   in L.nub $ getRecipes recipesOut ++ getRecipes recipesIn
 
 -- | Draw an ASCII art representation of a recipe.
 drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name

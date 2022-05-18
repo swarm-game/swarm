@@ -166,7 +166,7 @@ toggleModal s mt = do
   curTime <- liftIO $ getTime Monotonic
   return $
     s & case s ^. uiState . uiModal of
-      Nothing -> (uiState . uiModal ?~ generateModal mt) . ensurePause
+      Nothing -> (uiState . uiModal ?~ generateModal s mt) . ensurePause
       Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
  where
   -- Set the game to AutoPause if needed
@@ -418,11 +418,12 @@ updateUI = do
   -- Decide whether to show a pop-up modal congratulating the user on
   -- successfully completing the current challenge.
   winModalUpdated <- do
+    s <- get
     w <- use (gameState . winCondition)
     case w of
       Won False -> do
         gameState . winCondition .= Won True
-        uiState . uiModal .= Just (generateModal WinModal)
+        uiState . uiModal .= Just (generateModal s WinModal)
         return True
       _ -> return False
 
@@ -657,7 +658,7 @@ makeEntity s e = do
 -- | Display a modal window with the description of an entity.
 descriptionModal :: AppState -> Entity -> EventM Name (Next AppState)
 descriptionModal s e =
-  continue $ s & uiState . uiModal ?~ generateModal (DescriptionModal e)
+  continue $ s & uiState . uiModal ?~ generateModal s (DescriptionModal e)
 
 ------------------------------------------------------------
 -- Info panel events
