@@ -17,7 +17,7 @@ import System.Exit
 
 data CLI
   = -- seed, challenge file, run file
-    Run Int (Maybe FilePath) (Maybe FilePath)
+    Run (Maybe Int) (Maybe FilePath) (Maybe FilePath)
   | Format Input
   | LSP
 
@@ -33,8 +33,8 @@ cliParser =
   format =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
-  seed :: Parser Int
-  seed = option auto (long "seed" <> short 's' <> value 0 <> metavar "INT" <> help "Seed for world generation")
+  seed :: Parser (Maybe Int)
+  seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   challenge :: Parser (Maybe String)
   challenge = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)

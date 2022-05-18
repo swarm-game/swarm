@@ -93,6 +93,7 @@ import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 
+import Control.Applicative ((<|>))
 import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
@@ -398,13 +399,10 @@ addRobot r = do
     %= M.insertWith IS.union (r ^. robotLocation) (IS.singleton rid)
   internalActiveRobots %= IS.insert rid
 
--- XXX the type of the first argument to initGameState seems
--- unnecessarily complex.
-
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
-initGameState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO GameState
-initGameState _cmdlineSeed sName toRun = do
+initGameState :: Maybe Seed -> Maybe String -> Maybe String -> ExceptT Text IO GameState
+initGameState cmdlineSeed sName toRun = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -433,8 +431,11 @@ initGameState _cmdlineSeed sName toRun = do
       theWorld = W.newWorld (scenario ^. scenarioWorld)
       theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
 
-  -- XXX use the provided seed from command-line if none specified in scenario, then use random
-  seed <- case scenario ^. scenarioSeed of
+  -- Decide on a seed.  In order of preference, we will use:
+  --   1. seed value provided on the command line
+  --   2. seed value specified in the scenario description
+  --   3. randomly chosen value
+  seed <- case cmdlineSeed <|> scenario ^. scenarioSeed of
     Just s -> return s
     Nothing -> return 0 -- XXX use a random seed
   liftIO $ putStrLn ("Using seed... " <> show seed)
