@@ -32,23 +32,30 @@ module Swarm.Game.Scenario (
   scenarioWorld,
   scenarioRobots,
   scenarioWin,
+
+  -- * Loading from disk
+  loadScenario,
 ) where
 
 import Control.Applicative ((<|>))
 import Control.Arrow ((***))
-import Control.Lens hiding (from)
+import Control.Lens hiding (from, (<.>))
+import Control.Monad.Except
 import Data.Array
 import Data.Bifunctor (first)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
+import System.Directory (doesFileExist)
+import System.FilePath ((<.>), (</>))
 import Witch (from, into)
 
+import Paths_swarm (getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Robot (URobot)
 import Swarm.Game.Terrain
@@ -126,8 +133,6 @@ data WorldDescription = WorldDescription
   , area :: Text
   }
 
--- XXX how to make sure base is relocated when loading from scenario?
-
 instance FromJSON WorldDescription where
   parseJSON = withObject "world description" $ \v ->
     WorldDescription
@@ -184,3 +189,22 @@ mkWorldFun pwd = E $ \em -> do
   lkup :: EntityMap -> Maybe Text -> Maybe Entity
   lkup _ Nothing = Nothing
   lkup em (Just t) = lookupEntityName t em
+
+-- | Load a scenario with a given name from disk, given an entity map
+--   to use.
+loadScenario :: String -> EntityMap -> ExceptT Text IO Scenario
+loadScenario scenario em = do
+  libScenario <- lift $ getDataFileName $ "scenarios" </> scenario
+  libScenarioExt <- lift $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
+
+  mfileName <-
+    lift $
+      listToMaybe <$> filterM doesFileExist [scenario, libScenarioExt, libScenario]
+
+  case mfileName of
+    Nothing -> throwError $ "Scenario not found: " <> from @String scenario
+    Just fileName -> do
+      res <- lift $ decodeFileEitherE em fileName
+      case res of
+        Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
+        Right c -> return c

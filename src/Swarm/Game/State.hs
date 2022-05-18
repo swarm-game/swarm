@@ -403,8 +403,8 @@ addRobot r = do
 
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
-initGameState :: (EntityMap -> ExceptT Text IO Scenario) -> Maybe String -> ExceptT Text IO GameState
-initGameState scenarioWith toRun = do
+initGameState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO GameState
+initGameState _cmdlineSeed sName toRun = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -418,7 +418,7 @@ initGameState scenarioWith toRun = do
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
-  scenario <- scenarioWith entities
+  scenario <- loadScenario (fromMaybe "classic" sName) entities
 
   let baseID = 0
       robotList =
@@ -433,6 +433,7 @@ initGameState scenarioWith toRun = do
       theWorld = W.newWorld (scenario ^. scenarioWorld)
       theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
 
+  -- XXX use the provided seed from command-line if none specified in scenario, then use random
   seed <- case scenario ^. scenarioSeed of
     Just s -> return s
     Nothing -> return 0 -- XXX use a random seed

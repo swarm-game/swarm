@@ -23,7 +23,6 @@ import qualified Swarm.Language.Context as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (north)
-import Swarm.TUI.Model (initScenario)
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
@@ -80,7 +79,7 @@ initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDi
 mkGameState :: (V2 Int64 -> URobot) -> Int -> IO GameState
 mkGameState robotMaker numRobots = do
   let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0 .. numRobots -1]]
-  Right initState <- runExceptT (initGameState (initScenario 0 "classic") Nothing)
+  Right initState <- runExceptT (initGameState 0 (Just "classic") Nothing)
   execStateT
     (mapM addURobot robots)
     ( initState

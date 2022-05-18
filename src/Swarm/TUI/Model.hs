@@ -102,7 +102,6 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
-  initScenario,
   Seed,
 ) where
 
@@ -113,17 +112,13 @@ import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import Data.Yaml (prettyPrintParseException)
 import System.Clock
-import System.Directory (doesFileExist)
-import System.FilePath ((<.>), (</>))
-import Witch (from)
 
 import Brick
 import Brick.Focus
@@ -131,14 +126,11 @@ import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
 import qualified Brick.Widgets.List as BL
 
-import Paths_swarm (getDataFileName)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
-import Swarm.Util.Yaml
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -636,23 +628,5 @@ populateInventoryList (Just r) = do
 -- | Initialize the 'AppState'.
 initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
 initAppState seed scenarioName toRun = do
-  let scenario = initScenario seed (fromMaybe "classic" scenarioName)
-      showMenu = isNothing scenarioName && isNothing toRun
-  AppState <$> initGameState scenario toRun <*> initUIState showMenu
-
-initScenario :: Seed -> String -> (EntityMap -> ExceptT Text IO Scenario)
-initScenario _ scenario em = do
-  libScenario <- lift $ getDataFileName $ "scenarios" </> scenario
-  libScenarioExt <- lift $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
-
-  mfileName <-
-    lift $
-      listToMaybe <$> filterM doesFileExist [scenario, libScenarioExt, libScenario]
-
-  case mfileName of
-    Nothing -> throwError $ "Scenario not found: " <> from @String scenario
-    Just fileName -> do
-      res <- lift $ decodeFileEitherE em fileName
-      case res of
-        Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
-        Right c -> return c
+  let showMenu = isNothing scenarioName && isNothing toRun
+  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu
