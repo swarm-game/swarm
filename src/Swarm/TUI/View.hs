@@ -259,7 +259,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
       WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
-      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, maxModalWindowWidth)
+      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, 100)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit?"
          in ( ""
