@@ -418,11 +418,11 @@ updateUI = do
   -- Decide whether to show a pop-up modal congratulating the user on
   -- successfully completing the current challenge.
   winModalUpdated <- do
-    s <- get
     w <- use (gameState . winCondition)
     case w of
       Won False -> do
         gameState . winCondition .= Won True
+        s <- get
         uiState . uiModal .= Just (generateModal s WinModal)
         return True
       _ -> return False
