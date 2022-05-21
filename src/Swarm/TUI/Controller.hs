@@ -166,7 +166,7 @@ toggleModal s mt = do
   curTime <- liftIO $ getTime Monotonic
   return $
     s & case s ^. uiState . uiModal of
-      Nothing -> (uiState . uiModal ?~ generateModal mt) . ensurePause
+      Nothing -> (uiState . uiModal ?~ generateModal s mt) . ensurePause
       Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
  where
   -- Set the game to AutoPause if needed
@@ -418,11 +418,12 @@ updateUI = do
   -- Decide whether to show a pop-up modal congratulating the user on
   -- successfully completing the current challenge.
   winModalUpdated <- do
+    s <- get
     w <- use (gameState . winCondition)
     case w of
       Won False -> do
         gameState . winCondition .= Won True
-        uiState . uiModal .= Just (generateModal WinModal)
+        uiState . uiModal .= Just (generateModal s WinModal)
         return True
       _ -> return False
 
@@ -618,13 +619,10 @@ adjustTPS (+/-) = uiState . lgTicksPerSecond %~ (+/- 1)
 
 -- | Handle user input events in the robot panel.
 handleRobotPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) = do
-  let mList = s ^? uiState . uiInventory . _Just . _2
-  case mList >>= BL.listSelectedElement of
-    Nothing -> continueWithoutRedraw s
-    Just (_, Separator _) -> continueWithoutRedraw s
-    Just (_, InventoryEntry _ e) -> makeEntity s e
-    Just (_, InstalledEntry e) -> makeEntity s e
+handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) =
+  maybe (continueWithoutRedraw s) (descriptionModal s) (focusedEntity s)
+handleRobotPanelEvent s (VtyEvent (V.EvKey (V.KChar 'm') [])) =
+  maybe (continueWithoutRedraw s) (makeEntity s) (focusedEntity s)
 handleRobotPanelEvent s (VtyEvent (V.EvKey (V.KChar '0') [])) = do
   continue $ s & (uiState . uiShowZero %~ not) . (uiState . uiInventoryShouldUpdate .~ True)
 handleRobotPanelEvent s (VtyEvent ev) = do
@@ -656,6 +654,11 @@ makeEntity s e = do
           & gameState . robotMap . ix 0 . machine .~ initMachine mkPT empty topStore
           & gameState %~ execState (activateRobot 0)
     _ -> continueWithoutRedraw s
+
+-- | Display a modal window with the description of an entity.
+descriptionModal :: AppState -> Entity -> EventM Name (Next AppState)
+descriptionModal s e =
+  continue $ s & uiState . uiModal ?~ generateModal s (DescriptionModal e)
 
 ------------------------------------------------------------
 -- Info panel events
