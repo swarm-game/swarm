@@ -212,3 +212,10 @@ loadScenario userSeed scenario em = do
             Just s -> return s
             Nothing -> randomRIO (0, maxBound :: Int)
           return (c & scenarioSeed ?~ seed)
+
+-- XXX
+
+-- | Load all the scenarios from the scenarios data directory.
+loadScenarios :: ExceptT Text IO _ -- tree of scenarios? Map from
+-- scenario names to Scenarios?
+loadScenarios = undefined

@@ -406,6 +406,9 @@ initGameState cmdlineSeed sName toRun = do
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
+  liftIO $ putStrLn "Loading scenarios..."
+  scenarios <- loadScenarios entities >>= (`isRightOr` id)
+  -- XXX do something with scenarios
 
   (adjs, names) <- liftIO $ do
     putStrLn "Loading name generation data..."

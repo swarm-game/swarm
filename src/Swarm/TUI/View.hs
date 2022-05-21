@@ -68,6 +68,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (Scenario, scenarioName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
@@ -86,6 +87,7 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = case s ^. uiState . uiMenu of
   NoMenu -> drawGameUI s
   MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+  NewGameMenu l -> [drawNewGameMenuUI l]
   TutorialMenu -> [drawTutorialMenuUI]
   ChallengesMenu -> [drawChallengesMenuUI]
   AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
@@ -112,6 +114,11 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '~' = waterAttr
   attrFor '░' = dirtAttr
   attrFor _ = defAttr
+
+drawNewGameMenuUI :: BL.List Name Scenario -> Widget Name
+drawNewGameMenuUI =
+  centerLayer . vLimit 5 . hLimit 20
+    . BL.renderList (const (hCenter . txt . view scenarioName)) True
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"

@@ -128,6 +128,7 @@ import qualified Brick.Widgets.List as BL
 
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
@@ -168,6 +169,8 @@ data Name
     InventoryList
   | -- | The list of main menu choices.
     MenuList
+  | -- | The list of scenario choices.
+    ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -315,6 +318,7 @@ data MainMenuEntry = NewGame | Tutorial | Challenges | About | Quit
 data Menu
   = NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
+  | NewGameMenu (BL.List Name Scenario)
   | TutorialMenu
   | ChallengesMenu
   | AboutMenu

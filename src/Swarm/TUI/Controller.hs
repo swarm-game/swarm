@@ -71,6 +71,7 @@ import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -99,6 +100,7 @@ handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppStat
 handleEvent s = case s ^. uiState . uiMenu of
   NoMenu -> handleMainEvent s
   MainMenu l -> handleMainMenuEvent l s
+  NewGameMenu l -> handleNewGameMenuEvent l s
   TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
   ChallengesMenu -> pressAnyKey (MainMenu (mainMenu Challenges)) s
   AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
@@ -111,7 +113,10 @@ handleMainMenuEvent menu s = \case
     case snd <$> BL.listSelectedElement menu of
       Nothing -> continueWithoutRedraw s
       Just x0 -> case x0 of
-        NewGame -> continue $ s & uiState . uiMenu .~ NoMenu
+        NewGame ->
+          continue $
+            -- XXX populate actual list of scenarios
+            s & uiState . uiMenu .~ NewGameMenu (BL.list ScenarioList mempty 1)
         Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
         Challenges -> continue $ s & uiState . uiMenu .~ ChallengesMenu
         About -> continue $ s & uiState . uiMenu .~ AboutMenu
@@ -123,8 +128,9 @@ handleMainMenuEvent menu s = \case
   _ -> continueWithoutRedraw s
 
 handleNewGameMenuEvent :: BL.List Name Scenario -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleNewGameMenuEvent scenarioList s = \case
+handleNewGameMenuEvent _scenarioList s = \case
   VtyEvent (V.EvKey V.KEnter []) -> undefined
+  VtyEvent (V.EvKey V.KEsc []) -> continue $ s & uiState . uiMenu .~ MainMenu (mainMenu NewGame)
   _ -> continueWithoutRedraw s
 
 pressAnyKey :: Menu -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
