@@ -499,6 +499,7 @@ inferConst c = toU $ case c of
   Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
+  RobotNamed -> [tyQ| string -> cmd robot |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]
