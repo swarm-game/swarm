@@ -133,11 +133,14 @@ defaultEntityDisplay c =
     }
 
 -- | Construct a default robot display, with display characters
---   @"Ω^>v<"@, the default robot attribute, and priority 10.
+--   @"X^>v<"@, the default robot attribute, and priority 10.
+--
+-- Note that the 'defaultChar' is used for direction 'DDown'
+-- and is overriden for the special base robot.
 defaultRobotDisplay :: Display
 defaultRobotDisplay =
   Display
-    { _defaultChar = 'Ω'
+    { _defaultChar = 'X'
     , _orientationMap =
         M.fromList
           [ (DEast, '>')

@@ -398,6 +398,7 @@ baseRobot devs toRun =
           []
           & entityOrientation ?~ east
           & entityDisplay . orientationMap .~ Empty
+          & entityDisplay . defaultChar .~ 'Ω'
     , _installedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLog = Seq.empty
