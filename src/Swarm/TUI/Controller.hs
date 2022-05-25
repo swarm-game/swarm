@@ -133,7 +133,10 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
   VtyEvent (V.EvKey V.KEnter []) ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw s
-      Just (SISingle _scene) -> undefined -- XXX load + play scenario!  Refactor existing code..
+      Just (SISingle scene) ->
+        continue $
+          s & uiState . uiMenu .~ NoMenu
+            & gameState %~ playScenario scene Nothing
       Just (SICollection _ c) ->
         continue $
           s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)

@@ -41,6 +41,7 @@ module Swarm.Game.World (
 
   -- ** World functions
   newWorld,
+  emptyWorld,
   lookupTerrain,
   lookupEntity,
   update,
@@ -200,6 +201,11 @@ data World t e = World
 -- | Create a new 'World' from a 'WorldFun'.
 newWorld :: WorldFun t e -> World t e
 newWorld f = World f M.empty M.empty
+
+-- | Create a new empty 'World' consisting of nothing but the given
+--   terrain.
+emptyWorld :: t -> World t e
+emptyWorld t = newWorld (const (t, Nothing))
 
 -- | Look up the terrain value at certain coordinates: try looking it
 --   up in the tile cache first, and fall back to running the 'WorldFun'

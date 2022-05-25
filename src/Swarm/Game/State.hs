@@ -26,6 +26,7 @@ module Swarm.Game.State (
   GameState,
   Seed,
   initGameState,
+  playScenario,
 
   -- ** GameState fields
   creativeMode,
@@ -422,52 +423,79 @@ initGameState cmdlineSeed sName toRun = do
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
-  scenario <- loadScenario cmdlineSeed (fromMaybe "classic" sName) entities
-  let seed = fromMaybe 0 (scenario ^. scenarioSeed)
+  let initState =
+        GameState
+          { _creativeMode = False
+          , _winCondition = NoWinCondition
+          , _runStatus = Running
+          , _robotMap = IM.empty
+          , _robotsByLocation = M.empty
+          , _activeRobots = IS.empty
+          , _waitingRobots = M.empty
+          , _gensym = 0
+          , _randGen = mkStdGen 0
+          , _adjList = listArray (0, length adjs - 1) adjs
+          , _nameList = listArray (0, length names - 1) names
+          , _entityMap = entities
+          , _recipesOut = outRecipeMap recipes
+          , _recipesIn = inRecipeMap recipes
+          , _scenarios = loadedScenarios
+          , _world = W.emptyWorld 0
+          , _viewCenterRule = VCRobot 0
+          , _viewCenter = V2 0 0
+          , _needsRedraw = False
+          , _replStatus = REPLDone
+          , _messageQueue = []
+          , _focusedRobotID = 0
+          , _ticks = 0
+          }
 
-  let baseID = 0
-      robotList =
-        zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
-          -- If the  --run flag was used, use it to replace the CESK machine of the
-          -- robot whose id is 0, i.e. the first robot listed in the scenario.
-          & ix 0 . machine
-            %~ case toRun of
-              Nothing -> id
-              Just (into @Text -> f) -> const (initMachine [tmQ| run($str:f) |] Ctx.empty emptyStore)
+  -- Load a scenario if one was specified on the command line
+  case sName of
+    Just name -> do
+      scenario <- loadScenario cmdlineSeed name entities
+      return $ playScenario scenario toRun initState
+    Nothing -> return initState
 
-      theWorld = W.newWorld ((scenario ^. scenarioWorld) (fromMaybe 0 (scenario ^. scenarioSeed)))
-      theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
+-- | Set a given scenario as the currently loaded scenario in the game state.
+playScenario :: Scenario -> Maybe String -> GameState -> GameState
+playScenario scenario toRun g =
+  g
+    { _creativeMode = scenario ^. scenarioCreative
+    , _winCondition = theWinCondition
+    , _runStatus = Running
+    , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
+    , _robotsByLocation =
+        M.fromListWith IS.union $
+          map (view robotLocation &&& (IS.singleton . view robotID)) robotList
+    , _activeRobots = setOf (traverse . robotID) robotList
+    , _waitingRobots = M.empty
+    , _gensym = initGensym
+    , _randGen = mkStdGen seed
+    , _world = theWorld
+    , _viewCenterRule = VCRobot baseID
+    , _viewCenter = V2 0 0
+    , _needsRedraw = False
+    , _replStatus = REPLDone
+    , _messageQueue = []
+    , _focusedRobotID = baseID
+    , _ticks = 0
+    }
+ where
+  seed = fromMaybe 0 (scenario ^. scenarioSeed)
+  baseID = 0
+  robotList =
+    zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
+      -- If the  --run flag was used, use it to replace the CESK machine of the
+      -- robot whose id is 0, i.e. the first robot listed in the scenario.
+      & ix 0 . machine
+        %~ case toRun of
+          Nothing -> id
+          Just (into @Text -> f) -> const (initMachine [tmQ| run($str:f) |] Ctx.empty emptyStore)
 
-  let initGensym = length robotList - 1
-
-  return $
-    GameState
-      { _creativeMode = scenario ^. scenarioCreative
-      , _winCondition = theWinCondition
-      , _runStatus = Running
-      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
-      , _robotsByLocation =
-          M.fromListWith IS.union $
-            map (view robotLocation &&& (IS.singleton . view robotID)) robotList
-      , _activeRobots = setOf (traverse . robotID) robotList
-      , _waitingRobots = M.empty
-      , _gensym = initGensym
-      , _randGen = mkStdGen seed
-      , _adjList = listArray (0, length adjs - 1) adjs
-      , _nameList = listArray (0, length names - 1) names
-      , _entityMap = entities
-      , _recipesOut = outRecipeMap recipes
-      , _recipesIn = inRecipeMap recipes
-      , _scenarios = loadedScenarios
-      , _world = theWorld
-      , _viewCenterRule = VCRobot baseID
-      , _viewCenter = V2 0 0
-      , _needsRedraw = False
-      , _replStatus = REPLDone
-      , _messageQueue = []
-      , _focusedRobotID = baseID
-      , _ticks = 0
-      }
+  theWorld = W.newWorld ((scenario ^. scenarioWorld) (fromMaybe 0 (scenario ^. scenarioSeed)))
+  theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
+  initGensym = length robotList - 1
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
