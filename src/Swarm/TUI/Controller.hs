@@ -52,6 +52,7 @@ import Data.Either (isRight)
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import qualified Data.Set as S
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Linear
@@ -71,7 +72,7 @@ import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario)
+import Swarm.Game.Scenario (ScenarioItem)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -102,7 +103,6 @@ handleEvent s = case s ^. uiState . uiMenu of
   MainMenu l -> handleMainMenuEvent l s
   NewGameMenu l -> handleNewGameMenuEvent l s
   TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
-  ChallengesMenu -> pressAnyKey (MainMenu (mainMenu Challenges)) s
   AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
 
 -- | The event handler for the main menu.
@@ -118,7 +118,6 @@ handleMainMenuEvent menu s = \case
             -- XXX populate actual list of scenarios
             s & uiState . uiMenu .~ NewGameMenu (BL.list ScenarioList mempty 1)
         Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
-        Challenges -> continue $ s & uiState . uiMenu .~ ChallengesMenu
         About -> continue $ s & uiState . uiMenu .~ AboutMenu
         Quit -> halt s
   ControlKey 'q' -> halt s
@@ -127,7 +126,7 @@ handleMainMenuEvent menu s = \case
     continue $ s & uiState . uiMenu .~ MainMenu menu'
   _ -> continueWithoutRedraw s
 
-handleNewGameMenuEvent :: BL.List Name Scenario -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleNewGameMenuEvent :: BL.List Name (Text, ScenarioItem) -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleNewGameMenuEvent _scenarioList s = \case
   VtyEvent (V.EvKey V.KEnter []) -> undefined
   VtyEvent (V.EvKey V.KEsc []) -> continue $ s & uiState . uiMenu .~ MainMenu (mainMenu NewGame)

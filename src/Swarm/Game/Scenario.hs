@@ -37,6 +37,7 @@ module Swarm.Game.Scenario (
   loadScenario,
   ScenarioCollection (..),
   ScenarioItem (..),
+  scenarioItemName,
   loadScenarios,
 ) where
 
@@ -46,6 +47,7 @@ import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
 import Data.Array
 import Data.Bifunctor (first)
+import Data.Char (isDigit, isSpace)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.Map (Map)
@@ -223,10 +225,15 @@ loadScenario userSeed scenario em = do
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
-data ScenarioItem = S Scenario | C ScenarioCollection
+data ScenarioItem = S Scenario | C Text ScenarioCollection
+
+-- | Retrieve the name of a scenario item.
+scenarioItemName :: ScenarioItem -> Text
+scenarioItemName (S s) = s ^. scenarioName
+scenarioItemName (C name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name.
-newtype ScenarioCollection = SC (Map Text ScenarioItem)
+newtype ScenarioCollection = SC (Map FilePath ScenarioItem)
 
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
@@ -242,7 +249,7 @@ loadScenarioDir ::
   m ScenarioCollection
 loadScenarioDir em dir = do
   fs <- sendIO $ listDirectory dir
-  SC . M.fromList <$> mapM (loadScenarioItem em . (dir </>)) fs
+  SC . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
 
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
@@ -250,16 +257,13 @@ loadScenarioItem ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   EntityMap ->
   FilePath ->
-  m (Text, ScenarioItem)
+  m ScenarioItem
 loadScenarioItem em path = do
   isDir <- sendIO $ doesDirectoryExist path
+  let collectionName = into @Text . dropWhile isSpace . dropWhile isDigit . takeBaseName $ path
   case isDir of
-    True -> do
-      coll <- loadScenarioDir em path
-      return (into @Text (takeBaseName path), C coll)
-    False -> do
-      s <- loadScenarioFile Nothing em path
-      return (s ^. scenarioName, S s)
+    True -> C collectionName <$> loadScenarioDir em path
+    False -> S <$> loadScenarioFile Nothing em path
 
 -- | Load a scenario from a file.  The @Maybe Seed@ argument is a
 --   seed provided by the user (either on the command line, or

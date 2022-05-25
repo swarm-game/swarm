@@ -68,7 +68,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, scenarioName)
+import Swarm.Game.Scenario (ScenarioItem)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
@@ -89,7 +89,6 @@ drawUI s = case s ^. uiState . uiMenu of
   MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
   NewGameMenu l -> [drawNewGameMenuUI l]
   TutorialMenu -> [drawTutorialMenuUI]
-  ChallengesMenu -> [drawChallengesMenuUI]
   AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
@@ -115,15 +114,14 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '░' = dirtAttr
   attrFor _ = defAttr
 
-drawNewGameMenuUI :: BL.List Name Scenario -> Widget Name
+drawNewGameMenuUI :: BL.List Name (Text, ScenarioItem) -> Widget Name
 drawNewGameMenuUI =
   centerLayer . vLimit 5 . hLimit 20
-    . BL.renderList (const (hCenter . txt . view scenarioName)) True
+    . BL.renderList (const (hCenter . txt . fst)) True
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
 drawMainMenuEntry Tutorial = txt "Tutorial"
-drawMainMenuEntry Challenges = txt "Challenges"
 drawMainMenuEntry About = txt "About"
 drawMainMenuEntry Quit = txt "Quit"
 
@@ -133,14 +131,6 @@ drawTutorialMenuUI =
     vBox . map hCenter $
       [ txt "Coming soon!"
       , txt "https://github.com/swarm-game/swarm/issues/25"
-      , txt "https://github.com/swarm-game/swarm/issues/296"
-      ]
-
-drawChallengesMenuUI :: Widget Name
-drawChallengesMenuUI =
-  centerLayer $
-    vBox . map hCenter $
-      [ txt "Coming soon!"
       , txt "https://github.com/swarm-game/swarm/issues/296"
       ]
 

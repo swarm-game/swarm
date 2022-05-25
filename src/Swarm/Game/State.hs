@@ -42,6 +42,7 @@ module Swarm.Game.State (
   entityMap,
   recipesOut,
   recipesIn,
+  scenarios,
   world,
   viewCenterRule,
   viewCenter,
@@ -185,6 +186,7 @@ data GameState = GameState
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
+  , _scenarios :: ScenarioCollection
   , _world :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: V2 Int64
@@ -265,6 +267,9 @@ recipesOut :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | All recipes the game knows about, indexed by inputs.
 recipesIn :: Lens' GameState (IntMap [Recipe Entity])
+
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' GameState ScenarioCollection
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').
@@ -407,8 +412,7 @@ initGameState cmdlineSeed sName toRun = do
   liftIO $ putStrLn "Loading recipes..."
   recipes <- loadRecipes entities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading scenarios..."
-  scenarios <- loadScenarios entities >>= (`isRightOr` id)
-  -- XXX do something with scenarios
+  loadedScenarios <- loadScenarios entities >>= (`isRightOr` id)
 
   (adjs, names) <- liftIO $ do
     putStrLn "Loading name generation data..."
@@ -454,6 +458,7 @@ initGameState cmdlineSeed sName toRun = do
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
+      , _scenarios = loadedScenarios
       , _world = theWorld
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0

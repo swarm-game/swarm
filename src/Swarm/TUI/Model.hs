@@ -128,7 +128,7 @@ import qualified Brick.Widgets.List as BL
 
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario)
+import Swarm.Game.Scenario (ScenarioItem)
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
@@ -312,15 +312,14 @@ data Modal = Modal
 
 makeLenses ''Modal
 
-data MainMenuEntry = NewGame | Tutorial | Challenges | About | Quit
+data MainMenuEntry = NewGame | Tutorial | About | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
   = NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
-  | NewGameMenu (BL.List Name Scenario)
+  | NewGameMenu (BL.List Name (Text, ScenarioItem))
   | TutorialMenu
-  | ChallengesMenu
   | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
