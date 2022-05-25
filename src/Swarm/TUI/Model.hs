@@ -111,6 +111,7 @@ import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Sequence (Seq)
@@ -318,7 +319,7 @@ data MainMenuEntry = NewGame | Tutorial | About | Quit
 data Menu
   = NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
-  | NewGameMenu (BL.List Name (Text, ScenarioItem))
+  | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
   | TutorialMenu
   | AboutMenu
 

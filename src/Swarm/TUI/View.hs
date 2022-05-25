@@ -45,6 +45,7 @@ import Data.Array (range)
 import qualified Data.Foldable as F
 import qualified Data.IntMap as IM
 import qualified Data.List as L
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
@@ -68,7 +69,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem)
+import Swarm.Game.Scenario (ScenarioItem, scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
@@ -87,7 +88,7 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = case s ^. uiState . uiMenu of
   NoMenu -> drawGameUI s
   MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
-  NewGameMenu l -> [drawNewGameMenuUI l]
+  NewGameMenu (l :| _) -> [drawNewGameMenuUI l]
   TutorialMenu -> [drawTutorialMenuUI]
   AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
@@ -114,10 +115,12 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '░' = dirtAttr
   attrFor _ = defAttr
 
-drawNewGameMenuUI :: BL.List Name (Text, ScenarioItem) -> Widget Name
+drawNewGameMenuUI :: BL.List Name ScenarioItem -> Widget Name
 drawNewGameMenuUI =
   centerLayer . vLimit 5 . hLimit 20
-    . BL.renderList (const (hCenter . txt . fst)) True
+    . BL.renderList (const (hCenter . txt . scenarioItemName)) True
+
+-- XXX indicate collections differently somehow
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"

@@ -36,6 +36,7 @@ module Swarm.Game.Scenario (
   -- * Loading from disk
   loadScenario,
   ScenarioCollection (..),
+  scenarioCollectionToList,
   ScenarioItem (..),
   scenarioItemName,
   loadScenarios,
@@ -225,15 +226,19 @@ loadScenario userSeed scenario em = do
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
-data ScenarioItem = S Scenario | C Text ScenarioCollection
+data ScenarioItem = SISingle Scenario | SICollection Text ScenarioCollection
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
-scenarioItemName (S s) = s ^. scenarioName
-scenarioItemName (C name _) = name
+scenarioItemName (SISingle s) = s ^. scenarioName
+scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name.
 newtype ScenarioCollection = SC (Map FilePath ScenarioItem)
+
+-- | Convert a scenario collection to a list of scenario items.
+scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
+scenarioCollectionToList (SC m) = M.elems m
 
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
@@ -262,8 +267,8 @@ loadScenarioItem em path = do
   isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . dropWhile isDigit . takeBaseName $ path
   case isDir of
-    True -> C collectionName <$> loadScenarioDir em path
-    False -> S <$> loadScenarioFile Nothing em path
+    True -> SICollection collectionName <$> loadScenarioDir em path
+    False -> SISingle <$> loadScenarioFile Nothing em path
 
 -- | Load a scenario from a file.  The @Maybe Seed@ argument is a
 --   seed provided by the user (either on the command line, or

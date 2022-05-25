@@ -50,11 +50,13 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
+import Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import qualified Data.Set as S
-import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Vector as V
 import Linear
 import System.Clock
 import Witch (into)
@@ -72,7 +74,7 @@ import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem)
+import Swarm.Game.Scenario (ScenarioCollection, ScenarioItem (..), scenarioCollectionToList)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -115,8 +117,8 @@ handleMainMenuEvent menu s = \case
       Just x0 -> case x0 of
         NewGame ->
           continue $
-            -- XXX populate actual list of scenarios
-            s & uiState . uiMenu .~ NewGameMenu (BL.list ScenarioList mempty 1)
+            s & uiState . uiMenu
+              .~ NewGameMenu (NE.fromList [mkScenarioList (s ^. gameState . scenarios)])
         Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
         About -> continue $ s & uiState . uiMenu .~ AboutMenu
         Quit -> halt s
@@ -126,11 +128,32 @@ handleMainMenuEvent menu s = \case
     continue $ s & uiState . uiMenu .~ MainMenu menu'
   _ -> continueWithoutRedraw s
 
-handleNewGameMenuEvent :: BL.List Name (Text, ScenarioItem) -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleNewGameMenuEvent _scenarioList s = \case
-  VtyEvent (V.EvKey V.KEnter []) -> undefined
-  VtyEvent (V.EvKey V.KEsc []) -> continue $ s & uiState . uiMenu .~ MainMenu (mainMenu NewGame)
+handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
+  VtyEvent (V.EvKey V.KEnter []) ->
+    case snd <$> BL.listSelectedElement curMenu of
+      Nothing -> continueWithoutRedraw s
+      Just (SISingle _scene) -> undefined -- XXX load + play scenario!  Refactor existing code..
+      Just (SICollection _ c) ->
+        continue $
+          s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
+  VtyEvent (V.EvKey V.KEsc []) -> exitNewGameMenu s scenarioStack
+  ControlKey 'q' -> exitNewGameMenu s scenarioStack
+  VtyEvent ev -> do
+    menu' <- handleListEvent ev curMenu
+    continue $ s & uiState . uiMenu .~ NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw s
+
+mkScenarioList :: ScenarioCollection -> BL.List Name ScenarioItem
+mkScenarioList = flip (BL.list ScenarioList) 1 . V.fromList . scenarioCollectionToList
+
+exitNewGameMenu :: AppState -> NonEmpty (BL.List Name ScenarioItem) -> EventM Name (Next AppState)
+exitNewGameMenu s stk =
+  continue $
+    s & uiState . uiMenu
+      .~ case snd (NE.uncons stk) of
+        Nothing -> MainMenu (mainMenu NewGame)
+        Just stk' -> NewGameMenu stk'
 
 pressAnyKey :: Menu -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 pressAnyKey m s (VtyEvent (V.EvKey _ _)) = continue $ s & uiState . uiMenu .~ m
