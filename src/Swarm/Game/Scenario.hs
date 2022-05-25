@@ -6,6 +6,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- |
@@ -34,27 +35,37 @@ module Swarm.Game.Scenario (
 
   -- * Loading from disk
   loadScenario,
+  ScenarioCollection (..),
+  ScenarioItem (..),
+  loadScenarios,
 ) where
 
 import Control.Applicative ((<|>))
 import Control.Arrow ((***))
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except
+import Control.Monad (filterM)
 import Data.Array
 import Data.Bifunctor (first)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
-import System.Directory (doesFileExist)
-import System.FilePath ((<.>), (</>))
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (takeBaseName, (<.>), (</>))
+import System.Random (randomRIO)
 import Witch (from, into)
 
-import Paths_swarm (getDataFileName)
+import Control.Algebra (Has)
+import Control.Carrier.Lift (Lift, sendIO)
+import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
+
+import Paths_swarm (getDataDir, getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Robot (URobot)
 import Swarm.Game.Terrain
@@ -62,7 +73,6 @@ import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
-import System.Random (randomRIO)
 
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
@@ -186,36 +196,90 @@ mkWorldFun pwd = E $ \em -> do
   lkup _ Nothing = Nothing
   lkup em (Just t) = lookupEntityName t em
 
+------------------------------------------------------------
+-- Loading scenarios
+------------------------------------------------------------
+
 -- | Load a scenario with a given name from disk, given an entity map
---   to use.
-loadScenario :: Maybe Seed -> String -> EntityMap -> ExceptT Text IO Scenario
+--   to use.  This function is used if a specific scenario is
+--   requested on the command line.
+loadScenario ::
+  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  Maybe Seed ->
+  String ->
+  EntityMap ->
+  m Scenario
 loadScenario userSeed scenario em = do
-  libScenario <- lift $ getDataFileName $ "scenarios" </> scenario
-  libScenarioExt <- lift $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- sendIO $ getDataFileName $ "scenarios" </> scenario
+  libScenarioExt <- sendIO $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
 
   mfileName <-
-    lift $
+    sendIO $
       listToMaybe <$> filterM doesFileExist [scenario, libScenarioExt, libScenario]
 
   case mfileName of
-    Nothing -> throwError $ "Scenario not found: " <> from @String scenario
-    Just fileName -> do
-      res <- lift $ decodeFileEitherE em fileName
-      case res of
-        Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
-        Right c -> do
-          -- Decide on a seed.  In order of preference, we will use:
-          --   1. seed value provided by the user
-          --   2. seed value specified in the scenario description
-          --   3. randomly chosen seed value
-          seed <- case userSeed <|> c ^. scenarioSeed of
-            Just s -> return s
-            Nothing -> randomRIO (0, maxBound :: Int)
-          return (c & scenarioSeed ?~ seed)
+    Nothing -> throwError @Text $ "Scenario not found: " <> from @String scenario
+    Just fileName -> loadScenarioFile userSeed em fileName
 
--- XXX
+-- | A scenario item is either a specific scenario, or a collection of
+--   scenarios (*e.g.* the scenarios contained in a subdirectory).
+data ScenarioItem = S Scenario | C ScenarioCollection
+
+-- | A scenario collection is a tree of scenarios, keyed by name.
+newtype ScenarioCollection = SC (Map Text ScenarioItem)
 
 -- | Load all the scenarios from the scenarios data directory.
-loadScenarios :: ExceptT Text IO _ -- tree of scenarios? Map from
--- scenario names to Scenarios?
-loadScenarios = undefined
+loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
+loadScenarios em = runThrow $ do
+  dataDir <- sendIO getDataDir
+  loadScenarioDir em (dataDir </> "scenarios")
+
+-- | Recursively load all scenarios from a particular directory.
+loadScenarioDir ::
+  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  EntityMap ->
+  FilePath ->
+  m ScenarioCollection
+loadScenarioDir em dir = do
+  fs <- sendIO $ listDirectory dir
+  SC . M.fromList <$> mapM (loadScenarioItem em . (dir </>)) fs
+
+-- | Load a scenario item (either a scenario, or a subdirectory
+--   containing a collection of scenarios) from a particular path.
+loadScenarioItem ::
+  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  EntityMap ->
+  FilePath ->
+  m (Text, ScenarioItem)
+loadScenarioItem em path = do
+  isDir <- sendIO $ doesDirectoryExist path
+  case isDir of
+    True -> do
+      coll <- loadScenarioDir em path
+      return (into @Text (takeBaseName path), C coll)
+    False -> do
+      s <- loadScenarioFile Nothing em path
+      return (s ^. scenarioName, S s)
+
+-- | Load a scenario from a file.  The @Maybe Seed@ argument is a
+--   seed provided by the user (either on the command line, or
+--   specified through the UI), if any.
+loadScenarioFile ::
+  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  Maybe Seed ->
+  EntityMap ->
+  FilePath ->
+  m Scenario
+loadScenarioFile userSeed em fileName = do
+  res <- sendIO $ decodeFileEitherE em fileName
+  case res of
+    Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
+    Right c -> do
+      -- Decide on a seed.  In order of preference, we will use:
+      --   1. seed value provided by the user
+      --   2. seed value specified in the scenario description
+      --   3. randomly chosen seed value
+      seed <- case userSeed <|> c ^. scenarioSeed of
+        Just s -> return s
+        Nothing -> sendIO $ randomRIO (0, maxBound :: Int)
+      return (c & scenarioSeed ?~ seed)
