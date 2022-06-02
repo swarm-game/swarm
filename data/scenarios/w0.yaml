@@ -1,4 +1,4 @@
-name: Moving, part 1
+name: Moving, part 1 (seed 0)
 entities:
   - name: goal
     display:
