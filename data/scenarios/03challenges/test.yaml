@@ -1,20 +1,15 @@
-name: Moving, part 1 (seed 0)
+name: Test challenge
 entities:
   - name: goal
     display:
       attr: device
       char: 'X'
     description:
-    - |
-      Robots can use the 'move' command to move forward one unit
-      in the direction they are currently facing.  To complete
-      this challenge, move your robot two spaces to the right, to
-      the coordinates (2,0).
+    - Pick a lambda.
     properties: [portable]
 win: |
   try {
-    loc <- as base {whereami};
-    return (loc == (2,0))
+    as base {has "lambda"}
   } { return false }
 robots:
   - name: base
@@ -23,10 +18,11 @@ robots:
     devices:
       - treads
       - logger
+      - grabber
     inventory:
       - [1, goal]
 world:
-  seed: 0
+  default: [blank, none]
   palette:
     '.': [grass, null]
     '┌': [stone, upper left corner]
@@ -35,8 +31,11 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
+    'λ': [grass, lambda]
   upperleft: [-1, 1]
   map: |
-    ┌───┐
-    │...│
-    └───┘
+    ┌─────┐
+    │..λ..│
+    │....λ│
+    │...λ.│
+    └─────┘
