@@ -69,7 +69,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem, scenarioItemName)
+import Swarm.Game.Scenario (ScenarioItem (..), scenarioName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
@@ -117,10 +117,11 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
 
 drawNewGameMenuUI :: BL.List Name ScenarioItem -> Widget Name
 drawNewGameMenuUI =
-  centerLayer . vLimit 5 . hLimit 20
-    . BL.renderList (const (hCenter . txt . scenarioItemName)) True
-
--- XXX indicate collections differently somehow
+  centerLayer . vLimit 20 . hLimit 35
+    . BL.renderList (const drawScenarioItem) True
+ where
+  drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName
+  drawScenarioItem (SICollection nm _) = padRight Max (txt nm) <+> withAttr robotAttr (txt ">")
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
