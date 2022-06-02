@@ -48,7 +48,7 @@ import qualified Data.List as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -69,7 +69,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem (..), scenarioName)
+import Swarm.Game.Scenario (ScenarioItem (..), scenarioItemName, scenarioName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
@@ -88,7 +88,7 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = case s ^. uiState . uiMenu of
   NoMenu -> drawGameUI s
   MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
-  NewGameMenu (l :| _) -> [drawNewGameMenuUI l]
+  NewGameMenu stk -> [drawNewGameMenuUI stk]
   TutorialMenu -> [drawTutorialMenuUI]
   AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
@@ -115,13 +115,26 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '░' = dirtAttr
   attrFor _ = defAttr
 
-drawNewGameMenuUI :: BL.List Name ScenarioItem -> Widget Name
-drawNewGameMenuUI =
-  centerLayer . vLimit 20 . hLimit 35
-    . BL.renderList (const drawScenarioItem) True
+drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
+drawNewGameMenuUI (l :| ls) =
+  centerLayer $
+    vBox
+      [ withAttr robotAttr . txt $ breadcrumbs ls
+      , txt " "
+      , vLimit 20 . hLimit 35
+          . BL.renderList (const drawScenarioItem) True
+          $ l
+      ]
  where
   drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName
   drawScenarioItem (SICollection nm _) = padRight Max (txt nm) <+> withAttr robotAttr (txt ">")
+
+  breadcrumbs :: [BL.List Name ScenarioItem] -> Text
+  breadcrumbs =
+    T.intercalate " > "
+      . ("Scenarios" :)
+      . reverse
+      . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
