@@ -283,10 +283,10 @@ generateModal mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `m
       HelpModal -> ("Help", helpWidget, Nothing, maxModalWindowWidth)
       WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
       QuitModal ->
-        let quitMsg = "Are you sure you want to quit?"
+        let quitMsg = "Are you sure you want to quit this game and return to the menu?"
          in ( ""
             , padBottom (Pad 1) $ hCenter $ txt quitMsg
-            , Just (0, [("Cancel", Cancel), ("Quit", Confirm)])
+            , Just (0, [("Keep playing", Cancel), ("Quit to menu", Confirm)])
             , T.length quitMsg + 4
             )
 
