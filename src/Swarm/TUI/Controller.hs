@@ -91,7 +91,8 @@ import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 
 -- | Pattern synonyms to simplify brick event handler
-pattern ControlKey, MetaKey :: Char -> BrickEvent n e
+pattern Key, ControlKey, MetaKey :: Char -> BrickEvent n e
+pattern Key c = VtyEvent (V.EvKey (V.KChar c) [])
 pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
 pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 
@@ -122,6 +123,7 @@ handleMainMenuEvent menu s = \case
         Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
         About -> continue $ s & uiState . uiMenu .~ AboutMenu
         Quit -> halt s
+  Key 'q' -> halt s
   ControlKey 'q' -> halt s
   VtyEvent ev -> do
     menu' <- handleListEvent ev menu
@@ -141,6 +143,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
         continue $
           s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   VtyEvent (V.EvKey V.KEsc []) -> exitNewGameMenu s scenarioStack
+  Key 'q' -> exitNewGameMenu s scenarioStack
   ControlKey 'q' -> exitNewGameMenu s scenarioStack
   VtyEvent ev -> do
     menu' <- handleListEvent ev curMenu
