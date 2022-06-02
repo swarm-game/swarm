@@ -69,7 +69,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem (..), scenarioItemName, scenarioName)
+import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItemName, scenarioName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
@@ -117,13 +117,17 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
 
 drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
 drawNewGameMenuUI (l :| ls) =
-  centerLayer $
-    vBox
-      [ withAttr robotAttr . txt $ breadcrumbs ls
-      , txt " "
-      , vLimit 20 . hLimit 35
-          . BL.renderList (const drawScenarioItem) True
-          $ l
+  padLeftRight 20
+    . centerLayer
+    $ hBox
+      [ vBox
+          [ withAttr robotAttr . txt $ breadcrumbs ls
+          , txt " "
+          , vLimit 20 . hLimit 35
+              . BL.renderList (const drawScenarioItem) True
+              $ l
+          ]
+      , padLeft (Pad 5) (maybe (txt "") drawDescription $ snd <$> BL.listSelectedElement l)
       ]
  where
   drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName
@@ -135,6 +139,13 @@ drawNewGameMenuUI (l :| ls) =
       . ("Scenarios" :)
       . reverse
       . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
+
+  drawDescription :: ScenarioItem -> Widget Name
+  drawDescription (SISingle s) = txtWrap (nonBlank (s ^. scenarioDescription))
+  drawDescription (SICollection _ _) = txtWrap " "
+
+  nonBlank "" = " "
+  nonBlank t = t
 
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
