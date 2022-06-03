@@ -408,7 +408,7 @@ addRobot r = do
 -- | Create an initial game state record for a particular game type,
 --   first loading entities and recipies from disk.
 initGameState :: Maybe Seed -> Maybe String -> Maybe String -> ExceptT Text IO GameState
-initGameState cmdlineSeed sName toRun = do
+initGameState cmdlineSeed scenarioToLoad toRun = do
   liftIO $ putStrLn "Loading entities..."
   entities <- loadEntities >>= (`isRightOr` id)
   liftIO $ putStrLn "Loading recipes..."
@@ -452,7 +452,7 @@ initGameState cmdlineSeed sName toRun = do
           }
 
   -- Load a scenario if one was specified on the command line
-  case sName of
+  case scenarioToLoad of
     Just name -> do
       scenario <- loadScenario cmdlineSeed name entities
       return $ playScenario scenario toRun initState
