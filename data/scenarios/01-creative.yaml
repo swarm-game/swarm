@@ -1,5 +1,6 @@
 name: Creative game
-description: The creative game.  Foo bar.
+description: No constraints!  Do whatever you want, create any items you
+  want out of thin air, build robots to your heart's content.
 creative: true
 robots:
   - name: base
