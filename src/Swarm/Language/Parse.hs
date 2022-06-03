@@ -24,6 +24,8 @@ module Swarm.Language.Parse (
   parsePolytype,
   parseType,
   parseTerm,
+  binOps,
+  unOps,
 
   -- * Utility functions
   runParser,
@@ -57,6 +59,11 @@ import qualified Data.Set as S
 import Data.Set.Lens (setOf)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+
+-- Imports for doctests (cabal-docspec needs this)
+
+-- $setup
+-- >>> import qualified Data.Map.Strict as Map
 
 -- | When parsing a term using a quasiquoter (i.e. something in the
 --   Swarm source code that will be parsed at compile time), we want
@@ -345,7 +352,7 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
 -- | Precedences and parsers of binary operators.
 --
 -- >>> Map.map length binOps
--- fromList [(4,6),(6,2),(7,2),(8,1)]
+-- fromList [(0,1),(2,1),(3,1),(4,6),(6,3),(7,2),(8,1)]
 binOps :: Map.Map Int [Operator Parser Syntax]
 binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
  where
