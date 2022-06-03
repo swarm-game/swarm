@@ -26,6 +26,7 @@ module Swarm.Game.State (
   GameState,
   Seed,
   initGameState,
+  classicGame0,
   playScenario,
 
   -- ** GameState fields
@@ -456,6 +457,11 @@ initGameState cmdlineSeed sName toRun = do
       scenario <- loadScenario cmdlineSeed name entities
       return $ playScenario scenario toRun initState
     Nothing -> return initState
+
+-- | For convenience, the 'GameState' corresponding to the classic
+--   game with seed 0.
+classicGame0 :: ExceptT Text IO GameState
+classicGame0 = initGameState (Just 0) (Just "00-classic") Nothing
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
 playScenario :: Scenario -> Maybe String -> GameState -> GameState
