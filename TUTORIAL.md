@@ -41,13 +41,20 @@ sophisticated robots which in turn will OK I think you get the idea.
 Getting started
 ---------------
 
-When you first start up Swarm, you should be greeted by a screen that
-looks something like this:
+To skip past the main menu for now and ensure you're playing on the
+same world described in this tutorial, start Swarm with a command line
+like
+```
+stack run -- -c 00-classic -s 0
+```
+This tells Swarm to load the `00-classic` scenario and use 0 as the
+seed for the random number generator.
+
+You should then be greeted by a screen that looks something like this:
 
 ![World with seed 0](images/tutorial/world0.png)
 
-In the world view, you see the default [*World 0*](./TUTORIAL.md#world-generation)
-and the little white `Ω` in the middle represents your base. You will
+The little white `Ω` in the middle represents your base. You will
 need to [explore](./TUTORIAL.md#exploring) to find out what all the `?` are.
 
 Start by using the <kbd>Tab</kbd> key to cycle through the four panels
@@ -60,7 +67,7 @@ will cover the use of your devices in more detail.
 Building your first robot
 -------------------------
 
-Pretty much the only thing you can do is build robots.  Let's build
+Pretty much the only thing you can do at this point is build robots.  Let's build
 one!  Tab back to the REPL (or hit the <kbd>Meta</kbd>+<kbd>R</kbd>
 shortcut) and type
 ```
@@ -410,24 +417,6 @@ support](https://github.com/swarm-game/swarm/blob/main/docs/EDITORS.md)
 giving syntax and error highlighting for `.sw` files; at the moment
 Emacs is supported along with VSCode.
 
-World generation
-----------------
-
-If you do not like the starting place of the base, there is a way
-to start somewhere else. *In a different world!*
-
-```bash
-$ swarm --seed $RANDOM
-```
-
-You can specify the *world seed* leading to radically different
-starting conditions. You can start next to a copper patch, between
-lakes or in the middle of a plain. Either way, you have established
-your base in the shade of what you assume is a tree and now can send
-out robots to explore!
-
-![World generated with seed 16](images/tutorial/world16.png)
-
 Creative Mode
 -------------
 
@@ -436,8 +425,8 @@ Creative mode.  In Classic mode, the kinds of actions your robots can
 do, and the kinds of programs they can interpret, is restricted by
 what devices they have installed.  In Creative mode you can do
 anything you like, including fabricate arbitrary items out of thin air
-using the `create` command. Also it will not hide unknown entities,
-as you can see in the World 16 above.
+using the `create` command. Also, unknown entities will not be hidden
+in the world map.
 
 To switch, highlight the world view panel, then hit the <kbd>M</kbd> key.
 
