@@ -109,6 +109,13 @@
   - [1, furnace]
 
 - in:
+  - [1, sand]
+  out:
+  - [1, glass]
+  required:
+  - [1, furnace]
+
+- in:
   - [32, gear]
   - [6, copper wire]
   out:

@@ -66,6 +66,7 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
     | h `mod` 10 == 0 = (StoneT, Just "rock")
     | otherwise = (StoneT, Nothing)
   genBiome Big Soft Natural
+    | abs (sample ix pn1) < 0.1 = (DirtT, Just "sand")
     | even (r + c) = (DirtT, Just "wavy water")
     | otherwise = (DirtT, Just "water")
   genBiome Small Soft Natural

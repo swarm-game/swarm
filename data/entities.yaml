@@ -216,6 +216,24 @@
   properties: [portable]
   capabilities: [float]
 
+- name: sand
+  display:
+    attr: copper
+    char: '░'
+  description:
+  - A substance composed mostly of tiny rocks and mineral particles.  It
+    tends to be found near water, and can be used in a furnace to make glass.
+  properties: [portable, growable]
+  growth: [0,0]
+
+- name: glass
+  display:
+    attr: entity
+    char: '□'
+  description:
+  - A pane of a brittle, clear substance, made from melting sand in a furnace.
+  properties: [portable]
+
 - name: bit (0)
   display:
     attr: entity
