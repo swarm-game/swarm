@@ -1,11 +1,12 @@
 name: Test challenge
+description: A very difficult challenge that will test the utmost limits of your ability to 'move' and 'grab'. This is actually a placeholder challenge and will be replaced with more suitable challenges soon.
 entities:
   - name: goal
     display:
       attr: device
       char: 'X'
     description:
-    - Pick a lambda.
+    - Use your grabber to harvest a lambda.
     properties: [portable]
 win: |
   try {
@@ -21,6 +22,7 @@ robots:
       - grabber
     inventory:
       - [1, goal]
+      - [0, lambda]
 world:
   default: [blank, none]
   palette:
