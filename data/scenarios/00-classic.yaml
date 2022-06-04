@@ -17,7 +17,7 @@ robots:
       - workbench
     inventory:
       - [100, treads]
-      - [100, grabber]
+      - [70, grabber]
       - [100, solar panel]
       - [50, scanner]
       - [10, plasma cutter]
