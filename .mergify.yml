@@ -1,8 +1,8 @@
 queue_rules:
   - name: default
     conditions:
-      - check-success=Haskell-CI - Linux - ghc-9.0.1
-      - check-success=Haskell-CI - Linux - ghc-8.10.4
+      - check-success=Haskell-CI - Linux - ghc-9.0.2
+      - check-success=Haskell-CI - Linux - ghc-8.10.7
 
 pull_request_rules:
 - actions:
@@ -26,8 +26,8 @@ pull_request_rules:
       - -files~=^[^/]*\.yaml$
       - -files~=^data/.*\.yaml$
     - and:
-      - check-success=Haskell-CI - Linux - ghc-9.0.1
-      - check-success=Haskell-CI - Linux - ghc-8.10.4
+      - check-success=Haskell-CI - Linux - ghc-9.0.2
+      - check-success=Haskell-CI - Linux - ghc-8.10.7
   - label=merge me
   - ! '#approved-reviews-by>=1'
   - ! '#changes-requested-reviews-by=0'

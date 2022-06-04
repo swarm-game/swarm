@@ -1,3 +1,26 @@
+-- See cabal.haskell-ci in the tool repository for all field explanations
+-- https://github.com/haskell-CI/haskell-ci/blob/master/cabal.haskell-ci
+
+-- --no-tests --no-benchmarks build is useful to verify that package
+-- builds when less constrained
+-- But Swarm constrains all library dependencies and tests almost not at all
 no-tests-no-benchmarks: False
-unconstrained:          False
-docspec:                True
+unconstrained: False
+
+-- Run cabal-docspec
+docspec: True
+
+-- Build haddocks. Accepts booleans or version range.
+haddock: True
+
+-- Build benchmarks. There are no way to run benchmarks. Accepts booleans or version range.
+-- Swarm has benchmarks so at least build them :)
+benchmarks: True
+
+-- TODO: enable HLint
+
+-- Run HLint
+-- hlint: True
+-- hlint-job: 9.0.2
+-- hlint-yaml: .hlint.yaml
+-- hlint-download-binary: True
