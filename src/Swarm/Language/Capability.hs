@@ -266,6 +266,12 @@ constCaps =
     Salvage -> [CSalvage]
     Reprogram -> [CReprogram]
     Drill -> [CDrill]
+    Neg -> [CArith]
+    Add -> [CArith]
+    Sub -> [CArith]
+    Mul -> [CArith]
+    Div -> [CArith]
+    Exp -> [CArith]
     -- Some God-like sensing abilities.
     As -> [CGod]
     -- String operations, which for now are enabled by CLog
@@ -277,7 +283,6 @@ constCaps =
     Appear -> [CAppear] -- paint?
     Whereami -> [CSenseloc] -- GPS?
     Random -> [CRandom] -- randomness device (with bitcoins)?
-    Neg -> [CArith] -- ALU? pocket calculator?
     Whoami -> [CWhoami] -- mirror, needs a recipe
 
     -- comparator?
@@ -289,11 +294,6 @@ constCaps =
     Geq -> [CCompare]
     And -> []
     Or -> []
-    Add -> [CArith]
-    Sub -> [CArith]
-    Mul -> [CArith]
-    Div -> [CArith]
-    Exp -> [CArith]
     -- Some more constants which *ought* to have their own capability but
     -- currently don't.
     Say -> []

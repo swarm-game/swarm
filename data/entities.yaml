@@ -396,7 +396,7 @@
 - name: plasma cutter
   display:
     attr: device
-    char: '+'
+    char: '*'
   description:
   - "A plasma cutter uses a jet of hot plasma to cut through metal like
     butter.  Used via the 'salvage' command to cut apart old robots."
@@ -564,3 +564,14 @@
     uses the 'log' command)."
   properties: [portable]
   capabilities: [log]
+
+- name: calculator
+  display:
+    attr: device
+    char: '+'
+  description:
+  - "A calculator allows a robot to do basic arithmetic calculations:
+    addition, subtraction, multiplication, division, and
+    exponentiation."
+  properties: [portable]
+  capabilities: [arith]

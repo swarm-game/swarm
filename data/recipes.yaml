@@ -116,6 +116,20 @@
   - [1, furnace]
 
 - in:
+  - [1, glass]
+  - [8, copper wire]
+  out:
+  - [1, solar panel]
+  required:
+  - [1, 3D printer]
+
+- in:
+  - [1, counter]
+  - [1, solar panel]
+  out:
+  - [1, calculator]
+
+- in:
   - [32, gear]
   - [6, copper wire]
   out:
