@@ -20,7 +20,7 @@ robots:
       - [100, grabber]
       - [100, solar panel]
       - [50, scanner]
-      - [50, plasma cutter]
+      - [10, plasma cutter]
 world:
   seed: null
   offset: true
