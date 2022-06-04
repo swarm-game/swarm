@@ -115,18 +115,15 @@ import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import Data.Yaml (prettyPrintParseException)
 import System.Clock
-import System.Directory (doesFileExist)
-import System.FilePath ((<.>), (</>))
-import Witch (from)
 
 import Brick
 import Brick.Focus
@@ -134,13 +131,12 @@ import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
 import qualified Brick.Widgets.List as BL
 
-import Paths_swarm (getDataFileName)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (ScenarioItem)
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
-import Swarm.Util.Yaml
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -178,6 +174,8 @@ data Name
     InventoryList
   | -- | The list of main menu choices.
     MenuList
+  | -- | The list of scenario choices.
+    ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -320,14 +318,14 @@ data Modal = Modal
 
 makeLenses ''Modal
 
-data MainMenuEntry = NewGame | Tutorial | Challenges | About | Quit
+data MainMenuEntry = NewGame | Tutorial | About | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
   = NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
+  | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
   | TutorialMenu
-  | ChallengesMenu
   | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
@@ -658,27 +656,7 @@ populateInventoryList (Just r) = do
 ------------------------------------------------------------
 
 -- | Initialize the 'AppState'.
-initAppState :: Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
-initAppState seed challenge toRun = do
-  let gtype = initGameType seed challenge
-      showMenu = isNothing challenge && isNothing toRun
-  AppState <$> initGameState gtype toRun <*> initUIState showMenu
-
-initGameType :: Seed -> Maybe String -> GameType
-initGameType seed Nothing = ClassicGame seed
-initGameType _ (Just challenge) =
-  ChallengeGame $ \em -> do
-    libChallenge <- lift $ getDataFileName $ "challenges" </> challenge
-    libChallengeExt <- lift $ getDataFileName $ "challenges" </> challenge <.> "yaml"
-
-    mfileName <-
-      lift $
-        listToMaybe <$> filterM doesFileExist [challenge, libChallengeExt, libChallenge]
-
-    case mfileName of
-      Nothing -> throwError $ "Challenge not found: " <> from @String challenge
-      Just fileName -> do
-        res <- lift $ decodeFileEitherE em fileName
-        case res of
-          Left parseExn -> throwError (from @String (prettyPrintParseException parseExn))
-          Right c -> return c
+initAppState :: Maybe Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
+initAppState seed scenarioName toRun = do
+  let showMenu = isNothing scenarioName && isNothing toRun
+  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu

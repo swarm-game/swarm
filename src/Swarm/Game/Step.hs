@@ -1323,7 +1323,7 @@ execConst c vs s k = do
             cmdExn Run ["Error in", fileName, "\n", err]
 
         return $ case mt of
-          Nothing -> idleMachine
+          Nothing -> Out VUnit s k
           Just t -> initMachine' t empty s k
       _ -> badConst
     Not -> case vs of

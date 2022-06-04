@@ -34,6 +34,7 @@ robots:
     inventory:
       - [1, goal]
 world:
+  default: [blank, none]
   palette:
     '.': [grass, null]
     '┌': [stone, upper left corner]

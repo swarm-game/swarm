@@ -14,7 +14,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Witch
 
-import Swarm.Game.Challenge
+import Swarm.Game.Scenario
 import Swarm.Game.Entity
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
@@ -22,7 +22,7 @@ import Swarm.Util.Yaml (decodeFileEitherE)
 main :: IO ()
 main = do
   examplePaths <- acquire "example" "sw"
-  challengePaths <- acquire "data/challenges" "yaml"
+  scenarioPaths <- acquire "data/scenarios" "yaml"
 
   entities <- loadEntities
   case entities of
@@ -32,7 +32,7 @@ main = do
         testGroup
           "Tests"
           [ exampleTests examplePaths
-          , challengeTests em challengePaths
+          , scenarioTests em scenarioPaths
           ]
 
 exampleTests :: [(FilePath, String)] -> TestTree
@@ -45,13 +45,13 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-challengeTests :: EntityMap -> [(FilePath, String)] -> TestTree
-challengeTests em inputs = testGroup "Test challenges" (map (challengeTest em) inputs)
+scenarioTests :: EntityMap -> [(FilePath, String)] -> TestTree
+scenarioTests em inputs = testGroup "Test scenarios" (map (scenarioTest em) inputs)
 
-challengeTest :: EntityMap -> (FilePath, String) -> TestTree
-challengeTest em (path, _) =
-  testCase ("parse challenge " ++ show path) $ do
-    res <- decodeFileEitherE em path :: IO (Either ParseException Challenge)
+scenarioTest :: EntityMap -> (FilePath, String) -> TestTree
+scenarioTest em (path, _) =
+  testCase ("parse scenario " ++ show path) $ do
+    res <- decodeFileEitherE em path :: IO (Either ParseException Scenario)
     case res of
       Left err -> assertFailure (prettyPrintParseException err)
       Right _ -> return ()

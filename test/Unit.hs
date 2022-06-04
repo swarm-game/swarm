@@ -35,7 +35,7 @@ import Swarm.TUI.Model
 
 main :: IO ()
 main = do
-  mg <- runExceptT (initGameState (ClassicGame 0) Nothing)
+  mg <- runExceptT classicGame0
   case mg of
     Left err -> assertFailure (from err)
     Right g -> defaultMain (tests g)

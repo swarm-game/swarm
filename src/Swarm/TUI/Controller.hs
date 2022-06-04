@@ -50,10 +50,13 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
+import Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Vector as V
 import Linear
 import System.Clock
 import Witch (into)
@@ -71,6 +74,7 @@ import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (ScenarioCollection, ScenarioItem (..), scenarioCollectionToList)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -87,7 +91,11 @@ import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 
 -- | Pattern synonyms to simplify brick event handler
-pattern ControlKey, MetaKey :: Char -> BrickEvent n e
+pattern Key :: V.Key -> BrickEvent n e
+pattern Key k = VtyEvent (V.EvKey k [])
+
+pattern CharKey, ControlKey, MetaKey :: Char -> BrickEvent n e
+pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
 pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
 pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 
@@ -99,27 +107,62 @@ handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppStat
 handleEvent s = case s ^. uiState . uiMenu of
   NoMenu -> handleMainEvent s
   MainMenu l -> handleMainMenuEvent l s
+  NewGameMenu l -> handleNewGameMenuEvent l s
   TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
-  ChallengesMenu -> pressAnyKey (MainMenu (mainMenu Challenges)) s
   AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
   BL.List Name MainMenuEntry -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleMainMenuEvent l s (VtyEvent (V.EvKey V.KEnter [])) =
-  case snd <$> BL.listSelectedElement l of
-    Nothing -> continueWithoutRedraw s
-    Just x0 -> case x0 of
-      NewGame -> continue $ s & uiState . uiMenu .~ NoMenu
-      Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
-      Challenges -> continue $ s & uiState . uiMenu .~ ChallengesMenu
-      About -> continue $ s & uiState . uiMenu .~ AboutMenu
-      Quit -> halt s
-handleMainMenuEvent _ s (ControlKey 'q') = halt s
-handleMainMenuEvent menu s (VtyEvent ev) = do
-  menu' <- handleListEvent ev menu
-  continue $ s & uiState . uiMenu .~ MainMenu menu'
-handleMainMenuEvent _ s _ = continueWithoutRedraw s
+handleMainMenuEvent menu s = \case
+  Key V.KEnter ->
+    case snd <$> BL.listSelectedElement menu of
+      Nothing -> continueWithoutRedraw s
+      Just x0 -> case x0 of
+        NewGame ->
+          continue $
+            s & uiState . uiMenu
+              .~ NewGameMenu (NE.fromList [mkScenarioList (s ^. gameState . scenarios)])
+        Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
+        About -> continue $ s & uiState . uiMenu .~ AboutMenu
+        Quit -> halt s
+  CharKey 'q' -> halt s
+  ControlKey 'q' -> halt s
+  VtyEvent ev -> do
+    menu' <- handleListEvent ev menu
+    continue $ s & uiState . uiMenu .~ MainMenu menu'
+  _ -> continueWithoutRedraw s
+
+handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
+  Key V.KEnter ->
+    case snd <$> BL.listSelectedElement curMenu of
+      Nothing -> continueWithoutRedraw s
+      Just (SISingle scene) ->
+        continue $
+          s & uiState . uiMenu .~ NoMenu
+            & gameState %~ playScenario (s ^. gameState . entityMap) scene Nothing
+      Just (SICollection _ c) ->
+        continue $
+          s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
+  Key V.KEsc -> exitNewGameMenu s scenarioStack
+  CharKey 'q' -> exitNewGameMenu s scenarioStack
+  ControlKey 'q' -> exitNewGameMenu s scenarioStack
+  VtyEvent ev -> do
+    menu' <- handleListEvent ev curMenu
+    continue $ s & uiState . uiMenu .~ NewGameMenu (menu' :| rest)
+  _ -> continueWithoutRedraw s
+
+mkScenarioList :: ScenarioCollection -> BL.List Name ScenarioItem
+mkScenarioList = flip (BL.list ScenarioList) 1 . V.fromList . scenarioCollectionToList
+
+exitNewGameMenu :: AppState -> NonEmpty (BL.List Name ScenarioItem) -> EventM Name (Next AppState)
+exitNewGameMenu s stk =
+  continue $
+    s & uiState . uiMenu
+      .~ case snd (NE.uncons stk) of
+        Nothing -> MainMenu (mainMenu NewGame)
+        Just stk' -> NewGameMenu stk'
 
 pressAnyKey :: Menu -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 pressAnyKey m s (VtyEvent (V.EvKey _ _)) = continue $ s & uiState . uiMenu .~ m
@@ -127,36 +170,35 @@ pressAnyKey _ s _ = continueWithoutRedraw s
 
 -- | The top-level event handler while we are running the game itself.
 handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleMainEvent s (AppEvent Frame)
-  | s ^. gameState . paused = continueWithoutRedraw s
-  | otherwise = runFrameUI s
-handleMainEvent s (VtyEvent (V.EvResize _ _)) = do
-  invalidateCacheEntry WorldCache
-  continue s
-handleMainEvent s (VtyEvent (V.EvKey V.KEsc []))
-  | isJust (s ^. uiState . uiError) = continue $ s & uiState . uiError .~ Nothing
-  | isJust (s ^. uiState . uiModal) = continue $ s & uiState . uiModal .~ Nothing
-handleMainEvent s (VtyEvent vev)
-  | isJust (s ^. uiState . uiModal) = handleModalEvent s vev
-handleMainEvent s (VtyEvent (V.EvKey (V.KChar '\t') [])) = continue $ s & uiState . uiFocusRing %~ focusNext
-handleMainEvent s (VtyEvent (V.EvKey V.KBackTab [])) = continue $ s & uiState . uiFocusRing %~ focusPrev
-handleMainEvent s ev = do
-  -- intercept special keys that works on all panels
-  case ev of
-    ControlKey 'q' -> toggleModal s QuitModal >>= continue
-    MetaKey 'w' -> setFocus s WorldPanel
-    MetaKey 'e' -> setFocus s RobotPanel
-    MetaKey 'r' -> setFocus s REPLPanel
-    MetaKey 't' -> setFocus s InfoPanel
-    FKey 1 -> toggleModal s HelpModal >>= continue
-    _anyOtherEvent ->
-      -- and dispatch the other to the focused panel handler
-      case focusGetCurrent (s ^. uiState . uiFocusRing) of
-        Just REPLPanel -> handleREPLEvent s ev
-        Just WorldPanel -> handleWorldEvent s ev
-        Just RobotPanel -> handleRobotPanelEvent s ev
-        Just InfoPanel -> handleInfoPanelEvent s ev
-        _ -> continueWithoutRedraw s
+handleMainEvent s = \case
+  AppEvent Frame
+    | s ^. gameState . paused -> continueWithoutRedraw s
+    | otherwise -> runFrameUI s
+  VtyEvent (V.EvResize _ _) -> do
+    invalidateCacheEntry WorldCache
+    continue s
+  Key V.KEsc
+    | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
+    | isJust (s ^. uiState . uiModal) -> continue $ s & uiState . uiModal .~ Nothing
+  VtyEvent vev
+    | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
+  CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
+  Key V.KBackTab -> continue $ s & uiState . uiFocusRing %~ focusPrev
+  -- special keys that work on all panels
+  ControlKey 'q' -> toggleModal s QuitModal >>= continue
+  MetaKey 'w' -> setFocus s WorldPanel
+  MetaKey 'e' -> setFocus s RobotPanel
+  MetaKey 'r' -> setFocus s REPLPanel
+  MetaKey 't' -> setFocus s InfoPanel
+  FKey 1 -> toggleModal s HelpModal >>= continue
+  -- dispatch any other events to the focused panel handler
+  ev ->
+    case focusGetCurrent (s ^. uiState . uiFocusRing) of
+      Just REPLPanel -> handleREPLEvent s ev
+      Just WorldPanel -> handleWorldEvent s ev
+      Just RobotPanel -> handleRobotPanelEvent s ev
+      Just InfoPanel -> handleInfoPanelEvent s ev
+      _ -> continueWithoutRedraw s
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
@@ -184,13 +226,13 @@ toggleModal s mt = do
   resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
 
 handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
-handleModalEvent s ev = case ev of
+handleModalEvent s = \case
   V.EvKey V.KEnter [] -> do
     s' <- toggleModal s QuitModal
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
       Just (Just Confirm) -> quitGame s'
       _ -> continue s'
-  _ -> do
+  ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
     continue s'
 
@@ -451,11 +493,11 @@ stripCmd pty = pty
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
+handleREPLEvent s (ControlKey 'c') =
   continue $
     s
       & gameState . robotMap . ix 0 . machine %~ cancel
-handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
+handleREPLEvent s (Key V.KEnter) =
   if not $ s ^. gameState . replWorking
     then case processTerm' topTypeCtx topCapCtx entry of
       Right mt -> do
@@ -482,9 +524,9 @@ handleREPLEvent s (VtyEvent (V.EvKey V.KEnter [])) =
     (gameState . replStatus .~ REPLWorking ty Nothing)
       . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
       . (gameState %~ execState (activateRobot 0))
-handleREPLEvent s (VtyEvent (V.EvKey V.KUp [])) =
+handleREPLEvent s (Key V.KUp) =
   continue $ s & adjReplHistIndex Older
-handleREPLEvent s (VtyEvent (V.EvKey V.KDown [])) =
+handleREPLEvent s (Key V.KDown) =
   continue $ s & adjReplHistIndex Newer
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
@@ -538,54 +580,49 @@ worldScrollDist = 8
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 -- scrolling the world view in Creative mode
-handleWorldEvent s (VtyEvent (V.EvKey k []))
-  | s ^. gameState . creativeMode
-      && k
-        `elem` [ V.KUp
-               , V.KDown
-               , V.KLeft
-               , V.KRight
-               , V.KChar 'h'
-               , V.KChar 'j'
-               , V.KChar 'k'
-               , V.KChar 'l'
-               ] =
-    scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'c') [])) = do
-  invalidateCacheEntry WorldCache
-  continue $ s & gameState . viewCenterRule .~ VCRobot 0
+handleWorldEvent s = \case
+  Key k
+    | s ^. gameState . creativeMode
+        && k
+          `elem` [ V.KUp
+                 , V.KDown
+                 , V.KLeft
+                 , V.KRight
+                 , V.KChar 'h'
+                 , V.KChar 'j'
+                 , V.KChar 'k'
+                 , V.KChar 'l'
+                 ] ->
+      scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
+  CharKey 'c' -> do
+    invalidateCacheEntry WorldCache
+    continue $ s & gameState . viewCenterRule .~ VCRobot 0
 
--- pausing and stepping
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'p') [])) = do
-  curTime <- liftIO $ getTime Monotonic
-  continue $
-    s
-      & gameState . runStatus %~ (\status -> if status == Running then ManualPause else Running)
-      -- Also reset the last frame time to now. If we are pausing, it
-      -- doesn't matter; if we are unpausing, this is critical to
-      -- ensure the next frame doesn't think it has to catch up from
-      -- whenever the game was paused!
-      & uiState . lastFrameTime .~ curTime
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 's') []))
-  | s ^. gameState . paused = runGameTickUI s
-  | otherwise = continueWithoutRedraw s
--- speed controls
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '<') [])) =
-  continue $ adjustTPS (-) s
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '>') [])) =
-  continue $ adjustTPS (+) s
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar ',') [])) =
-  continue $ adjustTPS (-) s
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar '.') [])) =
-  continue $ adjustTPS (+) s
--- show fps
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'f') [])) =
-  continue $ (s & uiState . uiShowFPS %~ not)
--- for testing only: toggle between classic & creative modes
-handleWorldEvent s (VtyEvent (V.EvKey (V.KChar 'm') [])) =
-  continue (s & gameState . creativeMode %~ not)
--- Fall-through case: don't do anything.
-handleWorldEvent s _ = continueWithoutRedraw s
+  -- pausing and stepping
+  CharKey 'p' -> do
+    curTime <- liftIO $ getTime Monotonic
+    continue $
+      s
+        & gameState . runStatus %~ (\status -> if status == Running then ManualPause else Running)
+        -- Also reset the last frame time to now. If we are pausing, it
+        -- doesn't matter; if we are unpausing, this is critical to
+        -- ensure the next frame doesn't think it has to catch up from
+        -- whenever the game was paused!
+        & uiState . lastFrameTime .~ curTime
+  CharKey 's'
+    | s ^. gameState . paused -> runGameTickUI s
+    | otherwise -> continueWithoutRedraw s
+  -- speed controls
+  CharKey '<' -> continue $ adjustTPS (-) s
+  CharKey '>' -> continue $ adjustTPS (+) s
+  CharKey ',' -> continue $ adjustTPS (-) s
+  CharKey '.' -> continue $ adjustTPS (+) s
+  -- show fps
+  CharKey 'f' -> continue $ s & uiState . uiShowFPS %~ not
+  -- for testing only: toggle between classic & creative modes
+  CharKey 'm' -> continue (s & gameState . creativeMode %~ not)
+  -- Fall-through case: don't do anything.
+  _ -> continueWithoutRedraw s
 
 -- | Manually scroll the world view.
 scrollView :: AppState -> (V2 Int64 -> V2 Int64) -> EventM Name AppState
@@ -619,11 +656,11 @@ adjustTPS (+/-) = uiState . lgTicksPerSecond %~ (+/- 1)
 
 -- | Handle user input events in the robot panel.
 handleRobotPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleRobotPanelEvent s (VtyEvent (V.EvKey V.KEnter [])) =
+handleRobotPanelEvent s (Key V.KEnter) =
   maybe (continueWithoutRedraw s) (descriptionModal s) (focusedEntity s)
-handleRobotPanelEvent s (VtyEvent (V.EvKey (V.KChar 'm') [])) =
+handleRobotPanelEvent s (CharKey 'm') =
   maybe (continueWithoutRedraw s) (makeEntity s) (focusedEntity s)
-handleRobotPanelEvent s (VtyEvent (V.EvKey (V.KChar '0') [])) = do
+handleRobotPanelEvent s (CharKey '0') = do
   continue $ s & (uiState . uiShowZero %~ not) . (uiState . uiInventoryShouldUpdate .~ True)
 handleRobotPanelEvent s (VtyEvent ev) = do
   let mList = s ^? uiState . uiInventory . _Just . _2
@@ -667,12 +704,12 @@ descriptionModal s e =
 -- | Handle user events in the info panel (just scrolling).
 handleInfoPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleInfoPanelEvent s = \case
-  VtyEvent (V.EvKey V.KDown []) -> vScrollBy infoScroll 1 >> continue s
-  VtyEvent (V.EvKey V.KUp []) -> vScrollBy infoScroll (-1) >> continue s
-  VtyEvent (V.EvKey (V.KChar 'k') []) -> vScrollBy infoScroll 1 >> continue s
-  VtyEvent (V.EvKey (V.KChar 'j') []) -> vScrollBy infoScroll (-1) >> continue s
-  VtyEvent (V.EvKey V.KPageDown []) -> vScrollPage infoScroll Brick.Down >> continue s
-  VtyEvent (V.EvKey V.KPageUp []) -> vScrollPage infoScroll Brick.Up >> continue s
-  VtyEvent (V.EvKey V.KHome []) -> vScrollToBeginning infoScroll >> continue s
-  VtyEvent (V.EvKey V.KEnd []) -> vScrollToEnd infoScroll >> continue s
+  Key V.KDown -> vScrollBy infoScroll 1 >> continue s
+  Key V.KUp -> vScrollBy infoScroll (-1) >> continue s
+  CharKey 'k' -> vScrollBy infoScroll 1 >> continue s
+  CharKey 'j' -> vScrollBy infoScroll (-1) >> continue s
+  Key V.KPageDown -> vScrollPage infoScroll Brick.Down >> continue s
+  Key V.KPageUp -> vScrollPage infoScroll Brick.Up >> continue s
+  Key V.KHome -> vScrollToBeginning infoScroll >> continue s
+  Key V.KEnd -> vScrollToEnd infoScroll >> continue s
   _ -> continueWithoutRedraw s

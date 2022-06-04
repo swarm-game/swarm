@@ -46,9 +46,10 @@ import Data.Array (range)
 import qualified Data.Foldable as F
 import qualified Data.IntMap as IM
 import qualified Data.List as L
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.Split (chunksOf)
 import qualified Data.Map as M
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -70,6 +71,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItemName, scenarioName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
@@ -88,8 +90,8 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = case s ^. uiState . uiMenu of
   NoMenu -> drawGameUI s
   MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+  NewGameMenu stk -> [drawNewGameMenuUI stk]
   TutorialMenu -> [drawTutorialMenuUI]
-  ChallengesMenu -> [drawChallengesMenuUI]
   AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
@@ -115,10 +117,41 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '░' = dirtAttr
   attrFor _ = defAttr
 
+drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
+drawNewGameMenuUI (l :| ls) =
+  padLeftRight 20
+    . centerLayer
+    $ hBox
+      [ vBox
+          [ withAttr robotAttr . txt $ breadcrumbs ls
+          , txt " "
+          , vLimit 20 . hLimit 35
+              . BL.renderList (const drawScenarioItem) True
+              $ l
+          ]
+      , padLeft (Pad 5) (maybe (txt "") drawDescription $ snd <$> BL.listSelectedElement l)
+      ]
+ where
+  drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName
+  drawScenarioItem (SICollection nm _) = padRight Max (txt nm) <+> withAttr robotAttr (txt ">")
+
+  breadcrumbs :: [BL.List Name ScenarioItem] -> Text
+  breadcrumbs =
+    T.intercalate " > "
+      . ("Scenarios" :)
+      . reverse
+      . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
+
+  drawDescription :: ScenarioItem -> Widget Name
+  drawDescription (SISingle s) = txtWrap (nonBlank (s ^. scenarioDescription))
+  drawDescription (SICollection _ _) = txtWrap " "
+
+  nonBlank "" = " "
+  nonBlank t = t
+
 drawMainMenuEntry :: MainMenuEntry -> Widget Name
 drawMainMenuEntry NewGame = txt "New game"
 drawMainMenuEntry Tutorial = txt "Tutorial"
-drawMainMenuEntry Challenges = txt "Challenges"
 drawMainMenuEntry About = txt "About"
 drawMainMenuEntry Quit = txt "Quit"
 
@@ -126,16 +159,10 @@ drawTutorialMenuUI :: Widget Name
 drawTutorialMenuUI =
   centerLayer $
     vBox . map hCenter $
-      [ txt "Coming soon!"
+      [ txt "Coming soon! In the meantime, you can play through a few"
+      , txt "tutorial challenges over in the New Game menu."
+      , txt " "
       , txt "https://github.com/swarm-game/swarm/issues/25"
-      , txt "https://github.com/swarm-game/swarm/issues/296"
-      ]
-
-drawChallengesMenuUI :: Widget Name
-drawChallengesMenuUI =
-  centerLayer $
-    vBox . map hCenter $
-      [ txt "Coming soon!"
       , txt "https://github.com/swarm-game/swarm/issues/296"
       ]
 
@@ -261,10 +288,10 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
       DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, 100)
       QuitModal ->
-        let quitMsg = "Are you sure you want to quit?"
+        let quitMsg = "Are you sure you want to quit this game and return to the menu?"
          in ( ""
             , padBottom (Pad 1) $ hCenter $ txt quitMsg
-            , Just (0, [("Cancel", Cancel), ("Quit", Confirm)])
+            , Just (0, [("Keep playing", Cancel), ("Quit to menu", Confirm)])
             , T.length quitMsg + 4
             )
 
