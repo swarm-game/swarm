@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -82,6 +83,7 @@ import qualified Data.IntMap as IM
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IS
 import Data.IntSet.Lens (setOf)
+import Data.List (partition)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
@@ -455,7 +457,7 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
   case scenarioToLoad of
     Just name -> do
       scenario <- loadScenario cmdlineSeed name entities
-      return $ playScenario scenario toRun initState
+      return $ playScenario entities scenario toRun initState
     Nothing -> return initState
 
 -- | For convenience, the 'GameState' corresponding to the classic
@@ -464,8 +466,8 @@ classicGame0 :: ExceptT Text IO GameState
 classicGame0 = initGameState (Just 0) (Just "00-classic") Nothing
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
-playScenario :: Scenario -> Maybe String -> GameState -> GameState
-playScenario scenario toRun g =
+playScenario :: EntityMap -> Scenario -> Maybe String -> GameState -> GameState
+playScenario em scenario toRun g =
   g
     { _creativeMode = scenario ^. scenarioCreative
     , _winCondition = theWinCondition
@@ -490,6 +492,7 @@ playScenario scenario toRun g =
  where
   seed = fromMaybe 0 (scenario ^. scenarioSeed)
   baseID = 0
+  (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
   robotList =
     zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
       -- If the  --run flag was used, use it to replace the CESK machine of the
@@ -498,6 +501,15 @@ playScenario scenario toRun g =
         %~ case toRun of
           Nothing -> id
           Just (into @Text -> f) -> const (initMachine [tmQ| run($str:f) |] Ctx.empty emptyStore)
+      -- If we are in creative mode, give robot 0 all the things
+      & ix 0 . robotInventory
+        %~ case scenario ^. scenarioCreative of
+          False -> id
+          True -> const (fromElems (map (0,) things))
+      & ix 0 . installedDevices
+        %~ case scenario ^. scenarioCreative of
+          False -> id
+          True -> const (fromList devices)
 
   theWorld = W.newWorld ((scenario ^. scenarioWorld) (fromMaybe 0 (scenario ^. scenarioSeed)))
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)

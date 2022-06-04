@@ -53,7 +53,7 @@ module Swarm.Game.Entity (
   entityHash,
 
   -- ** Entity map
-  EntityMap,
+  EntityMap (..),
   buildEntityMap,
   loadEntities,
   lookupEntityName,

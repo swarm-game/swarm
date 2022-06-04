@@ -141,7 +141,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
       Just (SISingle scene) ->
         continue $
           s & uiState . uiMenu .~ NoMenu
-            & gameState %~ playScenario scene Nothing
+            & gameState %~ playScenario (s ^. gameState . entityMap) scene Nothing
       Just (SICollection _ c) ->
         continue $
           s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
