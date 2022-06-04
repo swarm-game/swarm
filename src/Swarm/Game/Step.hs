@@ -1193,18 +1193,11 @@ execConst c vs s k = do
 
         pid <- use robotID
 
-        let -- Standard devices that are always installed.
-            -- XXX in the future, make a way to build these and just start the base
-            -- out with a large supply of each?
-            stdDeviceList =
-              ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
-            stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
-
-            -- Find out what capabilities are required by the program that will
+        let -- Find out what capabilities are required by the program that will
             -- be run on the newly constructed robot, and what devices would
             -- provide those capabilities.
             (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
-            capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
+            devices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
             -- Note that _capCtx must be empty: at least at the
             -- moment, definitions are only allowed at the top level,
@@ -1212,15 +1205,11 @@ execConst c vs s k = do
             -- (Though perhaps there is an argument that this ought to
             -- be relaxed specifically in the case of 'Build'.)
 
-            -- The devices that need to be installed on the new robot is the union
-            -- of these two sets.
-            devices = stdDevices `S.union` capDevices
+            -- A device is OK to install if we have one in our
+            -- inventory.
+            deviceOK d = (r ^. robotInventory) `E.contains` d
 
-            -- A device is OK to install if it is a standard device, or we have one
-            -- in our inventory.
-            deviceOK d = d `S.member` stdDevices || (r ^. robotInventory) `E.contains` d
-
-            missingDevices = S.filter (not . deviceOK) capDevices
+            missingDevices = S.filter (not . deviceOK) devices
 
         -- Make sure we're not missing any required devices.
         (creative || S.null missingDevices)
@@ -1252,7 +1241,7 @@ execConst c vs s k = do
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.
         unless creative $
-          forM_ (devices `S.difference` stdDevices) $ \d ->
+          forM_ devices $ \d ->
             robotInventory %= delete d
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
