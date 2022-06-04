@@ -159,7 +159,9 @@ drawTutorialMenuUI :: Widget Name
 drawTutorialMenuUI =
   centerLayer $
     vBox . map hCenter $
-      [ txt "Coming soon!"
+      [ txt "Coming soon! In the meantime, you can play through a few"
+      , txt "tutorial challenges over in the New Game menu."
+      , txt " "
       , txt "https://github.com/swarm-game/swarm/issues/25"
       , txt "https://github.com/swarm-game/swarm/issues/296"
       ]
