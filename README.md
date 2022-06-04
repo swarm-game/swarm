@@ -19,7 +19,7 @@ The implementation is still in an early stage, but these are some of the (planne
   lambda calculus + recursion, with a command monad for describing
   first-class imperative actions
 * Editor support with LSP and highlighting
-* (**TBD**) In-game tutorial
+* In-game tutorial
 * Multiple game modes:
     - In Classic mode, you start with the ability to produce only very
       basic, limited robots; collecting resources allows you to
@@ -28,13 +28,10 @@ The implementation is still in an early stage, but these are some of the (planne
     - Creative mode places no restrictions: program robots to your
       heart's content using whatever language features you want,
       without worrying about collecting resources.
-    - In Challenge mode, you attempt to program robots
-      in order to solve pre-designed puzzles or challenges.
-    - (**TBD**) Hardcore mode is like Classic mode, but you start
-      with only a limited number of robots.  If they get stuck or
-      you run out of resources, it's game over!
-    - (**TBD**) Future versions might also have multiplayer modes,
-      with co-op or PvP play over a network...?
+    - There are also challenge scenarios where you attempt to program
+      robots in order to solve pre-designed puzzles or challenges.
+    - Future versions might also have multiplayer modes, with co-op or
+      PvP play over a network...?
 
 Installing and Playing
 ======================
