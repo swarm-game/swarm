@@ -16,6 +16,7 @@ robots:
       - solar panel
       - workbench
     inventory:
+      - [5, 3D printer]
       - [100, treads]
       - [70, grabber]
       - [100, solar panel]
