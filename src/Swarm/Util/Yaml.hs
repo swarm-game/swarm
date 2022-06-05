@@ -36,6 +36,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Vector as V
 import Data.Yaml as Y
+import Data.Aeson.Key (fromText)
 
 ------------------------------------------------------------
 -- WithEntities wrapper
@@ -114,12 +115,12 @@ decodeFileEitherE e file = do
 -- | A variant of '.:' for 'ParserE': project out a field of an
 --   'Object', passing along the extra environment.
 (..:) :: FromJSONE e a => Object -> Text -> ParserE e a
-v ..: x = E $ \e -> explicitParseField (parseJSONE' e) v x
+v ..: x = E $ \e -> explicitParseField (parseJSONE' e) v (fromText x)
 
 -- | A variant of '.:?' for 'ParserE': project out an optional field of an
 --   'Object', passing along the extra environment.
 (..:?) :: FromJSONE e a => Object -> Text -> ParserE e (Maybe a)
-v ..:? x = E $ \e -> explicitParseFieldMaybe (parseJSONE' e) v x
+v ..:? x = E $ \e -> explicitParseFieldMaybe (parseJSONE' e) v (fromText x)
 
 -- | A variant of '.!=' for any functor.
 (..!=) :: Functor f => f (Maybe a) -> a -> f a

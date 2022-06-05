@@ -484,6 +484,10 @@ instance Hashable Inventory where
   hash = inventoryHash
   hashWithSalt s = hashWithSalt s . inventoryHash
 
+-- | Inventories are compared by hash for efficiency.
+instance Eq Inventory where
+  (==) = (==) `on` hash
+
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
 lookup :: Entity -> Inventory -> Count
