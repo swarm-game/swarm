@@ -396,7 +396,7 @@
 - name: plasma cutter
   display:
     attr: device
-    char: '*'
+    char: 'P'
   description:
   - "A plasma cutter uses a jet of hot plasma to cut through metal like
     butter.  Used via the 'salvage' command to cut apart old robots."
