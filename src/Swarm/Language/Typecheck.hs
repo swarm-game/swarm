@@ -210,6 +210,13 @@ generalize uty = do
       xs = map (mkVarName "a") fvs
   return $ Forall xs (substU (M.fromList (zip (map Right fvs) (map UTyVar xs))) uty')
 
+-- | XXX
+monomorphize :: UType -> Infer UPolytype
+monomorphize uty = do
+  uty' <- applyBindings uty
+  tmfvs <- S.toList <$> freeVars uty'
+  return $ Forall [] (substU (M.fromList (zip (map Right tmfvs) (repeat UTyUnit))) uty')
+
 ------------------------------------------------------------
 -- Type errors
 
@@ -309,7 +316,8 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
         -- (if any) as well, since binders are made available at the top
         -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
         -- then they will be able to refer to r again later.
-        let ctxX = maybe Ctx.empty (`Ctx.singleton` Forall [] a) mx
+        aMono <- monomorphize a
+        let ctxX = maybe Ctx.empty (`Ctx.singleton` aMono) mx
         return $ Module cmdb (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
