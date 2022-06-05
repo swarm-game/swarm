@@ -1,6 +1,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -46,16 +47,17 @@ import Control.Applicative ((<|>))
 import Control.Arrow ((***))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Data.Aeson.Key qualified as Key
+import Data.Aeson.KeyMap (KeyMap)
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Array
 import Data.Bifunctor (first)
 import Data.Char (isDigit, isSpace)
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HM
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
@@ -150,12 +152,12 @@ instance FromJSON WorldDescription where
     WorldDescription
       <$> v .:? "default"
       <*> v .:? "offset" .!= False
-      <*> v .:? "palette" .!= WorldPalette HM.empty
+      <*> v .:? "palette" .!= WorldPalette mempty
       <*> v .:? "upperleft" .!= V2 0 0
       <*> v .:? "map" .!= ""
 
 newtype WorldPalette = WorldPalette
-  {unPalette :: HashMap Text (TerrainType, Maybe Text)}
+  {unPalette :: KeyMap (TerrainType, Maybe Text)}
 
 instance FromJSON WorldPalette where
   parseJSON = withObject "palette" $ fmap WorldPalette . mapM parseJSON
@@ -164,7 +166,7 @@ mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (Seed -> WorldFun Int
 mkWorldFun pwd = E $ \em -> do
   wd <- pwd
   let toEntity :: Char -> Parser (Int, Maybe Entity)
-      toEntity c = case HM.lookup (into @Text [c]) (unPalette (palette wd)) of
+      toEntity c = case KeyMap.lookup (Key.fromString [c]) (unPalette (palette wd)) of
         Nothing -> fail $ "Char not in entity palette: " ++ [c]
         Just (t, mt) -> case mt of
           Nothing -> return (fromEnum t, Nothing)
