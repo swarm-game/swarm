@@ -658,5 +658,5 @@ populateInventoryList (Just r) = do
 -- | Initialize the 'AppState'.
 initAppState :: Maybe Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
 initAppState seed scenarioName toRun = do
-  let showMenu = isNothing scenarioName && isNothing toRun
+  let showMenu = isNothing scenarioName && isNothing toRun && isNothing seed
   AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu

@@ -45,10 +45,10 @@ To skip past the main menu for now and ensure you're playing on the
 same world described in this tutorial, start Swarm with a command line
 like
 ```
-stack run -- -c 00-classic -s 0
+stack run -- -s 0
 ```
-This tells Swarm to load the `00-classic` scenario and use 0 as the
-seed for the random number generator.
+This tells Swarm to use 0 as the seed for the random number generator
+(and automatically load a new game rather than showing the main menu).
 
 You should then be greeted by a screen that looks something like this:
 

@@ -453,12 +453,11 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
           , _ticks = 0
           }
 
-  -- Load a scenario if one was specified on the command line
-  case scenarioToLoad of
-    Just name -> do
-      scenario <- loadScenario cmdlineSeed name entities
-      return $ playScenario entities scenario toRun initState
-    Nothing -> return initState
+  -- Load a scenario if one was specified on the command line,
+  -- defaulting to classic mode.
+  let name = fromMaybe "00-classic" scenarioToLoad
+  scenario <- loadScenario cmdlineSeed name entities
+  return $ playScenario entities scenario toRun initState
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.
