@@ -619,8 +619,10 @@ handleWorldEvent s = \case
   CharKey '.' -> continue $ adjustTPS (+) s
   -- show fps
   CharKey 'f' -> continue $ s & uiState . uiShowFPS %~ not
-  -- for testing only: toggle between classic & creative modes
-  CharKey 'm' -> continue (s & gameState . creativeMode %~ not)
+  -- toggle creative mode if in "cheat mode"
+  CharKey 'm'
+    | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
+    | otherwise -> continueWithoutRedraw s
   -- Fall-through case: don't do anything.
   _ -> continueWithoutRedraw s
 

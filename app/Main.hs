@@ -16,8 +16,11 @@ import Swarm.Language.Pipeline (processTerm)
 import System.Exit
 
 data CLI
-  = -- seed, challenge file, run file
-    Run (Maybe Int) (Maybe FilePath) (Maybe FilePath)
+  = Run
+      (Maybe Int) -- seed
+      (Maybe FilePath) -- scenario
+      (Maybe FilePath) -- file to run
+      Bool -- cheat mode
   | Format Input
   | LSP
 
@@ -27,7 +30,7 @@ cliParser =
     ( command "format" (info (format <**> helper) (progDesc "Format a file"))
         <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
     )
-    <|> Run <$> seed <*> challenge <*> run
+    <|> Run <$> seed <*> scenario <*> run <*> cheat
  where
   format :: Parser CLI
   format =
@@ -35,10 +38,12 @@ cliParser =
       <|> (Format . File <$> strArgument (metavar "FILE"))
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
-  challenge :: Parser (Maybe String)
-  challenge = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
+  scenario :: Parser (Maybe String)
+  scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  cheat :: Parser Bool
+  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode")
 
 cliInfo :: ParserInfo CLI
 cliInfo =
@@ -80,6 +85,6 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run seed challenge toRun -> appMain seed challenge toRun
+    Run seed scenario toRun cheat -> appMain seed scenario toRun cheat
     Format fo -> formatFile fo
     LSP -> lspMain

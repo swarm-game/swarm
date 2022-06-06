@@ -358,6 +358,7 @@ drawKeyMenu s =
   isPaused = s ^. gameState . paused
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
+  cheat = s ^. uiState . uiCheatMode
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -383,6 +384,7 @@ drawKeyMenu s =
          ]
       ++ [("s", "step") | isPaused]
       ++ [("c", "recenter") | not viewingBase]
+      ++ [("m", "toggle creative") | cheat]
   keyCmdsFor (Just RobotPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
     , ("Ret", "focus")
