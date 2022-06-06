@@ -216,6 +216,24 @@
   properties: [portable]
   capabilities: [float]
 
+- name: sand
+  display:
+    attr: sand
+    char: '█'
+  description:
+  - A substance composed mostly of tiny rocks and mineral particles.  It
+    tends to be found near water, and can be used in a furnace to make glass.
+  properties: [portable, growable]
+  growth: [0,0]
+
+- name: glass
+  display:
+    attr: entity
+    char: '□'
+  description:
+  - A pane of a brittle, clear substance, made from melting sand in a furnace.
+  properties: [portable]
+
 - name: bit (0)
   display:
     attr: entity
@@ -378,7 +396,7 @@
 - name: plasma cutter
   display:
     attr: device
-    char: '+'
+    char: 'P'
   description:
   - "A plasma cutter uses a jet of hot plasma to cut through metal like
     butter.  Used via the 'salvage' command to cut apart old robots."
@@ -546,3 +564,14 @@
     uses the 'log' command)."
   properties: [portable]
   capabilities: [log]
+
+- name: calculator
+  display:
+    attr: device
+    char: '+'
+  description:
+  - "A calculator allows a robot to do basic arithmetic calculations:
+    addition, subtraction, multiplication, division, and
+    exponentiation."
+  properties: [portable]
+  capabilities: [arith]
