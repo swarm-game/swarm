@@ -100,7 +100,7 @@ import qualified Data.IntSet as IS
 import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (isJust, listToMaybe, fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -289,7 +289,7 @@ mkEntity disp nm descr props =
 --   capabilities they provide (if any).
 data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
-  , entitiesByCap :: Map Capability Entity
+  , entitiesByCap :: Map Capability [Entity]
   }
 
 instance Semigroup EntityMap where
@@ -305,8 +305,8 @@ lookupEntityName nm = M.lookup nm . entitiesByName
 
 -- | Find an entity which is a device that provides the given
 --   capability.
-deviceForCap :: Capability -> EntityMap -> Maybe Entity
-deviceForCap cap = M.lookup cap . entitiesByCap
+deviceForCap :: Capability -> EntityMap -> [Entity]
+deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
@@ -315,7 +315,7 @@ buildEntityMap :: [Entity] -> EntityMap
 buildEntityMap es =
   EntityMap
     { entitiesByName = M.fromList . map (view entityName &&& id) $ es
-    , entitiesByCap = M.fromList . concatMap (\e -> map (,e) (e ^. entityCapabilities)) $ es
+    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (e ^. entityCapabilities)) $ es
     }
 
 ------------------------------------------------------------

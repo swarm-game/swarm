@@ -49,7 +49,7 @@ robots:
       - [1, goal]
       - [2, metal drill]
       - [1, drill]
-      - [2, logger]
+      - [3, logger]
 world:
   default: [ice, knownwater]
   palette:
@@ -69,7 +69,7 @@ world:
     'I': [stone, iron vein]
   upperleft: [-1, 1]
   map: |
-    ┌────                                                                  ~~
+    ┌─────┐                                                                ~~
     │IAAT~                                                                ~L~
     │..AAA│                                                                ~~
     │....C│                                                                 ~
