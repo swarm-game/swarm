@@ -42,14 +42,7 @@
 - in:
   - [2, board]
   out:
-  - [1, gear]
-
-- in:
-  - [1, box]
-  - [1, drill bit]
-  - [1, motor]
-  out:
-  - [1, drill]
+  - [1, wooden gear]
 
 #########################################
 ##                BITS                 ##
@@ -124,7 +117,7 @@
   - [1, iron mine]
   required:
   - [1, drill]
-  time: 42
+  time: 64
 
 ## MINES
 
@@ -144,7 +137,7 @@
   - [1, iron mine]
   required:
   - [1, drill]
-  time: 42
+  time: 64
 
 ## SMELTING
 
@@ -175,10 +168,30 @@
 ## TOOLS
 
 - in:
-  - [32, gear]
+  - [1, iron plate]
+  out:
+  - [2, iron gear]
+
+- in:
+  - [32, wooden gear]
   - [6, copper wire]
   out:
   - [1, motor]
+
+- in:
+  - [16, iron gear]
+  - [6, copper wire]
+  out:
+  - [1, motor]
+
+- in:
+  - [1, box]
+  - [1, drill bit]
+  - [1, motor]
+  out:
+  - [1, drill]
+
+## MAGIC
 
 - in:
   - [2, copper wire]

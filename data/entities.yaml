@@ -295,12 +295,21 @@
   - A wooden box.  It can hold things.
   properties: [portable]
 
-- name: gear
+- name: wooden gear
   display:
     attr: wood
     char: '*'
   description:
   - A wooden gear.
+  properties: [portable]
+
+- name: iron gear
+  display:
+    attr: wood
+    char: '*'
+  description:
+  - An iron gear that is more resilient.
+  - It can be used to create bigger and more complex machines.
   properties: [portable]
 
 - name: counter
