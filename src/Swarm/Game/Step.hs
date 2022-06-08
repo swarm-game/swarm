@@ -898,8 +898,12 @@ execConst c vs s k = do
         rDir <- use robotOrientation
 
         let nextLoc = loc ^+^ applyTurn d (rDir ? V2 0 0)
-        em <- use entityMap
-        drill <- lookupEntityName "drill" em `isJustOr` Fatal "Drill does not exist?!"
+
+        let toyDrill = lookupByName "drill" ins
+            metalDrill = lookupByName "metal drill" ins
+            insDrill = listToMaybe $ metalDrill <> toyDrill
+
+        drill <- insDrill `isJustOr` Fatal "Drill is required but not installed?!"
         nextME <- entityAt nextLoc
         nextE <-
           nextME
@@ -1400,6 +1404,7 @@ execConst c vs s k = do
           [ "Bad application of execConst:"
           , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
           ]
+  
   finishCookingRecipe ::
     (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
     Recipe e ->

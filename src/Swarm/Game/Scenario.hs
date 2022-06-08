@@ -165,11 +165,11 @@ mkWorldFun pwd = E $ \em -> do
   wd <- pwd
   let toEntity :: Char -> Parser (Int, Maybe Entity)
       toEntity c = case KeyMap.lookup (Key.fromString [c]) (unPalette (palette wd)) of
-        Nothing -> fail $ "Char not in entity palette: " ++ [c]
+        Nothing -> fail $ "Char not in entity palette: " ++ show c
         Just (t, mt) -> case mt of
           Nothing -> return (fromEnum t, Nothing)
           Just name -> case lookupEntityName name em of
-            Nothing -> fail $ "Unknown entity name: " ++ from @Text name
+            Nothing -> fail $ "Unknown entity name: " ++ show name
             Just e -> return (fromEnum t, Just e)
 
       grid = map (into @String) . T.lines $ area wd

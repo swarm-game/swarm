@@ -58,7 +58,7 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
 
   genBiome Big Hard Natural
     | sample ix cl0 > 0.5 && sample ix rg0 > 0.999 = (StoneT, Just "copper vein")
-    | sample ix cl0 > 0.5 && sample ix rg1 > 0.999 = (StoneT, Just "iron vein")
+    | sample ix cl0 > 0.5 && sample ix rg1 > 0.99 = (StoneT, Just "iron vein")
     | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
     | h `mod` 30 == 0 = (StoneT, Just "boulder")
     | sample ix cl0 > 0 = (DirtT, Just "tree")

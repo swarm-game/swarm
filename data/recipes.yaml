@@ -86,11 +86,21 @@
 - in:
   - [1, mountain]
   out:
-  - [9, rock]
+  - [8, rock]
   - [1, mountain tunnel]
   required:
   - [1, drill]
   time: 90
+
+- in:
+  - [1, mountain]
+  out:
+  - [16, rock]
+  - [1, mountain tunnel]
+  required:
+  - [1, metal drill]
+  time: 9
+
 
 - in:
   - [5, rock]
@@ -107,6 +117,7 @@
   - [1, copper vein]
   out:
   - [1, copper mine]
+  - [1, copper ore]
   required:
   - [1, drill]
   time: 42
@@ -115,9 +126,28 @@
   - [1, iron vein]
   out:
   - [1, iron mine]
+  - [1, iron ore]
   required:
   - [1, drill]
   time: 64
+
+- in:
+  - [1, copper vein]
+  out:
+  - [1, copper mine]
+  - [1, copper ore]
+  required:
+  - [1, metal drill]
+  time: 6
+
+- in:
+  - [1, iron vein]
+  out:
+  - [1, iron mine]
+  - [1, iron ore]
+  required:
+  - [1, metal drill]
+  time: 7
 
 ## MINES
 
@@ -138,6 +168,24 @@
   required:
   - [1, drill]
   time: 64
+
+- in:
+  - [1, copper mine]
+  out:
+  - [1, copper ore]
+  - [1, copper mine]
+  required:
+  - [1, metal drill]
+  time: 6
+
+- in:
+  - [1, iron mine]
+  out:
+  - [1, iron ore]
+  - [1, iron mine]
+  required:
+  - [1, metal drill]
+  time: 7
 
 ## SMELTING
 
