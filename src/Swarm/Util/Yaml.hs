@@ -30,13 +30,13 @@ module Swarm.Util.Yaml (
 ) where
 
 import Control.Monad.Reader
+import Data.Aeson.Key (fromText)
 import Data.Aeson.Types (explicitParseField, explicitParseFieldMaybe)
 import Data.Bifunctor (first)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Vector as V
 import Data.Yaml as Y
-import Data.Aeson.Key (fromText)
 
 ------------------------------------------------------------
 -- WithEntities wrapper

@@ -1,6 +1,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -8,7 +9,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 
 -- |
 -- Module      :  Swarm.Game.Scenario
@@ -47,17 +47,17 @@ import Control.Applicative ((<|>))
 import Control.Arrow ((***))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Aeson.Key qualified as Key
 import Data.Array
 import Data.Bifunctor (first)
 import Data.Char (isDigit, isSpace)
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
