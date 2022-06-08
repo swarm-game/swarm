@@ -77,7 +77,7 @@ class FromJSONE e a where
   parseJSONE = liftE . parseJSON
 
   parseJSONE' :: e -> Value -> Parser a
-  parseJSONE' e = ($e) . runE . parseJSONE
+  parseJSONE' e = ($ e) . runE . parseJSONE
 
 instance FromJSONE e Int
 
