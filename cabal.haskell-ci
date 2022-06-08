@@ -17,10 +17,8 @@ haddock: True
 -- Swarm has benchmarks so at least build them :)
 benchmarks: True
 
--- TODO: enable HLint
-
 -- Run HLint
--- hlint: True
--- hlint-job: 9.0.2
--- hlint-yaml: .hlint.yaml
--- hlint-download-binary: True
+hlint: True
+hlint-job: 9.0.2
+hlint-yaml: .hlint.yaml
+hlint-download-binary: True
