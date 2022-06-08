@@ -180,7 +180,7 @@ mkWorldFun pwd = E $ \em -> do
       Coords (ulr, ulc) = locToCoords (ul wd)
 
   arr <-
-    fmap (listArray ((ulr, ulc), (ulr + rs -1, ulc + cs -1)))
+    fmap (listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)))
       . mapM toEntity
       . concat
       $ grid
