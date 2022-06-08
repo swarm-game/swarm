@@ -1,3 +1,7 @@
+#########################################
+##                WOOD                 ##
+#########################################
+
 - in:
   - [1, tree]
   out:
@@ -41,17 +45,31 @@
   - [1, gear]
 
 - in:
+  - [1, box]
+  - [1, drill bit]
+  - [1, motor]
+  out:
+  - [1, drill]
+
+#########################################
+##                BITS                 ##
+#########################################
+
+- in:
   - [1, bit (0)]
   - [1, bit (1)]
   out:
   - [1, drill bit]
 
 - in:
-  - [1, box]
-  - [1, drill bit]
-  - [1, motor]
+  - [8, bit (0)]
+  - [8, bit (1)]
   out:
-  - [1, drill]
+  - [1, counter]
+
+#########################################
+##                STONE                ##
+#########################################
 
 - in:
   - [1, boulder]
@@ -82,12 +100,33 @@
   time: 90
 
 - in:
+  - [5, rock]
+  out:
+  - [1, furnace]
+
+#########################################
+##                 METAL               ##
+#########################################
+
+## VEINS
+
+- in:
   - [1, copper vein]
   out:
   - [1, copper mine]
   required:
   - [1, drill]
   time: 42
+
+- in:
+  - [1, iron vein]
+  out:
+  - [1, iron mine]
+  required:
+  - [1, drill]
+  time: 42
+
+## MINES
 
 - in:
   - [1, copper mine]
@@ -99,9 +138,15 @@
   time: 42
 
 - in:
-  - [5, rock]
+  - [1, iron mine]
   out:
-  - [1, furnace]
+  - [1, iron ore]
+  - [1, iron mine]
+  required:
+  - [1, drill]
+  time: 42
+
+## SMELTING
 
 - in:
   - [1, copper ore]
@@ -118,6 +163,31 @@
   - [2, copper pipe]
   required:
   - [1, furnace]
+
+- in:
+  - [1, iron ore]
+  - [2, log]
+  out:
+  - [2, iron plate]
+  required:
+  - [1, furnace]
+
+## TOOLS
+
+- in:
+  - [32, gear]
+  - [6, copper wire]
+  out:
+  - [1, motor]
+
+- in:
+  - [2, copper wire]
+  out:
+  - [1, strange loop]
+
+#########################################
+##                  SAND               ##
+#########################################
 
 - in:
   - [1, sand]
@@ -140,25 +210,12 @@
   out:
   - [1, calculator]
 
-- in:
-  - [32, gear]
-  - [6, copper wire]
-  out:
-  - [1, motor]
-
-- in:
-  - [2, copper wire]
-  out:
-  - [1, strange loop]
+#########################################
+##                 LAMBDA              ##
+#########################################
 
 - in:
   - [5, lambda]
   - [1, water]
   out:
   - [1, curry]
-
-- in:
-  - [8, bit (0)]
-  - [8, bit (1)]
-  out:
-  - [1, counter]
