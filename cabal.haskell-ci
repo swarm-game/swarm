@@ -22,3 +22,6 @@ hlint: True
 hlint-job: 9.0.2
 hlint-yaml: .hlint.yaml
 hlint-download-binary: True
+
+raw-project
+  flags: +ci
