@@ -33,8 +33,8 @@ module Swarm.TUI.Border (
 import Brick
 import Brick.Widgets.Border
 import Control.Lens (makeLenses, to, (^.))
-import qualified Graphics.Vty as V
 import Data.Function ((&))
+import qualified Graphics.Vty as V
 
 -- | Labels for a horizontal border, with optional left, middle, and
 --   right labels.
@@ -114,10 +114,11 @@ borderWithLabels labels wrapped =
   Widget (hSize wrapped) (vSize wrapped) $ do
     c <- getContext
 
-    middleResult <- wrapped
-      & vLimit (c ^. availHeightL - 2)
-      & hLimit (c ^. availWidthL - 2)
-      & render
+    middleResult <-
+      wrapped
+        & vLimit (c ^. availHeightL - 2)
+        & hLimit (c ^. availWidthL - 2)
+        & render
 
     let tl = joinableBorder (Edges False True False True)
         tr = joinableBorder (Edges False True True False)
