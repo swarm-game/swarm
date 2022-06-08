@@ -14,8 +14,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Witch
 
-import Swarm.Game.Scenario
 import Swarm.Game.Entity
+import Swarm.Game.Scenario
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 
