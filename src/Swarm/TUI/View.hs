@@ -129,7 +129,7 @@ drawNewGameMenuUI (l :| ls) =
               . BL.renderList (const drawScenarioItem) True
               $ l
           ]
-      , padLeft (Pad 5) (maybe (txt "") drawDescription $ snd <$> BL.listSelectedElement l)
+      , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
  where
   drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName

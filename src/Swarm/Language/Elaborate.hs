@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- |
 -- Module      :  Swarm.Language.Elaborate
 -- Copyright   :  Brent Yorgey

@@ -1,5 +1,4 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Swarm.Game.CESK

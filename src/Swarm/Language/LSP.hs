@@ -115,5 +115,5 @@ handlers =
         case mdoc of
           Just vf@(VirtualFile _ version _rope) -> do
             validateSwarmCode doc (Just version) (virtualFileText vf)
-          _ -> debug $ "No virtual file found for: " <> (from (show msg))
+          _ -> debug $ "No virtual file found for: " <> from (show msg)
     ]

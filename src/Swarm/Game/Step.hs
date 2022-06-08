@@ -703,7 +703,7 @@ execConst c vs s k = do
       let yieldName = e ^. entityYields
       e' <- case yieldName of
         Nothing -> return e
-        Just n -> (?e) <$> uses entityMap (lookupEntityName n)
+        Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
 
       robotInventory %= insert e'
 
@@ -1444,7 +1444,7 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
 compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
-compareValues = \v1 -> case v1 of
+compareValues v1 = case v1 of
   VUnit -> \case VUnit -> return EQ; v2 -> incompatCmp VUnit v2
   VInt n1 -> \case VInt n2 -> return (compare n1 n2); v2 -> incompatCmp v1 v2
   VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
