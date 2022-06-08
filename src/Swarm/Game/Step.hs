@@ -20,7 +20,7 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
-import Control.Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
+import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
@@ -65,6 +65,7 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
+import Data.Containers.ListUtils (nubOrd)
 import Data.Functor (void)
 
 -- | The maximum number of CESK machine evaluation steps each robot is
@@ -1176,18 +1177,29 @@ execConst c vs s k = do
             -- be run on the other robot, and what devices would provide those
             -- capabilities.
             (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
-            capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
+
+            -- list of possible devices per capability
+            capDevices = map (`deviceForCap` em) . S.toList $ caps
 
             -- device is ok if it is installed on the childRobot
             deviceOK d = (childRobot ^. installedDevices) `E.contains` d
+            ignoreOK ([], miss) = ([], miss)
+            ignoreOK (ds, _miss) = (ds, [])
 
-            missingDevices = S.filter (not . deviceOK) capDevices
+            (deviceSets, missingDeviceSets) =
+              Lens.over _2 (nubOrd . map S.fromList) . unzip $
+                map (ignoreOK . L.partition deviceOK) capDevices
+
+            formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 
         -- check if robot has all devices to execute new command
-        (creative || S.null missingDevices)
-          `holdsOrFail` [ "the target robot does not have required devices:"
-                        , commaList (map (^. entityName) (S.toList missingDevices))
-                        ]
+        (creative || all null missingDeviceSets)
+          `holdsOrFail` ( "the target robot does not have required devices:" :
+                          (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
+                        )
+
+        (creative || not (any null deviceSets))
+          `holdsOrFail` ["the target robot cannot perform an impossible task"]
 
         -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
@@ -1223,7 +1235,7 @@ execConst c vs s k = do
       -- would return the capabilities needed to *execute* them),
       -- hopefully without duplicating too much code.
       [VDelay cmd e] -> do
-        r <- get
+        r <- get @Robot
         em <- use entityMap
         creative <- use creativeMode
 
@@ -1236,33 +1248,46 @@ execConst c vs s k = do
               ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
 
-            -- Find out what capabilities are required by the program that will
-            -- be run on the newly constructed robot, and what devices would
-            -- provide those capabilities.
+        -- Note that _capCtx must be empty: at least at the
+        -- moment, definitions are only allowed at the top level,
+        -- so there can't be any inside the argument to build.
+        -- (Though perhaps there is an argument that this ought to
+        -- be relaxed specifically in the case of 'Build'.)
+        -- See #349
+
+        let -- Find out what capabilities are required by the program that will
+            -- be run on the other robot, and what devices would provide those
+            -- capabilities.
             (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
-            capDevices = S.fromList . mapMaybe (`deviceForCap` em) . S.toList $ caps
 
-            -- Note that _capCtx must be empty: at least at the
-            -- moment, definitions are only allowed at the top level,
-            -- so there can't be any inside the argument to build.
-            -- (Though perhaps there is an argument that this ought to
-            -- be relaxed specifically in the case of 'Build'.)
-
-            -- The devices that need to be installed on the new robot is the union
-            -- of these two sets.
-            devices = stdDevices `S.union` capDevices
+            -- list of possible devices per capability
+            capDevices = map (`deviceForCap` em) . S.toList $ caps
 
             -- A device is OK to install if it is a standard device, or we have one
             -- in our inventory.
             deviceOK d = d `S.member` stdDevices || (r ^. robotInventory) `E.contains` d
+            ignoreOK ([], miss) = ([], miss)
+            ignoreOK (ds, _miss) = (ds, [])
 
-            missingDevices = S.filter (not . deviceOK) capDevices
+            (deviceSets, missingDeviceSets) =
+              Lens.over both (nubOrd . map S.fromList) . unzip $
+                map (ignoreOK . L.partition deviceOK) capDevices
 
-        -- Make sure we're not missing any required devices.
-        (creative || S.null missingDevices)
-          `holdsOrFail` [ "this would require installing devices you don't have:"
-                        , commaList (map (^. entityName) (S.toList missingDevices))
-                        ]
+            -- if given a choice between required devices giving same capability
+            devices =
+              if creative
+                then S.unions deviceSets -- give them all in creative
+                else S.unions $ map (S.take 1) deviceSets -- give first one otherwise
+            formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
+
+        -- check if robot has all devices to execute new command
+        (creative || all null missingDeviceSets)
+          `holdsOrFail` ( "this would require installing devices you don't have:" :
+                          (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
+                        )
+
+        (creative || not (any null deviceSets))
+          `holdsOrFail` ["no robot could perform such impossible task"]
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1404,7 +1429,7 @@ execConst c vs s k = do
           [ "Bad application of execConst:"
           , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
           ]
-  
+
   finishCookingRecipe ::
     (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
     Recipe e ->
