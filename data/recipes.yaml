@@ -176,20 +176,27 @@
   - [32, wooden gear]
   - [6, copper wire]
   out:
-  - [1, motor]
+  - [1, small motor]
 
 - in:
   - [16, iron gear]
   - [6, copper wire]
   out:
-  - [1, motor]
+  - [1, big motor]
 
 - in:
   - [1, box]
   - [1, drill bit]
-  - [1, motor]
+  - [1, small motor]
   out:
   - [1, drill]
+
+- in:
+  - [1, box]
+  - [3, drill bit]
+  - [1, big motor]
+  out:
+  - [1, metal drill]
 
 ## MAGIC
 

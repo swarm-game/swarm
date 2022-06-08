@@ -137,6 +137,23 @@
     water or steam.
   properties: [portable]
 
+- name: iron plate
+  display:
+    attr: iron
+    char: '■'
+  description:
+  - Raw iron ore. Used to create more resilient tools.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: iron gear
+  display:
+    attr: iron
+    char: '*'
+  description:
+  - An iron gear.
+  properties: [portable]
+
 - name: iron ore
   display:
     attr: copper
@@ -172,13 +189,24 @@
   - A furnace can be used to turn metal ore into various useful products.
   properties: [portable]
 
-- name: motor
+- name: small motor
+  display:
+    attr: entity
+    char: 'm'
+  description:
+  - A motor is useful for making devices that can turn when electric
+    current is applied.
+  - This one is rather small, but suprisingly efficient.
+  properties: [portable]
+
+- name: big motor
   display:
     attr: entity
     char: 'M'
   description:
   - A motor is useful for making devices that can turn when electric
     current is applied.
+  - This one is huge and could be used to construct powerful machinery.
   properties: [portable]
 
 - name: flower
@@ -461,6 +489,15 @@
     char: '!'
   description:
   - A drill allows robots to drill through rocks and mountains.
+  capabilities: [drill]
+  properties: [portable]
+
+- name: metal drill
+  display:
+    attr: iron
+    char: '!'
+  description:
+  - A metal drill allows robots to drill through rocks and mountains faster.
   capabilities: [drill]
   properties: [portable]
 
