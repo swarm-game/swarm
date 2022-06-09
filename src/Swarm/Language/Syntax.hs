@@ -6,7 +6,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -131,7 +130,7 @@ dirInfo d = case d of
   -- e.g. DLeft becomes "left"
   directionSyntax = toLower . T.tail . from . show $ d
   cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative vf = DirInfo directionSyntax Nothing vf
+  relative = DirInfo directionSyntax Nothing
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64

@@ -1,6 +1,5 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}

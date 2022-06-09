@@ -129,7 +129,7 @@ drawNewGameMenuUI (l :| ls) =
               . BL.renderList (const drawScenarioItem) True
               $ l
           ]
-      , padLeft (Pad 5) (maybe (txt "") drawDescription $ snd <$> BL.listSelectedElement l)
+      , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
  where
   drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName
@@ -616,8 +616,8 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
       , fmtEntityName missing ingr -- name of the input
       , padLeft (Pad 1) $ -- a connecting line:   ─────┬
           hBorder
-            <+> ( joinableBorder (Edges (i /= 0) (i /= inLen -1) True False) -- ...maybe plus vert ext:   │
-                    <=> if i /= inLen -1
+            <+> ( joinableBorder (Edges (i /= 0) (i /= inLen - 1) True False) -- ...maybe plus vert ext:   │
+                    <=> if i /= inLen - 1
                       then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
                       else emptyWidget
                 )
@@ -628,8 +628,8 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
   drawOut i (n, ingr) =
     hBox
       [ padRight (Pad 1) $
-          ( joinableBorder (Edges (i /= 0) (i /= outLen -1) False True)
-              <=> if i /= outLen -1
+          ( joinableBorder (Edges (i /= 0) (i /= outLen - 1) False True)
+              <=> if i /= outLen - 1
                 then vLimit (subtract 1 . length . T.words $ ingr ^. entityName) vBorder
                 else emptyWidget
           )
@@ -677,7 +677,7 @@ drawRobotLog s =
   allMe = all ((== rn) . Just . view leRobotName) logEntries
 
   drawEntry i e =
-    (if i == n -1 && s ^. uiState . uiScrollToEnd then visible else id)
+    (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id)
       . txtWrapWith indent2
       $ (if allMe then e ^. leText else T.concat ["[", e ^. leRobotName, "] ", e ^. leText])
 
