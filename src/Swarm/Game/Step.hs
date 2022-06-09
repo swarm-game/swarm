@@ -867,7 +867,7 @@ execConst c vs s k = do
 
         -- Try recipes and make a weighted random choice among the
         -- ones we have ingredients for.
-        chosenRecipe <- weightedChoice (\(_, _, r) -> r ^. recipeWeight) (rights (map (make (inv, ins)) recipes))
+        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) (rights (map (make (inv, ins)) recipes))
         (invTaken, changeInv, recipe) <-
           chosenRecipe
             `isJustOrFail` ["You don't have the ingredients to make", indefinite name, "."]
