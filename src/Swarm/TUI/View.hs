@@ -578,9 +578,10 @@ recipesWith s e =
   let getRecipes select = recipesFor (s ^. gameState . select) e
    in L.nub $ getRecipes recipesOut ++ getRecipes recipesIn
 
--- | Draw an ASCII art representation of a recipe.
+-- | Draw an ASCII art representation of a recipe.  For now, the
+--   weight is not shown.
 drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
-drawRecipe e inv (Recipe ins outs reqs time) =
+drawRecipe e inv (Recipe ins outs reqs time _weight) =
   vBox
     -- any requirements (e.g. furnace) go on top.
     [ hCenter $ drawReqs reqs

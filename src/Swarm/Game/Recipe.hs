@@ -24,6 +24,7 @@ module Swarm.Game.Recipe (
   recipeOutputs,
   recipeRequirements,
   recipeTime,
+  recipeWeight,
 
   -- * Loading recipes
   loadRecipes,
@@ -71,6 +72,7 @@ data Recipe e = Recipe
   , _recipeOutputs :: IngredientList e
   , _recipeRequirements :: IngredientList e
   , _recipeTime :: Integer
+  , _recipeWeight :: Integer
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
@@ -89,18 +91,25 @@ recipeTime :: Lens' (Recipe e) Integer
 --   are not consumed by the recipe (e.g. a furnace).
 recipeRequirements :: Lens' (Recipe e) (IngredientList e)
 
+-- | How this recipe is weighted against other recipes.  Any time
+--   there are multiple valid recipes that fit certain criteria, one
+--   of the recipes will be randomly chosen with probability
+--   proportional to its weight.
+recipeWeight :: Lens' (Recipe e) Integer
+
 ------------------------------------------------------------
 -- Serializing
 ------------------------------------------------------------
 
 instance ToJSON (Recipe Text) where
-  toJSON (Recipe ins outs reqs time) =
+  toJSON (Recipe ins outs reqs time weight) =
     object $
       [ "in" .= ins
       , "out" .= outs
       ]
         ++ ["required" .= reqs | not (null reqs)]
         ++ ["time" .= time | time /= 1]
+        ++ ["weight" .= weight | weight /= 1]
 
 instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
@@ -109,6 +118,7 @@ instance FromJSON (Recipe Text) where
       <*> v .: "out"
       <*> v .:? "required" .!= []
       <*> v .:? "time" .!= 1
+      <*> v .:? "weight" .!= 1
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'
@@ -157,7 +167,7 @@ inRecipeMap = buildRecipeMap recipeInputs
 --   inventory to be able to carry out the recipe.
 --   Requirements are not consumed and so can use installed.
 missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [(Count, Entity)]
-missingIngredientsFor (inv, ins) (Recipe inps _ reqs _) =
+missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
   findLacking inv inps
     <> findLacking ins (findLacking inv reqs)
  where
