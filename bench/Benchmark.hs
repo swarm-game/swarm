@@ -61,6 +61,12 @@ circlerProgram =
     in forever (
       move;
       turn right;
+      move;
+      turn right;
+      move;
+      turn right;
+      move;
+      turn right;
     )
   |]
 
