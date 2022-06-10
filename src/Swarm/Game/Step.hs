@@ -295,11 +295,11 @@ hasCapability cap = do
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
-hasCapabilityOr ::
-  (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Exn -> m ()
-hasCapabilityOr cap exn = do
+hasCapabilityFor ::
+  (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term -> m ()
+hasCapabilityFor cap term = do
   h <- hasCapability cap
-  h `holdsOr` exn
+  h `holdsOr` Incapable (S.singleton cap) term
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -447,7 +447,7 @@ stepCESK cesk = case cesk of
   Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
   -- Definitions immediately turn into VDef values, awaiting execution.
   In tm@(TDef r x _ t) e s k -> withExceptions s k $ do
-    CEnv `hasCapabilityOr` Incapable (S.singleton CEnv) tm
+    hasCapabilityFor CEnv tm
     return $ Out (VDef r x t e) s k
 
   -- Bind expressions don't evaluate: just package it up as a value
@@ -740,6 +740,7 @@ execConst c vs s k = do
       return $ Out (VString (e ^. entityName)) s k
     Turn -> case vs of
       [VDir d] -> do
+        when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
         robotOrientation . _Just %= applyTurn d
         flagRedraw
         return $ Out VUnit s k
@@ -904,17 +905,12 @@ execConst c vs s k = do
         rname <- use robotName
         inv <- use robotInventory
         ins <- use installedDevices
-        loc <- use robotLocation
-        rDir <- use robotOrientation
-
-        let nextLoc = loc ^+^ applyTurn d (rDir ? V2 0 0)
 
         let toyDrill = lookupByName "drill" ins
             metalDrill = lookupByName "metal drill" ins
             insDrill = listToMaybe $ metalDrill <> toyDrill
 
         drill <- insDrill `isJustOr` Fatal "Drill is required but not installed?!"
-        nextME <- entityAt nextLoc
 
         let directionText = case d of
               DDown -> "under"
@@ -922,6 +918,7 @@ execConst c vs s k = do
               DBack -> "behind"
               _ -> dirSyntax (dirInfo d) <> " of"
 
+        (nextLoc, nextME) <- lookInDirection d
         nextE <-
           nextME
             `isJustOrFail` ["There is nothing to drill", directionText, "robot", rname <> "."]
@@ -956,10 +953,7 @@ execConst c vs s k = do
       return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) s k
     Scan -> case vs of
       [VDir d] -> do
-        loc <- use robotLocation
-        orient <- use robotOrientation
-        let scanLoc = loc ^+^ applyTurn d (orient ? zero)
-        me <- entityAt scanLoc
+        (_loc, me) <- lookInDirection d
         res <- case me of
           Nothing -> return $ VInj False VUnit
           Just e -> do
@@ -1397,6 +1391,16 @@ execConst c vs s k = do
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
+  
+  lookInDirection ::
+    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
+    Direction -> m (V2 Int64, Maybe Entity)
+  lookInDirection d = do
+        loc <- use robotLocation
+        orient <- use robotOrientation
+        when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
+        let nextLoc = loc ^+^ applyTurn d (orient ? zero)
+        (nextLoc,) <$> entityAt nextLoc
 
   -- Find out the required devices for running the command on the
   -- target robot - this is common for 'Build' and 'Reprogram'.
