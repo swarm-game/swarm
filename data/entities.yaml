@@ -142,8 +142,8 @@
     attr: iron
     char: '■'
   description:
-  - Raw iron ore. Used to create more resilient tools.
-  - It can only be mined by drilling in the mountains.
+  - Worked iron suitable for crafting resilient tools.
+  - It also possess some electro-magnetic properties.
   properties: [portable]
 
 - name: iron gear
