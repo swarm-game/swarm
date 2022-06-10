@@ -915,9 +915,16 @@ execConst c vs s k = do
 
         drill <- insDrill `isJustOr` Fatal "Drill is required but not installed?!"
         nextME <- entityAt nextLoc
+
+        let directionText = case d of
+              DDown -> "under"
+              DForward -> "ahead of"
+              DBack -> "behind"
+              _ -> dirSyntax (dirInfo d) <> " of"
+
         nextE <-
           nextME
-            `isJustOrFail` ["There is nothing to drill", "in the direction", "of robot", rname <> "."]
+            `isJustOrFail` ["There is nothing to drill", directionText, "robot", rname <> "."]
 
         inRs <- use recipesIn
 
