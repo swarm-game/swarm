@@ -156,8 +156,8 @@
 
 - name: iron ore
   display:
-    attr: copper
-    char: 'C'
+    attr: iron
+    char: 'F'
   description:
   - Raw iron ore. Used to create more resilient tools.
   - It can only be mined by drilling in the mountains.
@@ -333,7 +333,7 @@
 
 - name: iron gear
   display:
-    attr: wood
+    attr: iron
     char: '*'
   description:
   - An iron gear that is more resilient.
