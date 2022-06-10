@@ -136,10 +136,13 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw s
-      Just (SISingle scene) ->
+      Just (SISingle scene) -> do
+        let gs = s ^. gameState
+        gs' <- liftIO $ playScenario (gs ^. entityMap) scene Nothing Nothing gs
+
         continue $
           s & uiState . uiMenu .~ NoMenu
-            & gameState %~ playScenario (s ^. gameState . entityMap) scene Nothing
+            & gameState .~ gs'
       Just (SICollection _ c) ->
         continue $
           s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)

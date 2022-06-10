@@ -73,6 +73,7 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
 import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
@@ -91,7 +92,7 @@ import Data.Text (Text)
 import qualified Data.Text as T (lines)
 import qualified Data.Text.IO as T (readFile)
 import Linear
-import System.Random (StdGen, mkStdGen)
+import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
 
 import Control.Algebra (Has)
@@ -456,8 +457,8 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
   -- Load a scenario if one was specified on the command line,
   -- defaulting to classic mode.
   let name = fromMaybe "00-classic" scenarioToLoad
-  scenario <- loadScenario cmdlineSeed name entities
-  return $ playScenario entities scenario toRun initState
+  scenario <- loadScenario name entities
+  liftIO $ playScenario entities scenario cmdlineSeed toRun initState
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.
@@ -465,31 +466,39 @@ classicGame0 :: ExceptT Text IO GameState
 classicGame0 = initGameState (Just 0) (Just "00-classic") Nothing
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
-playScenario :: EntityMap -> Scenario -> Maybe String -> GameState -> GameState
-playScenario em scenario toRun g =
-  g
-    { _creativeMode = scenario ^. scenarioCreative
-    , _winCondition = theWinCondition
-    , _runStatus = Running
-    , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
-    , _robotsByLocation =
-        M.fromListWith IS.union $
-          map (view robotLocation &&& (IS.singleton . view robotID)) robotList
-    , _activeRobots = setOf (traverse . robotID) robotList
-    , _waitingRobots = M.empty
-    , _gensym = initGensym
-    , _randGen = mkStdGen seed
-    , _world = theWorld
-    , _viewCenterRule = VCRobot baseID
-    , _viewCenter = V2 0 0
-    , _needsRedraw = False
-    , _replStatus = REPLDone
-    , _messageQueue = []
-    , _focusedRobotID = baseID
-    , _ticks = 0
-    }
+playScenario :: EntityMap -> Scenario -> Maybe Seed -> Maybe String -> GameState -> IO GameState
+playScenario em scenario userSeed toRun g = do
+  -- Decide on a seed.  In order of preference, we will use:
+  --   1. seed value provided by the user
+  --   2. seed value specified in the scenario description
+  --   3. randomly chosen seed value
+  seed <- case userSeed <|> scenario ^. scenarioSeed of
+    Just s -> return s
+    Nothing -> randomRIO (0, maxBound :: Int)
+
+  return $
+    g
+      { _creativeMode = scenario ^. scenarioCreative
+      , _winCondition = theWinCondition
+      , _runStatus = Running
+      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
+      , _robotsByLocation =
+          M.fromListWith IS.union $
+            map (view robotLocation &&& (IS.singleton . view robotID)) robotList
+      , _activeRobots = setOf (traverse . robotID) robotList
+      , _waitingRobots = M.empty
+      , _gensym = initGensym
+      , _randGen = mkStdGen seed
+      , _world = theWorld seed
+      , _viewCenterRule = VCRobot baseID
+      , _viewCenter = V2 0 0
+      , _needsRedraw = False
+      , _replStatus = REPLDone
+      , _messageQueue = []
+      , _focusedRobotID = baseID
+      , _ticks = 0
+      }
  where
-  seed = fromMaybe 0 (scenario ^. scenarioSeed)
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
   robotList =
@@ -510,7 +519,7 @@ playScenario em scenario toRun g =
           False -> id
           True -> const (fromList devices)
 
-  theWorld = W.newWorld ((scenario ^. scenarioWorld) (fromMaybe 0 (scenario ^. scenarioSeed)))
+  theWorld = W.newWorld . (scenario ^. scenarioWorld)
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
   initGensym = length robotList - 1
 
