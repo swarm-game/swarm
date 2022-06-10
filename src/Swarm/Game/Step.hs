@@ -374,10 +374,19 @@ stepCESK cesk = case cesk of
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ s k -> return $ Out VUnit s k
-  In (TDir d) _ s k -> return $ Out (VDir d) s k
   In (TInt n) _ s k -> return $ Out (VInt n) s k
   In (TString str) _ s k -> return $ Out (VString str) s k
   In (TBool b) _ s k -> return $ Out (VBool b) s k
+  -- Direction is simple too unless it is absolute (e.g. north)
+  -- and needs orient capability (provided by a compass).
+  -- This may be redundant just because of base escaping
+  -- capability checking (see #231).
+  In (TDir d) _ s k -> do
+    orient <- hasCapability COrient
+    if isCardinal d && not orient
+      then return $ Up (Incapable (S.singleton COrient) (TDir d)) s []
+      else return $ Out (VDir d) s k
+
   -- There should not be any antiquoted variables left at this point.
   In (TAntiString v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
@@ -1391,7 +1400,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
