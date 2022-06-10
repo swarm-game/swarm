@@ -190,6 +190,9 @@ handleMainEvent s = \case
   MetaKey 'e' -> setFocus s RobotPanel
   MetaKey 'r' -> setFocus s REPLPanel
   MetaKey 't' -> setFocus s InfoPanel
+  -- toggle creative mode if in "cheat mode"
+  ControlKey 'k'
+    | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
   FKey 1 -> toggleModal s HelpModal >>= continue
   -- dispatch any other events to the focused panel handler
   ev ->
@@ -619,10 +622,6 @@ handleWorldEvent s = \case
   CharKey '.' -> continue $ adjustTPS (+) s
   -- show fps
   CharKey 'f' -> continue $ s & uiState . uiShowFPS %~ not
-  -- toggle creative mode if in "cheat mode"
-  CharKey 'm'
-    | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
-    | otherwise -> continueWithoutRedraw s
   -- Fall-through case: don't do anything.
   _ -> continueWithoutRedraw s
 

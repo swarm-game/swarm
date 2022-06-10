@@ -371,6 +371,7 @@ drawKeyMenu s =
     [ ("F1", "help")
     , ("Tab", "cycle")
     ]
+      ++ [("^k", "creative") | cheat]
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
@@ -384,7 +385,6 @@ drawKeyMenu s =
          ]
       ++ [("s", "step") | isPaused]
       ++ [("c", "recenter") | not viewingBase]
-      ++ [("m", "toggle creative") | cheat]
   keyCmdsFor (Just RobotPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
     , ("Ret", "focus")
