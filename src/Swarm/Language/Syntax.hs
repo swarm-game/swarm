@@ -120,12 +120,12 @@ dirInfo d = case d of
   DLeft -> relative (\(V2 x y) -> V2 (- y) x)
   DRight -> relative (\(V2 x y) -> V2 y (- x))
   DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
+  DDown -> relative (const down)
   DForward -> relative id
   DNorth -> cardinal north
   DSouth -> cardinal south
   DEast -> cardinal east
   DWest -> cardinal west
-  DDown -> cardinal down
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
@@ -153,7 +153,7 @@ east = V2 1 0
 west :: V2 Int64
 west = V2 (-1) 0
 
--- | The direction for moving vertically down = @V2 0 0@.
+-- | The direction for viewing the current cell = @V2 0 0@.
 down :: V2 Int64
 down = V2 0 0
 
