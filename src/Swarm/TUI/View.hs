@@ -358,6 +358,7 @@ drawKeyMenu s =
   isPaused = s ^. gameState . paused
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
+  cheat = s ^. uiState . uiCheatMode
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -370,6 +371,7 @@ drawKeyMenu s =
     [ ("F1", "help")
     , ("Tab", "cycle")
     ]
+      ++ [("^k", "creative") | cheat]
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]

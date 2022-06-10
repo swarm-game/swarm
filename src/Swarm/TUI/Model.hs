@@ -57,6 +57,7 @@ module Swarm.TUI.Model (
   -- ** UI Model
   UIState,
   uiMenu,
+  uiCheatMode,
   uiFocusRing,
   uiReplForm,
   uiReplType,
@@ -358,6 +359,7 @@ makePrisms ''InventoryListEntry
 -- see the lenses below.
 data UIState = UIState
   { _uiMenu :: Menu
+  , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
@@ -404,6 +406,9 @@ let exclude = ['_lgTicksPerSecond]
 
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
+
+-- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
+uiCheatMode :: Lens' UIState Bool
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -565,8 +570,8 @@ initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Bool -> ExceptT Text IO UIState
-initUIState showMainMenu = liftIO $ do
+initUIState :: Bool -> Bool -> ExceptT Text IO UIState
+initUIState showMainMenu cheatMode = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
   appDataMap <- readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
@@ -574,6 +579,7 @@ initUIState showMainMenu = liftIO $ do
   return $
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
@@ -656,7 +662,7 @@ populateInventoryList (Just r) = do
 ------------------------------------------------------------
 
 -- | Initialize the 'AppState'.
-initAppState :: Maybe Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
-initAppState seed scenarioName toRun = do
+initAppState :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
+initAppState seed scenarioName toRun cheatMode = do
   let showMenu = isNothing scenarioName && isNothing toRun && isNothing seed
-  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu
+  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu cheatMode
