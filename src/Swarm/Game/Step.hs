@@ -1157,7 +1157,6 @@ execConst c vs s k = do
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
         r <- get
-        em <- use entityMap
         creative <- use creativeMode
 
         -- check if robot exists
@@ -1182,33 +1181,7 @@ execConst c vs s k = do
         (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["You can only program adjacent robot"]
 
-        let -- Find out what capabilities are required by the program that will
-            -- be run on the other robot, and what devices would provide those
-            -- capabilities.
-            (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
-
-            -- list of possible devices per capability
-            capDevices = map (`deviceForCap` em) . S.toList $ caps
-
-            -- device is ok if it is installed on the childRobot
-            deviceOK d = (childRobot ^. installedDevices) `E.contains` d
-            ignoreOK ([], miss) = ([], miss)
-            ignoreOK (ds, _miss) = (ds, [])
-
-            (deviceSets, missingDeviceSets) =
-              Lens.over _2 (nubOrd . map S.fromList) . unzip $
-                map (ignoreOK . L.partition deviceOK) capDevices
-
-            formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
-
-        -- check if robot has all devices to execute new command
-        (creative || all null missingDeviceSets)
-          `holdsOrFail` ( "the target robot does not have required devices:" :
-                          (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
-                        )
-
-        (creative || not (any null deviceSets))
-          `holdsOrFail` ["the target robot cannot perform an impossible task"]
+        _ <- checkRequiredDevices (childRobot ^. robotInventory) cmd "The target robot"
 
         -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
@@ -1256,47 +1229,14 @@ execConst c vs s k = do
             stdDeviceList =
               ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
+            addStdDevs i = foldr insert i stdDevices
 
-        -- Note that _capCtx must be empty: at least at the
-        -- moment, definitions are only allowed at the top level,
-        -- so there can't be any inside the argument to build.
-        -- (Though perhaps there is an argument that this ought to
-        -- be relaxed specifically in the case of 'Build'.)
-        -- See #349
+        deviceSets <- checkRequiredDevices (addStdDevs $ r ^. robotInventory) cmd "You"
 
-        let -- Find out what capabilities are required by the program that will
-            -- be run on the other robot, and what devices would provide those
-            -- capabilities.
-            (caps, _capCtx) = requiredCaps (r ^. robotContext . defCaps) cmd
-
-            -- list of possible devices per capability
-            capDevices = map (`deviceForCap` em) . S.toList $ caps
-
-            -- A device is OK to install if it is a standard device, or we have one
-            -- in our inventory.
-            deviceOK d = d `S.member` stdDevices || (r ^. robotInventory) `E.contains` d
-            ignoreOK ([], miss) = ([], miss)
-            ignoreOK (ds, _miss) = (ds, [])
-
-            (deviceSets, missingDeviceSets) =
-              Lens.over both (nubOrd . map S.fromList) . unzip $
-                map (ignoreOK . L.partition deviceOK) capDevices
-
-            -- if given a choice between required devices giving same capability
-            devices =
-              if creative
+        let devices =
+              if creative -- if given a choice between required devices giving same capability
                 then S.unions deviceSets -- give them all in creative
                 else S.unions $ map (S.take 1) deviceSets -- give first one otherwise
-            formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
-
-        -- check if robot has all devices to execute new command
-        (creative || all null missingDeviceSets)
-          `holdsOrFail` ( "this would require installing devices you don't have:" :
-                          (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
-                        )
-
-        (creative || not (any null deviceSets))
-          `holdsOrFail` ["no robot could perform such impossible task"]
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1308,7 +1248,7 @@ execConst c vs s k = do
               (F.Const ())
               (Just pid)
               displayName
-              ["A robot."]
+              ["A robot built by the robot named " <> r ^. robotName <> "."]
               (r ^. robotLocation)
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? east
@@ -1451,6 +1391,57 @@ execConst c vs s k = do
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
 
+  -- Find out the required devices for running the command on the
+  -- target robot - this is common for 'Build' and 'Reprogram'.
+  --
+  -- Note that _capCtx must be empty: at least at the
+  -- moment, definitions are only allowed at the top level,
+  -- so there can't be any inside the argument to build.
+  -- (Though perhaps there is an argument that this ought to be
+  -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
+  -- See #349
+  checkRequiredDevices ::
+    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
+    Inventory ->
+    Term ->
+    Text ->
+    m [S.Set Entity]
+  checkRequiredDevices inventory cmd subject = do
+    currentContext <- use $ robotContext . defCaps
+    em <- use entityMap
+    creative <- use creativeMode
+    let -- Find out what capabilities are required by the program that will
+        -- be run on the target robot, and what devices would provide those
+        -- capabilities.
+        (caps, _capCtx) = requiredCaps currentContext cmd
+
+        -- list of possible devices per capability
+        capDevices = map (`deviceForCap` em) . S.toList $ caps
+
+        -- device is ok if it is available in the inventory of parent
+        -- when building or installed in target robot when reprogramming
+        deviceOK d = inventory `E.contains` d
+        ignoreOK ([], miss) = ([], miss)
+        ignoreOK (ds, _miss) = (ds, [])
+
+        (deviceSets, missingDeviceSets) =
+          Lens.over both (nubOrd . map S.fromList) . unzip $
+            map (ignoreOK . L.partition deviceOK) capDevices
+
+        formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
+
+    -- check if robot has all devices to execute new command
+    (creative || all null missingDeviceSets)
+      `holdsOrFail` ( singularSubjectVerb subject "do" :
+                      "not have required devices:" :
+                      (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
+                    )
+    -- check that there are in fact devices to provide every required capability
+    (creative || not (any null deviceSets))
+      `holdsOrFail` [singularSubjectVerb subject "can", "not perform an impossible task"]
+    -- give back the devices required per capability
+    return deviceSets
+
   -- replace some entity in the world with another entity
   changeWorld' ::
     Entity ->
@@ -1478,7 +1469,10 @@ execConst c vs s k = do
   -- update some tile in the world setting it to entity or making it empty
   updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
 
+  holdsOrFail :: (Has (Throw Exn) sig m) => Bool -> [Text] -> m ()
   holdsOrFail a ts = a `holdsOr` cmdExn c ts
+
+  isJustOrFail :: (Has (Throw Exn) sig m) => Maybe a -> [Text] -> m a
   isJustOrFail a ts = a `isJustOr` cmdExn c ts
 
   returnEvalCmp = case vs of
