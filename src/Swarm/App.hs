@@ -30,7 +30,7 @@ app =
     { appDraw = drawUI
     , appChooseCursor = chooseCursor
     , appHandleEvent = handleEvent
-    , appStartEvent = \s -> s <$ enablePasteMode
+    , appStartEvent = (<$ enablePasteMode)
     , appAttrMap = const swarmAttrMap
     }
 

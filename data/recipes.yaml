@@ -60,6 +60,17 @@
   required:
   - [1, drill]
   time: 9
+  weight: 3
+
+- in:
+  - [1, boulder]
+  out:
+  - [4, rock]
+  required:
+  - [1, drill]
+  time: 9
+  weight: 1
+
 
 - in:
   - [1, mountain]

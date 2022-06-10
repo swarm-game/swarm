@@ -218,7 +218,7 @@ prettyConst =
     , testCase
         "pairs #225 - nested pairs are printed right-associative"
         ( equalPretty "(1, 2, 3)" $
-            (TPair (TInt 1) (TPair (TInt 2) (TInt 3)))
+            TPair (TInt 1) (TPair (TInt 2) (TInt 3))
         )
     ]
  where

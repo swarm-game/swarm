@@ -4,8 +4,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -327,9 +325,8 @@ buildEntityMap es =
 instance FromJSON Entity where
   parseJSON = withObject "Entity" $ \v ->
     rehashEntity
-      <$> ( Entity
-              <$> pure 0
-              <*> v .: "display"
+      <$> ( Entity 0
+              <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
               <*> (map reflow <$> (v .: "description"))
@@ -487,6 +484,10 @@ instance Hashable Inventory where
   hash = inventoryHash
   hashWithSalt s = hashWithSalt s . inventoryHash
 
+-- | Inventories are compared by hash for efficiency.
+instance Eq Inventory where
+  (==) = (==) `on` hash
+
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
 lookup :: Entity -> Inventory -> Count
@@ -599,4 +600,4 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   -- of the way each entity with count k contributes (k+1) times its
   -- hash.  So if the two inventories share an entity e, just adding their
   -- hashes would mean e now contributes (k+2) times its hash.
-  common = IS.foldl' (+) 0 $ (IM.keysSet cs1) `IS.intersection` (IM.keysSet cs2)
+  common = IS.foldl' (+) 0 $ IM.keysSet cs1 `IS.intersection` IM.keysSet cs2

@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -38,7 +39,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Linear (V2 (..), zero, (^+^))
 import System.Random (UniformRange, uniformR)
-import Witch
+import Witch (From (from), into)
 import Prelude hiding (lookup)
 
 import Swarm.Game.CESK
@@ -222,6 +223,24 @@ uniform bnds = do
   let (n, g) = uniformR bnds rand
   randGen .= g
   return n
+
+-- | Given a weighting function and a list of values, choose one of
+--   the values randomly (using the random generator in the game
+--   state), with the probability of each being proportional to its
+--   weight.  Return @Nothing@ if the list is empty.
+weightedChoice :: Has (State GameState) sig m => (a -> Integer) -> [a] -> m (Maybe a)
+weightedChoice weight as = do
+  r <- uniform (0, total - 1)
+  return $ go r as
+ where
+  total = sum (map weight as)
+
+  go _ [] = Nothing
+  go !k (x : xs)
+    | k < w = Just x
+    | otherwise = go (k - w) xs
+   where
+    w = weight x
 
 -- | Generate a random robot name in the form adjective_name.
 randomName :: Has (State GameState) sig m => m Text
@@ -703,7 +722,7 @@ execConst c vs s k = do
       let yieldName = e ^. entityYields
       e' <- case yieldName of
         Nothing -> return e
-        Just n -> (?e) <$> uses entityMap (lookupEntityName n)
+        Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
 
       robotInventory %= insert e'
 
@@ -846,9 +865,11 @@ execConst c vs s k = do
         not (null recipes)
           `holdsOrFail` ["There is no known recipe for making", indefinite name, "."]
 
-        -- Try recipes and remeber the first one that we have ingredients for.
+        -- Try recipes and make a weighted random choice among the
+        -- ones we have ingredients for.
+        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) (rights (map (make (inv, ins)) recipes))
         (invTaken, changeInv, recipe) <-
-          listToMaybe (rights (map (make (inv, ins)) recipes))
+          chosenRecipe
             `isJustOrFail` ["You don't have the ingredients to make", indefinite name, "."]
 
         -- take recipe inputs from inventory and add outputs after recipeTime
@@ -893,8 +914,9 @@ execConst c vs s k = do
 
         -- add the drilled entity so it can be consumed by the recipe
         let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
+        chosenRecipe <- weightedChoice (\((_, _), r) -> r ^. recipeWeight) (rights (map makeRecipe recipes))
         ((invTaken, outs), recipe) <-
-          listToMaybe (rights (map makeRecipe recipes))
+          chosenRecipe
             `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
 
         let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
@@ -1444,7 +1466,7 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
 compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
-compareValues = \v1 -> case v1 of
+compareValues v1 = case v1 of
   VUnit -> \case VUnit -> return EQ; v2 -> incompatCmp VUnit v2
   VInt n1 -> \case VInt n2 -> return (compare n1 n2); v2 -> incompatCmp v1 v2
   VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
