@@ -43,7 +43,6 @@ module Swarm.Game.Scenario (
   loadScenarios,
 ) where
 
-import Control.Applicative ((<|>))
 import Control.Arrow ((***))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
@@ -63,7 +62,6 @@ import GHC.Int (Int64)
 import Linear.V2
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (takeBaseName, (<.>), (</>))
-import System.Random (randomRIO)
 import Witch (from, into)
 
 import Control.Algebra (Has)
@@ -210,11 +208,10 @@ mkWorldFun pwd = E $ \em -> do
 --   requested on the command line.
 loadScenario ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
-  Maybe Seed ->
   String ->
   EntityMap ->
   m Scenario
-loadScenario userSeed scenario em = do
+loadScenario scenario em = do
   libScenario <- sendIO $ getDataFileName $ "scenarios" </> scenario
   libScenarioExt <- sendIO $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
 
@@ -224,7 +221,7 @@ loadScenario userSeed scenario em = do
 
   case mfileName of
     Nothing -> throwError @Text $ "Scenario not found: " <> from @String scenario
-    Just fileName -> loadScenarioFile userSeed em fileName
+    Just fileName -> loadScenarioFile em fileName
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
@@ -270,27 +267,18 @@ loadScenarioItem em path = do
   let collectionName = into @Text . dropWhile isSpace . dropWhile isDigit . takeBaseName $ path
   case isDir of
     True -> SICollection collectionName <$> loadScenarioDir em path
-    False -> SISingle <$> loadScenarioFile Nothing em path
+    False -> SISingle <$> loadScenarioFile em path
 
 -- | Load a scenario from a file.  The @Maybe Seed@ argument is a
 --   seed provided by the user (either on the command line, or
 --   specified through the UI), if any.
 loadScenarioFile ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
-  Maybe Seed ->
   EntityMap ->
   FilePath ->
   m Scenario
-loadScenarioFile userSeed em fileName = do
+loadScenarioFile em fileName = do
   res <- sendIO $ decodeFileEitherE em fileName
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
-    Right c -> do
-      -- Decide on a seed.  In order of preference, we will use:
-      --   1. seed value provided by the user
-      --   2. seed value specified in the scenario description
-      --   3. randomly chosen seed value
-      seed <- case userSeed <|> c ^. scenarioSeed of
-        Just s -> return s
-        Nothing -> sendIO $ randomRIO (0, maxBound :: Int)
-      return (c & scenarioSeed ?~ seed)
+    Right c -> return c
