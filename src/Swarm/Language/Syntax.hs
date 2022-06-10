@@ -25,6 +25,7 @@ module Swarm.Language.Syntax (
   toDirection,
   fromDirection,
   allDirs,
+  isCardinal,
   dirInfo,
   north,
   south,
@@ -84,7 +85,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -131,6 +132,10 @@ dirInfo d = case d of
   directionSyntax = toLower . T.tail . from . show $ d
   cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
   relative = DirInfo directionSyntax Nothing
+
+-- | Check if the direction is absolute (e.g. 'north' or 'south').
+isCardinal :: Direction -> Bool
+isCardinal = isJust . dirAbs . dirInfo
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64

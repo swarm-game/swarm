@@ -428,7 +428,7 @@
   - Installing treads on a robot allows it to move (via the 'move' command) and turn
     (via the 'turn' command).
   - 'Example:'
-  - '  move; turn left; move; turn north'
+  - '  move; turn left; move; turn right'
   capabilities: [move, turn]
   properties: [portable]
 
@@ -551,7 +551,7 @@
     is 'if' followed by three arguments: a boolean test and then
     two delayed expressions of the same type.
   - 'Example:'
-  - 'if (x > 3) {move} {turn west; move}'
+  - 'if (x > 3) {move} {turn right; move}'
   properties: [portable]
   capabilities: [cond]
 
@@ -648,3 +648,15 @@
     exponentiation."
   properties: [portable]
   capabilities: [arith]
+
+- name: compass
+  display:
+    attr: device
+    char: 'N'
+  description:
+  - "A compass gives robot the ability to orient itself in cardinal directions."
+  - "That is north, south, west and east."
+  - "Example:"
+  - "turn west; move; turn north"
+  properties: [portable]
+  capabilities: [orient]

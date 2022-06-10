@@ -44,6 +44,8 @@ data Capability
   = -- | Execute the 'Move' command
     CMove
   | -- | Execute the 'Turn' command
+    --
+    -- NOTE: using cardinal directions is separate 'COrient' capability
     CTurn
   | -- | Execute the 'Selfdestruct' command
     CSelfdestruct
@@ -87,6 +89,8 @@ data Capability
     CCond
   | -- | Evaluate comparison operations
     CCompare
+  | -- | Use cardinal direction constants.
+    COrient
   | -- | Evaluate arithmetic operations
     CArith
   | -- | Store and look up definitions in an environment
@@ -183,7 +187,7 @@ requiredCaps' ctx = go
     -- Some primitive literals that don't require any special
     -- capability.
     TUnit -> S.empty
-    TDir _ -> S.empty
+    TDir d -> if isCardinal d then S.singleton COrient else S.empty
     TInt _ -> S.empty
     TAntiInt _ -> S.empty
     TString _ -> S.empty

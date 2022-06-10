@@ -30,6 +30,7 @@ robots:
     dir: [1,0]
     devices:
       - treads
+      - compass
       - logger
     inventory:
       - [1, goal]

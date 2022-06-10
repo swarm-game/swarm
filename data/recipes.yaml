@@ -221,6 +221,13 @@
   - [2, iron gear]
 
 - in:
+  - [1, iron plate]
+  - [1, water]
+  - [1, box]
+  out:
+  - [1, compass]
+
+- in:
   - [32, wooden gear]
   - [6, copper wire]
   out:
