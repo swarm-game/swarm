@@ -476,27 +476,28 @@ playScenario em scenario userSeed toRun g = do
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)
 
-  return $ g
-    { _creativeMode = scenario ^. scenarioCreative
-    , _winCondition = theWinCondition
-    , _runStatus = Running
-    , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
-    , _robotsByLocation =
-        M.fromListWith IS.union $
-          map (view robotLocation &&& (IS.singleton . view robotID)) robotList
-    , _activeRobots = setOf (traverse . robotID) robotList
-    , _waitingRobots = M.empty
-    , _gensym = initGensym
-    , _randGen = mkStdGen seed
-    , _world = theWorld seed
-    , _viewCenterRule = VCRobot baseID
-    , _viewCenter = V2 0 0
-    , _needsRedraw = False
-    , _replStatus = REPLDone
-    , _messageQueue = []
-    , _focusedRobotID = baseID
-    , _ticks = 0
-    }
+  return $
+    g
+      { _creativeMode = scenario ^. scenarioCreative
+      , _winCondition = theWinCondition
+      , _runStatus = Running
+      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
+      , _robotsByLocation =
+          M.fromListWith IS.union $
+            map (view robotLocation &&& (IS.singleton . view robotID)) robotList
+      , _activeRobots = setOf (traverse . robotID) robotList
+      , _waitingRobots = M.empty
+      , _gensym = initGensym
+      , _randGen = mkStdGen seed
+      , _world = theWorld seed
+      , _viewCenterRule = VCRobot baseID
+      , _viewCenter = V2 0 0
+      , _needsRedraw = False
+      , _replStatus = REPLDone
+      , _messageQueue = []
+      , _focusedRobotID = baseID
+      , _ticks = 0
+      }
  where
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
