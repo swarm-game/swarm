@@ -857,7 +857,7 @@ execConst c vs s k = do
         outRs <- use recipesOut
 
         creative <- use creativeMode
-        let create l = l <> ["You can use 'create" <> name <> "' instead." | creative] 
+        let create l = l <> ["You can use 'create" <> name <> "' instead." | creative]
 
         -- Only consider recipes where the number of things we are trying to make
         -- is greater in the outputs than in the inputs.  This prevents us from doing
