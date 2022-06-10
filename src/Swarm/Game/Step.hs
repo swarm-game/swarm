@@ -65,8 +65,8 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Data.Functor (void)
 import Data.Containers.ListUtils (nubOrd)
+import Data.Functor (void)
 
 -- | The maximum number of CESK machine evaluation steps each robot is
 --   allowed during a single game tick.
@@ -1429,7 +1429,7 @@ execConst c vs s k = do
           [ "Bad application of execConst:"
           , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
           ]
-  
+
   finishCookingRecipe ::
     (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
     Recipe e ->

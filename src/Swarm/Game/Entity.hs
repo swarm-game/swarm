@@ -100,7 +100,7 @@ import qualified Data.IntSet as IS
 import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (isJust, listToMaybe, fromMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
