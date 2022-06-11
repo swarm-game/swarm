@@ -1382,16 +1382,17 @@ execConst c vs s k = do
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
-  
+
   lookInDirection ::
     (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
-    Direction -> m (V2 Int64, Maybe Entity)
+    Direction ->
+    m (V2 Int64, Maybe Entity)
   lookInDirection d = do
-        loc <- use robotLocation
-        orient <- use robotOrientation
-        when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
-        let nextLoc = loc ^+^ applyTurn d (orient ? zero)
-        (nextLoc,) <$> entityAt nextLoc
+    loc <- use robotLocation
+    orient <- use robotOrientation
+    when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
+    let nextLoc = loc ^+^ applyTurn d (orient ? zero)
+    (nextLoc,) <$> entityAt nextLoc
 
   -- Find out the required devices for running the command on the
   -- target robot - this is common for 'Build' and 'Reprogram'.
