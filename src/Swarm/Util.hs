@@ -181,6 +181,7 @@ indefiniteQ w = MM.indefiniteDet w <+> squote w
 -- Only some irregular verbs are handled, but it should be enough
 -- to scrap some error message boilerplate and have fun!
 --
+-- >>> :set -XOverloadedStrings
 -- >>> singularSubjectVerb "I" "be"
 -- "I am"
 -- >>> singularSubjectVerb "he" "can"
