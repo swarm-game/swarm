@@ -71,13 +71,13 @@ import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 
 import Paths_swarm (getDataDir, getDataFileName)
 import Swarm.Game.Entity
+import Swarm.Game.Recipe
 import Swarm.Game.Robot (URobot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
-import Swarm.Game.Recipe
 
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.

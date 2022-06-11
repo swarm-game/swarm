@@ -177,7 +177,7 @@ indefiniteQ :: Text -> Text
 indefiniteQ w = MM.indefiniteDet w <+> squote w
 
 -- | Combine the subject word with the simple present tense of the verb.
--- 
+--
 -- Only some irregular verbs are handled, but it should be enough
 -- to scrap some error message boilerplate and have fun!
 --
@@ -189,18 +189,18 @@ indefiniteQ w = MM.indefiniteDet w <+> squote w
 -- >>> singularSubjectVerb "The target robot" "do"
 -- "The target robot does"
 singularSubjectVerb :: Text -> Text -> Text
-singularSubjectVerb sub verb 
+singularSubjectVerb sub verb
   | verb == "be" = case toUpper sub of
     "I" -> "I am"
     "YOU" -> sub <+> "are"
     _ -> sub <+> "is"
   | otherwise = sub <+> (if is3rdPerson then verb3rd else verb)
-  where
-    is3rdPerson = toUpper sub `notElem` ["I", "YOU"]
-    verb3rd 
-      | verb == "have" = "has"
-      | verb == "can" = "can"
-      | otherwise = fst $ MM.defaultVerbStuff verb
+ where
+  is3rdPerson = toUpper sub `notElem` ["I", "YOU"]
+  verb3rd
+    | verb == "have" = "has"
+    | verb == "can" = "can"
+    | otherwise = fst $ MM.defaultVerbStuff verb
 
 -- | Pluralize a noun.
 plural :: Text -> Text
