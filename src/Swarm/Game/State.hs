@@ -489,6 +489,8 @@ playScenario em scenario userSeed toRun g = do
       , _waitingRobots = M.empty
       , _gensym = initGensym
       , _randGen = mkStdGen seed
+      , _recipesOut = addRecipesWith outRecipeMap recipesOut
+      , _recipesIn = addRecipesWith inRecipeMap recipesIn
       , _world = theWorld seed
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
@@ -522,6 +524,7 @@ playScenario em scenario userSeed toRun g = do
   theWorld = W.newWorld . (scenario ^. scenarioWorld)
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
   initGensym = length robotList - 1
+  addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000

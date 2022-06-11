@@ -30,6 +30,7 @@ module Swarm.Game.Scenario (
   scenarioCreative,
   scenarioSeed,
   scenarioEntities,
+  scenarioRecipes,
   scenarioWorld,
   scenarioRobots,
   scenarioWin,
@@ -76,6 +77,7 @@ import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
+import Swarm.Game.Recipe
 
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
@@ -85,6 +87,7 @@ data Scenario = Scenario
   , _scenarioCreative :: Bool -- Maybe generalize this to a mode enumeration
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
+  , _scenarioRecipes :: [Recipe Entity]
   , _scenarioWorld :: Seed -> WorldFun Int Entity
   , _scenarioRobots :: [URobot]
   , _scenarioWin :: Maybe ProcessedTerm
@@ -101,6 +104,7 @@ instance FromJSONE EntityMap Scenario where
       <*> liftE (v .:? "creative" .!= False)
       <*> liftE (v .:? "seed")
       <*> pure em
+      <*> withE em (v ..:? "recipes" ..!= [])
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
       <*> liftE (v .:? "win")
@@ -120,6 +124,9 @@ scenarioSeed :: Lens' Scenario (Maybe Int)
 
 -- | Any custom entities used for this scenario.
 scenarioEntities :: Lens' Scenario EntityMap
+
+-- | Any custom recipes used in this scenario.
+scenarioRecipes :: Lens' Scenario [Recipe Entity]
 
 -- | The starting world for the scenario.
 scenarioWorld :: Lens' Scenario (Seed -> WorldFun Int Entity)
