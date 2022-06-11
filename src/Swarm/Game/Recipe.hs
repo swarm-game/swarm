@@ -2,6 +2,7 @@
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -56,6 +57,7 @@ import Control.Carrier.Throw.Either (runThrow)
 import Paths_swarm
 import Swarm.Game.Entity as E
 import Swarm.Util
+import Swarm.Util.Yaml
 
 -- | An ingredient list is a list of entities with multiplicity.  It
 --   is polymorphic in the entity type so that we can use either
@@ -125,6 +127,16 @@ instance FromJSON (Recipe Text) where
 --   records; or.
 resolveRecipes :: EntityMap -> [Recipe Text] -> Validation [Text] [Recipe Entity]
 resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (lookupEntityName t em))
+
+instance FromJSONE EntityMap (Recipe Entity) where
+  parseJSONE v = do
+    rt <- liftE $ parseJSON @(Recipe Text) v
+    em <- fromE 
+    let erEnt :: Validation [Text] (Recipe Entity)
+        erEnt = traverse (\t -> maybe (Failure [t]) Success (lookupEntityName t em)) rt
+    case validationToEither erEnt of
+      Right rEnt -> return rEnt
+      Left err -> fail . from @Text . T.unlines $ err
 
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
