@@ -91,6 +91,7 @@
   required:
   - [1, drill]
   time: 90
+  weight: 8
 
 - in:
   - [1, mountain]
@@ -100,7 +101,7 @@
   required:
   - [1, metal drill]
   time: 9
-
+  weight: 8
 
 - in:
   - [5, rock]
@@ -114,40 +115,44 @@
 ## VEINS
 
 - in:
-  - [1, copper vein]
+  - [1, mountain]
   out:
   - [1, copper mine]
   - [1, copper ore]
   required:
   - [1, drill]
   time: 42
+  weight: 1
 
 - in:
-  - [1, iron vein]
+  - [1, mountain]
   out:
   - [1, iron mine]
   - [1, iron ore]
   required:
   - [1, drill]
   time: 64
+  weight: 1
 
 - in:
-  - [1, copper vein]
+  - [1, mountain]
   out:
   - [1, copper mine]
   - [1, copper ore]
   required:
   - [1, metal drill]
   time: 6
+  weight: 1
 
 - in:
-  - [1, iron vein]
+  - [1, mountain]
   out:
   - [1, iron mine]
   - [1, iron ore]
   required:
   - [1, metal drill]
   time: 7
+  weight: 1
 
 ## MINES
 

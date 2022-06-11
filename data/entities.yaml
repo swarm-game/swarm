@@ -91,16 +91,6 @@
     mountains, but those would require a drill to access and mine.
   properties: [portable]
 
-- name: copper vein
-  display:
-    attr: copper'
-    char: 'A'
-  description:
-  - A place in the mountains where raw copper ore can be mined.
-    As it is hidden inside a mountain, a tunnel needs to be
-    first drilled through, so that the vein becomes accessible.
-  properties: [unwalkable]
-
 - name: copper mine
   display:
     attr: copper'
@@ -162,16 +152,6 @@
   - Raw iron ore. Used to create more resilient tools.
   - It can only be mined by drilling in the mountains.
   properties: [portable]
-
-- name: iron vein
-  display:
-    attr: iron'
-    char: 'A'
-  description:
-  - A place in the mountains where raw iron ore can be mined.
-    As it is hidden inside a mountain, a tunnel needs to be
-    first drilled through, so that the vein becomes accessible.
-  properties: [unwalkable]
 
 - name: iron mine
   display:

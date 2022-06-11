@@ -21,7 +21,6 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Numeric.Noise.Perlin
-import Numeric.Noise.Ridged
 import Witch
 
 import Data.Array.IArray
@@ -57,8 +56,6 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
   h = murmur3 0 (into (show ix))
 
   genBiome Big Hard Natural
-    | sample ix cl0 > 0.5 && sample ix rg0 > 0.999 = (StoneT, Just "copper vein")
-    | sample ix cl0 > 0.5 && sample ix rg1 > 0.99 = (StoneT, Just "iron vein")
     | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
     | h `mod` 30 == 0 = (StoneT, Just "boulder")
     | sample ix cl0 > 0 = (DirtT, Just "tree")
@@ -96,11 +93,9 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
   pn1 = pn 1
   pn2 = pn 2
 
-  rg :: Int -> Ridged
-  rg seed = ridged seed 6 0.05 1 2
-
-  rg0 = rg 42
-  rg1 = rg 66
+  -- alternative noise function
+  -- rg :: Int -> Ridged
+  -- rg seed = ridged seed 6 0.05 1 2
 
   clumps :: Int -> Perlin
   clumps seed = perlin (seed + baseSeed) 4 0.08 0.5
