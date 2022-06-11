@@ -1,3 +1,7 @@
+// Quickly harvesting an entire forest in parallel using breadth-first
+// search, with robots spawning more robots.  Fun, though not very practical
+// in classic mode.
+
 def repeat : int -> cmd () -> cmd () = \n.\c.
   if (n == 0)
     {}
