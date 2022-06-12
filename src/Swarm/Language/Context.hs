@@ -58,6 +58,10 @@ singleton x t = Ctx (M.singleton x t)
 lookup :: Var -> Ctx t -> Maybe t
 lookup x (Ctx c) = M.lookup x c
 
+-- | Delete a variable from a context.
+delete :: Var -> Ctx t -> Ctx t
+delete x (Ctx c) = Ctx (M.delete x c)
+
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var, t)]
 assocs = M.assocs . unCtx

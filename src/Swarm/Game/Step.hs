@@ -53,7 +53,7 @@ import Swarm.Game.State
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Language.Capability
-import Swarm.Language.Context
+import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax

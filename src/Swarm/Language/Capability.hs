@@ -177,9 +177,9 @@ requiredCaps ctx tm = case tm of
 --   capabilities to *evaluate* it), which does not seem worth it at
 --   all.
 requiredCaps' :: CapCtx -> Term -> Set Capability
-requiredCaps' ctx = go
+requiredCaps' = go
  where
-  go tm = case tm of
+  go ctx tm = case tm of
     -- Some primitive literals that don't require any special
     -- capability.
     TUnit -> S.empty
@@ -209,20 +209,30 @@ requiredCaps' ctx = go
     -- the application site.  Again, this is overly conservative in
     -- the case that the argument is unused, but in that case the
     -- unused argument could be removed.
-    TLam _ _ t -> S.insert CLambda $ go t
+    --
+    -- Note, however, that we do need to *delete* the argument from
+    -- the context, in case the context already contains a definition
+    -- with the same name: inside the lambda that definition will be
+    -- shadowed, so we do not want the name to be associated to any
+    -- capabilities.
+    TLam x _ t -> S.insert CLambda $ go (delete x ctx) t
     -- An application simply requires the union of the capabilities
     -- from the left- and right-hand sides.  This assumes that the
     -- argument will be used at least once by the function.
-    TApp t1 t2 -> go t1 `S.union` go t2
+    TApp t1 t2 -> go ctx t1 `S.union` go ctx t2
     -- Similarly, for a let, we assume that the let-bound expression
-    -- will be used at least once in the body.
-    TLet r _ _ t1 t2 ->
+    -- will be used at least once in the body. We delete the let-bound
+    -- name from the context when recursing for the same reason as
+    -- lambda.
+    TLet r x _ t1 t2 ->
       (if r then S.insert CRecursion else id) $
-        S.insert CEnv $ go t1 `S.union` go t2
+        S.insert CEnv $ go (delete x ctx) t1 `S.union` go (delete x ctx) t2
+    -- We also delete the name in a TBind, if any, while recursing on
+    -- the RHS.
+    TBind mx t1 t2 -> go ctx t1 `S.union` go (maybe id delete mx ctx) t2
     -- Everything else is straightforward.
-    TPair t1 t2 -> go t1 `S.union` go t2
-    TBind _ t1 t2 -> go t1 `S.union` go t2
-    TDelay _ t -> go t
+    TPair t1 t2 -> go ctx t1 `S.union` go ctx t2
+    TDelay _ t -> go ctx t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning S.empty is safe.
