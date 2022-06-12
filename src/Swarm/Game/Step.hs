@@ -1447,7 +1447,7 @@ execConst c vs s k = do
         -- check if robot has all devices to execute new command
         all null missingDeviceSets
           `holdsOrFail` ( singularSubjectVerb subject "do" :
-                          "not have required devices, please":
+                          "not have required devices, please" :
                           formatIncapableFix fixI <> ":" :
                           (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
                         )
