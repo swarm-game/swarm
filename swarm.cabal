@@ -145,7 +145,7 @@ executable swarm
 
 test-suite swarm-unit
     import:           stan-config, common
-    main-is:          Unit.hs
+    main-is:          Main.hs
     type:             exitcode-stdio-1.0
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
@@ -161,13 +161,13 @@ test-suite swarm-unit
                       swarm,
                       text,
                       witch
-    hs-source-dirs:   test
+    hs-source-dirs:   test/unit
     default-language: Haskell2010
     ghc-options:      -threaded
 
 test-suite swarm-integration
     import:           stan-config, common
-    main-is:          Integration.hs
+    main-is:          Main.hs
     type:             exitcode-stdio-1.0
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
@@ -181,7 +181,7 @@ test-suite swarm-integration
                       text,
                       yaml,
                       witch
-    hs-source-dirs:   test
+    hs-source-dirs:   test/integration
     default-language: Haskell2010
     ghc-options:      -threaded
 
