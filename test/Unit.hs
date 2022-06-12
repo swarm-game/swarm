@@ -32,6 +32,7 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.TUI.Model
+import Swarm.Game.Entity (EntityMap)
 
 main :: IO ()
 main = do
@@ -487,8 +488,11 @@ eval g =
    where
     r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False
 
+  entMap :: EntityMap
+  entMap = g ^. entityMap
+
   runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
-  runCESK _ (Up exn _ []) = return (Left (formatExn exn))
+  runCESK _ (Up exn _ []) = return (Left (formatExn entMap exn))
   runCESK !steps cesk = case finalValue cesk of
     Just (v, _) -> return (Right (v, steps))
     Nothing -> stepCESK cesk >>= runCESK (steps + 1)
@@ -626,6 +630,6 @@ inventory =
         )
     ]
  where
-  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] []
-  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] []
-  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] []
+  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
+  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
+  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []

@@ -276,9 +276,11 @@ mkEntity ::
   [Text] ->
   -- | Properties
   [EntityProperty] ->
+  -- | Capabilities
+  [Capability] ->
   Entity
-mkEntity disp nm descr props =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props [] empty
+mkEntity disp nm descr props caps =
+  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props caps empty
 
 ------------------------------------------------------------
 -- Entity map

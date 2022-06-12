@@ -13,6 +13,9 @@ module Swarm.Game.Exception (
   Exn (..),
   IncapableFix (..),
   formatExn,
+
+  -- * Helper functions
+  formatIncapable,
 ) where
 
 import Data.Set (Set)
@@ -22,17 +25,34 @@ import qualified Data.Text as T
 import Control.Lens ((^.))
 import qualified Data.Set as S
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
-import Swarm.Language.Capability
+import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax (Const, Term)
 import Swarm.Util
+
+-- ------------------------------------------------------------------
+-- SETUP FOR DOCTEST
+
+-- $setup
+-- >>> :set -XOverloadedStrings
+-- >>> import Control.Lens
+-- >>> import qualified Data.Set as S
+-- >>> import Data.Text (unpack)
+-- >>> import Swarm.Language.Syntax
+-- >>> import Swarm.Language.Capability
+-- >>> import Swarm.Game.Entity
+-- >>> import Swarm.Game.Display
+
+-- ------------------------------------------------------------------
+
 
 -- | Suggested way to fix incapable error.
 data IncapableFix
-  = FixByInstall -- ^ install the missing device on yourself/target
-  | FixByObtain -- ^ add the missing device to your inventory
+  = -- | install the missing device on yourself/target
+    FixByInstall
+  | -- | add the missing device to your inventory
+    FixByObtain
   deriving (Eq, Show)
-
 
 -- | The type of exceptions that can be thrown by robot programs.
 data Exn
@@ -75,27 +95,52 @@ formatExn em = \case
 
 formatIncapableFix :: IncapableFix -> Text
 formatIncapableFix = \case
-  FixByInstall -> "Install"
-  FixByObtain -> "Obtain"
+  FixByInstall -> "install"
+  FixByObtain -> "obtain"
 
--- | Pretty print the incapable exception with actionable suggestion
---   on what to install to fix it.
+-- | Pretty print the incapable exception with an actionable suggestion
+--   on how to fix it.
+--
+-- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
+-- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
+-- >>> m = buildEntityMap [w,r]
+-- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
+--
+-- >>> incapableError (S.singleton CGod) (TConst As)
+-- Can not perform an impossible task:
+--   'as'
+--
+-- >>> incapableError (S.singleton CAppear) (TConst Appear)
+-- You do not have the devices required for:
+--   'appear'
+--   please install:
+--    - the one ring or magic wand
+--
+-- >>> incapableError (S.singleton CCreate) (TConst Create)
+-- Missing the create capability for:
+--   'create'
+--   but no device yet provides it. See
+--   https://github.com/swarm-game/swarm/issues/26
 formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
 formatIncapable em f caps tm
-  | CGod `S.member` caps = "Can not perform an impossible task:\n" <> prettyText tm
+  | CGod `S.member` caps =
+      unlinesExText
+        [ "Can not perform an impossible task:"
+        , squote $ prettyText tm
+        ]
   | not (null capsNone) =
-      T.unlines
-        [ "Missing the " <> capMsg <> " required for:"
-        , prettyText tm
-        , "because no device can provide it."
-        , "See https://github.com/swarm-game/swarm/issues/26."
+      unlinesExText
+        [ "Missing the " <> capMsg <> " for:"
+        , squote $ prettyText tm
+        , "but no device yet provides it. See"
+        , "https://github.com/swarm-game/swarm/issues/26"
         ]
   | otherwise =
-      T.unlines
+      unlinesExText
         ( "You do not have the devices required for:" :
-          prettyText tm :
-          formatIncapableFix f <>":" :
-          (("  - " <>) . formatDevices <$> filter (not . null) deviceSets)
+          squote (prettyText tm) :
+          "please " <> formatIncapableFix f <> ":" :
+          ((" - " <>) . formatDevices <$> filter (not . null) deviceSets)
         )
  where
   capList = S.toList caps
@@ -105,5 +150,9 @@ formatIncapable em f caps tm
   capsNone = map (capabilityName . fst) $ filter (null . snd) devicePerCap
   capMsg = case capsNone of
     [ca] -> ca <> " capability"
-    cas -> "capabilities " <> T.intercalate ", " (map squote cas)
+    cas -> "capabilities " <> T.intercalate ", " cas
   formatDevices = T.intercalate " or " . map (^. entityName)
+
+-- | Exceptions that span multiple lines should be indented.
+unlinesExText :: [Text] -> Text
+unlinesExText ts = T.unlines . (head ts :) . map ("  " <>) $ tail ts
