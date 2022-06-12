@@ -281,7 +281,7 @@ ensureCanExecute c = do
   robotCaps <- use robotCapabilities
   let missingCaps = constCaps c `S.difference` robotCaps
   (sys || creative || S.null missingCaps)
-    `holdsOr` Incapable missingCaps (TConst c)
+    `holdsOr` Incapable FixByInstall missingCaps (TConst c)
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
@@ -299,7 +299,7 @@ hasCapabilityFor ::
   (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term -> m ()
 hasCapabilityFor cap term = do
   h <- hasCapability cap
-  h `holdsOr` Incapable (S.singleton cap) term
+  h `holdsOr` Incapable FixByInstall (S.singleton cap) term
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -566,8 +566,9 @@ stepCESK cesk = case cesk of
   Up exn s [] -> do
     let s' = resetBlackholes s
     h <- hasCapability CLog
+    em <- use entityMap
     case h of
-      True -> return $ In (TApp (TConst Log) (TString (formatExn exn))) empty s' [FExec]
+      True -> return $ In (TApp (TConst Log) (TString (formatExn em exn))) empty s' [FExec]
       False -> return $ Out VUnit s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
@@ -1173,7 +1174,7 @@ execConst c vs s k = do
         (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["You can only program adjacent robot"]
 
-        _ <- checkRequiredDevices (childRobot ^. robotInventory) cmd "The target robot"
+        _ <- checkRequiredDevices (childRobot ^. robotInventory) cmd "The target robot" FixByInstall
 
         -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
@@ -1223,7 +1224,7 @@ execConst c vs s k = do
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
             addStdDevs i = foldr insert i stdDevices
 
-        deviceSets <- checkRequiredDevices (addStdDevs $ r ^. robotInventory) cmd "You"
+        deviceSets <- checkRequiredDevices (addStdDevs $ r ^. robotInventory) cmd "You" FixByObtain
 
         let devices =
               if creative -- if given a choice between required devices giving same capability
@@ -1408,8 +1409,9 @@ execConst c vs s k = do
     Inventory ->
     Term ->
     Text ->
+    IncapableFix ->
     m [S.Set Entity]
-  checkRequiredDevices inventory cmd subject = do
+  checkRequiredDevices inventory cmd subject fixI = do
     currentContext <- use $ robotContext . defCaps
     em <- use entityMap
     creative <- use creativeMode
@@ -1436,29 +1438,19 @@ execConst c vs s k = do
             map (ignoreOK . L.partition deviceOK) capDevices
 
         formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
+        -- capabilities not provided by any device in inventory
+        missingCaps = S.fromList . map fst . filter (null . snd) $ zip caps deviceSets
 
-    -- check that the capability is not restricted to system robots
-    (creative || CGod `notElem` caps)
-      `holdsOrFail` [singularSubjectVerb subject "can", "not perform an impossible task"]
-    -- check if robot has all devices to execute new command
-    (creative || all null missingDeviceSets)
-      `holdsOrFail` ( singularSubjectVerb subject "do" :
-                      "not have required devices:" :
-                      (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
-                    )
-    -- check that there are in fact devices to provide every required capability
-    let capsNone = map (capabilityName . fst) . filter (null . snd) $ zip caps deviceSets
-        capMsg = case capsNone of
-          [ca] -> indefiniteQ ca <> "capability"
-          cas -> "the capabilities " <> T.intercalate ", " (map squote cas)
+    unless creative $ do
+      -- check if robot has all devices to execute new command
+      all null missingDeviceSets
+        `holdsOrFail` ( singularSubjectVerb subject "do" :
+                        "not have required devices:" :
+                        (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
+                      )
+      -- check that there are in fact devices to provide every required capability
+      not (any null deviceSets) `holdsOr` Incapable fixI missingCaps cmd
 
-    (creative || not (any null deviceSets))
-      `holdsOrFail` [ singularSubjectVerb subject "do"
-                    , "not have"
-                    , capMsg
-                    , ", because no device can provide it."
-                    , "\nSee https://github.com/swarm-game/swarm/issues/26."
-                    ]
     -- give back the devices required per capability
     return deviceSets
 

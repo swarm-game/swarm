@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -10,6 +11,7 @@
 -- Runtime exceptions for the Swarm language interpreter.
 module Swarm.Game.Exception (
   Exn (..),
+  IncapableFix (..),
   formatExn,
 ) where
 
@@ -17,10 +19,20 @@ import Data.Set (Set)
 import Data.Text (Text)
 import qualified Data.Text as T
 
+import Control.Lens ((^.))
+import qualified Data.Set as S
+import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Util
+
+-- | Suggested way to fix incapable error.
+data IncapableFix
+  = FixByInstall -- ^ install the missing device on yourself/target
+  | FixByObtain -- ^ add the missing device to your inventory
+  deriving (Eq, Show)
+
 
 -- | The type of exceptions that can be thrown by robot programs.
 data Exn
@@ -34,7 +46,7 @@ data Exn
   | -- | A robot tried to do something for which it does not have some
     --   of the required capabilities.  This cannot be caught by a
     --   @try@ block.
-    Incapable (Set Capability) Term
+    Incapable IncapableFix (Set Capability) Term
   | -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
     --   grab, /etc./).
@@ -43,18 +55,55 @@ data Exn
     User Text
   deriving (Eq, Show)
 
--- | Pretty-print an exception for displaying to the user.
-formatExn :: Exn -> Text
-formatExn (Fatal t) =
-  T.unlines
-    [ T.append "fatal error: " t
-    , "Please report this as a bug at https://github.com/swarm-game/swarm/issues/new ."
-    ]
-formatExn InfiniteLoop = "Infinite loop detected!"
-formatExn (Incapable _caps tm) =
-  T.concat
-    [ "missing device(s) needed to execute command "
-    , squote (prettyText tm)
-    ]
-formatExn (CmdFailed c t) = T.concat [prettyText c, ": ", t]
-formatExn (User t) = T.concat ["user exception: ", t]
+-- | Pretty-print an exception for displaying to the player.
+formatExn :: EntityMap -> Exn -> Text
+formatExn em = \case
+  Fatal t ->
+    T.unlines
+      [ "Fatal error: " <> t
+      , "Please report this as a bug at"
+      , "<https://github.com/swarm-game/swarm/issues/new>."
+      ]
+  InfiniteLoop -> "Infinite loop detected!"
+  (CmdFailed c t) -> T.concat [prettyText c, ": ", t]
+  (User t) -> "Player exception: " <> t
+  (Incapable f caps tm) -> formatIncapable em f caps tm
+
+-- ------------------------------------------------------------------
+-- INCAPABLE HELPERS
+-- ------------------------------------------------------------------
+
+formatIncapableFix :: IncapableFix -> Text
+formatIncapableFix = \case
+  FixByInstall -> "Install"
+  FixByObtain -> "Obtain"
+
+-- | Pretty print the incapable exception with actionable suggestion
+--   on what to install to fix it.
+formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
+formatIncapable em f caps tm
+  | CGod `S.member` caps = "Can not perform an impossible task:\n" <> prettyText tm
+  | not (null capsNone) =
+      T.unlines
+        [ "Missing the " <> capMsg <> " required for:"
+        , prettyText tm
+        , "because no device can provide it."
+        , "See https://github.com/swarm-game/swarm/issues/26."
+        ]
+  | otherwise =
+      T.unlines
+        ( "You do not have the devices required for:" :
+          prettyText tm :
+          formatIncapableFix f <>":" :
+          (("  - " <>) . formatDevices <$> filter (not . null) deviceSets)
+        )
+ where
+  capList = S.toList caps
+  deviceSets = map (`deviceForCap` em) capList
+  devicePerCap = zip capList deviceSets
+  -- capabilities not provided by any device
+  capsNone = map (capabilityName . fst) $ filter (null . snd) devicePerCap
+  capMsg = case capsNone of
+    [ca] -> ca <> " capability"
+    cas -> "capabilities " <> T.intercalate ", " (map squote cas)
+  formatDevices = T.intercalate " or " . map (^. entityName)
