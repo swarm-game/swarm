@@ -1441,18 +1441,20 @@ execConst c vs s k = do
         -- capabilities not provided by any device in inventory
         missingCaps = S.fromList . map fst . filter (null . snd) $ zip caps deviceSets
 
-    unless creative $ do
-      -- check if robot has all devices to execute new command
-      all null missingDeviceSets
-        `holdsOrFail` ( singularSubjectVerb subject "do" :
-                        "not have required devices:" :
-                        (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
-                      )
-      -- check that there are in fact devices to provide every required capability
-      not (any null deviceSets) `holdsOr` Incapable fixI missingCaps cmd
-
-    -- give back the devices required per capability
-    return deviceSets
+    if creative
+      then return $ S.fromList <$> capDevices
+      else do
+        -- check if robot has all devices to execute new command
+        all null missingDeviceSets
+          `holdsOrFail` ( singularSubjectVerb subject "do" :
+                          "not have required devices, please":
+                          formatIncapableFix fixI <> ":" :
+                          (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
+                        )
+        -- check that there are in fact devices to provide every required capability
+        not (any null deviceSets) `holdsOr` Incapable fixI missingCaps cmd
+        -- give back the devices required per capability
+        return deviceSets
 
   -- replace some entity in the world with another entity
   changeWorld' ::

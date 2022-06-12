@@ -16,6 +16,7 @@ module Swarm.Game.Exception (
 
   -- * Helper functions
   formatIncapable,
+  formatIncapableFix,
 ) where
 
 import Data.Set (Set)
