@@ -1424,6 +1424,10 @@ execConst c vs s k = do
         -- device is ok if it is available in the inventory of parent
         -- when building or installed in target robot when reprogramming
         deviceOK d = inventory `E.contains` d
+
+        -- take a pair of device sets providing capabilities that is
+        -- split into (AVAIL,MISSING) and if there are some available
+        -- ignore missing because we only need them for error message
         ignoreOK ([], miss) = ([], miss)
         ignoreOK (ds, _miss) = (ds, [])
 
