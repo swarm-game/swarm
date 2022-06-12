@@ -46,7 +46,6 @@ import Swarm.Util
 
 -- ------------------------------------------------------------------
 
-
 -- | Suggested way to fix incapable error.
 data IncapableFix
   = -- | install the missing device on yourself/target
@@ -125,24 +124,24 @@ formatIncapableFix = \case
 formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
 formatIncapable em f caps tm
   | CGod `S.member` caps =
-      unlinesExText
-        [ "Can not perform an impossible task:"
-        , squote $ prettyText tm
-        ]
+    unlinesExText
+      [ "Can not perform an impossible task:"
+      , squote $ prettyText tm
+      ]
   | not (null capsNone) =
-      unlinesExText
-        [ "Missing the " <> capMsg <> " for:"
-        , squote $ prettyText tm
-        , "but no device yet provides it. See"
-        , "https://github.com/swarm-game/swarm/issues/26"
-        ]
+    unlinesExText
+      [ "Missing the " <> capMsg <> " for:"
+      , squote $ prettyText tm
+      , "but no device yet provides it. See"
+      , "https://github.com/swarm-game/swarm/issues/26"
+      ]
   | otherwise =
-      unlinesExText
-        ( "You do not have the devices required for:" :
-          squote (prettyText tm) :
-          "please " <> formatIncapableFix f <> ":" :
-          ((" - " <>) . formatDevices <$> filter (not . null) deviceSets)
-        )
+    unlinesExText
+      ( "You do not have the devices required for:" :
+        squote (prettyText tm) :
+        "please " <> formatIncapableFix f <> ":" :
+        ((" - " <>) . formatDevices <$> filter (not . null) deviceSets)
+      )
  where
   capList = S.toList caps
   deviceSets = map (`deviceForCap` em) capList

@@ -21,6 +21,7 @@ import Witch (from)
 
 import Swarm.Game.CESK
 import Swarm.Game.Display
+import Swarm.Game.Entity (EntityMap)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Robot
@@ -32,7 +33,6 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.TUI.Model
-import Swarm.Game.Entity (EntityMap)
 
 main :: IO ()
 main = do
