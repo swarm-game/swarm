@@ -19,7 +19,7 @@ module Swarm.Util.Yaml (
   ParserE,
   liftE,
   withE,
-  fromE,
+  getE,
   FromJSONE (..),
   decodeFileEitherE,
   (..:),
@@ -59,11 +59,13 @@ type ParserE e = With e Parser
 liftE :: Functor f => f a -> With e f a
 liftE = E . const
 
+-- | Locally merge an environment with the current one for given action.
 withE :: Semigroup e => e -> With e f a -> With e f a
 withE e (E f) = E (f . (<> e))
 
-fromE :: (Monad f) => With e f e
-fromE = E return
+-- | Get the current environment.
+getE :: (Monad f) => With e f e
+getE = E return
 
 ------------------------------------------------------------
 -- FromJSONE

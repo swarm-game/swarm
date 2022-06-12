@@ -131,7 +131,7 @@ resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (lo
 instance FromJSONE EntityMap (Recipe Entity) where
   parseJSONE v = do
     rt <- liftE $ parseJSON @(Recipe Text) v
-    em <- fromE
+    em <- getE
     let erEnt :: Validation [Text] (Recipe Entity)
         erEnt = traverse (\t -> maybe (Failure [t]) Success (lookupEntityName t em)) rt
     case validationToEither erEnt of
