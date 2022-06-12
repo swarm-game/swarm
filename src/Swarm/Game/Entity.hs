@@ -303,7 +303,7 @@ instance Monoid EntityMap where
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
 lookupEntityName nm = M.lookup nm . entitiesByName
 
--- | Find an entity which is a device that provides the given
+-- | Find all entities which are devices that provide the given
 --   capability.
 deviceForCap :: Capability -> EntityMap -> [Entity]
 deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap

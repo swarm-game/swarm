@@ -634,8 +634,7 @@
     attr: device
     char: 'N'
   description:
-  - "A compass gives robot the ability to orient itself in cardinal directions."
-  - "That is north, south, west and east."
+  - "A compass gives a robot the ability to orient using cardinal directions: north, south, west, and east."
   - "Example:"
   - "turn west; move; turn north"
   properties: [portable]
