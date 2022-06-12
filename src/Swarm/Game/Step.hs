@@ -1416,10 +1416,10 @@ execConst c vs s k = do
     let -- Find out what capabilities are required by the program that will
         -- be run on the target robot, and what devices would provide those
         -- capabilities.
-        (caps, _capCtx) = requiredCaps currentContext cmd
+        (caps, _capCtx) = Lens.over _1 S.toList $ requiredCaps currentContext cmd
 
         -- list of possible devices per capability
-        capDevices = map (`deviceForCap` em) . S.toList $ caps
+        capDevices = map (`deviceForCap` em) caps
 
         -- device is ok if it is available in the inventory of parent
         -- when building or installed in target robot when reprogramming
@@ -1437,6 +1437,9 @@ execConst c vs s k = do
 
         formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 
+    -- check that the capability is not restricted to system robots
+    (creative || CGod `notElem` caps)
+      `holdsOrFail` [singularSubjectVerb subject "can", "not perform an impossible task"]
     -- check if robot has all devices to execute new command
     (creative || all null missingDeviceSets)
       `holdsOrFail` ( singularSubjectVerb subject "do" :
@@ -1444,8 +1447,18 @@ execConst c vs s k = do
                       (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
                     )
     -- check that there are in fact devices to provide every required capability
+    let capsNone = map (capabilityName . fst) . filter (null . snd) $ zip caps deviceSets
+        capMsg = case capsNone of
+          [ca] -> indefiniteQ ca <> "capability"
+          cas -> "the capabilities " <> T.intercalate ", " (map squote cas)
+
     (creative || not (any null deviceSets))
-      `holdsOrFail` [singularSubjectVerb subject "can", "not perform an impossible task"]
+      `holdsOrFail` [ singularSubjectVerb subject "do"
+                    , "not have"
+                    , capMsg
+                    , ", because no device can provide it."
+                    , "\nSee https://github.com/swarm-game/swarm/issues/26."
+                    ]
     -- give back the devices required per capability
     return deviceSets
 
