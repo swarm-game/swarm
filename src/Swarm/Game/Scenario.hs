@@ -34,6 +34,7 @@ module Swarm.Game.Scenario (
   scenarioWorld,
   scenarioRobots,
   scenarioWin,
+  scenarioSolution,
 
   -- * Loading from disk
   loadScenario,
@@ -91,6 +92,7 @@ data Scenario = Scenario
   , _scenarioWorld :: Seed -> WorldFun Int Entity
   , _scenarioRobots :: [URobot]
   , _scenarioWin :: Maybe ProcessedTerm
+  , _scenarioSolution :: Maybe ProcessedTerm
   }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
@@ -108,6 +110,7 @@ instance FromJSONE EntityMap Scenario where
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
       <*> liftE (v .:? "win")
+      <*> liftE (v .:? "solution")
 
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
@@ -140,6 +143,11 @@ scenarioRobots :: Lens' Scenario [URobot]
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
 scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
+
+-- | An optional solution of the scenario, expressed as a
+--   program of type @cmd a@. This is useful for automated
+--   testing of the win condition.
+scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
 
 -- | A description of a world parsed from a YAML file.  The
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a

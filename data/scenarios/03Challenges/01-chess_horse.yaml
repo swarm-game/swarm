@@ -29,6 +29,8 @@ win: |
     kloc <- as king {whereami};
     return (bloc == kloc)
   } { return false }
+solution: |
+  move; move; move; turn right; move; turn left; move;
 robots:
   - name: horse
     loc: [0,0]

@@ -12,6 +12,8 @@ win: |
   try {
     as base {has "lambda"}
   } { return false }
+solution: |
+  move; move; grab
 robots:
   - name: base
     loc: [0,0]
