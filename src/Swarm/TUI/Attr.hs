@@ -44,6 +44,9 @@ swarmAttrMap =
     , (snowAttr, fg V.white)
     , (sandAttr, fg (V.rgbColor @Int 194 178 128))
     , (fireAttr, fg V.red `V.withStyle` V.bold)
+    , (redAttr, fg V.red)
+    , (greenAttr, fg V.green)
+    , (blueAttr, fg V.blue)
     , (deviceAttr, fg V.yellow `V.withStyle` V.bold)
     , -- Terrain attributes
       (dirtAttr, fg (V.rgbColor @Int 165 42 42))
@@ -77,6 +80,9 @@ robotAttr
   , rockAttr
   , baseAttr
   , fireAttr
+  , redAttr
+  , greenAttr
+  , blueAttr
   , woodAttr
   , deviceAttr
   , dirtAttr
@@ -106,6 +112,9 @@ quartzAttr = "quartz"
 snowAttr = "snow"
 sandAttr = "sand"
 fireAttr = "fire"
+redAttr = "red"
+greenAttr = "green"
+blueAttr = "blue"
 rockAttr = "rock"
 woodAttr = "wood"
 baseAttr = "base"

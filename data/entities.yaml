@@ -323,6 +323,33 @@
   properties: [portable, growable]
   growth: [1000, 1500]
 
+- name: pixel (R)
+  display:
+    attr: red
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: pixel (G)
+  display:
+    attr: green
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: pixel (B)
+  display:
+    attr: blue
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
 - name: circuit
   display:
     attr: plant
