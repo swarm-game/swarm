@@ -108,7 +108,7 @@
   required:
   - [1, drill]
   time: 90
-  weight: 8
+  weight: 16
 
 - in:
   - [1, mountain]
@@ -118,7 +118,7 @@
   required:
   - [1, metal drill]
   time: 9
-  weight: 8
+  weight: 16
 
 - in:
   - [5, rock]
@@ -145,13 +145,23 @@
   required:
   - [1, drill]
   time: 42
-  weight: 1
+  weight: 2
 
 - in:
   - [1, mountain]
   out:
   - [1, iron mine]
   - [1, iron ore]
+  required:
+  - [1, drill]
+  time: 64
+  weight: 2
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, quartz mine]
+  - [1, quartz]
   required:
   - [1, drill]
   time: 64
@@ -172,6 +182,16 @@
   out:
   - [1, iron mine]
   - [1, iron ore]
+  required:
+  - [1, metal drill]
+  time: 7
+  weight: 1
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, quartz mine]
+  - [1, quartz]
   required:
   - [1, metal drill]
   time: 7
@@ -198,6 +218,15 @@
   time: 64
 
 - in:
+  - [1, quartz mine]
+  out:
+  - [1, quartz]
+  - [1, quartz mine]
+  required:
+  - [1, drill]
+  time: 64
+
+- in:
   - [1, copper mine]
   out:
   - [1, copper ore]
@@ -211,6 +240,15 @@
   out:
   - [1, iron ore]
   - [1, iron mine]
+  required:
+  - [1, metal drill]
+  time: 7
+
+- in:
+  - [1, quartz mine]
+  out:
+  - [1, quartz]
+  - [1, quartz mine]
   required:
   - [1, metal drill]
   time: 7
