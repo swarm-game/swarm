@@ -161,12 +161,48 @@
   - An iron vein that can be actively mined to produce iron ore.
   properties: []
 
+- name: quartz
+  display:
+    attr: quartz
+    char: 'Q'
+  description:
+  - Raw quartz crystals.  Useful for creating devices like clocks, and
+    can be processed to extract silicon.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: quartz mine
+  display:
+    attr: quartz
+    char: 'Å'
+  description:
+  - An quartz vein that can be actively mined to produce quartz.
+  properties: []
+
+- name: silicon
+  display:
+    attr: quartz
+    char: 'S'
+  description:
+  - Extracted by processing quartz at high temperatures, silicon can
+    be used to construct integrated circuits.
+  properties: [portable]
+
 - name: furnace
   display:
     attr: fire
     char: '#'
   description:
   - A furnace can be used to turn metal ore into various useful products.
+  properties: [portable]
+
+- name: big furnace
+  display:
+    attr: fire
+    char: '#'
+  description:
+  - A big furnace can get even hotter than a normal furnace, and can be used
+    to process quartz into silicon.
   properties: [portable]
 
 - name: small motor
@@ -286,6 +322,15 @@
   - A bit.
   properties: [portable, growable]
   growth: [1000, 1500]
+
+- name: circuit
+  display:
+    attr: plant
+    char: '#'
+  description:
+  - |
+    A circuit is needed for constructing "smart" devices.
+  properties: [portable]
 
 - name: drill bit
   display:
@@ -639,3 +684,12 @@
   - "turn west; move; turn north"
   properties: [portable]
   capabilities: [orient]
+
+- name: clock
+  display:
+    attr: device
+    char: '0'
+  description:
+  - A clock blah blah.
+  properties: [portable]
+

@@ -108,6 +108,12 @@
   out:
   - [1, furnace]
 
+- in:
+  - [10, rock]
+  - [10, solar panel]
+  out:
+  - [1, big furnace]
+
 #########################################
 ##                 METAL               ##
 #########################################
@@ -264,6 +270,33 @@
   - [2, copper wire]
   out:
   - [1, strange loop]
+
+#########################################
+##           QUARTZ + SILICON          ##
+#########################################
+
+- in:
+  - [4, quartz]
+  out:
+  - [1, silicon]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, quartz]
+  - [32, iron gear]
+  - [1, glass]
+  out:
+  - [1, clock]
+
+- in:
+  - [4, silicon]
+  - [1, strange loop]
+  - [16, copper wire]
+  - [8, bit (0)]
+  - [8, bit (1)]
+  out:
+  - [1, circuit]
 
 #########################################
 ##                  SAND               ##

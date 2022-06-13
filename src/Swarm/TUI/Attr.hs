@@ -40,6 +40,7 @@ swarmAttrMap =
     , (copperAttr', fg (V.rgbColor @Int 78 117 102))
     , (ironAttr, fg (V.rgbColor @Int 97 102 106))
     , (ironAttr', fg (V.rgbColor @Int 183 65 14))
+    , (quartzAttr, fg V.white)
     , (snowAttr, fg V.white)
     , (sandAttr, fg (V.rgbColor @Int 194 178 128))
     , (fireAttr, fg V.red `V.withStyle` V.bold)
@@ -70,6 +71,7 @@ robotAttr
   , copperAttr'
   , ironAttr
   , ironAttr'
+  , quartzAttr
   , snowAttr
   , sandAttr
   , rockAttr
@@ -100,6 +102,7 @@ copperAttr = "copper"
 copperAttr' = "copper'"
 ironAttr = "iron"
 ironAttr' = "iron'"
+quartzAttr = "quartz"
 snowAttr = "snow"
 sandAttr = "sand"
 fireAttr = "fire"
