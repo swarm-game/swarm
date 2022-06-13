@@ -82,6 +82,23 @@
   time: 9
   weight: 1
 
+- in:
+  - [1, boulder]
+  out:
+  - [3, rock]
+  required:
+  - [1, metal drill]
+  time: 3
+  weight: 3
+
+- in:
+  - [1, boulder]
+  out:
+  - [4, rock]
+  required:
+  - [1, metal drill]
+  time: 3
+  weight: 3
 
 - in:
   - [1, mountain]
