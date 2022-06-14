@@ -3,7 +3,7 @@ description: The classic open-world, resource-gathering version of the game.  Yo
 robots:
   - name: base
     loc: [0,0]
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot

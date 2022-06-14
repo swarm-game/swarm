@@ -25,6 +25,7 @@ module Swarm.Language.Syntax (
   toDirection,
   fromDirection,
   allDirs,
+  isCardinal,
   dirInfo,
   north,
   south,
@@ -84,7 +85,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -119,18 +120,22 @@ dirInfo d = case d of
   DLeft -> relative (\(V2 x y) -> V2 (- y) x)
   DRight -> relative (\(V2 x y) -> V2 y (- x))
   DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
+  DDown -> relative (const down)
   DForward -> relative id
   DNorth -> cardinal north
   DSouth -> cardinal south
   DEast -> cardinal east
   DWest -> cardinal west
-  DDown -> cardinal down
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
   directionSyntax = toLower . T.tail . from . show $ d
   cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
   relative = DirInfo directionSyntax Nothing
+
+-- | Check if the direction is absolute (e.g. 'north' or 'south').
+isCardinal :: Direction -> Bool
+isCardinal = isJust . dirAbs . dirInfo
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
@@ -148,7 +153,7 @@ east = V2 1 0
 west :: V2 Int64
 west = V2 (-1) 0
 
--- | The direction for moving vertically down = @V2 0 0@.
+-- | The direction for viewing the current cell = @V2 0 0@.
 down :: V2 Int64
 down = V2 0 0
 

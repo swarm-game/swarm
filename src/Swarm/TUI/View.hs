@@ -654,7 +654,7 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
 
 -- | Ad-hoc entity to represent time - only used in recipe drawing
 timeE :: Entity
-timeE = mkEntity (defaultEntityDisplay '.') "ticks" [] []
+timeE = mkEntity (defaultEntityDisplay '.') "ticks" [] [] []
 
 drawReqs :: IngredientList Entity -> Widget Name
 drawReqs = vBox . map (hCenter . drawReq)

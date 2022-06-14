@@ -37,6 +37,7 @@ module Swarm.Util (
   commaList,
   indefinite,
   indefiniteQ,
+  singularSubjectVerb,
   plural,
   number,
 
@@ -69,7 +70,7 @@ import Data.Int (Int64)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Text (Text)
+import Data.Text (Text, toUpper)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Tuple (swap)
@@ -174,6 +175,32 @@ indefinite w = MM.indefiniteDet w <+> w
 --   the noun in single quotes.
 indefiniteQ :: Text -> Text
 indefiniteQ w = MM.indefiniteDet w <+> squote w
+
+-- | Combine the subject word with the simple present tense of the verb.
+--
+-- Only some irregular verbs are handled, but it should be enough
+-- to scrap some error message boilerplate and have fun!
+--
+-- >>> :set -XOverloadedStrings
+-- >>> singularSubjectVerb "I" "be"
+-- "I am"
+-- >>> singularSubjectVerb "he" "can"
+-- "he can"
+-- >>> singularSubjectVerb "The target robot" "do"
+-- "The target robot does"
+singularSubjectVerb :: Text -> Text -> Text
+singularSubjectVerb sub verb
+  | verb == "be" = case toUpper sub of
+    "I" -> "I am"
+    "YOU" -> sub <+> "are"
+    _ -> sub <+> "is"
+  | otherwise = sub <+> (if is3rdPerson then verb3rd else verb)
+ where
+  is3rdPerson = toUpper sub `notElem` ["I", "YOU"]
+  verb3rd
+    | verb == "have" = "has"
+    | verb == "can" = "can"
+    | otherwise = fst $ MM.defaultVerbStuff verb
 
 -- | Pluralize a noun.
 plural :: Text -> Text

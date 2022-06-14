@@ -1,3 +1,7 @@
+#########################################
+##                WOOD                 ##
+#########################################
+
 - in:
   - [1, tree]
   out:
@@ -38,7 +42,11 @@
 - in:
   - [2, board]
   out:
-  - [1, gear]
+  - [1, wooden gear]
+
+#########################################
+##                BITS                 ##
+#########################################
 
 - in:
   - [1, bit (0)]
@@ -47,11 +55,14 @@
   - [1, drill bit]
 
 - in:
-  - [1, box]
-  - [1, drill bit]
-  - [1, motor]
+  - [8, bit (0)]
+  - [8, bit (1)]
   out:
-  - [1, drill]
+  - [1, counter]
+
+#########################################
+##                STONE                ##
+#########################################
 
 - in:
   - [1, boulder]
@@ -75,19 +86,75 @@
 - in:
   - [1, mountain]
   out:
-  - [9, rock]
+  - [8, rock]
   - [1, mountain tunnel]
   required:
   - [1, drill]
   time: 90
+  weight: 8
 
 - in:
-  - [1, copper vein]
+  - [1, mountain]
+  out:
+  - [16, rock]
+  - [1, mountain tunnel]
+  required:
+  - [1, metal drill]
+  time: 9
+  weight: 8
+
+- in:
+  - [5, rock]
+  out:
+  - [1, furnace]
+
+#########################################
+##                 METAL               ##
+#########################################
+
+## VEINS
+
+- in:
+  - [1, mountain]
   out:
   - [1, copper mine]
+  - [1, copper ore]
   required:
   - [1, drill]
   time: 42
+  weight: 1
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, iron mine]
+  - [1, iron ore]
+  required:
+  - [1, drill]
+  time: 64
+  weight: 1
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, copper mine]
+  - [1, copper ore]
+  required:
+  - [1, metal drill]
+  time: 6
+  weight: 1
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, iron mine]
+  - [1, iron ore]
+  required:
+  - [1, metal drill]
+  time: 7
+  weight: 1
+
+## MINES
 
 - in:
   - [1, copper mine]
@@ -99,9 +166,33 @@
   time: 42
 
 - in:
-  - [5, rock]
+  - [1, iron mine]
   out:
-  - [1, furnace]
+  - [1, iron ore]
+  - [1, iron mine]
+  required:
+  - [1, drill]
+  time: 64
+
+- in:
+  - [1, copper mine]
+  out:
+  - [1, copper ore]
+  - [1, copper mine]
+  required:
+  - [1, metal drill]
+  time: 6
+
+- in:
+  - [1, iron mine]
+  out:
+  - [1, iron ore]
+  - [1, iron mine]
+  required:
+  - [1, metal drill]
+  time: 7
+
+## SMELTING
 
 - in:
   - [1, copper ore]
@@ -118,6 +209,65 @@
   - [2, copper pipe]
   required:
   - [1, furnace]
+
+- in:
+  - [1, iron ore]
+  - [2, log]
+  out:
+  - [2, iron plate]
+  required:
+  - [1, furnace]
+
+## TOOLS
+
+- in:
+  - [1, iron plate]
+  out:
+  - [2, iron gear]
+
+- in:
+  - [1, iron plate]
+  - [1, water]
+  - [1, box]
+  out:
+  - [1, compass]
+
+- in:
+  - [32, wooden gear]
+  - [6, copper wire]
+  out:
+  - [1, small motor]
+
+- in:
+  - [16, iron gear]
+  - [6, copper wire]
+  out:
+  - [1, big motor]
+
+- in:
+  - [1, box]
+  - [1, drill bit]
+  - [1, small motor]
+  out:
+  - [1, drill]
+
+- in:
+  - [1, box]
+  - [3, drill bit]
+  - [1, big motor]
+  out:
+  - [1, metal drill]
+
+## MAGIC
+
+- in:
+  - [2, copper wire]
+  out:
+  - [1, strange loop]
+
+#########################################
+##                  SAND               ##
+#########################################
 
 - in:
   - [1, sand]
@@ -140,25 +290,12 @@
   out:
   - [1, calculator]
 
-- in:
-  - [32, gear]
-  - [6, copper wire]
-  out:
-  - [1, motor]
-
-- in:
-  - [2, copper wire]
-  out:
-  - [1, strange loop]
+#########################################
+##                 LAMBDA              ##
+#########################################
 
 - in:
   - [5, lambda]
   - [1, water]
   out:
   - [1, curry]
-
-- in:
-  - [8, bit (0)]
-  - [8, bit (1)]
-  out:
-  - [1, counter]

@@ -6,6 +6,9 @@ robots:
   - name: base
     loc: [0,0]
     dir: [0,0]
+    display:
+      char: Ω
+      attr: robot
 world:
   seed: null
   offset: true

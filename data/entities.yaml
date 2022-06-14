@@ -91,16 +91,6 @@
     mountains, but those would require a drill to access and mine.
   properties: [portable]
 
-- name: copper vein
-  display:
-    attr: copper'
-    char: 'A'
-  description:
-  - A place in the mountains where raw copper ore can be mined.
-    As it is hidden inside a mountain, a tunnel needs to be
-    first drilled through, so that the vein becomes accessible.
-  properties: [unwalkable]
-
 - name: copper mine
   display:
     attr: copper'
@@ -137,6 +127,40 @@
     water or steam.
   properties: [portable]
 
+- name: iron plate
+  display:
+    attr: iron
+    char: '■'
+  description:
+  - Worked iron suitable for crafting resilient tools.
+  - It also possess some electro-magnetic properties.
+  properties: [portable]
+
+- name: iron gear
+  display:
+    attr: iron
+    char: '*'
+  description:
+  - An iron gear.
+  properties: [portable]
+
+- name: iron ore
+  display:
+    attr: iron
+    char: 'F'
+  description:
+  - Raw iron ore. Used to create more resilient tools.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: iron mine
+  display:
+    attr: iron'
+    char: 'Å'
+  description:
+  - An iron vein that can be actively mined to produce iron ore.
+  properties: []
+
 - name: furnace
   display:
     attr: fire
@@ -145,13 +169,24 @@
   - A furnace can be used to turn metal ore into various useful products.
   properties: [portable]
 
-- name: motor
+- name: small motor
+  display:
+    attr: entity
+    char: 'm'
+  description:
+  - A motor is useful for making devices that can turn when electric
+    current is applied.
+  - This one is rather small, but suprisingly efficient.
+  properties: [portable]
+
+- name: big motor
   display:
     attr: entity
     char: 'M'
   description:
   - A motor is useful for making devices that can turn when electric
     current is applied.
+  - This one is huge and could be used to construct powerful machinery.
   properties: [portable]
 
 - name: flower
@@ -268,12 +303,21 @@
   - A wooden box.  It can hold things.
   properties: [portable]
 
-- name: gear
+- name: wooden gear
   display:
     attr: wood
     char: '*'
   description:
   - A wooden gear.
+  properties: [portable]
+
+- name: iron gear
+  display:
+    attr: iron
+    char: '*'
+  description:
+  - An iron gear that is more resilient.
+  - It can be used to create bigger and more complex machines.
   properties: [portable]
 
 - name: counter
@@ -364,7 +408,7 @@
   - Installing treads on a robot allows it to move (via the 'move' command) and turn
     (via the 'turn' command).
   - 'Example:'
-  - '  move; turn left; move; turn north'
+  - '  move; turn left; move; turn right'
   capabilities: [move, turn]
   properties: [portable]
 
@@ -428,6 +472,15 @@
   capabilities: [drill]
   properties: [portable]
 
+- name: metal drill
+  display:
+    attr: iron
+    char: '!'
+  description:
+  - A metal drill allows robots to drill through rocks and mountains faster.
+  capabilities: [drill]
+  properties: [portable]
+
 - name: 3D printer
   display:
     attr: device
@@ -478,7 +531,7 @@
     is 'if' followed by three arguments: a boolean test and then
     two delayed expressions of the same type.
   - 'Example:'
-  - 'if (x > 3) {move} {turn west; move}'
+  - 'if (x > 3) {move} {turn right; move}'
   properties: [portable]
   capabilities: [cond]
 
@@ -575,3 +628,14 @@
     exponentiation."
   properties: [portable]
   capabilities: [arith]
+
+- name: compass
+  display:
+    attr: device
+    char: 'N'
+  description:
+  - "A compass gives a robot the ability to orient using cardinal directions: north, south, west, and east."
+  - "Example:"
+  - "turn west; move; turn north"
+  properties: [portable]
+  capabilities: [orient]

@@ -60,13 +60,13 @@ circlerProgram =
     let forever : cmd () -> cmd () = \c. c; forever c
     in forever (
       move;
-      turn east;
+      turn right;
       move;
-      turn south;
+      turn right;
       move;
-      turn west;
+      turn right;
       move;
-      turn north
+      turn right;
     )
   |]
 

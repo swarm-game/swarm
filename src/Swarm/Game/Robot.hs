@@ -362,7 +362,7 @@ mkRobot ::
 mkRobot rid pid name descr loc dir disp m devs inv sys =
   RobotR
     { _robotEntity =
-        mkEntity disp name descr []
+        mkEntity disp name descr [] []
           & entityOrientation ?~ dir
           & entityInventory .~ fromElems inv
     , _installedDevices = inst
