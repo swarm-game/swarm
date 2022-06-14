@@ -383,6 +383,15 @@
   - A wooden gear.
   properties: [portable]
 
+- name: seesaw
+  display:
+    attr: wood
+    char: '/'
+  description:
+  - A rotating board apparently popular with young aliens.  Perhaps it
+    could also be used as a primitive balance scale.
+  properties: [portable]
+
 - name: iron gear
   display:
     attr: iron
@@ -720,3 +729,13 @@
   - A clock blah blah.
   properties: [portable]
 
+- name: comparator
+  display:
+    attr: device
+    char: '>'
+  description:
+  - "A comparator allows comparing two values to see whether the first
+    is less, equal, or greater than the second."
+  - "Valid comparison operators are <, <=, >, >=, ==, and !=."
+  properties: [portable]
+  capabilities: [compare]

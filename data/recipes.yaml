@@ -44,6 +44,18 @@
   out:
   - [1, wooden gear]
 
+- in:
+  - [1, board]
+  - [2, wooden gear]
+  out:
+  - [1, seesaw]
+
+- in:
+  - [1, seesaw]
+  - [2, copper wire]
+  out:
+  - [1, comparator]
+
 #########################################
 ##                BITS                 ##
 #########################################
