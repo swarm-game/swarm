@@ -350,6 +350,14 @@
   properties: [portable, growable]
   growth: [1000, 1500]
 
+- name: camera
+  display:
+    attr: device
+    char: '@'
+  description:
+  - A camera.
+  properties: [portable]
+
 - name: circuit
   display:
     attr: plant
