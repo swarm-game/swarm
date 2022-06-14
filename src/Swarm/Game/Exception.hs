@@ -107,8 +107,9 @@ formatIncapableFix = \case
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
 --
 -- >>> incapableError (S.singleton CGod) (TConst As)
--- Can not perform an impossible task:
+-- Thee shalt not utter such blasphemy:
 --   'as'
+--   If't be true thee wanteth to playeth god, then tryeth Creative game.
 --
 -- >>> incapableError (S.singleton CAppear) (TConst Appear)
 -- You do not have the devices required for:
@@ -125,8 +126,9 @@ formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
 formatIncapable em f caps tm
   | CGod `S.member` caps =
     unlinesExText
-      [ "Can not perform an impossible task:"
+      [ "Thee shalt not utter such blasphemy:"
       , squote $ prettyText tm
+      , "If't be true thee wanteth to playeth god, then tryeth Creative game."
       ]
   | not (null capsNone) =
     unlinesExText
