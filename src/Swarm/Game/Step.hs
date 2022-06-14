@@ -1227,9 +1227,10 @@ execConst c vs s k = do
         deviceSets <- checkRequiredDevices (addStdDevs $ r ^. robotInventory) cmd "You" FixByObtain
 
         let devices =
-              if creative -- if given a choice between required devices giving same capability
-                then S.unions deviceSets -- give them all in creative
-                else S.unions $ map (S.take 1) deviceSets -- give first one otherwise
+              stdDevices
+                `S.union` if creative -- if given a choice between required devices giving same capability
+                  then S.unions deviceSets -- give them all in creative
+                  else S.unions $ map (S.take 1) deviceSets -- give first one otherwise
 
         -- Pick a random display name.
         displayName <- randomName
