@@ -734,7 +734,7 @@
     attr: device
     char: '0'
   description:
-  - A clock blah blah.
+  - A clock is a device for keeping track of time.
   properties: [portable]
 
 - name: comparator
