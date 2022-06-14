@@ -391,7 +391,7 @@
   - A wooden gear.
   properties: [portable]
 
-- name: seesaw
+- name: teeter-totter
   display:
     attr: wood
     char: '/'

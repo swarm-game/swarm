@@ -48,10 +48,10 @@
   - [1, board]
   - [2, wooden gear]
   out:
-  - [1, seesaw]
+  - [1, teeter-totter]
 
 - in:
-  - [1, seesaw]
+  - [1, teeter-totter]
   - [2, copper wire]
   out:
   - [1, comparator]
