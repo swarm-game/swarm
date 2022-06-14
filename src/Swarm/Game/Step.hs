@@ -53,7 +53,7 @@ import Swarm.Game.State
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Language.Capability
-import Swarm.Language.Context
+import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
@@ -766,7 +766,7 @@ execConst c vs s k = do
         -- Make sure the other robot exists
         other <-
           robotWithID otherID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID), "."])
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID) <> "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
@@ -805,7 +805,7 @@ execConst c vs s k = do
         -- Make sure the other robot exists
         other <-
           robotWithID otherID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID), "."])
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID) <> "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
@@ -855,9 +855,12 @@ execConst c vs s k = do
         em <- use entityMap
         e <-
           lookupEntityName name em
-            `isJustOrFail` ["I've never heard of", indefiniteQ name, "."]
+            `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
 
         outRs <- use recipesOut
+
+        creative <- use creativeMode
+        let create l = l <> ["You can use 'create \"" <> name <> "\"' instead." | creative]
 
         -- Only consider recipes where the number of things we are trying to make
         -- is greater in the outputs than in the inputs.  This prevents us from doing
@@ -866,14 +869,14 @@ execConst c vs s k = do
             increase r = countIn (r ^. recipeOutputs) > countIn (r ^. recipeInputs)
             countIn xs = maybe 0 fst (find ((== e) . snd) xs)
         not (null recipes)
-          `holdsOrFail` ["There is no known recipe for making", indefinite name, "."]
+          `holdsOrFail` create ["There is no known recipe for making", indefinite name <> "."]
 
         -- Try recipes and make a weighted random choice among the
         -- ones we have ingredients for.
         chosenRecipe <- weightedChoice (^. _3 . recipeWeight) (rights (map (make (inv, ins)) recipes))
         (invTaken, changeInv, recipe) <-
           chosenRecipe
-            `isJustOrFail` ["You don't have the ingredients to make", indefinite name, "."]
+            `isJustOrFail` create ["You don't have the ingredients to make", indefinite name <> "."]
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
@@ -959,7 +962,7 @@ execConst c vs s k = do
         -- Make sure the other robot exists
         other <-
           robotWithID otherID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID), "."])
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID) <> "."])
 
         -- Make sure it is in the same location
         loc <- use robotLocation
@@ -1057,7 +1060,7 @@ execConst c vs s k = do
         em <- use entityMap
         e <-
           lookupEntityName name em
-            `isJustOrFail` ["I've never heard of", indefiniteQ name, "."]
+            `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
 
         robotInventory %= insert e
         return $ Out VUnit s k
@@ -1155,7 +1158,7 @@ execConst c vs s k = do
         -- check if robot exists
         childRobot <-
           robotWithID childRobotID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show childRobotID), "."])
+            >>= (`isJustOrFail` ["There is no robot with ID", from (show childRobotID) <> "."])
 
         -- check that current robot is not trying to reprogram self
         myID <- use robotID

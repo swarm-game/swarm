@@ -421,17 +421,4 @@ support](https://github.com/swarm-game/swarm/blob/main/docs/EDITORS.md)
 giving syntax and error highlighting for `.sw` files; at the moment
 Emacs is supported along with VSCode.
 
-Creative Mode
--------------
-
-For now, there is a secret way to switch between Classic mode and
-Creative mode.  In Classic mode, the kinds of actions your robots can
-do, and the kinds of programs they can interpret, is restricted by
-what devices they have installed.  In Creative mode you can do
-anything you like, including fabricate arbitrary items out of thin air
-using the `create` command. Also, unknown entities will not be hidden
-in the world map.
-
-To switch, highlight the world view panel, then hit the <kbd>M</kbd> key.
-
 Now go forth and build your swarm!
