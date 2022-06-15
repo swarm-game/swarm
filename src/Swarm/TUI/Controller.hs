@@ -156,8 +156,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
 
 mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
 mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
-  where
-    filterTest = if not cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
+ where
+  filterTest = if not cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
 
 exitNewGameMenu :: AppState -> NonEmpty (BL.List Name ScenarioItem) -> EventM Name (Next AppState)
 exitNewGameMenu s stk =
