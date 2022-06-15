@@ -5,15 +5,17 @@
 -- | Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), use, (&), (.~), (<&>), (^.))
-import Control.Monad (filterM, void)
+import Control.Lens (Ixed (ix), use, view, (&), (.~), (<&>), (^.))
+import Control.Monad (filterM, forM_, void)
 import Control.Monad.State (StateT (runStateT))
 import Control.Monad.Trans.Except (runExceptT)
+import Data.Foldable (find)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (machine)
+import Swarm.Game.Robot (leText, machine, robotLog)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (GameState, WinCondition (Won), initGameState, robotMap, winCondition, winSolution)
 import Swarm.Game.Step (gameTick)
@@ -24,7 +26,7 @@ import System.Directory (doesFileExist, listDirectory)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
-import Test.Tasty.HUnit (assertFailure, testCase)
+import Test.Tasty.HUnit (Assertion, assertFailure, testCase)
 import Witch (into)
 
 main :: IO ()
@@ -110,7 +112,10 @@ testScenarioSolution _em =
     ]
  where
   testSolution :: TestName -> Time -> FilePath -> TestTree
-  testSolution n s p = testCase n $ do
+  testSolution n s p = testSolution' n s p (const $ pure ())
+
+  testSolution' :: TestName -> Time -> FilePath -> (GameState -> Assertion) -> TestTree
+  testSolution' n s p verify = testCase n $ do
     Right gs <- runExceptT $ initGameState Nothing (Just p) Nothing
     case gs ^. winSolution of
       Nothing -> assertFailure "No solution to test!"
@@ -119,7 +124,9 @@ testScenarioSolution _em =
         m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
         case m of
           Nothing -> assertFailure "Timed out"
-          Just _g -> pure ()
+          Just g -> do
+            noFatalErrors g
+            verify g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
@@ -127,3 +134,15 @@ testScenarioSolution _em =
     case w of
       Won _ -> return ()
       _ -> gameTick >> playUntilWin
+
+noFatalErrors :: GameState -> Assertion
+noFatalErrors g = do
+  let rm = g ^. robotMap
+  forM_
+    rm
+    ( \r -> do
+        let f = find isFatal (view leText <$> r ^. robotLog)
+        maybe (return ()) (assertFailure . T.unpack) f
+    )
+ where
+  isFatal = ("Fatal error:" `T.isPrefixOf`)
