@@ -1,1 +1,0 @@
-move; move; move; turn right; move; turn left; move;

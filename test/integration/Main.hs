@@ -1,19 +1,23 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- | Swarm integration tests
 module Main where
 
-import Control.Lens (use, (<&>))
+import Control.Lens (Ixed (ix), use, (&), (.~), (<&>), (^.))
 import Control.Monad (filterM, void)
 import Control.Monad.State (StateT (runStateT))
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Text (Text)
 import Data.Yaml (ParseException, prettyPrintParseException)
+import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
+import Swarm.Game.Robot (machine)
 import Swarm.Game.Scenario (Scenario)
-import Swarm.Game.State (GameState, WinCondition (Won), initGameState, winCondition)
+import Swarm.Game.State (GameState, WinCondition (Won), initGameState, robotMap, winCondition, winSolution)
 import Swarm.Game.Step (gameTick)
+import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesFileExist, listDirectory)
@@ -72,23 +76,35 @@ acquire dir ext = do
  where
   hasExt path = takeExtension path == ("." ++ ext)
 
+data Time = Default | Sec Int | None
+
 testScenarioSolution :: EntityMap -> TestTree
 testScenarioSolution _em =
   testGroup
     "Test scenario solutions"
-    [ testSolution "chess" "data/scenarios/03Challenges/01-chess_horse.yaml" "example/chess-solution.sw"
+    [ testSolution "chess" (Sec 1) "data/scenarios/03Challenges/01-chess_horse.yaml"
     ]
  where
-  testSolution :: TestName -> FilePath -> FilePath -> TestTree
-  testSolution n p r = testCase n $ do
-    Right gs <- runExceptT $ initGameState Nothing (Just p) (Just r)
-    m <- timeout (60 * sec) (snd <$> runStateT playUntilWin gs)
-    case m of
-      Nothing -> assertFailure "Timed out"
-      Just _g -> pure ()
+  testSolution :: TestName -> Time -> FilePath -> TestTree
+  testSolution n s p = testCase n $ do
+    Right gs <- runExceptT $ initGameState Nothing (Just p) Nothing
+    case gs ^. winSolution of
+      Nothing -> assertFailure "No solution to test!"
+      Just sol -> do
+        let gs' = gs & robotMap . ix 0 . machine .~ initMachine sol Ctx.empty emptyStore
+        m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
+        case m of
+          Nothing -> assertFailure "Timed out"
+          Just _g -> pure ()
 
   sec :: Int
   sec = 10 ^ (6 :: Int)
+
+  time :: Time -> Int
+  time = \case
+    Default -> 10 * sec
+    Sec s -> s * sec
+    None -> -1
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
