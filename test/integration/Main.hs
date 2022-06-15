@@ -76,7 +76,22 @@ acquire dir ext = do
  where
   hasExt path = takeExtension path == ("." ++ ext)
 
-data Time = Default | Sec Int | None
+data Time
+  = -- | One second should be anough to run most programs.
+    Default
+  | -- | You can specify more seconds if you need to.
+    Sec Int
+  | -- | If you absolutely have to, you can ignore timeout.
+    None
+
+time :: Time -> Int
+time = \case
+  Default -> 1 * sec
+  Sec s -> s * sec
+  None -> -1
+ where
+  sec :: Int
+  sec = 10 ^ (6 :: Int)
 
 testScenarioSolution :: EntityMap -> TestTree
 testScenarioSolution _em =
@@ -84,13 +99,13 @@ testScenarioSolution _em =
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution "move" (Sec 1) "data/scenarios/02Tutorial/00-move.yaml"
-        , testSolution "turn" (Sec 1) "data/scenarios/02Tutorial/01-turn.yaml"
+        [ testSolution "move" Default "data/scenarios/02Tutorial/00-move.yaml"
+        , testSolution "turn" Default "data/scenarios/02Tutorial/01-turn.yaml"
         ]
     , testGroup
         "Challenges"
-        [ testSolution "chess" (Sec 1) "data/scenarios/03Challenges/01-chess_horse.yaml"
-        , testSolution "test (grab)" (Sec 1) "data/scenarios/03Challenges/00-test.yaml"
+        [ testSolution "chess" Default "data/scenarios/03Challenges/01-chess_horse.yaml"
+        , testSolution "test (grab)" Default "data/scenarios/03Challenges/00-test.yaml"
         ]
     ]
  where
@@ -105,15 +120,6 @@ testScenarioSolution _em =
         case m of
           Nothing -> assertFailure "Timed out"
           Just _g -> pure ()
-
-  sec :: Int
-  sec = 10 ^ (6 :: Int)
-
-  time :: Time -> Int
-  time = \case
-    Default -> 10 * sec
-    Sec s -> s * sec
-    None -> -1
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
