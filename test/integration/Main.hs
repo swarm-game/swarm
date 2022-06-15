@@ -4,30 +4,24 @@
 -- | Swarm integration tests
 module Main where
 
-import Control.Monad
-import Data.Functor
-import qualified Data.IntMap as IM
+import Control.Lens (use, (<&>))
+import Control.Monad (filterM, void)
+import Control.Monad.State (StateT (runStateT))
+import Control.Monad.Trans.Except (runExceptT)
 import Data.Text (Text)
 import Data.Yaml (ParseException, prettyPrintParseException)
-import System.Directory (doesFileExist, listDirectory)
-import System.FilePath.Posix
-import Test.Tasty
-import Test.Tasty.HUnit
-import Witch
-import Control.Monad.State
-import Swarm.Game.Entity
-import Swarm.Game.Scenario
+import Swarm.Game.Entity (EntityMap, loadEntities)
+import Swarm.Game.Scenario (Scenario)
+import Swarm.Game.State (GameState, WinCondition (Won), initGameState, winCondition)
+import Swarm.Game.Step (gameTick)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.Language.Context as Ctx
 import Swarm.Util.Yaml (decodeFileEitherE)
-import Swarm.Game.State
-import Control.Monad.Trans.Except (runExceptT)
-import Swarm.Game.CESK
-import Swarm.Game.Value
-import Swarm.Game.Robot
-import Swarm.Game.Step
-import Swarm.Game.Exception
-import Control.Lens hiding (from)
+import System.Directory (doesFileExist, listDirectory)
+import System.FilePath.Posix (takeExtension, (</>))
+import System.Timeout (timeout)
+import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
+import Test.Tasty.HUnit (assertFailure, testCase)
+import Witch (into)
 
 main :: IO ()
 main = do
@@ -79,7 +73,7 @@ acquire dir ext = do
   hasExt path = takeExtension path == ("." ++ ext)
 
 testScenarioSolution :: EntityMap -> TestTree
-testScenarioSolution em =
+testScenarioSolution _em =
   testGroup
     "Test scenario solutions"
     [ testSolution "chess" "data/scenarios/03Challenges/01-chess_horse.yaml" "example/chess-solution.sw"
@@ -88,27 +82,17 @@ testScenarioSolution em =
   testSolution :: TestName -> FilePath -> FilePath -> TestTree
   testSolution n p r = testCase n $ do
     Right gs <- runExceptT $ initGameState Nothing (Just p) (Just r)
-    v <- evalScenario gs
-    case v of
-      Left err -> assertFailure ("Evaluation failed: " ++ from @Text @String err)
-      Right (VBool True) -> return ()
-      Right v -> assertFailure ("Not what I hoped for: " <> show v)
+    m <- timeout (60 * sec) (snd <$> runStateT playUntilWin gs)
+    case m of
+      Nothing -> assertFailure "Timed out"
+      Just _g -> pure ()
 
-  evalScenario :: GameState -> IO (Either Text Value)
-  evalScenario g = evaluateCESK (initMachine w Ctx.empty emptyStore) g
-   where
-    w = case g ^. winCondition of
-      WinCondition win -> win
-      _ -> error "no win condition"
+  sec :: Int
+  sec = 10 ^ (6 :: Int)
 
-  evaluateCESK :: CESK -> GameState -> IO (Either Text Value)
-  evaluateCESK cesk g = flip evalStateT g . flip evalStateT r . runCESK $ cesk
-   where
-    r :: Robot
-    r = (g ^. robotMap) IM.! 0
-
-  runCESK :: CESK -> StateT Robot (StateT GameState IO) (Either Text Value)
-  runCESK (Up exn _ []) = return (Left (formatExn em exn))
-  runCESK cesk = case finalValue cesk of
-    Just (v, _) -> return (Right v)
-    Nothing -> stepCESK cesk >>= runCESK
+  playUntilWin :: StateT GameState IO ()
+  playUntilWin = do
+    w <- use winCondition
+    case w of
+      Won _ -> return ()
+      _ -> gameTick >> playUntilWin
