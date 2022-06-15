@@ -1296,7 +1296,7 @@ execConst c vs s k = do
 
             -- Immediately copy over any items the robot knows about
             -- but has 0 of
-            let knownItems = map snd . filter ((==0) . fst) . elems $ salvageInventory
+            let knownItems = map snd . filter ((== 0) . fst) . elems $ salvageInventory
             robotInventory %= \i -> foldr (insertCount 0) i knownItems
 
             -- Now reprogram the robot being salvaged to 'give' each
