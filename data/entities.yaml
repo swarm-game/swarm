@@ -161,12 +161,48 @@
   - An iron vein that can be actively mined to produce iron ore.
   properties: []
 
+- name: quartz
+  display:
+    attr: quartz
+    char: 'Q'
+  description:
+  - Raw quartz crystals.  Useful for creating devices like clocks, and
+    can be processed to extract silicon.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: quartz mine
+  display:
+    attr: quartz
+    char: 'Å'
+  description:
+  - An quartz vein that can be actively mined to produce quartz.
+  properties: []
+
+- name: silicon
+  display:
+    attr: quartz
+    char: 'S'
+  description:
+  - Extracted by processing quartz at high temperatures, silicon can
+    be used to construct integrated circuits.
+  properties: [portable]
+
 - name: furnace
   display:
     attr: fire
     char: '#'
   description:
   - A furnace can be used to turn metal ore into various useful products.
+  properties: [portable]
+
+- name: big furnace
+  display:
+    attr: fire
+    char: '#'
+  description:
+  - A big furnace can get even hotter than a normal furnace, and can be used
+    to process quartz into silicon.
   properties: [portable]
 
 - name: small motor
@@ -287,6 +323,50 @@
   properties: [portable, growable]
   growth: [1000, 1500]
 
+- name: pixel (R)
+  display:
+    attr: red
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: pixel (G)
+  display:
+    attr: green
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: pixel (B)
+  display:
+    attr: blue
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: camera
+  display:
+    attr: device
+    char: '@'
+  description:
+  - A camera.
+  properties: [portable]
+
+- name: circuit
+  display:
+    attr: plant
+    char: '#'
+  description:
+  - |
+    A circuit is needed for constructing "smart" devices.
+  properties: [portable]
+
 - name: drill bit
   display:
     attr: entity
@@ -309,6 +389,15 @@
     char: '*'
   description:
   - A wooden gear.
+  properties: [portable]
+
+- name: teeter-totter
+  display:
+    attr: wood
+    char: '/'
+  description:
+  - A rotating board apparently popular with young aliens.  Perhaps it
+    could also be used as a primitive balance scale.
   properties: [portable]
 
 - name: iron gear
@@ -639,3 +728,22 @@
   - "turn west; move; turn north"
   properties: [portable]
   capabilities: [orient]
+
+- name: clock
+  display:
+    attr: device
+    char: '0'
+  description:
+  - A clock is a device for keeping track of time.
+  properties: [portable]
+
+- name: comparator
+  display:
+    attr: device
+    char: '>'
+  description:
+  - "A comparator allows comparing two values to see whether the first
+    is less, equal, or greater than the second."
+  - "Valid comparison operators are <, <=, >, >=, ==, and !=."
+  properties: [portable]
+  capabilities: [compare]

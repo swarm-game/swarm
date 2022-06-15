@@ -44,6 +44,18 @@
   out:
   - [1, wooden gear]
 
+- in:
+  - [1, board]
+  - [2, wooden gear]
+  out:
+  - [1, teeter-totter]
+
+- in:
+  - [1, teeter-totter]
+  - [2, copper wire]
+  out:
+  - [1, comparator]
+
 #########################################
 ##                BITS                 ##
 #########################################
@@ -82,6 +94,23 @@
   time: 9
   weight: 1
 
+- in:
+  - [1, boulder]
+  out:
+  - [3, rock]
+  required:
+  - [1, metal drill]
+  time: 3
+  weight: 3
+
+- in:
+  - [1, boulder]
+  out:
+  - [4, rock]
+  required:
+  - [1, metal drill]
+  time: 3
+  weight: 3
 
 - in:
   - [1, mountain]
@@ -91,7 +120,7 @@
   required:
   - [1, drill]
   time: 90
-  weight: 8
+  weight: 16
 
 - in:
   - [1, mountain]
@@ -101,12 +130,18 @@
   required:
   - [1, metal drill]
   time: 9
-  weight: 8
+  weight: 16
 
 - in:
   - [5, rock]
   out:
   - [1, furnace]
+
+- in:
+  - [10, rock]
+  - [10, solar panel]
+  out:
+  - [1, big furnace]
 
 #########################################
 ##                 METAL               ##
@@ -122,13 +157,23 @@
   required:
   - [1, drill]
   time: 42
-  weight: 1
+  weight: 2
 
 - in:
   - [1, mountain]
   out:
   - [1, iron mine]
   - [1, iron ore]
+  required:
+  - [1, drill]
+  time: 64
+  weight: 2
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, quartz mine]
+  - [1, quartz]
   required:
   - [1, drill]
   time: 64
@@ -149,6 +194,16 @@
   out:
   - [1, iron mine]
   - [1, iron ore]
+  required:
+  - [1, metal drill]
+  time: 7
+  weight: 1
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, quartz mine]
+  - [1, quartz]
   required:
   - [1, metal drill]
   time: 7
@@ -175,6 +230,15 @@
   time: 64
 
 - in:
+  - [1, quartz mine]
+  out:
+  - [1, quartz]
+  - [1, quartz mine]
+  required:
+  - [1, drill]
+  time: 64
+
+- in:
   - [1, copper mine]
   out:
   - [1, copper ore]
@@ -188,6 +252,15 @@
   out:
   - [1, iron ore]
   - [1, iron mine]
+  required:
+  - [1, metal drill]
+  time: 7
+
+- in:
+  - [1, quartz mine]
+  out:
+  - [1, quartz]
+  - [1, quartz mine]
   required:
   - [1, metal drill]
   time: 7
@@ -264,6 +337,51 @@
   - [2, copper wire]
   out:
   - [1, strange loop]
+
+#########################################
+##           QUARTZ + SILICON          ##
+#########################################
+
+- in:
+  - [4, quartz]
+  out:
+  - [1, silicon]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, quartz]
+  - [32, iron gear]
+  - [1, glass]
+  out:
+  - [1, clock]
+
+- in:
+  - [4, silicon]
+  - [1, strange loop]
+  - [16, copper wire]
+  - [8, bit (0)]
+  - [8, bit (1)]
+  out:
+  - [1, circuit]
+
+#########################################
+##               PIXELS                ##
+#########################################
+
+- in:
+  - [1, glass]
+  - [10, pixel (R)]
+  - [10, pixel (G)]
+  - [10, pixel (B)]
+  out:
+  - [1, camera]
+
+- in:
+  - [1, camera]
+  - [1, circuit]
+  out:
+  - [1, scanner]
 
 #########################################
 ##                  SAND               ##

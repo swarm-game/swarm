@@ -79,6 +79,7 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
     | otherwise = (DirtT, Nothing)
   genBiome Small Hard Artificial
     | h `mod` 120 == 1 = (StoneT, Just "lambda")
+    | h `mod` 50 == 0 = (StoneT, Just (T.concat ["pixel (", from ["RGB" !! fromIntegral ((r + c) `mod` 3)], ")"]))
     | otherwise = (StoneT, Nothing)
   genBiome Big Hard Artificial
     | sample ix cl0 > 0.85 = (StoneT, Just "copper ore")
