@@ -26,6 +26,7 @@ import System.Directory (doesFileExist, listDirectory)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
+import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertFailure, testCase)
 import Witch (into)
 
@@ -111,7 +112,8 @@ testScenarioSolution _em =
         ]
     , testGroup
         "Regression tests"
-        [ testSolution "build with drill (#394)" (Sec 10) "data/scenarios/04Testing/394-build-drill.yaml"
+        [ expectFailBecause "Awaiting fix (#394)" $
+            testSolution "build with drill (#394)" Default "data/scenarios/04Testing/394-build-drill.yaml"
         ]
     ]
  where
@@ -146,7 +148,10 @@ noFatalErrors g = do
     rm
     ( \r -> do
         let f = find isFatal (view leText <$> r ^. robotLog)
-        forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
+        -- -----------------------------------------------
+        -- When debugging, try logging all robot messages:
+        -- forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
+        -- -----------------------------------------------
         maybe (return ()) (assertFailure . T.unpack) f
     )
  where

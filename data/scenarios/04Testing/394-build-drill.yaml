@@ -2,6 +2,7 @@ name: Test build with drill
 description: |
   Inner build does not correctly require Drill.
   https://github.com/swarm-game/swarm/issues/394
+creative: True
 win: |
   try {
     as base {l <- has "detonator"; return (not l)}
@@ -17,8 +18,6 @@ solution: |
     log "Hi, I am builder";
     forever (build {log "Hi, I am pusher"; turn forward; forever push}; log "- robot built")
   };
-  give r "logger";
-  give r "drill";
   wait 10;
   place "detonator";
 robots:
@@ -32,12 +31,6 @@ robots:
       - dictionary
       - grabber
     inventory:
-      - [2, drill]
-      - [1, 3D printer]
-      - [1, branch predictor]
-      - [1, lambda]
-      - [1, strange loop]
-      - [3, logger]
       - [1, detonator] # used to mark win
 world:
   default: [blank, none]

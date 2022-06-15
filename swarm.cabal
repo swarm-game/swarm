@@ -172,6 +172,7 @@ test-suite swarm-integration
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
                       tasty-hunit                   >= 0.10 && < 0.11,
+                      tasty-expected-failure        >= 0.12 && < 0.13,
                       -- Imports shared with the library don't need bounds
                       base,
                       containers,
