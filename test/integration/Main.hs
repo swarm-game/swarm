@@ -82,7 +82,14 @@ testScenarioSolution :: EntityMap -> TestTree
 testScenarioSolution _em =
   testGroup
     "Test scenario solutions"
-    [ testSolution "chess" (Sec 1) "data/scenarios/03Challenges/01-chess_horse.yaml"
+    [ testGroup "Tutorial"
+      [ testSolution "move" (Sec 1) "data/scenarios/02Tutorial/00-move.yaml"
+      , testSolution "turn" (Sec 1) "data/scenarios/02Tutorial/01-turn.yaml"
+      ]
+    , testGroup "Challenges"
+      [ testSolution "chess" (Sec 1) "data/scenarios/03Challenges/01-chess_horse.yaml"
+      , testSolution "test (grab)" (Sec 1) "data/scenarios/03Challenges/00-test.yaml"
+      ]
     ]
  where
   testSolution :: TestName -> Time -> FilePath -> TestTree
