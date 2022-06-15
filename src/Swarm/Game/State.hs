@@ -412,15 +412,14 @@ addRobot r = do
 --   first loading entities and recipies from disk.
 initGameState :: Maybe Seed -> Maybe String -> Maybe String -> ExceptT Text IO GameState
 initGameState cmdlineSeed scenarioToLoad toRun = do
-  liftIO $ putStrLn "Loading entities..."
-  entities <- loadEntities >>= (`isRightOr` id)
-  liftIO $ putStrLn "Loading recipes..."
-  recipes <- loadRecipes entities >>= (`isRightOr` id)
-  liftIO $ putStrLn "Loading scenarios..."
-  loadedScenarios <- loadScenarios entities >>= (`isRightOr` id)
+  let guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
+  entities <- loadEntities >>= guardRight "load entities"
+  recipes <- loadRecipes entities >>= guardRight "load recipes"
+  loadedScenarios <- loadScenarios entities >>= guardRight "load scenarios"
 
-  (adjs, names) <- liftIO $ do
-    putStrLn "Loading name generation data..."
+  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
+
+  (adjs, names) <- liftIO . markEx "load name generation data" $ do
     adjsFile <- getDataFileName "adjectives.txt"
     as <- tail . T.lines <$> T.readFile adjsFile
     namesFile <- getDataFileName "names.txt"
