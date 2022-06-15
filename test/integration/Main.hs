@@ -22,7 +22,7 @@ import Swarm.Game.Step (gameTick)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.Directory (doesFileExist, listDirectory, doesDirectoryExist)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
