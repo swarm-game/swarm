@@ -109,6 +109,10 @@ testScenarioSolution _em =
         [ testSolution "chess" Default "data/scenarios/03Challenges/01-chess_horse.yaml"
         , testSolution "test (grab)" Default "data/scenarios/03Challenges/00-test.yaml"
         ]
+    , testGroup
+        "Regression tests"
+        [ testSolution "build with drill (#394)" (Sec 10) "data/scenarios/04Testing/394-build-drill.yaml"
+        ]
     ]
  where
   testSolution :: TestName -> Time -> FilePath -> TestTree
@@ -142,7 +146,8 @@ noFatalErrors g = do
     rm
     ( \r -> do
         let f = find isFatal (view leText <$> r ^. robotLog)
+        forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
         maybe (return ()) (assertFailure . T.unpack) f
     )
  where
-  isFatal = ("Fatal error:" `T.isPrefixOf`)
+  isFatal = ("Fatal error:" `T.isInfixOf`)

@@ -1,0 +1,57 @@
+name: Test build with drill
+description: |
+  Inner build does not correctly require Drill.
+  https://github.com/swarm-game/swarm/issues/394
+win: |
+  try {
+    as base {l <- has "detonator"; return (not l)}
+  } { return false }
+# When testing, add `s <- build {...}; n <- as s {whoami}; log n` 
+solution: |
+  def forever = \c. c ; forever c end;
+  def unblock = try {drill forward} {} end;
+  def push = unblock; move end;
+  log "Hi, I am base";
+  r <- build {
+    wait 2;
+    log "Hi, I am builder";
+    forever (build {log "Hi, I am pusher"; turn forward; forever push}; log "- robot built")
+  };
+  give r "logger";
+  give r "drill";
+  wait 10;
+  place "detonator";
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - 3D printer
+      - dictionary
+      - grabber
+    inventory:
+      - [2, drill]
+      - [1, 3D printer]
+      - [1, branch predictor]
+      - [1, lambda]
+      - [1, strange loop]
+      - [3, logger]
+      - [1, detonator] # used to mark win
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    'M': [stone, mountain]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │..M│
+    └───┘
