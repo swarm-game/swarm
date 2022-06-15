@@ -119,8 +119,8 @@ handleMainMenuEvent menu s = \case
       Just x0 -> case x0 of
         NewGame ->
           continue $
-            s & uiState . uiMenu
-              .~ NewGameMenu (NE.fromList [mkScenarioList (s ^. gameState . scenarios)])
+            s & uiState . uiMenu -- here?
+              .~ NewGameMenu (NE.fromList [mkScenarioList (s ^. gameState . creativeMode) (s ^. gameState . scenarios)])
         Tutorial -> continue $ s & uiState . uiMenu .~ TutorialMenu
         About -> continue $ s & uiState . uiMenu .~ AboutMenu
         Quit -> halt s
@@ -145,7 +145,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
             & gameState .~ gs'
       Just (SICollection _ c) ->
         continue $
-          s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
+          s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList (s ^. gameState . creativeMode) c) scenarioStack)
   Key V.KEsc -> exitNewGameMenu s scenarioStack
   CharKey 'q' -> exitNewGameMenu s scenarioStack
   ControlKey 'q' -> exitNewGameMenu s scenarioStack
@@ -154,8 +154,10 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
     continue $ s & uiState . uiMenu .~ NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw s
 
-mkScenarioList :: ScenarioCollection -> BL.List Name ScenarioItem
-mkScenarioList = flip (BL.list ScenarioList) 1 . V.fromList . scenarioCollectionToList
+mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
+mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
+  where
+    filterTest = if not cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
 
 exitNewGameMenu :: AppState -> NonEmpty (BL.List Name ScenarioItem) -> EventM Name (Next AppState)
 exitNewGameMenu s stk =
