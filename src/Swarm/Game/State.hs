@@ -33,6 +33,7 @@ module Swarm.Game.State (
   -- ** GameState fields
   creativeMode,
   winCondition,
+  winSolution,
   runStatus,
   paused,
   robotMap,
@@ -167,6 +168,7 @@ data RunStatus
 data GameState = GameState
   { _creativeMode :: Bool
   , _winCondition :: WinCondition
+  , _winSolution :: Maybe ProcessedTerm
   , _runStatus :: RunStatus
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -220,6 +222,10 @@ creativeMode :: Lens' GameState Bool
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
+
+-- | How to win (if possible). This is useful for automated testing
+--   and to show help to cheaters (or testers).
+winSolution :: Lens' GameState (Maybe ProcessedTerm)
 
 -- | The current 'RunStatus'.
 runStatus :: Lens' GameState RunStatus
@@ -431,6 +437,7 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
         GameState
           { _creativeMode = False
           , _winCondition = NoWinCondition
+          , _winSolution = Nothing
           , _runStatus = Running
           , _robotMap = IM.empty
           , _robotsByLocation = M.empty
@@ -480,6 +487,7 @@ playScenario em scenario userSeed toRun g = do
     g
       { _creativeMode = scenario ^. scenarioCreative
       , _winCondition = theWinCondition
+      , _winSolution = scenario ^. scenarioSolution
       , _runStatus = Running
       , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
       , _robotsByLocation =
