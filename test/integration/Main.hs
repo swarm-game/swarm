@@ -22,7 +22,7 @@ import Swarm.Game.Step (gameTick)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.Directory (doesFileExist, listDirectory)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
@@ -75,7 +75,11 @@ acquire :: FilePath -> String -> IO [(FilePath, String)]
 acquire dir ext = do
   paths <- listDirectory dir <&> map (dir </>)
   filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
-  mapM (\path -> (,) path <$> readFile path) filePaths
+  children <- mapM (\path -> (,) path <$> readFile path) filePaths
+  -- recurse
+  sub <- filterM doesDirectoryExist paths
+  transChildren <- concat <$> mapM (`acquire` ext) sub
+  return $ children <> transChildren
  where
   hasExt path = takeExtension path == ("." ++ ext)
 
