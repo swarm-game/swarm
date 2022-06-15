@@ -522,7 +522,7 @@ playScenario em scenario userSeed toRun g = do
       & ix 0 . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
-          True -> const (fromElems (map (0,) things))
+          True -> union (fromElems (map (0,) things))
       & ix 0 . installedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id
