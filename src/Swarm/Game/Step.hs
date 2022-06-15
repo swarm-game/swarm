@@ -1294,6 +1294,11 @@ execConst c vs s k = do
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
             when (creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
+            -- Immediately copy over any items the robot knows about
+            -- but has 0 of
+            let knownItems = map snd . filter ((== 0) . fst) . elems $ salvageInventory
+            robotInventory %= \i -> foldr (insertCount 0) i knownItems
+
             -- Now reprogram the robot being salvaged to 'give' each
             -- item in its inventory to us, one at a time, then
             -- self-destruct at the end.  Make it a system robot so we
