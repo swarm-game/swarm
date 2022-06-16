@@ -128,7 +128,7 @@ findOffset skip isGood f = f'
       . enumerate
       $ offset >< offset
 
-  shift (dr, dc) = \(Coords (r, c)) -> f (Coords (r - dr, c - dc))
+  shift (dr,dc) (Coords (r,c)) = f (Coords (r - dr, c - dc))
 
 -- | Offset the world so the base starts in a 32x32 patch containing at least one
 --   of each of a list of required entities.
