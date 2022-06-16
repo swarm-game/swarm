@@ -291,7 +291,8 @@ constCaps =
     Mul -> [CArith]
     Div -> [CArith]
     Exp -> [CArith]
-    -- Some God-like sensing abilities.
+    -- Some God-like abilities.
+    Teleport -> [CGod]
     As -> [CGod]
     RobotNamed -> [CGod]
     -- String operations, which for now are enabled by CLog

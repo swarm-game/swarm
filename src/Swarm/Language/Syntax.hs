@@ -347,9 +347,12 @@ data Const
     -- | Application operator - helps to avoid parentheses:
     --   @f $ g $ h x  =  f (g (h x))@
     AppF
-  | -- God-like sensing operations
+  | -- God-like commands that are omnipresent or omniscient.
 
-    -- | Run a command as if you were another robot.
+    -- | Move from one place in the world to any other
+    --   ignoring distance or entities blocking the path.
+    Teleport
+  | -- | Run a command as if you were another robot.
     As
   | -- | Find a robot by name.
     RobotNamed
@@ -489,6 +492,7 @@ constInfo c = case c of
   Format -> functionLow 1
   Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
+  Teleport -> commandLow 2
   As -> commandLow 2
   RobotNamed -> commandLow 1
  where

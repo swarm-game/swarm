@@ -696,6 +696,29 @@ execConst c vs s k = do
       robotLocation .= nextLoc
       flagRedraw
       return $ Out VUnit s k
+    Teleport -> case vs of
+      [VPair (VInt x) (VInt y)] -> do
+        let loc :: V2 Int64
+            loc = V2 (fromIntegral x) (fromIntegral y)
+        me <- entityAt loc
+
+        -- Make sure nothing is in the way.
+        case me of
+          Nothing -> return ()
+          Just e -> do
+            (not . (`hasProperty` Unwalkable)) e
+              `holdsOrFail` ["There is a", e ^. entityName, "in the way!"]
+
+            -- Robots drown if they walk over liquid
+            caps <- use robotCapabilities
+            when
+              (e `hasProperty` Liquid && CFloat `S.notMember` caps)
+              destroyIfNotBase
+
+        robotLocation .= loc
+        flagRedraw
+        return $ Out VUnit s k
+      _ -> badConst
     Grab -> do
       -- Ensure there is an entity here.
       loc <- use robotLocation
