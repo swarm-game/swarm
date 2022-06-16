@@ -353,6 +353,8 @@ data Const
     As
   | -- | Find a robot by name.
     RobotNamed
+  | -- | Find a robot by number.
+    RobotNumbered
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -491,6 +493,7 @@ constInfo c = case c of
   AppF -> binaryOp "$" 0 R
   As -> commandLow 2
   RobotNamed -> commandLow 1
+  RobotNumbered -> commandLow 1
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}

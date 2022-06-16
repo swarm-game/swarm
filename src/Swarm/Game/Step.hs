@@ -1011,6 +1011,14 @@ execConst c vs s k = do
         let robotValue = VRobot (r ^. robotID)
         return $ Out robotValue s k
       _ -> badConst
+    RobotNumbered -> case vs of
+      [VInt rid] -> do
+        r <-
+          robotWithID (fromIntegral rid)
+            >>= (`isJustOrFail` ["There is no robot with number", from (show rid)])
+        let robotValue = VRobot (r ^. robotID)
+        return $ Out robotValue s k
+      _ -> badConst
     Say -> case vs of
       [VString msg] -> do
         rn <- use robotName -- XXX use robot name + ID

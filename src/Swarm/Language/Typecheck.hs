@@ -499,6 +499,7 @@ inferConst c = toU $ case c of
   AppF -> [tyQ| (a -> b) -> a -> b |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
   RobotNamed -> [tyQ| string -> cmd robot |]
+  RobotNumbered -> [tyQ| int -> cmd robot |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]
