@@ -117,9 +117,9 @@ formatIncapableFix = \case
 --   please install:
 --    - the one ring or magic wand
 --
--- >>> incapableError (S.singleton CCreate) (TConst Create)
--- Missing the create capability for:
---   'create'
+-- >>> incapableError (S.singleton CRandom) (TConst Random)
+-- Missing the random capability for:
+--   'random'
 --   but no device yet provides it. See
 --   https://github.com/swarm-game/swarm/issues/26
 formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
