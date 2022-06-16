@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module      :  Swarm.Game.WorldGen
@@ -17,8 +17,8 @@ import Data.Hash.Murmur
 import Data.Int (Int64)
 import Data.List (find)
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Text (Text)
 import Data.Set qualified as S
+import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric.Noise.Perlin
 import Witch
@@ -117,37 +117,41 @@ testWorld2FromArray arr seed co@(Coords (r, c))
 --   satisfies the given predicate.
 findOffset :: Integer -> (WorldFun t Text -> Bool) -> WorldFun t Text -> WorldFun t Text
 findOffset skip isGood f = f'
-  where
-    offset :: Enumeration Int64
-    offset = fromIntegral . (skip*) <$> int
+ where
+  offset :: Enumeration Int64
+  offset = fromIntegral . (skip *) <$> int
 
-    f' = fromMaybe (error "the impossible happened, no offsets were found!") .
-      find isGood . map shift . enumerate $ offset >< offset
+  f' =
+    fromMaybe (error "the impossible happened, no offsets were found!")
+      . find isGood
+      . map shift
+      . enumerate
+      $ offset >< offset
 
-    shift (dr,dc) = \(Coords (r,c)) -> f (Coords (r - dr, c - dc))
+  shift (dr, dc) = \(Coords (r, c)) -> f (Coords (r - dr, c - dc))
 
 -- | Offset the world so the base starts in a 32x32 patch containing at least one
 --   of each of a list of required entities.
 findPatchWith :: [Text] -> WorldFun t Text -> WorldFun t Text
 findPatchWith reqs = findOffset 32 isGoodPatch
-  where
-    patchCoords = [(r,c) | r <- [-16 .. 16], c <- [-16 .. 16]]
-    isGoodPatch f = all (`S.member` es) reqs
-      where
-        es = S.fromList . mapMaybe (snd . f . Coords) $ patchCoords
+ where
+  patchCoords = [(r, c) | r <- [-16 .. 16], c <- [-16 .. 16]]
+  isGoodPatch f = all (`S.member` es) reqs
+   where
+    es = S.fromList . mapMaybe (snd . f . Coords) $ patchCoords
 
 -- | Offset the world so the base starts on empty spot next to tree and grass.
 findTreeOffset :: WorldFun t Text -> WorldFun t Text
 findTreeOffset = findOffset 1 isGoodPlace
  where
   isGoodPlace f =
-    hasEntity Nothing (0,0)
+    hasEntity Nothing (0, 0)
       && any (hasEntity (Just "tree")) neighbors
       && all (\c -> hasEntity (Just "tree") c || hasEntity Nothing c) neighbors
-    where
-      hasEntity mayE = (== mayE) . snd . f . Coords
+   where
+    hasEntity mayE = (== mayE) . snd . f . Coords
 
-  neighbors = [(r,c) | r <- [-1 .. 1], c <- [-1 .. 1]]
+  neighbors = [(r, c) | r <- [-1 .. 1], c <- [-1 .. 1]]
 
 -- | Offset the world so the base starts in a good patch (near
 --   necessary items), next to a tree.
