@@ -1171,9 +1171,6 @@ execConst c vs s k = do
     Try -> case vs of
       [c1, c2] -> return $ Out c1 s (FApp (VCApp Force []) : FExec : FTry c2 : k)
       _ -> badConst
-    Raise -> case vs of
-      [VString msg] -> return $ Up (User msg) s k
-      _ -> badConst
     Undefined -> return $ Up (User "undefined") s k
     ErrorStr -> case vs of
       [VString msg] -> return $ Up (User msg) s k

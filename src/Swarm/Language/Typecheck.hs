@@ -476,7 +476,6 @@ inferConst c = toU $ case c of
   Force -> [tyQ| {a} -> a |]
   Return -> [tyQ| a -> cmd a |]
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
-  Raise -> [tyQ| string -> cmd a |]
   Undefined -> [tyQ| a |]
   ErrorStr -> [tyQ| string -> a |]
   Not -> [tyQ| bool -> bool |]

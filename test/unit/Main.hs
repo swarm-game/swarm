@@ -409,8 +409,8 @@ eval g =
     , testGroup
         "exceptions"
         [ testCase
-            "raise"
-            ("raise \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
+            "error"
+            ("error \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
         , testCase
             "try / no exception 1"
             ("try {return 1} {return 2}" `evaluatesTo` VInt 1)
@@ -418,11 +418,11 @@ eval g =
             "try / no exception 2"
             ("try {return 1} {let x = x in x}" `evaluatesTo` VInt 1)
         , testCase
-            "try / raise"
-            ("try {raise \"foo\"} {return 3}" `evaluatesTo` VInt 3)
+            "try / error"
+            ("try {error \"foo\"} {return 3}" `evaluatesTo` VInt 3)
         , testCase
-            "try / raise / raise"
-            ("try {raise \"foo\"} {raise \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
+            "try / error / error"
+            ("try {error \"foo\"} {error \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
         , testCase
             "try / div by 0"
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
