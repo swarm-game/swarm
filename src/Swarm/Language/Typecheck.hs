@@ -497,6 +497,7 @@ inferConst c = toU $ case c of
   Format -> [tyQ| a -> string |]
   Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
+  Teleport -> [tyQ| robot -> (int * int) -> cmd () |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
   RobotNamed -> [tyQ| string -> cmd robot |]
   RobotNumbered -> [tyQ| int -> cmd robot |]

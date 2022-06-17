@@ -107,6 +107,8 @@ data Capability
     CWhoami
   | -- | Capability to set its own name
     CSetname
+  | -- | Capability to move unrestricted to any place
+    CTeleport
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -290,7 +292,7 @@ constCaps =
     Mul -> [CArith]
     Div -> [CArith]
     Exp -> [CArith]
-    -- Some God-like sensing abilities.
+    -- Some God-like abilities.
     As -> [CGod]
     RobotNamed -> [CGod]
     RobotNumbered -> [CGod]
@@ -301,6 +303,7 @@ constCaps =
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.
+    Teleport -> [CTeleport] -- Some space-time machine like Tardis?
     Appear -> [CAppear] -- paint?
     Whereami -> [CSenseloc] -- GPS?
     Random -> [CRandom] -- randomness device (with bitcoins)?
