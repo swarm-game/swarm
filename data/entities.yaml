@@ -689,6 +689,8 @@
   - "With a mirror, robots can reflect on themselves and see their own name."
   - "A mirror enables the 'whoami' command, which returns the robot's
      name as a string."
+  - "It also enables the special 'self' variable, which gives a robot
+    a reference to itself."
   properities: [portable]
   capabilities: [whoami]
 
