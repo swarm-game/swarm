@@ -782,15 +782,8 @@ execConst c vs s k = do
       _ -> badConst
     Give -> case vs of
       [VRobot otherID, VString itemName] -> do
-        -- Make sure the other robot exists
-        other <-
-          robotWithID otherID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID) <> "."])
-
-        -- Make sure it is in the same location
-        loc <- use robotLocation
-        ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["The robot with ID", from (show otherID), "is not close enough."]
+        -- Make sure the other robot exists and is close
+        _other <- getRobotWithinTouch otherID
 
         -- Make sure we have the required item
         inv <- use robotInventory
@@ -821,15 +814,8 @@ execConst c vs s k = do
       _ -> badConst
     Install -> case vs of
       [VRobot otherID, VString itemName] -> do
-        -- Make sure the other robot exists
-        other <-
-          robotWithID otherID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID) <> "."])
-
-        -- Make sure it is in the same location
-        loc <- use robotLocation
-        ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["The robot with ID", from (show otherID), "is not close enough."]
+        -- Make sure the other robot exists and is close
+        _other <- getRobotWithinTouch otherID
 
         -- Make sure we have the required item
         inv <- use robotInventory
@@ -978,15 +964,8 @@ execConst c vs s k = do
       _ -> badConst
     Upload -> case vs of
       [VRobot otherID] -> do
-        -- Make sure the other robot exists
-        other <-
-          robotWithID otherID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show otherID) <> "."])
-
-        -- Make sure it is in the same location
-        loc <- use robotLocation
-        ((other ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["The robot with ID", from (show otherID), "is not close enough."]
+        -- Make sure the other robot exists and is close
+        _other <- getRobotWithinTouch otherID
 
         -- Upload knowledge of everything in our inventory
         inv <- use robotInventory
@@ -1506,7 +1485,19 @@ execConst c vs s k = do
     rid <- use robotID
     if rid == 0
       then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
-      else selfDestruct .= True
+
+  getRobotWithinTouch ::
+    (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) =>
+    RID ->
+    m Robot
+  getRobotWithinTouch rid = do
+    mother <- robotWithID rid
+    other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
+    -- Make sure it is in the same location
+    loc <- use robotLocation
+    ((other ^. robotLocation) `manhattan` loc <= 1)
+      `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
+    return other
 
   -- update some tile in the world setting it to entity or making it empty
   updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
