@@ -278,7 +278,6 @@ constCaps =
     Has -> []
     Count -> [CCount]
     If -> [CCond]
-    Create -> [CCreate]
     Blocked -> [CSensefront]
     Scan -> [CScan]
     Ishere -> [CSensehere]
@@ -296,6 +295,8 @@ constCaps =
     -- Some God-like abilities.
     As -> [CGod]
     RobotNamed -> [CGod]
+    RobotNumbered -> [CGod]
+    Create -> [CGod]
     -- String operations, which for now are enabled by CLog
     Format -> [CLog]
     Concat -> [CLog]
