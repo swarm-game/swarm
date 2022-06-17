@@ -306,7 +306,6 @@ constCaps =
     Whereami -> [CSenseloc] -- GPS?
     Random -> [CRandom] -- randomness device (with bitcoins)?
 
-
     -- comparator?
     Eq -> [CCompare]
     Neq -> [CCompare]
