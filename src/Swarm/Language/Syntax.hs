@@ -492,7 +492,7 @@ constInfo c = case c of
   Format -> functionLow 1
   Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
-  Teleport -> commandLow 2
+  Teleport -> commandLow 1
   As -> commandLow 2
   RobotNamed -> commandLow 1
  where
