@@ -21,9 +21,9 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Numeric.Noise.Perlin
-import Numeric.Noise.Ridged
 import Witch
 
+import Data.Array.IArray
 import Swarm.Game.Terrain
 import Swarm.Game.World
 
@@ -56,7 +56,6 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
   h = murmur3 0 (into (show ix))
 
   genBiome Big Hard Natural
-    | sample ix cl0 > 0.5 && sample ix rg0 > 0.999 = (StoneT, Just "copper vein")
     | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
     | h `mod` 30 == 0 = (StoneT, Just "boulder")
     | sample ix cl0 > 0 = (DirtT, Just "tree")
@@ -65,6 +64,7 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
     | h `mod` 10 == 0 = (StoneT, Just "rock")
     | otherwise = (StoneT, Nothing)
   genBiome Big Soft Natural
+    | abs (sample ix pn1) < 0.1 = (DirtT, Just "sand")
     | even (r + c) = (DirtT, Just "wavy water")
     | otherwise = (DirtT, Just "water")
   genBiome Small Soft Natural
@@ -79,6 +79,7 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
     | otherwise = (DirtT, Nothing)
   genBiome Small Hard Artificial
     | h `mod` 120 == 1 = (StoneT, Just "lambda")
+    | h `mod` 50 == 0 = (StoneT, Just (T.concat ["pixel (", from ["RGB" !! fromIntegral ((r + c) `mod` 3)], ")"]))
     | otherwise = (StoneT, Nothing)
   genBiome Big Hard Artificial
     | sample ix cl0 > 0.85 = (StoneT, Just "copper ore")
@@ -93,15 +94,24 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
   pn1 = pn 1
   pn2 = pn 2
 
-  rg :: Int -> Ridged
-  rg seed = ridged seed 6 0.05 1 2
-
-  rg0 = rg 42
+  -- alternative noise function
+  -- rg :: Int -> Ridged
+  -- rg seed = ridged seed 6 0.05 1 2
 
   clumps :: Int -> Perlin
   clumps seed = perlin (seed + baseSeed) 4 0.08 0.5
 
   cl0 = clumps 0
+
+-- | Create a world function from a finite array of specified cells
+--   plus a seed to randomly generate the rest.
+testWorld2FromArray :: Array (Int64, Int64) (TerrainType, Maybe Text) -> Seed -> WorldFun TerrainType Text
+testWorld2FromArray arr seed co@(Coords (r, c))
+  | inRange bnds (r, c) = arr ! (r, c)
+  | otherwise = tw2 co
+ where
+  tw2 = testWorld2 seed
+  bnds = bounds arr
 
 -- | Offset the world so the base starts on empty spot next to tree and grass.
 findGoodOrigin :: WorldFun t Text -> WorldFun t Text

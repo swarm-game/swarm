@@ -15,3 +15,5 @@ stan.html
 *.aux
 *.log
 docs/ott/*.tex
+
+.dir-locals.el

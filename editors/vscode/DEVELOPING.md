@@ -66,7 +66,7 @@ tsc --build
 
 To build the VSIX package do:
 ```sh
-vsce package --baseImagesUrl "https://raw.githubusercontent.com/byorgey/swarm/editors/vscode"
+vsce package --baseImagesUrl "https://raw.githubusercontent.com/swarm-game/swarm/editors/vscode"
 ```
 
 To share this extension with the world, read on https://code.visualstudio.com/docs about publishing an extension or ask @xsebek to do it.

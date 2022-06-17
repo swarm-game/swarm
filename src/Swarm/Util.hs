@@ -3,12 +3,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Swarm.Util
@@ -31,6 +29,7 @@ module Swarm.Util (
   readFileMayT,
   getSwarmDataPath,
   getSwarmHistoryPath,
+  readAppData,
 
   -- * English language utilities
   quote,
@@ -38,6 +37,7 @@ module Swarm.Util (
   commaList,
   indefinite,
   indefiniteQ,
+  singularSubjectVerb,
   plural,
   number,
 
@@ -61,12 +61,16 @@ module Swarm.Util (
 import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
+import Control.Exception (catch)
+import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
-import Control.Monad (unless, when)
+import Control.Monad (forM, unless, when)
 import Data.Either.Validation
 import Data.Int (Int64)
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Text (Text, toUpper)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Tuple (swap)
@@ -76,13 +80,17 @@ import Language.Haskell.TH.Syntax (lift)
 import Linear (V2)
 import qualified NLP.Minimorph.English as MM
 import NLP.Minimorph.Util ((<+>))
+import Paths_swarm (getDataDir)
 import System.Directory (
   XdgDirectory (XdgData),
   createDirectoryIfMissing,
   getXdgDirectory,
+  listDirectory,
  )
 import System.FilePath
+import System.IO
 import System.IO.Error (catchIOError)
+import Witch
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -144,6 +152,18 @@ getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs =
   (</> "history") <$> getSwarmDataPath createDirs
 
+-- | Read all the .txt files in the data/ directory.
+readAppData :: IO (Map Text Text)
+readAppData = do
+  d <- getDataDir
+  fs <-
+    filter ((== ".txt") . takeExtension)
+      <$> ( listDirectory d `catch` \e ->
+              hPutStr stderr (show (e :: IOException)) >> return []
+          )
+  M.fromList . mapMaybe sequenceA
+    <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+
 ------------------------------------------------------------
 -- Some language-y stuff
 
@@ -155,6 +175,32 @@ indefinite w = MM.indefiniteDet w <+> w
 --   the noun in single quotes.
 indefiniteQ :: Text -> Text
 indefiniteQ w = MM.indefiniteDet w <+> squote w
+
+-- | Combine the subject word with the simple present tense of the verb.
+--
+-- Only some irregular verbs are handled, but it should be enough
+-- to scrap some error message boilerplate and have fun!
+--
+-- >>> :set -XOverloadedStrings
+-- >>> singularSubjectVerb "I" "be"
+-- "I am"
+-- >>> singularSubjectVerb "he" "can"
+-- "he can"
+-- >>> singularSubjectVerb "The target robot" "do"
+-- "The target robot does"
+singularSubjectVerb :: Text -> Text -> Text
+singularSubjectVerb sub verb
+  | verb == "be" = case toUpper sub of
+    "I" -> "I am"
+    "YOU" -> sub <+> "are"
+    _ -> sub <+> "is"
+  | otherwise = sub <+> (if is3rdPerson then verb3rd else verb)
+ where
+  is3rdPerson = toUpper sub `notElem` ["I", "YOU"]
+  verb3rd
+    | verb == "have" = "has"
+    | verb == "can" = "can"
+    | otherwise = fst $ MM.defaultVerbStuff verb
 
 -- | Pluralize a noun.
 plural :: Text -> Text
@@ -238,7 +284,7 @@ l %%= f = state (swap . l f)
 {-# INLINE (%%=) #-}
 
 (<<.=) :: (Has (State s) sig m) => LensLike ((,) a) s s a b -> b -> m a
-l <<.= b = l %%= \a -> (a, b)
+l <<.= b = l %%= (,b)
 {-# INLINE (<<.=) #-}
 
 (<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()

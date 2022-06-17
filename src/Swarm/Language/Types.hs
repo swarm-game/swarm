@@ -1,7 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -11,7 +9,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- for the Data IntVar instance
@@ -40,6 +37,7 @@ module Swarm.Language.Types (
   pattern TyString,
   pattern TyDir,
   pattern TyBool,
+  pattern TyRobot,
   pattern (:+:),
   pattern (:*:),
   pattern (:->:),
@@ -55,6 +53,7 @@ module Swarm.Language.Types (
   pattern UTyString,
   pattern UTyDir,
   pattern UTyBool,
+  pattern UTyRobot,
   pattern UTySum,
   pattern UTyProd,
   pattern UTyFun,
@@ -116,6 +115,8 @@ data BaseTy
     BDir
   | -- | Booleans.
     BBool
+  | -- | Robots.
+    BRobot
   deriving (Eq, Ord, Show, Data)
 
 -- | A "structure functor" encoding the shape of type expressions.
@@ -312,6 +313,9 @@ pattern TyDir = Fix (TyBaseF BDir)
 pattern TyBool :: Type
 pattern TyBool = Fix (TyBaseF BBool)
 
+pattern TyRobot :: Type
+pattern TyRobot = Fix (TyBaseF BRobot)
+
 infixr 5 :+:
 
 pattern (:+:) :: Type -> Type -> Type
@@ -353,6 +357,9 @@ pattern UTyDir = UTerm (TyBaseF BDir)
 
 pattern UTyBool :: UType
 pattern UTyBool = UTerm (TyBaseF BBool)
+
+pattern UTyRobot :: UType
+pattern UTyRobot = UTerm (TyBaseF BRobot)
 
 pattern UTySum :: UType -> UType -> UType
 pattern UTySum ty1 ty2 = UTerm (TySumF ty1 ty2)

@@ -91,16 +91,6 @@
     mountains, but those would require a drill to access and mine.
   properties: [portable]
 
-- name: copper vein
-  display:
-    attr: copper'
-    char: 'A'
-  description:
-  - A place in the mountains where raw copper ore can be mined.
-    As it is hidden inside a mountain, a tunnel needs to be
-    first drilled through, so that the vein becomes accessible.
-  properties: [unwalkable]
-
 - name: copper mine
   display:
     attr: copper'
@@ -137,6 +127,67 @@
     water or steam.
   properties: [portable]
 
+- name: iron plate
+  display:
+    attr: iron
+    char: '■'
+  description:
+  - Worked iron suitable for crafting resilient tools.
+  - It also possess some electro-magnetic properties.
+  properties: [portable]
+
+- name: iron gear
+  display:
+    attr: iron
+    char: '*'
+  description:
+  - An iron gear.
+  properties: [portable]
+
+- name: iron ore
+  display:
+    attr: iron
+    char: 'F'
+  description:
+  - Raw iron ore. Used to create more resilient tools.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: iron mine
+  display:
+    attr: iron'
+    char: 'Å'
+  description:
+  - An iron vein that can be actively mined to produce iron ore.
+  properties: []
+
+- name: quartz
+  display:
+    attr: quartz
+    char: 'Q'
+  description:
+  - Raw quartz crystals.  Useful for creating devices like clocks, and
+    can be processed to extract silicon.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: quartz mine
+  display:
+    attr: quartz
+    char: 'Å'
+  description:
+  - An quartz vein that can be actively mined to produce quartz.
+  properties: []
+
+- name: silicon
+  display:
+    attr: quartz
+    char: 'S'
+  description:
+  - Extracted by processing quartz at high temperatures, silicon can
+    be used to construct integrated circuits.
+  properties: [portable]
+
 - name: furnace
   display:
     attr: fire
@@ -145,13 +196,33 @@
   - A furnace can be used to turn metal ore into various useful products.
   properties: [portable]
 
-- name: motor
+- name: big furnace
+  display:
+    attr: fire
+    char: '#'
+  description:
+  - A big furnace can get even hotter than a normal furnace, and can be used
+    to process quartz into silicon.
+  properties: [portable]
+
+- name: small motor
+  display:
+    attr: entity
+    char: 'm'
+  description:
+  - A motor is useful for making devices that can turn when electric
+    current is applied.
+  - This one is rather small, but suprisingly efficient.
+  properties: [portable]
+
+- name: big motor
   display:
     attr: entity
     char: 'M'
   description:
   - A motor is useful for making devices that can turn when electric
     current is applied.
+  - This one is huge and could be used to construct powerful machinery.
   properties: [portable]
 
 - name: flower
@@ -216,6 +287,24 @@
   properties: [portable]
   capabilities: [float]
 
+- name: sand
+  display:
+    attr: sand
+    char: '█'
+  description:
+  - A substance composed mostly of tiny rocks and mineral particles.  It
+    tends to be found near water, and can be used in a furnace to make glass.
+  properties: [portable, growable]
+  growth: [0,0]
+
+- name: glass
+  display:
+    attr: entity
+    char: '□'
+  description:
+  - A pane of a brittle, clear substance, made from melting sand in a furnace.
+  properties: [portable]
+
 - name: bit (0)
   display:
     attr: entity
@@ -234,6 +323,50 @@
   properties: [portable, growable]
   growth: [1000, 1500]
 
+- name: pixel (R)
+  display:
+    attr: red
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: pixel (G)
+  display:
+    attr: green
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: pixel (B)
+  display:
+    attr: blue
+    char: '.'
+  description:
+  - A pixel.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: camera
+  display:
+    attr: device
+    char: '@'
+  description:
+  - A camera.
+  properties: [portable]
+
+- name: circuit
+  display:
+    attr: plant
+    char: '#'
+  description:
+  - |
+    A circuit is needed for constructing "smart" devices.
+  properties: [portable]
+
 - name: drill bit
   display:
     attr: entity
@@ -250,12 +383,30 @@
   - A wooden box.  It can hold things.
   properties: [portable]
 
-- name: gear
+- name: wooden gear
   display:
     attr: wood
     char: '*'
   description:
   - A wooden gear.
+  properties: [portable]
+
+- name: teeter-totter
+  display:
+    attr: wood
+    char: '/'
+  description:
+  - A rotating board apparently popular with young aliens.  Perhaps it
+    could also be used as a primitive balance scale.
+  properties: [portable]
+
+- name: iron gear
+  display:
+    attr: iron
+    char: '*'
+  description:
+  - An iron gear that is more resilient.
+  - It can be used to create bigger and more complex machines.
   properties: [portable]
 
 - name: counter
@@ -282,6 +433,58 @@
   properties: [portable]
 
 ############################################################
+### Utility ################################################
+############################################################
+
+- name: upper left corner
+  display:
+    attr: entity
+    char: '┌'
+  description:
+    - Upper left corner.
+  properties: [unwalkable, known]
+
+- name: upper right corner
+  display:
+    attr: entity
+    char: '┐'
+  description:
+    - An upper right corner wall.
+  properties: [unwalkable, known]
+
+- name: lower left corner
+  display:
+    attr: entity
+    char: '└'
+  description:
+    - A lower left corner wall.
+  properties: [unwalkable, known]
+
+- name: lower right corner
+  display:
+    attr: entity
+    char: '┘'
+  description:
+    - A lower right corner wall.
+  properties: [unwalkable, known]
+
+- name: horizontal wall
+  display:
+    attr: entity
+    char: '─'
+  description:
+    - A horizontal wall.
+  properties: [unwalkable, known]
+
+- name: vertical wall
+  display:
+    attr: entity
+    char: '│'
+  description:
+    - A vertical wall.
+  properties: [unwalkable, known]
+
+############################################################
 ### Devices ################################################
 ############################################################
 
@@ -294,7 +497,7 @@
   - Installing treads on a robot allows it to move (via the 'move' command) and turn
     (via the 'turn' command).
   - 'Example:'
-  - '  move; turn left; move; turn north'
+  - '  move; turn left; move; turn right'
   capabilities: [move, turn]
   properties: [portable]
 
@@ -313,10 +516,10 @@
     place.  The item is removed from the robot's inventory and placed
     in the robot's current cell (which must be empty).  Raises an
     exception if the operation fails.
-  - "The 'give' command takes two arguments: the name of the robot to
+  - "The 'give' command takes two arguments: the robot to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
-  - "The 'install' command takes two arguments: the name of the robot
+  - "The 'install' command takes two arguments: the robot
     on which to install a device (which can be at most 1 cell away),
     and the name of the device to install."
 
@@ -326,7 +529,7 @@
 - name: plasma cutter
   display:
     attr: device
-    char: '+'
+    char: 'P'
   description:
   - "A plasma cutter uses a jet of hot plasma to cut through metal like
     butter.  Used via the 'salvage' command to cut apart old robots."
@@ -358,6 +561,15 @@
   capabilities: [drill]
   properties: [portable]
 
+- name: metal drill
+  display:
+    attr: iron
+    char: '!'
+  description:
+  - A metal drill allows robots to drill through rocks and mountains faster.
+  capabilities: [drill]
+  properties: [portable]
+
 - name: 3D printer
   display:
     attr: device
@@ -366,17 +578,14 @@
   - A 3D printer gives you the capability of printing more robots! You
     can access the 3D printer via the 'build' command.
   - 'Example:'
-  - '  build "fred" {move; grab; turn back; move; give "base"
-    "tree"}'
+  - '  build {move; grab; turn back; move; give base "tree"}'
   - |
-    builds a robot named "fred" to get the tree on the cell to the
-    east (if there is one) and bring it back to you. Note that if
-    there is already a robot named "fred", the new robot will be given
-    a similar but unique name.  The 'build' command always returns the
-    name of the newly constructed robot. For example,
-  - '  name <- build "fred" {move}; view name'
+    builds a robot to get the tree on the cell to the
+    east (if there is one) and bring it back to the base. The 'build' command
+    always returns a reference to the newly constructed robot. For example,
+  - '  r <- build {move}; view r'
   - |
-    builds a robot and then views it (no matter what it ends up being named).
+    builds a robot and then views it.
 
   properties: [portable]
   capabilities: [build]
@@ -409,9 +618,9 @@
     A branch predictor is a device which allows a robot to interpret
     conditional expressions.  The syntax for a conditional expression
     is 'if' followed by three arguments: a boolean test and then
-    two expressions of the same type.
+    two delayed expressions of the same type.
   - 'Example:'
-  - 'if (x > 3) move {turn west; move}'
+  - 'if (x > 3) {move} {turn right; move}'
   properties: [portable]
   capabilities: [cond]
 
@@ -437,7 +646,7 @@
     particular temperature and mixture of gases you need to survive.
     It uses a sophisticated recirculating system and can run pretty
     much indefinitely.  Unfortunately, the atmosphere outside is
-    severly toxic (why do the inhabitants of this planet need so much
+    severely toxic (why do the inhabitants of this planet need so much
     nitrogen!?), so you'll have to stay inside for now.
   properties: [portable]
 
@@ -454,7 +663,7 @@
      boolean value indicating whether the robot's path is blocked
      (i.e. whether executing a 'move' command would fail)."
   - "Finally, robots can use the 'upload' command to copy their accumulated
-    knowledge to another nearby robot; for example, 'upload \"base\"'."
+    knowledge to another nearby robot; for example, 'upload base'."
   properties: [portable]
   capabilities: [scan, sensefront, sensehere]
 
@@ -467,8 +676,8 @@
      'reprogram' command."
   - "Only robots that have completed executing their previous command
      can be reprogrammed."
-  - "The robot must possess enough capabilities to run the new command
-     otherwise it will fail."
+  - "The robot being reprogrammed must possess enough capabilities to run the new command;
+     otherwise reprogramming will fail."
   properties: [portable]
   capabilities: [reprogram]
 
@@ -497,3 +706,44 @@
     uses the 'log' command)."
   properties: [portable]
   capabilities: [log]
+
+- name: calculator
+  display:
+    attr: device
+    char: '+'
+  description:
+  - "A calculator allows a robot to do basic arithmetic calculations:
+    addition, subtraction, multiplication, division, and
+    exponentiation."
+  properties: [portable]
+  capabilities: [arith]
+
+- name: compass
+  display:
+    attr: device
+    char: 'N'
+  description:
+  - "A compass gives a robot the ability to orient using cardinal directions: north, south, west, and east."
+  - "Example:"
+  - "turn west; move; turn north"
+  properties: [portable]
+  capabilities: [orient]
+
+- name: clock
+  display:
+    attr: device
+    char: '0'
+  description:
+  - A clock is a device for keeping track of time.
+  properties: [portable]
+
+- name: comparator
+  display:
+    attr: device
+    char: '>'
+  description:
+  - "A comparator allows comparing two values to see whether the first
+    is less, equal, or greater than the second."
+  - "Valid comparison operators are <, <=, >, >=, ==, and !=."
+  properties: [portable]
+  capabilities: [compare]

@@ -6,7 +6,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -26,6 +25,7 @@ module Swarm.Language.Syntax (
   toDirection,
   fromDirection,
   allDirs,
+  isCardinal,
   dirInfo,
   north,
   south,
@@ -85,7 +85,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -120,18 +120,22 @@ dirInfo d = case d of
   DLeft -> relative (\(V2 x y) -> V2 (- y) x)
   DRight -> relative (\(V2 x y) -> V2 y (- x))
   DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
+  DDown -> relative (const down)
   DForward -> relative id
   DNorth -> cardinal north
   DSouth -> cardinal south
   DEast -> cardinal east
   DWest -> cardinal west
-  DDown -> cardinal down
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
   directionSyntax = toLower . T.tail . from . show $ d
   cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative vf = DirInfo directionSyntax Nothing vf
+  relative = DirInfo directionSyntax Nothing
+
+-- | Check if the direction is absolute (e.g. 'north' or 'south').
+isCardinal :: Direction -> Bool
+isCardinal = isJust . dirAbs . dirInfo
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
@@ -149,7 +153,7 @@ east = V2 1 0
 west :: V2 Int64
 west = V2 (-1) 0
 
--- | The direction for moving vertically down = @V2 0 0@.
+-- | The direction for viewing the current cell = @V2 0 0@.
 down :: V2 Int64
 down = V2 0 0
 
@@ -254,8 +258,16 @@ data Const
     Upload
   | -- | See if a specific entity is here. (This may be removed.)
     Ishere
-  | -- | Find it's own name
+  | -- | Get a reference to oneself
+    Self
+  | -- | Get the robot's parent
+    Parent
+  | -- | Get a reference to the base
+    Base
+  | -- | Get the robot's display name
     Whoami
+  | -- | Set the robot's display name
+    Setname
   | -- | Get a uniformly random integer.
     Random
   | -- Modules
@@ -284,6 +296,10 @@ data Const
     Try
   | -- | Raise an exception
     Raise
+  | -- | Undefined
+    Undefined
+  | -- | Error
+    ErrorStr
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -306,7 +322,11 @@ data Const
     Geq
   | -- Arithmetic binary operators
 
-    -- | Arithmetic addition operator
+    -- | Logical or.
+    Or
+  | -- | Logical and.
+    And
+  | -- | Arithmetic addition operator
     Add
   | -- | Arithmetic subtraction operator
     Sub
@@ -316,11 +336,25 @@ data Const
     Div
   | -- | Arithmetic exponentiation operator
     Exp
+  | -- String operators
+
+    -- | Turn an arbitrary value into a string
+    Format
+  | -- | Concatenate string values
+    Concat
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
     --   @f $ g $ h x  =  f (g (h x))@
     AppF
+  | -- God-like sensing operations
+
+    -- | Run a command as if you were another robot.
+    As
+  | -- | Find a robot by name.
+    RobotNamed
+  | -- | Find a robot by number.
+    RobotNumbered
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -420,12 +454,18 @@ constInfo c = case c of
   Scan -> commandLow 0
   Upload -> commandLow 1
   Ishere -> commandLow 1
+  Self -> functionLow 0
+  Parent -> functionLow 0
+  Base -> functionLow 0
   Whoami -> commandLow 0
+  Setname -> commandLow 1
   Random -> commandLow 1
   Run -> commandLow 1
   Return -> commandLow 1
   Try -> commandLow 2
   Raise -> commandLow 1
+  Undefined -> functionLow 0
+  ErrorStr -> function "error" 1
   If -> functionLow 3
   Inl -> functionLow 1
   Inr -> functionLow 1
@@ -436,6 +476,8 @@ constInfo c = case c of
   Not -> functionLow 1
   Neg -> unaryOp "-" 7 P
   Add -> binaryOp "+" 6 L
+  And -> binaryOp "&&" 3 R
+  Or -> binaryOp "||" 2 R
   Sub -> binaryOp "-" 6 L
   Mul -> binaryOp "*" 7 L
   Div -> binaryOp "/" 7 L
@@ -446,7 +488,12 @@ constInfo c = case c of
   Gt -> binaryOp ">" 4 N
   Leq -> binaryOp "<=" 4 N
   Geq -> binaryOp ">=" 4 N
+  Format -> functionLow 1
+  Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
+  As -> commandLow 2
+  RobotNamed -> commandLow 1
+  RobotNumbered -> commandLow 1
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}
@@ -566,6 +613,13 @@ data Term
     TAntiString Text
   | -- | A Boolean literal.
     TBool Bool
+  | -- | A robot value.  These never show up in surface syntax, but are
+    --   here so we can factor pretty-printing for Values through
+    --   pretty-printing for Terms.
+    TRobot Int
+  | -- | A memory reference.  These likewise never show up in surface syntax,
+    --   but are here to facilitate pretty-printing.
+    TRef Int
   | -- | A variable.
     TVar Var
   | -- | A pair.
@@ -612,6 +666,8 @@ fvT f = go S.empty
     TString {} -> pure t
     TAntiString {} -> pure t
     TBool {} -> pure t
+    TRobot {} -> pure t
+    TRef {} -> pure t
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)

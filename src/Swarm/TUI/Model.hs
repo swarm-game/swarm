@@ -17,7 +17,17 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   Name (..),
+
+  -- * Menus and dialogs
+  ModalType (..),
+  ButtonSelection (..),
   Modal (..),
+  modalType,
+  modalDialog,
+  modalWidget,
+  MainMenuEntry (..),
+  mainMenu,
+  Menu (..),
 
   -- * UI state
 
@@ -46,6 +56,8 @@ module Swarm.TUI.Model (
 
   -- ** UI Model
   UIState,
+  uiMenu,
+  uiCheatMode,
   uiFocusRing,
   uiReplForm,
   uiReplType,
@@ -65,8 +77,11 @@ module Swarm.TUI.Model (
   frameTickCount,
   lastInfoTime,
   uiShowFPS,
+  uiShowZero,
+  uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
+  appData,
 
   -- ** Initialization
   initFocusRing,
@@ -89,15 +104,21 @@ module Swarm.TUI.Model (
   -- ** Initialization
   initAppState,
   Seed,
+
+  -- ** Utility
+  focusedItem,
+  focusedEntity,
 ) where
 
-import Control.Lens
+import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
-import Data.Maybe (fromMaybe, isJust)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map (Map)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
@@ -108,10 +129,12 @@ import System.Clock
 import Brick
 import Brick.Focus
 import Brick.Forms
+import Brick.Widgets.Dialog (Dialog)
 import qualified Brick.Widgets.List as BL
 
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (ScenarioItem)
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
@@ -150,6 +173,10 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
+  | -- | The list of main menu choices.
+    MenuList
+  | -- | The list of scenario choices.
+    ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -271,12 +298,45 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 ------------------------------------------------------------
--- UI state
+-- Menus and dialogs
 ------------------------------------------------------------
 
-data Modal
+data ModalType
   = HelpModal
+  | WinModal
+  | QuitModal
+  | DescriptionModal Entity
   deriving (Eq, Show)
+
+data ButtonSelection = Cancel | Confirm
+  deriving (Eq, Show)
+
+data Modal = Modal
+  { _modalType :: ModalType
+  , _modalDialog :: Dialog ButtonSelection
+  , _modalWidget :: Widget Name
+  }
+
+makeLenses ''Modal
+
+data MainMenuEntry = NewGame | Tutorial | About | Quit
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+data Menu
+  = NoMenu
+  | MainMenu (BL.List Name MainMenuEntry)
+  | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
+  | TutorialMenu
+  | AboutMenu
+
+mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
+mainMenu e = BL.list MenuList (V.fromList [minBound .. maxBound]) 1 & BL.listMoveToElement e
+
+makePrisms ''Menu
+
+------------------------------------------------------------
+-- Inventory list entries
+------------------------------------------------------------
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,
@@ -291,10 +351,16 @@ data InventoryListEntry
 
 makePrisms ''InventoryListEntry
 
+------------------------------------------------------------
+-- UI state + AppState
+------------------------------------------------------------
+
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
 data UIState = UIState
-  { _uiFocusRing :: FocusRing Name
+  { _uiMenu :: Menu
+  , _uiCheatMode :: Bool
+  , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
@@ -306,6 +372,8 @@ data UIState = UIState
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiShowFPS :: Bool
+  , _uiShowZero :: Bool
+  , _uiInventoryShouldUpdate :: Bool
   , _uiTPF :: Double
   , _uiFPS :: Double
   , _lgTicksPerSecond :: Int
@@ -315,7 +383,17 @@ data UIState = UIState
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
+  , _appData :: Map Text Text
   }
+
+-- | The 'AppState' just stores together the game state and UI state.
+data AppState = AppState
+  { _gameState :: GameState
+  , _uiState :: UIState
+  }
+
+--------------------------------------------------
+-- Lenses for UIState
 
 let exclude = ['_lgTicksPerSecond]
  in makeLensesWith
@@ -325,6 +403,12 @@ let exclude = ['_lgTicksPerSecond]
             if n `elem` exclude then [] else fn n
       )
       ''UIState
+
+-- | The current menu state.
+uiMenu :: Lens' UIState Menu
+
+-- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
+uiCheatMode :: Lens' UIState Bool
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -368,8 +452,14 @@ uiError :: Lens' UIState (Maybe Text)
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
 
--- | A togle to show the FPS by pressing `f`
+-- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
+
+-- | A toggle to show or hide inventory items with count 0 by pressing `0`
+uiShowZero :: Lens' UIState Bool
+
+-- | Whether the Inventory ui panel should update
+uiInventoryShouldUpdate :: Lens' UIState Bool
 
 -- | Computed ticks per milli seconds
 uiTPF :: Lens' UIState Double
@@ -417,6 +507,45 @@ lastFrameTime :: Lens' UIState TimeSpec
 --   See https://gafferongames.com/post/fix_your_timestep/ .
 accumulatedTime :: Lens' UIState TimeSpec
 
+-- | Free-form data loaded from the @data@ directory, for things like
+--   the logo, about page, tutorial story, etc.
+appData :: Lens' UIState (Map Text Text)
+
+--------------------------------------------------
+-- Lenses for AppState
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
+
+-- | The 'GameState' record.
+gameState :: Lens' AppState GameState
+
+-- | The 'UIState' record.
+uiState :: Lens' AppState UIState
+
+--------------------------------------------------
+-- Utility functions
+
+-- | Get the currently focused 'InventoryListEntry' from the robot
+--   info panel (if any).
+focusedItem :: AppState -> Maybe InventoryListEntry
+focusedItem s = do
+  list <- s ^? uiState . uiInventory . _Just . _2
+  (_, entry) <- BL.listSelectedElement list
+  return entry
+
+-- | Get the currently focused entity from the robot info panel (if
+--   any).  This is just like 'focusedItem' but forgets the
+--   distinction between plain inventory items and installed devices.
+focusedEntity :: AppState -> Maybe Entity
+focusedEntity =
+  focusedItem >=> \case
+    Separator _ -> Nothing
+    InventoryEntry _ e -> Just e
+    InstalledEntry e -> Just e
+
+--------------------------------------------------
+-- UIState initialization
+
 -- | The initial state of the focus ring.
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
@@ -437,16 +566,21 @@ initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
---   it involves reading a REPL history file and getting the current
---   time.
-initUIState :: ExceptT Text IO UIState
-initUIState = liftIO $ do
+--   it involves reading a REPL history file, getting the current
+--   time, and loading text files from the data directory.  The @Bool@
+--   parameter indicates whether we should start off by showing the
+--   main menu.
+initUIState :: Bool -> Bool -> ExceptT Text IO UIState
+initUIState showMainMenu cheatMode = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
+  appDataMap <- readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiFocusRing = initFocusRing
+      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      , _uiCheatMode = cheatMode
+      , _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
       , _uiReplHistory = newREPLHistory history
@@ -458,6 +592,8 @@ initUIState = liftIO $ do
       , _uiError = Nothing
       , _uiModal = Nothing
       , _uiShowFPS = False
+      , _uiShowZero = True
+      , _uiInventoryShouldUpdate = False
       , _uiTPF = 0
       , _uiFPS = 0
       , _lgTicksPerSecond = initLgTicksPerSecond
@@ -467,6 +603,7 @@ initUIState = liftIO $ do
       , _tickCount = 0
       , _frameCount = 0
       , _frameTickCount = 0
+      , _appData = appDataMap
       }
 
 ------------------------------------------------------------
@@ -479,6 +616,7 @@ populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
 populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
+  showZero <- use uiShowZero
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = InstalledEntry e
       itemList mk label =
@@ -492,7 +630,7 @@ populateInventoryList (Just r) = do
       -- aren't an installed device.  In other words we don't need to
       -- display installed devices twice unless we actually have some
       -- in our inventory in addition to being installed.
-      shouldDisplay (n, e) = n > 0 || not ((r ^. installedDevices) `E.contains` e)
+      shouldDisplay (n, e) = n > 0 || showZero && not ((r ^. installedDevices) `E.contains` e)
 
       items =
         (r ^. robotInventory . to (itemList mkInvEntry "Inventory"))
@@ -520,26 +658,11 @@ populateInventoryList (Just r) = do
   uiInventory .= Just (r ^. inventoryHash, lst)
 
 ------------------------------------------------------------
--- App state (= UI state + game state)
+-- App state (= UI state + game state) initialization
 ------------------------------------------------------------
-
--- | The 'AppState' just stores together the game state and UI state.
-data AppState = AppState
-  { _gameState :: GameState
-  , _uiState :: UIState
-  }
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
-
--- | The 'GameState' record.
-gameState :: Lens' AppState GameState
-
--- | The 'UIState' record.
-uiState :: Lens' AppState UIState
 
 -- | Initialize the 'AppState'.
-initAppState :: Seed -> ExceptT Text IO AppState
-initAppState seed = AppState <$> initGameState seed <*> initUIState
-
-------------------------------------------------------------
---
+initAppState :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
+initAppState seed scenarioName toRun cheatMode = do
+  let showMenu = isNothing scenarioName && isNothing toRun && isNothing seed
+  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu cheatMode

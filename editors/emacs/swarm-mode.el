@@ -1,7 +1,7 @@
 ;;; swarm-mode.el --- Swarm Lang mode -*- lexical-binding: t -*-
 ;;
 ;; Author: swarm contributors
-;; URL: https://github.com/byorgey/swarm
+;; URL: https://github.com/swarm-game/swarm
 ;; Version: 0.1
 ;; Package-Requires: ((emacs-lsp))
 ;;

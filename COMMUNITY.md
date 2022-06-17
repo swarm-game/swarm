@@ -6,7 +6,7 @@ Swarm together.  Here are a few resources to help you get plugged into
 the community and connect with others.
 
 - Everyone is welcome in the Swarm community.  Note the [Code of
-  Conduct](https://github.com/byorgey/swarm/blob/main/CODE_OF_CONDUCT.md),
+  Conduct](https://github.com/swarm-game/swarm/blob/main/CODE_OF_CONDUCT.md),
   which specifically governs those contributing to the project on
   GitHub, but by extension the whole community.
 - The `#swarm` channel on the [Libera.Chat](https://libera.chat/) IRC
@@ -15,7 +15,7 @@ the community and connect with others.
   anything Swarm-related (*e.g.* asking for help, showing off your cool
   programming exploits, *etc.*).
 - Feel free to make use of the [Swarm
-  wiki](https://github.com/byorgey/swarm/wiki) on Github as a place to
+  wiki](https://github.com/swarm-game/swarm/wiki) on Github as a place to
   collaborate, discuss strategy, post cool robot programs, create
   documentation, or whatever.
 - We are open to other community-building tools and spaces, depending

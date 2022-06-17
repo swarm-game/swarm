@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -51,7 +51,8 @@ module Swarm.Game.Entity (
   entityHash,
 
   -- ** Entity map
-  EntityMap,
+  EntityMap (..),
+  buildEntityMap,
   loadEntities,
   lookupEntityName,
   deviceForCap,
@@ -64,6 +65,7 @@ module Swarm.Game.Entity (
   empty,
   singleton,
   fromList,
+  fromElems,
 
   -- ** Lookup
   lookup,
@@ -86,7 +88,7 @@ import Brick (Widget)
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
-import Data.Bifunctor (bimap, first, second)
+import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Hashable
@@ -102,19 +104,20 @@ import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
-import Linear
+import Linear (V2)
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
 
 import Data.Yaml
+import Swarm.Util.Yaml
 
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (toDirection)
+import Swarm.Util (plural, (?))
 
 import Paths_swarm
-import Swarm.Util (plural)
 
 ------------------------------------------------------------
 -- Properties
@@ -131,6 +134,8 @@ data EntityProperty
     Growable
   | -- | Robots drown if they walk on this.
     Liquid
+  | -- | Robots automatically know what this is without having to scan it.
+    Known
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON EntityProperty where
@@ -271,9 +276,11 @@ mkEntity ::
   [Text] ->
   -- | Properties
   [EntityProperty] ->
+  -- | Capabilities
+  [Capability] ->
   Entity
-mkEntity disp nm descr props =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props [] empty
+mkEntity disp nm descr props caps =
+  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props caps empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -284,17 +291,24 @@ mkEntity disp nm descr props =
 --   capabilities they provide (if any).
 data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
-  , entitiesByCap :: Map Capability Entity
+  , entitiesByCap :: Map Capability [Entity]
   }
+
+instance Semigroup EntityMap where
+  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)
+
+instance Monoid EntityMap where
+  mempty = EntityMap M.empty M.empty
+  mappend = (<>)
 
 -- | Find an entity with the given name.
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
 lookupEntityName nm = M.lookup nm . entitiesByName
 
--- | Find an entity which is a device that provides the given
+-- | Find all entities which are devices that provide the given
 --   capability.
-deviceForCap :: Capability -> EntityMap -> Maybe Entity
-deviceForCap cap = M.lookup cap . entitiesByCap
+deviceForCap :: Capability -> EntityMap -> [Entity]
+deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
@@ -303,7 +317,7 @@ buildEntityMap :: [Entity] -> EntityMap
 buildEntityMap es =
   EntityMap
     { entitiesByName = M.fromList . map (view entityName &&& id) $ es
-    , entitiesByCap = M.fromList . concatMap (\e -> map (,e) (e ^. entityCapabilities)) $ es
+    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (e ^. entityCapabilities)) $ es
     }
 
 ------------------------------------------------------------
@@ -313,9 +327,8 @@ buildEntityMap es =
 instance FromJSON Entity where
   parseJSON = withObject "Entity" $ \v ->
     rehashEntity
-      <$> ( Entity
-              <$> pure 0
-              <*> v .: "display"
+      <$> ( Entity 0
+              <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
               <*> (map reflow <$> (v .: "description"))
@@ -328,6 +341,14 @@ instance FromJSON Entity where
           )
    where
     reflow = T.unwords . T.words
+
+-- | If we have access to an 'EntityMap', we can parse the name of an
+--   'Entity' as a string and look it up in the map.
+instance FromJSONE EntityMap Entity where
+  parseJSONE = withTextE "entity name" $ \name ->
+    E $ \em -> case lookupEntityName name em of
+      Nothing -> fail $ "Unknown entity: " ++ from @Text name
+      Just e -> return e
 
 instance ToJSON Entity where
   toJSON e =
@@ -445,22 +466,34 @@ type Count = Int
 --   it contains some entities, along with the number of times each
 --   occurs.  Entities can be looked up directly, or by name.
 data Inventory = Inventory
-  { counts :: IntMap (Count, Entity) -- main map
-  , byName :: Map Text IntSet -- Mirrors the main map; just
-  -- caching the ability to
-  -- look up by name.
+  { -- Main map
+    counts :: IntMap (Count, Entity)
+  , -- Mirrors the main map; just caching the ability to look up by
+    -- name.
+    byName :: Map Text IntSet
+  , -- Cached hash of the inventory, using a homomorphic hashing scheme
+    -- (see https://github.com/swarm-game/swarm/issues/229).
+    --
+    -- Invariant: equal to Sum_{(k,e) \in counts} (k+1) * (e ^. entityHash).
+    -- The k+1 is so the hash distinguishes between having a 0 count of something
+    -- and not having it as a key in the map at all.
+    inventoryHash :: Int
   }
   deriving (Show, Generic)
 
 instance Hashable Inventory where
-  -- Don't look at Entity records themselves --- just hash their keys,
-  -- which are already a hash.
-  hashWithSalt = hashUsing (map (second fst) . IM.assocs . counts)
+  -- Just return cached hash value.
+  hash = inventoryHash
+  hashWithSalt s = hashWithSalt s . inventoryHash
+
+-- | Inventories are compared by hash for efficiency.
+instance Eq Inventory where
+  (==) = (==) `on` hash
 
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
 lookup :: Entity -> Inventory -> Count
-lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
+lookup e (Inventory cs _ _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 
 -- | Look up an entity by name in an inventory, returning a list of
 --   matching entities.  Note, if this returns some entities, it does
@@ -469,7 +502,7 @@ lookup e (Inventory cs _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 --   any, use 'lookup' and see whether the resulting 'Count' is
 --   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
-lookupByName name (Inventory cs byN) =
+lookupByName name (Inventory cs byN _) =
   maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
 
 -- | Look up an entity by name and see how many there are in the
@@ -477,12 +510,11 @@ lookupByName name (Inventory cs byN) =
 --   just picks the first one returned from 'lookupByName'.
 countByName :: Text -> Inventory -> Count
 countByName name inv =
-  fromMaybe 0 $
-    flip lookup inv <$> listToMaybe (lookupByName name inv)
+  maybe 0 (`lookup` inv) (listToMaybe (lookupByName name inv))
 
 -- | The empty inventory.
 empty :: Inventory
-empty = Inventory IM.empty M.empty
+empty = Inventory IM.empty M.empty 0
 
 -- | Create an inventory containing one entity.
 singleton :: Entity -> Inventory
@@ -497,14 +529,29 @@ insert = insertCount 1
 fromList :: [Entity] -> Inventory
 fromList = foldl' (flip insert) empty
 
+-- | Create an inventory from a list of entities and their counts.
+fromElems :: [(Count, Entity)] -> Inventory
+fromElems = foldl' (flip (uncurry insertCount)) empty
+
 -- | Insert a certain number of copies of an entity into an inventory.
 --   If the inventory already contains this entity, then only its
 --   count will be incremented.
 insertCount :: Count -> Entity -> Inventory -> Inventory
-insertCount cnt e (Inventory cs byN) =
+insertCount k e (Inventory cs byN h) =
   Inventory
-    (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (cnt, e) cs)
+    (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (k, e) cs)
     (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
+    (h + (k + extra) * (e ^. entityHash)) -- homomorphic hashing
+ where
+  -- Include the hash of an entity once just for "knowing about" it;
+  -- then include the hash once per actual copy of the entity.  In
+  -- other words, having k copies of e in the inventory contributes
+  -- (k+1)*(e ^. entityHash) to the inventory hash.  The reason for
+  -- doing this is so that the inventory hash changes even when we
+  -- insert 0 copies of something, since having 0 copies of something
+  -- is different than not having it as a key at all; having 0 copies
+  -- signals that we at least "know about" the entity.
+  extra = if (e ^. entityHash) `IM.member` cs then 0 else 1
 
 -- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
@@ -520,28 +567,39 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount k e (Inventory cs byN) = Inventory cs' byN
+deleteCount k e (Inventory cs byN h) = Inventory cs' byN h'
  where
-  cs' = IM.alter removeCount (e ^. entityHash) cs
+  m = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
+  cs' = IM.adjust removeCount (e ^. entityHash) cs
+  h' = h - min k m * (e ^. entityHash)
 
-  removeCount :: Maybe (Count, a) -> Maybe (Count, a)
-  removeCount Nothing = Nothing
-  removeCount (Just (n, a)) = Just (max 0 (n - k), a)
+  removeCount :: (Count, a) -> (Count, a)
+  removeCount (n, a) = (max 0 (n - k), a)
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
-deleteAll e (Inventory cs byN) =
+deleteAll e (Inventory cs byN h) =
   Inventory
     (IM.adjust (first (const 0)) (e ^. entityHash) cs)
     byN
+    (h - n * (e ^. entityHash))
+ where
+  n = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
-elems (Inventory cs _) = IM.elems cs
+elems (Inventory cs _ _) = IM.elems cs
 
 -- | Union two inventories.
 union :: Inventory -> Inventory -> Inventory
-union (Inventory cs1 byN1) (Inventory cs2 byN2) =
+union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   Inventory
     (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
     (M.unionWith IS.union byN1 byN2)
+    (h1 + h2 - common)
+ where
+  -- Need to subtract off the sum of the hashes in common, because
+  -- of the way each entity with count k contributes (k+1) times its
+  -- hash.  So if the two inventories share an entity e, just adding their
+  -- hashes would mean e now contributes (k+2) times its hash.
+  common = IS.foldl' (+) 0 $ IM.keysSet cs1 `IS.intersection` IM.keysSet cs2

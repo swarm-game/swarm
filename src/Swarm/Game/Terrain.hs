@@ -1,9 +1,5 @@
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Game.Terrain
@@ -21,8 +17,12 @@ module Swarm.Game.Terrain (
 ) where
 
 import Brick (Widget)
+import Data.Aeson (FromJSON (..), withText)
 import Data.Map (Map, (!))
 import qualified Data.Map as M
+import qualified Data.Text as T
+import Text.Read (readMaybe)
+import Witch (into)
 
 import Swarm.Game.Display
 import Swarm.TUI.Attr
@@ -34,7 +34,14 @@ data TerrainType
   | DirtT
   | GrassT
   | IceT
+  | BlankT
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+instance FromJSON TerrainType where
+  parseJSON = withText "text" $ \t ->
+    case readMaybe (into @String (T.toTitle t) ++ "T") of
+      Just ter -> return ter
+      Nothing -> fail $ "Unknown terrain type: " ++ into @String t
 
 -- | Display a terrain type as a single charcter widget.
 displayTerrain :: TerrainType -> Widget n
@@ -48,4 +55,5 @@ terrainMap =
     , (DirtT, defaultTerrainDisplay '░' dirtAttr)
     , (GrassT, defaultTerrainDisplay '░' grassAttr)
     , (IceT, defaultTerrainDisplay ' ' iceAttr)
+    , (BlankT, defaultTerrainDisplay ' ' defAttr)
     ]
