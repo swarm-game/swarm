@@ -698,13 +698,15 @@ execConst c vs s k = do
       return $ Out VUnit s k
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
+        myID <- use robotID
         -- Make sure the other robot exists and is close
-        other <- getRobotWithinTouch rid
-
+        target <- getRobotWithinTouch rid
+        -- either change current robot or one in robot map
+        let (.==) l a = if myID == rid then l .= a else robotMap . ix rid . l .= a
         let nextLoc = V2 (fromIntegral x) (fromIntegral y)
+        let caps = target ^. robotCapabilities
 
         me <- entityAt nextLoc
-        let caps = other ^. robotCapabilities
         -- Make sure nothing is in the way.
         case me of
           Nothing -> return ()
@@ -712,10 +714,10 @@ execConst c vs s k = do
             let unwalkable = e `hasProperty` Unwalkable
             let drowning = e `hasProperty` Liquid && CFloat `S.notMember` caps
             when (unwalkable || drowning) $ do
-              d <- destroyIfNotBase' other
-              when d $ robotMap . ix rid . selfDestruct .= True
+              d <- destroyIfNotBase' target
+              when d $ selfDestruct .== True
 
-        robotMap . ix rid . robotLocation .= nextLoc
+        robotLocation .== nextLoc
         flagRedraw
         return $ Out VUnit s k
       _ -> badConst
