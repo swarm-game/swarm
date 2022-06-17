@@ -251,9 +251,9 @@ which you may have noticed in the recently viewed robot's inventory.
 You can `scan` items in the world to learn about them, and later
 `upload` what you have learned to the base.
 
-Let's build a robot to learn about those green `?` things to the west:
+Let's build a robot to learn about those green `?` things to the south:
 ```
-build {turn left; m4; move; scan forward; turn back; m4; upload base}
+build {turn back; m; scan forward; upload base}
 ```
 The `turn` command we used to turn the robot takes a direction as an
 argument, which can be either a relative direction (`forward`, `back`,
@@ -285,14 +285,14 @@ Getting some resources
 
 So those tree things look like they might be useful.  Let's get one!
 ```
-build {turn west; m8; thing <- grab; turn back; m8; give base thing }
+build {turn back; m2; thing <- grab; turn back; m2; give base thing }
 ```
 You can see that the
 `grab` command returns the name of the thing it grabbed, which is
 especially helpful when grabbing something unknown. (In this case we
-also could have just written `...; grab; ...; give "base" "tree"; ...`.)
+also could have just written `...; grab; ...; give base "tree"`.)
 
-You should see a robot head west from your base, grab a tree, and
+You should see a robot head south from your base, grab a tree, and
 return to the base.  If all works properly, after the newly built
 robot executes the `give` command, the number next to the `tree` entry
 in your inventory should turn from 0 to 1.  Note that in this case, we
@@ -349,14 +349,14 @@ any devices that will be necessary to execute it.  (It is also
 possible to manually install devices with the `install` command.)  So
 let's type the following:
 ```
-crasher <- build {setname "crasher"; log "hi!"; turn back; move; grab; move}
+crasher <- build {setname "crasher"; log "hi!"; turn left; move; grab; move}
 ```
 (The `setname "crasher"` command is not strictly necessary, but will
 help us understand the logs we look at later --- otherwise the log
 entries would be indexed by some randomly generated robot name.)  The
 world should now look something like the below.  Notice that the
 `logger` is gone from your inventory---it was automatically installed
-on `crasher`.  Notice also that `crasher` only moved one unit south,
+on `crasher`.  Notice also that `crasher` only moved one unit west,
 even though we told it to move two steps!  What went wrong?
 
 ![Let's crash a robot!](images/tutorial/crasher.png)
@@ -386,9 +386,9 @@ the `upload` command, which we have seen before.  In addition to
 uploading knowledge about entities, it turns out that it also uploads
 the log from a `logger`.
 ```
-build {turn left; m8; m; thing <- grab; turn back; m8; m; give base thing}
+build {turn back; m4; thing <- grab; turn back; m4; give base thing}
 make "log"; make "logger"
-build {setname "salvager"; turn back; move; log "salvaging..."; salvage; turn back; move; upload base}
+build {setname "salvager"; turn left; move; log "salvaging..."; salvage; turn back; move; upload base}
 ```
 The world should now look something like this:
 
