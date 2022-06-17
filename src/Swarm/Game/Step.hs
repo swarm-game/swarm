@@ -421,7 +421,7 @@ stepCESK cesk = case cesk of
   Out v2 s (FApp (VCApp c args) : k)
     | not (isCmd c)
         && arity c == length args + 1 ->
-        evalConst c (reverse (v2 : args)) s k
+      evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
   -- To evaluate non-recursive let expressions, we start by focusing on the
@@ -1346,7 +1346,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (-n)) s k
+      [VInt n] -> return $ Out (VInt (- n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
