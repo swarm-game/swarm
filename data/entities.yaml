@@ -176,7 +176,7 @@
     attr: quartz
     char: 'Å'
   description:
-  - An quartz vein that can be actively mined to produce quartz.
+  - A quartz vein that can be actively mined to produce quartz.
   properties: []
 
 - name: silicon
@@ -186,6 +186,43 @@
   description:
   - Extracted by processing quartz at high temperatures, silicon can
     be used to construct integrated circuits.
+  properties: [portable]
+
+- name: deep mine
+  display:
+    attr: rock
+    char: 'Å'
+  description:
+  - A deep mine that yields rare and wonderful treasures to those who are patient.
+  - But be careful lest you delve too greedily and too deep.
+  properties: []
+
+- name: silver
+  display:
+    attr: silver
+    char: '•'
+  description:
+  - A shiny, metallic substance, noted for its high reflectivity when polished.
+  properties: [portable]
+
+- name: gold
+  display:
+    attr: gold
+    char: '•'
+  description:
+  - A shiny, metallic substance, with applications in specialized electronics.
+  - It also seems to be highly valued by local aliens.
+  properties: [portable]
+
+- name: mithril
+  display:
+    attr: silver
+    char: 'M'
+  description:
+  - Mithril can be beaten like copper, and polished like glass.  One
+    can also make of it a metal, light and yet harder than tempered
+    steel. Its beauty is like to that of common silver, but the beauty
+    of mithril does not tarnish or grow dim.
   properties: [portable]
 
 - name: furnace

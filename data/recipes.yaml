@@ -130,7 +130,7 @@
   required:
   - [1, metal drill]
   time: 9
-  weight: 16
+  weight: 160
 
 - in:
   - [5, rock]
@@ -187,7 +187,7 @@
   required:
   - [1, metal drill]
   time: 6
-  weight: 1
+  weight: 10
 
 - in:
   - [1, mountain]
@@ -197,7 +197,7 @@
   required:
   - [1, metal drill]
   time: 7
-  weight: 1
+  weight: 10
 
 - in:
   - [1, mountain]
@@ -207,7 +207,7 @@
   required:
   - [1, metal drill]
   time: 7
-  weight: 1
+  weight: 10
 
 ## MINES
 
@@ -366,6 +366,69 @@
   - [1, circuit]
 
 #########################################
+##             DEEP MINES              ##
+#########################################
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 512
+  weight: 1
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, copper ore]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 1000
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, iron ore]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 500
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, silver]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 50
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, gold]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 20
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, mithril]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 1
+
+#########################################
 ##               PIXELS                ##
 #########################################
 
@@ -410,7 +473,7 @@
 
 - in:
   - [1, glass]
-  - [1, iron plate]
+  - [1, silver]
   out:
   - [1, mirror]
 
