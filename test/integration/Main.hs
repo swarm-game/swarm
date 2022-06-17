@@ -113,6 +113,7 @@ testScenarioSolution _em =
         "Challenges"
         [ testSolution "chess" Default "data/scenarios/03Challenges/01-chess_horse.yaml"
         , testSolution "test (grab)" Default "data/scenarios/03Challenges/00-test.yaml"
+        , testSolution "portal room" Default "data/scenarios/03Challenges/03-teleport.yaml"
         ]
     , testGroup
         "Regression tests"
