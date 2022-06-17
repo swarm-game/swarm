@@ -421,7 +421,7 @@ stepCESK cesk = case cesk of
   Out v2 s (FApp (VCApp c args) : k)
     | not (isCmd c)
         && arity c == length args + 1 ->
-      evalConst c (reverse (v2 : args)) s k
+        evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
   -- To evaluate non-recursive let expressions, we start by focusing on the
@@ -697,21 +697,25 @@ execConst c vs s k = do
       flagRedraw
       return $ Out VUnit s k
     Teleport -> case vs of
-      [VPair (VInt x) (VInt y)] -> do
-        let loc :: V2 Int64
-            loc = V2 (fromIntegral x) (fromIntegral y)
-        me <- entityAt loc
-        caps <- use robotCapabilities
+      [VRobot rid, VPair (VInt x) (VInt y)] -> do
+        -- Make sure the other robot exists and is close
+        other <- getRobotWithinTouch rid
 
+        let nextLoc = V2 (fromIntegral x) (fromIntegral y)
+
+        me <- entityAt nextLoc
+        let caps = other ^. robotCapabilities
         -- Make sure nothing is in the way.
         case me of
           Nothing -> return ()
           Just e -> do
             let unwalkable = e `hasProperty` Unwalkable
             let drowning = e `hasProperty` Liquid && CFloat `S.notMember` caps
-            when (unwalkable || drowning) destroyIfNotBase
+            when (unwalkable || drowning) $ do
+              d <- destroyIfNotBase' other
+              when d $ robotMap . ix rid . selfDestruct .= True
 
-        robotLocation .= loc
+        robotMap . ix rid . robotLocation .= nextLoc
         flagRedraw
         return $ Out VUnit s k
       _ -> badConst
@@ -1340,7 +1344,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1481,10 +1485,13 @@ execConst c vs s k = do
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
   destroyIfNotBase :: (Has (State Robot) sig m, Has (Error Exn) sig m) => m ()
-  destroyIfNotBase = do
-    rid <- use robotID
-    if rid == 0
+  destroyIfNotBase = get @Robot >>= void . destroyIfNotBase'
+
+  destroyIfNotBase' :: (Has (Error Exn) sig m) => Robot -> m Bool
+  destroyIfNotBase' r = do
+    if r ^. robotID == 0
       then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
+      else return True
 
   getRobotWithinTouch ::
     (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) =>

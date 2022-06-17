@@ -349,8 +349,7 @@ data Const
     AppF
   | -- God-like commands that are omnipresent or omniscient.
 
-    -- | Move from one place in the world to any other
-    --   ignoring distance or entities blocking the path.
+    -- | Teleport a robot to the given position.
     Teleport
   | -- | Run a command as if you were another robot.
     As
@@ -492,7 +491,7 @@ constInfo c = case c of
   Format -> functionLow 1
   Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
-  Teleport -> commandLow 1
+  Teleport -> commandLow 2
   As -> commandLow 2
   RobotNamed -> commandLow 1
  where
