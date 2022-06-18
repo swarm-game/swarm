@@ -1,0 +1,41 @@
+name: Crafting, part 1
+entities:
+  - name: goal
+    display:
+      attr: device
+      char: 'X'
+    description:
+    - |
+      Robots can use the 'make' command to make things.
+      Your base has a tree, check the inventory for the
+      available recipes. Your goal is to create a "logger".
+win: |
+  try {
+    as base {has "logger"}
+  } { return false }
+solution: |
+  make "log"; make "logger"
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - workbench
+    inventory:
+      - [1, goal]
+      - [1, tree]
+world:
+  default: [blank, none]
+  palette:
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    ' ': [grass, null]
+  upperleft: [-1, 1]
+  map: |
+    ┌─┐
+    │ │
+    └─┘
