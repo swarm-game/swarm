@@ -259,7 +259,6 @@ constCaps =
     AppF -> []
     Force -> []
     Return -> []
-    Self -> []
     Parent -> []
     Base -> []
     Setname -> []
@@ -292,6 +291,8 @@ constCaps =
     Mul -> [CArith]
     Div -> [CArith]
     Exp -> [CArith]
+    Whoami -> [CWhoami]
+    Self -> [CWhoami]
     -- Some God-like abilities.
     As -> [CGod]
     RobotNamed -> [CGod]
@@ -307,7 +308,6 @@ constCaps =
     Appear -> [CAppear] -- paint?
     Whereami -> [CSenseloc] -- GPS?
     Random -> [CRandom] -- randomness device (with bitcoins)?
-    Whoami -> [CWhoami] -- mirror, needs a recipe
 
     -- comparator?
     Eq -> [CCompare]
