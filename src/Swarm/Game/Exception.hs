@@ -48,9 +48,9 @@ import Swarm.Util
 
 -- | Suggested way to fix incapable error.
 data IncapableFix
-  = -- | install the missing device on yourself/target
+  = -- | Install the missing device on yourself/target
     FixByInstall
-  | -- | add the missing device to your inventory
+  | -- | Add the missing device to your inventory
     FixByObtain
   deriving (Eq, Show)
 
@@ -107,9 +107,9 @@ formatIncapableFix = \case
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
 --
 -- >>> incapableError (S.singleton CGod) (TConst As)
--- Thee shalt not utter such blasphemy:
+-- Thou shalt not utter such blasphemy:
 --   'as'
---   If't be true thee wanteth to playeth god, then tryeth Creative game.
+--   If God in troth thou wantest to play, try thou a Creative game.
 --
 -- >>> incapableError (S.singleton CAppear) (TConst Appear)
 -- You do not have the devices required for:
@@ -126,9 +126,9 @@ formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
 formatIncapable em f caps tm
   | CGod `S.member` caps =
     unlinesExText
-      [ "Thee shalt not utter such blasphemy:"
+      [ "Thou shalt not utter such blasphemy:"
       , squote $ prettyText tm
-      , "If't be true thee wanteth to playeth god, then tryeth Creative game."
+      , "If God in troth thou wantest to play, try thou a Creative game."
       ]
   | not (null capsNone) =
     unlinesExText
