@@ -424,7 +424,7 @@
     attr: wood
     char: '□'
   description:
-  - A wooden box.  It can hold things, or used as the housing for other devices.
+  - A wooden box.  It can hold things or be used as housing for other devices.
   properties: [portable]
 
 - name: wooden gear
