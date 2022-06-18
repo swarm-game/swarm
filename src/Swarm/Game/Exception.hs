@@ -107,9 +107,9 @@ formatIncapableFix = \case
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
 --
 -- >>> incapableError (S.singleton CGod) (TConst As)
--- Thee shalt not utter such blasphemy:
+-- Thou shalt not utter such blasphemy:
 --   'as'
---   If't be true thee wanteth to playeth god, then tryeth Creative game.
+--   If God in troth thou wantest to play, try thou a Creative game.
 --
 -- >>> incapableError (S.singleton CAppear) (TConst Appear)
 -- You do not have the devices required for:
