@@ -269,8 +269,8 @@ loadScenarioDir ::
 loadScenarioDir em dir = do
   fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
   SC . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
-  where
-    keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
+ where
+  keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
 
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
