@@ -387,8 +387,29 @@ stripCmd pty = pty
 -- REPL events
 ------------------------------------------------------------
 
+-- Handles input event when prompt is SearchPrompt
+--
+-- This is an auxliar function. To make handleREPLEvent more readable
+-- It essentialy defines the set of input event allowed when SearchPrompt is activated:
+--   · Up / Down to navegate along history
+--   · Enter to grab a an element form it.
+--   · Crtl + c to cancel the search
+handleSearchPrompt :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleSearchPrompt s (VtyEvent (V.EvKey V.KEnter [])) =
+  let entry = s ^. uiState . uiReplForm . to formState . promptText -- We are assuming SearchPrompt here
+      hist  = s ^. uiState . uiReplHistory
+      matchedItems = searchInHistory entry hist
+  in undefined
+handleSearchPrompt s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
+  continue $ s & uiState . uiReplForm %~ updateFormState (CmdPrompt "")
+handleSearchPrompt s ev = do
+  f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
+  continue (s & uiState . uiReplForm .~ f')
+
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'r') [V.MCtrl])) =
+  continue $ s & uiState . uiReplForm .~ mkReplForm (SearchPrompt "" [])
 handleREPLEvent s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
   continue $
     s

@@ -42,6 +42,7 @@ module Swarm.TUI.Model (
   REPLPrompt(..),
   printPrompt,
   promptText,
+  mkReplForm,
 
   -- ** Inventory
   InventoryListEntry (..),
@@ -276,9 +277,9 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 -- | Given a text, it search in the REPLHistory the inputs which start with that text.
-searchInHistory :: Text -> REPLHistory -> Seq REPLHistItem 
+searchInHistory :: Text -> REPLHistory -> Seq REPLHistItem
 searchInHistory t (REPLHistory s _ _) = Seq.filter matchesText s -- If the REPLHistory is too long, maybe this suffers, I don't know how lazy filter is for Seq. If performance issues are found, we should manualy build a lazy list.
- where 
+ where
    matchesText histItem = (t `T.isPrefixOf` replItemText histItem) && isREPLEntry histItem
 
 
@@ -291,11 +292,11 @@ searchInHistory t (REPLHistory s _ _) = Seq.filter matchesText s -- If the REPLH
 --   For example:
 --      - CmdPrompt means that the input text should be interpreted as a game command 
 --      - SearchPrompt means that the input text should be interpreted as text to look for in the history
-data REPLPrompt = CmdPrompt Text | SearchPrompt Text
+data REPLPrompt = CmdPrompt Text | SearchPrompt Text [REPLHistItem]
 
 printPrompt :: REPLPrompt -> Text
 printPrompt (CmdPrompt _) = "> "
-printPrompt (SearchPrompt t) = "(search in history: " <> t <> ")"
+printPrompt (SearchPrompt t _) = "(search in history: " <> t <> ")"
 
 -- | The default REPL prompt.
 replPrompt :: REPLPrompt
@@ -304,14 +305,27 @@ replPrompt = CmdPrompt ""
 -- | Lens for accesing the text
 promptText :: Lens' REPLPrompt Text
 promptText = lens g s
-  where 
+  where
     g :: REPLPrompt -> Text
     g (CmdPrompt t) = t
-    g (SearchPrompt t) = t
+    g (SearchPrompt t _) = t
 
     s :: REPLPrompt -> Text -> REPLPrompt
     s (CmdPrompt _)    t = CmdPrompt t
-    s (SearchPrompt _) t = SearchPrompt t
+    s (SearchPrompt _ h) t = SearchPrompt t h
+
+-- | Creates the repl form
+mkReplForm :: REPLPrompt -> Form REPLPrompt AppEvent Name
+mkReplForm r@(CmdPrompt _) =
+  newForm [(txt "> " <+>) @@= editTextField promptText REPLInput (Just 1)] r
+mkReplForm r@(SearchPrompt _ h) =
+  newForm [prettyprintSearchPrompt @@= editTextField promptText REPLInput (Just 1)] r
+ where 
+   prettyprintSearchPrompt :: Widget Name -> Widget Name
+   prettyprintSearchPrompt w = 
+     case h of 
+      []     -> txt "(search in history: " <+> hLimit 8 w <+> txtWrap ") "
+      (x:_) -> txt "(search in history: " <+> hLimit 8 w <+> txtWrap ") " <+> txt (replItemText x)
 
 ------------------------------------------------------------
 -- UI state
@@ -466,10 +480,10 @@ initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
 -- | The initial state of the REPL entry form.
 initReplForm :: Form REPLPrompt AppEvent Name
-initReplForm =
-  newForm
-    [(txt (printPrompt replPrompt) <+>) @@= editTextField promptText REPLInput (Just 1)]
-    (CmdPrompt "")
+initReplForm = mkReplForm $ CmdPrompt ""
+  -- newForm
+  --   [(txt (printPrompt replPrompt) <+>) @@= editTextField promptText REPLInput (Just 1)]
+  --   (CmdPrompt "")
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int
