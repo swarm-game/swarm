@@ -49,9 +49,10 @@ module Swarm.TUI.Model (
   searchInHistory,
   TimeDir (..),
 
+  -- ** Prompt utils
   REPLPrompt(..),
-  printPrompt,
-  promptText,
+  replPromptAsWidget,
+  promptTextL,
   mkReplForm,
 
   -- ** Inventory
@@ -91,10 +92,11 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initFocusRing,
-  replPrompt,
+  defaultPrompt,
   initReplForm,
   initLgTicksPerSecond,
   initUIState,
+  lastEntry,
 
   -- ** Updating
   populateInventoryList,
@@ -303,56 +305,58 @@ getCurrentItemText history = replItemText <$> Seq.lookup (history ^. replIndex) 
 replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
--- | Given a text, it search in the REPLHistory the inputs which start with that text.
-searchInHistory :: Text -> REPLHistory -> Seq REPLHistItem
-searchInHistory t (REPLHistory s _ _) = Seq.filter matchesText s -- If the REPLHistory is too long, maybe this suffers, I don't know how lazy filter is for Seq. If performance issues are found, we should manualy build a lazy list.
- where
-   matchesText histItem = (t `T.isPrefixOf` replItemText histItem) && isREPLEntry histItem
-
 
 ------------------------------------------------------------
 -- Repl Prompt
 ------------------------------------------------------------
 
+-- | Given a text, it search in the REPLHistory the inputs which start with that text.
+searchInHistory :: Text -> REPLHistory -> REPLHistory
+searchInHistory t (REPLHistory s _ _) = newREPLHistory $ filter matchesText (toList s)
+ where
+   matchesText histItem = (t `T.isPrefixOf` replItemText histItem) && isREPLEntry histItem
+
+-- | Get the last from REPLHistory
+lastEntry :: REPLHistory -> Maybe Text
+lastEntry h = case filter isREPLEntry $ toList $ h ^. replSeq of
+  []      -> Nothing
+  rh : _  -> Just $ replItemText rh
+   
+
 -- | This data type represent what is prompted to the player
 --   and how the REPL show interpret the user input.
---   For example:
---      - CmdPrompt means that the input text should be interpreted as a game command 
---      - SearchPrompt means that the input text should be interpreted as text to look for in the history
-data REPLPrompt = CmdPrompt Text | SearchPrompt Text [REPLHistItem]
-
-printPrompt :: REPLPrompt -> Text
-printPrompt (CmdPrompt _) = "> "
-printPrompt (SearchPrompt t _) = "(search in history: " <> t <> ")"
+data REPLPrompt = CmdPrompt Text                -- ^ Interpret the given text as a regular command
+                | SearchPrompt Text REPLHistory -- ^ Interpret the given text as "search this text in history"
 
 -- | The default REPL prompt.
-replPrompt' :: REPLPrompt
-replPrompt' = CmdPrompt ""
+defaultPrompt :: REPLPrompt
+defaultPrompt = CmdPrompt ""
 
--- | Lens for accesing the text
-promptText :: Lens' REPLPrompt Text
-promptText = lens g s
+-- | Lens for accesing the text of the prompt. 
+promptTextL :: Lens' REPLPrompt Text   
+promptTextL = lens g s
   where
+    -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).  
+    -- This should be force in the ADT itself... right know this here
+    -- The compiler will complain about "Non complete patterns" on this two function. 
     g :: REPLPrompt -> Text
     g (CmdPrompt t) = t
     g (SearchPrompt t _) = t
 
     s :: REPLPrompt -> Text -> REPLPrompt
-    s (CmdPrompt _)    t = CmdPrompt t
-    s (SearchPrompt _ h) t = SearchPrompt t h
+    s (CmdPrompt _)      t = CmdPrompt t
+    s (SearchPrompt _ h) t = SearchPrompt t (searchInHistory t h)
+
+-- 
+replPromptAsWidget :: REPLPrompt -> Widget Name
+replPromptAsWidget (CmdPrompt cmd)    = txt $ "> " <> cmd
+replPromptAsWidget (SearchPrompt t _) = txt $ "(search in history: " <> t <> ") "
+
 
 -- | Creates the repl form
 mkReplForm :: REPLPrompt -> Form REPLPrompt AppEvent Name
-mkReplForm r@(CmdPrompt _) =
-  newForm [(txt "> " <+>) @@= editTextField promptText REPLInput (Just 1)] r
-mkReplForm r@(SearchPrompt _ h) =
-  newForm [prettyprintSearchPrompt @@= editTextField promptText REPLInput (Just 1)] r
- where 
-   prettyprintSearchPrompt :: Widget Name -> Widget Name
-   prettyprintSearchPrompt w = 
-     case h of 
-      []     -> txt "(search in history: " <+> hLimit 8 w <+> txtWrap ") "
-      (x:_) -> txt "(search in history: " <+> hLimit 8 w <+> txtWrap ") " <+> txt (replItemText x)
+mkReplForm r = newForm [(replPromptAsWidget r <+>) @@= editTextField promptTextL REPLInput (Just 1)] r
+
 
 ------------------------------------------------------------
 -- Menus and dialogs
@@ -418,7 +422,7 @@ data UIState = UIState
   { _uiMenu :: Menu
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
-  , _uiReplForm :: Form Text AppEvent Name
+  , _uiReplForm :: Form REPLPrompt AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
   , _uiReplHistory :: REPLHistory
@@ -472,7 +476,7 @@ uiCheatMode :: Lens' UIState Bool
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The form where the user can type input at the REPL.
-uiReplForm :: Lens' UIState (Form Text AppEvent Name)
+uiReplForm :: Lens' UIState (Form REPLPrompt AppEvent Name)
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).
@@ -616,16 +620,12 @@ initReplForm = mkReplForm $ CmdPrompt ""
   --   (CmdPrompt "")
 -}
 
--- | The default REPL prompt.
-replPrompt :: Text
-replPrompt = "> "
-
 -- | The initial state of the REPL entry form.
-initReplForm :: Form Text AppEvent Name
+initReplForm :: Form REPLPrompt AppEvent Name
 initReplForm =
   newForm
-    [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
-    ""
+    [(replPromptAsWidget defaultPrompt <+>) @@= editTextField promptTextL REPLInput (Just 1)]
+    (CmdPrompt "")
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int
