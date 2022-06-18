@@ -326,8 +326,8 @@ printPrompt (CmdPrompt _) = "> "
 printPrompt (SearchPrompt t _) = "(search in history: " <> t <> ")"
 
 -- | The default REPL prompt.
-replPrompt :: REPLPrompt
-replPrompt = CmdPrompt ""
+replPrompt' :: REPLPrompt
+replPrompt' = CmdPrompt ""
 
 -- | Lens for accesing the text
 promptText :: Lens' REPLPrompt Text
@@ -472,7 +472,7 @@ uiCheatMode :: Lens' UIState Bool
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The form where the user can type input at the REPL.
-uiReplForm :: Lens' UIState (Form REPLPrompt AppEvent Name)
+uiReplForm :: Lens' UIState (Form Text AppEvent Name)
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).
@@ -607,12 +607,25 @@ focusedEntity =
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
+{-
 -- | The initial state of the REPL entry form.
 initReplForm :: Form REPLPrompt AppEvent Name
 initReplForm = mkReplForm $ CmdPrompt ""
   -- newForm
   --   [(txt (printPrompt replPrompt) <+>) @@= editTextField promptText REPLInput (Just 1)]
   --   (CmdPrompt "")
+-}
+
+-- | The default REPL prompt.
+replPrompt :: Text
+replPrompt = "> "
+
+-- | The initial state of the REPL entry form.
+initReplForm :: Form Text AppEvent Name
+initReplForm =
+  newForm
+    [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
+    ""
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int

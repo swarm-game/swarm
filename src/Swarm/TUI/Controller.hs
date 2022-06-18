@@ -504,6 +504,7 @@ stripCmd pty = pty
 --   · Up / Down to navegate along history
 --   · Enter to grab a an element form it.
 --   · Crtl + c to cancel the search
+{-
 handleSearchPrompt :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleSearchPrompt s (VtyEvent (V.EvKey V.KEnter [])) =
   let entry = s ^. uiState . uiReplForm . to formState . promptText -- We are assuming SearchPrompt here
@@ -515,7 +516,7 @@ handleSearchPrompt s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
 handleSearchPrompt s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue (s & uiState . uiReplForm .~ f')
-
+-}
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleREPLEvent s (ControlKey 'c') =
@@ -588,8 +589,8 @@ adjReplHistIndex d s =
   repl = uiState . uiReplHistory
 
   replLast = s ^. uiState . uiReplLast
-  saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState . promptText)
-  showNewEntry = uiState . uiReplForm %~ updateFormState (CmdPrompt newEntry)
+  saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState) --  . promptText
+  showNewEntry = uiState . uiReplForm %~ updateFormState newEntry
   -- get REPL data
   getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
   oldEntry = getCurrEntry s
