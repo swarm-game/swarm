@@ -63,7 +63,7 @@ import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath (takeBaseName, (<.>), (</>))
+import System.FilePath (takeBaseName, takeExtensions, (<.>), (</>))
 import Witch (from, into)
 
 import Control.Algebra (Has)
@@ -267,8 +267,10 @@ loadScenarioDir ::
   FilePath ->
   m ScenarioCollection
 loadScenarioDir em dir = do
-  fs <- sendIO $ listDirectory dir
+  fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
   SC . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
+  where
+    keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
 
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
