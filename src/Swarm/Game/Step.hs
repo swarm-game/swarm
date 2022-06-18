@@ -968,6 +968,14 @@ execConst c vs s k = do
 
         return $ Out res s k
       _ -> badConst
+    Knows -> case vs of
+      [VString name] -> do
+        inv <- use robotInventory
+        let knows = case E.lookupByName name inv of
+              [] -> False
+              _ -> True
+        return $ Out (VBool knows) s k
+      _ -> badConst
     Upload -> case vs of
       [VRobot otherID] -> do
         -- Make sure the other robot exists and is close
