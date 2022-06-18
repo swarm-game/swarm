@@ -17,6 +17,7 @@ module Swarm.Language.Pretty where
 import Control.Lens.Combinators (pattern Empty)
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
+import qualified Data.Set as S
 import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -67,6 +68,12 @@ instance PrettyPrec BaseTy where
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
+
+instance PrettyPrec a => PrettyPrec (S.Set a) where
+  prettyPrec p = tupled . map (prettyPrec p) . S.toList
+
+instance PrettyPrec a => PrettyPrec [a] where
+  prettyPrec p = list . map (prettyPrec p)
 
 instance PrettyPrec (t (Fix t)) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix

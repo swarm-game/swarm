@@ -264,6 +264,7 @@ constCaps =
     Setname -> []
     Undefined -> []
     ErrorStr -> []
+    Info -> []
     -- Some straightforward ones.
     Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]

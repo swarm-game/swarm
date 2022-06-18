@@ -34,7 +34,7 @@
                 "install" "make" "build" "salvage" "reprogram"
                 "say" "log" "view" "appear" "create" "getx" "gety"
                 "blocked" "scan" "upload" "ishere" "whoami"
-                "random" "not"
+                "random" "not" "info"
                 "left" "right" "back" "forward" "north" "south" "east" "west" "down"
                 ))
              (x-types '("int" "string" "dir" "bool" "cmd"))
