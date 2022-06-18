@@ -29,10 +29,10 @@ handleListEventWithSeparators ::
   EventM n (BL.GenericList n t e)
 handleListEventWithSeparators e isSep theList =
   case e of
-    V.EvKey V.KUp [] -> return $ backward
-    V.EvKey (V.KChar 'k') [] -> return $ backward
-    V.EvKey V.KDown [] -> return $ forward
-    V.EvKey (V.KChar 'j') [] -> return $ forward
+    V.EvKey V.KUp [] -> return backward
+    V.EvKey (V.KChar 'k') [] -> return backward
+    V.EvKey V.KDown [] -> return forward
+    V.EvKey (V.KChar 'j') [] -> return forward
     V.EvKey V.KHome [] ->
       return $
         listFindByStrategy fwdInclusive isItem $

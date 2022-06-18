@@ -1,16 +1,18 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- | Swarm unit tests
 module Main where
 
-import Control.Lens ((&), (.~))
+import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Hashable
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Linear
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -18,10 +20,13 @@ import Test.Tasty.QuickCheck
 import Witch (from)
 
 import Swarm.Game.CESK
+import Swarm.Game.Display
+import Swarm.Game.Entity (EntityMap)
+import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
-import Swarm.Game.Step
+import Swarm.Game.Step (stepCESK)
 import Swarm.Game.Value
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -31,13 +36,13 @@ import Swarm.TUI.Model
 
 main :: IO ()
 main = do
-  mg <- runExceptT (initGameState 0)
+  mg <- runExceptT classicGame0
   case mg of
     Left err -> assertFailure (from err)
     Right g -> defaultMain (tests g)
 
 tests :: GameState -> TestTree
-tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel]
+tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory]
 
 parser :: TestTree
 parser =
@@ -91,6 +96,15 @@ parser =
                 ]
             )
         )
+    , testCase
+        "Parse pair syntax #225"
+        (valid "def f : (int -> bool) * (int -> bool) = (\\x. false, \\x. true) end")
+    , testCase
+        "Nested pair syntax"
+        (valid "(1,2,3,4)")
+    , testCase
+        "Binder at end of block"
+        (valid "r <- build {move}")
     , testGroup
         "failure location - #268"
         [ testCase
@@ -202,6 +216,11 @@ prettyConst =
         ( equalPretty "(2 ^ 4) ^ 8" $
             mkOp' Exp (mkOp' Exp (TInt 2) (TInt 4)) (TInt 8)
         )
+    , testCase
+        "pairs #225 - nested pairs are printed right-associative"
+        ( equalPretty "(1, 2, 3)" $
+            TPair (TInt 1) (TPair (TInt 2) (TInt 3))
+        )
     ]
  where
   equalPretty :: String -> Term -> Assertion
@@ -275,6 +294,15 @@ eval g =
         , testProperty
             "!="
             (\a b -> binOp a "!=" b `evaluatesToP` VBool ((a :: (Integer, Integer)) /= b))
+        ]
+    , testGroup
+        "boolean operators"
+        [ testCase
+            "and"
+            ("true && false" `evaluatesTo` VBool False)
+        , testCase
+            "or"
+            ("true || false" `evaluatesTo` VBool True)
         ]
     , testGroup
         "sum types #224"
@@ -399,6 +427,21 @@ eval g =
             "try / div by 0"
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
         ]
+    , testGroup
+        "strings"
+        [ testCase
+            "format int"
+            ("format 1" `evaluatesTo` VString "1")
+        , testCase
+            "format sum"
+            ("format (inl 1)" `evaluatesTo` VString "inl 1")
+        , testCase
+            "format function"
+            ("format (\\x. x + 1)" `evaluatesTo` VString "\\x. x + 1")
+        , testCase
+            "concat"
+            ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VString "x = 5!")
+        ]
     ]
  where
   throwsError :: Text -> (Text -> Bool) -> Assertion
@@ -429,19 +472,27 @@ eval g =
         assertEqual "" val v
         assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
 
+  processTerm1 :: Text -> Either Text ProcessedTerm
+  processTerm1 txt = processTerm txt >>= maybe wsErr Right
+   where
+    wsErr = Left "expecting a term, but got only whitespace"
+
   evaluate :: Text -> IO (Either Text (Value, Int))
-  evaluate = either (return . Left) evalPT . processTerm
+  evaluate = either (return . Left) evalPT . processTerm1
 
   evalPT :: ProcessedTerm -> IO (Either Text (Value, Int))
   evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
-  evaluateCESK cesk = flip evalStateT (g & gameMode .~ Creative) . flip evalStateT r . runCESK 0 $ cesk
+  evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
    where
-    r = mkRobot "" zero zero cesk []
+    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False
+
+  entMap :: EntityMap
+  entMap = g ^. entityMap
 
   runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
-  runCESK _ (Up exn _ []) = return (Left (formatExn exn))
+  runCESK _ (Up exn _ []) = return (Left (formatExn entMap exn))
   runCESK !steps cesk = case finalValue cesk of
     Just (v, _) -> return (Right (v, steps))
     Nothing -> stepCESK cesk >>= runCESK (steps + 1)
@@ -523,3 +574,62 @@ testModel =
   toT = fromString . show
   addInOutInt :: Int -> REPLHistory -> REPLHistory
   addInOutInt i = addREPLItem (REPLOutput $ toT i <> ":int") . addREPLItem (REPLEntry $ toT i)
+
+inventory :: TestTree
+inventory =
+  testGroup
+    "Inventory"
+    [ testCase
+        "insert 0 / hash"
+        ( assertEqual
+            "insertCount 0 x empty has same hash as x"
+            (x ^. E.entityHash)
+            (hash (E.insertCount 0 x E.empty))
+        )
+    , testCase
+        "insert / hash"
+        ( assertEqual
+            "insert x empty has same hash as 2*x"
+            (2 * (x ^. E.entityHash))
+            (hash (E.insert x E.empty))
+        )
+    , testCase
+        "insert / insert"
+        ( assertEqual
+            "insert x y gives same hash as insert y x"
+            (hash (E.insert x (E.insert y E.empty)))
+            (hash (E.insert y (E.insert x E.empty)))
+        )
+    , testCase
+        "insert 2 / delete"
+        ( assertEqual
+            "insert 2, delete 1 gives same hash as insert 1"
+            (hash (E.insert x E.empty))
+            (hash (E.delete x (E.insertCount 2 x E.empty)))
+        )
+    , testCase
+        "insert 2 / delete 3"
+        ( assertEqual
+            "insert 2, delete 3 gives hash of x"
+            (x ^. E.entityHash)
+            (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty)))
+        )
+    , testCase
+        "deleteAll"
+        ( assertEqual
+            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insertCount 0 x"
+            (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
+            (hash (E.deleteAll x (E.insertCount 2 y (E.insertCount 2 x E.empty))))
+        )
+    , testCase
+        "union"
+        ( assertEqual
+            "insert 2 x union insert 3 x same as insert 5 x"
+            (hash (E.insertCount 5 x E.empty))
+            (hash (E.union (E.insertCount 2 x E.empty) (E.insertCount 3 x E.empty)))
+        )
+    ]
+ where
+  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
+  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
+  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []

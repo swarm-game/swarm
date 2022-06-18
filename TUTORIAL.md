@@ -8,11 +8,11 @@ slightly different), but the intention is to keep it updated as the
 game evolves.  If you find any mistakes, or things that are confusing,
 or ways that the tutorial no longer corresponds to the game, please
 [file a bug
-report](https://github.com/byorgey/swarm/issues/new/choose) or [open a
+report](https://github.com/swarm-game/swarm/issues/new/choose) or [open a
 pull
-request](https://github.com/byorgey/swarm/blob/main/CONTRIBUTING.md)!
+request](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md)!
 Eventually, this tutorial file should be [replaced by an in-game
-tutorial](https://github.com/byorgey/swarm/issues/25).
+tutorial](https://github.com/swarm-game/swarm/issues/25).
 
 It is recommended that you use a relatively large terminal window
 (*e.g.* 132 x 43 at a minimum, ideally larger).  On the other hand,
@@ -41,13 +41,20 @@ sophisticated robots which in turn will OK I think you get the idea.
 Getting started
 ---------------
 
-When you first start up Swarm, you should be greeted by a screen that
-looks something like this:
+To skip past the main menu for now and ensure you're playing on the
+same world described in this tutorial, start Swarm with a command line
+like
+```
+stack run -- -s 0
+```
+This tells Swarm to use 0 as the seed for the random number generator
+(and automatically load a new game rather than showing the main menu).
+
+You should then be greeted by a screen that looks something like this:
 
 ![World with seed 0](images/tutorial/world0.png)
 
-In the world view, you see the default [*World 0*](./TUTORIAL.md#world-generation)
-and the little white `Ω` in the middle represents your base. You will
+The little white `Ω` in the middle represents your base. You will
 need to [explore](./TUTORIAL.md#exploring) to find out what all the `?` are.
 
 Start by using the <kbd>Tab</kbd> key to cycle through the four panels
@@ -60,25 +67,27 @@ will cover the use of your devices in more detail.
 Building your first robot
 -------------------------
 
-Pretty much the only thing you can do is build robots.  Let's build
+Pretty much the only thing you can do at this point is build robots.  Let's build
 one!  Tab back to the REPL (or hit the <kbd>Meta</kbd>+<kbd>R</kbd>
 shortcut) and type
 ```
-build "hello" {turn north; move}
+build {move}
 ```
 then hit Enter.  You should see a robot appear and travel to the
 north one step before stopping.  It should look something like this:
 
 ![Hello robot!](images/tutorial/hello.png)
 
-You can also see that on the next line after your input, the REPL printed out
+You can also see that on the next line after your input, the REPL
+printed out something like
 ```
-"hello" : string
+<r1> : robot
 ```
-which is the result of your command, along with its type.  The `build` command
-always returns a string which is the name of the robot that was built;
-it may be different than the name you specified if there is already
-another robot with that name.
+
+which is the result of your command, along with its type.  The `build`
+command always returns a reference to the robot that it built. Note
+that `<r1>` is not special syntax, just an opaque name for the robot
+with ID 1.
 
 You can see that a semicolon is used to chain together commands, that
 is, if `c1` and `c2` are both commands, then `c1; c2` is the command
@@ -93,22 +102,22 @@ Types
 -----
 
 Ultimately, the `build` command is not special syntax, but just a
-function that takes two arguments: a string, and a delayed command. We
-can actually see the type of the `build` command (or any command) by
-just typing it at the prompt, without hitting `Enter`.  Any time the
+function that takes an argument representing a delayed command. We
+can actually see the type of `build` (or anything else) by
+typing it at the prompt, without hitting `Enter`.  Any time the
 expression currently typed at the prompt parses and type checks, the
 REPL will show you the type of the expression in the upper right, like
 this:
 
 ![Build type](images/tutorial/build.png)
 
-It will tell you that the type of `build` is
+In this case, we can see that the type of `build` is
 ```
-∀ a0. string -> {cmd a0} -> cmd string
+∀ a0. {cmd a0} -> cmd robot
 ```
-which says that `build` takes two arguments---a `string`, and a
+which says that `build` takes one argument---a
 delayed command that returns a value of any type---and results in a command
-which returns a `string`.  Every command returns a value, though some
+which returns a `robot`.  Every command returns a value, though some
 might return a value of the unit type, written `()`.  For example, if
 you type `move` at the prompt, you will see that its type is `cmd ()`,
 since `move` does not return any interesting result after executing.
@@ -134,7 +143,7 @@ Something you can't do yet
 
 Try entering the following at the REPL:
 ```
-build "nope" {make "curry"}
+build {make "curry"}
 ```
 The info panel should automatically switch to showing your `logger`
 device, with an error message at the bottom saying something like
@@ -160,11 +169,11 @@ our life a bit easier.  To start, type the following:
 def m : cmd () = move end
 ```
 
-The `: cmd ()` annotation on `m` is optional; in this situation the
-game could have easily figured out the type of `m` if we had just
-written `def m = ...` (though there are some situations where a type
-signature may be required). The `end` is required, and is needed to
-disambiguate where the end of the definition is.
+The `: cmd ()` annotation on `m` is optional; in this case the game
+can easily figure out the type of `m` if we just write `def m = move end`
+(though there are some situations where a type signature may be
+required). The `end` is required, and is needed to disambiguate where
+the end of the definition is.
 
 Now try this:
 ```
@@ -178,14 +187,18 @@ def m2 = m; m end;   def m4 = m2; m2 end;   def m8 = m4; m4 end
 Great, now we have commands that will execute `move` multiple times.
 Now let's use them:
 ```
-build "runner" { turn west; m4; m }
+build { turn left; m4; m }
 ```
-This should build a robot that moves to the green mass to the west.
+This should build a robot that moves toward the green mass to the west.
+The base is still turned north, so the robot needs to turn left
+to be oriented to the west. Once you have a compass to install on
+the robot, you will be able to `turn west` directly.
 
 You might wonder at this point if it is possible to create a function
-that takes a number as input and moves that many steps forward.  It
-most certainly is, but right now your robots would not be capable
-of executing it.  You'll have to figure out how to upgrade them!
+that takes a number as input and moves that many steps forward, like
+`go : int -> cmd ()`.  Well, it most certainly is possible, but right
+now your robots would not be capable of executing it.  You'll have to
+figure out how to upgrade them!
 
 Getting the result of a command
 -------------------------------
@@ -199,12 +212,11 @@ var <- command; ... more commands that can refer to var ...
 monad, similar to the `IO` in Haskell. But if that doesn't mean
 anything to you, don't worry about it!</sup>
 
-Let's build one more robot called `"runner"`. It will get renamed
-to something else to avoid a name conflict, but we can capture its
-name in a variable using the above syntax.
-Then we can use the `view` command to focus on it instead of the base:
+Let's build another robot, but this time we will capture it in a
+variable using the above syntax.  Then we can use the `view` command
+to focus on it instead of the base:
 ```
-r <- build "runner" { turn west; m4; m }; view r
+r <- build { turn left; m4; m }; view r
 ```
 Note that `base` executes the `view r` command as soon as it
 finishes executing the `build` command, which is about the same time
@@ -214,39 +226,51 @@ view should look something like this:
 
 ![View a robot](images/tutorial/viewr.png)
 
-The view is now centered on `runner1` instead of on our `base`, and the
-top-left panel shows `runner1`'s inventory and installed devices
+The view is now centered on the other robot instead of on our `base`,
+and the top-left panel shows its inventory and installed devices
 instead of `base`'s.  (However, commands entered at the REPL will
-still be executed by `base`.)  To return to viewing `base` and its
-inventory, you can type `view "base"` at the prompt, or focus the
-world panel (either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>)
-and hit <kbd>C</kbd>.
+still be executed by `base`.)  The name of your robot will likely be
+different than `sleepy_austin`; otherwise unnamed robots are given
+randomly chosen names.  To return to viewing `base` and its inventory,
+you can type `view base` at the prompt, or focus the world panel
+(either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
+<kbd>C</kbd>.  If you ever want to view the other robot again, you can
+type `view r`: the variable `r` will be in scope at the REPL prompt
+from now on.
+
+You can set the display name of a robot using the `setname` command.
+The randomly generated names are amusing, but being able to set the
+display name explicitly can help with debugging.
 
 Exploring
 ---------
 
 So what is all this stuff everywhere?  Let's find out!  When you
 `build` a robot, by default it starts out with a `scanner` device,
-which you may have noticed in `runner1`'s inventory.  You can `scan`
-items in the world to learn about them, and later `upload` what you
-have learned to the base.
+which you may have noticed in the recently viewed robot's inventory.
+You can `scan` items in the world to learn about them, and later
+`upload` what you have learned to the base.
 
-Let's build a robot to learn about those green `?` things to the west:
+Let's build a robot to learn about those green `?` things to the south:
 ```
-build "s" {turn west; m4; move; scan west; turn back; m4; upload "base"}
+build {turn back; m; scan forward; upload base}
 ```
 The `turn` command we used to turn the robot takes a direction as an
-argument, which can be either an absolute direction
-(`north`, `south`, `east`, or `west`) or a relative direction
-(`forward`, `back`, `left`, `right`, or `down`).
+argument, which can be either a relative direction (`forward`, `back`,
+`left`, `right`, or `down`) or an absolute direction (`north`, `south`,
+`east`, or `west`) for which you need a `compass`.
+Instead of `upload base` we could have also written `upload parent`;
+every robot has a special variable `parent` which refers to the robot
+that built it.
 
 Notice that the robot did not actually need to walk on top of a `?` to
-learn about it, since it could `scan west` to scan the cell one unit
-to the west (you can also `scan down` to scan an item directly underneath the
+learn about it, since it could `scan forward` to scan the cell one unit
+in its direction (you can also `scan down` to scan an item directly beneath the
 robot).  Also, it was able to `upload` at a distance of one cell away from
 the base.
 
-After this robot finishes, you should have a new entry in your inventory:
+After this robot finishes, you should have a new entry in your
+inventory:
 
 ![Scan a tree](images/tutorial/scantree.png)
 
@@ -261,14 +285,14 @@ Getting some resources
 
 So those tree things look like they might be useful.  Let's get one!
 ```
-build "fetch" {turn west; m8; thing <- grab; turn back; m8; give "base" thing }
+build {turn back; m2; thing <- grab; turn back; m2; give base thing }
 ```
 You can see that the
 `grab` command returns the name of the thing it grabbed, which is
 especially helpful when grabbing something unknown. (In this case we
-also could have just written `...; grab; ...; give "base" "tree"; ...`.)
+also could have just written `...; grab; ...; give base "tree"`.)
 
-You should see a robot head west from your base, grab a tree, and
+You should see a robot head south from your base, grab a tree, and
 return to the base.  If all works properly, after the newly built
 robot executes the `give` command, the number next to the `tree` entry
 in your inventory should turn from 0 to 1.  Note that in this case, we
@@ -318,26 +342,29 @@ First, we have to make a `logger` device.  A `logger` can be made from
 one `log`, which you should already have in your inventory, so simply
 type `make "logger"` at the REPL.
 
-Now, how de we `build` a robot with the `logger` installed?  The
+Now, how do we `build` a robot with the `logger` installed?  The
 easiest way is to have the robot explicitly use the `log` command; the
 `build` command analyzes the given program and automatically installs
 any devices that will be necessary to execute it.  (It is also
 possible to manually install devices with the `install` command.)  So
 let's type the following:
 ```
-build "crasher" {log "hi!"; turn south; move; grab; move}
+crasher <- build {setname "crasher"; log "hi!"; turn left; move; grab; move}
 ```
-The world should now look something like the below.  Notice that the
+(The `setname "crasher"` command is not strictly necessary, but will
+help us understand the logs we look at later --- otherwise the log
+entries would be indexed by some randomly generated robot name.)  The
+world should now look something like the below.  Notice that the
 `logger` is gone from your inventory---it was automatically installed
-on `crasher`.  Notice also that `crasher` only moved one unit south,
+on `crasher`.  Notice also that `crasher` only moved one unit west,
 even though we told it to move two steps!  What went wrong?
 
 ![Let's crash a robot!](images/tutorial/crasher.png)
 
-One thing we could do at this point is to `view "crasher"`.  However,
+One thing we could do at this point is to `view crasher`.  However,
 it will probably become a bit more difficult to use the `view` command in
-future versions of the game, and in any case, what if we didn't know
-or remember the name of the robot that crashed?  Fortunately, there is
+future versions of the game, and in any case, what if we didn't have
+a reference to the robot that crashed?  Fortunately, there is
 something else we can do: send out another robot to `salvage` the
 crashed robot.
 
@@ -359,10 +386,9 @@ the `upload` command, which we have seen before.  In addition to
 uploading knowledge about entities, it turns out that it also uploads
 the log from a `logger`.
 ```
-build "fetch" {turn west; m8; m; thing <- grab; turn back; m8; m; give "base" thing}
-make "log"
-make "logger"
-build "salvager" {turn south; move; log "salvaging..."; salvage; turn back; move; upload "base"}
+build {turn back; m4; thing <- grab; turn back; m4; give base thing}
+make "log"; make "logger"
+build {setname "salvager"; turn left; move; log "salvaging..."; salvage; turn back; move; upload base}
 ```
 The world should now look something like this:
 
@@ -391,39 +417,8 @@ there will be a way to both save and load commands, but this is better
 than nothing for now.
 
 There is some rudimentary [Language Server-based editor
-support](https://github.com/byorgey/swarm/blob/main/docs/EDITORS.md)
+support](https://github.com/swarm-game/swarm/blob/main/docs/EDITORS.md)
 giving syntax and error highlighting for `.sw` files; at the moment
 Emacs is supported along with VSCode.
-
-World generation
-----------------
-
-If you do not like the starting place of the base, there is a way
-to start somewhere else. *In a different world!*
-
-```bash
-$ swarm --seed $RANDOM
-```
-
-You can specify the *world seed* leading to radically different
-starting conditions. You can start next to a copper patch, between
-lakes or in the middle of a plain. Either way, you have established
-your base in the shade of what you assume is a tree and now can send
-out robots to explore!
-
-![World generated with seed 16](images/tutorial/world16.png)
-
-Creative Mode
--------------
-
-For now, there is a secret way to switch between Classic mode and
-Creative mode.  In Classic mode, the kinds of actions your robots can
-do, and the kinds of programs they can interpret, is restricted by
-what devices they have installed.  In Creative mode you can do
-anything you like, including fabricate arbitrary items out of thin air
-using the `create` command. Also it will not hide unknown entities,
-as you can see in the World 16 above.
-
-To switch, highlight the world view panel, then hit the <kbd>M</kbd> key.
 
 Now go forth and build your swarm!

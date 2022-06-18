@@ -11,3 +11,9 @@ stack.yaml.lock
 stan.html
 
 .swarm_history
+
+*.aux
+*.log
+docs/ott/*.tex
+
+.dir-locals.el

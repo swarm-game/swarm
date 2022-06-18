@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE NumericUnderscores #-}
 
 -- |
@@ -32,15 +30,15 @@ app =
     { appDraw = drawUI
     , appChooseCursor = chooseCursor
     , appHandleEvent = handleEvent
-    , appStartEvent = \s -> s <$ enablePasteMode
+    , appStartEvent = (<$ enablePasteMode)
     , appAttrMap = const swarmAttrMap
     }
 
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
-appMain :: Seed -> IO ()
-appMain seed = do
-  res <- runExceptT $ initAppState seed
+appMain :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
+appMain seed scenario toRun cheat = do
+  res <- runExceptT $ initAppState seed scenario toRun cheat
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do

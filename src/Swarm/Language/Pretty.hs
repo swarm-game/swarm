@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -65,6 +63,7 @@ instance PrettyPrec BaseTy where
   prettyPrec _ BDir = "dir"
   prettyPrec _ BString = "string"
   prettyPrec _ BBool = "bool"
+  prettyPrec _ BRobot = "robot"
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
@@ -119,9 +118,11 @@ instance PrettyPrec Term where
   prettyPrec _ (TString s) = fromString (show s)
   prettyPrec _ (TAntiString v) = "$str:" <> pretty v
   prettyPrec _ (TBool b) = bool "false" "true" b
+  prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
+  prettyPrec _ (TRef r) = "@" <> pretty r
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
-  prettyPrec _ (TPair t1 t2) = pparens True $ ppr t1 <> "," <+> ppr t2
+  prettyPrec _ t@TPair {} = prettyTuple t
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
@@ -163,6 +164,12 @@ instance PrettyPrec Term where
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
 
+prettyTuple :: Term -> Doc a
+prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
+ where
+  unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
+  unnestTuple t = [t]
+
 prettyPrecApp :: Int -> Term -> Term -> Doc a
 prettyPrecApp p t1 t2 =
   pparens (p > 10) $
@@ -185,3 +192,5 @@ instance PrettyPrec TypeErr where
     "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
   prettyPrec _ (DefNotTopLevel _ t) =
     "Definitions may only be at the top level:" <+> ppr t
+  prettyPrec _ (CantInfer _ t) =
+    "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t

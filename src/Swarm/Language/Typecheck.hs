@@ -7,7 +7,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -229,6 +228,9 @@ data TypeErr
     Mismatch Location (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel Location Term
+  | -- | A term was encountered which we cannot infer the type of.
+    --   This should never happen.
+    CantInfer Location Term
   deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
@@ -242,6 +244,7 @@ getTypeErrLocation te = case te of
   Infinite _ _ -> Nothing
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
+  CantInfer l _ -> Just l
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -301,8 +304,12 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
         _ <- decomposeCmdTy cmdb
 
         -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
-        -- definitions will shadow previous ones.
-        return $ Module cmdb (ctx1 `Ctx.union` ctx2)
+        -- definitions will shadow previous ones.  Include the binder
+        -- (if any) as well, since binders are made available at the top
+        -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
+        -- then they will be able to refer to r again later.
+        let ctxX = maybe Ctx.empty (`Ctx.singleton` Forall [] a) mx
+        return $ Module cmdb (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.
@@ -319,6 +326,11 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TString _ -> return UTyString
   TAntiString _ -> return UTyString
   TBool _ -> return UTyBool
+  TRobot _ -> return UTyRobot
+  -- We should never encounter a TRef since they do not show up in
+  -- surface syntax, only as values while evaluating (*after*
+  -- typechecking).
+  TRef _ -> throwError $ CantInfer l t
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
   -- if t : ty, then  {t} : {ty}.
@@ -429,26 +441,30 @@ inferConst c = toU $ case c of
   Turn -> [tyQ| dir -> cmd () |]
   Grab -> [tyQ| cmd string |]
   Place -> [tyQ| string -> cmd () |]
-  Give -> [tyQ| string -> string -> cmd () |]
-  Install -> [tyQ| string -> string -> cmd () |]
+  Give -> [tyQ| robot -> string -> cmd () |]
+  Install -> [tyQ| robot -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
   Has -> [tyQ| string -> cmd bool |]
   Count -> [tyQ| string -> cmd int |]
-  Reprogram -> [tyQ| string -> {cmd a} -> cmd () |]
-  Build -> [tyQ| string -> {cmd a} -> cmd string |]
+  Reprogram -> [tyQ| robot -> {cmd a} -> cmd () |]
+  Build -> [tyQ| {cmd a} -> cmd robot |]
   Drill -> [tyQ| dir -> cmd () |]
   Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
   Log -> [tyQ| string -> cmd () |]
-  View -> [tyQ| string -> cmd () |]
+  View -> [tyQ| robot -> cmd () |]
   Appear -> [tyQ| string -> cmd () |]
   Create -> [tyQ| string -> cmd () |]
   Whereami -> [tyQ| cmd (int * int) |]
   Blocked -> [tyQ| cmd bool |]
-  Scan -> [tyQ| dir -> cmd () |]
-  Upload -> [tyQ| string -> cmd () |]
+  Scan -> [tyQ| dir -> cmd (() + string) |]
+  Upload -> [tyQ| robot -> cmd () |]
   Ishere -> [tyQ| string -> cmd bool |]
+  Self -> [tyQ| robot |]
+  Parent -> [tyQ| robot |]
+  Base -> [tyQ| robot |]
   Whoami -> [tyQ| cmd string |]
+  Setname -> [tyQ| string -> cmd () |]
   Random -> [tyQ| int -> cmd int |]
   Run -> [tyQ| string -> cmd () |]
   If -> [tyQ| bool -> {a} -> {a} -> a |]
@@ -461,6 +477,8 @@ inferConst c = toU $ case c of
   Return -> [tyQ| a -> cmd a |]
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
   Raise -> [tyQ| string -> cmd a |]
+  Undefined -> [tyQ| a |]
+  ErrorStr -> [tyQ| string -> a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT
@@ -469,12 +487,20 @@ inferConst c = toU $ case c of
   Gt -> cmpBinT
   Leq -> cmpBinT
   Geq -> cmpBinT
+  And -> [tyQ| bool -> bool -> bool|]
+  Or -> [tyQ| bool -> bool -> bool|]
   Add -> arithBinT
   Sub -> arithBinT
   Mul -> arithBinT
   Div -> arithBinT
   Exp -> arithBinT
+  Format -> [tyQ| a -> string |]
+  Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
+  Teleport -> [tyQ| robot -> (int * int) -> cmd () |]
+  As -> [tyQ| robot -> {cmd a} -> cmd a |]
+  RobotNamed -> [tyQ| string -> cmd robot |]
+  RobotNumbered -> [tyQ| int -> cmd robot |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]

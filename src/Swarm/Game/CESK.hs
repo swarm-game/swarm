@@ -1,5 +1,4 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Swarm.Game.CESK
@@ -76,7 +75,6 @@ module Swarm.Game.CESK (
   -- ** Construction
   initMachine,
   initMachine',
-  idleMachine,
   cancel,
   resetBlackholes,
 
@@ -283,10 +281,6 @@ initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e s k 
     _ -> In t e s (FExec : FLoadEnv ctx capCtx : k)
 initMachine' (ProcessedTerm t _ _ _) e s k = In t e s k
 
--- | A machine which does nothing.
-idleMachine :: CESK
-idleMachine = Out VUnit emptyStore []
-
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
 cancel cesk = Out VUnit s' []
@@ -326,7 +320,7 @@ prettyCESK (Out v _ k) =
     ]
 prettyCESK (Up e _ k) =
   unlines
-    [ "! " ++ from (formatExn e)
+    [ "! " ++ from (formatExn mempty e)
     , "  " ++ prettyCont k
     ]
 prettyCESK (Waiting t cek) =

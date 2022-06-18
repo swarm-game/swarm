@@ -7,7 +7,7 @@ All notable changes to the "swarm-language" extension will be documented in this
 - [Highlighter] Update reserved word list (include `drill`, `has`, etc.)
 - [Highlighter] Recognize sum types (`a + b`)
 - [Highlighter] Recognize explicit `forall a b.`
-- moved the package to `byorgey/swarm` repository
+- moved the package to `swarm-game/swarm` repository
 - added a logo (featuring base and four robots)
 
 ## version 0.0.2

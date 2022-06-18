@@ -1,8 +1,5 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Swarm.Language.Pipeline
@@ -29,6 +26,7 @@ import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Set (Set)
 import Data.Text (Text)
+import Data.Yaml as Y
 import Witch
 
 import Swarm.Language.Capability
@@ -52,7 +50,16 @@ data ProcessedTerm
       -- ^ Capabilities required by the term
       CapCtx
       -- ^ Capability context for any definitions embedded in the term
-  deriving (Data)
+  deriving (Data, Show)
+
+instance FromJSON ProcessedTerm where
+  parseJSON = withText "Term" tryProcess
+   where
+    tryProcess :: Text -> Y.Parser ProcessedTerm
+    tryProcess t = case processTerm t of
+      Left err -> fail $ "Could not parse term: " ++ from err
+      Right Nothing -> fail "Term was only whitespace"
+      Right (Just pt) -> return pt
 
 -- | Given a 'Text' value representing a Swarm program,
 --
@@ -61,8 +68,9 @@ data ProcessedTerm
 --   3. Elaborate it (see "Swarm.Language.Elaborate")
 --   4. Check what capabilities it requires (see "Swarm.Language.Capability")
 --
---   Return either the end result or a pretty-printed error message.
-processTerm :: Text -> Either Text ProcessedTerm
+--   Return either the end result (or @Nothing@ if the input was only
+--   whitespace) or a pretty-printed error message.
+processTerm :: Text -> Either Text (Maybe ProcessedTerm)
 processTerm = processTerm' empty empty
 
 -- | Like 'processTerm', but use a term that has already been parsed.
@@ -70,10 +78,10 @@ processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
-processTerm' :: TCtx -> CapCtx -> Text -> Either Text ProcessedTerm
+processTerm' :: TCtx -> CapCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
-  t <- readTerm txt
-  first (prettyTypeErr txt) $ processParsedTerm' ctx capCtx t
+  mt <- readTerm txt
+  first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
 
 prettyTypeErr :: Text -> TypeErr -> Text
 prettyTypeErr code te = teLoc <> prettyText te

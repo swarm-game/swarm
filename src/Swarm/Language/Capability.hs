@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Language.Capability
@@ -17,6 +18,7 @@
 module Swarm.Language.Capability (
   Capability (..),
   CapCtx,
+  capabilityName,
   requiredCaps,
   constCaps,
 ) where
@@ -44,6 +46,8 @@ data Capability
   = -- | Execute the 'Move' command
     CMove
   | -- | Execute the 'Turn' command
+    --
+    -- NOTE: using cardinal directions is separate 'COrient' capability
     CTurn
   | -- | Execute the 'Selfdestruct' command
     CSelfdestruct
@@ -87,6 +91,8 @@ data Capability
     CCond
   | -- | Evaluate comparison operations
     CCompare
+  | -- | Use cardinal direction constants.
+    COrient
   | -- | Evaluate arithmetic operations
     CArith
   | -- | Store and look up definitions in an environment
@@ -97,12 +103,23 @@ data Capability
     CRecursion
   | -- | Execute the 'Reprogram' command
     CReprogram
-  | -- | Capability to introspect and see it's own name
+  | -- | Capability to introspect and see its own name
     CWhoami
+  | -- | Capability to set its own name
+    CSetname
+  | -- | Capability to move unrestricted to any place
+    CTeleport
+  | -- | God-like capabilities.  For e.g. commands intended only for
+    --   checking challenge mode win conditions, and not for use by
+    --   players.
+    CGod
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
 
+capabilityName :: Capability -> Text
+capabilityName = from @String . map toLower . drop 1 . show
+
 instance ToJSON Capability where
-  toJSON = String . from . map toLower . drop 1 . show
+  toJSON = String . capabilityName
 
 instance FromJSON Capability where
   parseJSON = withText "Capability" tryRead
@@ -171,13 +188,13 @@ requiredCaps ctx tm = case tm of
 --   capabilities to *evaluate* it), which does not seem worth it at
 --   all.
 requiredCaps' :: CapCtx -> Term -> Set Capability
-requiredCaps' ctx = go
+requiredCaps' = go
  where
-  go tm = case tm of
+  go ctx tm = case tm of
     -- Some primitive literals that don't require any special
     -- capability.
     TUnit -> S.empty
-    TDir _ -> S.empty
+    TDir d -> if isCardinal d then S.singleton COrient else S.empty
     TInt _ -> S.empty
     TAntiInt _ -> S.empty
     TString _ -> S.empty
@@ -203,20 +220,30 @@ requiredCaps' ctx = go
     -- the application site.  Again, this is overly conservative in
     -- the case that the argument is unused, but in that case the
     -- unused argument could be removed.
-    TLam _ _ t -> S.insert CLambda $ go t
+    --
+    -- Note, however, that we do need to *delete* the argument from
+    -- the context, in case the context already contains a definition
+    -- with the same name: inside the lambda that definition will be
+    -- shadowed, so we do not want the name to be associated to any
+    -- capabilities.
+    TLam x _ t -> S.insert CLambda $ go (delete x ctx) t
     -- An application simply requires the union of the capabilities
     -- from the left- and right-hand sides.  This assumes that the
     -- argument will be used at least once by the function.
-    TApp t1 t2 -> go t1 `S.union` go t2
+    TApp t1 t2 -> go ctx t1 `S.union` go ctx t2
     -- Similarly, for a let, we assume that the let-bound expression
-    -- will be used at least once in the body.
-    TLet r _ _ t1 t2 ->
+    -- will be used at least once in the body. We delete the let-bound
+    -- name from the context when recursing for the same reason as
+    -- lambda.
+    TLet r x _ t1 t2 ->
       (if r then S.insert CRecursion else id) $
-        S.insert CEnv $ go t1 `S.union` go t2
+        S.insert CEnv $ go (delete x ctx) t1 `S.union` go (delete x ctx) t2
+    -- We also delete the name in a TBind, if any, while recursing on
+    -- the RHS.
+    TBind mx t1 t2 -> go ctx t1 `S.union` go (maybe id delete mx ctx) t2
     -- Everything else is straightforward.
-    TPair t1 t2 -> go t1 `S.union` go t2
-    TBind _ t1 t2 -> go t1 `S.union` go t2
-    TDelay _ t -> go t
+    TPair t1 t2 -> go ctx t1 `S.union` go ctx t2
+    TDelay _ t -> go ctx t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning S.empty is safe.
@@ -232,8 +259,13 @@ constCaps =
     AppF -> []
     Force -> []
     Return -> []
-    Log -> [CLog]
+    Parent -> []
+    Base -> []
+    Setname -> []
+    Undefined -> []
+    ErrorStr -> []
     -- Some straightforward ones.
+    Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]
     Move -> [CMove]
     Turn -> [CTurn]
@@ -245,7 +277,6 @@ constCaps =
     Has -> []
     Count -> [CCount]
     If -> [CCond]
-    Create -> [CCreate]
     Blocked -> [CSensefront]
     Scan -> [CScan]
     Ishere -> [CSensehere]
@@ -254,14 +285,29 @@ constCaps =
     Salvage -> [CSalvage]
     Reprogram -> [CReprogram]
     Drill -> [CDrill]
+    Neg -> [CArith]
+    Add -> [CArith]
+    Sub -> [CArith]
+    Mul -> [CArith]
+    Div -> [CArith]
+    Exp -> [CArith]
+    Whoami -> [CWhoami]
+    Self -> [CWhoami]
+    -- Some God-like abilities.
+    As -> [CGod]
+    RobotNamed -> [CGod]
+    RobotNumbered -> [CGod]
+    Create -> [CGod]
+    -- String operations, which for now are enabled by CLog
+    Format -> [CLog]
+    Concat -> [CLog]
     -- Some additional straightforward ones, which however currently
     -- cannot be used in classic mode since there is no craftable item
     -- which conveys their capability.
+    Teleport -> [CTeleport] -- Some space-time machine like Tardis?
     Appear -> [CAppear] -- paint?
     Whereami -> [CSenseloc] -- GPS?
     Random -> [CRandom] -- randomness device (with bitcoins)?
-    Neg -> [CArith] -- ALU? pocket calculator?
-    Whoami -> [CWhoami] -- mirror, needs a recipe
 
     -- comparator?
     Eq -> [CCompare]
@@ -270,11 +316,8 @@ constCaps =
     Gt -> [CCompare]
     Leq -> [CCompare]
     Geq -> [CCompare]
-    Add -> [CArith]
-    Sub -> [CArith]
-    Mul -> [CArith]
-    Div -> [CArith]
-    Exp -> [CArith]
+    And -> []
+    Or -> []
     -- Some more constants which *ought* to have their own capability but
     -- currently don't.
     Say -> []

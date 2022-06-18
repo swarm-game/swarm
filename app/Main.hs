@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
@@ -7,6 +8,7 @@ import Data.Text (
   pack,
  )
 import qualified Data.Text.IO as Text
+import GitHash
 import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.Language.LSP (lspMain)
@@ -14,7 +16,11 @@ import Swarm.Language.Pipeline (processTerm)
 import System.Exit
 
 data CLI
-  = Run Int
+  = Run
+      (Maybe Int) -- seed
+      (Maybe FilePath) -- scenario
+      (Maybe FilePath) -- file to run
+      Bool -- cheat mode
   | Format Input
   | LSP
 
@@ -24,23 +30,34 @@ cliParser =
     ( command "format" (info (format <**> helper) (progDesc "Format a file"))
         <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
     )
-    <|> Run <$> seed
+    <|> Run <$> seed <*> scenario <*> run <*> cheat
  where
   format :: Parser CLI
   format =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
-  seed :: Parser Int
-  seed = option auto (long "seed" <> short 's' <> value 0 <> help "Seed for world generation")
+  seed :: Parser (Maybe Int)
+  seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
+  scenario :: Parser (Maybe String)
+  scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
+  run :: Parser (Maybe String)
+  run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  cheat :: Parser Bool
+  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode")
 
 cliInfo :: ParserInfo CLI
 cliInfo =
   info
     (cliParser <**> helper)
-    ( header "Swarm game - pre-alpha version"
+    ( header ("Swarm game - pre-alpha version" <> commitInfo)
         <> progDesc "To play the game simply run without any command."
         <> fullDesc
     )
+ where
+  mgit = $$tGitInfoCwdTry
+  commitInfo = case mgit of
+    Left _ -> ""
+    Right git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
 data Input = Stdin | File FilePath
 
@@ -68,6 +85,6 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run seed -> appMain seed
+    Run seed scenario toRun cheat -> appMain seed scenario toRun cheat
     Format fo -> formatFile fo
     LSP -> lspMain
