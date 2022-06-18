@@ -140,8 +140,15 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
         let gs = s ^. gameState
         gs' <- liftIO $ playScenario (gs ^. entityMap) scene Nothing Nothing gs
 
+        let nextMenu
+              -- Go back to the scenario list
+              | null rest = NewGameMenu scenarioStack
+              -- Advance to the next tutorial or challenge
+              | otherwise = NewGameMenu (BL.listMoveDown curMenu :| rest)
+
         continue $
           s & uiState . uiMenu .~ NoMenu
+            & uiState . uiPrevMenu .~ nextMenu
             & gameState .~ gs'
       Just (SICollection _ c) ->
         continue $
@@ -243,14 +250,14 @@ handleModalEvent s = \case
     continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
---   history to a @.swarm_history@ file, and return to the main menu.
+--   history to a @.swarm_history@ file, and return to the previous menu.
 quitGame :: AppState -> EventM Name (Next AppState)
 quitGame s = do
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
   let s' =
         s & uiState . uiReplHistory %~ restartREPLHistory
-          & uiState . uiMenu .~ MainMenu (mainMenu NewGame)
+          & uiState . uiMenu .~ (s ^. uiState . uiPrevMenu)
   continue s'
  where
   history = s ^. uiState . uiReplHistory
