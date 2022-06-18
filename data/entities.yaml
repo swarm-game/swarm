@@ -32,7 +32,7 @@
     attr: wood
     char: 'w'
   description:
-  - A wooden board.
+  - A wooden board, made by cutting a log into pieces.
   properties: [portable]
 
 - name: workbench
@@ -40,7 +40,7 @@
     attr: wood
     char: 'π'
   description:
-  - A plain wooden workbench, providing space for you to make other
+  - A plain wooden workbench, providing space to make other
     things using the 'make' command.
   - 'Example:'
   - 'make "log"'
@@ -52,7 +52,8 @@
     attr: rock
     char: 'o'
   description:
-  - A small rock.
+  - A medium-sized rock, picked up from the ground or created by drilling.
+    Can be used to build a simple furnace, among other things.
   properties: [portable]
 
 - name: boulder
@@ -85,7 +86,7 @@
     attr: copper
     char: 'C'
   description:
-  - Raw copper ore.  It is extremely useful for making wires, pipes, and other metal things.
+  - Raw copper ore, useful for making wires, pipes, and other metal things.
     Patches of copper ore can be found on the surface, but are quickly exhausted.
   - Scanners seem to indicate larger quantities of copper could be found beneath some of the
     mountains, but those would require a drill to access and mine.
@@ -141,7 +142,8 @@
     attr: iron
     char: '*'
   description:
-  - An iron gear.
+  - An iron gear, suitable for constructing larger, more powerful
+    machinery than a wooden gear.
   properties: [portable]
 
 - name: iron ore
@@ -149,7 +151,7 @@
     attr: iron
     char: 'F'
   description:
-  - Raw iron ore. Used to create more resilient tools.
+  - Raw iron ore. Used to create more resilient tools than copper.
   - It can only be mined by drilling in the mountains.
   properties: [portable]
 
@@ -249,7 +251,7 @@
   description:
   - A motor is useful for making devices that can turn when electric
     current is applied.
-  - This one is rather small, but suprisingly efficient.
+  - This one is rather small, but surprisingly efficient.
   properties: [portable]
 
 - name: big motor
@@ -267,7 +269,8 @@
     attr: flower
     char: '*'
   description:
-  - A flower.
+  - A beautiful flower that grows wild in local meadows.  It is not clear
+    what it might be useful for, but it looks nice.
   properties: [portable, growable]
   growth: [30, 50]
 
@@ -298,7 +301,7 @@
     attr: water
     char: ' '
   description:
-  - Water.
+  - Liquid dihydrogen monoxide, which seems to be plentiful on this planet.
   properties: [portable, growable, liquid]
   growth: [0,0]
 
@@ -307,7 +310,7 @@
     attr: water
     char: '~'
   description:
-  - A wavy section of water.
+  - A wavy section of water.  The same as normal water, but with more waves.
   properties: [portable, growable, liquid]
   growth: [0,0]
   yields: water
@@ -317,10 +320,11 @@
     attr: wood
     char: 'B'
   description:
-  - A robot with a boat installed can float on top of water without drowning!
-  - "Note: most devices are automatically installed on robots
-    that will require them; but since floating is not associated with any particular
-    command, a boat must be manually installed on any robot that will need it."
+  - A robot with a boat installed can float on top of water without drowning.
+  - "Note: most devices are automatically installed on robots that
+    will require them; but since floating is not associated with any
+    particular command, a boat must be manually installed (using the
+    'install' command) on any robot that will need it."
   properties: [portable]
   capabilities: [float]
 
@@ -347,7 +351,8 @@
     attr: entity
     char: '0'
   description:
-  - A bit.
+  - A bit is used to represent the smallest possible amount of information.
+    Useful for constructing various information-processing devices, as well as drills.
   properties: [portable, growable]
   growth: [1000, 1500]
 
@@ -356,7 +361,8 @@
     attr: entity
     char: '1'
   description:
-  - A bit.
+  - A bit is used to represent the smallest possible amount of information.
+    Useful for constructing various information-processing devices, as well as drills.
   properties: [portable, growable]
   growth: [1000, 1500]
 
@@ -365,7 +371,7 @@
     attr: red
     char: '.'
   description:
-  - A pixel.
+  - A tiny picture element, used either to emit or detect red light.
   properties: [portable, growable]
   growth: [1000, 1500]
 
@@ -374,7 +380,7 @@
     attr: green
     char: '.'
   description:
-  - A pixel.
+  - A tiny picture element, used either to emit or detect green light.
   properties: [portable, growable]
   growth: [1000, 1500]
 
@@ -383,7 +389,7 @@
     attr: blue
     char: '.'
   description:
-  - A pixel.
+  - A tiny picture element, used either to emit or detect blue light.
   properties: [portable, growable]
   growth: [1000, 1500]
 
@@ -392,7 +398,7 @@
     attr: device
     char: '@'
   description:
-  - A camera.
+  - A camera is a device for capturing images.
   properties: [portable]
 
 - name: circuit
@@ -401,7 +407,7 @@
     char: '#'
   description:
   - |
-    A circuit is needed for constructing "smart" devices.
+    A circuit is needed for constructing various "smart" devices.
   properties: [portable]
 
 - name: drill bit
@@ -409,7 +415,8 @@
     attr: entity
     char: '!'
   description:
-  - A drill bit is an important component of a drill.
+  - A drill bit is the most important component of a drill, and must be made
+    out of two bits of opposite parity, for strength.
   properties: [portable]
 
 - name: box
@@ -417,7 +424,7 @@
     attr: wood
     char: '□'
   description:
-  - A wooden box.  It can hold things.
+  - A wooden box.  It can hold things or be used as housing for other devices.
   properties: [portable]
 
 - name: wooden gear
@@ -425,7 +432,7 @@
     attr: wood
     char: '*'
   description:
-  - A wooden gear.
+  - A wooden gear.  Not quite as strong or versatile as an iron gear, but easy to produce.
   properties: [portable]
 
 - name: teeter-totter
@@ -435,15 +442,6 @@
   description:
   - A rotating board apparently popular with young aliens.  Perhaps it
     could also be used as a primitive balance scale.
-  properties: [portable]
-
-- name: iron gear
-  display:
-    attr: iron
-    char: '*'
-  description:
-  - An iron gear that is more resilient.
-  - It can be used to create bigger and more complex machines.
   properties: [portable]
 
 - name: counter
@@ -573,7 +571,7 @@
   - "'salvage' takes no arguments. It looks for an inactive
     robot (one which is not currently running a program) in the
     current cell. If an inactive robot is found, its log (if any) is
-    downloaded and it is dismantled, transferring its devices and inventory to the
+    downloaded and it is dismantled, transferring its knowledge, devices, and inventory to the
     robot running 'salvage'.  If no inactive robots are found in the
     current cell, 'salvage' does nothing."
   capabilities: [salvage]
@@ -594,7 +592,7 @@
     attr: device
     char: '!'
   description:
-  - A drill allows robots to drill through rocks and mountains.
+  - A drill allows robots to drill through rocks and mountains, and extract resources from mines.
   capabilities: [drill]
   properties: [portable]
 
@@ -603,7 +601,10 @@
     attr: iron
     char: '!'
   description:
-  - A metal drill allows robots to drill through rocks and mountains faster.
+  - A metal drill allows robots to drill through rocks and mountains,
+     and extract resources from mines, faster than a regular drill.
+  - A metal drill is also able to drill deeper than a regular drill.  Thus, some resources
+    are only reachable using a metal drill.
   capabilities: [drill]
   properties: [portable]
 
@@ -655,7 +656,7 @@
     A branch predictor is a device which allows a robot to interpret
     conditional expressions.  The syntax for a conditional expression
     is 'if' followed by three arguments: a boolean test and then
-    two delayed expressions of the same type.
+    two delayed expressions (i.e. expressions in curly braces) of the same type.
   - 'Example:'
   - 'if (x > 3) {move} {turn right; move}'
   properties: [portable]
@@ -728,7 +729,7 @@
      name as a string."
   - "It also enables the special 'self' variable, which gives a robot
     a reference to itself."
-  properities: [portable]
+  properties: [portable]
   capabilities: [whoami]
 
 - name: logger
