@@ -108,6 +108,7 @@ testScenarioSolution _em =
         "Tutorial"
         [ testSolution "move" Default "data/scenarios/02Tutorials/00-move.yaml"
         , testSolution "turn" Default "data/scenarios/02Tutorials/01-turn.yaml"
+        , testSolution "craft" Default "data/scenarios/02Tutorials/02-craft.yaml"
         ]
     , testGroup
         "Challenges"
