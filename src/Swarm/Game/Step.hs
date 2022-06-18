@@ -774,7 +774,7 @@ execConst c vs s k = do
         -- Make sure the robot has the thing in its inventory
         e <-
           listToMaybe (lookupByName name inv)
-            `isJustOrFail` ["What is", indefinite name, "?"]
+            `isJustOrFail` ["What is", indefinite name <> "?"]
 
         (E.lookup e inv > 0)
           `holdsOrFail` ["You don't have", indefinite name, "to place."]
@@ -795,7 +795,7 @@ execConst c vs s k = do
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName <> "?"]
 
         (E.lookup item inv > 0)
           `holdsOrFail` ["You don't have", indefinite itemName, "to give."]
@@ -827,7 +827,7 @@ execConst c vs s k = do
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName <> "?"]
 
         (E.lookup item inv > 0)
           `holdsOrFail` ["You don't have", indefinite itemName, "to install."]
@@ -1065,7 +1065,7 @@ execConst c vs s k = do
             robotDisplay . orientationMap . ix DSouth .= sc
             robotDisplay . orientationMap . ix DWest .= wc
             return $ Out VUnit s k
-          _other -> raise Appear [quote app, "is not a valid appearance string."]
+          _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
       _ -> badConst
     Create -> case vs of
       [VString name] -> do
@@ -1175,19 +1175,19 @@ execConst c vs s k = do
         -- check that current robot is not trying to reprogram self
         myID <- use robotID
         (childRobotID /= myID)
-          `holdsOrFail` ["You cannot make a robot reprogram itself"]
+          `holdsOrFail` ["You cannot make a robot reprogram itself."]
 
         -- check if robot has completed executing it's current command
         _ <-
           finalValue (childRobot ^. machine)
-            `isJustOrFail` ["You cannot reprogram a robot that has not completed its current command"]
+            `isJustOrFail` ["You cannot reprogram a robot that is actively running a program."]
 
         -- check if childRobot is at the correct distance
         -- a robot can program adjacent robots
         -- creative mode ignores distance checks
         loc <- use robotLocation
         (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["You can only program adjacent robot"]
+          `holdsOrFail` ["You can only reprogram an adjacent robot."]
 
         _ <- checkRequiredDevices (childRobot ^. robotInventory) cmd "The target robot" FixByInstall
 
