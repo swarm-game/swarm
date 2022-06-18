@@ -424,7 +424,7 @@
     attr: wood
     char: '□'
   description:
-  - A wooden box.  It can hold things, or used as the housing for other devies.
+  - A wooden box.  It can hold things, or used as the housing for other devices.
   properties: [portable]
 
 - name: wooden gear
@@ -729,7 +729,7 @@
      name as a string."
   - "It also enables the special 'self' variable, which gives a robot
     a reference to itself."
-  properities: [portable]
+  properties: [portable]
   capabilities: [whoami]
 
 - name: logger
