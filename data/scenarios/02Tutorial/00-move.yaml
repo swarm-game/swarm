@@ -16,6 +16,8 @@ win: |
     loc <- as base {whereami};
     return (loc == (2,0))
   } { return false }
+solution: |
+  move; move
 robots:
   - name: base
     loc: [0,0]
