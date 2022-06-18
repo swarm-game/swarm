@@ -155,7 +155,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
           s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList (s ^. uiState . uiCheatMode) c) scenarioStack)
   Key V.KEsc -> exitNewGameMenu s scenarioStack
   CharKey 'q' -> exitNewGameMenu s scenarioStack
-  ControlKey 'q' -> exitNewGameMenu s scenarioStack
+  ControlKey 'q' -> halt s
   VtyEvent ev -> do
     menu' <- handleListEvent ev curMenu
     continue $ s & uiState . uiMenu .~ NewGameMenu (menu' :| rest)
