@@ -515,42 +515,45 @@ handleREPLEvent s (ControlKey 'c') =
       & gameState . robotMap . ix 0 . machine %~ cancel
 handleREPLEvent s (Key V.KEnter) =
   if not $ s ^. gameState . replWorking
-    then
-      case entry of
-        CmdPrompt uinput ->
-          case processTerm' topTypeCtx topCapCtx uinput of
-            Right mt -> do
-              let s' = maybe id startBaseProgram mt
-                     -- . (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-                     . (uiState . uiReplForm .~ set promptUpdateL "" (s ^. uiState) )
-                     . (uiState . uiReplType .~ Nothing)
-                     . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
-                     . (uiState . uiError .~ Nothing)
-                     $ s
+    then case entry of
+      CmdPrompt uinput ->
+        case processTerm' topTypeCtx topCapCtx uinput of
+          Right mt -> do
+            let s' =
+                  maybe id startBaseProgram mt
+                    -- . (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+                    . (uiState . uiReplForm .~ set promptUpdateL "" (s ^. uiState))
+                    . (uiState . uiReplType .~ Nothing)
+                    . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
+                    . (uiState . uiError .~ Nothing)
+                    $ s
+            continue s'
+          Left err ->
+            continue $ s & uiState . uiError ?~ err
+      SearchPrompt t hist ->
+        case lastEntry t hist of
+          Nothing -> do
+            let s' =
+                  (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+                    . (uiState . uiReplType .~ Nothing)
+                    . (uiState . uiError .~ Nothing)
+                    $ s
+            continue s'
+          Just found
+            | T.null t -> do
+              let s' =
+                    (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+                      . (uiState . uiReplType .~ Nothing)
+                      . (uiState . uiError .~ Nothing)
+                      $ s
               continue s'
-            Left err ->
-              continue $ s & uiState . uiError ?~ err
-        SearchPrompt t hist ->
-          case lastEntry t hist of
-            Nothing -> do
-              let s' = (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-                     . (uiState . uiReplType .~ Nothing)
-                     . (uiState . uiError .~ Nothing)
-                     $ s
+            | otherwise -> do
+              let s' =
+                    (uiState . uiReplForm .~ mkReplForm (CmdPrompt found))
+                      . (uiState . uiReplType .~ Nothing)
+                      . (uiState . uiError .~ Nothing)
+                      $ s
               continue s'
-            Just found 
-              | T.null t -> do
-                  let s' = (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-                         . (uiState . uiReplType .~ Nothing)
-                         . (uiState . uiError .~ Nothing)
-                         $ s
-                  continue s'
-              | otherwise -> do
-                  let s' = (uiState . uiReplForm .~ mkReplForm (CmdPrompt found))
-                         . (uiState . uiReplType .~ Nothing)
-                         . (uiState . uiError .~ Nothing)
-                         $ s
-                  continue s'
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)
@@ -568,18 +571,16 @@ handleREPLEvent s (Key V.KUp) =
   continue $ s & adjReplHistIndex Older
 handleREPLEvent s (Key V.KDown) =
   continue $ s & adjReplHistIndex Newer
-handleREPLEvent s (ControlKey 'r') = 
+handleREPLEvent s (ControlKey 'r') =
   case s ^. uiState . uiReplForm . to formState of
-    CmdPrompt uinput -> 
-      let
-        newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory) -- set promptUpdateL uinput (s ^. uiState)
-        s' = s & uiState . uiReplForm .~ newform
-      in continue s'
-    SearchPrompt _ _ -> 
-      let
-        newform = mkReplForm $ CmdPrompt ""
-        s' = s & uiState . uiReplForm .~ newform
-      in continue s'
+    CmdPrompt uinput ->
+      let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory) -- set promptUpdateL uinput (s ^. uiState)
+          s' = s & uiState . uiReplForm .~ newform
+       in continue s'
+    SearchPrompt _ _ ->
+      let newform = mkReplForm $ CmdPrompt ""
+          s' = s & uiState . uiReplForm .~ newform
+       in continue s'
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   case formState f' of
@@ -594,14 +595,14 @@ handleREPLEvent s ev = do
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
-   CmdPrompt uinput ->
+    CmdPrompt uinput ->
       let result = processTerm' topTypeCtx topCapCtx uinput
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
-      in s & uiState . uiReplForm %~ validate result
-           & uiState . uiReplType .~ theType
-   SearchPrompt _ _ -> s
+       in s & uiState . uiReplForm %~ validate result
+            & uiState . uiReplType .~ theType
+    SearchPrompt _ _ -> s
  where
   replPrompt = s ^. uiState . uiReplForm . to formState
   topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes

@@ -706,7 +706,7 @@ drawREPL s =
     map fmt (getLatestREPLHistoryItems (replHeight - inputLines) history)
       ++ case isActive <$> base of
         Just False -> [renderForm (s ^. uiState . uiReplForm)]
-        _          -> [padRight Max $ txt "..."]
+        _ -> [padRight Max $ txt "..."]
       ++ [padRight Max $ txt histIdx | debugging]
  where
   debugging = False -- Turn ON to get extra line with history index
