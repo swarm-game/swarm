@@ -208,11 +208,11 @@ handleMainEvent s = \case
     case n of
       WorldPanel -> do
         mouseCoordsM <- mouseLocToWorldCoords (s ^. gameState) mouseLoc
-        continue (s & gameState . worldCursor .~ mouseCoordsM)
+        continue (s & uiState . uiWorldCursor .~ mouseCoordsM)
       REPLPanel ->
         -- Do not clear the world cursor when going back to the REPL
         continueWithoutRedraw s
-      _ -> continueWithoutRedraw (s & gameState . worldCursor .~ Nothing)
+      _ -> continueWithoutRedraw (s & uiState . uiWorldCursor .~ Nothing)
   MouseUp n _ _mouseLoc -> do
     setFocus s $ case n of
       -- Adapt click event origin to their right panel.

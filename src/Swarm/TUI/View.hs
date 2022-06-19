@@ -225,7 +225,7 @@ drawGameUI s =
         ]
   ]
  where
-  addCursorPos = case s ^. gameState . worldCursor of
+  addCursorPos = case s ^. uiState . uiWorldCursor of
     Just coord -> topLabels . rightLabel ?~ drawWorldCursorInfo (s ^. gameState) coord
     Nothing -> id
   fr = s ^. uiState . uiFocusRing

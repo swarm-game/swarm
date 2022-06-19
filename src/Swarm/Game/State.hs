@@ -48,7 +48,6 @@ module Swarm.Game.State (
   recipesIn,
   scenarios,
   world,
-  worldCursor,
   viewCenterRule,
   viewCenter,
   needsRedraw,
@@ -196,7 +195,6 @@ data GameState = GameState
   , _recipesIn :: IntMap [Recipe Entity]
   , _scenarios :: ScenarioCollection
   , _world :: W.World Int Entity
-  , _worldCursor :: Maybe W.Coords
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: V2 Int64
   , _needsRedraw :: Bool
@@ -287,9 +285,6 @@ scenarios :: Lens' GameState ScenarioCollection
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').
 world :: Lens' GameState (W.World Int Entity)
-
--- | The last clicked position on the world view.
-worldCursor :: Lens' GameState (Maybe W.Coords)
 
 -- | The current rule for determining the center of the world view.
 --   It updates also, viewCenter and focusedRobotName to keep
@@ -456,7 +451,6 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
           , _recipesIn = inRecipeMap recipes
           , _scenarios = loadedScenarios
           , _world = W.emptyWorld 0
-          , _worldCursor = Nothing
           , _viewCenterRule = VCRobot 0
           , _viewCenter = V2 0 0
           , _needsRedraw = False
