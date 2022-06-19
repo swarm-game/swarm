@@ -346,6 +346,24 @@
   - A pane of a brittle, clear substance, made from melting sand in a furnace.
   properties: [portable]
 
+- name: LaTeX
+  display:
+    attr: flower
+    char: '$'
+  description:
+  - A naturally occurring substance derived from trees, useful for producing
+    rubber and for typesetting mathematical documents.
+  properties: [portable, growable]
+  growth: [2000, 3000]
+
+- name: rubber
+  display:
+    attr: stone
+    char: '%'
+  description:
+  - A flexible, durable material made from LaTeX.
+  properties: [portable]
+
 - name: bit (0)
   display:
     attr: entity
@@ -533,6 +551,16 @@
     (via the 'turn' command).
   - 'Example:'
   - '  move; turn left; move; turn right'
+  capabilities: [move, turn]
+  properties: [portable]
+
+- name: tank treads
+  plural: tank treads
+  display:
+    attr: device
+    char: '%'
+  description:
+  - Tank treads work like treads, but are large enough to move even heavy robots around.
   capabilities: [move, turn]
   properties: [portable]
 
