@@ -238,10 +238,6 @@ drawWorldCursorInfo g i@(W.Coords (y, x)) =
  where
   entity = snd $ drawCell (hiding g) (g ^. world) i
 
-{- If map is not centered, we need to update the distance:
-let baseLocM = robotLocation <$> IM.lookup (s ^. gameState . focusedRobotID) (s ^. gameState . robotMap)
--}
-
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
 drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
