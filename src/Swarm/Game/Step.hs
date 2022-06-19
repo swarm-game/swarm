@@ -971,7 +971,9 @@ execConst c vs s k = do
     Knows -> case vs of
       [VString name] -> do
         inv <- use robotInventory
-        let knows = case E.lookupByName name inv of
+        ins <- use installedDevices
+        let allKnown = inv `E.union` ins
+        let knows = case E.lookupByName name allKnown of
               [] -> False
               _ -> True
         return $ Out (VBool knows) s k
