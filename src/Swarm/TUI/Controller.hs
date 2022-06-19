@@ -204,6 +204,13 @@ handleMainEvent s = \case
   ControlKey 'k'
     | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
   FKey 1 -> toggleModal s HelpModal >>= continue
+  MouseUp n _ _mouseLoc -> do
+    setFocus s $ case n of
+      -- Adapt click event origin to their right panel.
+      -- TODO: figure how to force that using `clickable`
+      InventoryList -> RobotPanel
+      InfoViewport -> InfoPanel
+      _ -> n
   -- dispatch any other events to the focused panel handler
   ev ->
     case focusGetCurrent (s ^. uiState . uiFocusRing) of

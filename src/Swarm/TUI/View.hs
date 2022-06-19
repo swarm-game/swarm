@@ -208,18 +208,19 @@ drawGameUI s =
                 (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
                 (drawWorld $ s ^. gameState)
             , drawKeyMenu s
-            , panel
-                highlightAttr
-                fr
-                REPLPanel
-                ( plainBorder
-                    & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
-                )
-                ( vLimit replHeight $
-                    padBottom Max $
-                      padLeftRight 1 $
-                        drawREPL s
-                )
+            , clickable REPLPanel $
+                panel
+                  highlightAttr
+                  fr
+                  REPLPanel
+                  ( plainBorder
+                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
+                  )
+                  ( vLimit replHeight
+                      . padBottom Max
+                      . padLeftRight 1
+                      $ drawREPL s
+                  )
             ]
         ]
   ]
@@ -419,15 +420,18 @@ drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
 -- | Draw the current world view.
 drawWorld :: GameState -> Widget Name
 drawWorld g =
-  center $
-    cached WorldCache $
-      reportExtent WorldExtent $
-        Widget Fixed Fixed $ do
-          ctx <- getContext
-          let w = ctx ^. availWidthL
-              h = ctx ^. availHeightL
-              ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-          render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
+  center
+    . cached WorldCache
+    . reportExtent WorldExtent
+    -- Set the clickable request after the extent to play nice with the cache
+    . clickable WorldPanel
+    . Widget Fixed Fixed
+    $ do
+      ctx <- getContext
+      let w = ctx ^. availWidthL
+          h = ctx ^. availHeightL
+          ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
+      render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
  where
   -- XXX update how this works!  Gather all displays, all
   -- entities...  Should make a Display remember which is the
