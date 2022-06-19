@@ -255,10 +255,13 @@ quitGame :: AppState -> EventM Name (Next AppState)
 quitGame s = do
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
-  let s' =
-        s & uiState . uiReplHistory %~ restartREPLHistory
-          & uiState . uiMenu .~ (s ^. uiState . uiPrevMenu)
-  continue s'
+  case s ^. uiState . uiPrevMenu of
+    NoMenu -> halt s
+    menu ->
+      let s' =
+            s & uiState . uiReplHistory %~ restartREPLHistory
+              & uiState . uiMenu .~ menu
+       in continue s'
  where
   history = s ^. uiState . uiReplHistory
 

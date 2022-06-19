@@ -352,6 +352,20 @@
   out:
   - [1, metal drill]
 
+- in:
+  - [2, small motor]
+  - [8, iron plate]
+  - [2, rubber]
+  out:
+  - [1, treads]
+
+- in:
+  - [4, big motor]
+  - [64, iron plate]
+  - [16, rubber]
+  out:
+  - [1, tank treads]
+
 ## MAGIC
 
 - in:
@@ -507,3 +521,15 @@
   - [1, water]
   out:
   - [1, curry]
+
+#########################################
+##                 LATEX               ##
+#########################################
+
+- in:
+  - [1, LaTeX]
+  - [1, log]
+  out:
+  - [1, rubber]
+  required:
+  - [1, furnace]

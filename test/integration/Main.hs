@@ -120,6 +120,7 @@ testScenarioSolution _em =
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
             testSolution "build with drill (#394)" Default "data/scenarios/04Testing/394-build-drill.yaml"
+        , testSolution "drowning results in destruction" Default "data/scenarios/04Testing/428-drowning-destroy.yaml"
         ]
     ]
  where

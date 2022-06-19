@@ -714,7 +714,7 @@ execConst c vs s k = do
             let unwalkable = e `hasProperty` Unwalkable
             let drowning = e `hasProperty` Liquid && CFloat `S.notMember` caps
             when (unwalkable || drowning) $ do
-              d <- destroyIfNotBase' target
+              d <- isDestroyable target
               when d $ selfDestruct .== True
 
         robotLocation .== nextLoc
@@ -1505,10 +1505,12 @@ execConst c vs s k = do
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
   destroyIfNotBase :: (Has (State Robot) sig m, Has (Error Exn) sig m) => m ()
-  destroyIfNotBase = get @Robot >>= void . destroyIfNotBase'
+  destroyIfNotBase = do
+    destroy <- isDestroyable =<< get @Robot
+    when destroy $ selfDestruct .= True
 
-  destroyIfNotBase' :: (Has (Error Exn) sig m) => Robot -> m Bool
-  destroyIfNotBase' r = do
+  isDestroyable :: (Has (Error Exn) sig m) => Robot -> m Bool
+  isDestroyable r = do
     if r ^. robotID == 0
       then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
       else return True
