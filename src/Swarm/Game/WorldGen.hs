@@ -59,9 +59,9 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
     | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
     | h `mod` 30 == 0 = (StoneT, Just "boulder")
     | sample ix cl0 > 0 =
-        case h `mod` 30 of
-          1 -> (DirtT, Just "LaTeX")
-          _ -> (DirtT, Just "tree")
+      case h `mod` 30 of
+        1 -> (DirtT, Just "LaTeX")
+        _ -> (DirtT, Just "tree")
     | otherwise = (GrassT, Nothing)
   genBiome Small Hard Natural
     | h `mod` 10 == 0 = (StoneT, Just "rock")
