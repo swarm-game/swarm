@@ -25,6 +25,7 @@ import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (rights)
+import Data.Foldable (traverse_)
 import qualified Data.Functor.Const as F
 import Data.Int (Int64)
 import qualified Data.IntMap as IM
@@ -367,6 +368,7 @@ stepCESK cesk = case cesk of
       Left exn -> return $ Up exn s k
       Right wo -> do
         robotInventory %= robotUpdateInventory rf
+        updateSelfAllAvailableRecipes
         world .= wo
         needsRedraw .= True
         stepCESK (Out v s k)
@@ -752,6 +754,7 @@ execConst c vs s k = do
         Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
 
       robotInventory %= insert e'
+      updateSelfAvailableRecipes e'
 
       -- Return the name of the item grabbed.
       return $ Out (VString (e ^. entityName)) s k
@@ -813,6 +816,12 @@ execConst c vs s k = do
           robotMap . at otherID . _Just . robotInventory %= insert item
           robotInventory %= delete item
 
+          otherRobotm <- use $ robotMap . at otherID
+          case otherRobotm of
+            Just otherRobot ->
+              updateAvailableRecipes (otherRobot ^. robotInventory, otherRobot ^. installedDevices) item
+            Nothing -> pure ()
+
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
           when (focusedID == myID || focusedID == otherID) flagRedraw
 
@@ -844,6 +853,7 @@ execConst c vs s k = do
               installedDevices %= insert item
               robotInventory %= delete item
 
+              updateSelfAllAvailableRecipes
               -- Flag the UI for a redraw if we are currently showing our inventory
               when (focusedID == myID) flagRedraw
           False -> do
@@ -891,6 +901,7 @@ execConst c vs s k = do
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
+
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Has -> case vs of
@@ -1075,6 +1086,8 @@ execConst c vs s k = do
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
 
         robotInventory %= insert e
+        updateSelfAvailableRecipes e
+
         return $ Out VUnit s k
       _ -> badConst
     Ishere -> case vs of
@@ -1354,7 +1367,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1617,3 +1630,32 @@ safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
   | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
   | otherwise = return $ a ^ b
+
+-- | Check if any new recipes is available from the given entity
+updateSelfAvailableRecipes :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()
+updateSelfAvailableRecipes e = do
+  inventory <- use robotInventory
+  devices <- use installedDevices
+  updateAvailableRecipes (inventory, devices) e
+
+-- | Check if any new recipes is available from all the inventory
+updateSelfAllAvailableRecipes :: (Has (State GameState) sig m, Has (State Robot) sig m) => m ()
+updateSelfAllAvailableRecipes = do
+  inventory <- use robotInventory
+  devices <- use installedDevices
+  traverse_ (updateAvailableRecipes (inventory, devices) . snd) (filter (\(c, _) -> c > 0) $ E.elems inventory)
+
+updateAvailableRecipes :: Has (State GameState) sig m => (Inventory, Inventory) -> Entity -> m ()
+updateAvailableRecipes invs e = do
+  allInRecipes <- use recipesIn
+  let entityRecipes = recipesFor allInRecipes e
+  let canMake recipe = case missingIngredientsFor invs recipe of
+        [] -> True
+        _ -> False
+  let usableRecipes = filter canMake entityRecipes
+  (knownLength, knownRecipes) <- use availableRecipes
+  let newRecipes = filter (`notElem` knownRecipes) usableRecipes
+      newLength = case newRecipes of
+        [] -> knownLength
+        _ -> length newRecipes
+  availableRecipes .= (newLength, newRecipes <> knownRecipes)
