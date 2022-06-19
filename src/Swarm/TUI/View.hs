@@ -226,7 +226,7 @@ drawGameUI s =
   ]
  where
   addCursorPos = case s ^. uiState . uiWorldCursor of
-    Just coord -> topLabels . rightLabel ?~ drawWorldCursorInfo (s ^. gameState) coord
+    Just coord -> topLabels . rightLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
     Nothing -> id
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
@@ -235,8 +235,8 @@ drawGameUI s =
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g i@(W.Coords (y, x)) =
   hBox [entity, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
-  where
-    entity = snd $ drawCell (hiding g) (g ^. world) i
+ where
+  entity = snd $ drawCell (hiding g) (g ^. world) i
 
 {- If map is not centered, we need to update the distance:
 let baseLocM = robotLocation <$> IM.lookup (s ^. gameState . focusedRobotID) (s ^. gameState . robotMap)
