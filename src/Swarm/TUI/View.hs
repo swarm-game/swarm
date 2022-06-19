@@ -301,6 +301,12 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
   (title, widget, buttons, requiredWidth) =
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
+      RecipesModal ->
+        ( "Available Recipes"
+        , helpRecipes (s ^. gameState . availableRecipes)
+        , Nothing
+        , 250
+        )
       WinModal ->
         let winMsg = "Congratulations!"
             continueMsg = "Keep playing"
@@ -332,6 +338,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
   toWidgets (k, v) = [txt k, txt v]
   glKeyBindings =
     [ ("F1", "Help")
+    , ("F2", "Available recipes")
     , ("Ctrl-q", "quit the game")
     , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
@@ -353,6 +360,9 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("give <robot> \"<item>\"", "Give an item to another robot")
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
+
+helpRecipes :: (Int, [Recipe Entity]) -> Widget Name
+helpRecipes (_, xs) = vBox (map (drawRecipe Nothing Nothing) xs)
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
@@ -382,6 +392,14 @@ drawKeyMenu s =
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
 
+  availRecipes
+    | null (snd $ s ^. gameState . availableRecipes) = []
+    | otherwise = [("F2", knownMark (s ^. gameState . availableRecipes) <> "Recipes")]
+
+  knownMark (count, _)
+    | count > 0 = "*"
+    | otherwise = ""
+
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
@@ -390,10 +408,8 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [ ("F1", "help")
-    , ("Tab", "cycle")
-    ]
-      ++ [("^k", "creative") | cheat]
+    [("F1", "help")] <> availRecipes <> [("Tab", "cycle")] <> [("^k", "creative") | cheat]
+
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
@@ -584,7 +600,7 @@ explainRecipes s e
       , padLeftRight 2 $
           hCenter $
             vBox $
-              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
+              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) (Just inv)) recipes
       ]
  where
   recipes = recipesWith s e
@@ -609,8 +625,8 @@ recipesWith s e =
 
 -- | Draw an ASCII art representation of a recipe.  For now, the
 --   weight is not shown.
-drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
-drawRecipe e inv (Recipe ins outs reqs time _weight) =
+drawRecipe :: Maybe Entity -> Maybe Inventory -> Recipe Entity -> Widget Name
+drawRecipe me minv (Recipe ins outs reqs time _weight) =
   vBox
     -- any requirements (e.g. furnace) go on top.
     [ hCenter $ drawReqs reqs
@@ -652,7 +668,9 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
                 )
       ]
    where
-    missing = E.lookup ingr inv < n
+    missing = case minv of
+      Just inv -> E.lookup ingr inv < n
+      Nothing -> False
 
   drawOut i (n, ingr) =
     hBox
@@ -670,7 +688,7 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
   -- If it's the focused entity, draw it highlighted.
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
-    | ingr == e = withAttr deviceAttr $ txtLines nm
+    | Just ingr == me = withAttr deviceAttr $ txtLines nm
     | ingr == timeE = withAttr sandAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm

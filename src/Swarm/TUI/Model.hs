@@ -308,6 +308,7 @@ replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 data ModalType
   = HelpModal
+  | RecipesModal
   | WinModal
   | QuitModal
   | DescriptionModal Entity
