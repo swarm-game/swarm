@@ -209,6 +209,9 @@ handleMainEvent s = \case
       WorldPanel -> do
         mouseCoordsM <- mouseLocToWorldCoords (s ^. gameState) mouseLoc
         continue (s & gameState . worldCursor .~ mouseCoordsM)
+      REPLPanel ->
+        -- Do not clear the world cursor when going back to the REPL
+        continueWithoutRedraw s
       _ -> continueWithoutRedraw (s & gameState . worldCursor .~ Nothing)
   MouseUp n _ _mouseLoc -> do
     setFocus s $ case n of
