@@ -288,7 +288,15 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
   (title, widget, buttons, requiredWidth) =
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
-      WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
+      WinModal ->
+        let winMsg = "Congratulations!"
+            continueMsg = "Keep playing"
+            stopMsg = "Pick the next game"
+         in ( ""
+            , padBottom (Pad 1) $ hCenter $ txt winMsg
+            , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
+            , length continueMsg + length stopMsg + 32
+            )
       DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, 100)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit this game and return to the menu?"

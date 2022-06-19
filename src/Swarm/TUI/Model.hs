@@ -57,6 +57,7 @@ module Swarm.TUI.Model (
   -- ** UI Model
   UIState,
   uiMenu,
+  uiPrevMenu,
   uiCheatMode,
   uiFocusRing,
   uiReplForm,
@@ -359,6 +360,7 @@ makePrisms ''InventoryListEntry
 -- see the lenses below.
 data UIState = UIState
   { _uiMenu :: Menu
+  , _uiPrevMenu :: Menu
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiReplForm :: Form Text AppEvent Name
@@ -406,6 +408,9 @@ let exclude = ['_lgTicksPerSecond]
 
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
+
+-- | The previous menu state, to go back after playing a game
+uiPrevMenu :: Lens' UIState Menu
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
@@ -579,6 +584,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
   return $
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      , _uiPrevMenu = NoMenu
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiReplForm = initReplForm

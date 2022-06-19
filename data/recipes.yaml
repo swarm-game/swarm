@@ -291,6 +291,27 @@
   required:
   - [1, furnace]
 
+- in:
+  - [1, copper ore]
+  out:
+  - [10, copper wire]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, copper ore]
+  out:
+  - [2, copper pipe]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, iron ore]
+  out:
+  - [2, iron plate]
+  required:
+  - [1, big furnace]
+
 ## TOOLS
 
 - in:
