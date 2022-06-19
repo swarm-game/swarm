@@ -25,6 +25,7 @@ import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (rights)
+import Data.Foldable (traverse_)
 import qualified Data.Functor.Const as F
 import Data.Int (Int64)
 import qualified Data.IntMap as IM
@@ -752,6 +753,7 @@ execConst c vs s k = do
         Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
 
       robotInventory %= insert e'
+      updateDiscoveredEntities e'
 
       -- Return the name of the item grabbed.
       return $ Out (VString (e ^. entityName)) s k
@@ -857,6 +859,7 @@ execConst c vs s k = do
               -- either robot's inventory
               when (focusedID == myID || focusedID == otherID) flagRedraw
 
+        updateInstalledDevice item
         return $ Out VUnit s k
       _ -> badConst
     Make -> case vs of
@@ -891,6 +894,7 @@ execConst c vs s k = do
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
+        updateDiscoveredEntities e
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Has -> case vs of
@@ -1075,6 +1079,8 @@ execConst c vs s k = do
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
 
         robotInventory %= insert e
+        updateDiscoveredEntities e
+
         return $ Out VUnit s k
       _ -> badConst
     Ishere -> case vs of
@@ -1354,7 +1360,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1617,3 +1623,43 @@ safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
   | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
   | otherwise = return $ a ^ b
+
+-- | Update the global list of discovered entities, and check for new recipes.
+updateDiscoveredEntities :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()
+updateDiscoveredEntities e = do
+  allDiscovered <- use allDiscoveredEntities
+  if E.contains0plus e allDiscovered
+    then pure ()
+    else do
+      let newAllDiscovered = E.insertCount 9001 e allDiscovered
+      allDevices <- use allInstalledDevices
+      updateAvailableRecipes (newAllDiscovered, allDevices) e
+      allDiscoveredEntities .= newAllDiscovered
+
+-- | Update the global list of installed devices, and check for new recipes.
+updateInstalledDevice :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()
+updateInstalledDevice e = do
+  allDevices <- use allInstalledDevices
+  if E.contains0plus e allDevices
+    then pure ()
+    else do
+      let newAllDevices = E.insertCount 9001 e allDevices
+      -- Check every known entities to see if the new device enables new recipes
+      allDiscovered <- use allDiscoveredEntities
+      traverse_ (updateAvailableRecipes (allDiscovered, newAllDevices) . snd) (elems allDiscovered)
+      allInstalledDevices .= newAllDevices
+
+updateAvailableRecipes :: Has (State GameState) sig m => (Inventory, Inventory) -> Entity -> m ()
+updateAvailableRecipes invs e = do
+  allInRecipes <- use recipesIn
+  let entityRecipes = recipesFor allInRecipes e
+  let canMake recipe = case missingIngredientsFor invs recipe of
+        [] -> True
+        _ -> False
+  let usableRecipes = filter canMake entityRecipes
+  (knownLength, knownRecipes) <- use availableRecipes
+  let newRecipes = filter (`notElem` knownRecipes) usableRecipes
+      newLength = case newRecipes of
+        [] -> knownLength
+        _ -> length newRecipes
+  availableRecipes .= (newLength, newRecipes <> knownRecipes)

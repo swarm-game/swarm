@@ -204,6 +204,9 @@ handleMainEvent s = \case
   ControlKey 'k'
     | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
   FKey 1 -> toggleModal s HelpModal >>= continue
+  FKey 2 -> do
+    s' <- toggleModal s RecipesModal
+    continue (s' & gameState . availableRecipes %~ markAsRead)
   -- dispatch any other events to the focused panel handler
   ev ->
     case focusGetCurrent (s ^. uiState . uiFocusRing) of
@@ -212,6 +215,9 @@ handleMainEvent s = \case
       Just RobotPanel -> handleRobotPanelEvent s ev
       Just InfoPanel -> handleInfoPanelEvent s ev
       _ -> continueWithoutRedraw s
+
+markAsRead :: (Int, a) -> (Int, a)
+markAsRead (_, xs) = (0, xs)
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
