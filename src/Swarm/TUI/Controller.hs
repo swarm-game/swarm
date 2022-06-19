@@ -497,25 +497,6 @@ stripCmd pty = pty
 -- REPL events
 ------------------------------------------------------------
 
--- | Handles input event when prompt is SearchPrompt
---
--- This is an auxliar function. To make handleREPLEvent more readable
--- It essentialy defines the set of input event allowed when SearchPrompt is activated:
---   · Up / Down to navegate along history
---   · Enter to grab a an element form it.
---   · Crtl + c to cancel the search
-handleSearchPrompt :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleSearchPrompt s (VtyEvent (V.EvKey V.KEnter [])) =
-  let entry = s ^. uiState . uiReplForm . to formState . promptTextL
-      hist  = s ^. uiState . uiReplHistory
-      matchedItems = searchInHistory entry hist
-  in undefined
-handleSearchPrompt s (VtyEvent (V.EvKey (V.KChar 'c') [V.MCtrl])) =
-  continue $ s & uiState . uiReplForm %~ updateFormState (CmdPrompt "")
-handleSearchPrompt s ev = do
-  f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  continue (s & uiState . uiReplForm .~ f')
-
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleREPLEvent s (ControlKey 'c') =
@@ -530,7 +511,8 @@ handleREPLEvent s (Key V.KEnter) =
           case processTerm' topTypeCtx topCapCtx uinput of
             Right mt -> do
               let s' = maybe id startBaseProgram mt
-                     . (uiState . uiReplForm %~ updateFormState (CmdPrompt ""))
+                     -- . (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+                     . (uiState . uiReplForm .~ set promptUpdateL "" (s ^. uiState) )
                      . (uiState . uiReplType .~ Nothing)
                      . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
                      . (uiState . uiError .~ Nothing)
@@ -538,15 +520,27 @@ handleREPLEvent s (Key V.KEnter) =
               continue s'
             Left err ->
               continue $ s & uiState . uiError ?~ err
-        SearchPrompt _ hist ->
-          case lastEntry hist of
-            Nothing -> continueWithoutRedraw s
-            Just t  -> do
-              let s' = (uiState . uiReplForm %~ updateFormState (CmdPrompt t))
+        SearchPrompt t hist ->
+          case lastEntry t hist of
+            Nothing -> do
+              let s' = (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
                      . (uiState . uiReplType .~ Nothing)
                      . (uiState . uiError .~ Nothing)
                      $ s
               continue s'
+            Just found 
+              | T.null t -> do
+                  let s' = (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+                         . (uiState . uiReplType .~ Nothing)
+                         . (uiState . uiError .~ Nothing)
+                         $ s
+                  continue s'
+              | otherwise -> do
+                  let s' = (uiState . uiReplForm .~ mkReplForm (CmdPrompt found))
+                         . (uiState . uiReplType .~ Nothing)
+                         . (uiState . uiError .~ Nothing)
+                         $ s
+                  continue s'
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)
@@ -564,9 +558,26 @@ handleREPLEvent s (Key V.KUp) =
   continue $ s & adjReplHistIndex Older
 handleREPLEvent s (Key V.KDown) =
   continue $ s & adjReplHistIndex Newer
+handleREPLEvent s (ControlKey 'r') = 
+  case s ^. uiState . uiReplForm . to formState of
+    CmdPrompt uinput -> 
+      let
+        newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory) -- set promptUpdateL uinput (s ^. uiState)
+        s' = s & uiState . uiReplForm .~ newform
+      in continue s'
+    SearchPrompt _ _ -> 
+      let
+        newform = mkReplForm $ CmdPrompt ""
+        s' = s & uiState . uiReplForm .~ newform
+      in continue s'
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
+  case formState f' of
+    CmdPrompt _ -> continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
+    SearchPrompt t _ -> do
+      let newform = set promptUpdateL t (s ^. uiState)
+          s' = s & uiState . uiReplForm .~ newform
+      continue s'
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.

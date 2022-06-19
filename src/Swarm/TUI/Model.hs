@@ -46,13 +46,13 @@ module Swarm.TUI.Model (
   moveReplHistIndex,
   getCurrentItemText,
   replIndexIsAtInput,
-  searchInHistory,
   TimeDir (..),
 
   -- ** Prompt utils
   REPLPrompt(..),
   replPromptAsWidget,
   promptTextL,
+  promptUpdateL,
   mkReplForm,
 
   -- ** Inventory
@@ -146,6 +146,7 @@ import Swarm.Game.Scenario (ScenarioItem)
 import Swarm.Game.State
 import Swarm.Language.Types
 import Swarm.Util
+import Control.Applicative (Applicative(liftA2))
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -310,30 +311,28 @@ replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 -- Repl Prompt
 ------------------------------------------------------------
 
--- | Given a text, it search in the REPLHistory the inputs which start with that text.
-searchInHistory :: Text -> REPLHistory -> REPLHistory
-searchInHistory t (REPLHistory s _ _) = newREPLHistory $ filter matchesText (toList s)
- where
-   matchesText histItem = (t `T.isPrefixOf` replItemText histItem) && isREPLEntry histItem
-
--- | Get the last from REPLHistory
-lastEntry :: REPLHistory -> Maybe Text
-lastEntry h = case filter isREPLEntry $ toList $ h ^. replSeq of
-  []      -> Nothing
-  rh : _  -> Just $ replItemText rh
-   
-
 -- | This data type represent what is prompted to the player
 --   and how the REPL show interpret the user input.
 data REPLPrompt = CmdPrompt Text                -- ^ Interpret the given text as a regular command
                 | SearchPrompt Text REPLHistory -- ^ Interpret the given text as "search this text in history"
 
+-- | Get the last Entry in REPLHistory matching the given text
+lastEntry :: Text -> REPLHistory -> Maybe Text
+lastEntry t h = case filter (liftA2 (&&) matchesText isREPLEntry) $ toList $ h ^. replSeq of
+  []      -> Nothing
+  rh : _  -> Just $ replItemText rh
+ where 
+  matchesText histItem = t `T.isInfixOf` replItemText histItem
+
+
 -- | The default REPL prompt.
 defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt ""
+  --SearchPrompt "hea" (newREPLHistory [REPLEntry "def move", REPLEntry "head move"])
+
 
 -- | Lens for accesing the text of the prompt. 
-promptTextL :: Lens' REPLPrompt Text   
+promptTextL :: Lens' REPLPrompt Text
 promptTextL = lens g s
   where
     -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).  
@@ -345,15 +344,20 @@ promptTextL = lens g s
 
     s :: REPLPrompt -> Text -> REPLPrompt
     s (CmdPrompt _)      t = CmdPrompt t
-    s (SearchPrompt _ h) t = SearchPrompt t (searchInHistory t h)
+    s (SearchPrompt _ h) t = SearchPrompt t h
 
--- 
+-- | Turn the repl prompt into a decorator for the form
 replPromptAsWidget :: REPLPrompt -> Widget Name
-replPromptAsWidget (CmdPrompt cmd)    = txt $ "> " <> cmd
-replPromptAsWidget (SearchPrompt t _) = txt $ "(search in history: " <> t <> ") "
+replPromptAsWidget (CmdPrompt _)    = txt "> "
+replPromptAsWidget (SearchPrompt t rh) =
+  case lastEntry t rh of
+    Nothing -> txt $ "[find command " <> t <> " nothing found] "
+    Just lastentry 
+      | T.null t  -> txt $ "[find command " <> t <> "] "
+      | otherwise -> txt $ "[find command " <> t <> ": \"" <> lastentry <> "\" found] "
 
 
--- | Creates the repl form
+-- | Creates the repl form as a decorated form.
 mkReplForm :: REPLPrompt -> Form REPLPrompt AppEvent Name
 mkReplForm r = newForm [(replPromptAsWidget r <+>) @@= editTextField promptTextL REPLInput (Just 1)] r
 
@@ -571,6 +575,23 @@ accumulatedTime :: Lens' UIState TimeSpec
 -- | Free-form data loaded from the @data@ directory, for things like
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' UIState (Map Text Text)
+
+-- | Lens for accesing the text of the prompt. 
+promptUpdateL :: Lens UIState (Form REPLPrompt AppEvent Name) Text Text
+promptUpdateL = lens g s
+  where
+    -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).  
+    -- This should be force in the ADT itself... right know this here
+    -- The compiler will complain about "Non complete patterns" on this two function. 
+    g :: UIState -> Text
+    g ui = case formState (ui ^. uiReplForm) of
+      CmdPrompt t -> t
+      SearchPrompt t _ -> t
+
+    s :: UIState -> Text -> Form REPLPrompt AppEvent Name
+    s ui inputText = case formState (ui ^. uiReplForm) of
+      CmdPrompt _      -> mkReplForm $ CmdPrompt inputText
+      SearchPrompt _ _ -> mkReplForm $ SearchPrompt inputText (ui ^. uiReplHistory)
 
 --------------------------------------------------
 -- Lenses for AppState
