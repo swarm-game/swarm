@@ -714,7 +714,7 @@ execConst c vs s k = do
             let unwalkable = e `hasProperty` Unwalkable
             let drowning = e `hasProperty` Liquid && CFloat `S.notMember` caps
             when (unwalkable || drowning) $ do
-              d <- destroyIfNotBase' target
+              d <- isDestroyable target
               when d $ selfDestruct .== True
 
         robotLocation .== nextLoc
@@ -774,7 +774,7 @@ execConst c vs s k = do
         -- Make sure the robot has the thing in its inventory
         e <-
           listToMaybe (lookupByName name inv)
-            `isJustOrFail` ["What is", indefinite name, "?"]
+            `isJustOrFail` ["What is", indefinite name <> "?"]
 
         (E.lookup e inv > 0)
           `holdsOrFail` ["You don't have", indefinite name, "to place."]
@@ -795,7 +795,7 @@ execConst c vs s k = do
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName <> "?"]
 
         (E.lookup item inv > 0)
           `holdsOrFail` ["You don't have", indefinite itemName, "to give."]
@@ -827,7 +827,7 @@ execConst c vs s k = do
         inv <- use robotInventory
         item <-
           (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName, "?"]
+            `isJustOrFail` ["What is", indefinite itemName <> "?"]
 
         (E.lookup item inv > 0)
           `holdsOrFail` ["You don't have", indefinite itemName, "to install."]
@@ -968,6 +968,16 @@ execConst c vs s k = do
 
         return $ Out res s k
       _ -> badConst
+    Knows -> case vs of
+      [VString name] -> do
+        inv <- use robotInventory
+        ins <- use installedDevices
+        let allKnown = inv `E.union` ins
+        let knows = case E.lookupByName name allKnown of
+              [] -> False
+              _ -> True
+        return $ Out (VBool knows) s k
+      _ -> badConst
     Upload -> case vs of
       [VRobot otherID] -> do
         -- Make sure the other robot exists and is close
@@ -1065,7 +1075,7 @@ execConst c vs s k = do
             robotDisplay . orientationMap . ix DSouth .= sc
             robotDisplay . orientationMap . ix DWest .= wc
             return $ Out VUnit s k
-          _other -> raise Appear [quote app, "is not a valid appearance string."]
+          _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
       _ -> badConst
     Create -> case vs of
       [VString name] -> do
@@ -1175,19 +1185,19 @@ execConst c vs s k = do
         -- check that current robot is not trying to reprogram self
         myID <- use robotID
         (childRobotID /= myID)
-          `holdsOrFail` ["You cannot make a robot reprogram itself"]
+          `holdsOrFail` ["You cannot make a robot reprogram itself."]
 
         -- check if robot has completed executing it's current command
         _ <-
           finalValue (childRobot ^. machine)
-            `isJustOrFail` ["You cannot reprogram a robot that has not completed its current command"]
+            `isJustOrFail` ["You cannot reprogram a robot that is actively running a program."]
 
         -- check if childRobot is at the correct distance
         -- a robot can program adjacent robots
         -- creative mode ignores distance checks
         loc <- use robotLocation
         (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
-          `holdsOrFail` ["You can only program adjacent robot"]
+          `holdsOrFail` ["You can only reprogram an adjacent robot."]
 
         _ <- checkRequiredDevices (childRobot ^. robotInventory) cmd "The target robot" FixByInstall
 
@@ -1495,10 +1505,12 @@ execConst c vs s k = do
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
   destroyIfNotBase :: (Has (State Robot) sig m, Has (Error Exn) sig m) => m ()
-  destroyIfNotBase = get @Robot >>= void . destroyIfNotBase'
+  destroyIfNotBase = do
+    destroy <- isDestroyable =<< get @Robot
+    when destroy $ selfDestruct .= True
 
-  destroyIfNotBase' :: (Has (Error Exn) sig m) => Robot -> m Bool
-  destroyIfNotBase' r = do
+  isDestroyable :: (Has (Error Exn) sig m) => Robot -> m Bool
+  isDestroyable r = do
     if r ^. robotID == 0
       then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
       else return True

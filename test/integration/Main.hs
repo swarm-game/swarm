@@ -106,8 +106,9 @@ testScenarioSolution _em =
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution "move" Default "data/scenarios/02Tutorial/00-move.yaml"
-        , testSolution "turn" Default "data/scenarios/02Tutorial/01-turn.yaml"
+        [ testSolution "move" Default "data/scenarios/02Tutorials/00-move.yaml"
+        , testSolution "turn" Default "data/scenarios/02Tutorials/01-turn.yaml"
+        , testSolution "craft" Default "data/scenarios/02Tutorials/02-craft.yaml"
         ]
     , testGroup
         "Challenges"
@@ -119,6 +120,7 @@ testScenarioSolution _em =
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
             testSolution "build with drill (#394)" Default "data/scenarios/04Testing/394-build-drill.yaml"
+        , testSolution "drowning results in destruction" Default "data/scenarios/04Testing/428-drowning-destroy.yaml"
         ]
     ]
  where

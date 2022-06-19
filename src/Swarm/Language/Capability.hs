@@ -332,3 +332,4 @@ constCaps =
     Snd -> []
     Try -> [] -- XXX these definitely need to require
     Raise -> [] -- something.
+    Knows -> []

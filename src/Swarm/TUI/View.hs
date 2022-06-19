@@ -285,16 +285,28 @@ drawDialog s = case s ^. uiModal of
 generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
  where
+  haltingMessage = case s ^. uiState . uiPrevMenu of
+    NoMenu -> Just "Quit"
+    _ -> Nothing
   (title, widget, buttons, requiredWidth) =
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
-      WinModal -> ("", txt "Congratulations!", Nothing, maxModalWindowWidth)
+      WinModal ->
+        let winMsg = "Congratulations!"
+            continueMsg = "Keep playing"
+            stopMsg = fromMaybe "Pick the next game" haltingMessage
+         in ( ""
+            , padBottom (Pad 1) $ hCenter $ txt winMsg
+            , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
+            , length continueMsg + length stopMsg + 32
+            )
       DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, 100)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit this game and return to the menu?"
+            stopMsg = fromMaybe "Quit to menu" haltingMessage
          in ( ""
             , padBottom (Pad 1) $ hCenter $ txt quitMsg
-            , Just (0, [("Keep playing", Cancel), ("Quit to menu", Confirm)])
+            , Just (0, [("Keep playing", Cancel), (stopMsg, Confirm)])
             , T.length quitMsg + 4
             )
 
