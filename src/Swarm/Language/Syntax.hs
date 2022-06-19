@@ -357,6 +357,8 @@ data Const
     RobotNamed
   | -- | Find a robot by number.
     RobotNumbered
+  | -- | Check if an entity is known.
+    Knows
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -497,6 +499,7 @@ constInfo c = case c of
   As -> commandLow 2
   RobotNamed -> commandLow 1
   RobotNumbered -> commandLow 1
+  Knows -> commandLow 1
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}

@@ -31,7 +31,7 @@
              (x-builtins '("if" "run" "return" "try" "raise" "force" "fst" "snd"))
              (x-commands
               '("noop" "wait" "selfdestruct" "move" "turn" "grab" "place" "give"
-                "install" "make" "build" "salvage" "reprogram"
+                "install" "make" "build" "salvage" "reprogram" "knows"
                 "say" "log" "view" "appear" "create" "getx" "gety"
                 "blocked" "scan" "upload" "ishere" "whoami"
                 "random" "not"
