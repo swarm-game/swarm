@@ -205,7 +205,7 @@ drawGameUI s =
                 highlightAttr
                 fr
                 WorldPanel
-                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
+                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s) & addCursorPos)
                 (drawWorld $ s ^. gameState)
             , drawKeyMenu s
             , clickable REPLPanel $
@@ -225,9 +225,19 @@ drawGameUI s =
         ]
   ]
  where
+  addCursorPos = case s ^. gameState . worldCursor of
+    Just coord -> topLabels . rightLabel ?~ txt (showTarget coord)
+    Nothing -> id
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
+
+showTarget :: W.Coords -> Text
+showTarget (W.Coords (y, x)) = "target at " <> from (show x) <> " " <> from (show (y * (-1)))
+
+{- If map is not centered, we need to update the distance:
+let baseLocM = robotLocation <$> IM.lookup (s ^. gameState . focusedRobotID) (s ^. gameState . robotMap)
+-}
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
