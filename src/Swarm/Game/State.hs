@@ -36,6 +36,9 @@ module Swarm.Game.State (
   robotMap,
   robotsByLocation,
   activeRobots,
+  availableRecipes,
+  allDiscoveredEntities,
+  allInstalledDevices,
   gensym,
   randGen,
   adjList,
@@ -197,6 +200,9 @@ data GameState = GameState
     -- append to a list than to a Set.
     _waitingRobots :: Map Integer [RID]
   , _robotsByLocation :: Map (V2 Int64) IntSet
+  , _allDiscoveredEntities :: Inventory
+  , _allInstalledDevices :: Inventory
+  , _availableRecipes :: (Int, [Recipe Entity])
   , _gensym :: Int
   , _randGen :: StdGen
   , _adjList :: Array Int Text
@@ -262,6 +268,15 @@ robotMap :: Lens' GameState (IntMap Robot)
 --   Fortunately, there are relatively few ways for these things to
 --   happen.
 robotsByLocation :: Lens' GameState (Map (V2 Int64) IntSet)
+
+-- | The list of entities that have been discovered.
+allDiscoveredEntities :: Lens' GameState Inventory
+
+-- | The list of devices that have been installed once.
+allInstalledDevices :: Lens' GameState Inventory
+
+-- | The list of available recipes, with the position of the last known item.
+availableRecipes :: Lens' GameState (Int, [Recipe Entity])
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState IntSet
@@ -512,6 +527,9 @@ initGameState = do
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty
+      , _availableRecipes = (0, mempty)
+      , _allDiscoveredEntities = empty
+      , _allInstalledDevices = empty
       , _activeRobots = IS.empty
       , _waitingRobots = M.empty
       , _gensym = 0

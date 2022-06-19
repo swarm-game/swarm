@@ -390,6 +390,7 @@ mkReplForm r = newForm [(replPromptAsWidget r <+>) @@= editTextField promptTextL
 
 data ModalType
   = HelpModal
+  | RecipesModal
   | WinModal
   | QuitModal
   | DescriptionModal Entity
