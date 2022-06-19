@@ -226,14 +226,17 @@ drawGameUI s =
   ]
  where
   addCursorPos = case s ^. gameState . worldCursor of
-    Just coord -> topLabels . rightLabel ?~ txt (showTarget coord)
+    Just coord -> topLabels . rightLabel ?~ drawWorldCursorInfo (s ^. gameState) coord
     Nothing -> id
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
 
-showTarget :: W.Coords -> Text
-showTarget (W.Coords (y, x)) = "target at " <> from (show x) <> " " <> from (show (y * (-1)))
+drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
+drawWorldCursorInfo g i@(W.Coords (y, x)) =
+  hBox [entity, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
+  where
+    entity = snd $ drawCell (hiding g) (g ^. world) i
 
 {- If map is not centered, we need to update the distance:
 let baseLocM = robotLocation <$> IM.lookup (s ^. gameState . focusedRobotID) (s ^. gameState . robotMap)
@@ -457,11 +460,7 @@ drawWorld g =
 
   drawLoc :: W.Coords -> Widget Name
   drawLoc coords =
-    let (ePrio, eWidget) = drawCell hiding (g ^. world) coords
-        hiding =
-          if g ^. creativeMode
-            then HideNoEntity
-            else maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
+    let (ePrio, eWidget) = drawCell (hiding g) (g ^. world) coords
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
             | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
@@ -471,6 +470,11 @@ drawWorld g =
           Nothing -> eWidget
 
 data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
+
+hiding :: GameState -> HideEntity
+hiding g
+  | g ^. creativeMode = HideNoEntity
+  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
 
 -- | Draw a single cell of the world, either hiding entities that current robot does not know,
 --   or hiding all/none depending on Left value (True/False).
