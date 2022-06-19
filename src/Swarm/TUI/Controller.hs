@@ -216,7 +216,9 @@ handleMainEvent s = \case
   MouseUp n _ _mouseLoc -> do
     setFocus s $ case n of
       -- Adapt click event origin to their right panel.
-      -- TODO: figure how to force that using `clickable`
+      -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
+      -- However this does not seems to work for the robot and info panel.
+      -- Thus we force the destination focus here.
       InventoryList -> RobotPanel
       InfoViewport -> InfoPanel
       _ -> n
