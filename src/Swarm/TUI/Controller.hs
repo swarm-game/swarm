@@ -581,7 +581,8 @@ handleREPLEvent s (Key V.KEnter) =
                 . (uiState . uiError .~ Nothing)
                 $ s
             | otherwise ->
-              (uiState . uiReplForm .~ mkReplForm (CmdPrompt found))
+              validateREPLForm
+                . (uiState . uiReplForm .~ mkReplForm (CmdPrompt found))
                 . (uiState . uiReplType .~ Nothing)
                 . (uiState . uiError .~ Nothing)
                 $ s
