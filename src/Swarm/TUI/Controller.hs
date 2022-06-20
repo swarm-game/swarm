@@ -301,8 +301,8 @@ handleModalEvent s = \case
       _ -> continue s'
   ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
-    case s ^. uiState . uiModal of
-      Just (RecipesModal) -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
+    case s ^? uiState . uiModal . _Just . modalType of
+      Just RecipesModal -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
       _ -> continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
