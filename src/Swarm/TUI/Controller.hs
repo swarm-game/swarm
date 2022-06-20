@@ -623,13 +623,6 @@ handleREPLEvent s (ControlKey 'r') = continue $
         let newform = mkReplForm $ SearchPrompt ftext (newREPLHistory rhis)
          in s & uiState . uiReplForm .~ newform
 handleREPLEvent s EscapeKey = continue $
-  case s ^. uiState . uiReplForm . to formState of
-    CmdPrompt _ ->
-      (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-        . (uiState . uiReplType .~ Nothing)
-        . (uiState . uiError .~ Nothing)
-        $ s
-    SearchPrompt _ _ ->
       (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
         . (uiState . uiReplType .~ Nothing)
         . (uiState . uiError .~ Nothing)
