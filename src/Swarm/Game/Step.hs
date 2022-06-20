@@ -1660,6 +1660,14 @@ updateInstalledDevice e = do
       traverse_ (updateAvailableRecipes (allDiscovered, newAllDevices) . snd) (elems allDiscovered)
       allInstalledDevices .= newAllDevices
 
+-- | Update the availableRecipes list.
+-- This implementation is not efficient:
+-- * Every time we discover a new entity, we iterate through the entire list of recipes to see which ones we can make.
+--   Trying to do something more clever seems like it would definitely be a case of premature optimization.
+--   One doesn't discover new entities all that often.
+-- * For each usable recipe, we do a linear search through the list of known recipes to see if we already know it.
+--   This is a little more troubling, since it's quadratic in the number of recipes.
+--   But it probably doesn't really make that much difference until we get up to thousands of recipes.
 updateAvailableRecipes :: Has (State GameState) sig m => (Inventory, Inventory) -> Entity -> m ()
 updateAvailableRecipes invs e = do
   allInRecipes <- use recipesIn
