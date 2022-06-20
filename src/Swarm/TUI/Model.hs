@@ -355,10 +355,10 @@ replPromptAsWidget :: REPLPrompt -> Widget Name
 replPromptAsWidget (CmdPrompt _) = txt "> "
 replPromptAsWidget (SearchPrompt t rh) =
   case lastEntry t rh of
-    Nothing -> txt $ "[find command " <> t <> " nothing found] "
+    Nothing -> txt $ "[find " <> t <> " nothing found] "
     Just lastentry
-      | T.null t -> txt $ "[find command " <> t <> "] "
-      | otherwise -> txt $ "[find command " <> t <> ": \"" <> lastentry <> "\" found] "
+      | T.null t -> txt $ "[find " <> t <> "] "
+      | otherwise -> txt $ "[find " <> t <> ": \"" <> lastentry <> "\"] "
 
 -- | Creates the repl form as a decorated form.
 mkReplForm :: REPLPrompt -> Form REPLPrompt AppEvent Name
