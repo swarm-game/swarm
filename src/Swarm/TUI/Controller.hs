@@ -47,6 +47,7 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
+import Data.Foldable (toList)
 import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -55,7 +56,6 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Vector as V
-import Data.Foldable (toList)
 import Linear
 import System.Clock
 import Witch (into)
@@ -622,7 +622,7 @@ handleREPLEvent s (ControlKey 'r') = continue $
       _ : rhis ->
         let newform = mkReplForm $ SearchPrompt ftext (newREPLHistory rhis)
          in s & uiState . uiReplForm .~ newform
-handleREPLEvent s EscapeKey = continue $    --- Todo: EscapeKey and ^g are the exact same function!!!! Can I match two patterns?
+handleREPLEvent s EscapeKey = continue $ --- Todo: EscapeKey and ^g are the exact same function!!!! Can I match two patterns?
   case s ^. uiState . uiReplForm . to formState of
     CmdPrompt _ ->
       let newform = set promptUpdateL "" (s ^. uiState)
