@@ -200,6 +200,7 @@ handleMainEvent s = \case
   Key V.KEsc
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
+  FKey 1 -> toggleModal s HelpModal >>= continue
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
@@ -213,7 +214,6 @@ handleMainEvent s = \case
   -- toggle creative mode if in "cheat mode"
   ControlKey 'k'
     | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
-  FKey 1 -> toggleModal s HelpModal >>= continue
   MouseDown n _ _ mouseLoc ->
     case n of
       WorldPanel -> do
