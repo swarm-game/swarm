@@ -267,10 +267,9 @@ maybeUnpause :: AppState -> EventM Name AppState
 maybeUnpause s
   | s ^. gameState . runStatus == AutoPause = do
     curTime <- liftIO $ getTime Monotonic
-    pure $ s & unpause curTime
+    pure $ s & (gameState . runStatus .~ Running) . resetLastFrameTime curTime
   | otherwise = pure s
  where
-  unpause curTime = (gameState . runStatus .~ Running) . resetLastFrameTime curTime
   -- When unpausing, it is critical to ensure the next frame doesn't
   -- catch up from the time spent in pause.
   -- TODO: manage unpause more safely to also cover
