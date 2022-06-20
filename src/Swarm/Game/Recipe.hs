@@ -192,8 +192,8 @@ missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
 knowsIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> Bool
 knowsIngredientsFor (inv, ins) recipe =
   knowsAll inv (recipe ^. recipeInputs) && knowsAll ins (recipe ^. recipeRequirements)
-  where
-    knowsAll xs = all (E.contains xs . snd)
+ where
+  knowsAll xs = all (E.contains xs . snd)
 
 -- | Try to make a recipe, deleting the recipe's inputs from the
 --   inventory. Return either a description of which items are
