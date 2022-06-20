@@ -500,6 +500,7 @@ drawRobotPanel :: AppState -> Widget Name
 drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
   (Just r, Just (_, lst)) ->
     let V2 x y = r ^. robotLocation
+        drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
      in padBottom Max $
           vBox
             [ hCenter $
@@ -508,7 +509,7 @@ drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInve
                   , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
                   , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
                   ]
-            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) True lst)
+            , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
             ]
   _ -> padRight Max . padBottom Max $ str " "
 

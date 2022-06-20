@@ -176,13 +176,15 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
+  | -- | The inventory item position in the InventoryList.
+    InventoryListItem Int
   | -- | The list of main menu choices.
     MenuList
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
 infoScroll = viewportScroll InfoViewport
