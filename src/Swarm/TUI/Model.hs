@@ -333,8 +333,6 @@ lastEntry t h = case filter (liftA2 (&&) matchesText isREPLEntry) $ toList $ h ^
 defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt ""
 
---SearchPrompt "hea" (newREPLHistory [REPLEntry "def move", REPLEntry "head move"])
-
 -- | Lens for accesing the text of the prompt.
 promptTextL :: Lens' REPLPrompt Text
 promptTextL = lens g s
@@ -641,15 +639,6 @@ focusedEntity =
 -- | The initial state of the focus ring.
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
-
-{-
--- | The initial state of the REPL entry form.
-initReplForm :: Form REPLPrompt AppEvent Name
-initReplForm = mkReplForm $ CmdPrompt ""
-  -- newForm
-  --   [(txt (printPrompt replPrompt) <+>) @@= editTextField promptText REPLInput (Just 1)]
-  --   (CmdPrompt "")
--}
 
 -- | The initial state of the REPL entry form.
 initReplForm :: Form REPLPrompt AppEvent Name
