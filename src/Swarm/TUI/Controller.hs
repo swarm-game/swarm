@@ -149,6 +149,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
         continue $
           s & uiState . uiMenu .~ NoMenu
             & uiState . uiPrevMenu .~ nextMenu
+            & uiState %~ resetUIState
             & gameState .~ gs'
       Just (SICollection _ c) ->
         continue $
@@ -160,6 +161,15 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
     menu' <- handleListEvent ev curMenu
     continue $ s & uiState . uiMenu .~ NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw s
+
+-- | Reset the UI state when beginning a new game.
+resetUIState :: UIState -> UIState
+resetUIState =
+  (uiFocusRing .~ initFocusRing)
+    . (uiInventory .~ Nothing)
+    . (uiShowFPS .~ False)
+    . (uiShowZero .~ True)
+    . (lgTicksPerSecond .~ initLgTicksPerSecond)
 
 mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
 mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
@@ -204,6 +214,24 @@ handleMainEvent s = \case
   ControlKey 'k'
     | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
   FKey 1 -> toggleModal s HelpModal >>= continue
+  MouseDown n _ _ mouseLoc ->
+    case n of
+      WorldPanel -> do
+        mouseCoordsM <- mouseLocToWorldCoords (s ^. gameState) mouseLoc
+        continue (s & uiState . uiWorldCursor .~ mouseCoordsM)
+      REPLPanel ->
+        -- Do not clear the world cursor when going back to the REPL
+        continueWithoutRedraw s
+      _ -> continueWithoutRedraw (s & uiState . uiWorldCursor .~ Nothing)
+  MouseUp n _ _mouseLoc -> do
+    setFocus s $ case n of
+      -- Adapt click event origin to their right panel.
+      -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
+      -- However this does not seems to work for the robot and info panel.
+      -- Thus we force the destination focus here.
+      InventoryList -> RobotPanel
+      InfoViewport -> InfoPanel
+      _ -> n
   -- dispatch any other events to the focused panel handler
   ev ->
     case focusGetCurrent (s ^. uiState . uiFocusRing) of
@@ -212,6 +240,19 @@ handleMainEvent s = \case
       Just RobotPanel -> handleRobotPanelEvent s ev
       Just InfoPanel -> handleInfoPanelEvent s ev
       _ -> continueWithoutRedraw s
+
+mouseLocToWorldCoords :: GameState -> Brick.Location -> EventM Name (Maybe W.Coords)
+mouseLocToWorldCoords gs (Brick.Location mouseLoc) = do
+  mext <- lookupExtent WorldExtent
+  pure $ case mext of
+    Nothing -> Nothing
+    Just ext ->
+      let region = viewingRegion gs (bimap fromIntegral fromIntegral (extentSize ext))
+          regionStart = W.unCoords (fst region)
+          mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
+          mx = snd mouseLoc' + fst regionStart
+          my = fst mouseLoc' + snd regionStart
+       in Just $ W.Coords (mx, my)
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name

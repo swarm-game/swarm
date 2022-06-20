@@ -67,6 +67,7 @@ module Swarm.TUI.Model (
   uiPrevMenu,
   uiCheatMode,
   uiFocusRing,
+  uiWorldCursor,
   uiReplForm,
   uiReplType,
   uiReplHistory,
@@ -146,6 +147,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (ScenarioItem)
 import Swarm.Game.State
+import qualified Swarm.Game.World as W
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -427,6 +429,7 @@ data UIState = UIState
   , _uiPrevMenu :: Menu
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
+  , _uiWorldCursor :: Maybe W.Coords
   , _uiReplForm :: Form REPLPrompt AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
@@ -482,6 +485,9 @@ uiCheatMode :: Lens' UIState Bool
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
 uiFocusRing :: Lens' UIState (FocusRing Name)
+
+-- | The last clicked position on the world view.
+uiWorldCursor :: Lens' UIState (Maybe W.Coords)
 
 -- | The form where the user can type input at the REPL.
 uiReplForm :: Lens' UIState (Form REPLPrompt AppEvent Name)
@@ -673,6 +679,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiPrevMenu = NoMenu
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
+      , _uiWorldCursor = Nothing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
       , _uiReplHistory = newREPLHistory history

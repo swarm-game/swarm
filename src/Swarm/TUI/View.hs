@@ -205,28 +205,38 @@ drawGameUI s =
                 highlightAttr
                 fr
                 WorldPanel
-                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
+                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s) & addCursorPos)
                 (drawWorld $ s ^. gameState)
             , drawKeyMenu s
-            , panel
-                highlightAttr
-                fr
-                REPLPanel
-                ( plainBorder
-                    & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
-                )
-                ( vLimit replHeight $
-                    padBottom Max $
-                      padLeftRight 1 $
-                        drawREPL s
-                )
+            , clickable REPLPanel $
+                panel
+                  highlightAttr
+                  fr
+                  REPLPanel
+                  ( plainBorder
+                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
+                  )
+                  ( vLimit replHeight
+                      . padBottom Max
+                      . padLeftRight 1
+                      $ drawREPL s
+                  )
             ]
         ]
   ]
  where
+  addCursorPos = case s ^. uiState . uiWorldCursor of
+    Just coord -> topLabels . rightLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
+    Nothing -> id
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
+
+drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
+drawWorldCursorInfo g i@(W.Coords (y, x)) =
+  hBox [entity, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
+ where
+  entity = snd $ drawCell (hiding g) (g ^. world) i
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -419,15 +429,18 @@ drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
 -- | Draw the current world view.
 drawWorld :: GameState -> Widget Name
 drawWorld g =
-  center $
-    cached WorldCache $
-      reportExtent WorldExtent $
-        Widget Fixed Fixed $ do
-          ctx <- getContext
-          let w = ctx ^. availWidthL
-              h = ctx ^. availHeightL
-              ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-          render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
+  center
+    . cached WorldCache
+    . reportExtent WorldExtent
+    -- Set the clickable request after the extent to play nice with the cache
+    . clickable WorldPanel
+    . Widget Fixed Fixed
+    $ do
+      ctx <- getContext
+      let w = ctx ^. availWidthL
+          h = ctx ^. availHeightL
+          ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
+      render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
  where
   -- XXX update how this works!  Gather all displays, all
   -- entities...  Should make a Display remember which is the
@@ -443,11 +456,7 @@ drawWorld g =
 
   drawLoc :: W.Coords -> Widget Name
   drawLoc coords =
-    let (ePrio, eWidget) = drawCell hiding (g ^. world) coords
-        hiding =
-          if g ^. creativeMode
-            then HideNoEntity
-            else maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
+    let (ePrio, eWidget) = drawCell (hiding g) (g ^. world) coords
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
             | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
@@ -457,6 +466,11 @@ drawWorld g =
           Nothing -> eWidget
 
 data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
+
+hiding :: GameState -> HideEntity
+hiding g
+  | g ^. creativeMode = HideNoEntity
+  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
 
 -- | Draw a single cell of the world, either hiding entities that current robot does not know,
 --   or hiding all/none depending on Left value (True/False).
