@@ -169,6 +169,7 @@ resetUIState =
     . (uiInventory .~ Nothing)
     . (uiShowFPS .~ False)
     . (uiShowZero .~ True)
+    . (lgTicksPerSecond .~ initLgTicksPerSecond)
 
 mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
 mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
