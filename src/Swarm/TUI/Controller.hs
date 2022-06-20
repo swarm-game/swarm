@@ -189,7 +189,7 @@ handleMainEvent s = \case
     continue s
   Key V.KEsc
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
-    | isJust (s ^. uiState . uiModal) -> continue $ s & uiState . uiModal .~ Nothing
+    | isJust (s ^. uiState . uiModal) -> continue $ s & maybeUnpause s . (uiState . uiModal .~ Nothing)
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
@@ -222,22 +222,24 @@ markAsRead (_, xs) = (0, xs)
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
+-- | Set the game to Running if it was auto paused
+maybeUnpause :: AppState -> AppState -> AppState
+maybeUnpause s
+    | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
+    | otherwise = id
+
 toggleModal :: AppState -> ModalType -> EventM Name AppState
 toggleModal s mt = do
   curTime <- liftIO $ getTime Monotonic
   return $
     s & case s ^. uiState . uiModal of
       Nothing -> (uiState . uiModal ?~ generateModal s mt) . ensurePause
-      Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
+      Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause s . resetLastFrameTime curTime
  where
   -- Set the game to AutoPause if needed
   ensurePause
     | s ^. gameState . paused = id
     | otherwise = gameState . runStatus .~ AutoPause
-  -- Set the game to Running if it was auto paused
-  maybeUnpause
-    | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
-    | otherwise = id
   -- When unpausing, it is critical to ensure the next frame doesn't
   -- catch up from the time spent in pause.
   -- TODO: manage unpause more safely to also cover
