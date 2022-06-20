@@ -176,7 +176,8 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
-  | InventoryListItem Int
+  | -- | The inventory item position in the InventoryList.
+    InventoryListItem Int
   | -- | The list of main menu choices.
     MenuList
   | -- | The list of scenario choices.
