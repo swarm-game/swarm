@@ -199,7 +199,7 @@ handleMainEvent s = \case
     continue s
   Key V.KEsc
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
-    | isJust (s ^. uiState . uiModal) -> continue $ s & uiState . uiModal .~ Nothing
+    | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
@@ -262,27 +262,30 @@ mouseLocToWorldCoords gs (Brick.Location mouseLoc) = do
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
-toggleModal :: AppState -> ModalType -> EventM Name AppState
-toggleModal s mt = do
-  curTime <- liftIO $ getTime Monotonic
-  return $
-    s & case s ^. uiState . uiModal of
-      Nothing -> (uiState . uiModal ?~ generateModal s mt) . ensurePause
-      Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
+-- | Set the game to Running if it was auto paused
+maybeUnpause :: AppState -> EventM Name AppState
+maybeUnpause s
+  | s ^. gameState . runStatus == AutoPause = do
+    curTime <- liftIO $ getTime Monotonic
+    pure $ s & unpause curTime
+  | otherwise = pure s
  where
-  -- Set the game to AutoPause if needed
-  ensurePause
-    | s ^. gameState . paused = id
-    | otherwise = gameState . runStatus .~ AutoPause
-  -- Set the game to Running if it was auto paused
-  maybeUnpause
-    | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
-    | otherwise = id
+  unpause curTime = (gameState . runStatus .~ Running) . resetLastFrameTime curTime
   -- When unpausing, it is critical to ensure the next frame doesn't
   -- catch up from the time spent in pause.
   -- TODO: manage unpause more safely to also cover
   -- the world event handler for the KChar 'p'.
   resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
+
+toggleModal :: AppState -> ModalType -> EventM Name AppState
+toggleModal s mt = case s ^. uiState . uiModal of
+  Nothing -> pure $ s & (uiState . uiModal ?~ generateModal s mt) . ensurePause
+  Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
+ where
+  -- Set the game to AutoPause if needed
+  ensurePause
+    | s ^. gameState . paused = id
+    | otherwise = gameState . runStatus .~ AutoPause
 
 handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s = \case
