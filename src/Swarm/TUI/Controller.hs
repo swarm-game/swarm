@@ -603,24 +603,22 @@ handleREPLEvent s (Key V.KUp) =
   continue $ s & adjReplHistIndex Older
 handleREPLEvent s (Key V.KDown) =
   continue $ s & adjReplHistIndex Newer
-handleREPLEvent s (ControlKey 'r') =
+handleREPLEvent s (ControlKey 'r') = continue $
   case s ^. uiState . uiReplForm . to formState of
     CmdPrompt uinput ->
-      let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory) -- set promptUpdateL uinput (s ^. uiState)
-          s' = s & uiState . uiReplForm .~ newform
-       in continue s'
+      let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
+       in s & uiState . uiReplForm .~ newform
     SearchPrompt _ _ ->
       let newform = mkReplForm $ CmdPrompt ""
-          s' = s & uiState . uiReplForm .~ newform
-       in continue s'
+       in s & uiState . uiReplForm .~ newform
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  case formState f' of
-    CmdPrompt _ -> continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
-    SearchPrompt t _ -> do
-      let newform = set promptUpdateL t (s ^. uiState)
-          s' = s & uiState . uiReplForm .~ newform
-      continue s'
+  continue $
+    case formState f' of
+      CmdPrompt _ -> validateREPLForm (s & uiState . uiReplForm .~ f')
+      SearchPrompt t _ ->
+        let newform = set promptUpdateL t (s ^. uiState)
+         in s & uiState . uiReplForm .~ newform
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
