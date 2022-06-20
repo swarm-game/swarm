@@ -226,7 +226,7 @@ handleMainEvent s = \case
   MouseUp n _ _mouseLoc -> do
     let s' =
           s & case n of
-            InventoryListItem pos -> uiState . uiInventory %~ maybe Nothing (\(h, l) -> Just (h, BL.listMoveTo pos l))
+            InventoryListItem pos -> uiState . uiInventory . traverse . _2 %~ BL.listMoveTo pos
             _ -> id
     setFocus s' $ case n of
       -- Adapt click event origin to their right panel.
