@@ -364,7 +364,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     ]
 
 helpRecipes :: (Int, [Recipe Entity]) -> Widget Name
-helpRecipes (count, xs) = vBox recipesLists
+helpRecipes (count, xs) = viewport RecipesViewport Vertical (vBox recipesLists)
  where
   (news, knowns) = splitAt count xs
   recipesLists = drawRecipes news <> sepRecipes <> drawRecipes knowns
