@@ -33,7 +33,6 @@ module Swarm.Game.Recipe (
   inRecipeMap,
 
   -- * Looking up recipes
-  missingIngredientsFor,
   knowsIngredientsFor,
   recipesFor,
   make,
