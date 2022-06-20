@@ -201,7 +201,7 @@ handleMainEvent s = \case
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
-  FKey 2 -> do
+  FKey 2 | not (null (s ^. gameState . availableRecipes . _2)) -> do
     s' <- toggleModal s RecipesModal
     continue (s' & gameState . availableRecipes %~ markAsRead)
   VtyEvent vev
