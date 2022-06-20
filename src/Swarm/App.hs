@@ -66,6 +66,7 @@ appMain seed scenario toRun cheat = do
 
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
+      V.setMode (V.outputIface initialVty) V.Mouse True
       void $ customMain initialVty buildVty (Just chan) app s
 
 -- | If available for the terminal emulator, enable bracketed paste mode.
