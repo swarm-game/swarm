@@ -1642,7 +1642,7 @@ updateDiscoveredEntities e = do
   if E.contains0plus e allDiscovered
     then pure ()
     else do
-      let newAllDiscovered = E.insertCount 9001 e allDiscovered
+      let newAllDiscovered = E.insertCount 1 e allDiscovered
       allDevices <- use allInstalledDevices
       updateAvailableRecipes (newAllDiscovered, allDevices) e
       allDiscoveredEntities .= newAllDiscovered
@@ -1654,7 +1654,7 @@ updateInstalledDevice e = do
   if E.contains0plus e allDevices
     then pure ()
     else do
-      let newAllDevices = E.insertCount 9001 e allDevices
+      let newAllDevices = E.insertCount 1 e allDevices
       -- Check every known entities to see if the new device enables new recipes
       allDiscovered <- use allDiscoveredEntities
       traverse_ (updateAvailableRecipes (allDiscovered, newAllDevices) . snd) (elems allDiscovered)
@@ -1672,10 +1672,7 @@ updateAvailableRecipes :: Has (State GameState) sig m => (Inventory, Inventory) 
 updateAvailableRecipes invs e = do
   allInRecipes <- use recipesIn
   let entityRecipes = recipesFor allInRecipes e
-  let canMake recipe = case missingIngredientsFor invs recipe of
-        [] -> True
-        _ -> False
-  let usableRecipes = filter canMake entityRecipes
+      usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
   (knownLength, knownRecipes) <- use availableRecipes
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
       newLength = case newRecipes of
