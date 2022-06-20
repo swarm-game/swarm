@@ -201,7 +201,8 @@ handleMainEvent s = \case
     continue s
   Key V.KEsc
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
-    | isJust (s ^. uiState . uiModal) -> continue $ s & uiState . uiModal .~ Nothing
+    | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
+  FKey 1 -> toggleModal s HelpModal >>= continue
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
@@ -219,7 +220,6 @@ handleMainEvent s = \case
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
     ReadGoal g -> toggleModal s (GoalModal g) >>= continue
-  FKey 1 -> toggleModal s HelpModal >>= continue
   MouseDown n _ _ mouseLoc ->
     case n of
       WorldPanel -> do
@@ -230,12 +230,17 @@ handleMainEvent s = \case
         continueWithoutRedraw s
       _ -> continueWithoutRedraw (s & uiState . uiWorldCursor .~ Nothing)
   MouseUp n _ _mouseLoc -> do
-    setFocus s $ case n of
+    let s' =
+          s & case n of
+            InventoryListItem pos -> uiState . uiInventory . traverse . _2 %~ BL.listMoveTo pos
+            _ -> id
+    setFocus s' $ case n of
       -- Adapt click event origin to their right panel.
       -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
       -- However this does not seems to work for the robot and info panel.
       -- Thus we force the destination focus here.
       InventoryList -> RobotPanel
+      InventoryListItem _ -> RobotPanel
       InfoViewport -> InfoPanel
       _ -> n
   -- dispatch any other events to the focused panel handler
@@ -263,27 +268,29 @@ mouseLocToWorldCoords gs (Brick.Location mouseLoc) = do
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
-toggleModal :: AppState -> ModalType -> EventM Name AppState
-toggleModal s mt = do
-  curTime <- liftIO $ getTime Monotonic
-  return $
-    s & case s ^. uiState . uiModal of
-      Nothing -> (uiState . uiModal ?~ generateModal s mt) . ensurePause
-      Just _ -> (uiState . uiModal .~ Nothing) . maybeUnpause . resetLastFrameTime curTime
+-- | Set the game to Running if it was auto paused
+maybeUnpause :: AppState -> EventM Name AppState
+maybeUnpause s
+  | s ^. gameState . runStatus == AutoPause = do
+    curTime <- liftIO $ getTime Monotonic
+    pure $ s & (gameState . runStatus .~ Running) . resetLastFrameTime curTime
+  | otherwise = pure s
  where
-  -- Set the game to AutoPause if needed
-  ensurePause
-    | s ^. gameState . paused = id
-    | otherwise = gameState . runStatus .~ AutoPause
-  -- Set the game to Running if it was auto paused
-  maybeUnpause
-    | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
-    | otherwise = id
   -- When unpausing, it is critical to ensure the next frame doesn't
   -- catch up from the time spent in pause.
   -- TODO: manage unpause more safely to also cover
   -- the world event handler for the KChar 'p'.
   resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
+
+toggleModal :: AppState -> ModalType -> EventM Name AppState
+toggleModal s mt = case s ^. uiState . uiModal of
+  Nothing -> pure $ s & (uiState . uiModal ?~ generateModal s mt) . ensurePause
+  Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
+ where
+  -- Set the game to AutoPause if needed
+  ensurePause
+    | s ^. gameState . paused = id
+    | otherwise = gameState . runStatus .~ AutoPause
 
 handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s = \case
