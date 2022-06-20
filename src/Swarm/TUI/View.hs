@@ -362,7 +362,17 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     ]
 
 helpRecipes :: (Int, [Recipe Entity]) -> Widget Name
-helpRecipes (_, xs) = vBox (map (drawRecipe Nothing Nothing) xs)
+helpRecipes (count, xs) = vBox recipesLists
+ where
+  (news, knowns) = splitAt count xs
+  recipesLists = drawRecipes news <> sepRecipes <> drawRecipes knowns
+  drawRecipes = map (padBottom (Pad 1) . drawRecipe Nothing Nothing)
+  -- TODO: figure out how to make the whole hBorder to be red, not just the label
+  sepRecipes
+    | count > 0 && not (null knowns) =
+      [ padBottom (Pad 1) (withAttr "red" $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+      ]
+    | otherwise = []
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
