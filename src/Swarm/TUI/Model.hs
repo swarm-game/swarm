@@ -309,6 +309,7 @@ data ModalType
   | WinModal
   | QuitModal
   | DescriptionModal Entity
+  | GoalModal [Text]
   deriving (Eq, Show)
 
 data ButtonSelection = Cancel | Confirm

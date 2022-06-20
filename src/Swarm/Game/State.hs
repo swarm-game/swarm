@@ -24,6 +24,9 @@ module Swarm.Game.State (
   _WinCondition,
   _Won,
   RunStatus (..),
+  GoalStatus (..),
+  goalNeedsDisplay,
+  markGoalRead,
   GameState,
   Seed,
   initGameState,
@@ -32,6 +35,7 @@ module Swarm.Game.State (
 
   -- ** GameState fields
   creativeMode,
+  gameGoal,
   winCondition,
   winSolution,
   runStatus,
@@ -162,11 +166,34 @@ data RunStatus
     AutoPause
   deriving (Eq, Show)
 
+-- | Status of the scenario goal: whether there is one, and whether it has been
+--   displayed to the user initially.
+data GoalStatus
+  = -- | There is no goal.
+    NoGoal
+  | -- | There is a goal, and we should display it to the user initially.
+    UnreadGoal [Text]
+  | -- | There is a goal, and we have already displayed it to the user.
+    --   It can be displayed again if the user chooses.
+    ReadGoal [Text]
+  deriving (Eq, Show)
+
+-- | Do we need to display the goal initially to the user?
+goalNeedsDisplay :: GoalStatus -> Maybe [Text]
+goalNeedsDisplay (UnreadGoal g) = Just g
+goalNeedsDisplay _ = Nothing
+
+-- | Mark the goal as having been read.
+markGoalRead :: GoalStatus -> GoalStatus
+markGoalRead (UnreadGoal g) = ReadGoal g
+markGoalRead gs = gs
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
+  , _gameGoal :: GoalStatus
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _runStatus :: RunStatus
@@ -219,6 +246,10 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
+
+-- | Status of the scenario goal: whether there is one, and whether it
+--   has been displayed to the user initially.
+gameGoal :: Lens' GameState GoalStatus
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
@@ -377,7 +408,7 @@ viewingRegion :: GameState -> (Int64, Int64) -> (W.Coords, W.Coords)
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   V2 cx cy = g ^. viewCenter
-  (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
+  (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
 -- | Find out which robot is currently specified by the
@@ -435,6 +466,7 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
   let initState =
         GameState
           { _creativeMode = False
+          , _gameGoal = NoGoal
           , _winCondition = NoWinCondition
           , _winSolution = Nothing
           , _runStatus = Running
@@ -485,6 +517,7 @@ playScenario em scenario userSeed toRun g = do
   return $
     g
       { _creativeMode = scenario ^. scenarioCreative
+      , _gameGoal = maybe NoGoal UnreadGoal (scenario ^. scenarioGoal)
       , _winCondition = theWinCondition
       , _winSolution = scenario ^. scenarioSolution
       , _runStatus = Running

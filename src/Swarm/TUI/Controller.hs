@@ -193,6 +193,8 @@ handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleMainEvent s = \case
   AppEvent Frame
     | s ^. gameState . paused -> continueWithoutRedraw s
+    | Just g <- s ^. gameState . gameGoal . to goalNeedsDisplay ->
+      toggleModal s (GoalModal g) <&> (gameState . gameGoal %~ markGoalRead) >>= runFrameUI
     | otherwise -> runFrameUI s
   VtyEvent (V.EvResize _ _) -> do
     invalidateCacheEntry WorldCache
@@ -213,6 +215,10 @@ handleMainEvent s = \case
   -- toggle creative mode if in "cheat mode"
   ControlKey 'k'
     | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
+  ControlKey 'g' -> case s ^. gameState . gameGoal of
+    NoGoal -> continueWithoutRedraw s
+    UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
+    ReadGoal g -> toggleModal s (GoalModal g) >>= continue
   FKey 1 -> toggleModal s HelpModal >>= continue
   MouseDown n _ _ mouseLoc ->
     case n of

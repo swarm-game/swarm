@@ -319,6 +319,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             , Just (0, [("Keep playing", Cancel), (stopMsg, Confirm)])
             , T.length quitMsg + 4
             )
+      GoalModal g -> (" Goal ", padLeftRight 1 (displayParagraphs g), Nothing, 80)
 
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
@@ -381,6 +382,7 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
+  goal = (s ^. gameState . gameGoal) /= NoGoal
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -394,6 +396,7 @@ drawKeyMenu s =
     , ("Tab", "cycle")
     ]
       ++ [("^k", "creative") | cheat]
+      ++ [("^g", "goal") | goal]
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
@@ -571,7 +574,7 @@ explainFocusedItem s = case focusedItem s of
 
 explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
-  vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
+  displayParagraphs (e ^. entityDescription)
     <=> explainRecipes s e
 
 explainRecipes :: AppState -> Entity -> Widget Name
@@ -730,3 +733,12 @@ drawREPL s =
   histIdx = fromString $ show (history ^. replIndex)
   fmt (REPLEntry e) = txt replPrompt <+> txt e
   fmt (REPLOutput t) = txt t
+
+------------------------------------------------------------
+-- Utility
+------------------------------------------------------------
+
+-- | Display a list of text-wrapped paragraphs with one blank line after
+--   each.
+displayParagraphs :: [Text] -> Widget Name
+displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)

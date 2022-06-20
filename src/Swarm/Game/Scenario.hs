@@ -27,6 +27,7 @@ module Swarm.Game.Scenario (
   -- ** Fields
   scenarioName,
   scenarioDescription,
+  scenarioGoal,
   scenarioCreative,
   scenarioSeed,
   scenarioEntities,
@@ -78,6 +79,7 @@ import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Util (reflow)
 import Swarm.Util.Yaml
 
 -- | A 'Scenario' contains all the information to describe a
@@ -85,6 +87,7 @@ import Swarm.Util.Yaml
 data Scenario = Scenario
   { _scenarioName :: Text
   , _scenarioDescription :: Text
+  , _scenarioGoal :: Maybe [Text]
   , _scenarioCreative :: Bool -- Maybe generalize this to a mode enumeration
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
@@ -103,6 +106,7 @@ instance FromJSONE EntityMap Scenario where
     Scenario
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= "")
+      <*> liftE ((fmap . fmap . map) reflow (v .:? "goal"))
       <*> liftE (v .:? "creative" .!= False)
       <*> liftE (v .:? "seed")
       <*> pure em
@@ -115,8 +119,13 @@ instance FromJSONE EntityMap Scenario where
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
 
--- | A description of the scenario.
+-- | A high-level description of the scenario, shown /e.g./ in the
+--   menu.
 scenarioDescription :: Lens' Scenario Text
+
+-- | An explanation of the goal of the scenario (if any), shown to the
+--   player during play.
+scenarioGoal :: Lens' Scenario (Maybe [Text])
 
 -- | Whether the scenario should start in creative mode.
 scenarioCreative :: Lens' Scenario Bool
