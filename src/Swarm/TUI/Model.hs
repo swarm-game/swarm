@@ -39,6 +39,7 @@ module Swarm.TUI.Model (
   REPLHistory,
   replIndex,
   replLength,
+  replSeq,
   newREPLHistory,
   addREPLItem,
   restartREPLHistory,

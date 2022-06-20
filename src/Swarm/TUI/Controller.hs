@@ -55,6 +55,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Vector as V
+import Data.Foldable (toList)
 import Linear
 import System.Clock
 import Witch (into)
@@ -96,6 +97,9 @@ pattern CharKey, ControlKey, MetaKey :: Char -> BrickEvent n e
 pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
 pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
 pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
+
+pattern EscapeKey :: BrickEvent n e
+pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
 
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
@@ -608,9 +612,31 @@ handleREPLEvent s (ControlKey 'r') = continue $
     CmdPrompt uinput ->
       let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
        in s & uiState . uiReplForm .~ newform
-    SearchPrompt _ _ ->
-      let newform = mkReplForm $ CmdPrompt ""
+    SearchPrompt ftext rh -> case toList $ rh ^. replSeq of
+      [] -> s
+      _ : rhis ->
+        let newform = mkReplForm $ SearchPrompt ftext (newREPLHistory rhis)
+         in s & uiState . uiReplForm .~ newform
+handleREPLEvent s EscapeKey = continue $    --- Todo: EscapeKey and ^g are the exact same function!!!! Can I match two patterns?
+  case s ^. uiState . uiReplForm . to formState of
+    CmdPrompt _ ->
+      let newform = set promptUpdateL "" (s ^. uiState)
        in s & uiState . uiReplForm .~ newform
+    SearchPrompt _ _ ->
+      (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+        . (uiState . uiReplType .~ Nothing)
+        . (uiState . uiError .~ Nothing)
+        $ s
+handleREPLEvent s (ControlKey 'g') = continue $
+  case s ^. uiState . uiReplForm . to formState of
+    CmdPrompt _ ->
+      let newform = set promptUpdateL "" (s ^. uiState)
+       in s & uiState . uiReplForm .~ newform
+    SearchPrompt _ _ ->
+      (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+        . (uiState . uiReplType .~ Nothing)
+        . (uiState . uiError .~ Nothing)
+        $ s
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $
