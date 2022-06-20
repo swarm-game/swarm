@@ -51,9 +51,9 @@ displayTerrain t = displayWidget Nothing (terrainMap ! t)
 terrainMap :: Map TerrainType Display
 terrainMap =
   M.fromList
-    [ (StoneT, defaultTerrainDisplay '░' rockAttr)
-    , (DirtT, defaultTerrainDisplay '░' dirtAttr)
-    , (GrassT, defaultTerrainDisplay '░' grassAttr)
+    [ (StoneT, defaultTerrainDisplay '▒' rockAttr)
+    , (DirtT, defaultTerrainDisplay '▒' dirtAttr)
+    , (GrassT, defaultTerrainDisplay '▒' grassAttr)
     , (IceT, defaultTerrainDisplay ' ' iceAttr)
     , (BlankT, defaultTerrainDisplay ' ' defAttr)
     ]
