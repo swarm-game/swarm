@@ -114,7 +114,7 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor 'T' = plantAttr
   attrFor '@' = rockAttr
   attrFor '~' = waterAttr
-  attrFor '░' = dirtAttr
+  attrFor '▒' = dirtAttr
   attrFor _ = defAttr
 
 drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
