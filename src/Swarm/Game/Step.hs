@@ -968,6 +968,7 @@ execConst c vs s k = do
           Nothing -> return $ VInj False VUnit
           Just e -> do
             robotInventory %= insertCount 0 e
+            updateDiscoveredEntities e
             return $ VInj True (VString (e ^. entityName))
 
         return $ Out res s k
