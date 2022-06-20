@@ -622,21 +622,13 @@ handleREPLEvent s (ControlKey 'r') = continue $
       _ : rhis ->
         let newform = mkReplForm $ SearchPrompt ftext (newREPLHistory rhis)
          in s & uiState . uiReplForm .~ newform
-handleREPLEvent s EscapeKey = continue $ --- Todo: EscapeKey and ^g are the exact same function!!!! Can I match two patterns?
+handleREPLEvent s EscapeKey = continue $
   case s ^. uiState . uiReplForm . to formState of
     CmdPrompt _ ->
-      let newform = set promptUpdateL "" (s ^. uiState)
-       in s & uiState . uiReplForm .~ newform
-    SearchPrompt _ _ ->
       (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
         . (uiState . uiReplType .~ Nothing)
         . (uiState . uiError .~ Nothing)
         $ s
-handleREPLEvent s (ControlKey 'g') = continue $
-  case s ^. uiState . uiReplForm . to formState of
-    CmdPrompt _ ->
-      let newform = set promptUpdateL "" (s ^. uiState)
-       in s & uiState . uiReplForm .~ newform
     SearchPrompt _ _ ->
       (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
         . (uiState . uiReplType .~ Nothing)
