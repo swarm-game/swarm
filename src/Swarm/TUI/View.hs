@@ -298,6 +298,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
   haltingMessage = case s ^. uiState . uiPrevMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
+  descriptionWidth = 100
   (title, widget, buttons, requiredWidth) =
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
@@ -305,7 +306,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
         ( "Available Recipes"
         , helpRecipes (s ^. gameState . availableRecipes)
         , Nothing
-        , 250
+        , descriptionWidth
         )
       WinModal ->
         let winMsg = "Congratulations!"
@@ -316,7 +317,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
             , length continueMsg + length stopMsg + 32
             )
-      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, 100)
+      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, descriptionWidth)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit this game and return to the menu?"
             stopMsg = fromMaybe "Quit to menu" haltingMessage
