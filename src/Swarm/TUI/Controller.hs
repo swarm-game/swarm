@@ -224,12 +224,17 @@ handleMainEvent s = \case
         continueWithoutRedraw s
       _ -> continueWithoutRedraw (s & uiState . uiWorldCursor .~ Nothing)
   MouseUp n _ _mouseLoc -> do
-    setFocus s $ case n of
+    let s' =
+          s & case n of
+            InventoryListItem pos -> uiState . uiInventory %~ maybe Nothing (\(h, l) -> Just (h, BL.listMoveTo pos l))
+            _ -> id
+    setFocus s' $ case n of
       -- Adapt click event origin to their right panel.
       -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
       -- However this does not seems to work for the robot and info panel.
       -- Thus we force the destination focus here.
       InventoryList -> RobotPanel
+      InventoryListItem _ -> RobotPanel
       InfoViewport -> InfoPanel
       _ -> n
   -- dispatch any other events to the focused panel handler
