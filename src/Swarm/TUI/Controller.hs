@@ -149,6 +149,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
         continue $
           s & uiState . uiMenu .~ NoMenu
             & uiState . uiPrevMenu .~ nextMenu
+            & uiState %~ resetUIState
             & gameState .~ gs'
       Just (SICollection _ c) ->
         continue $
@@ -160,6 +161,14 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
     menu' <- handleListEvent ev curMenu
     continue $ s & uiState . uiMenu .~ NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw s
+
+-- | Reset the UI state when beginning a new game.
+resetUIState :: UIState -> UIState
+resetUIState =
+  (uiFocusRing .~ initFocusRing)
+    . (uiInventory .~ Nothing)
+    . (uiShowFPS .~ False)
+    . (uiShowZero .~ True)
 
 mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
 mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
