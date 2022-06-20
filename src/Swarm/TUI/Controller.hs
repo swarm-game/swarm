@@ -225,8 +225,8 @@ setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 -- | Set the game to Running if it was auto paused
 maybeUnpause :: AppState -> AppState -> AppState
 maybeUnpause s
-    | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
-    | otherwise = id
+  | s ^. gameState . runStatus == AutoPause = gameState . runStatus .~ Running
+  | otherwise = id
 
 toggleModal :: AppState -> ModalType -> EventM Name AppState
 toggleModal s mt = do
