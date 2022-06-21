@@ -55,6 +55,7 @@ module Swarm.TUI.Model (
   promptTextL,
   promptUpdateL,
   mkReplForm,
+  removeEntry,
 
   -- ** Inventory
   InventoryListEntry (..),
@@ -119,7 +120,6 @@ module Swarm.TUI.Model (
   -- ** Utility
   focusedItem,
   focusedEntity,
-  moveLastEntry,
 ) where
 
 import Control.Lens hiding (from, (<.>))
