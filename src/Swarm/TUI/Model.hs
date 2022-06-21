@@ -119,6 +119,7 @@ module Swarm.TUI.Model (
   -- ** Utility
   focusedItem,
   focusedEntity,
+  moveLastEntry,
 ) where
 
 import Control.Lens hiding (from, (<.>))
@@ -324,15 +325,23 @@ data REPLPrompt
   | -- | Interpret the given text as "search this text in history"
     SearchPrompt Text REPLHistory
 
--- | Get the last Entry in REPLHistory matching the given text
+-- | Get the last REPLEntry in REPLHistory matching the given text
 lastEntry :: Text -> REPLHistory -> Maybe Text
-lastEntry t h = case filter (liftA2 (&&) matchesText isREPLEntry) $ toList $ h ^. replSeq of
-  [] -> Nothing
-  rh : _ -> Just $ replItemText rh
+lastEntry t h =
+  case Seq.viewr $ Seq.filter matchEntry $ h ^. replSeq of
+    Seq.EmptyR -> Nothing
+    _ Seq.:> a -> Just (replItemText a)
  where
   matchesText histItem = t `T.isInfixOf` replItemText histItem
+  matchEntry = liftA2 (&&) matchesText isREPLEntry
 
--- | The default REPL prompt.
+-- | Given some text,  removes the REPLEntry within REPLHistory which is equal to that.
+--   This is used when the user enters in search mode and want to traverse the history.
+--   If a command has been used many times, the history will be populated with it causing
+--   the effect that search command always finds the same command.
+removeEntry :: Text -> REPLHistory -> REPLHistory
+removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
+
 defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt ""
 

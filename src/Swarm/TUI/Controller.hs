@@ -573,8 +573,8 @@ handleREPLEvent s (Key V.KEnter) =
           Right mt ->
             maybe id startBaseProgram mt
               . (uiState . uiReplForm .~ set promptUpdateL "" (s ^. uiState))
-              . (uiState . uiReplType .~ Nothing)
               . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
+              . (uiState . uiReplType .~ Nothing)
               . (uiState . uiError .~ Nothing)
               $ s
           Left err -> s & uiState . uiError ?~ err
@@ -619,17 +619,20 @@ handleREPLEvent s (ControlKey 'r') = continue $
     CmdPrompt uinput ->
       let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
        in s & uiState . uiReplForm .~ newform
-    SearchPrompt ftext rh -> case toList $ rh ^. replSeq of
-      [] -> s
-      _ : rhis ->
-        let newform = mkReplForm $ SearchPrompt ftext (newREPLHistory rhis)
+    SearchPrompt ftext rh -> case lastEntry ftext rh of
+      Nothing -> s
+      Just found ->
+        let newform = mkReplForm $ SearchPrompt ftext (removeEntry found rh)
          in s & uiState . uiReplForm .~ newform
 handleREPLEvent s EscapeKey =
-  continue $
-    (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-      . (uiState . uiReplType .~ Nothing)
-      . (uiState . uiError .~ Nothing)
-      $ s
+  case s ^. uiState . uiReplForm . to formState of
+    CmdPrompt uinput -> continueWithoutRedraw s
+    SearchPrompt _ _ ->
+      continue $
+        (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
+          . (uiState . uiReplType .~ Nothing)
+          . (uiState . uiError .~ Nothing)
+          $ s
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $
