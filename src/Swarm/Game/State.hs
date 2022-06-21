@@ -37,6 +37,7 @@ module Swarm.Game.State (
   robotsByLocation,
   activeRobots,
   availableRecipes,
+  availableRecipesNewCount,
   allDiscoveredEntities,
   allInstalledDevices,
   gensym,
@@ -202,7 +203,8 @@ data GameState = GameState
   , _robotsByLocation :: Map (V2 Int64) IntSet
   , _allDiscoveredEntities :: Inventory
   , _allInstalledDevices :: Inventory
-  , _availableRecipes :: (Int, [Recipe Entity])
+  , _availableRecipes :: [Recipe Entity]
+  , _availableRecipesNewCount :: Int
   , _gensym :: Int
   , _randGen :: StdGen
   , _adjList :: Array Int Text
@@ -275,8 +277,11 @@ allDiscoveredEntities :: Lens' GameState Inventory
 -- | The list of devices that have been installed once.
 allInstalledDevices :: Lens' GameState Inventory
 
--- | The list of available recipes, with the position of the last known item.
-availableRecipes :: Lens' GameState (Int, [Recipe Entity])
+-- | The list of available recipes.
+availableRecipes :: Lens' GameState [Recipe Entity]
+
+-- | The number of new recipes (reset to 0 when the player open the recipes view).
+availableRecipesNewCount :: Lens' GameState Int
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState IntSet
@@ -527,7 +532,8 @@ initGameState = do
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty
-      , _availableRecipes = (0, mempty)
+      , _availableRecipes = mempty
+      , _availableRecipesNewCount = 0
       , _allDiscoveredEntities = empty
       , _allInstalledDevices = empty
       , _activeRobots = IS.empty

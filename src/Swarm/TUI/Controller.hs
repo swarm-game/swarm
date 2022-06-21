@@ -191,9 +191,9 @@ handleMainEvent s = \case
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
-  FKey 2 | not (null (s ^. gameState . availableRecipes . _2)) -> do
+  FKey 2 | not (null (s ^. gameState . availableRecipes)) -> do
     s' <- toggleModal s RecipesModal
-    continue (s' & gameState . availableRecipes %~ markAsRead)
+    continue (s' & gameState . availableRecipesNewCount .~ 0)
   ControlKey 'g' -> case s ^. uiState . uiGoal of
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
@@ -255,9 +255,6 @@ mouseLocToWorldCoords gs (Brick.Location mouseLoc) = do
           mx = snd mouseLoc' + fst regionStart
           my = fst mouseLoc' + snd regionStart
        in Just $ W.Coords (mx, my)
-
-markAsRead :: (Int, a) -> (Int, a)
-markAsRead (_, xs) = (0, xs)
 
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
