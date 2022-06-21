@@ -37,7 +37,7 @@ module Swarm.Game.State (
   robotsByLocation,
   activeRobots,
   availableRecipes,
-  availableRecipesNewCount,
+  availableCommands,
   allDiscoveredEntities,
   gensym,
   randGen,
@@ -56,6 +56,11 @@ module Swarm.Game.State (
   messageQueue,
   focusedRobotID,
   ticks,
+
+  -- ** Notifications
+  Notifications (..),
+  notificationsCount,
+  notificationsContent,
 
   -- ** GameState initialization
   initGameState,
@@ -82,7 +87,7 @@ module Swarm.Game.State (
 
 import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
-import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
+import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
 import Data.Array (Array, listArray)
 import Data.Int (Int64)
@@ -118,7 +123,7 @@ import Swarm.Game.WorldGen (Seed)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Term (TString))
+import Swarm.Language.Syntax (Const, Term (TString))
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -172,6 +177,18 @@ data RunStatus
     AutoPause
   deriving (Eq, Show)
 
+-- | A data type to keep track of discovered recipes and commands
+data Notifications a = Notifications
+  { _notificationsCount :: Int
+  , _notificationsContent :: [a]
+  }
+  deriving (Eq, Show)
+
+makeLenses ''Notifications
+
+emptyNotifications :: Notifications a
+emptyNotifications = Notifications 0 []
+
 ------------------------------------------------------------
 -- The main GameState record type
 ------------------------------------------------------------
@@ -201,8 +218,8 @@ data GameState = GameState
     _waitingRobots :: Map Integer [RID]
   , _robotsByLocation :: Map (V2 Int64) IntSet
   , _allDiscoveredEntities :: Inventory
-  , _availableRecipes :: [Recipe Entity]
-  , _availableRecipesNewCount :: Int
+  , _availableRecipes :: Notifications (Recipe Entity)
+  , _availableCommands :: Notifications Const
   , _gensym :: Int
   , _randGen :: StdGen
   , _adjList :: Array Int Text
@@ -273,10 +290,10 @@ robotsByLocation :: Lens' GameState (Map (V2 Int64) IntSet)
 allDiscoveredEntities :: Lens' GameState Inventory
 
 -- | The list of available recipes.
-availableRecipes :: Lens' GameState [Recipe Entity]
+availableRecipes :: Lens' GameState (Notifications (Recipe Entity))
 
--- | The number of new recipes (reset to 0 when the player open the recipes view).
-availableRecipesNewCount :: Lens' GameState Int
+-- | The list of available commands.
+availableCommands :: Lens' GameState (Notifications Const)
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState IntSet
@@ -527,8 +544,8 @@ initGameState = do
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty
-      , _availableRecipes = mempty
-      , _availableRecipesNewCount = 0
+      , _availableRecipes = emptyNotifications
+      , _availableCommands = emptyNotifications
       , _allDiscoveredEntities = empty
       , _activeRobots = IS.empty
       , _waitingRobots = M.empty

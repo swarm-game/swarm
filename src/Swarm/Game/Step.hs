@@ -1660,6 +1660,7 @@ updateDiscoveredEntities e = do
     else do
       let newAllDiscovered = E.insertCount 1 e allDiscovered
       updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
+      updateAvailableCommands e
       allDiscoveredEntities .= newAllDiscovered
 
 -- | Update the availableRecipes list.
@@ -1675,8 +1676,23 @@ updateAvailableRecipes invs e = do
   allInRecipes <- use recipesIn
   let entityRecipes = recipesFor allInRecipes e
       usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
-  knownRecipes <- use availableRecipes
+  Notifications prevCount knownRecipes <- use availableRecipes
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
       newCount = length newRecipes
-  availableRecipes .= newRecipes <> knownRecipes
-  availableRecipesNewCount += newCount
+  availableRecipes .= Notifications (newCount + prevCount) (newRecipes <> knownRecipes)
+  updateAvailableCommands e
+
+updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
+updateAvailableCommands e = do
+  let newCaps = S.fromList (e ^. entityCapabilities)
+      keepConsts s
+        | S.null s = False
+        -- This presently only works for single capability command.
+        -- If a command needs more than one capability, then we need combine all the known capabilities
+        | s `S.isSubsetOf` newCaps = True
+        | otherwise = False
+      entityConsts = filter (keepConsts . constCaps) allConst
+  Notifications prevCount knownCommands <- use availableCommands
+  let newCommands = filter (`notElem` knownCommands) entityConsts
+      newCount = length newCommands
+  availableCommands .= Notifications (newCount + prevCount) (newCommands <> knownCommands)

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- |
@@ -41,7 +42,7 @@ module Swarm.TUI.View (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens hiding (from)
+import Control.Lens hiding (Const, from)
 import Data.Array (range)
 import qualified Data.Foldable as F
 import qualified Data.IntMap as IM
@@ -75,9 +76,10 @@ import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItem
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
+import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
-import Swarm.Language.Types (Polytype)
+import Swarm.Language.Types (Module (..), Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Model
@@ -304,7 +306,13 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
       RecipesModal ->
         ( "Available Recipes"
-        , helpRecipes (s ^. gameState . availableRecipesNewCount) (s ^. gameState . availableRecipes)
+        , availableListWidget (s ^. gameState) RecipeList
+        , Nothing
+        , descriptionWidth
+        )
+      CommandsModal ->
+        ( "Available Commands"
+        , availableListWidget (s ^. gameState) CommandList
         , Nothing
         , descriptionWidth
         )
@@ -363,18 +371,39 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
-helpRecipes :: Int -> [Recipe Entity] -> Widget Name
-helpRecipes count xs = viewport RecipesViewport Vertical (padTop (Pad 1) $ vBox recipesLists)
+data NotificationList = RecipeList | CommandList
+
+availableListWidget :: GameState -> NotificationList -> Widget Name
+availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox $ addHeader widgetList)
  where
-  (news, knowns) = splitAt count xs
-  recipesLists = drawRecipes news <> sepRecipes <> drawRecipes knowns
-  drawRecipes = map (padLeftRight 18 . padBottom (Pad 1) . drawRecipe Nothing Nothing)
-  -- TODO: figure out how to make the whole hBorder to be red, not just the label
-  sepRecipes
+  (vp, widgetList, addHeader) = case nl of
+    RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe, id)
+    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand, (padLeftRight 18 constHeader :))
+  renderRecipe = padLeftRight 18 . drawRecipe Nothing Nothing
+  renderCommand = padLeftRight 18 . drawConst
+
+mkAvailableList :: GameState -> Lens' GameState (Notifications a) -> (a -> Widget Name) -> [Widget Name]
+mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map padRender knowns
+ where
+  padRender = padBottom (Pad 1) . notifRender
+  count = gs ^. notifLens . notificationsCount
+  (news, knowns) = splitAt count (gs ^. notifLens . notificationsContent)
+  notifSep
     | count > 0 && not (null knowns) =
       [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
       ]
     | otherwise = []
+
+constHeader :: Widget Name
+constHeader = padBottom (Pad 1) $ withAttr robotAttr $ padLeft (Pad 1) $ txt "command name : type"
+
+drawConst :: Const -> Widget Name
+drawConst c = hBox [padLeft (Pad $ 13 - T.length constName) (txt constName), txt constSig]
+ where
+  constName = syntax . constInfo $ c
+  constSig = case processParsedTerm (noLoc $ TConst c) of
+    Right (ProcessedTerm (TConst _) (Module pt _) _ _) -> " : " <> prettyText pt
+    _ -> "??"
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
@@ -406,13 +435,14 @@ drawKeyMenu s =
   cheat = s ^. uiState . uiCheatMode
   goal = (s ^. uiState . uiGoal) /= NoGoal
 
-  availRecipes
-    | null (s ^. gameState . availableRecipes) = []
+  notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> [(KeyHighlight, Text, Text)]
+  notificationKey notifLens key name
+    | null (s ^. gameState . notifLens . notificationsContent) = []
     | otherwise =
       let highlight
-            | s ^. gameState . availableRecipesNewCount > 0 = Highlighted
+            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
             | otherwise = NoHighlight
-       in [(highlight, "F2", "Recipes")]
+       in [(highlight, key, name)]
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -423,7 +453,8 @@ drawKeyMenu s =
         True -> "Creative"
   globalKeyCmds =
     [(NoHighlight, "F1", "help")]
-      <> availRecipes
+      <> notificationKey availableRecipes "F2" "Recipes"
+      <> notificationKey availableCommands "F3" "Commands"
       <> [(NoHighlight, "Tab", "cycle")]
       <> [(NoHighlight, "^v", "creative") | cheat]
       <> [(NoHighlight, "^g", "goal") | goal]
