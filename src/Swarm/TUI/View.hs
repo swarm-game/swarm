@@ -364,7 +364,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     ]
 
 helpRecipes :: Int -> [Recipe Entity] -> Widget Name
-helpRecipes count xs = viewport RecipesViewport Vertical (vBox recipesLists)
+helpRecipes count xs = viewport RecipesViewport Vertical (padTop (Pad 1) $ vBox recipesLists)
  where
   (news, knowns) = splitAt count xs
   recipesLists = drawRecipes news <> sepRecipes <> drawRecipes knowns
@@ -372,7 +372,7 @@ helpRecipes count xs = viewport RecipesViewport Vertical (vBox recipesLists)
   -- TODO: figure out how to make the whole hBorder to be red, not just the label
   sepRecipes
     | count > 0 && not (null knowns) =
-      [ padBottom (Pad 1) (withAttr "red" $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
       ]
     | otherwise = []
 
@@ -393,6 +393,7 @@ drawKeyMenu s =
     . (++ [gameModeWidget])
     . map (padLeftRight 1 . drawKeyCmd)
     . (globalKeyCmds ++)
+    . map (\(k, n) -> (NoHighlight, k, n))
     . keyCmdsFor
     . focusGetCurrent
     . view (uiState . uiFocusRing)
@@ -407,11 +408,11 @@ drawKeyMenu s =
 
   availRecipes
     | null (s ^. gameState . availableRecipes) = []
-    | otherwise = [("F2", knownMark (s ^. gameState . availableRecipesNewCount) <> "Recipes")]
-
-  knownMark count
-    | count > 0 = "*"
-    | otherwise = ""
+    | otherwise =
+      let highlight
+            | s ^. gameState . availableRecipesNewCount > 0 = Highlighted
+            | otherwise = NoHighlight
+       in [(highlight, "F2", "Recipes")]
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -421,10 +422,11 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [("F1", "help")] <> availRecipes
-      <> [("Tab", "cycle")]
-      <> [("^k", "creative") | cheat]
-      <> [("^g", "goal") | goal]
+    [(NoHighlight, "F1", "help")]
+      <> availRecipes
+      <> [(NoHighlight, "Tab", "cycle")]
+      <> [(NoHighlight, "^k", "creative") | cheat]
+      <> [(NoHighlight, "^g", "goal") | goal]
 
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
@@ -450,9 +452,12 @@ drawKeyMenu s =
     ]
   keyCmdsFor _ = []
 
+data KeyHighlight = NoHighlight | Highlighted
+
 -- | Draw a single key command in the menu.
-drawKeyCmd :: (Text, Text) -> Widget Name
-drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
+drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
+drawKeyCmd (Highlighted, key, cmd) = hBox [withAttr notifAttr (txt $ T.concat ["[", key, "] "]), txt cmd]
+drawKeyCmd (NoHighlight, key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
 
 ------------------------------------------------------------
 -- World panel
