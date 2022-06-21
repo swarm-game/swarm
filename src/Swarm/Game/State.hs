@@ -42,7 +42,6 @@ module Swarm.Game.State (
   availableRecipes,
   availableRecipesNewCount,
   allDiscoveredEntities,
-  allInstalledDevices,
   gensym,
   randGen,
   adjList,
@@ -191,7 +190,6 @@ data GameState = GameState
     _waitingRobots :: Map Integer [RID]
   , _robotsByLocation :: Map (V2 Int64) IntSet
   , _allDiscoveredEntities :: Inventory
-  , _allInstalledDevices :: Inventory
   , _availableRecipes :: [Recipe Entity]
   , _availableRecipesNewCount :: Int
   , _gensym :: Int
@@ -258,9 +256,6 @@ robotsByLocation :: Lens' GameState (Map (V2 Int64) IntSet)
 
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
-
--- | The list of devices that have been installed once.
-allInstalledDevices :: Lens' GameState Inventory
 
 -- | The list of available recipes.
 availableRecipes :: Lens' GameState [Recipe Entity]
@@ -463,7 +458,6 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
           , _availableRecipes = mempty
           , _availableRecipesNewCount = 0
           , _allDiscoveredEntities = empty
-          , _allInstalledDevices = empty
           , _activeRobots = IS.empty
           , _waitingRobots = M.empty
           , _gensym = 0

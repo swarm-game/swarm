@@ -859,7 +859,6 @@ execConst c vs s k = do
               -- either robot's inventory
               when (focusedID == myID || focusedID == otherID) flagRedraw
 
-        updateInstalledDevice item
         return $ Out VUnit s k
       _ -> badConst
     Make -> case vs of
@@ -1371,7 +1370,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1643,22 +1642,8 @@ updateDiscoveredEntities e = do
     then pure ()
     else do
       let newAllDiscovered = E.insertCount 1 e allDiscovered
-      allDevices <- use allInstalledDevices
-      updateAvailableRecipes (newAllDiscovered, allDevices) e
+      updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
       allDiscoveredEntities .= newAllDiscovered
-
--- | Update the global list of installed devices, and check for new recipes.
-updateInstalledDevice :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()
-updateInstalledDevice e = do
-  allDevices <- use allInstalledDevices
-  if E.contains0plus e allDevices
-    then pure ()
-    else do
-      let newAllDevices = E.insertCount 1 e allDevices
-      -- Check every known entities to see if the new device enables new recipes
-      allDiscovered <- use allDiscoveredEntities
-      traverse_ (updateAvailableRecipes (allDiscovered, newAllDevices) . snd) (elems allDiscovered)
-      allInstalledDevices .= newAllDevices
 
 -- | Update the availableRecipes list.
 -- This implementation is not efficient:
