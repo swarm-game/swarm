@@ -308,6 +308,12 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
         , Nothing
         , descriptionWidth
         )
+      CommandsModal ->
+        ( "Available Commands"
+        , listAvailCommands (s ^. gameState . availableCommandsNewCount) (s ^. gameState . availableCommands)
+        , Nothing
+        , descriptionWidth
+        )
       WinModal ->
         let winMsg = "Congratulations!"
             continueMsg = "Keep playing"
@@ -375,6 +381,18 @@ helpRecipes count xs = viewport RecipesViewport Vertical (padTop (Pad 1) $ vBox 
       ]
     | otherwise = []
 
+listAvailCommands :: Int -> [Text] -> Widget Name
+listAvailCommands count xs = viewport CommandsViewport Vertical (padTop (Pad 1) $ vBox commandsLists)
+ where
+  (news, knowns) = splitAt count xs
+  commandsLists = drawCommands news <> sepRecipes <> drawCommands knowns
+  drawCommands = map (padLeftRight 18 . padBottom (Pad 1) . txt)
+  sepRecipes
+    | count > 0 && not (null knowns) =
+      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+      ]
+    | otherwise = []
+
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 
@@ -412,6 +430,14 @@ drawKeyMenu s =
             | otherwise = NoHighlight
        in [(highlight, "F2", "Recipes")]
 
+  availCommands
+    | null (s ^. gameState . availableCommands) = []
+    | otherwise =
+      let highlight
+            | s ^. gameState . availableCommandsNewCount > 0 = Highlighted
+            | otherwise = NoHighlight
+       in [(highlight, "F3", "Command")]
+
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
@@ -422,6 +448,7 @@ drawKeyMenu s =
   globalKeyCmds =
     [(NoHighlight, "F1", "help")]
       <> availRecipes
+      <> availCommands
       <> [(NoHighlight, "Tab", "cycle")]
       <> [(NoHighlight, "^k", "creative") | cheat]
 

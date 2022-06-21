@@ -1643,6 +1643,7 @@ updateDiscoveredEntities e = do
     else do
       let newAllDiscovered = E.insertCount 1 e allDiscovered
       updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
+      updateAvailableCommands e
       allDiscoveredEntities .= newAllDiscovered
 
 -- | Update the availableRecipes list.
@@ -1663,3 +1664,20 @@ updateAvailableRecipes invs e = do
       newCount = length newRecipes
   availableRecipes .= newRecipes <> knownRecipes
   availableRecipesNewCount += newCount
+  updateAvailableCommands e
+
+updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
+updateAvailableCommands e = do
+  let newCaps = S.fromList (e ^. entityCapabilities)
+      keepConsts s
+        | S.null s = False
+        -- This presently only works for single capability command.
+        -- If a command needs more than one capability, then we need combine all the known capabilities
+        | s `S.isSubsetOf` newCaps = True
+        | otherwise = False
+      entityConsts = filter (keepConsts . constCaps) allConst
+  knownCommands <- use availableCommands
+  let newCommands = filter (`notElem` knownCommands) (syntax . constInfo <$> entityConsts)
+      newCount = length newCommands
+  availableCommands .= newCommands <> knownCommands
+  availableCommandsNewCount += newCount

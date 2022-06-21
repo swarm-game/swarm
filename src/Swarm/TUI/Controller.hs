@@ -204,6 +204,9 @@ handleMainEvent s = \case
   FKey 2 | not (null (s ^. gameState . availableRecipes)) -> do
     s' <- toggleModal s RecipesModal
     continue (s' & gameState . availableRecipesNewCount .~ 0)
+  FKey 3 | not (null (s ^. gameState . availableCommands)) -> do
+    s' <- toggleModal s CommandsModal
+    continue (s' & gameState . availableCommandsNewCount .~ 0)
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
@@ -300,6 +303,7 @@ handleModalEvent s = \case
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
     case s ^? uiState . uiModal . _Just . modalType of
       Just RecipesModal -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
+      Just CommandsModal -> handleInfoPanelEvent s' commandsScroll (VtyEvent ev)
       _ -> continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL

@@ -41,6 +41,8 @@ module Swarm.Game.State (
   activeRobots,
   availableRecipes,
   availableRecipesNewCount,
+  availableCommands,
+  availableCommandsNewCount,
   allDiscoveredEntities,
   gensym,
   randGen,
@@ -192,6 +194,8 @@ data GameState = GameState
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: [Recipe Entity]
   , _availableRecipesNewCount :: Int
+  , _availableCommands :: [Text]
+  , _availableCommandsNewCount :: Int
   , _gensym :: Int
   , _randGen :: StdGen
   , _adjList :: Array Int Text
@@ -262,6 +266,12 @@ availableRecipes :: Lens' GameState [Recipe Entity]
 
 -- | The number of new recipes (reset to 0 when the player open the recipes view).
 availableRecipesNewCount :: Lens' GameState Int
+
+-- | The list of available commands.
+availableCommands :: Lens' GameState [Text]
+
+-- | The number of new commands (reset to 0 when the player open the recipes view).
+availableCommandsNewCount :: Lens' GameState Int
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState IntSet
@@ -457,6 +467,8 @@ initGameState cmdlineSeed scenarioToLoad toRun = do
           , _robotsByLocation = M.empty
           , _availableRecipes = mempty
           , _availableRecipesNewCount = 0
+          , _availableCommands = mempty
+          , _availableCommandsNewCount = 0
           , _allDiscoveredEntities = empty
           , _activeRobots = IS.empty
           , _waitingRobots = M.empty

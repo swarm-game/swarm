@@ -96,6 +96,7 @@ module Swarm.TUI.Model (
   populateInventoryList,
   infoScroll,
   recipesScroll,
+  commandsScroll,
 
   -- * App state
   AppState,
@@ -187,6 +188,8 @@ data Name
     InfoViewport
   | -- | The scrollable viewport for the recipe list.
     RecipesViewport
+  | -- | The scrollable viewport for the commands list.
+    CommandsViewport
   deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
@@ -194,6 +197,10 @@ infoScroll = viewportScroll InfoViewport
 
 recipesScroll :: ViewportScroll Name
 recipesScroll = viewportScroll RecipesViewport
+
+commandsScroll :: ViewportScroll Name
+commandsScroll = viewportScroll CommandsViewport
+
 
 ------------------------------------------------------------
 -- REPL History
@@ -315,6 +322,7 @@ replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 data ModalType
   = HelpModal
   | RecipesModal
+  | CommandsModal
   | WinModal
   | QuitModal
   | DescriptionModal Entity
