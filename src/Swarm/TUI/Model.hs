@@ -201,7 +201,6 @@ recipesScroll = viewportScroll RecipesViewport
 commandsScroll :: ViewportScroll Name
 commandsScroll = viewportScroll CommandsViewport
 
-
 ------------------------------------------------------------
 -- REPL History
 ------------------------------------------------------------
