@@ -382,7 +382,7 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = (s ^. gameState . gameGoal) /= NoGoal
+  goal = (s ^. uiState . uiGoal) /= NoGoal
 
   gameModeWidget =
     padLeft Max . padLeftRight 1

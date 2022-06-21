@@ -24,13 +24,11 @@ module Swarm.Game.State (
   _WinCondition,
   _Won,
   RunStatus (..),
-  GoalStatus (..),
   Seed,
   GameState,
 
   -- ** GameState fields
   creativeMode,
-  gameGoal,
   winCondition,
   winSolution,
   runStatus,
@@ -63,8 +61,6 @@ module Swarm.Game.State (
   classicGame0,
 
   -- * Utilities
-  goalNeedsDisplay,
-  markGoalRead,
   applyViewCenterRule,
   recalcViewCenter,
   modifyViewCenter,
@@ -173,28 +169,6 @@ data RunStatus
     AutoPause
   deriving (Eq, Show)
 
--- | Status of the scenario goal: whether there is one, and whether it has been
---   displayed to the user initially.
-data GoalStatus
-  = -- | There is no goal.
-    NoGoal
-  | -- | There is a goal, and we should display it to the user initially.
-    UnreadGoal [Text]
-  | -- | There is a goal, and we have already displayed it to the user.
-    --   It can be displayed again if the user chooses.
-    ReadGoal [Text]
-  deriving (Eq, Show)
-
--- | Do we need to display the goal initially to the user?
-goalNeedsDisplay :: GoalStatus -> Maybe [Text]
-goalNeedsDisplay (UnreadGoal g) = Just g
-goalNeedsDisplay _ = Nothing
-
--- | Mark the goal as having been read.
-markGoalRead :: GoalStatus -> GoalStatus
-markGoalRead (UnreadGoal g) = ReadGoal g
-markGoalRead gs = gs
-
 ------------------------------------------------------------
 -- The main GameState record type
 ------------------------------------------------------------
@@ -204,7 +178,6 @@ markGoalRead gs = gs
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
-  , _gameGoal :: GoalStatus
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _runStatus :: RunStatus
@@ -261,10 +234,6 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
-
--- | Status of the scenario goal: whether there is one, and whether it
---   has been displayed to the user initially.
-gameGoal :: Lens' GameState GoalStatus
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
@@ -538,7 +507,6 @@ initGameState = do
   return $
     GameState
       { _creativeMode = False
-      , _gameGoal = NoGoal
       , _winCondition = NoWinCondition
       , _winSolution = Nothing
       , _runStatus = Running
@@ -578,7 +546,6 @@ scenarioToGameState scenario userSeed toRun g = do
   return $
     g
       { _creativeMode = scenario ^. scenarioCreative
-      , _gameGoal = maybe NoGoal UnreadGoal (scenario ^. scenarioGoal)
       , _winCondition = theWinCondition
       , _winSolution = scenario ^. scenarioSolution
       , _runStatus = Running
@@ -629,7 +596,7 @@ scenarioToGameState scenario userSeed toRun g = do
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
 
--- | XXX
+-- | Create an initial game state for a specific scenario.
 initGameStateForScenario :: String -> Maybe Seed -> Maybe String -> ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   g <- initGameState

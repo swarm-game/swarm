@@ -178,8 +178,8 @@ handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleMainEvent s = \case
   AppEvent Frame
     | s ^. gameState . paused -> continueWithoutRedraw s
-    | Just g <- s ^. gameState . gameGoal . to goalNeedsDisplay ->
-      toggleModal s (GoalModal g) <&> (gameState . gameGoal %~ markGoalRead) >>= runFrameUI
+    | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay ->
+      toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
     | otherwise -> runFrameUI s
   VtyEvent (V.EvResize _ _) -> do
     invalidateCacheEntry WorldCache
@@ -188,7 +188,7 @@ handleMainEvent s = \case
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
-  ControlKey 'g' -> case s ^. gameState . gameGoal of
+  ControlKey 'g' -> case s ^. uiState . uiGoal of
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
     ReadGoal g -> toggleModal s (GoalModal g) >>= continue
