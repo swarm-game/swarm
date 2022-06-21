@@ -1,8 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.TUI.Model
@@ -105,6 +108,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
+  scenarioToAppState,
   Seed,
 
   -- ** Utility
@@ -120,25 +124,25 @@ import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import System.Clock
 
 import Brick
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
-import qualified Brick.Widgets.List as BL
+import Brick.Widgets.List qualified as BL
 
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem)
+import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario)
 import Swarm.Game.State
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -679,6 +683,34 @@ populateInventoryList (Just r) = do
 
 -- | Initialize the 'AppState'.
 initAppState :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
-initAppState seed scenarioName toRun cheatMode = do
-  let showMenu = isNothing scenarioName && isNothing toRun && isNothing seed
-  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu cheatMode
+initAppState userSeed scenarioName toRun cheatMode = do
+  let skipMenu = isJust scenarioName || isJust toRun || isJust userSeed
+  gs <- initGameState
+  ui <- initUIState (not skipMenu) cheatMode
+  case skipMenu of
+    False -> return $ AppState gs ui
+    True -> do
+      scenario <- loadScenario (fromMaybe "00-classic" scenarioName) (gs ^. entityMap)
+      liftIO $ scenarioToAppState scenario userSeed toRun $ AppState gs ui
+
+-- XXX do we need to keep an old entity map around???
+
+-- | Modify the 'AppState' appropriately when starting a new scenario.
+scenarioToAppState :: Scenario -> Maybe Seed -> Maybe String -> AppState -> IO AppState
+scenarioToAppState scene userSeed toRun (AppState g u) = do
+  g' <- scenarioToGameState scene userSeed toRun g
+  u' <- scenarioToUIState scene u
+
+  return $ AppState g' u'
+
+-- | Modify the UI state appropriately when starting a new scenario.
+scenarioToUIState :: Scenario -> UIState -> IO UIState
+scenarioToUIState _scene u =
+  return $
+    u
+      & uiMenu .~ NoMenu
+      & uiFocusRing .~ initFocusRing
+      & uiInventory .~ Nothing
+      & uiShowFPS .~ False
+      & uiShowZero .~ True
+      & lgTicksPerSecond .~ initLgTicksPerSecond

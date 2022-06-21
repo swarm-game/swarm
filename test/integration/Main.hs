@@ -17,7 +17,7 @@ import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
 import Swarm.Game.Robot (leText, machine, robotLog)
 import Swarm.Game.Scenario (Scenario)
-import Swarm.Game.State (GameState, WinCondition (Won), initGameState, robotMap, winCondition, winSolution)
+import Swarm.Game.State (GameState, WinCondition (Won), initGameStateForScenario, robotMap, winCondition, winSolution)
 import Swarm.Game.Step (gameTick)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
@@ -129,7 +129,7 @@ testScenarioSolution _em =
 
   testSolution' :: TestName -> Time -> FilePath -> (GameState -> Assertion) -> TestTree
   testSolution' n s p verify = testCase n $ do
-    Right gs <- runExceptT $ initGameState Nothing (Just p) Nothing
+    Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
     case gs ^. winSolution of
       Nothing -> assertFailure "No solution to test!"
       Just sol -> do
