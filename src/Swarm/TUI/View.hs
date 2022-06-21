@@ -304,7 +304,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
       RecipesModal ->
         ( "Available Recipes"
-        , helpRecipes (s ^. gameState . availableRecipes)
+        , helpRecipes (s ^. gameState . availableRecipesNewCount) (s ^. gameState . availableRecipes)
         , Nothing
         , descriptionWidth
         )
@@ -362,12 +362,12 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
-helpRecipes :: (Int, [Recipe Entity]) -> Widget Name
-helpRecipes (count, xs) = viewport RecipesViewport Vertical (vBox recipesLists)
+helpRecipes :: Int -> [Recipe Entity] -> Widget Name
+helpRecipes count xs = viewport RecipesViewport Vertical (vBox recipesLists)
  where
   (news, knowns) = splitAt count xs
   recipesLists = drawRecipes news <> sepRecipes <> drawRecipes knowns
-  drawRecipes = map (padBottom (Pad 1) . drawRecipe Nothing Nothing)
+  drawRecipes = map (padLeftRight 18 . padBottom (Pad 1) . drawRecipe Nothing Nothing)
   -- TODO: figure out how to make the whole hBorder to be red, not just the label
   sepRecipes
     | count > 0 && not (null knowns) =
@@ -404,10 +404,10 @@ drawKeyMenu s =
   cheat = s ^. uiState . uiCheatMode
 
   availRecipes
-    | null (snd $ s ^. gameState . availableRecipes) = []
-    | otherwise = [("F2", knownMark (s ^. gameState . availableRecipes) <> "Recipes")]
+    | null (s ^. gameState . availableRecipes) = []
+    | otherwise = [("F2", knownMark (s ^. gameState . availableRecipesNewCount) <> "Recipes")]
 
-  knownMark (count, _)
+  knownMark count
     | count > 0 = "*"
     | otherwise = ""
 

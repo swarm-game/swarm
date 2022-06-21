@@ -894,7 +894,7 @@ execConst c vs s k = do
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
-        updateDiscoveredEntities e
+        traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Has -> case vs of
@@ -1673,9 +1673,8 @@ updateAvailableRecipes invs e = do
   allInRecipes <- use recipesIn
   let entityRecipes = recipesFor allInRecipes e
       usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
-  (knownLength, knownRecipes) <- use availableRecipes
+  knownRecipes <- use availableRecipes
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
-      newLength = case newRecipes of
-        [] -> knownLength
-        _ -> length newRecipes
-  availableRecipes .= (newLength, newRecipes <> knownRecipes)
+      newCount = length newRecipes
+  availableRecipes .= newRecipes <> knownRecipes
+  availableRecipesNewCount += newCount
