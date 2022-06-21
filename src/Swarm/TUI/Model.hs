@@ -358,7 +358,7 @@ replPromptAsWidget (SearchPrompt t rh) =
   case lastEntry t rh of
     Nothing -> txt $ "[find " <> t <> " nothing found] "
     Just lastentry
-      | T.null t -> txt $ "[find] "
+      | T.null t -> txt "[find] "
       | otherwise -> txt $ "[find " <> t <> ": \"" <> lastentry <> "\"] "
 
 -- | Creates the repl form as a decorated form.
