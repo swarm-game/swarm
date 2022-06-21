@@ -47,7 +47,6 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
-import Data.Foldable (toList)
 import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -572,31 +571,16 @@ handleREPLEvent s (Key V.KEnter) =
         case processTerm' topTypeCtx topCapCtx uinput of
           Right mt ->
             maybe id startBaseProgram mt
-              . (uiState . uiReplForm .~ set promptUpdateL "" (s ^. uiState))
               . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
-              . (uiState . uiReplType .~ Nothing)
-              . (uiState . uiError .~ Nothing)
+              . resetWithREPLForm (set promptUpdateL "" (s ^. uiState))
               $ s
           Left err -> s & uiState . uiError ?~ err
       SearchPrompt t hist ->
         case lastEntry t hist of
-          Nothing ->
-            (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-              . (uiState . uiReplType .~ Nothing)
-              . (uiState . uiError .~ Nothing)
-              $ s
+          Nothing -> resetWithREPLForm (mkReplForm $ CmdPrompt "") s
           Just found
-            | T.null t ->
-              (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-                . (uiState . uiReplType .~ Nothing)
-                . (uiState . uiError .~ Nothing)
-                $ s
-            | otherwise ->
-              validateREPLForm
-                . (uiState . uiReplForm .~ mkReplForm (CmdPrompt found))
-                . (uiState . uiReplType .~ Nothing)
-                . (uiState . uiError .~ Nothing)
-                $ s
+            | T.null t -> resetWithREPLForm (mkReplForm $ CmdPrompt "") s
+            | otherwise -> validateREPLForm $ resetWithREPLForm (mkReplForm $ CmdPrompt found) s
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)
@@ -626,13 +610,9 @@ handleREPLEvent s (ControlKey 'r') = continue $
          in s & uiState . uiReplForm .~ newform
 handleREPLEvent s EscapeKey =
   case s ^. uiState . uiReplForm . to formState of
-    CmdPrompt uinput -> continueWithoutRedraw s
+    CmdPrompt _ -> continueWithoutRedraw s
     SearchPrompt _ _ ->
-      continue $
-        (uiState . uiReplForm .~ mkReplForm (CmdPrompt ""))
-          . (uiState . uiReplType .~ Nothing)
-          . (uiState . uiError .~ Nothing)
-          $ s
+      continue $ resetWithREPLForm (mkReplForm $ CmdPrompt "") s
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $
@@ -682,6 +662,14 @@ adjReplHistIndex d s =
   getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
   oldEntry = getCurrEntry s
   newEntry = getCurrEntry ns
+
+-- Set the REPLForm to the given value, reseting type error checks to Nothing
+-- and removing uiError
+resetWithREPLForm :: Form REPLPrompt AppEvent Name -> AppState -> AppState
+resetWithREPLForm f =
+  (uiState . uiReplForm .~ f)
+    . (uiState . uiReplType .~ Nothing)
+    . (uiState . uiError .~ Nothing)
 
 ------------------------------------------------------------
 -- World events
