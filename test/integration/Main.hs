@@ -106,21 +106,21 @@ testScenarioSolution _em =
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution "move" Default "data/scenarios/02Tutorials/00-move.yaml"
-        , testSolution "turn" Default "data/scenarios/02Tutorials/01-turn.yaml"
-        , testSolution "craft" Default "data/scenarios/02Tutorials/02-craft.yaml"
+        [ testSolution "move" Default "02Tutorials/00-move"
+        , testSolution "turn" Default "02Tutorials/01-turn"
+        , testSolution "craft" Default "02Tutorials/02-craft"
         ]
     , testGroup
         "Challenges"
-        [ testSolution "chess" Default "data/scenarios/03Challenges/01-chess_horse.yaml"
-        , testSolution "test (grab)" Default "data/scenarios/03Challenges/00-test.yaml"
-        , testSolution "portal room" Default "data/scenarios/03Challenges/03-teleport.yaml"
+        [ testSolution "chess" Default "03Challenges/01-chess_horse"
+        , testSolution "test (grab)" Default "03Challenges/00-test"
+        , testSolution "portal room" Default "03Challenges/03-teleport"
         ]
     , testGroup
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
-            testSolution "build with drill (#394)" Default "data/scenarios/04Testing/394-build-drill.yaml"
-        , testSolution "drowning results in destruction" Default "data/scenarios/04Testing/428-drowning-destroy.yaml"
+            testSolution "build with drill (#394)" Default "04Testing/394-build-drill"
+        , testSolution "drowning results in destruction" Default "04Testing/428-drowning-destroy"
         ]
     ]
  where
