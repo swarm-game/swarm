@@ -140,20 +140,14 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw s
       Just (SISingle scene) -> do
-        let gs = s ^. gameState
-        gs' <- liftIO $ playScenario (gs ^. entityMap) scene Nothing Nothing gs
-
         let nextMenu
               -- Go back to the scenario list
               | null rest = NewGameMenu scenarioStack
               -- Advance to the next tutorial or challenge
               | otherwise = NewGameMenu (BL.listMoveDown curMenu :| rest)
 
-        continue $
-          s & uiState . uiMenu .~ NoMenu
-            & uiState . uiPrevMenu .~ nextMenu
-            & uiState %~ resetUIState
-            & gameState .~ gs'
+        s' <- liftIO $ scenarioToAppState scene Nothing Nothing (s & uiState . uiPrevMenu .~ nextMenu)
+        continue s'
       Just (SICollection _ c) ->
         continue $
           s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList (s ^. uiState . uiCheatMode) c) scenarioStack)
@@ -164,15 +158,6 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
     menu' <- handleListEvent ev curMenu
     continue $ s & uiState . uiMenu .~ NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw s
-
--- | Reset the UI state when beginning a new game.
-resetUIState :: UIState -> UIState
-resetUIState =
-  (uiFocusRing .~ initFocusRing)
-    . (uiInventory .~ Nothing)
-    . (uiShowFPS .~ False)
-    . (uiShowZero .~ True)
-    . (lgTicksPerSecond .~ initLgTicksPerSecond)
 
 mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
 mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
@@ -196,6 +181,8 @@ handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleMainEvent s = \case
   AppEvent Frame
     | s ^. gameState . paused -> continueWithoutRedraw s
+    | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay ->
+      toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
     | otherwise -> runFrameUI s
   VtyEvent (V.EvResize _ _) -> do
     invalidateCacheEntry WorldCache
@@ -204,6 +191,10 @@ handleMainEvent s = \case
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
+  ControlKey 'g' -> case s ^. uiState . uiGoal of
+    NoGoal -> continueWithoutRedraw s
+    UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
+    ReadGoal g -> toggleModal s (GoalModal g) >>= continue
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext

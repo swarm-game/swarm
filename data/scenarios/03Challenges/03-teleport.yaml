@@ -1,53 +1,10 @@
 name: Portal room
 description: An impossible challenge - can you magically jump across the water?
-entities:
-  - name: goal
-    display:
-      attr: device
-      char: 'X'
-    description:
-    - Get to the other room and grab the lambda.
-    - Oh wait.
-    - The tunnel is flooded.
-    - Just give up then. It is impossible to get there.
-    properties: [portable]
-  ## KNOWN ENTITIES
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-  - name: knownwavywater
-    display:
-      attr: water
-      char: '~'
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-  - name: knowntree
-    display:
-      attr: plant
-      char: 'T'
-    description:
-    - A tree.
-    properties: [portable, growable, known]
-    yields: tree
-    growth: [500, 600]
-  - name: knownflower
-    display:
-      attr: flower
-      char: '*'
-    description:
-    - A flower.
-    yields: flower
-    properties: [known]
-
+goal:
+  - Get to the other room and grab the lambda.
+  - Oh wait.
+  - The tunnel is flooded.
+  - Just give up then. It is impossible to get there.
 win: |
   try {
     as base {has "lambda"}
@@ -63,7 +20,6 @@ robots:
       - logger
       - grabber
     inventory:
-      - [1, goal]
       - [0, lambda]
   - name: portkey1
     system: true
@@ -122,3 +78,40 @@ world:
     └┐.....┌───┐*...T┌┘ ~
     ~└─────┘ ~~└─────┘~  
     ~~~   ~        ~    ~
+entities:
+  ## KNOWN ENTITIES
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water
+  - name: knownwavywater
+    display:
+      attr: water
+      char: '~'
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water
+  - name: knowntree
+    display:
+      attr: plant
+      char: 'T'
+    description:
+    - A tree.
+    properties: [portable, growable, known]
+    yields: tree
+    growth: [500, 600]
+  - name: knownflower
+    display:
+      attr: flower
+      char: '*'
+    description:
+    - A flower.
+    yields: flower
+    properties: [known]

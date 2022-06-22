@@ -1,8 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.TUI.Model
@@ -63,6 +66,11 @@ module Swarm.TUI.Model (
   _InventoryEntry,
   _InstalledEntry,
 
+  -- ** Goal status
+  GoalStatus (..),
+  goalNeedsDisplay,
+  markGoalRead,
+
   -- ** UI Model
   UIState,
   uiMenu,
@@ -80,6 +88,7 @@ module Swarm.TUI.Model (
   uiScrollToEnd,
   uiError,
   uiModal,
+  uiGoal,
   lgTicksPerSecond,
   lastFrameTime,
   accumulatedTime,
@@ -115,6 +124,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
+  scenarioToAppState,
   Seed,
 
   -- ** Utility
@@ -130,26 +140,26 @@ import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import System.Clock
 
 import Brick
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
-import qualified Brick.Widgets.List as BL
+import Brick.Widgets.List qualified as BL
 
 import Control.Applicative (Applicative (liftA2))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem)
+import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, scenarioGoal)
 import Swarm.Game.State
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -383,6 +393,7 @@ data ModalType
   | WinModal
   | QuitModal
   | DescriptionModal Entity
+  | GoalModal [Text]
   deriving (Eq, Show)
 
 data ButtonSelection = Cancel | Confirm
@@ -429,6 +440,32 @@ data InventoryListEntry
 makePrisms ''InventoryListEntry
 
 ------------------------------------------------------------
+-- Goal status
+------------------------------------------------------------
+
+-- | Status of the scenario goal: whether there is one, and whether it has been
+--   displayed to the user initially.
+data GoalStatus
+  = -- | There is no goal.
+    NoGoal
+  | -- | There is a goal, and we should display it to the user initially.
+    UnreadGoal [Text]
+  | -- | There is a goal, and we have already displayed it to the user.
+    --   It can be displayed again if the user chooses.
+    ReadGoal [Text]
+  deriving (Eq, Show)
+
+-- | Do we need to display the goal initially to the user?
+goalNeedsDisplay :: GoalStatus -> Maybe [Text]
+goalNeedsDisplay (UnreadGoal g) = Just g
+goalNeedsDisplay _ = Nothing
+
+-- | Mark the goal as having been read.
+markGoalRead :: GoalStatus -> GoalStatus
+markGoalRead (UnreadGoal g) = ReadGoal g
+markGoalRead gs = gs
+
+------------------------------------------------------------
 -- UI state + AppState
 ------------------------------------------------------------
 
@@ -450,6 +487,7 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
+  , _uiGoal :: GoalStatus
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
   , _uiInventoryShouldUpdate :: Bool
@@ -536,6 +574,10 @@ uiError :: Lens' UIState (Maybe Text)
 -- | When this is @Just@, it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
+
+-- | Status of the scenario goal: whether there is one, and whether it
+--   has been displayed to the user initially.
+uiGoal :: Lens' UIState GoalStatus
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -691,6 +733,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiScrollToEnd = False
       , _uiError = Nothing
       , _uiModal = Nothing
+      , _uiGoal = NoGoal
       , _uiShowFPS = False
       , _uiShowZero = True
       , _uiInventoryShouldUpdate = False
@@ -763,6 +806,35 @@ populateInventoryList (Just r) = do
 
 -- | Initialize the 'AppState'.
 initAppState :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
-initAppState seed scenarioName toRun cheatMode = do
-  let showMenu = isNothing scenarioName && isNothing toRun && isNothing seed
-  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu cheatMode
+initAppState userSeed scenarioName toRun cheatMode = do
+  let skipMenu = isJust scenarioName || isJust toRun || isJust userSeed
+  gs <- initGameState
+  ui <- initUIState (not skipMenu) cheatMode
+  case skipMenu of
+    False -> return $ AppState gs ui
+    True -> do
+      scenario <- loadScenario (fromMaybe "00-classic" scenarioName) (gs ^. entityMap)
+      liftIO $ scenarioToAppState scenario userSeed toRun $ AppState gs ui
+
+-- XXX do we need to keep an old entity map around???
+
+-- | Modify the 'AppState' appropriately when starting a new scenario.
+scenarioToAppState :: Scenario -> Maybe Seed -> Maybe String -> AppState -> IO AppState
+scenarioToAppState scene userSeed toRun (AppState g u) = do
+  g' <- scenarioToGameState scene userSeed toRun g
+  u' <- scenarioToUIState scene u
+
+  return $ AppState g' u'
+
+-- | Modify the UI state appropriately when starting a new scenario.
+scenarioToUIState :: Scenario -> UIState -> IO UIState
+scenarioToUIState scene u =
+  return $
+    u
+      & uiMenu .~ NoMenu
+      & uiGoal .~ maybe NoGoal UnreadGoal (scene ^. scenarioGoal)
+      & uiFocusRing .~ initFocusRing
+      & uiInventory .~ Nothing
+      & uiShowFPS .~ False
+      & uiShowZero .~ True
+      & lgTicksPerSecond .~ initLgTicksPerSecond
