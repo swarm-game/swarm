@@ -753,8 +753,8 @@ execConst c vs s k = do
 
       robotInventory %= insert e'
 
-      -- Return the name of the item grabbed.
-      return $ Out (VString (e ^. entityName)) s k
+      -- Return the name of the item obtained.
+      return $ Out (VString (e' ^. entityName)) s k
     Turn -> case vs of
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)

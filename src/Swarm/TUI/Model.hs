@@ -42,6 +42,7 @@ module Swarm.TUI.Model (
   REPLHistory,
   replIndex,
   replLength,
+  replSeq,
   newREPLHistory,
   addREPLItem,
   restartREPLHistory,
@@ -50,6 +51,14 @@ module Swarm.TUI.Model (
   getCurrentItemText,
   replIndexIsAtInput,
   TimeDir (..),
+
+  -- ** Prompt utils
+  REPLPrompt (..),
+  replPromptAsWidget,
+  promptTextL,
+  promptUpdateL,
+  mkReplForm,
+  removeEntry,
 
   -- ** Inventory
   InventoryListEntry (..),
@@ -96,10 +105,11 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initFocusRing,
-  replPrompt,
+  defaultPrompt,
   initReplForm,
   initLgTicksPerSecond,
   initUIState,
+  lastEntry,
 
   -- ** Updating
   populateInventoryList,
@@ -144,6 +154,7 @@ import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
 import Brick.Widgets.List qualified as BL
 
+import Control.Applicative (Applicative (liftA2))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, scenarioGoal)
@@ -313,6 +324,67 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 ------------------------------------------------------------
+-- Repl Prompt
+------------------------------------------------------------
+
+-- | This data type represent what is prompted to the player
+--   and how the REPL show interpret the user input.
+data REPLPrompt
+  = -- | Interpret the given text as a regular command
+    CmdPrompt Text
+  | -- | Interpret the given text as "search this text in history"
+    SearchPrompt Text REPLHistory
+
+-- | Get the last REPLEntry in REPLHistory matching the given text
+lastEntry :: Text -> REPLHistory -> Maybe Text
+lastEntry t h =
+  case Seq.viewr $ Seq.filter matchEntry $ h ^. replSeq of
+    Seq.EmptyR -> Nothing
+    _ Seq.:> a -> Just (replItemText a)
+ where
+  matchesText histItem = t `T.isInfixOf` replItemText histItem
+  matchEntry = liftA2 (&&) matchesText isREPLEntry
+
+-- | Given some text,  removes the REPLEntry within REPLHistory which is equal to that.
+--   This is used when the user enters in search mode and want to traverse the history.
+--   If a command has been used many times, the history will be populated with it causing
+--   the effect that search command always finds the same command.
+removeEntry :: Text -> REPLHistory -> REPLHistory
+removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
+
+defaultPrompt :: REPLPrompt
+defaultPrompt = CmdPrompt ""
+
+-- | Lens for accesing the text of the prompt.
+promptTextL :: Lens' REPLPrompt Text
+promptTextL = lens g s
+ where
+  -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).
+  -- This should be force in the ADT itself... right know this here
+  -- The compiler will complain about "Non complete patterns" on this two function.
+  g :: REPLPrompt -> Text
+  g (CmdPrompt t) = t
+  g (SearchPrompt t _) = t
+
+  s :: REPLPrompt -> Text -> REPLPrompt
+  s (CmdPrompt _) t = CmdPrompt t
+  s (SearchPrompt _ h) t = SearchPrompt t h
+
+-- | Turn the repl prompt into a decorator for the form
+replPromptAsWidget :: REPLPrompt -> Widget Name
+replPromptAsWidget (CmdPrompt _) = txt "> "
+replPromptAsWidget (SearchPrompt t rh) =
+  case lastEntry t rh of
+    Nothing -> txt "[nothing found] "
+    Just lastentry
+      | T.null t -> txt "[find] "
+      | otherwise -> txt $ "[found: \"" <> lastentry <> "\"] "
+
+-- | Creates the repl form as a decorated form.
+mkReplForm :: REPLPrompt -> Form REPLPrompt AppEvent Name
+mkReplForm r = newForm [(replPromptAsWidget r <+>) @@= editTextField promptTextL REPLInput (Just 1)] r
+
+------------------------------------------------------------
 -- Menus and dialogs
 ------------------------------------------------------------
 
@@ -405,7 +477,7 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
-  , _uiReplForm :: Form Text AppEvent Name
+  , _uiReplForm :: Form REPLPrompt AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
   , _uiReplHistory :: REPLHistory
@@ -466,7 +538,7 @@ uiFocusRing :: Lens' UIState (FocusRing Name)
 uiWorldCursor :: Lens' UIState (Maybe W.Coords)
 
 -- | The form where the user can type input at the REPL.
-uiReplForm :: Lens' UIState (Form Text AppEvent Name)
+uiReplForm :: Lens' UIState (Form REPLPrompt AppEvent Name)
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).
@@ -566,6 +638,23 @@ accumulatedTime :: Lens' UIState TimeSpec
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' UIState (Map Text Text)
 
+-- | Lens for accesing the text of the prompt.
+promptUpdateL :: Lens UIState (Form REPLPrompt AppEvent Name) Text Text
+promptUpdateL = lens g s
+ where
+  -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).
+  -- This should be force in the ADT itself... right know this here
+  -- The compiler will complain about "Non complete patterns" on this two function.
+  g :: UIState -> Text
+  g ui = case formState (ui ^. uiReplForm) of
+    CmdPrompt t -> t
+    SearchPrompt t _ -> t
+
+  s :: UIState -> Text -> Form REPLPrompt AppEvent Name
+  s ui inputText = case formState (ui ^. uiReplForm) of
+    CmdPrompt _ -> mkReplForm $ CmdPrompt inputText
+    SearchPrompt _ _ -> mkReplForm $ SearchPrompt inputText (ui ^. uiReplHistory)
+
 --------------------------------------------------
 -- Lenses for AppState
 
@@ -605,16 +694,12 @@ focusedEntity =
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
--- | The default REPL prompt.
-replPrompt :: Text
-replPrompt = "> "
-
 -- | The initial state of the REPL entry form.
-initReplForm :: Form Text AppEvent Name
+initReplForm :: Form REPLPrompt AppEvent Name
 initReplForm =
   newForm
-    [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
-    ""
+    [(replPromptAsWidget defaultPrompt <+>) @@= editTextField promptTextL REPLInput (Just 1)]
+    (CmdPrompt "")
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int

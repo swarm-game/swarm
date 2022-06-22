@@ -97,6 +97,9 @@ pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
 pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
 pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 
+pattern EscapeKey :: BrickEvent n e
+pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
+
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
@@ -554,13 +557,21 @@ handleREPLEvent s (ControlKey 'c') =
       & gameState . robotMap . ix 0 . machine %~ cancel
 handleREPLEvent s (Key V.KEnter) =
   if not $ s ^. gameState . replWorking
-    then case processTerm' topTypeCtx topCapCtx entry of
-      Right mt -> do
-        let s' = advanceREPL s
-            s'' = maybe id startBaseProgram mt s'
-        continue s''
-      Left err ->
-        continue $ s & uiState . uiError ?~ err
+    then continue $ case entry of
+      CmdPrompt uinput ->
+        case processTerm' topTypeCtx topCapCtx uinput of
+          Right mt ->
+            maybe id startBaseProgram mt
+              . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
+              . resetWithREPLForm (set promptUpdateL "" (s ^. uiState))
+              $ s
+          Left err -> s & uiState . uiError ?~ err
+      SearchPrompt t hist ->
+        case lastEntry t hist of
+          Nothing -> resetWithREPLForm (mkReplForm $ CmdPrompt "") s
+          Just found
+            | T.null t -> resetWithREPLForm (mkReplForm $ CmdPrompt "") s
+            | otherwise -> validateREPLForm $ resetWithREPLForm (mkReplForm $ CmdPrompt found) s
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)
@@ -570,11 +581,6 @@ handleREPLEvent s (Key V.KEnter) =
   topStore =
     fromMaybe emptyStore $
       s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
-  advanceREPL =
-    (uiState . uiReplForm %~ updateFormState "")
-      . (uiState . uiReplType .~ Nothing)
-      . (uiState . uiReplHistory %~ addREPLItem (REPLEntry entry))
-      . (uiState . uiError .~ Nothing)
   startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
     (gameState . replStatus .~ REPLWorking ty Nothing)
       . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
@@ -583,25 +589,48 @@ handleREPLEvent s (Key V.KUp) =
   continue $ s & adjReplHistIndex Older
 handleREPLEvent s (Key V.KDown) =
   continue $ s & adjReplHistIndex Newer
+handleREPLEvent s (ControlKey 'r') = continue $
+  case s ^. uiState . uiReplForm . to formState of
+    CmdPrompt uinput ->
+      let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
+       in s & uiState . uiReplForm .~ newform
+    SearchPrompt ftext rh -> case lastEntry ftext rh of
+      Nothing -> s
+      Just found ->
+        let newform = mkReplForm $ SearchPrompt ftext (removeEntry found rh)
+         in s & uiState . uiReplForm .~ newform
+handleREPLEvent s EscapeKey =
+  case s ^. uiState . uiReplForm . to formState of
+    CmdPrompt _ -> continueWithoutRedraw s
+    SearchPrompt _ _ ->
+      continue $ resetWithREPLForm (mkReplForm $ CmdPrompt "") s
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  continue $ validateREPLForm (s & uiState . uiReplForm .~ f')
+  continue $
+    case formState f' of
+      CmdPrompt _ -> validateREPLForm (s & uiState . uiReplForm .~ f')
+      SearchPrompt t _ ->
+        let newform = set promptUpdateL t (s ^. uiState)
+         in s & uiState . uiReplForm .~ newform
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
-  s
-    & uiState . uiReplForm %~ validate
-    & uiState . uiReplType .~ theType
+  case replPrompt of
+    CmdPrompt uinput ->
+      let result = processTerm' topTypeCtx topCapCtx uinput
+          theType = case result of
+            Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+            _ -> Nothing
+       in s & uiState . uiReplForm %~ validate result
+            & uiState . uiReplType .~ theType
+    SearchPrompt _ _ -> s
  where
+  replPrompt = s ^. uiState . uiReplForm . to formState
   topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
   topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
-  result = processTerm' topTypeCtx topCapCtx (s ^. uiState . uiReplForm . to formState)
-  theType = case result of
-    Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
-    _ -> Nothing
-  validate = setFieldValid (isRight result) REPLInput
+  validate result = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
 adjReplHistIndex :: TimeDir -> AppState -> AppState
@@ -618,12 +647,20 @@ adjReplHistIndex d s =
   repl = uiState . uiReplHistory
 
   replLast = s ^. uiState . uiReplLast
-  saveLastEntry = uiState . uiReplLast .~ formState (s ^. uiState . uiReplForm)
-  showNewEntry = uiState . uiReplForm %~ updateFormState newEntry
+  saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState . promptTextL)
+  showNewEntry = uiState . uiReplForm %~ updateFormState (CmdPrompt newEntry)
   -- get REPL data
   getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
   oldEntry = getCurrEntry s
   newEntry = getCurrEntry ns
+
+-- Set the REPLForm to the given value, reseting type error checks to Nothing
+-- and removing uiError
+resetWithREPLForm :: Form REPLPrompt AppEvent Name -> AppState -> AppState
+resetWithREPLForm f =
+  (uiState . uiReplForm .~ f)
+    . (uiState . uiReplType .~ Nothing)
+    . (uiState . uiError .~ Nothing)
 
 ------------------------------------------------------------
 -- World events

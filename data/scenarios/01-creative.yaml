@@ -5,7 +5,7 @@ creative: true
 robots:
   - name: base
     loc: [0,0]
-    dir: [0,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot
