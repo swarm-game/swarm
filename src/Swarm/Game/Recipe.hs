@@ -33,6 +33,7 @@ module Swarm.Game.Recipe (
   inRecipeMap,
 
   -- * Looking up recipes
+  knowsIngredientsFor,
   recipesFor,
   make,
   make',
@@ -185,6 +186,13 @@ missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
  where
   findLacking inven = filter ((> 0) . fst) . map (countNeeded inven)
   countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
+
+-- | Figure out if a recipe is available, but it can be lacking items.
+knowsIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> Bool
+knowsIngredientsFor (inv, ins) recipe =
+  knowsAll inv (recipe ^. recipeInputs) && knowsAll ins (recipe ^. recipeRequirements)
+ where
+  knowsAll xs = all (E.contains xs . snd)
 
 -- | Try to make a recipe, deleting the recipe's inputs from the
 --   inventory. Return either a description of which items are

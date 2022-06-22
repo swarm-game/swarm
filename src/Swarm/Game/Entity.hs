@@ -115,7 +115,7 @@ import Swarm.Util.Yaml
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (toDirection)
-import Swarm.Util (plural, (?))
+import Swarm.Util (plural, reflow, (?))
 
 import Paths_swarm
 
@@ -339,8 +339,6 @@ instance FromJSON Entity where
               <*> v .:? "capabilities" .!= []
               <*> pure empty
           )
-   where
-    reflow = T.unwords . T.words
 
 -- | If we have access to an 'EntityMap', we can parse the name of an
 --   'Entity' as a string and look it up in the map.

@@ -32,6 +32,7 @@ module Swarm.Util (
   readAppData,
 
   -- * English language utilities
+  reflow,
   quote,
   squote,
   commaList,
@@ -166,6 +167,10 @@ readAppData = do
 
 ------------------------------------------------------------
 -- Some language-y stuff
+
+-- | Reflow text by removing newlines and condensing whitespace.
+reflow :: Text -> Text
+reflow = T.unwords . T.words
 
 -- | Prepend a noun with the proper indefinite article (\"a\" or \"an\").
 indefinite :: Text -> Text

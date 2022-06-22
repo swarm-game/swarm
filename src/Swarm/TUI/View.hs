@@ -114,7 +114,7 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor 'T' = plantAttr
   attrFor '@' = rockAttr
   attrFor '~' = waterAttr
-  attrFor '░' = dirtAttr
+  attrFor '▒' = dirtAttr
   attrFor _ = defAttr
 
 drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
@@ -205,28 +205,38 @@ drawGameUI s =
                 highlightAttr
                 fr
                 WorldPanel
-                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s))
+                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s) & addCursorPos)
                 (drawWorld $ s ^. gameState)
             , drawKeyMenu s
-            , panel
-                highlightAttr
-                fr
-                REPLPanel
-                ( plainBorder
-                    & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
-                )
-                ( vLimit replHeight $
-                    padBottom Max $
-                      padLeftRight 1 $
-                        drawREPL s
-                )
+            , clickable REPLPanel $
+                panel
+                  highlightAttr
+                  fr
+                  REPLPanel
+                  ( plainBorder
+                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
+                  )
+                  ( vLimit replHeight
+                      . padBottom Max
+                      . padLeftRight 1
+                      $ drawREPL s
+                  )
             ]
         ]
   ]
  where
+  addCursorPos = case s ^. uiState . uiWorldCursor of
+    Just coord -> topLabels . rightLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
+    Nothing -> id
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
+
+drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
+drawWorldCursorInfo g i@(W.Coords (y, x)) =
+  hBox [entity, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
+ where
+  entity = snd $ drawCell (hiding g) (g ^. world) i
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -288,9 +298,16 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
   haltingMessage = case s ^. uiState . uiPrevMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
+  descriptionWidth = 100
   (title, widget, buttons, requiredWidth) =
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
+      RecipesModal ->
+        ( "Available Recipes"
+        , helpRecipes (s ^. gameState . availableRecipesNewCount) (s ^. gameState . availableRecipes)
+        , Nothing
+        , descriptionWidth
+        )
       WinModal ->
         let winMsg = "Congratulations!"
             continueMsg = "Keep playing"
@@ -300,7 +317,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
             , length continueMsg + length stopMsg + 32
             )
-      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, 100)
+      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, descriptionWidth)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit this game and return to the menu?"
             stopMsg = fromMaybe "Quit to menu" haltingMessage
@@ -309,6 +326,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             , Just (0, [("Keep playing", Cancel), (stopMsg, Confirm)])
             , T.length quitMsg + 4
             )
+      GoalModal g -> (" Goal ", padLeftRight 1 (displayParagraphs g), Nothing, 80)
 
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
@@ -322,6 +340,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
   toWidgets (k, v) = [txt k, txt v]
   glKeyBindings =
     [ ("F1", "Help")
+    , ("F2", "Available recipes")
     , ("Ctrl-q", "quit the game")
     , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
@@ -344,6 +363,19 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
+helpRecipes :: Int -> [Recipe Entity] -> Widget Name
+helpRecipes count xs = viewport RecipesViewport Vertical (padTop (Pad 1) $ vBox recipesLists)
+ where
+  (news, knowns) = splitAt count xs
+  recipesLists = drawRecipes news <> sepRecipes <> drawRecipes knowns
+  drawRecipes = map (padLeftRight 18 . padBottom (Pad 1) . drawRecipe Nothing Nothing)
+  -- TODO: figure out how to make the whole hBorder to be red, not just the label
+  sepRecipes
+    | count > 0 && not (null knowns) =
+      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+      ]
+    | otherwise = []
+
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 
@@ -361,6 +393,7 @@ drawKeyMenu s =
     . (++ [gameModeWidget])
     . map (padLeftRight 1 . drawKeyCmd)
     . (globalKeyCmds ++)
+    . map (\(k, n) -> (NoHighlight, k, n))
     . keyCmdsFor
     . focusGetCurrent
     . view (uiState . uiFocusRing)
@@ -371,6 +404,15 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
+  goal = (s ^. uiState . uiGoal) /= NoGoal
+
+  availRecipes
+    | null (s ^. gameState . availableRecipes) = []
+    | otherwise =
+      let highlight
+            | s ^. gameState . availableRecipesNewCount > 0 = Highlighted
+            | otherwise = NoHighlight
+       in [(highlight, "F2", "Recipes")]
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -380,10 +422,12 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [ ("F1", "help")
-    , ("Tab", "cycle")
-    ]
-      ++ [("^k", "creative") | cheat]
+    [(NoHighlight, "F1", "help")]
+      <> availRecipes
+      <> [(NoHighlight, "Tab", "cycle")]
+      <> [(NoHighlight, "^k", "creative") | cheat]
+      <> [(NoHighlight, "^g", "goal") | goal]
+
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
@@ -408,9 +452,12 @@ drawKeyMenu s =
     ]
   keyCmdsFor _ = []
 
+data KeyHighlight = NoHighlight | Highlighted
+
 -- | Draw a single key command in the menu.
-drawKeyCmd :: (Text, Text) -> Widget Name
-drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
+drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
+drawKeyCmd (Highlighted, key, cmd) = hBox [withAttr notifAttr (txt $ T.concat ["[", key, "] "]), txt cmd]
+drawKeyCmd (NoHighlight, key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
 
 ------------------------------------------------------------
 -- World panel
@@ -419,15 +466,18 @@ drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
 -- | Draw the current world view.
 drawWorld :: GameState -> Widget Name
 drawWorld g =
-  center $
-    cached WorldCache $
-      reportExtent WorldExtent $
-        Widget Fixed Fixed $ do
-          ctx <- getContext
-          let w = ctx ^. availWidthL
-              h = ctx ^. availHeightL
-              ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-          render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
+  center
+    . cached WorldCache
+    . reportExtent WorldExtent
+    -- Set the clickable request after the extent to play nice with the cache
+    . clickable WorldPanel
+    . Widget Fixed Fixed
+    $ do
+      ctx <- getContext
+      let w = ctx ^. availWidthL
+          h = ctx ^. availHeightL
+          ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
+      render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
  where
   -- XXX update how this works!  Gather all displays, all
   -- entities...  Should make a Display remember which is the
@@ -443,11 +493,7 @@ drawWorld g =
 
   drawLoc :: W.Coords -> Widget Name
   drawLoc coords =
-    let (ePrio, eWidget) = drawCell hiding (g ^. world) coords
-        hiding =
-          if g ^. creativeMode
-            then HideNoEntity
-            else maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
+    let (ePrio, eWidget) = drawCell (hiding g) (g ^. world) coords
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
             | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
@@ -457,6 +503,11 @@ drawWorld g =
           Nothing -> eWidget
 
 data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
+
+hiding :: GameState -> HideEntity
+hiding g
+  | g ^. creativeMode = HideNoEntity
+  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
 
 -- | Draw a single cell of the world, either hiding entities that current robot does not know,
 --   or hiding all/none depending on Left value (True/False).
@@ -486,6 +537,7 @@ drawRobotPanel :: AppState -> Widget Name
 drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
   (Just r, Just (_, lst)) ->
     let V2 x y = r ^. robotLocation
+        drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
      in padBottom Max $
           vBox
             [ hCenter $
@@ -494,7 +546,7 @@ drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInve
                   , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
                   , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
                   ]
-            , padAll 1 (BL.renderListWithIndex (drawItem (lst ^. BL.listSelectedL)) True lst)
+            , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
             ]
   _ -> padRight Max . padBottom Max $ str " "
 
@@ -557,7 +609,7 @@ explainFocusedItem s = case focusedItem s of
 
 explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
-  vBox (map (padBottom (Pad 1) . txtWrap) (e ^. entityDescription))
+  displayParagraphs (e ^. entityDescription)
     <=> explainRecipes s e
 
 explainRecipes :: AppState -> Entity -> Widget Name
@@ -569,7 +621,7 @@ explainRecipes s e
       , padLeftRight 2 $
           hCenter $
             vBox $
-              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
+              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) (Just inv)) recipes
       ]
  where
   recipes = recipesWith s e
@@ -594,8 +646,8 @@ recipesWith s e =
 
 -- | Draw an ASCII art representation of a recipe.  For now, the
 --   weight is not shown.
-drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
-drawRecipe e inv (Recipe ins outs reqs time _weight) =
+drawRecipe :: Maybe Entity -> Maybe Inventory -> Recipe Entity -> Widget Name
+drawRecipe me minv (Recipe ins outs reqs time _weight) =
   vBox
     -- any requirements (e.g. furnace) go on top.
     [ hCenter $ drawReqs reqs
@@ -637,7 +689,9 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
                 )
       ]
    where
-    missing = E.lookup ingr inv < n
+    missing = case minv of
+      Just inv -> E.lookup ingr inv < n
+      Nothing -> False
 
   drawOut i (n, ingr) =
     hBox
@@ -655,7 +709,7 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
   -- If it's the focused entity, draw it highlighted.
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
-    | ingr == e = withAttr deviceAttr $ txtLines nm
+    | Just ingr == me = withAttr deviceAttr $ txtLines nm
     | ingr == timeE = withAttr sandAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm
@@ -714,5 +768,14 @@ drawREPL s =
   history = s ^. uiState . uiReplHistory
   base = s ^. gameState . robotMap . at 0
   histIdx = fromString $ show (history ^. replIndex)
-  fmt (REPLEntry e) = txt replPrompt <+> txt e
+  fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
+
+------------------------------------------------------------
+-- Utility
+------------------------------------------------------------
+
+-- | Display a list of text-wrapped paragraphs with one blank line after
+--   each.
+displayParagraphs :: [Text] -> Widget Name
+displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
