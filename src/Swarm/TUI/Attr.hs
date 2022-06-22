@@ -47,6 +47,7 @@ swarmAttrMap =
     , (sandAttr, fg (V.rgbColor @Int 194 178 128))
     , (fireAttr, fg V.red `V.withStyle` V.bold)
     , (redAttr, fg V.red)
+    , (notifAttr, fg V.yellow `V.withStyle` V.bold)
     , (greenAttr, fg V.green)
     , (blueAttr, fg V.blue)
     , (deviceAttr, fg V.yellow `V.withStyle` V.bold)
@@ -85,6 +86,7 @@ robotAttr
   , baseAttr
   , fireAttr
   , redAttr
+  , notifAttr
   , greenAttr
   , blueAttr
   , woodAttr
@@ -119,13 +121,14 @@ snowAttr = "snow"
 sandAttr = "sand"
 fireAttr = "fire"
 redAttr = "red"
+highlightAttr = "highlight"
 greenAttr = "green"
 blueAttr = "blue"
 rockAttr = "rock"
 woodAttr = "wood"
 baseAttr = "base"
 deviceAttr = "device"
-highlightAttr = "highlight"
+notifAttr = "notif"
 sepAttr = "sep"
 infoAttr = "info"
 defAttr = "def"

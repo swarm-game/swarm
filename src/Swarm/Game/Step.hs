@@ -25,6 +25,7 @@ import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (rights)
+import Data.Foldable (traverse_)
 import qualified Data.Functor.Const as F
 import Data.Int (Int64)
 import qualified Data.IntMap as IM
@@ -752,6 +753,7 @@ execConst c vs s k = do
         Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
 
       robotInventory %= insert e'
+      updateDiscoveredEntities e'
 
       -- Return the name of the item obtained.
       return $ Out (VString (e' ^. entityName)) s k
@@ -891,6 +893,7 @@ execConst c vs s k = do
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
+        traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Has -> case vs of
@@ -964,6 +967,7 @@ execConst c vs s k = do
           Nothing -> return $ VInj False VUnit
           Just e -> do
             robotInventory %= insertCount 0 e
+            updateDiscoveredEntities e
             return $ VInj True (VString (e ^. entityName))
 
         return $ Out res s k
@@ -1085,6 +1089,8 @@ execConst c vs s k = do
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
 
         robotInventory %= insert e
+        updateDiscoveredEntities e
+
         return $ Out VUnit s k
       _ -> badConst
     Ishere -> case vs of
@@ -1627,3 +1633,33 @@ safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
   | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
   | otherwise = return $ a ^ b
+
+-- | Update the global list of discovered entities, and check for new recipes.
+updateDiscoveredEntities :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()
+updateDiscoveredEntities e = do
+  allDiscovered <- use allDiscoveredEntities
+  if E.contains0plus e allDiscovered
+    then pure ()
+    else do
+      let newAllDiscovered = E.insertCount 1 e allDiscovered
+      updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
+      allDiscoveredEntities .= newAllDiscovered
+
+-- | Update the availableRecipes list.
+-- This implementation is not efficient:
+-- * Every time we discover a new entity, we iterate through the entire list of recipes to see which ones we can make.
+--   Trying to do something more clever seems like it would definitely be a case of premature optimization.
+--   One doesn't discover new entities all that often.
+-- * For each usable recipe, we do a linear search through the list of known recipes to see if we already know it.
+--   This is a little more troubling, since it's quadratic in the number of recipes.
+--   But it probably doesn't really make that much difference until we get up to thousands of recipes.
+updateAvailableRecipes :: Has (State GameState) sig m => (Inventory, Inventory) -> Entity -> m ()
+updateAvailableRecipes invs e = do
+  allInRecipes <- use recipesIn
+  let entityRecipes = recipesFor allInRecipes e
+      usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
+  knownRecipes <- use availableRecipes
+  let newRecipes = filter (`notElem` knownRecipes) usableRecipes
+      newCount = length newRecipes
+  availableRecipes .= newRecipes <> knownRecipes
+  availableRecipesNewCount += newCount

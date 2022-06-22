@@ -298,9 +298,16 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
   haltingMessage = case s ^. uiState . uiPrevMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
+  descriptionWidth = 100
   (title, widget, buttons, requiredWidth) =
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
+      RecipesModal ->
+        ( "Available Recipes"
+        , helpRecipes (s ^. gameState . availableRecipesNewCount) (s ^. gameState . availableRecipes)
+        , Nothing
+        , descriptionWidth
+        )
       WinModal ->
         let winMsg = "Congratulations!"
             continueMsg = "Keep playing"
@@ -310,7 +317,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
             , length continueMsg + length stopMsg + 32
             )
-      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, 100)
+      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, descriptionWidth)
       QuitModal ->
         let quitMsg = "Are you sure you want to quit this game and return to the menu?"
             stopMsg = fromMaybe "Quit to menu" haltingMessage
@@ -333,6 +340,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
   toWidgets (k, v) = [txt k, txt v]
   glKeyBindings =
     [ ("F1", "Help")
+    , ("F2", "Available recipes")
     , ("Ctrl-q", "quit the game")
     , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
@@ -355,6 +363,19 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
+helpRecipes :: Int -> [Recipe Entity] -> Widget Name
+helpRecipes count xs = viewport RecipesViewport Vertical (padTop (Pad 1) $ vBox recipesLists)
+ where
+  (news, knowns) = splitAt count xs
+  recipesLists = drawRecipes news <> sepRecipes <> drawRecipes knowns
+  drawRecipes = map (padLeftRight 18 . padBottom (Pad 1) . drawRecipe Nothing Nothing)
+  -- TODO: figure out how to make the whole hBorder to be red, not just the label
+  sepRecipes
+    | count > 0 && not (null knowns) =
+      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+      ]
+    | otherwise = []
+
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 
@@ -372,6 +393,7 @@ drawKeyMenu s =
     . (++ [gameModeWidget])
     . map (padLeftRight 1 . drawKeyCmd)
     . (globalKeyCmds ++)
+    . map (\(k, n) -> (NoHighlight, k, n))
     . keyCmdsFor
     . focusGetCurrent
     . view (uiState . uiFocusRing)
@@ -384,6 +406,14 @@ drawKeyMenu s =
   cheat = s ^. uiState . uiCheatMode
   goal = (s ^. uiState . uiGoal) /= NoGoal
 
+  availRecipes
+    | null (s ^. gameState . availableRecipes) = []
+    | otherwise =
+      let highlight
+            | s ^. gameState . availableRecipesNewCount > 0 = Highlighted
+            | otherwise = NoHighlight
+       in [(highlight, "F2", "Recipes")]
+
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
@@ -392,11 +422,12 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [ ("F1", "help")
-    , ("Tab", "cycle")
-    ]
-      ++ [("^k", "creative") | cheat]
-      ++ [("^g", "goal") | goal]
+    [(NoHighlight, "F1", "help")]
+      <> availRecipes
+      <> [(NoHighlight, "Tab", "cycle")]
+      <> [(NoHighlight, "^k", "creative") | cheat]
+      <> [(NoHighlight, "^g", "goal") | goal]
+
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
@@ -421,9 +452,12 @@ drawKeyMenu s =
     ]
   keyCmdsFor _ = []
 
+data KeyHighlight = NoHighlight | Highlighted
+
 -- | Draw a single key command in the menu.
-drawKeyCmd :: (Text, Text) -> Widget Name
-drawKeyCmd (key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
+drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
+drawKeyCmd (Highlighted, key, cmd) = hBox [withAttr notifAttr (txt $ T.concat ["[", key, "] "]), txt cmd]
+drawKeyCmd (NoHighlight, key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
 
 ------------------------------------------------------------
 -- World panel
@@ -587,7 +621,7 @@ explainRecipes s e
       , padLeftRight 2 $
           hCenter $
             vBox $
-              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe e inv) recipes
+              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) (Just inv)) recipes
       ]
  where
   recipes = recipesWith s e
@@ -612,8 +646,8 @@ recipesWith s e =
 
 -- | Draw an ASCII art representation of a recipe.  For now, the
 --   weight is not shown.
-drawRecipe :: Entity -> Inventory -> Recipe Entity -> Widget Name
-drawRecipe e inv (Recipe ins outs reqs time _weight) =
+drawRecipe :: Maybe Entity -> Maybe Inventory -> Recipe Entity -> Widget Name
+drawRecipe me minv (Recipe ins outs reqs time _weight) =
   vBox
     -- any requirements (e.g. furnace) go on top.
     [ hCenter $ drawReqs reqs
@@ -655,7 +689,9 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
                 )
       ]
    where
-    missing = E.lookup ingr inv < n
+    missing = case minv of
+      Just inv -> E.lookup ingr inv < n
+      Nothing -> False
 
   drawOut i (n, ingr) =
     hBox
@@ -673,7 +709,7 @@ drawRecipe e inv (Recipe ins outs reqs time _weight) =
   -- If it's the focused entity, draw it highlighted.
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
-    | ingr == e = withAttr deviceAttr $ txtLines nm
+    | Just ingr == me = withAttr deviceAttr $ txtLines nm
     | ingr == timeE = withAttr sandAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm

@@ -191,6 +191,9 @@ handleMainEvent s = \case
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
+  FKey 2 | not (null (s ^. gameState . availableRecipes)) -> do
+    s' <- toggleModal s RecipesModal
+    continue (s' & gameState . availableRecipesNewCount .~ 0)
   ControlKey 'g' -> case s ^. uiState . uiGoal of
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
@@ -237,7 +240,7 @@ handleMainEvent s = \case
       Just REPLPanel -> handleREPLEvent s ev
       Just WorldPanel -> handleWorldEvent s ev
       Just RobotPanel -> handleRobotPanelEvent s ev
-      Just InfoPanel -> handleInfoPanelEvent s ev
+      Just InfoPanel -> handleInfoPanelEvent s infoScroll ev
       _ -> continueWithoutRedraw s
 
 mouseLocToWorldCoords :: GameState -> Brick.Location -> EventM Name (Maybe W.Coords)
@@ -289,7 +292,9 @@ handleModalEvent s = \case
       _ -> continue s'
   ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
-    continue s'
+    case s ^? uiState . uiModal . _Just . modalType of
+      Just RecipesModal -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
+      _ -> continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
 --   history to a @.swarm_history@ file, and return to the previous menu.
@@ -792,14 +797,14 @@ descriptionModal s e =
 ------------------------------------------------------------
 
 -- | Handle user events in the info panel (just scrolling).
-handleInfoPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleInfoPanelEvent s = \case
-  Key V.KDown -> vScrollBy infoScroll 1 >> continue s
-  Key V.KUp -> vScrollBy infoScroll (-1) >> continue s
-  CharKey 'k' -> vScrollBy infoScroll 1 >> continue s
-  CharKey 'j' -> vScrollBy infoScroll (-1) >> continue s
-  Key V.KPageDown -> vScrollPage infoScroll Brick.Down >> continue s
-  Key V.KPageUp -> vScrollPage infoScroll Brick.Up >> continue s
-  Key V.KHome -> vScrollToBeginning infoScroll >> continue s
-  Key V.KEnd -> vScrollToEnd infoScroll >> continue s
+handleInfoPanelEvent :: AppState -> ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleInfoPanelEvent s vs = \case
+  Key V.KDown -> vScrollBy vs 1 >> continue s
+  Key V.KUp -> vScrollBy vs (-1) >> continue s
+  CharKey 'k' -> vScrollBy vs 1 >> continue s
+  CharKey 'j' -> vScrollBy vs (-1) >> continue s
+  Key V.KPageDown -> vScrollPage vs Brick.Down >> continue s
+  Key V.KPageUp -> vScrollPage vs Brick.Up >> continue s
+  Key V.KHome -> vScrollToBeginning vs >> continue s
+  Key V.KEnd -> vScrollToEnd vs >> continue s
   _ -> continueWithoutRedraw s
