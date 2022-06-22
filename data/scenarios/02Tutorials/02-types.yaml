@@ -1,0 +1,72 @@
+name: Typing
+description: |
+  Learn about the types of commands and values.
+goal:
+    - Before we get to solving more complex challenges,
+      it would be good to get used to how the commands
+      in Swarm language work and how they don't.
+    - Previosly, you have used the 'turn' command,
+      which takes one parameter, which must be a direction.
+    - What happens if you do not pass it a direction?
+    - 'Try these commands:'
+    - |
+      'turn 1'
+    - |
+      'turn move'
+    - |
+      'turn north move'
+    - |
+      'move move'
+    - The last two commands might give the most confusing error,
+      when they are obviously missing a ';' separating the commands.
+    - |
+      Finally try these commands, which will just show the value
+      (passing values will be useful later) and its type:
+    - |
+      'turn'
+    - |
+      'north'
+    - Once you are done, do 'place "Win"' to finish this challenge.
+entities:
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - Do 'place "Win"' once you are done with this challenge.
+    properties: [known, portable]
+win: |
+  try {
+    w <- as base {has "Win"};
+    return (not w);
+  } { return false }
+solution: |
+  place "Win"
+
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - compass
+      - logger
+      - grabber
+    inventory:
+      - [1, Win]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │...│
+    │...│
+    └───┘

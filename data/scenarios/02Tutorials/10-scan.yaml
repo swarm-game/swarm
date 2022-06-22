@@ -1,0 +1,62 @@
+name: Scan
+description: |
+  Learn how to send robots to safely scan your surroundings.
+goal:
+  - When you land on an alien planet, all the entites in the
+    world will be unfamiliar to you.
+  - But you can learn what they are using the scanner device.
+  - Send robots to move to the unknown entites (marked as '?'),
+    'scan forward' and after that come back and 'upload base'.
+  - |
+    TIP: You can also 'scan left' or 'scan north', to save on a few
+    'turn' commands.  
+win: |
+  try {
+    bm <- as base {knows "mountain"};
+    bt <- as base {knows "tree"};
+    bw <- as base {knows "wavy water"};
+    return (bm || bt || bw)
+  } { return false }
+solution: |
+  build {
+    turn east; move; move; move;
+    turn left; move;
+    scan left; scan forward; scan east;
+    turn back; move;
+    turn west; move; move; move;
+    upload base;
+  }
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+    inventory:
+      - [10, logger]
+      - [10, compass]
+      - [10, scanner]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    '~': [ice, wavy water]
+    'T': [grass, tree]
+    'A': [stone, mountain]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 3]
+  map: |
+    ┌─────┐
+    │AAAT~│
+    │..A.~│
+    │....A│
+    └─────┘

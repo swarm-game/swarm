@@ -9,7 +9,8 @@ import Control.Lens (Ixed (ix), use, view, (&), (.~), (<&>), (^.))
 import Control.Monad (filterM, forM_, void)
 import Control.Monad.State (StateT (runStateT))
 import Control.Monad.Trans.Except (runExceptT)
-import Data.Foldable (find)
+import Data.Foldable (Foldable (toList), find)
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml (ParseException, prettyPrintParseException)
@@ -23,18 +24,20 @@ import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
-import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
+import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
-import Test.Tasty.HUnit (Assertion, assertFailure, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
 main :: IO ()
 main = do
   examplePaths <- acquire "example" "sw"
   scenarioPaths <- acquire "data/scenarios" "yaml"
-
+  scenarioPrograms <- acquire "data/scenarios" "sw"
+  ci <- any (("CI" ==) . fst) <$> getEnvironment
   entities <- loadEntities
   case entities of
     Left t -> fail $ "Couldn't load entities: " <> into @String t
@@ -43,8 +46,9 @@ main = do
         testGroup
           "Tests"
           [ exampleTests examplePaths
+          , exampleTests scenarioPrograms
           , scenarioTests em scenarioPaths
-          , testScenarioSolution em
+          , testScenarioSolution ci em
           ]
 
 exampleTests :: [(FilePath, String)] -> TestTree
@@ -100,35 +104,51 @@ time = \case
   sec :: Int
   sec = 10 ^ (6 :: Int)
 
-testScenarioSolution :: EntityMap -> TestTree
-testScenarioSolution _em =
+testScenarioSolution :: Bool -> EntityMap -> TestTree
+testScenarioSolution ci _em =
   testGroup
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution "move" Default "02Tutorials/00-move"
-        , testSolution "turn" Default "02Tutorials/01-turn"
-        , testSolution "craft" Default "02Tutorials/02-craft"
+        [ testSolution Default "02Tutorials/00-move"
+        , testSolution Default "02Tutorials/01-turn"
+        , testSolution Default "02Tutorials/02-types"
+        , testSolution Default "02Tutorials/03-craft"
+        , testSolution Default "02Tutorials/04-grab"
+        , testSolution Default "02Tutorials/05-place"
+        , testSolution Default "02Tutorials/06-bind"
+        , testSolution Default "02Tutorials/07-install"
+        , testSolution Default "02Tutorials/08-build"
+        , expectFailIf ci "Fails in CI, can not reproduce locally" $
+            testSolution' (Sec 60) "02Tutorials/09-crash" $ \g -> do
+              let rs = toList $ g ^. robotMap
+              let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
+              let win = isJust $ find hints rs
+              assertBool "Could not find a robot with winning instructions!" win
+        , testSolution Default "02Tutorials/10-scan"
         ]
     , testGroup
         "Challenges"
-        [ testSolution "chess" Default "03Challenges/01-chess_horse"
-        , testSolution "test (grab)" Default "03Challenges/00-test"
-        , testSolution "portal room" Default "03Challenges/03-teleport"
+        [ testSolution Default "03Challenges/01-chess_horse"
+        , testSolution Default "03Challenges/00-test"
+        , testSolution Default "03Challenges/03-teleport"
         ]
     , testGroup
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
-            testSolution "build with drill (#394)" Default "04Testing/394-build-drill"
-        , testSolution "drowning results in destruction" Default "04Testing/428-drowning-destroy"
+            testSolution Default "04Testing/394-build-drill"
+        , testSolution Default "04Testing/428-drowning-destroy"
         ]
     ]
  where
-  testSolution :: TestName -> Time -> FilePath -> TestTree
-  testSolution n s p = testSolution' n s p (const $ pure ())
+  expectFailIf :: Bool -> String -> TestTree -> TestTree
+  expectFailIf b = if b then expectFailBecause else (\_ x -> x)
 
-  testSolution' :: TestName -> Time -> FilePath -> (GameState -> Assertion) -> TestTree
-  testSolution' n s p verify = testCase n $ do
+  testSolution :: Time -> FilePath -> TestTree
+  testSolution s p = testSolution' s p (const $ pure ())
+
+  testSolution' :: Time -> FilePath -> (GameState -> Assertion) -> TestTree
+  testSolution' s p verify = testCase p $ do
     Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
     case gs ^. winSolution of
       Nothing -> assertFailure "No solution to test!"
@@ -136,7 +156,7 @@ testScenarioSolution _em =
         let gs' = gs & robotMap . ix 0 . machine .~ initMachine sol Ctx.empty emptyStore
         m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
         case m of
-          Nothing -> assertFailure "Timed out"
+          Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
           Just g -> do
             noFatalErrors g
             verify g
