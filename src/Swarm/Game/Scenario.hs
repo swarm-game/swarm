@@ -1,7 +1,11 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -21,8 +25,15 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * The Scenario type
-  Scenario (..),
+  -- * The Scenario type and related types
+  Scenario_ (..),
+  Scenario,
+  MetaScenarioItem_ (..),
+  MetaScenarioItem,
+  ScenarioCollection_ (..),
+  ScenarioCollection,
+  ScenarioItem_ (..),
+  ScenarioItem,
 
   -- ** Fields
   scenarioName,
@@ -35,12 +46,11 @@ module Swarm.Game.Scenario (
   scenarioRobots,
   scenarioWin,
   scenarioSolution,
+  scenarioMeta,
 
   -- * Loading from disk
   loadScenario,
-  ScenarioCollection (..),
   scenarioCollectionToList,
-  ScenarioItem (..),
   scenarioItemName,
   loadScenarios,
 ) where
@@ -59,6 +69,7 @@ import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Vector qualified as V
 import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
@@ -80,9 +91,33 @@ import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Yaml
 
+data LinkState = Unlinked | Linked
+  deriving (Eq, Ord, Show)
+
+-- | An item in a "meta-scenario", consisting of either some
+--   paragraphs of text to be displayed to the player, or a path to
+--   another scenario.
+data MetaScenarioItem_ :: LinkState -> * where
+  Interlude :: [Text] -> MetaScenarioItem_ l
+  ScenarioReference :: FilePath -> MetaScenarioItem_ 'Unlinked
+  ScenarioComponent :: Scenario_ 'Linked -> MetaScenarioItem_ 'Linked
+
+type MetaScenarioItem = MetaScenarioItem_ 'Linked
+
+instance FromJSON (MetaScenarioItem_ 'Unlinked) where
+  parseJSON v@(String {}) =
+    v
+      & withText "metascenario item" (pure . ScenarioReference . from @Text)
+  parseJSON v@(Array {}) =
+    v
+      & withArray
+        "metascenario interlude"
+        (fmap Interlude . mapM (withText "paragraph" pure) . V.toList)
+  parseJSON _ = fail "string or list expected"
+
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
-data Scenario = Scenario
+data Scenario_ l = Scenario
   { _scenarioName :: Text
   , _scenarioDescription :: Text
   , _scenarioCreative :: Bool -- Maybe generalize this to a mode enumeration
@@ -93,11 +128,14 @@ data Scenario = Scenario
   , _scenarioRobots :: [URobot]
   , _scenarioWin :: Maybe ProcessedTerm
   , _scenarioSolution :: Maybe ProcessedTerm
+  , _scenarioMeta :: Maybe [MetaScenarioItem_ l]
   }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
+type Scenario = Scenario_ 'Linked
 
-instance FromJSONE EntityMap Scenario where
+makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario_
+
+instance FromJSONE EntityMap (Scenario_ 'Unlinked) where
   parseJSONE = withObjectE "scenario" $ \v -> do
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     Scenario
@@ -107,47 +145,51 @@ instance FromJSONE EntityMap Scenario where
       <*> liftE (v .:? "seed")
       <*> pure em
       <*> withE em (v ..:? "recipes" ..!= [])
-      <*> withE em (mkWorldFun (v .: "world"))
-      <*> withE em (v ..: "robots")
+      <*> withE em (mkWorldFun (v .:? "world" .!= blankWorldDescription))
+      <*> withE em (v ..:? "robots" ..!= [])
       <*> liftE (v .:? "win")
       <*> liftE (v .:? "solution")
+      <*> liftE (v .:? "meta")
 
 -- | The name of the scenario.
-scenarioName :: Lens' Scenario Text
+scenarioName :: Lens' (Scenario_ l) Text
 
 -- | A description of the scenario.
-scenarioDescription :: Lens' Scenario Text
+scenarioDescription :: Lens' (Scenario_ l) Text
 
 -- | Whether the scenario should start in creative mode.
-scenarioCreative :: Lens' Scenario Bool
+scenarioCreative :: Lens' (Scenario_ l) Bool
 
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed / prompt the user for the seed.
-scenarioSeed :: Lens' Scenario (Maybe Int)
+scenarioSeed :: Lens' (Scenario_ l) (Maybe Int)
 
 -- | Any custom entities used for this scenario.
-scenarioEntities :: Lens' Scenario EntityMap
+scenarioEntities :: Lens' (Scenario_ l) EntityMap
 
 -- | Any custom recipes used in this scenario.
-scenarioRecipes :: Lens' Scenario [Recipe Entity]
+scenarioRecipes :: Lens' (Scenario_ l) [Recipe Entity]
 
 -- | The starting world for the scenario.
-scenarioWorld :: Lens' Scenario (Seed -> WorldFun Int Entity)
+scenarioWorld :: Lens' (Scenario_ l) (Seed -> WorldFun Int Entity)
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.
-scenarioRobots :: Lens' Scenario [URobot]
+scenarioRobots :: Lens' (Scenario_ l) [URobot]
 
 -- | An optional winning condition for the scenario, expressed as a
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
+scenarioWin :: Lens' (Scenario_ l) (Maybe ProcessedTerm)
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
+scenarioSolution :: Lens' (Scenario_ l) (Maybe ProcessedTerm)
+
+-- | XXX
+scenarioMeta :: Lens' (Scenario_ l) (Maybe [MetaScenarioItem_ l])
 
 -- | A description of a world parsed from a YAML file.  The
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a
@@ -159,6 +201,17 @@ data WorldDescription = WorldDescription
   , ul :: V2 Int64
   , area :: Text
   }
+
+-- | XXX
+blankWorldDescription :: WorldDescription
+blankWorldDescription =
+  WorldDescription
+    { defaultTerrain = Just (BlankT, Nothing)
+    , offsetOrigin = False
+    , palette = WorldPalette mempty
+    , ul = V2 0 0
+    , area = ""
+    }
 
 instance FromJSON WorldDescription where
   parseJSON = withObject "world description" $ \v ->
@@ -225,7 +278,7 @@ loadScenario ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   String ->
   EntityMap ->
-  m Scenario
+  m (Scenario_ 'Unlinked)
 loadScenario scenario em = do
   libScenario <- sendIO $ getDataFileName $ "scenarios" </> scenario
   libScenarioExt <- sendIO $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
@@ -240,32 +293,44 @@ loadScenario scenario em = do
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
-data ScenarioItem = SISingle Scenario | SICollection Text ScenarioCollection
+data ScenarioItem_ l = SISingle (Scenario_ l) | SICollection Text (ScenarioCollection_ l)
+
+type ScenarioItem = ScenarioItem_ 'Linked
 
 -- | Retrieve the name of a scenario item.
-scenarioItemName :: ScenarioItem -> Text
+scenarioItemName :: ScenarioItem_ l -> Text
 scenarioItemName (SISingle s) = s ^. scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name.
-newtype ScenarioCollection = SC (Map FilePath ScenarioItem)
+newtype ScenarioCollection_ l = SC (Map FilePath (ScenarioItem_ l))
+
+type ScenarioCollection = ScenarioCollection_ 'Linked
 
 -- | Convert a scenario collection to a list of scenario items.
-scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
+scenarioCollectionToList :: ScenarioCollection_ l -> [ScenarioItem_ l]
 scenarioCollectionToList (SC m) = M.elems m
 
 -- | Load all the scenarios from the scenarios data directory.
-loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
+loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text (ScenarioCollection_ 'Linked))
 loadScenarios em = runThrow $ do
   dataDir <- sendIO getDataDir
-  loadScenarioDir em (dataDir </> "scenarios")
+  sc <- loadScenarioDir em (dataDir </> "scenarios")
+  linkScenarioCollection sc
+
+-- | XXX
+linkScenarioCollection ::
+  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  ScenarioCollection_ 'Unlinked ->
+  m (ScenarioCollection_ 'Linked)
+linkScenarioCollection = undefined
 
 -- | Recursively load all scenarios from a particular directory.
 loadScenarioDir ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   EntityMap ->
   FilePath ->
-  m ScenarioCollection
+  m (ScenarioCollection_ 'Unlinked)
 loadScenarioDir em dir = do
   fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
   SC . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
@@ -278,7 +343,7 @@ loadScenarioItem ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   EntityMap ->
   FilePath ->
-  m ScenarioItem
+  m (ScenarioItem_ 'Unlinked)
 loadScenarioItem em path = do
   isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . dropWhile isDigit . takeBaseName $ path
@@ -293,7 +358,7 @@ loadScenarioFile ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   EntityMap ->
   FilePath ->
-  m Scenario
+  m (Scenario_ 'Unlinked)
 loadScenarioFile em fileName = do
   res <- sendIO $ decodeFileEitherE em fileName
   case res of

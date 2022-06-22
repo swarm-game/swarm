@@ -1,0 +1,7 @@
+name: Testing minimal scenario
+description: This is a minimal scenario.
+meta:
+- foo
+- 'bar'
+- [baz, quux]
+- blip

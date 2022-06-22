@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -81,23 +82,23 @@ import Control.Monad.Except
 import Data.Array (Array, listArray)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
-import qualified Data.IntMap as IM
+import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
-import qualified Data.IntSet as IS
+import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition)
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T (lines)
-import qualified Data.Text.IO as T (readFile)
-import Linear
+import Data.Text qualified as T (lines)
+import Data.Text.IO qualified as T (readFile)
+import Linear (V2 (..))
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
 
 import Control.Algebra (Has)
-import Control.Effect.Lens
+import Control.Effect.Lens (use, view, (%=), (.=))
 import Control.Effect.State (State)
 
 import Paths_swarm (getDataFileName)
@@ -106,15 +107,17 @@ import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario
-import Swarm.Game.Value
-import qualified Swarm.Game.World as W
+import Swarm.Game.Value (Value)
+import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed)
-import qualified Swarm.Language.Context as Ctx
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Term (TString))
-import Swarm.Language.Types
-import Swarm.Util
+import Swarm.Language.Types (Polytype)
+import Swarm.Util (isRightOr, (<+=), (<<.=))
+
+data ScenarioStatus = ScenarioStatus [([MetaScenarioItem], [MetaScenarioItem])]
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -155,10 +158,12 @@ makePrisms ''WinCondition
 data RunStatus
   = -- | The game is running.
     Running
-  | -- | The user paused the game, and it should stay pause after visiting the help.
+  | -- | The user paused the game manually, so it should stay paused
+    --   even while opening and closing dialogs.
     ManualPause
-  | -- | The game got paused while visiting the help,
-    --   and it should unpause after returning back to the game.
+  | -- | The game was paused automatically when opening a dialog
+    --   (e.g. help, recipes, quit confirmation, etc.) so it should
+    --   automatically unpause as soon as the dialog is closed.
     AutoPause
   deriving (Eq, Show)
 
@@ -377,7 +382,7 @@ viewingRegion :: GameState -> (Int64, Int64) -> (W.Coords, W.Coords)
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   V2 cx cy = g ^. viewCenter
-  (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
+  (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
 -- | Find out which robot is currently specified by the
