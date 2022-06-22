@@ -53,7 +53,7 @@ win: |
   } { return false }
 solution: |
   crasher <- build {move; move; move; log "bye"; move};
-  wait 1000;
+  wait 32;
   salvager <- build {
     log "I will bring home the Win!";
     move; move; move; salvage; turn back; move; move; give base "Win"

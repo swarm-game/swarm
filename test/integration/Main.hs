@@ -24,10 +24,11 @@ import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause, ignoreTestBecause)
+import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -36,7 +37,7 @@ main = do
   examplePaths <- acquire "example" "sw"
   scenarioPaths <- acquire "data/scenarios" "yaml"
   scenarioPrograms <- acquire "data/scenarios" "sw"
-
+  ci <- any (("CI" ==) . fst) <$> getEnvironment
   entities <- loadEntities
   case entities of
     Left t -> fail $ "Couldn't load entities: " <> into @String t
@@ -47,7 +48,7 @@ main = do
           [ exampleTests examplePaths
           , exampleTests scenarioPrograms
           , scenarioTests em scenarioPaths
-          , testScenarioSolution em
+          , testScenarioSolution ci em
           ]
 
 exampleTests :: [(FilePath, String)] -> TestTree
@@ -103,8 +104,8 @@ time = \case
   sec :: Int
   sec = 10 ^ (6 :: Int)
 
-testScenarioSolution :: EntityMap -> TestTree
-testScenarioSolution _em =
+testScenarioSolution :: Bool -> EntityMap -> TestTree
+testScenarioSolution ci _em =
   testGroup
     "Test scenario solutions"
     [ testGroup
@@ -118,8 +119,8 @@ testScenarioSolution _em =
         , testSolution Default "02Tutorials/06-bind"
         , testSolution Default "02Tutorials/07-install"
         , testSolution Default "02Tutorials/08-build"
-        , ignoreTestBecause "The solution does not seem to work in CI" $
-            testSolution' Default "02Tutorials/09-crash" $ \g -> do
+        , expectFailIf ci "Fails in CI, can not reproduce locally" $
+            testSolution' (Sec 60) "02Tutorials/09-crash" $ \g -> do
               let rs = toList $ g ^. robotMap
               let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
               let win = isJust $ find hints rs
@@ -140,6 +141,9 @@ testScenarioSolution _em =
         ]
     ]
  where
+  expectFailIf :: Bool -> String -> TestTree -> TestTree
+  expectFailIf b = if b then expectFailBecause else (\_ x -> x)
+
   testSolution :: Time -> FilePath -> TestTree
   testSolution s p = testSolution' s p (const $ pure ())
 
