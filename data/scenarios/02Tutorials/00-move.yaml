@@ -1,15 +1,20 @@
 name: Moving, part 1
+description: |
+  Learn how to move and chain commands.
+#
+# The players might not use ';' here, so it should be brought up again when building robots.
+#
 entities:
-  - name: goal
+  - name: Goal
     display:
       attr: device
       char: 'X'
     description:
-    - |
-      Robots can use the 'move' command to move forward one unit
-      in the direction they are currently facing.  To complete
-      this challenge, move your robot two spaces to the right, to
-      the coordinates (2,0).
+    - Robots can use the 'move' command to move forward one unit
+      in the direction they are currently facing. 
+    - To complete this challenge, move your robot two spaces to the right,
+      to the coordinates (2,0).
+    - Note that you can chain commands with ';'.
     properties: [portable]
 win: |
   try {
@@ -26,7 +31,7 @@ robots:
       - treads
       - logger
     inventory:
-      - [1, goal]
+      - [1, Goal]
 world:
   default: [blank, none]
   palette:

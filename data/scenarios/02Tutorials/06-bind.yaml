@@ -1,0 +1,74 @@
+name: Bind notation
+description: |
+  Learn about command return types and how to bind the results.
+entities:
+  - name: Goal
+    display:
+      attr: device
+      char: 'X'
+    description:
+    - |
+      Some commands are simple, like 'move: cmd ()', because
+      they do not have anything meaningful to return.
+    - |
+      But there are commands that do, like 'grab: cmd string'
+      that returns the name of the grabbed entity. Try it:
+    - |
+      'move; grab'
+    - |
+      To use the result you can use bind notation:
+    - |
+      'move; t <- grab; place t'
+    - |
+      This can be useful if you for example do not care what you
+      grabbed and just want to move it to another cell.
+    - Once you are done, do 'place "Win"' to finish this challenge.
+    - You might need to 'grab' the entity you are standing on
+      or move to an empty cell first, since each cell can only
+      contain at most one entity.
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - Do 'place "Win"' once you are done with this challenge.
+      - You might need to 'grab' the entity you are standing on
+        or move to an empty cell first.
+    properties: [known, portable]
+win: |
+  try {
+    w <- as base {has "Win"};
+    return (not w);
+  } { return false }
+solution: |
+  place "Win"
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - grabber
+      - logger
+      - compass
+      - dictionary
+    inventory:
+      - [1, Goal]
+      - [1, Win]
+      - [0, tree]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    'T': [grass, tree]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │.TT│
+    └───┘

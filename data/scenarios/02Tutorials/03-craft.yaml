@@ -1,0 +1,49 @@
+name: Crafting, part 1
+description: |
+  Learn how to make new things using recipes.
+#
+# The players should read the recipes and aquaint themselves with the UI.
+# This also motivates the next tutorial about obtaining entites.
+#
+entities:
+  - name: Goal
+    display:
+      attr: device
+      char: 'X'
+    description:
+    - Robots can use the 'make' command to make things.
+    - Your base has a few trees in its inventory. Select them to see the
+      available recipes.
+    - Your goal is to make a "branch predictor", so you will have to make
+      some "branches" first.
+win: |
+  try {
+    as base {has "branch predictor"}
+  } { return false }
+solution: |
+  make "branch"; make "branch predictor"
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - workbench
+      - logger
+    inventory:
+      - [1, Goal]
+      - [10, tree]
+world:
+  default: [blank, none]
+  palette:
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    ' ': [grass, null]
+  upperleft: [-1, 1]
+  map: |
+    ┌─┐
+    │ │
+    └─┘

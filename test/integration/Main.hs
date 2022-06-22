@@ -9,7 +9,8 @@ import Control.Lens (Ixed (ix), use, view, (&), (.~), (<&>), (^.))
 import Control.Monad (filterM, forM_, void)
 import Control.Monad.State (StateT (runStateT))
 import Control.Monad.Trans.Except (runExceptT)
-import Data.Foldable (find)
+import Data.Foldable (Foldable (toList), find)
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml (ParseException, prettyPrintParseException)
@@ -27,13 +28,14 @@ import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
-import Test.Tasty.HUnit (Assertion, assertFailure, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
 main :: IO ()
 main = do
   examplePaths <- acquire "example" "sw"
   scenarioPaths <- acquire "data/scenarios" "yaml"
+  scenarioPrograms <- acquire "data/scenarios" "sw"
 
   entities <- loadEntities
   case entities of
@@ -43,6 +45,7 @@ main = do
         testGroup
           "Tests"
           [ exampleTests examplePaths
+          , exampleTests scenarioPrograms
           , scenarioTests em scenarioPaths
           , testScenarioSolution em
           ]
@@ -108,7 +111,19 @@ testScenarioSolution _em =
         "Tutorial"
         [ testSolution "move" Default "02Tutorials/00-move"
         , testSolution "turn" Default "02Tutorials/01-turn"
-        , testSolution "craft" Default "02Tutorials/02-craft"
+        , testSolution "types" Default "02Tutorials/02-types"
+        , testSolution "craft" Default "02Tutorials/03-craft"
+        , testSolution "grab" Default "02Tutorials/04-grab"
+        , testSolution "place" Default "02Tutorials/05-place"
+        , testSolution "bind" Default "02Tutorials/06-bind"
+        , testSolution "install" Default "02Tutorials/07-install"
+        , testSolution "build" Default "02Tutorials/08-build"
+        , testSolution' "crasher" Default "02Tutorials/09-crash" $ \g -> do
+            let rs = toList $ g ^. robotMap
+            let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
+            let win = isJust $ find hints rs
+            assertBool "Could not find a robot with winning instructions!" win
+        , testSolution "scan" Default "02Tutorials/10-scan"
         ]
     , testGroup
         "Challenges"
@@ -136,7 +151,7 @@ testScenarioSolution _em =
         let gs' = gs & robotMap . ix 0 . machine .~ initMachine sol Ctx.empty emptyStore
         m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
         case m of
-          Nothing -> assertFailure "Timed out"
+          Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
           Just g -> do
             noFatalErrors g
             verify g
