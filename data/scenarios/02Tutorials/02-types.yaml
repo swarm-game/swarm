@@ -1,12 +1,7 @@
 name: Typing
 description: |
   Learn about the types of commands and values.
-entities:
-  - name: Goal
-    display:
-      attr: device
-      char: 'X'
-    description:
+goal:
     - Before we get to solving more complex challenges,
       it would be good to get used to how the commands
       in Swarm language work and how they don't.
@@ -32,6 +27,7 @@ entities:
     - |
       'north'
     - Once you are done, do 'place "Win"' to finish this challenge.
+entities:
   - name: Win
     display:
       attr: device
@@ -57,7 +53,6 @@ robots:
       - logger
       - grabber
     inventory:
-      - [1, Goal]
       - [1, Win]
 world:
   default: [blank, none]

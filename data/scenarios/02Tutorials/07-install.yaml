@@ -1,12 +1,7 @@
 name: Install
 description: |
   Learn how to install devices and gain new capabilities.
-entities:
-  - name: Goal
-    display:
-      attr: device
-      char: 'X'
-    description:
+goal:
     - You know how to 'grab' things lying around, so you are ready to get
       an upgrade!
     - By installing devices, you learn new capabilites which allow you to
@@ -20,6 +15,7 @@ entities:
     - When you have it, install the device with 'install base "3D printer"'.
     - 'You win by building your first robot:'
     - 'build {log "Hello World!"}'
+entities:
   - name: knownprinter
     display:
       attr: device
@@ -53,7 +49,6 @@ robots:
       - compass
       - grabber
     inventory:
-      - [1, Goal]
       - [1, logger]
 world:
   default: [blank, none]

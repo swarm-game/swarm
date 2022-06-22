@@ -6,25 +6,21 @@ description: |
 # is really slow. It can be cheesed by speeding up the game, but there is no need
 # to tell the players. :)
 #
+goal:
+  - Previously you learned how to plunder a plentiful forest for wood.
+    Now you will learn how to plant trees to obtain as much wood as you need.
+  - There is a fast-growing tree (called "spruce") ahead of you and a new
+    one will grow there once you grab it.
+  - You can plant a tree seed by 'place "spruce"; grab' - that way you can
+    immediately place the next seed.
+  - You can speed this up by placing the tree in all available cells.
+    That way you can have eight times as many trees growing at once.
+  - Your goal is to collect 6 trees.
+  - |
+    TIP: You can get a sneak peak at a feature we will explain later and type
+    'def t = move; place "spruce"; grab; end' after which you only need to type 't'
+    instead of retyping the whole command or searching in your command history.
 entities:
-  - name: Goal
-    display:
-      attr: device
-      char: 'X'
-    description:
-    - Previously you learned how to plunder a plentiful forest for wood.
-      Now you will learn how to plant trees to obtain as much wood as you need.
-    - There is a fast-growing tree (called "spruce") ahead of you and a new
-      one will grow there once you grab it.
-    - You can plant a tree seed by 'place "spruce"; grab' - that way you can
-      immediately place the next seed.
-    - You can speed this up by placing the tree in all available cells.
-      That way you can have eight times as many trees growing at once.
-    - Your goal is to collect 6 trees.
-    - |
-      TIP: You can get a sneak peak at a feature we will explain later and type
-      'def t = move; place "spruce"; grab; end' after which you only need to type 't'
-      instead of retyping the whole command or searching in your command history.
   # faster tree (the normal one grows 500-600 ticks)
   - name: spruce
     display:
@@ -62,7 +58,6 @@ robots:
       - compass
       - dictionary
     inventory:
-      - [1, Goal]
       - [0, spruce]
 world:
   default: [blank, none]

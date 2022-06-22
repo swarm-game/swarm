@@ -1,12 +1,7 @@
 name: Bind notation
 description: |
   Learn about command return types and how to bind the results.
-entities:
-  - name: Goal
-    display:
-      attr: device
-      char: 'X'
-    description:
+goal:
     - |
       Some commands are simple, like 'move: cmd ()', because
       they do not have anything meaningful to return.
@@ -26,6 +21,7 @@ entities:
     - You might need to 'grab' the entity you are standing on
       or move to an empty cell first, since each cell can only
       contain at most one entity.
+entities:
   - name: Win
     display:
       attr: device
@@ -53,7 +49,6 @@ robots:
       - compass
       - dictionary
     inventory:
-      - [1, Goal]
       - [1, Win]
       - [0, tree]
 world:

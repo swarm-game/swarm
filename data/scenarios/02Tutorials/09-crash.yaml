@@ -1,23 +1,19 @@
 name: Debug robots
 description: |
   Learn how to view built robots and debug them.
+goal:
+  - Before you send your robots far away you need to learn how
+    to figure out what went wrong with them if they crash.
+  - Send a robot to walk four steps straight east into the mountain,
+    but use the bind syntax 'r <- build {COMMANDS}'.
+  - |
+    Since you expect the robot will crash into the mountain,
+    add a 'log' command so that we will see what command failed:
+  - |
+    'r <- build {log "Hi!"; move;move;move; log "3"; move; log "OK"}'
+  - After that you can 'view r', to see how far it got.
+  - The instructions on how to win will appear in the crashed robots log.
 entities:
-  - name: Goal
-    display:
-      attr: device
-      char: 'X'
-    description:
-    - Before you send your robots far away you need to learn how
-      to figure out what went wrong with them if they crash.
-    - Send a robot to walk four steps straight east into the mountain,
-      but use the bind syntax 'r <- build {COMMANDS}'.
-    - |
-      Since you expect the robot will crash into the mountain,
-      add a 'log' command so that we will see what command failed:
-    - |
-      'r <- build {log "Hi!"; move;move;move; log "3"; move; log "OK"}'
-    - After that you can 'view r', to see how far it got.
-    - The instructions on how to win will appear in the crashed robots log.
   - name: Win
     display:
       attr: device
@@ -73,7 +69,6 @@ robots:
       - logger
       - 3D printer
     inventory:
-      - [1, Goal]
       - [10, logger]
       - [10, compass]
       - [10, scanner]

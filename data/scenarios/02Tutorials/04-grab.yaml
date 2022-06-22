@@ -1,18 +1,13 @@
 name: Grab
 description: |
   Learn how to interact with the world by grabbing entities.
-entities:
-  - name: Goal
-    display:
-      attr: device
-      char: 'X'
-    description:
-    - Previously you learned how to make new things (like a branch predictor) from ingredients.
-      Now you will learn how to obtain the ingredients you need.
-    - There are trees ahead of you, 'move' to each one and 'grab' it.
-    - You can learn more by selecting the grabber device in your inventory.
-    - |
-      TIP: You can use the arrow key Up ('⬆️') to reuse your previous commands.
+goal:
+  - Previously you learned how to make new things (like a branch predictor) from ingredients.
+    Now you will learn how to obtain the ingredients you need.
+  - There are trees ahead of you, 'move' to each one and 'grab' it.
+  - You can learn more by selecting the grabber device in your inventory.
+  - |
+    TIP: You can use the arrow key Up ('⬆️') to reuse your previous commands.
 win: |
   try {
     t <- as base {count "tree"};
@@ -36,7 +31,6 @@ robots:
       - logger
       - compass
     inventory:
-      - [1, Goal]
       - [0, tree]
 world:
   default: [blank, none]

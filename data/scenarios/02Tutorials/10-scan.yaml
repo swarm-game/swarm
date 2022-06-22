@@ -1,20 +1,15 @@
 name: Scan
 description: |
   Learn how to send robots to safely scan your surroundings.
-entities:
-  - name: Goal
-    display:
-      attr: device
-      char: 'X'
-    description:
-    - When you land on an alien planet, all the entites in the
-      world will be unfamiliar to you.
-    - But you can learn what they are using the scanner device.
-    - Send robots to move to the unknown entites (marked as '?'),
-     'scan forward' and after that come back and 'upload base'.
-    - |
-      TIP: You can also 'scan left' or 'scan north', to save on a few
-      'turn' commands.  
+goal:
+  - When you land on an alien planet, all the entites in the
+    world will be unfamiliar to you.
+  - But you can learn what they are using the scanner device.
+  - Send robots to move to the unknown entites (marked as '?'),
+    'scan forward' and after that come back and 'upload base'.
+  - |
+    TIP: You can also 'scan left' or 'scan north', to save on a few
+    'turn' commands.  
 win: |
   try {
     bm <- as base {knows "mountain"};
@@ -42,7 +37,6 @@ robots:
       - logger
       - 3D printer
     inventory:
-      - [1, Goal]
       - [10, logger]
       - [10, compass]
       - [10, scanner]
