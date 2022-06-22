@@ -26,7 +26,7 @@ import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
-import Test.Tasty (TestName, TestTree, defaultMain, testGroup)
+import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
@@ -109,41 +109,41 @@ testScenarioSolution _em =
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution "move" Default "02Tutorials/00-move"
-        , testSolution "turn" Default "02Tutorials/01-turn"
-        , testSolution "types" Default "02Tutorials/02-types"
-        , testSolution "craft" Default "02Tutorials/03-craft"
-        , testSolution "grab" Default "02Tutorials/04-grab"
-        , testSolution "place" Default "02Tutorials/05-place"
-        , testSolution "bind" Default "02Tutorials/06-bind"
-        , testSolution "install" Default "02Tutorials/07-install"
-        , testSolution "build" Default "02Tutorials/08-build"
-        , testSolution' "crasher" Default "02Tutorials/09-crash" $ \g -> do
+        [ testSolution Default "02Tutorials/00-move"
+        , testSolution Default "02Tutorials/01-turn"
+        , testSolution Default "02Tutorials/02-types"
+        , testSolution Default "02Tutorials/03-craft"
+        , testSolution Default "02Tutorials/04-grab"
+        , testSolution Default "02Tutorials/05-place"
+        , testSolution Default "02Tutorials/06-bind"
+        , testSolution Default "02Tutorials/07-install"
+        , testSolution Default "02Tutorials/08-build"
+        , testSolution' Default "02Tutorials/09-crash" $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
-        , testSolution "scan" Default "02Tutorials/10-scan"
+        , testSolution Default "02Tutorials/10-scan"
         ]
     , testGroup
         "Challenges"
-        [ testSolution "chess" Default "03Challenges/01-chess_horse"
-        , testSolution "test (grab)" Default "03Challenges/00-test"
-        , testSolution "portal room" Default "03Challenges/03-teleport"
+        [ testSolution Default "03Challenges/01-chess_horse"
+        , testSolution Default "03Challenges/00-test"
+        , testSolution Default "03Challenges/03-teleport"
         ]
     , testGroup
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
-            testSolution "build with drill (#394)" Default "04Testing/394-build-drill"
-        , testSolution "drowning results in destruction" Default "04Testing/428-drowning-destroy"
+            testSolution Default "04Testing/394-build-drill"
+        , testSolution Default "04Testing/428-drowning-destroy"
         ]
     ]
  where
-  testSolution :: TestName -> Time -> FilePath -> TestTree
-  testSolution n s p = testSolution' n s p (const $ pure ())
+  testSolution :: Time -> FilePath -> TestTree
+  testSolution s p = testSolution' s p (const $ pure ())
 
-  testSolution' :: TestName -> Time -> FilePath -> (GameState -> Assertion) -> TestTree
-  testSolution' n s p verify = testCase n $ do
+  testSolution' :: Time -> FilePath -> (GameState -> Assertion) -> TestTree
+  testSolution' s p verify = testCase p $ do
     Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
     case gs ^. winSolution of
       Nothing -> assertFailure "No solution to test!"
