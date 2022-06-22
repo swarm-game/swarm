@@ -18,7 +18,7 @@ goal:
     - |
       'move move'
     - The last two commands might give the most confusing error,
-      when they are obviosly missing a ';' separating the commands.
+      when they are obviously missing a ';' separating the commands.
     - |
       Finally try these commands, which will just show the value
       (passing values will be useful later) and its type:

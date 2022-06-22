@@ -8,7 +8,7 @@ goal:
   - Now that you know basic commands, it is time to
     build robots to do the work for you.
   - You start in a base ('Ω') that does not move (at least not yet).
-  - Let's start by building a one task gardener robot.
+  - Let's start by building a gardener robot to perform a simple task.
   - You can build a robot with 'build {COMMANDS}',
     where instead of 'COMMANDS' you write the sequence
     of commands for the robot to execute (separated by ';').

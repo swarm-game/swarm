@@ -7,7 +7,7 @@ goal:
   - There are trees ahead of you, 'move' to each one and 'grab' it.
   - You can learn more by selecting the grabber device in your inventory.
   - |
-    TIP: You can use the arrow key Up ('⬆️') to reuse your previous commands.
+    TIP: You can use the arrow key Up ('↑') to reuse your previous commands.
 win: |
   try {
     t <- as base {count "tree"};

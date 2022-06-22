@@ -6,12 +6,13 @@ goal:
       Some commands are simple, like 'move: cmd ()', because
       they do not have anything meaningful to return.
     - |
-      But there are commands that do, like 'grab: cmd string'
-      that returns the name of the grabbed entity. Try it:
+      But there are commands that do, like 'grab' that has type
+      'cmd string' which means that it returns the name of the
+      grabbed entity. Try it:
     - |
       'move; grab'
     - |
-      To use the result you can use bind notation:
+      To use the result later you need to use the bind notation:
     - |
       'move; t <- grab; place t'
     - |
