@@ -118,7 +118,7 @@ testScenarioSolution _em =
         , testSolution Default "02Tutorials/06-bind"
         , testSolution Default "02Tutorials/07-install"
         , testSolution Default "02Tutorials/08-build"
-        , testSolution' Default "02Tutorials/09-crash" $ \g -> do
+        , testSolution' (Sec 60) "02Tutorials/09-crash" $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints rs
