@@ -1199,7 +1199,7 @@ execConst c vs s k = do
         (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["You can only reprogram an adjacent robot."]
 
-        _ <- checkRequiredDevices (childRobot ^. robotInventory) cmd "The target robot" FixByInstall
+        _ <- checkRequiredDevices (childRobot ^. installedDevices) cmd "The target robot" FixByInstall
 
         -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
