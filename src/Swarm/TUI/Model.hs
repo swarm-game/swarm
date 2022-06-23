@@ -59,6 +59,7 @@ module Swarm.TUI.Model (
   promptUpdateL,
   mkReplForm,
   removeEntry,
+  resetWithREPLForm,
 
   -- ** Inventory
   InventoryListEntry (..),
@@ -807,6 +808,14 @@ populateInventoryList (Just r) = do
   -- the hash of the current robot.
   uiInventory .= Just (r ^. inventoryHash, lst)
 
+-- | Set the REPLForm to the given value, resetting type error checks to Nothing
+--   and removing uiError.
+resetWithREPLForm :: Form REPLPrompt AppEvent Name -> UIState -> UIState
+resetWithREPLForm f =
+  (uiReplForm .~ f)
+    . (uiReplType .~ Nothing)
+    . (uiError .~ Nothing)
+
 ------------------------------------------------------------
 -- App state (= UI state + game state) initialization
 ------------------------------------------------------------
@@ -845,3 +854,4 @@ scenarioToUIState scene u =
       & uiShowFPS .~ False
       & uiShowZero .~ True
       & lgTicksPerSecond .~ initLgTicksPerSecond
+      & resetWithREPLForm (mkReplForm $ CmdPrompt "")
