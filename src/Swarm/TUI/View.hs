@@ -425,7 +425,7 @@ drawKeyMenu s =
     [(NoHighlight, "F1", "help")]
       <> availRecipes
       <> [(NoHighlight, "Tab", "cycle")]
-      <> [(NoHighlight, "^k", "creative") | cheat]
+      <> [(NoHighlight, "^v", "creative") | cheat]
       <> [(NoHighlight, "^g", "goal") | goal]
 
   keyCmdsFor (Just REPLPanel) =

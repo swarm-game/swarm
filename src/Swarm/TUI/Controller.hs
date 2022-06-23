@@ -209,7 +209,7 @@ handleMainEvent s = \case
   MetaKey 'r' -> setFocus s REPLPanel
   MetaKey 't' -> setFocus s InfoPanel
   -- toggle creative mode if in "cheat mode"
-  ControlKey 'k'
+  ControlKey 'v'
     | s ^. uiState . uiCheatMode -> continue (s & gameState . creativeMode %~ not)
   MouseDown n _ _ mouseLoc ->
     case n of
