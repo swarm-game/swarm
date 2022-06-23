@@ -96,6 +96,7 @@
   display:
     attr: copper'
     char: 'Å'
+    priority: 11
   description:
   - A copper vein that can be actively mined to produce copper ore.
   properties: []
@@ -159,6 +160,7 @@
   display:
     attr: iron'
     char: 'Å'
+    priority: 11
   description:
   - An iron vein that can be actively mined to produce iron ore.
   properties: []
@@ -177,6 +179,7 @@
   display:
     attr: quartz
     char: 'Å'
+    priority: 11
   description:
   - A quartz vein that can be actively mined to produce quartz.
   properties: []
@@ -194,6 +197,7 @@
   display:
     attr: rock
     char: 'Å'
+    priority: 11
   description:
   - A deep mine that yields rare and wonderful treasures to those who are patient.
   - But be careful lest you delve too greedily and too deep.

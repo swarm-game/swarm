@@ -947,7 +947,9 @@ execConst c vs s k = do
             `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
 
         let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
-            changeInv inv' = L.foldl' (flip $ uncurry insertCount) inv' out
+            changeInv =
+              flip (L.foldl' (flip $ uncurry insertCount)) out
+                . flip (L.foldl' (flip $ insertCount 0)) (map snd down)
             changeWorld = changeWorld' nextE nextLoc down
 
         -- take recipe inputs from inventory and add outputs after recipeTime
