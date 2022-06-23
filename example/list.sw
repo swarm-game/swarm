@@ -203,7 +203,7 @@ end
 
 // TODO: show values when #248 is implemented
 def assert = \b.\m.
-  if b {} {log "FAIL:"; error m}
+  if b {} {log "FAIL:"; fail m}
 end
 
 def testLIST =

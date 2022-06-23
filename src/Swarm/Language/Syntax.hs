@@ -296,8 +296,8 @@ data Const
     Try
   | -- | Undefined
     Undefined
-  | -- | Error
-    ErrorStr
+  | -- | User error
+    Fail
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -466,7 +466,7 @@ constInfo c = case c of
   Return -> commandLow 1
   Try -> commandLow 2
   Undefined -> functionLow 0
-  ErrorStr -> function "error" 1
+  Fail -> functionLow 1
   If -> functionLow 3
   Inl -> functionLow 1
   Inr -> functionLow 1

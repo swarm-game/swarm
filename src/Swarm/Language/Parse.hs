@@ -213,7 +213,7 @@ parseDirection = asum (map alternative allDirs) <?> "direction constant"
  where
   alternative d = d <$ (reserved . dirSyntax . dirInfo) d
 
--- | Parse Const as reserved words (e.g. @ErrorStr <$ reserved "error"@)
+-- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
 parseConst = asum (map alternative consts) <?> "built-in user function"
  where
