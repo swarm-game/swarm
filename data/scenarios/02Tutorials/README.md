@@ -18,9 +18,35 @@ Finally, move into the open world and guide through obtaining ingredients and cr
 It is important that at least the base robot has a `logger` device installed.
 Without it, the players will not see the errors and will be very confused.
 
-### Goal
+### Known entites
 
-Until goal is separate from entity, we name it "Goal" so that it is lexicographically
-first, since all other entites use lowercase names.
+Before introducing `scan` command, we intend to show all entites on the map as known
+and not hide them with `?`.
 
-That way it is the first selected entity and its description is visible to the players.
+Until #387 is done, the workaround is to create a new entity with known property:
+
+```yaml
+  - name: knowntree
+    display:
+      attr: plant
+      char: 'T'
+    description:
+    - A tree.
+    properties: [known, portable, growable]
+    yields: tree
+    growth: [500,600]
+```
+
+The box drawing entites are already known.
+
+### New entites to get old ones
+
+The `yeilds` key is another trick which can be used to hide `known` entites from player.
+When the player `grab`s such entity the specified entity is yeilded instead.
+
+But `yeilds` is also useful for other cosmetic entites like "wavy water".
+
+Note that entites like "known printer" and "wavy water" do not have recipes.
+
+However, it does not solve everything. For example the "spruce" replacement for "tree"
+needs to yield itself, so that the player does not plant the slow "tree".
