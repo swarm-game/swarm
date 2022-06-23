@@ -568,15 +568,17 @@ handleREPLEvent s (Key V.KEnter) =
           Right mt ->
             maybe id startBaseProgram mt
               . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
-              . resetWithREPLForm (set promptUpdateL "" (s ^. uiState))
+              . (uiState %~ resetWithREPLForm (set promptUpdateL "" (s ^. uiState)))
               $ s
           Left err -> s & uiState . uiError ?~ err
       SearchPrompt t hist ->
         case lastEntry t hist of
-          Nothing -> resetWithREPLForm (mkReplForm $ CmdPrompt "") s
+          Nothing -> s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
           Just found
-            | T.null t -> resetWithREPLForm (mkReplForm $ CmdPrompt "") s
-            | otherwise -> validateREPLForm $ resetWithREPLForm (mkReplForm $ CmdPrompt found) s
+            | T.null t -> s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
+            | otherwise ->
+              s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt found)
+                & validateREPLForm
     else continueWithoutRedraw s
  where
   entry = formState (s ^. uiState . uiReplForm)
@@ -608,7 +610,7 @@ handleREPLEvent s EscapeKey =
   case s ^. uiState . uiReplForm . to formState of
     CmdPrompt _ -> continueWithoutRedraw s
     SearchPrompt _ _ ->
-      continue $ resetWithREPLForm (mkReplForm $ CmdPrompt "") s
+      continue $ s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $
@@ -658,14 +660,6 @@ adjReplHistIndex d s =
   getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
   oldEntry = getCurrEntry s
   newEntry = getCurrEntry ns
-
--- Set the REPLForm to the given value, reseting type error checks to Nothing
--- and removing uiError
-resetWithREPLForm :: Form REPLPrompt AppEvent Name -> AppState -> AppState
-resetWithREPLForm f =
-  (uiState . uiReplForm .~ f)
-    . (uiState . uiReplType .~ Nothing)
-    . (uiState . uiError .~ Nothing)
 
 ------------------------------------------------------------
 -- World events
