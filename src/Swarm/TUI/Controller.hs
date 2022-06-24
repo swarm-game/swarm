@@ -193,9 +193,12 @@ handleMainEvent s = \case
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
-  FKey 2 | not (null (s ^. gameState . availableRecipes)) -> do
+  FKey 2 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
     s' <- toggleModal s RecipesModal
-    continue (s' & gameState . availableRecipesNewCount .~ 0)
+    continue (s' & gameState . availableRecipes . notificationsCount .~ 0)
+  FKey 3 | not (null (s ^. gameState . availableCommands . notificationsContent)) -> do
+    s' <- toggleModal s CommandsModal
+    continue (s' & gameState . availableCommands . notificationsCount .~ 0)
   ControlKey 'g' -> case s ^. uiState . uiGoal of
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
@@ -295,6 +298,7 @@ handleModalEvent s = \case
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
     case s ^? uiState . uiModal . _Just . modalType of
       Just RecipesModal -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
+      Just CommandsModal -> handleInfoPanelEvent s' commandsScroll (VtyEvent ev)
       _ -> continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL

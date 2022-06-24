@@ -37,7 +37,7 @@ module Swarm.Game.State (
   robotsByLocation,
   activeRobots,
   availableRecipes,
-  availableRecipesNewCount,
+  availableCommands,
   allDiscoveredEntities,
   gensym,
   randGen,
@@ -56,6 +56,11 @@ module Swarm.Game.State (
   messageQueue,
   focusedRobotID,
   ticks,
+
+  -- ** Notifications
+  Notifications (..),
+  notificationsCount,
+  notificationsContent,
 
   -- ** GameState initialization
   initGameState,
@@ -82,7 +87,7 @@ module Swarm.Game.State (
 
 import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
-import Control.Lens hiding (use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
+import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
 import Data.Array (Array, listArray)
 import Data.Int (Int64)
@@ -95,6 +100,7 @@ import Data.List (partition)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
+import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T (lines)
 import qualified Data.Text.IO as T (readFile)
@@ -115,10 +121,11 @@ import Swarm.Game.Scenario
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed)
+import Swarm.Language.Capability (constCaps)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Term (TString))
+import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -172,6 +179,21 @@ data RunStatus
     AutoPause
   deriving (Eq, Show)
 
+-- | A data type to keep track of discovered recipes and commands
+data Notifications a = Notifications
+  { _notificationsCount :: Int
+  , _notificationsContent :: [a]
+  }
+  deriving (Eq, Show)
+
+instance Semigroup (Notifications a) where
+  Notifications count1 xs1 <> Notifications count2 xs2 = Notifications (count1 + count2) (xs1 <> xs2)
+
+instance Monoid (Notifications a) where
+  mempty = Notifications 0 []
+
+makeLenses ''Notifications
+
 ------------------------------------------------------------
 -- The main GameState record type
 ------------------------------------------------------------
@@ -201,8 +223,8 @@ data GameState = GameState
     _waitingRobots :: Map Integer [RID]
   , _robotsByLocation :: Map (V2 Int64) IntSet
   , _allDiscoveredEntities :: Inventory
-  , _availableRecipes :: [Recipe Entity]
-  , _availableRecipesNewCount :: Int
+  , _availableRecipes :: Notifications (Recipe Entity)
+  , _availableCommands :: Notifications Const
   , _gensym :: Int
   , _randGen :: StdGen
   , _adjList :: Array Int Text
@@ -273,10 +295,10 @@ robotsByLocation :: Lens' GameState (Map (V2 Int64) IntSet)
 allDiscoveredEntities :: Lens' GameState Inventory
 
 -- | The list of available recipes.
-availableRecipes :: Lens' GameState [Recipe Entity]
+availableRecipes :: Lens' GameState (Notifications (Recipe Entity))
 
--- | The number of new recipes (reset to 0 when the player open the recipes view).
-availableRecipesNewCount :: Lens' GameState Int
+-- | The list of available commands.
+availableCommands :: Lens' GameState (Notifications Const)
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState IntSet
@@ -528,7 +550,7 @@ initGameState = do
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty
       , _availableRecipes = mempty
-      , _availableRecipesNewCount = 0
+      , _availableCommands = mempty
       , _allDiscoveredEntities = empty
       , _activeRobots = IS.empty
       , _waitingRobots = M.empty
@@ -572,6 +594,7 @@ scenarioToGameState scenario userSeed toRun g = do
           M.fromListWith IS.union $
             map (view robotLocation &&& (IS.singleton . view robotID)) robotList
       , _activeRobots = setOf (traverse . robotID) robotList
+      , _availableCommands = Notifications 0 initialCommands
       , _waitingRobots = M.empty
       , _gensym = initGensym
       , _randGen = mkStdGen seed
@@ -608,6 +631,12 @@ scenarioToGameState scenario userSeed toRun g = do
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)
+
+  initialCaps = mconcat $ map (^. robotCapabilities) robotList
+  initialCommands =
+    filter
+      (maybe False (`S.member` initialCaps) . constCaps)
+      allConst
 
   theWorld = W.newWorld . (scenario ^. scenarioWorld)
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)

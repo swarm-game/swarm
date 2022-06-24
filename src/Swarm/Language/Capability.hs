@@ -202,7 +202,7 @@ requiredCaps' = go
     TBool _ -> S.empty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
-    TConst c -> constCaps c
+    TConst c -> maybe S.empty S.singleton (constCaps c)
     -- Note that a variable might not show up in the context, and
     -- that's OK.  In particular, only variables bound by 'TDef' go
     -- in the context; variables bound by a lambda or let will not
@@ -250,85 +250,84 @@ requiredCaps' = go
     TDef {} -> S.empty
 
 -- | Capabilities needed to evaluate or execute a constant.
-constCaps :: Const -> Set Capability
-constCaps =
-  S.fromList . \case
-    -- Some built-in constants that don't require any special capability.
-    Wait -> []
-    Noop -> []
-    AppF -> []
-    Force -> []
-    Return -> []
-    Parent -> []
-    Base -> []
-    Setname -> []
-    Undefined -> []
-    Fail -> []
-    -- Some straightforward ones.
-    Log -> [CLog]
-    Selfdestruct -> [CSelfdestruct]
-    Move -> [CMove]
-    Turn -> [CTurn]
-    Grab -> [CGrab]
-    Place -> [CPlace]
-    Give -> [CGive]
-    Install -> [CInstall]
-    Make -> [CMake]
-    Has -> []
-    Count -> [CCount]
-    If -> [CCond]
-    Blocked -> [CSensefront]
-    Scan -> [CScan]
-    Ishere -> [CSensehere]
-    Upload -> [CScan]
-    Build -> [CBuild]
-    Salvage -> [CSalvage]
-    Reprogram -> [CReprogram]
-    Drill -> [CDrill]
-    Neg -> [CArith]
-    Add -> [CArith]
-    Sub -> [CArith]
-    Mul -> [CArith]
-    Div -> [CArith]
-    Exp -> [CArith]
-    Whoami -> [CWhoami]
-    Self -> [CWhoami]
-    -- Some God-like abilities.
-    As -> [CGod]
-    RobotNamed -> [CGod]
-    RobotNumbered -> [CGod]
-    Create -> [CGod]
-    -- String operations, which for now are enabled by CLog
-    Format -> [CLog]
-    Concat -> [CLog]
-    -- Some additional straightforward ones, which however currently
-    -- cannot be used in classic mode since there is no craftable item
-    -- which conveys their capability.
-    Teleport -> [CTeleport] -- Some space-time machine like Tardis?
-    Appear -> [CAppear] -- paint?
-    Whereami -> [CSenseloc] -- GPS?
-    Random -> [CRandom] -- randomness device (with bitcoins)?
+constCaps :: Const -> Maybe Capability
+constCaps = \case
+  -- Some built-in constants that don't require any special capability.
+  Wait -> Nothing
+  Noop -> Nothing
+  AppF -> Nothing
+  Force -> Nothing
+  Return -> Nothing
+  Parent -> Nothing
+  Base -> Nothing
+  Setname -> Nothing
+  Undefined -> Nothing
+  Fail -> Nothing
+  -- Some straightforward ones.
+  Log -> Just CLog
+  Selfdestruct -> Just CSelfdestruct
+  Move -> Just CMove
+  Turn -> Just CTurn
+  Grab -> Just CGrab
+  Place -> Just CPlace
+  Give -> Just CGive
+  Install -> Just CInstall
+  Make -> Just CMake
+  Has -> Nothing
+  Count -> Just CCount
+  If -> Just CCond
+  Blocked -> Just CSensefront
+  Scan -> Just CScan
+  Ishere -> Just CSensehere
+  Upload -> Just CScan
+  Build -> Just CBuild
+  Salvage -> Just CSalvage
+  Reprogram -> Just CReprogram
+  Drill -> Just CDrill
+  Neg -> Just CArith
+  Add -> Just CArith
+  Sub -> Just CArith
+  Mul -> Just CArith
+  Div -> Just CArith
+  Exp -> Just CArith
+  Whoami -> Just CWhoami
+  Self -> Just CWhoami
+  -- Some God-like abilities.
+  As -> Just CGod
+  RobotNamed -> Just CGod
+  RobotNumbered -> Just CGod
+  Create -> Just CGod
+  -- String operations, which for now are enabled by CLog
+  Format -> Just CLog
+  Concat -> Just CLog
+  -- Some additional straightforward ones, which however currently
+  -- cannot be used in classic mode since there is no craftable item
+  -- which conveys their capability.
+  Teleport -> Just CTeleport -- Some space-time machine like Tardis?
+  Appear -> Just CAppear -- paint?
+  Whereami -> Just CSenseloc -- GPS?
+  Random -> Just CRandom -- randomness device (with bitcoins)?
 
-    -- comparator?
-    Eq -> [CCompare]
-    Neq -> [CCompare]
-    Lt -> [CCompare]
-    Gt -> [CCompare]
-    Leq -> [CCompare]
-    Geq -> [CCompare]
-    And -> []
-    Or -> []
-    -- Some more constants which *ought* to have their own capability but
-    -- currently don't.
-    Say -> []
-    View -> [] -- XXX this should also require something.
-    Run -> [] -- XXX this should also require a capability
-    -- which the base starts out with.
-    Not -> [] -- XXX some kind of boolean logic cap?
-    Inl -> [] -- XXX should require cap for sums
-    Inr -> []
-    Case -> []
-    Fst -> [] -- XXX should require cap for pairs
-    Snd -> []
-    Try -> [] -- XXX these definitely need to require something.
-    Knows -> []
+  -- comparator?
+  Eq -> Just CCompare
+  Neq -> Just CCompare
+  Lt -> Just CCompare
+  Gt -> Just CCompare
+  Leq -> Just CCompare
+  Geq -> Just CCompare
+  And -> Nothing
+  Or -> Nothing
+  -- Some more constants which *ought* to have their own capability but
+  -- currently don't.
+  Say -> Nothing
+  View -> Nothing -- XXX this should also require something.
+  Run -> Nothing -- XXX this should also require a capability
+  -- which the base starts out with.
+  Not -> Nothing -- XXX some kind of boolean logic cap?
+  Inl -> Nothing -- XXX should require cap for sums
+  Inr -> Nothing
+  Case -> Nothing
+  Fst -> Nothing -- XXX should require cap for pairs
+  Snd -> Nothing
+  Try -> Nothing -- XXX these definitely need to require something.
+  Knows -> Nothing

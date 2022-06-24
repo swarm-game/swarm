@@ -276,13 +276,15 @@ traceLogShow = traceLog . from . show
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
-ensureCanExecute c = do
-  creative <- use creativeMode
-  sys <- use systemRobot
-  robotCaps <- use robotCapabilities
-  let missingCaps = constCaps c `S.difference` robotCaps
-  (sys || creative || S.null missingCaps)
-    `holdsOr` Incapable FixByInstall missingCaps (TConst c)
+ensureCanExecute c = case constCaps c of
+  Nothing -> pure ()
+  Just cap -> do
+    creative <- use creativeMode
+    sys <- use systemRobot
+    robotCaps <- use robotCapabilities
+    let hasCaps = cap `S.member` robotCaps
+    (sys || creative || hasCaps)
+      `holdsOr` Incapable FixByInstall (S.singleton cap) (TConst c)
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
@@ -1660,6 +1662,7 @@ updateDiscoveredEntities e = do
     else do
       let newAllDiscovered = E.insertCount 1 e allDiscovered
       updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
+      updateAvailableCommands e
       allDiscoveredEntities .= newAllDiscovered
 
 -- | Update the availableRecipes list.
@@ -1675,8 +1678,20 @@ updateAvailableRecipes invs e = do
   allInRecipes <- use recipesIn
   let entityRecipes = recipesFor allInRecipes e
       usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
-  knownRecipes <- use availableRecipes
+  knownRecipes <- use (availableRecipes . notificationsContent)
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
       newCount = length newRecipes
-  availableRecipes .= newRecipes <> knownRecipes
-  availableRecipesNewCount += newCount
+  availableRecipes %= mappend (Notifications newCount newRecipes)
+  updateAvailableCommands e
+
+updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
+updateAvailableCommands e = do
+  let newCaps = S.fromList (e ^. entityCapabilities)
+      keepConsts = \case
+        Just cap -> cap `S.member` newCaps
+        Nothing -> False
+      entityConsts = filter (keepConsts . constCaps) allConst
+  knownCommands <- use (availableCommands . notificationsContent)
+  let newCommands = filter (`notElem` knownCommands) entityConsts
+      newCount = length newCommands
+  availableCommands %= mappend (Notifications newCount newCommands)
