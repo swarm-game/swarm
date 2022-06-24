@@ -100,6 +100,7 @@ import Data.List (partition)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
+import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T (lines)
 import qualified Data.Text.IO as T (readFile)
@@ -120,10 +121,11 @@ import Swarm.Game.Scenario
 import Swarm.Game.Value
 import qualified Swarm.Game.World as W
 import Swarm.Game.WorldGen (Seed)
+import Swarm.Language.Capability (constCaps)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Const, Term (TString))
+import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -589,6 +591,7 @@ scenarioToGameState scenario userSeed toRun g = do
           M.fromListWith IS.union $
             map (view robotLocation &&& (IS.singleton . view robotID)) robotList
       , _activeRobots = setOf (traverse . robotID) robotList
+      , _availableCommands = Notifications 0 initialCommands
       , _waitingRobots = M.empty
       , _gensym = initGensym
       , _randGen = mkStdGen seed
@@ -625,6 +628,12 @@ scenarioToGameState scenario userSeed toRun g = do
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)
+
+  initialCaps = mconcat $ map (^. robotCapabilities) robotList
+  initialCommands =
+    filter
+      (maybe False (`S.member` initialCaps) . constCaps)
+      allConst
 
   theWorld = W.newWorld . (scenario ^. scenarioWorld)
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
