@@ -64,7 +64,8 @@ generateRecipe = simpleErrorHandle $ do
 
 recipesToDot :: Scenario -> EntityMap -> [Recipe Entity] -> Dot ()
 recipesToDot classic emap recipes = do
-  Dot.attribute ("rankdir", "BT")
+  Dot.attribute ("rankdir", "LR")
+  Dot.attribute ("ranksep", "2")
   world <- diamond "World"
   base <- diamond "Base"
   -- --------------------------------------------------------------------------
