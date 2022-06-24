@@ -11,10 +11,10 @@ import qualified Data.Text.IO as Text
 import GitHash
 import Options.Applicative
 import Swarm.App (appMain)
+import Swarm.DocGen (GenerateDocs (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import System.Exit
-import Swarm.DocGen (GenerateDocs (..), generateDocs)
 
 data CLI
   = Run
