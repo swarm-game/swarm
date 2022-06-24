@@ -186,10 +186,13 @@ data Notifications a = Notifications
   }
   deriving (Eq, Show)
 
-makeLenses ''Notifications
+instance Semigroup (Notifications a) where
+  Notifications count1 xs1 <> Notifications count2 xs2 = Notifications (count1 + count2) (xs1 <> xs2)
 
-emptyNotifications :: Notifications a
-emptyNotifications = Notifications 0 []
+instance Monoid (Notifications a) where
+  mempty = Notifications 0 []
+
+makeLenses ''Notifications
 
 ------------------------------------------------------------
 -- The main GameState record type
@@ -546,8 +549,8 @@ initGameState = do
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty
-      , _availableRecipes = emptyNotifications
-      , _availableCommands = emptyNotifications
+      , _availableRecipes = mempty
+      , _availableCommands = mempty
       , _allDiscoveredEntities = empty
       , _activeRobots = IS.empty
       , _waitingRobots = M.empty

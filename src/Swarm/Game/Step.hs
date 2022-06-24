@@ -1678,10 +1678,10 @@ updateAvailableRecipes invs e = do
   allInRecipes <- use recipesIn
   let entityRecipes = recipesFor allInRecipes e
       usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
-  Notifications prevCount knownRecipes <- use availableRecipes
+  knownRecipes <- use (availableRecipes . notificationsContent)
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
       newCount = length newRecipes
-  availableRecipes .= Notifications (newCount + prevCount) (newRecipes <> knownRecipes)
+  availableRecipes %= mappend (Notifications newCount newRecipes)
   updateAvailableCommands e
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
@@ -1691,7 +1691,7 @@ updateAvailableCommands e = do
         Just cap -> cap `S.member` newCaps
         Nothing -> False
       entityConsts = filter (keepConsts . constCaps) allConst
-  Notifications prevCount knownCommands <- use availableCommands
+  knownCommands <- use (availableCommands . notificationsContent)
   let newCommands = filter (`notElem` knownCommands) entityConsts
       newCount = length newCommands
-  availableCommands .= Notifications (newCount + prevCount) (newCommands <> knownCommands)
+  availableCommands %= mappend (Notifications newCount newCommands)
