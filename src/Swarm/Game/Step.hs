@@ -283,7 +283,7 @@ ensureCanExecute c = case constCaps c of
     sys <- use systemRobot
     robotCaps <- use robotCapabilities
     let hasCaps = cap `S.member` robotCaps
-    (sys || creative || not hasCaps)
+    (sys || creative || hasCaps)
       `holdsOr` Incapable FixByInstall (S.singleton cap) (TConst c)
 
 -- | Test whether the current robot has a given capability (either
