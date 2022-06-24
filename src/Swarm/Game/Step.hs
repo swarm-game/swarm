@@ -111,12 +111,14 @@ gameTick = do
             when (newLoc /= oldLoc) $ do
               robotsByLocation . at oldLoc %= deleteOne rn
               robotsByLocation . at newLoc . non Empty %= IS.insert rn
+            time <- use ticks
             case waitingUntil curRobot' of
-              Just wakeUpTime ->
-                sleepUntil rn wakeUpTime
+              Just wakeUpTime
+                -- if w=2 t=1 then we do not needlessly put robot to waiting queue
+                | wakeUpTime - 2 <= time -> return ()
+                | otherwise -> sleepUntil rn wakeUpTime
               Nothing ->
-                unless (isActive curRobot') do
-                  sleepForever rn
+                unless (isActive curRobot') (sleepForever rn)
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL;
@@ -359,7 +361,7 @@ stepCESK cesk = case cesk of
   -- then stepCESK is a no-op.
   Waiting wakeupTime cesk' -> do
     time <- use ticks
-    if wakeupTime == time
+    if wakeupTime <= time
       then stepCESK cesk'
       else return cesk
   Out v s (FImmediate wf rf : k) -> do
