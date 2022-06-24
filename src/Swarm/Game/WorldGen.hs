@@ -45,6 +45,28 @@ data Hardness = Soft | Hard deriving (Eq, Ord, Show, Read)
 data Origin = Natural | Artificial deriving (Eq, Ord, Show, Read)
 type Seed = Int
 
+testWorld2Entites :: S.Set Text
+testWorld2Entites =
+  S.fromList
+    [ "mountain"
+    , "boulder"
+    , "LaTeX"
+    , "tree"
+    , "rock"
+    , "sand"
+    , "wavy water"
+    , "water"
+    , "flower"
+    , "bit (0)"
+    , "bit (1)"
+    , "Linux"
+    , "lambda"
+    , "pixel (R)"
+    , "pixel (G)"
+    , "pixel (B)"
+    , "copper ore"
+    ]
+
 -- | A more featureful test world.
 testWorld2 :: Seed -> WorldFun TerrainType Text
 testWorld2 baseSeed (Coords ix@(r, c)) =
@@ -77,7 +99,7 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
     | h `mod` 10 == 0 = (GrassT, Just (T.concat ["bit (", from (show ((r + c) `mod` 2)), ")"]))
     | otherwise = (GrassT, Nothing)
   genBiome Big Soft Artificial
-    | h `mod` 5000 == 0 = (DirtT, Just "linux")
+    | h `mod` 5000 == 0 = (DirtT, Just "Linux")
     | sample ix cl0 > 0.5 = (GrassT, Nothing)
     | otherwise = (DirtT, Nothing)
   genBiome Small Hard Artificial

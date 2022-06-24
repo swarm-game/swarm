@@ -184,6 +184,8 @@ handleMainEvent s = \case
     | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay ->
       toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
     | otherwise -> runFrameUI s
+  -- ctrl-q works everywhere
+  ControlKey 'q' -> toggleModal s QuitModal >>= continue
   VtyEvent (V.EvResize _ _) -> do
     invalidateCacheEntry WorldCache
     continue s
@@ -206,7 +208,6 @@ handleMainEvent s = \case
   CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
   Key V.KBackTab -> continue $ s & uiState . uiFocusRing %~ focusPrev
   -- special keys that work on all panels
-  ControlKey 'q' -> toggleModal s QuitModal >>= continue
   MetaKey 'w' -> setFocus s WorldPanel
   MetaKey 'e' -> setFocus s RobotPanel
   MetaKey 'r' -> setFocus s REPLPanel

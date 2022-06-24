@@ -11,6 +11,7 @@ import qualified Data.Text.IO as Text
 import GitHash
 import Options.Applicative
 import Swarm.App (appMain)
+import Swarm.DocGen (GenerateDocs (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import System.Exit
@@ -22,6 +23,7 @@ data CLI
       (Maybe FilePath) -- file to run
       Bool -- cheat mode
   | Format Input
+  | DocGen GenerateDocs
   | LSP
 
 cliParser :: Parser CLI
@@ -29,6 +31,7 @@ cliParser =
   subparser
     ( command "format" (info (format <**> helper) (progDesc "Format a file"))
         <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+        <> command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
     )
     <|> Run <$> seed <*> scenario <*> run <*> cheat
  where
@@ -36,6 +39,10 @@ cliParser =
   format =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
+  docgen :: Parser GenerateDocs
+  docgen =
+    subparser
+      (command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes"))
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   scenario :: Parser (Maybe String)
@@ -87,4 +94,5 @@ main = do
   case cli of
     Run seed scenario toRun cheat -> appMain seed scenario toRun cheat
     Format fo -> formatFile fo
+    DocGen g -> generateDocs g
     LSP -> lspMain
