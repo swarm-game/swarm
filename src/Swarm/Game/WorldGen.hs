@@ -46,25 +46,26 @@ data Origin = Natural | Artificial deriving (Eq, Ord, Show, Read)
 type Seed = Int
 
 testWorld2Entites :: S.Set Text
-testWorld2Entites = S.fromList
-  [ "mountain"
-  , "boulder"
-  , "LaTeX"
-  , "tree"
-  , "rock"
-  , "sand"
-  , "wavy water"
-  , "water"
-  , "flower"
-  , "bit (0)"
-  , "bit (1)"
-  , "Linux"
-  , "lambda"
-  , "pixel (R)"
-  , "pixel (G)"
-  , "pixel (B)"
-  , "copper ore"
-  ]
+testWorld2Entites =
+  S.fromList
+    [ "mountain"
+    , "boulder"
+    , "LaTeX"
+    , "tree"
+    , "rock"
+    , "sand"
+    , "wavy water"
+    , "water"
+    , "flower"
+    , "bit (0)"
+    , "bit (1)"
+    , "Linux"
+    , "lambda"
+    , "pixel (R)"
+    , "pixel (G)"
+    , "pixel (B)"
+    , "copper ore"
+    ]
 
 -- | A more featureful test world.
 testWorld2 :: Seed -> WorldFun TerrainType Text
