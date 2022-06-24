@@ -44,6 +44,7 @@ import Control.Arrow ((&&&))
 import Control.Lens hiding (from)
 import Data.Array (range)
 import qualified Data.Foldable as F
+import Data.Int (Int64)
 import qualified Data.IntMap as IM
 import qualified Data.List as L
 import Data.List.NonEmpty (NonEmpty (..))
@@ -67,6 +68,7 @@ import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
 
+import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
@@ -302,6 +304,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
   (title, widget, buttons, requiredWidth) =
     case mt of
       HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
+      RobotsModal -> ("Robots", robotsListWidget (s ^. gameState), Nothing, descriptionWidth)
       RecipesModal ->
         ( "Available Recipes"
         , helpRecipes (s ^. gameState . availableRecipesNewCount) (s ^. gameState . availableRecipes)
@@ -328,6 +331,39 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             )
       GoalModal g -> (" Goal ", padLeftRight 1 (displayParagraphs g), Nothing, 80)
 
+robotsListWidget :: GameState -> Widget Name
+robotsListWidget g = viewport RobotsViewport Vertical table
+ where
+  table =
+    BT.renderTable
+      -- Position is centered
+      . BT.alignCenter 1
+      -- Inventory count is right aligned
+      . BT.alignRight 2
+      . BT.table
+      $ (headers : robotsTable)
+  headers = withAttr robotAttr <$> [txt "Name", txt "Position", txt "Inventory", txt "Status"]
+  robotsTable = mkRobotRow <$> robots
+  mkRobotRow robot = [txt rName, txt $ showLoc (robot ^. robotLocation), txt rInvCount, txt rStatus]
+   where
+    rName :: Text
+    rName = robot ^. robotEntity . entityName
+    rInvCount = from $ show (sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory)
+    showLoc :: V2 Int64 -> Text
+    showLoc (V2 x y) = from (show x) <> " " <> from (show y)
+    rStatus :: Text
+    rStatus = case robot ^. machine of
+      Waiting {} -> "waiting"
+      _ -> "working"
+  basePos :: V2 Double
+  basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? robotMap . ix 0 . robotLocation)
+  -- Keep the robot that are less than 32 unit away from the base
+  robots :: [Robot]
+  robots =
+    filter (\robot -> distance (realToFrac <$> robot ^. robotLocation) basePos < 32)
+      . IM.elems
+      $ g ^. robotMap
+
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
  where
@@ -340,7 +376,8 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
   toWidgets (k, v) = [txt k, txt v]
   glKeyBindings =
     [ ("F1", "Help")
-    , ("F2", "Available recipes")
+    , ("F2", "Robots list")
+    , ("F3", "Available recipes")
     , ("Ctrl-q", "quit the game")
     , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
@@ -412,7 +449,7 @@ drawKeyMenu s =
       let highlight
             | s ^. gameState . availableRecipesNewCount > 0 = Highlighted
             | otherwise = NoHighlight
-       in [(highlight, "F2", "Recipes")]
+       in [(highlight, "F3", "Recipes")]
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -422,7 +459,7 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [(NoHighlight, "F1", "help")]
+    [(NoHighlight, "F1", "help"), (NoHighlight, "F2", "robots")]
       <> availRecipes
       <> [(NoHighlight, "Tab", "cycle")]
       <> [(NoHighlight, "^v", "creative") | cheat]

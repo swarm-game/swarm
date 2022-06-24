@@ -193,7 +193,8 @@ handleMainEvent s = \case
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
     | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
-  FKey 2 | not (null (s ^. gameState . availableRecipes)) -> do
+  FKey 2 -> toggleModal s RobotsModal >>= continue
+  FKey 3 | not (null (s ^. gameState . availableRecipes)) -> do
     s' <- toggleModal s RecipesModal
     continue (s' & gameState . availableRecipesNewCount .~ 0)
   ControlKey 'g' -> case s ^. uiState . uiGoal of
@@ -279,10 +280,14 @@ toggleModal s mt = case s ^. uiState . uiModal of
   Nothing -> pure $ s & (uiState . uiModal ?~ generateModal s mt) . ensurePause
   Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
  where
+  -- these modals do not pause the game
+  runningModals = [RobotsModal]
   -- Set the game to AutoPause if needed
   ensurePause
-    | s ^. gameState . paused = id
-    | otherwise = gameState . runStatus .~ AutoPause
+    | s ^. gameState . paused || mt `elem` runningModals = id
+    | otherwise = case mt of
+        RobotsModal -> id
+        _ -> gameState . runStatus .~ AutoPause
 
 handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s = \case
@@ -295,6 +300,7 @@ handleModalEvent s = \case
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
     case s ^? uiState . uiModal . _Just . modalType of
       Just RecipesModal -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
+      Just RobotsModal -> handleInfoPanelEvent s' robotsScroll (VtyEvent ev)
       _ -> continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL

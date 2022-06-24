@@ -116,6 +116,7 @@ module Swarm.TUI.Model (
   populateInventoryList,
   infoScroll,
   recipesScroll,
+  robotsScroll,
 
   -- * App state
   AppState,
@@ -209,6 +210,8 @@ data Name
     InfoViewport
   | -- | The scrollable viewport for the recipe list.
     RecipesViewport
+  | -- | The scrollable viewport for the robots list.
+    RobotsViewport
   deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
@@ -216,6 +219,9 @@ infoScroll = viewportScroll InfoViewport
 
 recipesScroll :: ViewportScroll Name
 recipesScroll = viewportScroll RecipesViewport
+
+robotsScroll :: ViewportScroll Name
+robotsScroll = viewportScroll RobotsViewport
 
 ------------------------------------------------------------
 -- REPL History
@@ -398,6 +404,7 @@ mkReplForm r = newForm [(replPromptAsWidget r <+>) @@= editTextField promptTextL
 data ModalType
   = HelpModal
   | RecipesModal
+  | RobotsModal
   | WinModal
   | QuitModal
   | DescriptionModal Entity
