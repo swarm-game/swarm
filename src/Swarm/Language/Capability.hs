@@ -263,7 +263,7 @@ constCaps =
     Base -> []
     Setname -> []
     Undefined -> []
-    ErrorStr -> []
+    Fail -> []
     -- Some straightforward ones.
     Log -> [CLog]
     Selfdestruct -> [CSelfdestruct]
@@ -330,6 +330,5 @@ constCaps =
     Case -> []
     Fst -> [] -- XXX should require cap for pairs
     Snd -> []
-    Try -> [] -- XXX these definitely need to require
-    Raise -> [] -- something.
+    Try -> [] -- XXX these definitely need to require something.
     Knows -> []
