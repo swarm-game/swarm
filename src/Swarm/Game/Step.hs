@@ -500,14 +500,14 @@ stepCESK cesk = case cesk of
   -- from the first command.
   Out (VResult v ve) s (FBind mx t2 e : k) -> do
     let ve' = maybe id (`addBinding` v) mx ve
-    return $ In t2 (e `union` ve') s (FExec : FUnionEnv ve' : k)
+    return $ In t2 (e `union` ve') s (FExec : fUnionEnv ve' k)
   -- If the first command completes with a simple value and there is no binder,
   -- then we just continue without worrying about the environment.
   Out _ s (FBind Nothing t2 e : k) -> return $ In t2 e s (FExec : k)
   -- If the first command completes with a simple value and there is a binder,
   -- we promote it to the returned environment as well.
   Out v s (FBind (Just x) t2 e : k) -> do
-    return $ In t2 (addBinding x v e) s (FExec : FUnionEnv (singleton x v) : k)
+    return $ In t2 (addBinding x v e) s (FExec : fUnionEnv (singleton x v) k)
   -- If a command completes with a value and definition environment,
   -- and the next continuation frame contains a previous environment
   -- to union with, then pass the unioned environments along in
@@ -593,6 +593,24 @@ stepCESK cesk = case cesk of
             , from (prettyCESK cesk)
             ]
      in return $ Up (Fatal msg') s []
+
+  -- Note, the order of arguments to `union` is important in the below
+  -- definition of fUnionEnv.  I wish I knew how to add an automated
+  -- test for this.  But you can tell the difference in the following
+  -- REPL session:
+  --
+  -- > x <- return 1; x <- return 2
+  -- 2 : int
+  -- > x
+  -- 2 : int
+  --
+  -- If we switch the code to read 'e1 `union` e2' instead, then
+  -- the first expression above still correctly evaluates to 2, but
+  -- x ends up incorrectly bound to 1.
+
+  fUnionEnv e1 = \case
+    FUnionEnv e2 : k -> FUnionEnv (e2 `union` e1) : k
+    k -> FUnionEnv e1 : k
 
 -- | Determine whether a constant should take up a tick or not when executed.
 takesTick :: Const -> Bool
