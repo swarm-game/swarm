@@ -198,7 +198,7 @@ noFatalErrors g = do
         let f = find isFatal (view leText <$> r ^. robotLog)
         -- -----------------------------------------------
         -- When debugging, try logging all robot messages:
-        forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
+        -- forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
         -- -----------------------------------------------
         maybe (return ()) (assertFailure . T.unpack) f
     )
