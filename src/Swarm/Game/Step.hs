@@ -593,6 +593,21 @@ stepCESK cesk = case cesk of
             , from (prettyCESK cesk)
             ]
      in return $ Up (Fatal msg') s []
+
+  -- Note, the order of arguments to `union` is important in the below
+  -- definition of fUnionEnv.  I wish I knew how to add an automated
+  -- test for this.  But you can tell the difference in the following
+  -- REPL session:
+  --
+  -- > x <- return 1; x <- return 2
+  -- 2 : int
+  -- > x
+  -- 2 : int
+  --
+  -- If we switch the code to read 'e1 `union` e2' instead, then
+  -- the first expression above still correctly evaluates to 2, but
+  -- x ends up incorrectly bound to 1.
+
   fUnionEnv e1 = \case
     FUnionEnv e2 : k -> FUnionEnv (e2 `union` e1) : k
     k -> FUnionEnv e1 : k
