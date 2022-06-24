@@ -14,7 +14,7 @@ module Swarm.DocGen (
 import Control.Lens (view, (^.))
 import Control.Monad (zipWithM, zipWithM_, (<=<))
 import Control.Monad.Except (ExceptT, runExceptT)
-import Data.Bifunctor (Bifunctor (bimap), second)
+import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
 import Data.Map.Lazy (Map)
@@ -24,14 +24,14 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Count, Entity, EntityMap (entitiesByName), entityName, loadEntities)
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
 import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Util (isRightOr)
-import Text.Dot (Dot, NodeId)
+import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 
 -- ============================================================================
@@ -90,8 +90,8 @@ recipesToDot classic emap recipes = do
   (_bc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "lightgrey")
-    mapM_ ((uncurry (---<>) . ((1, base),)) . (1,) . nid) devs
-    mapM_ ((uncurry (--->) . ((1, base),)) . second nid . swap) $ Map.toList inv
+    mapM_ ((base ---<>) . nid) devs
+    mapM_ ((base .->.) . nid . fst) $ Map.toList inv
   -- --------------------------------------------------------------------------
   -- World entites
   (_wc, ()) <- Dot.cluster $ do
@@ -139,11 +139,10 @@ recipesToDot classic emap recipes = do
   -- --------------------------------------------------------------------------
   -- add node for the world and draw a line to each entity found in the wild
   -- finally draw recipes
-  let allToNID = both (second nid)
-      recipeInOut r = [(i, o) | i <- r ^. recipeInputs, o <- r ^. recipeOutputs]
-      recipeReqOut r = [(q, o) | q <- r ^. recipeRequirements, o <- r ^. recipeOutputs]
-      recipesToPairs f rs = allToNID <$> nubOrd (concatMap f rs)
-  mapM_ (uncurry (--->)) (recipesToPairs recipeInOut recipes)
+  let recipeInOut r = [(snd i, snd o) | i <- r ^. recipeInputs, o <- r ^. recipeOutputs]
+      recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeRequirements, o <- r ^. recipeOutputs]
+      recipesToPairs f rs = both nid <$> nubOrd (concatMap f rs)
+  mapM_ (uncurry (.->.)) (recipesToPairs recipeInOut recipes)
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
 
 -- ----------------------------------------------------------------------------
@@ -222,17 +221,11 @@ hiddenNode = Dot.node [("style", "invis")]
 (.~>.) :: NodeId -> NodeId -> Dot ()
 i .~>. j = Dot.edge i j [("style", "invis")]
 
--- | Edge for recipe inputs and outputs.
-(--->) :: (Count, NodeId) -> (Count, NodeId) -> Dot ()
-(c1, e1) ---> (c2, e2) = Dot.edge e1 e2 attrs
- where
-  attrs = [("headlabel", show c2), ("taillabel", show c1)]
-
 -- | Edge for recipe requirements and outputs.
-(---<>) :: (Count, NodeId) -> (Count, NodeId) -> Dot ()
-(_c1, e1) ---<> (c2, e2) = Dot.edge e1 e2 attrs
+(---<>) :: NodeId -> NodeId -> Dot ()
+e1 ---<> e2 = Dot.edge e1 e2 attrs
  where
-  attrs = [("headlabel", show c2), ("arrowhead", "diamond"), ("color", "blue")]
+  attrs = [("arrowhead", "diamond"), ("color", "blue")]
 
 -- ----------------------------------------------------------------------------
 -- UTILITY
