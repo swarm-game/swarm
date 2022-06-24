@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- |
@@ -76,10 +76,10 @@ import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItem
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import qualified Swarm.Game.World as W
+import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
-import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
-import Swarm.Language.Types (Polytype, Module(..))
+import Swarm.Language.Types (Module (..), Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Model
@@ -375,32 +375,32 @@ data NotificationList = RecipeList | CommandList
 
 notificationList :: GameState -> NotificationList -> Widget Name
 notificationList gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox widgetList)
-  where
-    (vp, widgetList) = case nl of
-      RecipeList -> (RecipesViewport, mkNotificationList gs availableRecipes renderRecipe)
-      CommandList -> (CommandsViewport, mkNotificationList gs availableCommands renderCommand)
-    renderRecipe = padLeftRight 18 . drawRecipe Nothing Nothing
-    renderCommand = padLeftRight 18 . drawConst
+ where
+  (vp, widgetList) = case nl of
+    RecipeList -> (RecipesViewport, mkNotificationList gs availableRecipes renderRecipe)
+    CommandList -> (CommandsViewport, mkNotificationList gs availableCommands renderCommand)
+  renderRecipe = padLeftRight 18 . drawRecipe Nothing Nothing
+  renderCommand = padLeftRight 18 . drawConst
 
 drawConst :: Const -> Widget Name
 drawConst c = hBox [padLeft (Pad $ 13 - T.length constName) (txt constName), txt constSig]
-  where
-    constName = syntax . constInfo $ c
-    constSig = case processParsedTerm (noLoc $ TConst c) of
-      Right (ProcessedTerm (TConst _) (Module pt _) _ _) -> " : " <> prettyText pt
-      _ -> "??"
+ where
+  constName = syntax . constInfo $ c
+  constSig = case processParsedTerm (noLoc $ TConst c) of
+    Right (ProcessedTerm (TConst _) (Module pt _) _ _) -> " : " <> prettyText pt
+    _ -> "??"
 
 mkNotificationList :: GameState -> Lens' GameState (Notifications a) -> (a -> Widget Name) -> [Widget Name]
 mkNotificationList gs notifLens notifRender = map padRender news <> notifSep <> map padRender knowns
-  where
-    padRender = padBottom (Pad 1) . notifRender
-    count = gs ^. notifLens . notificationsCount
-    (news, knowns) = splitAt count (gs ^. notifLens . notificationsContent)
-    notifSep
-      | count > 0 && not (null knowns) =
-        [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
-        ]
-      | otherwise = []
+ where
+  padRender = padBottom (Pad 1) . notifRender
+  count = gs ^. notifLens . notificationsCount
+  (news, knowns) = splitAt count (gs ^. notifLens . notificationsContent)
+  notifSep
+    | count > 0 && not (null knowns) =
+      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+      ]
+    | otherwise = []
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "

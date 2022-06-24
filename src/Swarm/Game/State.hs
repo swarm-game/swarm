@@ -123,7 +123,7 @@ import Swarm.Game.WorldGen (Seed)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Term (TString), Const)
+import Swarm.Language.Syntax (Const, Term (TString))
 import Swarm.Language.Types
 import Swarm.Util
 
