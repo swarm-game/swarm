@@ -276,13 +276,15 @@ traceLogShow = traceLog . from . show
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
-ensureCanExecute c = do
-  creative <- use creativeMode
-  sys <- use systemRobot
-  robotCaps <- use robotCapabilities
-  let missingCaps = constCaps c `S.difference` robotCaps
-  (sys || creative || S.null missingCaps)
-    `holdsOr` Incapable FixByInstall missingCaps (TConst c)
+ensureCanExecute c = case constCaps c of
+  Nothing -> pure ()
+  Just cap -> do
+    creative <- use creativeMode
+    sys <- use systemRobot
+    robotCaps <- use robotCapabilities
+    let hasCaps = cap `S.member` robotCaps
+    (sys || creative || not hasCaps)
+      `holdsOr` Incapable FixByInstall (S.singleton cap) (TConst c)
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
@@ -1685,12 +1687,9 @@ updateAvailableRecipes invs e = do
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
 updateAvailableCommands e = do
   let newCaps = S.fromList (e ^. entityCapabilities)
-      keepConsts s
-        | S.null s = False
-        -- This presently only works for single capability command.
-        -- If a command needs more than one capability, then we need combine all the known capabilities
-        | s `S.isSubsetOf` newCaps = True
-        | otherwise = False
+      keepConsts = \case
+        Just cap -> cap `S.member` newCaps
+        Nothing -> False
       entityConsts = filter (keepConsts . constCaps) allConst
   Notifications prevCount knownCommands <- use availableCommands
   let newCommands = filter (`notElem` knownCommands) entityConsts
