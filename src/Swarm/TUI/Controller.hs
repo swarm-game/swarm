@@ -286,8 +286,8 @@ toggleModal s mt = case s ^. uiState . uiModal of
   ensurePause
     | s ^. gameState . paused || mt `elem` runningModals = id
     | otherwise = case mt of
-        RobotsModal -> id
-        _ -> gameState . runStatus .~ AutoPause
+      RobotsModal -> id
+      _ -> gameState . runStatus .~ AutoPause
 
 handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
 handleModalEvent s = \case
