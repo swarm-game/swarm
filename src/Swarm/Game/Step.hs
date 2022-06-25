@@ -24,7 +24,7 @@ import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (
 import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
-import Data.Either (rights)
+import Data.Either (partitionEithers, rights)
 import Data.Foldable (traverse_)
 import qualified Data.Functor.Const as F
 import Data.Int (Int64)
@@ -39,6 +39,8 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear (V2 (..), zero, (^+^))
+import System.Clock (TimeSpec)
+import qualified System.Clock
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
@@ -158,11 +160,16 @@ evalPT ::
   m Value
 evalPT t = evaluateCESK (initMachine t empty emptyStore)
 
+getNow :: Has (Lift IO) sig m => m TimeSpec
+getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
+
 evaluateCESK ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
   CESK ->
   m Value
-evaluateCESK cesk = evalState r . runCESK $ cesk
+evaluateCESK cesk = do
+  createdAt <- getNow
+  evalState (r createdAt) . runCESK $ cesk
  where
   r = mkRobot (Identity 0) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True
 
@@ -647,8 +654,8 @@ seedProgram minTime randTime thing =
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
 --   by placed entities.
-addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> m ()
-addSeedBot e (minT, maxT) loc =
+addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> TimeSpec -> m ()
+addSeedBot e (minT, maxT) loc ts =
   void $
     addURobot $
       mkRobot
@@ -666,6 +673,7 @@ addSeedBot e (minT, maxT) loc =
         []
         [(1, e)]
         True
+        ts
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
@@ -759,11 +767,13 @@ execConst c vs s k = do
       when (e `hasProperty` Growable) $ do
         let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
+        createdAt <- getNow
+
         if maxT == 0
           then -- Special case: if the time is zero, growth is instant.
             updateEntityAt loc (const (Just e))
           else -- Otherwise, grow a new entity from a seed.
-            addSeedBot e (minT, maxT) loc
+            addSeedBot e (minT, maxT) loc createdAt
 
       -- Add the picked up item to the robot's inventory.  If the
       -- entity yields something different, add that instead.
@@ -904,12 +914,24 @@ execConst c vs s k = do
         not (null recipes)
           `holdsOrFail` create ["There is no known recipe for making", indefinite name <> "."]
 
+        let displayMissingCount mc = \case
+              MissingInput -> from (show mc)
+              MissingCatalyst -> "not installed"
+            displayMissingIngredient (MissingIngredient mk mc me) =
+              "  - " <> me ^. entityName <> " (" <> displayMissingCount mc mk <> ")"
+            displayMissingIngredients xs = L.intercalate ["OR"] (map displayMissingIngredient <$> xs)
+
         -- Try recipes and make a weighted random choice among the
         -- ones we have ingredients for.
-        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) (rights (map (make (inv, ins)) recipes))
+        let (badRecipes, goodRecipes) = partitionEithers . map (make (inv, ins)) $ recipes
+        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) goodRecipes
         (invTaken, changeInv, recipe) <-
           chosenRecipe
-            `isJustOrFail` create ["You don't have the ingredients to make", indefinite name <> "."]
+            `isJustOrFail` create
+              [ "You don't have the ingredients to make"
+              , indefinite name <> "."
+              , "Missing:\n" <> T.unlines (displayMissingIngredients badRecipes)
+              ]
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
@@ -1284,6 +1306,7 @@ execConst c vs s k = do
 
         -- Pick a random display name.
         displayName <- randomName
+        createdAt <- getNow
 
         -- Construct the new robot and add it to the world.
         newRobot <-
@@ -1302,6 +1325,7 @@ execConst c vs s k = do
               (S.toList devices)
               []
               False
+              createdAt
 
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.

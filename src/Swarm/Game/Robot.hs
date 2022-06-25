@@ -41,6 +41,7 @@ module Swarm.Game.Robot (
   -- ** Lenses
   robotEntity,
   robotName,
+  robotCreatedAt,
   robotDisplay,
   robotLocation,
   robotOrientation,
@@ -79,6 +80,7 @@ import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Linear
+import System.Clock (TimeSpec)
 
 import Data.Yaml ((.!=), (.:), (.:?))
 import Swarm.Util.Yaml
@@ -146,6 +148,7 @@ data RobotR f = RobotR
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _tickSteps :: Int
+  , _robotCreatedAt :: TimeSpec
   }
 
 deriving instance Show (f RID) => Show (RobotR f)
@@ -183,6 +186,9 @@ type Robot = RobotR Identity
 --   can use 'robotName' instead of writing @'robotEntity'
 --   . 'entityName'@.
 robotEntity :: Lens' Robot Entity
+
+-- | The creation date of the robot.
+robotCreatedAt :: Lens' Robot TimeSpec
 
 -- | The name of a robot.  Note that unlike entities, robot names are
 --   expected to be globally unique
@@ -358,8 +364,10 @@ mkRobot ::
   [(Count, Entity)] ->
   -- | Should this be a system robot?
   Bool ->
+  -- | Creation date
+  TimeSpec ->
   RobotR f
-mkRobot rid pid name descr loc dir disp m devs inv sys =
+mkRobot rid pid name descr loc dir disp m devs inv sys ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -373,6 +381,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys =
     , _robotContext = RobotContext empty empty empty emptyStore
     , _robotID = rid
     , _robotParentID = pid
+    , _robotCreatedAt = ts
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
@@ -398,6 +407,7 @@ instance FromJSONE EntityMap URobot where
       <*> v ..:? "devices" ..!= []
       <*> v ..:? "inventory" ..!= []
       <*> liftE (v .:? "system" .!= False)
+      <*> pure 0
    where
     mkMachine Nothing = Out VUnit emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore

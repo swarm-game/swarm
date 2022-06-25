@@ -105,6 +105,7 @@ import Data.Text (Text)
 import qualified Data.Text as T (lines)
 import qualified Data.Text.IO as T (readFile)
 import Linear
+import qualified System.Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
 
@@ -583,17 +584,20 @@ scenarioToGameState scenario userSeed toRun g = do
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)
 
+  now <- System.Clock.getTime System.Clock.Monotonic
+  let robotList' = (robotCreatedAt .~ now) <$> robotList
+
   return $
     g
       { _creativeMode = scenario ^. scenarioCreative
       , _winCondition = theWinCondition
       , _winSolution = scenario ^. scenarioSolution
       , _runStatus = Running
-      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList
+      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList'
       , _robotsByLocation =
           M.fromListWith IS.union $
-            map (view robotLocation &&& (IS.singleton . view robotID)) robotList
-      , _activeRobots = setOf (traverse . robotID) robotList
+            map (view robotLocation &&& (IS.singleton . view robotID)) robotList'
+      , _activeRobots = setOf (traverse . robotID) robotList'
       , _availableCommands = Notifications 0 initialCommands
       , _waitingRobots = M.empty
       , _gensym = initGensym
