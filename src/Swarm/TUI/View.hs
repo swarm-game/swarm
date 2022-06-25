@@ -295,7 +295,11 @@ drawDialog s = case s ^. uiModal of
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
-generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
+generateModal s mt =
+  Modal
+    mt
+    (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
+    (withVScrollBars OnRight widget)
  where
   haltingMessage = case s ^. uiState . uiPrevMenu of
     NoMenu -> Just "Quit"
