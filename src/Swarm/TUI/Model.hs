@@ -82,6 +82,7 @@ module Swarm.TUI.Model (
   uiReplType,
   uiReplHistory,
   uiReplLast,
+  uiReplCursorLocation,
   uiInventory,
   uiMoreInfoTop,
   uiMoreInfoBot,
@@ -487,6 +488,7 @@ data UIState = UIState
   , _uiReplForm :: Form REPLPrompt AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
+  , _uiReplCursorLocation :: Location
   , _uiReplHistory :: REPLHistory
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiMoreInfoTop :: Bool
@@ -558,6 +560,9 @@ uiReplLast :: Lens' UIState Text
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
 uiReplHistory :: Lens' UIState REPLHistory
+
+-- | The current cursor location for the repl Form
+uiReplCursorLocation :: Lens' UIState Location
 
 -- | The hash value of the focused robot entity (so we can tell if its
 --   inventory changed) along with a list of the items in the
@@ -734,6 +739,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiReplType = Nothing
       , _uiReplHistory = newREPLHistory history
       , _uiReplLast = ""
+      , _uiReplCursorLocation = Location (2, 0)
       , _uiInventory = Nothing
       , _uiMoreInfoTop = False
       , _uiMoreInfoBot = False

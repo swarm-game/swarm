@@ -612,8 +612,7 @@ handleREPLEvent s EscapeKey =
     CmdPrompt _ -> continueWithoutRedraw s
     SearchPrompt _ _ ->
       continue $ resetWithREPLForm (mkReplForm $ CmdPrompt "") s
-handleREPLEvent s (LeftClick REPLPanel c r) = undefined
-
+handleREPLEvent s (LeftClick REPLPanel c r) = continue $ s & uiState . uiReplCursorLocation .~ Brick.Location (c, r)
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $
