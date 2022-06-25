@@ -182,7 +182,7 @@ recipeLevels recipes start = levels
 classicScenario :: ExceptT Text IO Scenario
 classicScenario = do
   entities <- loadEntities >>= guardRight "load entities"
-  loadScenario "data/scenarios/00-classic.yaml" entities
+  loadScenario "data/scenarios/classic.yaml" entities
 
 startingDevices :: Scenario -> Set Entity
 startingDevices = Set.fromList . map snd . E.elems . view installedDevices . setRobotID 0 . head . view scenarioRobots

@@ -105,44 +105,43 @@ time = \case
   sec = 10 ^ (6 :: Int)
 
 testScenarioSolution :: Bool -> EntityMap -> TestTree
-testScenarioSolution ci _em =
+testScenarioSolution _ci _em =
   testGroup
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution Default "02Tutorials/00-move"
-        , testSolution Default "02Tutorials/01-turn"
-        , testSolution Default "02Tutorials/02-types"
-        , testSolution Default "02Tutorials/03-craft"
-        , testSolution Default "02Tutorials/04-grab"
-        , testSolution Default "02Tutorials/05-place"
-        , testSolution Default "02Tutorials/06-bind"
-        , testSolution Default "02Tutorials/07-install"
-        , testSolution Default "02Tutorials/08-build"
-        , expectFailIf ci "Fails in CI, can not reproduce locally" $
-            testSolution' (Sec 60) "02Tutorials/09-crash" $ \g -> do
-              let rs = toList $ g ^. robotMap
-              let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
-              let win = isJust $ find hints rs
-              assertBool "Could not find a robot with winning instructions!" win
-        , testSolution Default "02Tutorials/10-scan"
+        [ testSolution Default "Tutorials/move"
+        , testSolution Default "Tutorials/turn"
+        , testSolution Default "Tutorials/types"
+        , testSolution Default "Tutorials/craft"
+        , testSolution Default "Tutorials/grab"
+        , testSolution Default "Tutorials/place"
+        , testSolution Default "Tutorials/bind"
+        , testSolution Default "Tutorials/install"
+        , testSolution Default "Tutorials/build"
+        , testSolution' Default "Tutorials/crash" $ \g -> do
+            let rs = toList $ g ^. robotMap
+            let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
+            let win = isJust $ find hints rs
+            assertBool "Could not find a robot with winning instructions!" win
+        , testSolution Default "Tutorials/scan"
         ]
     , testGroup
         "Challenges"
-        [ testSolution Default "03Challenges/01-chess_horse"
-        , testSolution Default "03Challenges/00-test"
-        , testSolution Default "03Challenges/03-teleport"
+        [ testSolution Default "Challenges/chess_horse"
+        , testSolution Default "Challenges/test"
+        , testSolution Default "Challenges/teleport"
         ]
     , testGroup
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
-            testSolution Default "04Testing/394-build-drill"
-        , testSolution Default "04Testing/428-drowning-destroy"
+            testSolution Default "Testing/394-build-drill"
+        , testSolution Default "Testing/428-drowning-destroy"
         ]
     ]
  where
-  expectFailIf :: Bool -> String -> TestTree -> TestTree
-  expectFailIf b = if b then expectFailBecause else (\_ x -> x)
+  -- expectFailIf :: Bool -> String -> TestTree -> TestTree
+  -- expectFailIf b = if b then expectFailBecause else (\_ x -> x)
 
   testSolution :: Time -> FilePath -> TestTree
   testSolution s p = testSolution' s p (const $ pure ())

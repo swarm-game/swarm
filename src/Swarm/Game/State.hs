@@ -657,4 +657,4 @@ initGameStateForScenario sceneName userSeed toRun = do
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.
 classicGame0 :: ExceptT Text IO GameState
-classicGame0 = initGameStateForScenario "00-classic" (Just 0) Nothing
+classicGame0 = initGameStateForScenario "classic" (Just 0) Nothing

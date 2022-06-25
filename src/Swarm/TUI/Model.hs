@@ -841,7 +841,7 @@ initAppState userSeed scenarioName toRun cheatMode = do
   case skipMenu of
     False -> return $ AppState gs ui
     True -> do
-      scenario <- loadScenario (fromMaybe "00-classic" scenarioName) (gs ^. entityMap)
+      scenario <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
       liftIO $ scenarioToAppState scenario userSeed toRun $ AppState gs ui
 
 -- XXX do we need to keep an old entity map around???

@@ -48,13 +48,14 @@ module Swarm.Game.Scenario (
 
 import Control.Arrow ((***))
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (filterM)
+import Control.Monad (filterM, unless, when)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Array
 import Data.Bifunctor (first)
-import Data.Char (isDigit, isSpace)
+import Data.Char (isSpace)
+import Data.List ((\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
@@ -256,12 +257,18 @@ scenarioItemName :: ScenarioItem -> Text
 scenarioItemName (SISingle s) = s ^. scenarioName
 scenarioItemName (SICollection name _) = name
 
--- | A scenario collection is a tree of scenarios, keyed by name.
-newtype ScenarioCollection = SC (Map FilePath ScenarioItem)
+-- | A scenario collection is a tree of scenarios, keyed by name,
+--   together with an optional order.  Invariant: every item in the
+--   scOrder exists as a key in the scMap.
+data ScenarioCollection = SC
+  { scOrder :: Maybe [FilePath]
+  , scMap :: Map FilePath ScenarioItem
+  }
 
 -- | Convert a scenario collection to a list of scenario items.
 scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
-scenarioCollectionToList (SC m) = M.elems m
+scenarioCollectionToList (SC Nothing m) = M.elems m
+scenarioCollectionToList (SC (Just order) m) = (m M.!) <$> order
 
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
@@ -269,15 +276,54 @@ loadScenarios em = runThrow $ do
   dataDir <- sendIO getDataDir
   loadScenarioDir em (dataDir </> "scenarios")
 
--- | Recursively load all scenarios from a particular directory.
+orderFileName :: FilePath
+orderFileName = "00-ORDER.txt"
+
+-- | Recursively load all scenarios from a particular directory, and also load
+--   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   EntityMap ->
   FilePath ->
   m ScenarioCollection
 loadScenarioDir em dir = do
+  let orderFile = dir </> orderFileName
+      dirName = takeBaseName dir
+  orderExists <- sendIO $ doesFileExist orderFile
+  morder <- case orderExists of
+    False -> do
+      when (dirName /= "Testing") $
+        sendIO . putStrLn $
+          "Warning: no " <> orderFileName <> " file found in " <> dirName
+            <> ", using alphabetical order"
+      return Nothing
+    True -> Just . lines <$> sendIO (readFile orderFile)
   fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
-  SC . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
+
+  case morder of
+    Just order -> do
+      let missing = fs \\ order
+          dangling = order \\ fs
+
+      unless (null missing) $
+        sendIO . putStr . unlines $
+          ( "Warning: while processing " <> (dirName </> orderFileName) <> ": files not listed in "
+              <> orderFileName
+              <> " will be ignored"
+          ) :
+          map ("  - " <>) missing
+
+      unless (null dangling) $
+        sendIO . putStr . unlines $
+          ( "Warning: while processing " <> (dirName </> orderFileName)
+              <> ": nonexistent files will be ignored"
+          ) :
+          map ("  - " <>) dangling
+    Nothing -> pure ()
+
+  -- Only keep the files from 00-ORDER.txt that actually exist.
+  let morder' = filter (`elem` fs) <$> morder
+  SC morder' . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
  where
   keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
 
@@ -290,7 +336,7 @@ loadScenarioItem ::
   m ScenarioItem
 loadScenarioItem em path = do
   isDir <- sendIO $ doesDirectoryExist path
-  let collectionName = into @Text . dropWhile isSpace . dropWhile isDigit . takeBaseName $ path
+  let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
     True -> SICollection collectionName <$> loadScenarioDir em path
     False -> SISingle <$> loadScenarioFile em path
