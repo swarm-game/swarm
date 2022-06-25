@@ -923,14 +923,14 @@ execConst c vs s k = do
 
         -- Try recipes and make a weighted random choice among the
         -- ones we have ingredients for.
-        let (recipesWithMissingIngredients, recipes') = partitionEithers . map (make (inv, ins)) $ recipes
-        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) recipes'
+        let (badRecipes, goodRecipes) = partitionEithers . map (make (inv, ins)) $ recipes
+        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) goodRecipes
         (invTaken, changeInv, recipe) <-
           chosenRecipe
             `isJustOrFail` create
               [ "You don't have the ingredients to make"
               , indefinite name <> "."
-              , "Missing:\n" <> T.unlines (displayMissingIngredients recipesWithMissingIngredients)
+              , "Missing:\n" <> T.unlines (displayMissingIngredients badRecipes)
               ]
 
         -- take recipe inputs from inventory and add outputs after recipeTime

@@ -34,7 +34,7 @@ module Swarm.Game.Recipe (
 
   -- * Looking up recipes
   MissingIngredient (..),
-  Missing (..),
+  MissingType (..),
   knowsIngredientsFor,
   recipesFor,
   make,
@@ -178,10 +178,10 @@ recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
 inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 inRecipeMap = buildRecipeMap recipeInputs
 
-data MissingIngredient = MissingIngredient Missing Count Entity
+data MissingIngredient = MissingIngredient MissingType Count Entity
   deriving (Show, Eq)
 
-data Missing = MissingInput | MissingCatalyst
+data MissingType = MissingInput | MissingCatalyst
   deriving (Show, Eq)
 
 -- | Figure out which ingredients (if any) are lacking from an
