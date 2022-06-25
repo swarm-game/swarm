@@ -24,7 +24,7 @@ import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (
 import Control.Monad (forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
-import Data.Either (rights)
+import Data.Either (partitionEithers, rights)
 import Data.Foldable (traverse_)
 import qualified Data.Functor.Const as F
 import Data.Int (Int64)
@@ -914,12 +914,20 @@ execConst c vs s k = do
         not (null recipes)
           `holdsOrFail` create ["There is no known recipe for making", indefinite name <> "."]
 
+        let displayMissingIngredient (ic, ie) = "- " <> ie ^. entityName <> " (" <> from (show ic) <> ")"
+            displayMissingIngredients xs = L.intercalate ["OR"] (map displayMissingIngredient <$> xs)
+
         -- Try recipes and make a weighted random choice among the
         -- ones we have ingredients for.
-        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) (rights (map (make (inv, ins)) recipes))
+        let (recipesWithMissingIngredients, recipes') = partitionEithers . map (make (inv, ins)) $ recipes
+        chosenRecipe <- weightedChoice (^. _3 . recipeWeight) recipes'
         (invTaken, changeInv, recipe) <-
           chosenRecipe
-            `isJustOrFail` create ["You don't have the ingredients to make", indefinite name <> "."]
+            `isJustOrFail` create
+              [ "You don't have the ingredients to make"
+              , indefinite name <> "."
+              , "Missing:\n" <> T.unlines (displayMissingIngredients recipesWithMissingIngredients)
+              ]
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
