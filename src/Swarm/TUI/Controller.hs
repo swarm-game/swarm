@@ -100,6 +100,9 @@ pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 pattern EscapeKey :: BrickEvent n e
 pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
 
+pattern LeftClick :: Name -> Int -> Int -> BrickEvent Name e
+pattern LeftClick n c r = MouseDown n V.BLeft [] (Brick.Location (c, r))
+
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
@@ -609,6 +612,8 @@ handleREPLEvent s EscapeKey =
     CmdPrompt _ -> continueWithoutRedraw s
     SearchPrompt _ _ ->
       continue $ resetWithREPLForm (mkReplForm $ CmdPrompt "") s
+handleREPLEvent s (LeftClick REPLPanel c r) = undefined
+
 handleREPLEvent s ev = do
   f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
   continue $
