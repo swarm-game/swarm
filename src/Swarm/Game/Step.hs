@@ -914,7 +914,11 @@ execConst c vs s k = do
         not (null recipes)
           `holdsOrFail` create ["There is no known recipe for making", indefinite name <> "."]
 
-        let displayMissingIngredient (ic, ie) = "- " <> ie ^. entityName <> " (" <> from (show ic) <> ")"
+        let displayMissingCount mc = \case
+              MissingInput -> from (show mc)
+              MissingCatalyst -> "not installed"
+            displayMissingIngredient (MissingIngredient mk mc me) =
+              "- " <> me ^. entityName <> " (" <> displayMissingCount mc mk <> ")"
             displayMissingIngredients xs = L.intercalate ["OR"] (map displayMissingIngredient <$> xs)
 
         -- Try recipes and make a weighted random choice among the
