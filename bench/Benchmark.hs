@@ -72,7 +72,7 @@ circlerProgram =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> V2 Int64 -> URobot
-initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False
+initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
