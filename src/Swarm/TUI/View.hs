@@ -46,7 +46,6 @@ import Control.Arrow ((&&&))
 import Control.Lens hiding (Const, from)
 import Data.Array (range)
 import qualified Data.Foldable as F
-import Data.Int (Int64)
 import qualified Data.IntMap as IM
 import qualified Data.List as L
 import Data.List.NonEmpty (NonEmpty (..))
@@ -354,8 +353,7 @@ robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
       $ map (padLeftRight 1) <$> (headers : robotsTable)
   headers =
     withAttr robotAttr
-      <$> [ txt " "
-          , txt "Name"
+      <$> [ txt "Name"
           , txt "Age"
           , txt "Position"
           , txt "Inventory"
@@ -364,35 +362,43 @@ robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
           ]
   robotsTable = mkRobotRow <$> robots
   mkRobotRow robot =
-    [ displayEntity (robot ^. robotEntity)
-    , txt $ robot ^. robotName
+    [ nameWidget
     , txt $ from ageStr
-    , txt $ showLoc (robot ^. robotLocation)
+    , locWidget
     , padRight (Pad 1) (txt $ from $ show rInvCount)
-    , txt rStatus
+    , statusWidget
     , txt rLog
     ]
    where
-    TimeSpec createdAtSec _ = robot ^. robotCreatedAt
-    TimeSpec nowSec _ = s ^. uiState . lastFrameTime
-    age = nowSec - createdAtSec
+    nameWidget = hBox [displayEntity (robot ^. robotEntity), txt $ " " <> robot ^. robotName]
+
     ageStr
       | age < 60 = show age <> "sec"
       | age < 3600 = show (age `div` 60) <> "min"
       | age < 3600 * 24 = show (age `div` 3600) <> "hour"
       | otherwise = show (age `div` 3600 * 24) <> "day"
+     where
+      TimeSpec createdAtSec _ = robot ^. robotCreatedAt
+      TimeSpec nowSec _ = s ^. uiState . lastFrameTime
+      age = nowSec - createdAtSec
+
     rInvCount = sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory
     rLog
       | robot ^. robotLogUpdated = "x"
       | otherwise = " "
-    showLoc :: V2 Int64 -> Text
-    showLoc (V2 x y) = from (show x) <> " " <> from (show y)
-    rStatus :: Text
-    rStatus = case robot ^. machine of
-      Waiting {} -> "waiting"
+
+    locWidget = hBox [worldCell, txt $ " " <> locStr]
+     where
+      rloc@(V2 x y) = robot ^. robotLocation
+      worldCell = snd $ drawCell (hiding g) (g ^. world) (W.locToCoords rloc)
+      locStr = from (show x) <> " " <> from (show y)
+
+    statusWidget = case robot ^. machine of
+      Waiting {} -> txt "waiting"
       _
-        | isActive robot -> "working"
-        | otherwise -> "idle"
+        | isActive robot -> withAttr notifAttr $ txt "busy"
+        | otherwise -> withAttr greenAttr $ txt "idle"
+
   basePos :: V2 Double
   basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? robotMap . ix 0 . robotLocation)
   -- Keep the base and non sytem robot (e.g. no seed)
