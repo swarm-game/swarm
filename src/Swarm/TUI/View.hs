@@ -379,7 +379,8 @@ availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox $ addHea
   (vp, widgetList, addHeader) = case nl of
     RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe, id)
     CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand, (padLeftRight 18 constHeader :))
-  renderRecipe = padLeftRight 18 . drawRecipe Nothing Nothing
+  renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
+  inv = gs ^? to focusedRobot . _Just . robotInventory
   renderCommand = padLeftRight 18 . drawConst
 
 mkAvailableList :: GameState -> Lens' GameState (Notifications a) -> (a -> Widget Name) -> [Widget Name]
@@ -652,7 +653,7 @@ explainRecipes s e
       , padLeftRight 2 $
           hCenter $
             vBox $
-              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) (Just inv)) recipes
+              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
       ]
  where
   recipes = recipesWith s e
@@ -677,8 +678,8 @@ recipesWith s e =
 
 -- | Draw an ASCII art representation of a recipe.  For now, the
 --   weight is not shown.
-drawRecipe :: Maybe Entity -> Maybe Inventory -> Recipe Entity -> Widget Name
-drawRecipe me minv (Recipe ins outs reqs time _weight) =
+drawRecipe :: Maybe Entity -> Inventory -> Recipe Entity -> Widget Name
+drawRecipe me inv (Recipe ins outs reqs time _weight) =
   vBox
     -- any requirements (e.g. furnace) go on top.
     [ hCenter $ drawReqs reqs
@@ -720,9 +721,7 @@ drawRecipe me minv (Recipe ins outs reqs time _weight) =
                 )
       ]
    where
-    missing = case minv of
-      Just inv -> E.lookup ingr inv < n
-      Nothing -> False
+    missing = E.lookup ingr inv < n
 
   drawOut i (n, ingr) =
     hBox
