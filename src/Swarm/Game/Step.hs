@@ -918,7 +918,7 @@ execConst c vs s k = do
               MissingInput -> from (show mc)
               MissingCatalyst -> "not installed"
             displayMissingIngredient (MissingIngredient mk mc me) =
-              "- " <> me ^. entityName <> " (" <> displayMissingCount mc mk <> ")"
+              "  - " <> me ^. entityName <> " (" <> displayMissingCount mc mk <> ")"
             displayMissingIngredients xs = L.intercalate ["OR"] (map displayMissingIngredient <$> xs)
 
         -- Try recipes and make a weighted random choice among the
