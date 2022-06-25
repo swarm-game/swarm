@@ -33,6 +33,8 @@ module Swarm.Game.Recipe (
   inRecipeMap,
 
   -- * Looking up recipes
+  MissingIngredient (..),
+  MissingType (..),
   knowsIngredientsFor,
   recipesFor,
   make,
@@ -176,14 +178,21 @@ recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
 inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 inRecipeMap = buildRecipeMap recipeInputs
 
+data MissingIngredient = MissingIngredient MissingType Count Entity
+  deriving (Show, Eq)
+
+data MissingType = MissingInput | MissingCatalyst
+  deriving (Show, Eq)
+
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
 --   Requirements are not consumed and so can use installed.
-missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [(Count, Entity)]
+missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [MissingIngredient]
 missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
-  findLacking inv inps
-    <> findLacking ins (findLacking inv reqs)
+  mkMissing MissingInput (findLacking inv inps)
+    <> mkMissing MissingCatalyst (findLacking ins (findLacking inv reqs))
  where
+  mkMissing k = map (uncurry (MissingIngredient k))
   findLacking inven = filter ((> 0) . fst) . map (countNeeded inven)
   countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
 
@@ -207,7 +216,7 @@ make ::
   -- failure (with count of missing) or success with a new inventory,
   -- a function to add results and the recipe repeated
   Either
-    [(Count, Entity)]
+    [MissingIngredient]
     (Inventory, Inventory -> Inventory, Recipe Entity)
 make invs r = finish <$> make' invs r
  where
@@ -215,7 +224,7 @@ make invs r = finish <$> make' invs r
   addOuts out inv' = foldl' (flip $ uncurry insertCount) inv' out
 
 -- | Try to make a recipe, but do not insert it yet.
-make' :: (Inventory, Inventory) -> Recipe Entity -> Either [(Count, Entity)] (Inventory, IngredientList Entity)
+make' :: (Inventory, Inventory) -> Recipe Entity -> Either [MissingIngredient] (Inventory, IngredientList Entity)
 make' invs@(inv, _) r =
   case missingIngredientsFor invs r of
     [] ->

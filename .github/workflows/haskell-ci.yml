@@ -23,7 +23,7 @@
 #
 name: Haskell-CI
 on:
-  push: 
+  push:
     paths:
       - '**.hs'
       - '**.sw'
@@ -31,6 +31,9 @@ on:
       - '*.yaml'
       - 'data/**.yaml'
       - 'cabal.project*'
+      - '.github/workflows/haskell-ci.yml'
+    branches:
+      - "main"
   # reuse the same filter for pull-requests
   pull_request:
     paths:
@@ -41,6 +44,9 @@ on:
       - '*.yaml'
       - 'data/**.yaml'
       - 'cabal.project*'
+      - '.github/workflows/haskell-ci.yml'
+    branches:
+      - "main"
 jobs:
   linux:
     name: Haskell-CI - Linux - ${{ matrix.compiler }}
