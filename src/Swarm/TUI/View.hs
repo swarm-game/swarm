@@ -57,6 +57,7 @@ import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
+import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
@@ -299,7 +300,7 @@ drawDialog s = case s ^. uiState . uiModal of
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
   HelpModal -> helpWidget
-  RobotsModal -> robotsListWidget (s ^. gameState)
+  RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
@@ -340,8 +341,8 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             )
       GoalModal _ -> (" Goal ", Nothing, 80)
 
-robotsListWidget :: GameState -> Widget Name
-robotsListWidget g = viewport RobotsViewport Vertical (hCenter table)
+robotsListWidget :: AppState -> Widget Name
+robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
  where
   table =
     BT.renderTable
@@ -350,16 +351,25 @@ robotsListWidget g = viewport RobotsViewport Vertical (hCenter table)
       . BT.alignRight 2
       . BT.table
       $ (headers : robotsTable)
-  headers = withAttr robotAttr <$> [txt "Name", txt "Position", txt "Inventory", txt "Status", txt "Log"]
+  headers = withAttr robotAttr <$> [txt "Name", txt "Age", txt "Position", txt "Inventory", txt "Status", txt "Log"]
   robotsTable = mkRobotRow <$> robots
   mkRobotRow robot =
     [ txt $ robot ^. robotName
+    , txt $ from ageStr
     , txt $ showLoc (robot ^. robotLocation)
     , padRight (Pad 1) (txt $ from $ show rInvCount)
     , txt rStatus
     , txt rLog
     ]
    where
+    TimeSpec createdAtSec _ = robot ^. robotCreatedAt
+    TimeSpec nowSec _ = s ^. uiState . lastFrameTime
+    age = nowSec - createdAtSec
+    ageStr
+      | age < 60 = show age <> "sec"
+      | age < 3600 = show (age `div` 60) <> "min"
+      | age < 3600 * 24 = show (age `div` 3600) <> "hour"
+      | otherwise = show (age `div` 3600 * 24) <> "day"
     rInvCount = sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory
     rLog
       | robot ^. robotLogUpdated = "x"
@@ -383,7 +393,7 @@ robotsListWidget g = viewport RobotsViewport Vertical (hCenter table)
     filter (\robot -> isRelevant robot && isNear robot)
       . IM.elems
       $ g ^. robotMap
-
+  g = s ^. gameState
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
  where
