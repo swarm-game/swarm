@@ -27,7 +27,6 @@ module Swarm.TUI.Model (
   Modal (..),
   modalType,
   modalDialog,
-  modalWidget,
   MainMenuEntry (..),
   mainMenu,
   Menu (..),
@@ -117,6 +116,7 @@ module Swarm.TUI.Model (
   infoScroll,
   recipesScroll,
   commandsScroll,
+  robotsScroll,
 
   -- * App state
   AppState,
@@ -212,6 +212,8 @@ data Name
     RecipesViewport
   | -- | The scrollable viewport for the commands list.
     CommandsViewport
+  | -- | The scrollable viewport for the robots list.
+    RobotsViewport
   deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
@@ -222,6 +224,9 @@ recipesScroll = viewportScroll RecipesViewport
 
 commandsScroll :: ViewportScroll Name
 commandsScroll = viewportScroll CommandsViewport
+
+robotsScroll :: ViewportScroll Name
+robotsScroll = viewportScroll RobotsViewport
 
 ------------------------------------------------------------
 -- REPL History
@@ -405,6 +410,7 @@ data ModalType
   = HelpModal
   | RecipesModal
   | CommandsModal
+  | RobotsModal
   | WinModal
   | QuitModal
   | DescriptionModal Entity
@@ -417,7 +423,6 @@ data ButtonSelection = Cancel | Confirm
 data Modal = Modal
   { _modalType :: ModalType
   , _modalDialog :: Dialog ButtonSelection
-  , _modalWidget :: Widget Name
   }
 
 makeLenses ''Modal

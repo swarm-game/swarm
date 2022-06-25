@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
@@ -55,6 +56,7 @@ import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Linear
+import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
@@ -68,6 +70,7 @@ import Brick.Widgets.Dialog
 import qualified Brick.Widgets.List as BL
 import qualified Brick.Widgets.Table as BT
 
+import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
@@ -184,7 +187,7 @@ drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $
 --   main layer and a layer for a floating dialog that can be on top.
 drawGameUI :: AppState -> [Widget Name]
 drawGameUI s =
-  [ drawDialog (s ^. uiState)
+  [ drawDialog s
   , joinBorders $
       hBox
         [ hLimitPercent 25 $
@@ -288,54 +291,126 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
   requiredWidth = 2 + maximum (textWidth <$> T.lines err)
 
 -- | Draw the error dialog window, if it should be displayed right now.
-drawDialog :: UIState -> Widget Name
-drawDialog s = case s ^. uiModal of
-  Just (Modal _ d w) -> renderDialog d w
-  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
+drawDialog :: AppState -> Widget Name
+drawDialog s = case s ^. uiState . uiModal of
+  Just (Modal mt d) -> renderDialog d (withVScrollBars OnRight $ drawModal s mt)
+  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiState . uiError)
+
+drawModal :: AppState -> ModalType -> Widget Name
+drawModal s = \case
+  HelpModal -> helpWidget
+  RobotsModal -> robotsListWidget s
+  RecipesModal -> availableListWidget (s ^. gameState) RecipeList
+  CommandsModal -> availableListWidget (s ^. gameState) CommandList
+  WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
+  DescriptionModal e -> descriptionWidget s e
+  QuitModal -> padBottom (Pad 1) $ hCenter $ txt quitMsg
+  GoalModal g -> padLeftRight 1 (displayParagraphs g)
+
+quitMsg :: Text
+quitMsg = "Are you sure you want to quit this game and return to the menu?"
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
-generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth)) widget
+generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
   haltingMessage = case s ^. uiState . uiPrevMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
   descriptionWidth = 100
-  (title, widget, buttons, requiredWidth) =
+  (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
-      RecipesModal ->
-        ( "Available Recipes"
-        , availableListWidget (s ^. gameState) RecipeList
-        , Nothing
-        , descriptionWidth
-        )
-      CommandsModal ->
-        ( "Available Commands"
-        , availableListWidget (s ^. gameState) CommandList
-        , Nothing
-        , descriptionWidth
-        )
+      HelpModal -> (" Help ", Nothing, maxModalWindowWidth)
+      RobotsModal -> ("Robots", Nothing, descriptionWidth)
+      RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
+      CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       WinModal ->
-        let winMsg = "Congratulations!"
-            continueMsg = "Keep playing"
+        let continueMsg = "Keep playing"
             stopMsg = fromMaybe "Pick the next game" haltingMessage
          in ( ""
-            , padBottom (Pad 1) $ hCenter $ txt winMsg
             , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
             , length continueMsg + length stopMsg + 32
             )
-      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, descriptionWidth)
+      DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
-        let quitMsg = "Are you sure you want to quit this game and return to the menu?"
-            stopMsg = fromMaybe "Quit to menu" haltingMessage
+        let stopMsg = fromMaybe "Quit to menu" haltingMessage
          in ( ""
-            , padBottom (Pad 1) $ hCenter $ txt quitMsg
             , Just (0, [("Keep playing", Cancel), (stopMsg, Confirm)])
             , T.length quitMsg + 4
             )
-      GoalModal g -> (" Goal ", padLeftRight 1 (displayParagraphs g), Nothing, 80)
+      GoalModal _ -> (" Goal ", Nothing, 80)
 
+robotsListWidget :: AppState -> Widget Name
+robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
+ where
+  table =
+    BT.renderTable
+      . BT.columnBorders False
+      . BT.setDefaultColAlignment BT.AlignCenter
+      -- Inventory count is right aligned
+      . BT.alignRight 4
+      . BT.table
+      $ map (padLeftRight 1) <$> (headers : robotsTable)
+  headers =
+    withAttr robotAttr
+      <$> [ txt "Name"
+          , txt "Age"
+          , txt "Position"
+          , txt "Inventory"
+          , txt "Status"
+          , txt "Log"
+          ]
+  robotsTable = mkRobotRow <$> robots
+  mkRobotRow robot =
+    [ nameWidget
+    , txt $ from ageStr
+    , locWidget
+    , padRight (Pad 1) (txt $ from $ show rInvCount)
+    , statusWidget
+    , txt rLog
+    ]
+   where
+    nameWidget = hBox [displayEntity (robot ^. robotEntity), txt $ " " <> robot ^. robotName]
+
+    ageStr
+      | age < 60 = show age <> "sec"
+      | age < 3600 = show (age `div` 60) <> "min"
+      | age < 3600 * 24 = show (age `div` 3600) <> "hour"
+      | otherwise = show (age `div` 3600 * 24) <> "day"
+     where
+      TimeSpec createdAtSec _ = robot ^. robotCreatedAt
+      TimeSpec nowSec _ = s ^. uiState . lastFrameTime
+      age = nowSec - createdAtSec
+
+    rInvCount = sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory
+    rLog
+      | robot ^. robotLogUpdated = "x"
+      | otherwise = " "
+
+    locWidget = hBox [worldCell, txt $ " " <> locStr]
+     where
+      rloc@(V2 x y) = robot ^. robotLocation
+      worldCell = snd $ drawCell (hiding g) (g ^. world) (W.locToCoords rloc)
+      locStr = from (show x) <> " " <> from (show y)
+
+    statusWidget = case robot ^. machine of
+      Waiting {} -> txt "waiting"
+      _
+        | isActive robot -> withAttr notifAttr $ txt "busy"
+        | otherwise -> withAttr greenAttr $ txt "idle"
+
+  basePos :: V2 Double
+  basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? robotMap . ix 0 . robotLocation)
+  -- Keep the base and non sytem robot (e.g. no seed)
+  isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
+  -- Keep the robot that are less than 32 unit away from the base
+  isNear robot = distance (realToFrac <$> robot ^. robotLocation) basePos < 32
+  robots :: [Robot]
+  robots =
+    filter (\robot -> isRelevant robot && isNear robot)
+      . IM.elems
+      $ g ^. robotMap
+  g = s ^. gameState
 helpWidget :: Widget Name
 helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
  where
@@ -348,7 +423,9 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
   toWidgets (k, v) = [txt k, txt v]
   glKeyBindings =
     [ ("F1", "Help")
-    , ("F2", "Available recipes")
+    , ("F2", "Robots list")
+    , ("F3", "Available recipes")
+    , ("F4", "Available commands")
     , ("Ctrl-q", "quit the game")
     , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
@@ -453,9 +530,9 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [(NoHighlight, "F1", "help")]
-      <> notificationKey availableRecipes "F2" "Recipes"
-      <> notificationKey availableCommands "F3" "Commands"
+    [(NoHighlight, "F1", "help"), (NoHighlight, "F2", "robots")]
+      <> notificationKey availableRecipes "F3" "Recipes"
+      <> notificationKey availableCommands "F4" "Commands"
       <> [(NoHighlight, "Tab", "cycle")]
       <> [(NoHighlight, "^v", "creative") | cheat]
       <> [(NoHighlight, "^g", "goal") | goal]
