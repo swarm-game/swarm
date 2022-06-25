@@ -346,15 +346,26 @@ robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
  where
   table =
     BT.renderTable
+      . BT.columnBorders False
       . BT.setDefaultColAlignment BT.AlignCenter
       -- Inventory count is right aligned
-      . BT.alignRight 2
+      . BT.alignRight 4
       . BT.table
-      $ (headers : robotsTable)
-  headers = withAttr robotAttr <$> [txt "Name", txt "Age", txt "Position", txt "Inventory", txt "Status", txt "Log"]
+      $ map (padLeftRight 1) <$> (headers : robotsTable)
+  headers =
+    withAttr robotAttr
+      <$> [ txt " "
+          , txt "Name"
+          , txt "Age"
+          , txt "Position"
+          , txt "Inventory"
+          , txt "Status"
+          , txt "Log"
+          ]
   robotsTable = mkRobotRow <$> robots
   mkRobotRow robot =
-    [ txt $ robot ^. robotName
+    [ displayEntity (robot ^. robotEntity)
+    , txt $ robot ^. robotName
     , txt $ from ageStr
     , txt $ showLoc (robot ^. robotLocation)
     , padRight (Pad 1) (txt $ from $ show rInvCount)
