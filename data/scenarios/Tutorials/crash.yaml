@@ -88,7 +88,7 @@ robots:
       attr: grass
     system: true
     program: |
-      run "data/scenarios/02Tutorials/09-secret.sw"
+      run "data/scenarios/Tutorials/secret.sw"
 world:
   default: [blank, none]
   palette:
