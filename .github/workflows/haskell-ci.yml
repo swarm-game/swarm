@@ -31,6 +31,7 @@ on:
       - '*.yaml'
       - 'data/**.yaml'
       - 'cabal.project*'
+      - '.github/workflows/haskell-ci.yml'
     branches:
       - "main"
   # reuse the same filter for pull-requests
@@ -43,6 +44,7 @@ on:
       - '*.yaml'
       - 'data/**.yaml'
       - 'cabal.project*'
+      - '.github/workflows/haskell-ci.yml'
     branches:
       - "main"
 jobs:
