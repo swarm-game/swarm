@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
@@ -186,7 +187,7 @@ drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $
 --   main layer and a layer for a floating dialog that can be on top.
 drawGameUI :: AppState -> [Widget Name]
 drawGameUI s =
-  [ drawDialog (s ^. uiState)
+  [ drawDialog s
   , joinBorders $
       hBox
         [ hLimitPercent 25 $
@@ -290,58 +291,54 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
   requiredWidth = 2 + maximum (textWidth <$> T.lines err)
 
 -- | Draw the error dialog window, if it should be displayed right now.
-drawDialog :: UIState -> Widget Name
-drawDialog s = case s ^. uiModal of
-  Just (Modal _ d w) -> renderDialog d w
-  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiError)
+drawDialog :: AppState -> Widget Name
+drawDialog s = case s ^. uiState . uiModal of
+  Just (Modal mt d) -> renderDialog d (withVScrollBars OnRight $ drawModal s mt)
+  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiState . uiError)
+
+drawModal :: AppState -> ModalType -> Widget Name
+drawModal s = \case
+  HelpModal -> helpWidget
+  RobotsModal -> robotsListWidget (s ^. gameState)
+  RecipesModal -> availableListWidget (s ^. gameState) RecipeList
+  CommandsModal -> availableListWidget (s ^. gameState) CommandList
+  WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
+  DescriptionModal e -> descriptionWidget s e
+  QuitModal -> padBottom (Pad 1) $ hCenter $ txt quitMsg
+  GoalModal g -> padLeftRight 1 (displayParagraphs g)
+
+quitMsg :: Text
+quitMsg = "Are you sure you want to quit this game and return to the menu?"
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
-generateModal s mt =
-  Modal
-    mt
-    (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
-    (withVScrollBars OnRight widget)
+generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
   haltingMessage = case s ^. uiState . uiPrevMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
   descriptionWidth = 100
-  (title, widget, buttons, requiredWidth) =
+  (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", helpWidget, Nothing, maxModalWindowWidth)
-      RobotsModal -> ("Robots", robotsListWidget (s ^. gameState), Nothing, descriptionWidth)
-      RecipesModal ->
-        ( "Available Recipes"
-        , availableListWidget (s ^. gameState) RecipeList
-        , Nothing
-        , descriptionWidth
-        )
-      CommandsModal ->
-        ( "Available Commands"
-        , availableListWidget (s ^. gameState) CommandList
-        , Nothing
-        , descriptionWidth
-        )
+      HelpModal -> (" Help ", Nothing, maxModalWindowWidth)
+      RobotsModal -> ("Robots", Nothing, descriptionWidth)
+      RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
+      CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       WinModal ->
-        let winMsg = "Congratulations!"
-            continueMsg = "Keep playing"
+        let continueMsg = "Keep playing"
             stopMsg = fromMaybe "Pick the next game" haltingMessage
          in ( ""
-            , padBottom (Pad 1) $ hCenter $ txt winMsg
             , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
             , length continueMsg + length stopMsg + 32
             )
-      DescriptionModal e -> (descriptionTitle e, descriptionWidget s e, Nothing, descriptionWidth)
+      DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
-        let quitMsg = "Are you sure you want to quit this game and return to the menu?"
-            stopMsg = fromMaybe "Quit to menu" haltingMessage
+        let stopMsg = fromMaybe "Quit to menu" haltingMessage
          in ( ""
-            , padBottom (Pad 1) $ hCenter $ txt quitMsg
             , Just (0, [("Keep playing", Cancel), (stopMsg, Confirm)])
             , T.length quitMsg + 4
             )
-      GoalModal g -> (" Goal ", padLeftRight 1 (displayParagraphs g), Nothing, 80)
+      GoalModal _ -> (" Goal ", Nothing, 80)
 
 robotsListWidget :: GameState -> Widget Name
 robotsListWidget g = viewport RobotsViewport Vertical (hCenter table)

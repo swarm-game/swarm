@@ -27,7 +27,6 @@ module Swarm.TUI.Model (
   Modal (..),
   modalType,
   modalDialog,
-  modalWidget,
   MainMenuEntry (..),
   mainMenu,
   Menu (..),
@@ -424,7 +423,6 @@ data ButtonSelection = Cancel | Confirm
 data Modal = Modal
   { _modalType :: ModalType
   , _modalDialog :: Dialog ButtonSelection
-  , _modalWidget :: Widget Name
   }
 
 makeLenses ''Modal
