@@ -51,7 +51,7 @@ data ProcessedTerm
       -- ^ Capabilities required by the term
       CapCtx
       -- ^ Capability context for any definitions embedded in the term
-  deriving (Data, Show, Generic, ToJSON)
+  deriving (Data, Show, Eq, Generic)
 
 instance FromJSON ProcessedTerm where
   parseJSON = withText "Term" tryProcess
@@ -61,6 +61,9 @@ instance FromJSON ProcessedTerm where
       Left err -> fail $ "Could not parse term: " ++ from err
       Right Nothing -> fail "Term was only whitespace"
       Right (Just pt) -> return pt
+
+instance ToJSON ProcessedTerm where
+  toJSON (ProcessedTerm t _ _ _) = String $ prettyText t
 
 -- | Given a 'Text' value representing a Swarm program,
 --
