@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -25,6 +26,7 @@ import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
 import Data.Yaml as Y
+import GHC.Generics (Generic)
 import Witch
 
 import Swarm.Language.Context
@@ -48,7 +50,7 @@ data ProcessedTerm
       -- ^ Requirements of the term
       ReqCtx
       -- ^ Capability context for any definitions embedded in the term
-  deriving (Data, Show)
+  deriving (Data, Show, Generic, ToJSON)
 
 instance FromJSON ProcessedTerm where
   parseJSON = withText "Term" tryProcess

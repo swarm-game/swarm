@@ -1,5 +1,4 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -45,6 +44,7 @@ import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Generics (Generic)
 import Witch
 
 import Data.Yaml
@@ -74,7 +74,10 @@ data Recipe e = Recipe
   , _recipeTime :: Integer
   , _recipeWeight :: Integer
   }
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
+
+deriving instance ToJSON (Recipe Entity)
+deriving instance FromJSON (Recipe Entity)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Recipe
 
