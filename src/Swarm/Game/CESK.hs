@@ -379,6 +379,7 @@ instance Eq WorldUpdate where _ == _ = True
 
 instance Eq RobotUpdate where _ == _ = True
 
+-- TODO: remove these instances once Update fields are concret
 instance FromJSON WorldUpdate where parseJSON _ = pure $ WorldUpdate $ \w -> Right w
 instance ToJSON WorldUpdate where toJSON _ = Data.Aeson.Null
 instance FromJSON RobotUpdate where parseJSON _ = pure $ RobotUpdate id

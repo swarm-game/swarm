@@ -288,6 +288,7 @@ data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
   , entitiesByCap :: Map Capability [Entity]
   }
+  deriving (Generic, FromJSON, ToJSON)
 
 instance Semigroup EntityMap where
   EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)

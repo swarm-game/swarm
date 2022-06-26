@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -26,6 +27,7 @@ import Data.Data (Data)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Yaml as Y
+import GHC.Generics (Generic)
 import Witch
 
 import Swarm.Language.Capability
@@ -49,7 +51,7 @@ data ProcessedTerm
       -- ^ Capabilities required by the term
       CapCtx
       -- ^ Capability context for any definitions embedded in the term
-  deriving (Data, Show)
+  deriving (Data, Show, Generic, ToJSON)
 
 instance FromJSON ProcessedTerm where
   parseJSON = withText "Term" tryProcess
