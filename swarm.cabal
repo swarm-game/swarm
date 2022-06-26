@@ -189,6 +189,7 @@ test-suite swarm-unit
                       tasty-quickcheck              >= 0.10 && < 0.11,
                       QuickCheck                    >= 2.14 && < 2.15,
                       -- Imports shared with the library don't need bounds
+                      aeson,
                       base,
                       containers,
                       filepath,

@@ -8,13 +8,17 @@ module Main where
 import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Aeson (eitherDecode, encode)
+import Data.Either
 import Data.Hashable
 import Data.List (subsequences)
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Maybe
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Linear
 import Test.QuickCheck qualified as QC
 import Test.QuickCheck.Poly qualified as QC
@@ -181,9 +185,21 @@ parser =
                 )
             )
         ]
+    , testGroup
+        "json encoding"
+        [ testCase "simple expr" (roundTrip "42 + 43")
+        , testCase "module def" (roundTrip "def x = 41 end; def y = 42 end")
+        ]
     ]
  where
   valid = flip process ""
+
+  roundTrip txt = assertEqual "rountrip" term (decodeThrow $ encode term)
+   where
+    decodeThrow v = case eitherDecode v of
+      Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
+      Right x -> x
+    term = fromMaybe (error "") $ fromRight (error "") $ processTerm txt
 
   process :: Text -> Text -> Assertion
   process code expect = case processTerm code of
