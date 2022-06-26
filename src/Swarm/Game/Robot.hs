@@ -83,6 +83,7 @@ import Linear
 import System.Clock (TimeSpec)
 
 import Data.Yaml ((.!=), (.:), (.:?))
+import Swarm.Util ()
 import Swarm.Util.Yaml
 
 import Swarm.Game.CESK
@@ -153,11 +154,6 @@ data RobotR f = RobotR
   deriving (Generic)
 
 deriving instance Show (f RID) => Show (RobotR f)
-deriving instance FromJSON (f RID) => FromJSON (RobotR f)
-deriving instance ToJSON (f RID) => ToJSON (RobotR f)
-
-deriving instance FromJSON TimeSpec
-deriving instance ToJSON TimeSpec
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
