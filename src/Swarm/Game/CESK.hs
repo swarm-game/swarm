@@ -91,7 +91,7 @@ module Swarm.Game.CESK (
 
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
-import qualified Data.Aeson
+import Data.Aeson qualified
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
@@ -180,7 +180,7 @@ type Cont = [Frame]
 type Loc = Int
 
 -- | 'Store' represents a store, indexing integer locations to 'Cell's.
-data Store = Store {next :: Loc, mu :: IntMap Cell} deriving (Show, Eq)
+data Store = Store {next :: Loc, mu :: IntMap Cell} deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 -- | A memory cell can be in one of three states.
 data Cell
@@ -204,7 +204,7 @@ data Cell
     --   the 'Cell', so that subsequent lookups can just use it
     --   without recomputing anything.
     V Value
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
@@ -263,7 +263,7 @@ data CESK
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
     Waiting Integer CESK
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
