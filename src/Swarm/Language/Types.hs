@@ -76,6 +76,7 @@ module Swarm.Language.Types (
 
 import Control.Unification
 import Control.Unification.IntVar
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Foldable (fold)
 import Data.Functor.Fixedpoint
@@ -85,7 +86,7 @@ import Data.Set qualified as S
 import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Generics (Generic1)
+import GHC.Generics (Generic, Generic1)
 import Witch
 
 import Swarm.Language.Context
@@ -108,7 +109,7 @@ data BaseTy
     BBool
   | -- | Robots.
     BRobot
-  deriving (Eq, Ord, Show, Data)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
@@ -131,7 +132,7 @@ data TypeF t
     TyProdF t t
   | -- | Function type.
     TyFunF t t
-  deriving (Show, Eq, Functor, Foldable, Traversable, Generic1, Unifiable, Data)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Unifiable, Data, FromJSON, ToJSON)
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
 --   annoying to manually apply and match against 'Fix' constructors
@@ -200,7 +201,7 @@ type UCtx = Ctx UPolytype
 -- | A @Poly t@ is a universally quantified @t@.  The variables in the
 --   list are bound inside the @t@.  For example, the type @forall
 --   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
-data Poly t = Forall [Var] t deriving (Show, Eq, Functor, Data)
+data Poly t = Forall [Var] t deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
 
 -- | A polytype without unification variables.
 type Polytype = Poly Type
@@ -366,3 +367,8 @@ pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
 
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty1 = UTerm (TyDelayF ty1)
+
+-- Derive aeson instances for type serialization
+deriving instance Generic Type
+deriving instance ToJSON Type
+deriving instance FromJSON Type

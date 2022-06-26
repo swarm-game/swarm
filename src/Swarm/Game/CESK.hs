@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -88,9 +90,12 @@ module Swarm.Game.CESK (
 ) where
 
 import Control.Lens.Combinators (pattern Empty)
+import Data.Aeson (FromJSON, ToJSON)
+import qualified Data.Aeson
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
+import GHC.Generics (Generic)
 import Witch (from)
 
 import Swarm.Game.Entity (Entity, Inventory)
@@ -163,7 +168,7 @@ data Frame
     FImmediate WorldUpdate RobotUpdate
   | -- | Update the memory cell at a certain location with the computed value.
     FUpdate Loc
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
@@ -373,3 +378,8 @@ instance Show RobotUpdate where show _ = "RobotUpdate {???}"
 instance Eq WorldUpdate where _ == _ = True
 
 instance Eq RobotUpdate where _ == _ = True
+
+instance FromJSON WorldUpdate where parseJSON _ = pure $ WorldUpdate $ \w -> Right w
+instance ToJSON WorldUpdate where toJSON _ = Data.Aeson.Null
+instance FromJSON RobotUpdate where parseJSON _ = pure $ RobotUpdate id
+instance ToJSON RobotUpdate where toJSON _ = Data.Aeson.Null

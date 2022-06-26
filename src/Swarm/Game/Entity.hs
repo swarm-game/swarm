@@ -475,7 +475,7 @@ data Inventory = Inventory
     -- and not having it as a key in the map at all.
     inventoryHash :: Int
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 instance Hashable Inventory where
   -- Just return cached hash value.
