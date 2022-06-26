@@ -69,6 +69,7 @@ import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
 import Control.Monad (forM, unless, when)
 import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
+import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.List (maximumBy, partition)
@@ -89,6 +90,7 @@ import Linear (V2)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import Paths_swarm (getDataDir)
+import System.Clock (TimeSpec)
 import System.Directory (
   XdgDirectory (XdgData),
   createDirectoryIfMissing,
@@ -273,6 +275,12 @@ commaList ts = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
 
 deriving instance ToJSON (V2 Int64)
 deriving instance FromJSON (V2 Int64)
+
+deriving instance FromJSONKey (V2 Int64)
+deriving instance ToJSONKey (V2 Int64)
+
+deriving instance FromJSON TimeSpec
+deriving instance ToJSON TimeSpec
 
 ------------------------------------------------------------
 -- Validation utilities
