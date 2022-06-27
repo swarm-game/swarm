@@ -208,8 +208,6 @@ handleMainEvent s = \case
     ReadGoal g -> toggleModal s (GoalModal g) >>= continue
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
-  CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
-  Key V.KBackTab -> continue $ s & uiState . uiFocusRing %~ focusPrev
   -- special keys that work on all panels
   MetaKey 'w' -> setFocus s WorldPanel
   MetaKey 'e' -> setFocus s RobotPanel
