@@ -41,7 +41,9 @@ module Swarm.Game.Scenario (
   loadScenario,
   ScenarioCollection (..),
   scenarioCollectionToList,
-  ScenarioItem (..), _SISingle, _SICollection,
+  ScenarioItem (..),
+  _SISingle,
+  _SICollection,
   scenarioItemName,
   loadScenarios,
 ) where
@@ -360,4 +362,3 @@ loadScenarioFile em fileName = do
 ------------------------------------------------------------
 
 makePrisms ''ScenarioItem
-

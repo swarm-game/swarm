@@ -108,16 +108,14 @@ handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppStat
 handleEvent s
   | s ^. uiState . uiPlaying = handleMainEvent s
   | otherwise = case s ^. uiState . uiMenu of
-
-      -- If we reach the NoMenu case when uiPlaying is False, just
-      -- quit the app.  We should actually never reach this code (the
-      -- quitGame function would have already halted the app).
-      NoMenu -> \_ -> halt s
-
-      MainMenu l -> handleMainMenuEvent l s
-      NewGameMenu l -> handleNewGameMenuEvent l s
-      TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
-      AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
+    -- If we reach the NoMenu case when uiPlaying is False, just
+    -- quit the app.  We should actually never reach this code (the
+    -- quitGame function would have already halted the app).
+    NoMenu -> \_ -> halt s
+    MainMenu l -> handleMainMenuEvent l s
+    NewGameMenu l -> handleNewGameMenuEvent l s
+    TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
+    AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
@@ -144,23 +142,23 @@ handleMainMenuEvent menu s = \case
 -- | Load a 'Scenario' and start playing the game.
 startGame :: Scenario -> AppState -> EventM Name (Next AppState)
 startGame scene s = do
-  continue =<<
-    liftIO (
-      scenarioToAppState
-        scene
-        Nothing
-        Nothing
-
-        ( case s ^. uiState . uiMenu of
-            NewGameMenu (curMenu :| _) ->
-              let nextMenuList = BL.listMoveDown curMenu
-                  nextScenario
-                    | BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1) =
-                      Nothing
-                    | otherwise = BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
-               in s & uiState . uiNextScenario .~ nextScenario
-            _ -> s & uiState . uiNextScenario .~ Nothing
-        ))
+  continue
+    =<< liftIO
+      ( scenarioToAppState
+          scene
+          Nothing
+          Nothing
+          ( case s ^. uiState . uiMenu of
+              NewGameMenu (curMenu :| _) ->
+                let nextMenuList = BL.listMoveDown curMenu
+                    nextScenario
+                      | BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1) =
+                        Nothing
+                      | otherwise = BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
+                 in s & uiState . uiNextScenario .~ nextScenario
+              _ -> s & uiState . uiNextScenario .~ Nothing
+          )
+      )
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
