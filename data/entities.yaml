@@ -376,7 +376,7 @@
   - A bit is used to represent the smallest possible amount of information.
     Useful for constructing various information-processing devices, as well as drills.
   properties: [portable, growable]
-  growth: [1000, 1500]
+  growth: [200, 400]
 
 - name: bit (1)
   display:
