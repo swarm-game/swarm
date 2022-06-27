@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -49,12 +50,13 @@ import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import qualified Data.Vector as V
+import Data.Set qualified as S
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Data.Vector qualified as V
 import Linear
 import System.Clock
 import Witch (into)
@@ -63,12 +65,12 @@ import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Dialog
-import qualified Brick.Widgets.List as BL
-import qualified Graphics.Vty as V
+import Brick.Widgets.List qualified as BL
+import Graphics.Vty qualified as V
 
 import Brick.Widgets.List (handleListEvent)
-import qualified Control.Carrier.Lift as Fused
-import qualified Control.Carrier.State.Lazy as Fused
+import Control.Carrier.Lift qualified as Fused
+import Control.Carrier.State.Lazy qualified as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -76,7 +78,7 @@ import Swarm.Game.Scenario (ScenarioCollection, ScenarioItem (..), scenarioColle
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
