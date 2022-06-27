@@ -53,6 +53,8 @@ data Capability
     CSelfdestruct
   | -- | Execute the 'Grab' command
     CGrab
+  | -- | Execute the 'Harvest' command
+    CHarvest
   | -- | Execute the 'Place' command
     CPlace
   | -- | Execute the 'Give' command
@@ -269,6 +271,7 @@ constCaps = \case
   Move -> Just CMove
   Turn -> Just CTurn
   Grab -> Just CGrab
+  Harvest -> Just CHarvest
   Place -> Just CPlace
   Give -> Just CGive
   Install -> Just CInstall

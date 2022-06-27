@@ -440,6 +440,7 @@ inferConst c = toU $ case c of
   Move -> [tyQ| cmd () |]
   Turn -> [tyQ| dir -> cmd () |]
   Grab -> [tyQ| cmd string |]
+  Harvest -> [tyQ| cmd string |]
   Place -> [tyQ| string -> cmd () |]
   Give -> [tyQ| robot -> string -> cmd () |]
   Install -> [tyQ| robot -> string -> cmd () |]
