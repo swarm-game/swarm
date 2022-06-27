@@ -95,15 +95,13 @@ drawUI :: AppState -> [Widget Name]
 drawUI s
   | s ^. uiState . uiPlaying = drawGameUI s
   | otherwise = case s ^. uiState . uiMenu of
-
-      -- We should never reach the NoMenu case if uiPlaying is false; we would have
-      -- quit the app instead.  But just in case, we display the main menu anyway.
-      NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
-
-      MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
-      NewGameMenu stk -> [drawNewGameMenuUI stk]
-      TutorialMenu -> [drawTutorialMenuUI]
-      AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+    -- We should never reach the NoMenu case if uiPlaying is false; we would have
+    -- quit the app instead.  But just in case, we display the main menu anyway.
+    NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
+    MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+    NewGameMenu stk -> [drawNewGameMenuUI stk]
+    TutorialMenu -> [drawTutorialMenuUI]
+    AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI logo l =
@@ -315,10 +313,10 @@ drawModal s = \case
 
 quitMsg :: Menu -> Text
 quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress will be lost!"
-  where
-    quitAction = case m of
-      NoMenu -> "quit"
-      _ -> "quit and return to the menu"
+ where
+  quitAction = case m of
+    NoMenu -> "quit"
+    _ -> "quit and return to the menu"
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
