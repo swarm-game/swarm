@@ -43,7 +43,6 @@ module Swarm.Game.Scenario (
   scenarioCollectionToList,
   ScenarioItem (..),
   _SISingle,
-  _SICollection,
   scenarioItemName,
   loadScenarios,
 ) where
