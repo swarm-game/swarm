@@ -72,7 +72,7 @@ import qualified Control.Carrier.State.Lazy as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioCollection, ScenarioItem (..), scenarioCollectionToList)
+import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), scenarioCollectionToList, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -105,12 +105,19 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleEvent s = case s ^. uiState . uiMenu of
-  NoMenu -> handleMainEvent s
-  MainMenu l -> handleMainMenuEvent l s
-  NewGameMenu l -> handleNewGameMenuEvent l s
-  TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
-  AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
+handleEvent s
+  | s ^. uiState . uiPlaying = handleMainEvent s
+  | otherwise = case s ^. uiState . uiMenu of
+
+      -- If we reach the NoMenu case when uiPlaying is False, just
+      -- quit the app.  We should actually never reach this code (the
+      -- quitGame function would have already halted the app).
+      NoMenu -> \_ -> halt s
+
+      MainMenu l -> handleMainMenuEvent l s
+      NewGameMenu l -> handleNewGameMenuEvent l s
+      TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
+      AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
@@ -134,20 +141,37 @@ handleMainMenuEvent menu s = \case
     continue $ s & uiState . uiMenu .~ MainMenu menu'
   _ -> continueWithoutRedraw s
 
+-- | Load a 'Scenario' and start playing the game.
+startGame :: Scenario -> AppState -> EventM Name (Next AppState)
+startGame scene s = do
+  continue =<<
+    liftIO (
+      scenarioToAppState
+        scene
+        Nothing
+        Nothing
+
+        ( case s ^. uiState . uiMenu of
+            NewGameMenu (curMenu :| _) ->
+              let nextMenuList = BL.listMoveDown curMenu
+                  nextScenario
+                    | BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1) =
+                      Nothing
+                    | otherwise = BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
+               in s & uiState . uiNextScenario .~ nextScenario
+            _ -> s & uiState . uiNextScenario .~ Nothing
+        ))
+
+-- | If we are in a New Game menu, advance the menu to the next item in order.
+advanceMenu :: Menu -> Menu
+advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown
+
 handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw s
-      Just (SISingle scene) -> do
-        let nextMenu
-              -- Go back to the scenario list
-              | null rest = NewGameMenu scenarioStack
-              -- Advance to the next tutorial or challenge
-              | otherwise = NewGameMenu (BL.listMoveDown curMenu :| rest)
-
-        s' <- liftIO $ scenarioToAppState scene Nothing Nothing (s & uiState . uiPrevMenu .~ nextMenu)
-        continue s'
+      Just (SISingle scene) -> startGame scene s
       Just (SICollection _ c) ->
         continue $
           s & uiState . uiMenu .~ NewGameMenu (NE.cons (mkScenarioList (s ^. uiState . uiCheatMode) c) scenarioStack)
@@ -185,7 +209,10 @@ handleMainEvent s = \case
       toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
     | otherwise -> runFrameUI s
   -- ctrl-q works everywhere
-  ControlKey 'q' -> toggleModal s QuitModal >>= continue
+  ControlKey 'q' ->
+    case s ^. gameState . winCondition of
+      Won _ -> toggleModal s WinModal >>= continue
+      _ -> toggleModal s QuitModal >>= continue
   VtyEvent (V.EvResize _ _) -> do
     invalidateCacheEntry WorldCache
     continue s
@@ -295,7 +322,8 @@ handleModalEvent s = \case
   V.EvKey V.KEnter [] -> do
     s' <- toggleModal s QuitModal
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
-      Just (Just Confirm) -> quitGame s'
+      Just (Just QuitButton) -> quitGame s'
+      Just (Just (NextButton scene)) -> startGame scene s'
       _ -> continue s'
   ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
@@ -309,17 +337,12 @@ handleModalEvent s = \case
 --   history to a @.swarm_history@ file, and return to the previous menu.
 quitGame :: AppState -> EventM Name (Next AppState)
 quitGame s = do
-  let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
+  let history = s ^. uiState . uiReplHistory
+      hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
-  case s ^. uiState . uiPrevMenu of
+  case s ^. uiState . uiMenu of
     NoMenu -> halt s
-    menu ->
-      let s' =
-            s & uiState . uiReplHistory %~ restartREPLHistory
-              & uiState . uiMenu .~ menu
-       in continue s'
- where
-  history = s ^. uiState . uiReplHistory
+    _ -> continue $ s & uiState . uiPlaying .~ False
 
 ------------------------------------------------------------
 -- Handling Frame events
@@ -538,6 +561,7 @@ updateUI = do
         gameState . winCondition .= Won True
         s <- get
         uiState . uiModal .= Just (generateModal s WinModal)
+        uiState . uiMenu %= advanceMenu
         return True
       _ -> return False
 

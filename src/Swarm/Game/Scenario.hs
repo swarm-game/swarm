@@ -41,7 +41,7 @@ module Swarm.Game.Scenario (
   loadScenario,
   ScenarioCollection (..),
   scenarioCollectionToList,
-  ScenarioItem (..),
+  ScenarioItem (..), _SISingle, _SICollection,
   scenarioItemName,
   loadScenarios,
 ) where
@@ -354,3 +354,10 @@ loadScenarioFile em fileName = do
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
     Right c -> return c
+
+------------------------------------------------------------
+-- Some lenses + prisms
+------------------------------------------------------------
+
+makePrisms ''ScenarioItem
+

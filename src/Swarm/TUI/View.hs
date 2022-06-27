@@ -92,12 +92,18 @@ import Swarm.Util
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
 drawUI :: AppState -> [Widget Name]
-drawUI s = case s ^. uiState . uiMenu of
-  NoMenu -> drawGameUI s
-  MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
-  NewGameMenu stk -> [drawNewGameMenuUI stk]
-  TutorialMenu -> [drawTutorialMenuUI]
-  AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+drawUI s
+  | s ^. uiState . uiPlaying = drawGameUI s
+  | otherwise = case s ^. uiState . uiMenu of
+
+      -- We should never reach the NoMenu case if uiPlaying is false; we would have
+      -- quit the app instead.  But just in case, we display the main menu anyway.
+      NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
+
+      MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+      NewGameMenu stk -> [drawNewGameMenuUI stk]
+      TutorialMenu -> [drawTutorialMenuUI]
+      AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI logo l =
@@ -304,17 +310,21 @@ drawModal s = \case
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
-  QuitModal -> padBottom (Pad 1) $ hCenter $ txt quitMsg
+  QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal g -> padLeftRight 1 (displayParagraphs g)
 
-quitMsg :: Text
-quitMsg = "Are you sure you want to quit this game and return to the menu?"
+quitMsg :: Menu -> Text
+quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress will be lost!"
+  where
+    quitAction = case m of
+      NoMenu -> "quit"
+      _ -> "quit and return to the menu"
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
-  haltingMessage = case s ^. uiState . uiPrevMenu of
+  haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
   descriptionWidth = 100
@@ -325,18 +335,25 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       WinModal ->
-        let continueMsg = "Keep playing"
-            stopMsg = fromMaybe "Pick the next game" haltingMessage
+        let nextMsg = "Next challenge!"
+            stopMsg = fromMaybe "Return to the menu" haltingMessage
+            continueMsg = "Keep playing"
          in ( ""
-            , Just (0, [(stopMsg, Confirm), (continueMsg, Cancel)])
-            , length continueMsg + length stopMsg + 32
+            , Just
+                ( 0
+                , [(nextMsg, NextButton scene) | Just scene <- [s ^. uiState . uiNextScenario]]
+                  ++ [ (stopMsg, QuitButton)
+                     , (continueMsg, CancelButton)
+                     ]
+                )
+            , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
         let stopMsg = fromMaybe "Quit to menu" haltingMessage
          in ( ""
-            , Just (0, [("Keep playing", Cancel), (stopMsg, Confirm)])
-            , T.length quitMsg + 4
+            , Just (0, [("Keep playing", CancelButton), (stopMsg, QuitButton)])
+            , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
       GoalModal _ -> (" Goal ", Nothing, 80)
 
