@@ -81,6 +81,7 @@ import Swarm.Game.Value (Value (VUnit), prettyValue)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
@@ -612,6 +613,12 @@ handleREPLEvent s = \case
         Just found ->
           let newform = mkReplForm $ SearchPrompt ftext (removeEntry found rh)
            in s & uiState . uiReplForm .~ newform
+  CharKey '\t' -> do
+    let formSt = s ^. uiState . uiReplForm . to formState
+        newform = mkReplForm $ formSt & promptTextL %~ tabComplete s
+    continue $
+      s & uiState . uiReplForm .~ newform
+        & validateREPLForm
   EscapeKey ->
     case s ^. uiState . uiReplForm . to formState of
       CmdPrompt _ -> continueWithoutRedraw s
@@ -625,6 +632,20 @@ handleREPLEvent s = \case
         SearchPrompt t _ ->
           let newform = set promptUpdateL t (s ^. uiState)
            in s & uiState . uiReplForm .~ newform
+
+-- | Try to complete the last word in a partially entered REPL prompt using
+--   things reserved words and names in scope.
+tabComplete :: AppState -> Text -> Text
+tabComplete _ "" = ""
+tabComplete s t = case matches of
+  [] -> t
+  [m] -> T.append t (T.drop (T.length lastWord) m)
+  _ms -> t -- Should do something better here!
+ where
+  lastWord = last (T.words t)
+  names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
+  possibleWords = reservedWords ++ names
+  matches = filter (lastWord `T.isPrefixOf`) possibleWords
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
