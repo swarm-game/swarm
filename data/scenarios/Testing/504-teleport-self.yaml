@@ -1,0 +1,37 @@
+name: Teleport self in win condition check
+description: |
+  `teleport self` did not work in the win condition check.
+  https://github.com/swarm-game/swarm/issues/504
+win: |
+  try {
+    create "tree"; place "tree";
+    teleport self (5,0);
+    ishere "tree"
+  } { return false }
+solution: |
+  place "tree"
+robots:
+  - name: base
+    loc: [5,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - grabber
+    inventory:
+    - [1, tree]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌──────┐
+    │......│
+    └──────┘
