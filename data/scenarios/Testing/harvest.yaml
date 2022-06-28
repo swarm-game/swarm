@@ -1,0 +1,36 @@
+name: Test harvest command
+description: Test the difference between the grab and harvest commands.
+win: |
+  try {
+    teleport self (1,0);
+    t1 <- ishere "tree";
+    teleport self (2,0);
+    t2 <- ishere "tree";
+    return (t1 && not t2)
+  } { return false }
+solution: |
+  move; harvest; move; grab
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - harvester
+      - grabber
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    'T': [stone, tree]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │.TT│
+    └───┘
