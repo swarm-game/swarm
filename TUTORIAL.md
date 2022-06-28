@@ -57,11 +57,8 @@ You should then be greeted by a screen that looks something like this:
 The little white `Ω` in the middle represents your base. You will
 need to [explore](./TUTORIAL.md#exploring) to find out what all the `?` are.
 
-Start by clicking with the mouse to focus each of the available panels
-(the REPL, the info panel, the inventory panel, and the world panel;
-you can also use keyboard shortcuts <kbd>Meta</kbd>+<kbd>R</kbd>,
-<kbd>Meta</kbd>+<kbd>T</kbd>, <kbd>Meta</kbd>+<kbd>E</kbd>, and
-<kbd>Meta</kbd>+<kbd>W</kbd> respectively),
+Start by clicking with the mouse to focus on your inventory
+(you can also use the keyboard shortcut <kbd>Meta</kbd>+<kbd>E</kbd>)
 and read about the various devices installed on your base.
 
 There is a lot to take in at first so feel free to just skim; this tutorial
