@@ -585,7 +585,7 @@ handleREPLEvent s = \case
 
     if not $ s ^. gameState . replWorking
       then continue $ case entry of
-        CmdPrompt uinput ->
+        CmdPrompt uinput _ ->
           case processTerm' topTypeCtx topCapCtx uinput of
             Right mt ->
               maybe id startBaseProgram mt
@@ -595,18 +595,18 @@ handleREPLEvent s = \case
             Left err -> s & uiState . uiError ?~ err
         SearchPrompt t hist ->
           case lastEntry t hist of
-            Nothing -> s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
+            Nothing -> s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
             Just found
-              | T.null t -> s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
+              | T.null t -> s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
               | otherwise ->
-                s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt found)
+                s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
                   & validateREPLForm
       else continueWithoutRedraw s
   Key V.KUp -> continue $ s & adjReplHistIndex Older
   Key V.KDown -> continue $ s & adjReplHistIndex Newer
   ControlKey 'r' -> continue $
     case s ^. uiState . uiReplForm . to formState of
-      CmdPrompt uinput ->
+      CmdPrompt uinput _ ->
         let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
          in s & uiState . uiReplForm .~ newform
       SearchPrompt ftext rh -> case lastEntry ftext rh of
@@ -616,44 +616,61 @@ handleREPLEvent s = \case
            in s & uiState . uiReplForm .~ newform
   CharKey '\t' -> do
     let formSt = s ^. uiState . uiReplForm . to formState
-        newform = mkReplForm $ formSt & promptTextL %~ tabComplete s
+        newform = mkReplForm $ tabComplete s formSt
     continue $
       s & uiState . uiReplForm .~ newform
         & validateREPLForm
   EscapeKey ->
     case s ^. uiState . uiReplForm . to formState of
-      CmdPrompt _ -> continueWithoutRedraw s
+      CmdPrompt {} -> continueWithoutRedraw s
       SearchPrompt _ _ ->
-        continue $ s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
+        continue $ s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
   ev -> do
     f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
     continue $
       case formState f' of
-        CmdPrompt _ -> validateREPLForm (s & uiState . uiReplForm .~ f')
+        CmdPrompt {} -> validateREPLForm (s & uiState . uiReplForm .~ f')
         SearchPrompt t _ ->
           let newform = set promptUpdateL t (s ^. uiState)
            in s & uiState . uiReplForm .~ newform
 
+-- | Predicate to test for characters which can be part of a valid
+--   identifier: alphanumeric, underscore, or single quote.
+isIdentChar :: Char -> Bool
+isIdentChar c = isAlphaNum c || c == '_' || c == '\''
+
+-- | @replaceLast r t@ replaces the last word of @t@ with @r@.
+--
+-- >>> replaceLast "foo" "bar baz quux"
+-- "bar baz foo"
+-- >>> replaceLast "move" "(make"
+-- "(move"
+replaceLast :: Text -> Text -> Text
+replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
+
 -- | Try to complete the last word in a partially entered REPL prompt using
 --   things reserved words and names in scope.
-tabComplete :: AppState -> Text -> Text
-tabComplete _ "" = ""
-tabComplete s t = case matches of
-  [] -> t
-  [m] -> T.append t (T.drop (T.length lastWord) m)
-  _ms -> t -- Should do something better here!
+tabComplete :: AppState -> REPLPrompt -> REPLPrompt
+tabComplete _ p@(SearchPrompt {}) = p
+tabComplete _ (CmdPrompt "" []) = CmdPrompt "" []
+tabComplete s (CmdPrompt t []) = case matches of
+  [] -> CmdPrompt t []
+  [m] -> CmdPrompt (completeWith m) []
+  (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
-  lastWord = T.takeWhileEnd (\c -> isAlphaNum c || c == '_' || c == '\'') t
+  completeWith m = T.append t (T.drop (T.length lastWord) m)
+  lastWord = T.takeWhileEnd isIdentChar t
   names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
   matches = filter (lastWord `T.isPrefixOf`) possibleWords
+tabComplete _ (CmdPrompt t (m : ms)) = CmdPrompt (replaceLast m t) (ms ++ [m])
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
-    CmdPrompt uinput ->
+    CmdPrompt uinput _ ->
       let result = processTerm' topTypeCtx topCapCtx uinput
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
@@ -683,7 +700,7 @@ adjReplHistIndex d s =
 
   replLast = s ^. uiState . uiReplLast
   saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState . promptTextL)
-  showNewEntry = uiState . uiReplForm %~ updateFormState (CmdPrompt newEntry)
+  showNewEntry = uiState . uiReplForm %~ updateFormState (mkCmdPrompt newEntry)
   -- get REPL data
   getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
   oldEntry = getCurrEntry s
