@@ -317,12 +317,6 @@ look at them and see what recipes they enable!
 
 ![Make a log](images/tutorial/log.png)
 
-By this time you may also notice that the tree has grown back (whether
-it has finished growing back depends on how long you took to read the
-intervening tutorial, and on the random number generator).  Some items
-in the world will regrow after they have been harvested, and some will
-not.
-
 Debugging and cleaning up
 -------------------------
 
