@@ -57,8 +57,11 @@ You should then be greeted by a screen that looks something like this:
 The little white `Ω` in the middle represents your base. You will
 need to [explore](./TUTORIAL.md#exploring) to find out what all the `?` are.
 
-Start by using the <kbd>Tab</kbd> key to cycle through the four panels
-(the REPL, the info panel, the inventory panel, and the world panel),
+Start by clicking with the mouse to focus each of the available panels
+(the REPL, the info panel, the inventory panel, and the world panel;
+you can also use keyboard shortcuts <kbd>Meta</kbd>+<kbd>R</kbd>,
+<kbd>Meta</kbd>+<kbd>T</kbd>, <kbd>Meta</kbd>+<kbd>E</kbd>, and
+<kbd>Meta</kbd>+<kbd>W</kbd> respectively),
 and read about the various devices installed on your base.
 
 There is a lot to take in at first so feel free to just skim; this tutorial
@@ -68,7 +71,7 @@ Building your first robot
 -------------------------
 
 Pretty much the only thing you can do at this point is build robots.  Let's build
-one!  Tab back to the REPL (or hit the <kbd>Meta</kbd>+<kbd>R</kbd>
+one!  Make sure the REPL is focused again (by clicking it, or using the <kbd>Meta</kbd>+<kbd>R</kbd>
 shortcut) and type
 ```
 build {move}
@@ -233,7 +236,7 @@ still be executed by `base`.)  The name of your robot will likely be
 different than `sleepy_austin`; otherwise unnamed robots are given
 randomly chosen names.  To return to viewing `base` and its inventory,
 you can type `view base` at the prompt, or focus the world panel
-(either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
+(either by clicking or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
 <kbd>C</kbd>.  If you ever want to view the other robot again, you can
 type `view r`: the variable `r` will be in scope at the REPL prompt
 from now on.
@@ -275,7 +278,7 @@ inventory:
 ![Scan a tree](images/tutorial/scantree.png)
 
 Apparently those things are trees!  Although you do not actually have
-any trees yet, you can tab over to your inventory to read about them.
+any trees yet, you can highlight them in your inventory to read about them.
 In the bottom left corner you will see a description of trees along
 with some *recipes* involving trees.  There is only one recipe,
 showing that we can use a tree to construct two branches and a log.
