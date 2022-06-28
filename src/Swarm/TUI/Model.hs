@@ -89,6 +89,7 @@ module Swarm.TUI.Model (
   uiError,
   uiModal,
   uiGoal,
+  uiWinMessage,
   lgTicksPerSecond,
   lastFrameTime,
   accumulatedTime,
@@ -160,7 +161,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative (Applicative (liftA2))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, scenarioGoal)
+import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, scenarioGoal, scenarioWinMessage)
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
@@ -508,6 +509,7 @@ data UIState = UIState
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiGoal :: GoalStatus
+  , _uiWinMessage :: Maybe [Text]
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
   , _uiInventoryShouldUpdate :: Bool
@@ -598,6 +600,10 @@ uiModal :: Lens' UIState (Maybe Modal)
 -- | Status of the scenario goal: whether there is one, and whether it
 --   has been displayed to the user initially.
 uiGoal :: Lens' UIState GoalStatus
+
+-- | An optional message that should be shown to the player when they
+--   complete the current scenario.
+uiWinMessage :: Lens' UIState (Maybe [Text])
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -754,6 +760,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiError = Nothing
       , _uiModal = Nothing
       , _uiGoal = NoGoal
+      , _uiWinMessage = Nothing
       , _uiShowFPS = False
       , _uiShowZero = True
       , _uiInventoryShouldUpdate = False
@@ -861,6 +868,7 @@ scenarioToUIState scene u =
     u
       & uiMenu .~ NoMenu
       & uiGoal .~ maybe NoGoal UnreadGoal (scene ^. scenarioGoal)
+      & uiWinMessage .~ scene ^. scenarioWinMessage
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiShowFPS .~ False

@@ -302,7 +302,11 @@ drawModal s = \case
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
-  WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
+  WinModal ->
+    maybe
+      (padBottom (Pad 1) . hCenter . txt $ "Congratulations!")
+      (padLeftRight 1 . displayParagraphs)
+      (s ^. uiState . uiWinMessage)
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt quitMsg
   GoalModal g -> padLeftRight 1 (displayParagraphs g)

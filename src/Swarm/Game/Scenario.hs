@@ -35,6 +35,7 @@ module Swarm.Game.Scenario (
   scenarioWorld,
   scenarioRobots,
   scenarioWin,
+  scenarioWinMessage,
   scenarioSolution,
 
   -- * Loading from disk
@@ -96,6 +97,7 @@ data Scenario = Scenario
   , _scenarioWorld :: Seed -> WorldFun Int Entity
   , _scenarioRobots :: [URobot]
   , _scenarioWin :: Maybe ProcessedTerm
+  , _scenarioWinMessage :: Maybe [Text]
   , _scenarioSolution :: Maybe ProcessedTerm
   }
 
@@ -115,6 +117,7 @@ instance FromJSONE EntityMap Scenario where
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
       <*> liftE (v .:? "win")
+      <*> liftE ((fmap . fmap . map) reflow (v .:? "winmessage"))
       <*> liftE (v .:? "solution")
 
 -- | The name of the scenario.
@@ -153,6 +156,10 @@ scenarioRobots :: Lens' Scenario [URobot]
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
 scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
+
+-- | An optional custom message to show when the player completes the
+--   scenario.
+scenarioWinMessage :: Lens' Scenario (Maybe [Text])
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
