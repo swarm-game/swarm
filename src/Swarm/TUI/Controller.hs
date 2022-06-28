@@ -71,6 +71,7 @@ import Graphics.Vty qualified as V
 import Brick.Widgets.List (handleListEvent)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
+import Data.Char (isAlphaNum)
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -642,7 +643,7 @@ tabComplete s t = case matches of
   [m] -> T.append t (T.drop (T.length lastWord) m)
   _ms -> t -- Should do something better here!
  where
-  lastWord = last (T.words t)
+  lastWord = T.takeWhileEnd (\c -> isAlphaNum c || c == '_' || c == '\'') t
   names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
   matches = filter (lastWord `T.isPrefixOf`) possibleWords
