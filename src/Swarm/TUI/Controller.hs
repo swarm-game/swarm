@@ -53,7 +53,6 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
-import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Vector qualified as V
@@ -71,7 +70,6 @@ import Graphics.Vty qualified as V
 import Brick.Widgets.List (handleListEvent)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
-import Data.Char (isAlphaNum)
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -633,20 +631,6 @@ handleREPLEvent s = \case
         SearchPrompt t _ ->
           let newform = set promptUpdateL t (s ^. uiState)
            in s & uiState . uiReplForm .~ newform
-
--- | Predicate to test for characters which can be part of a valid
---   identifier: alphanumeric, underscore, or single quote.
-isIdentChar :: Char -> Bool
-isIdentChar c = isAlphaNum c || c == '_' || c == '\''
-
--- | @replaceLast r t@ replaces the last word of @t@ with @r@.
---
--- >>> replaceLast "foo" "bar baz quux"
--- "bar baz foo"
--- >>> replaceLast "move" "(make"
--- "(move"
-replaceLast :: Text -> Text -> Text
-replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
 
 -- | Try to complete the last word in a partially entered REPL prompt using
 --   things reserved words and names in scope.

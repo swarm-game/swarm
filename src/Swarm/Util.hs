@@ -31,6 +31,10 @@ module Swarm.Util (
   getSwarmHistoryPath,
   readAppData,
 
+  -- * Text utilities
+  isIdentChar,
+  replaceLast,
+
   -- * English language utilities
   reflow,
   quote,
@@ -66,6 +70,7 @@ import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
 import Control.Monad (forM, unless, when)
+import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.Map (Map)
@@ -164,6 +169,31 @@ readAppData = do
           )
   M.fromList . mapMaybe sequenceA
     <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+
+------------------------------------------------------------
+-- Some Text-y stuff
+
+-- | Predicate to test for characters which can be part of a valid
+--   identifier: alphanumeric, underscore, or single quote.
+--
+-- >>> isIdentChar 'A' && isIdentChar 'b' && isIdentChar '9'
+-- True
+-- >>> isIdentChar '_' && isIdentChar '\''
+-- True
+-- >>> isIdentChar '$' || isIdentChar '.' || isIdentChar ' '
+-- False
+isIdentChar :: Char -> Bool
+isIdentChar c = isAlphaNum c || c == '_' || c == '\''
+
+-- | @replaceLast r t@ replaces the last word of @t@ with @r@.
+--
+-- >>> :set -XOverloadedStrings
+-- >>> replaceLast "foo" "bar baz quux"
+-- "bar baz foo"
+-- >>> replaceLast "move" "(make"
+-- "(move"
+replaceLast :: Text -> Text -> Text
+replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
 
 ------------------------------------------------------------
 -- Some language-y stuff
