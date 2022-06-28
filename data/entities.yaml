@@ -603,9 +603,11 @@
     attr: device
     char: '≤'
   description:
-  - A harvester can be used via the 'harvest' command. 'harvest' works
-    just like 'grab', except that some entities (for example, trees)
-    leave behind a seed which will regrow a new entity.
+  - A harvester can be used via the 'harvest' command, which is
+    almost identical to the 'grab' command.  The big difference
+    is that some entities, when harvested instead of grabbed,
+    leave behind a seed which will eventually grow into another copy
+    of the original entity.
   - For entities which do not grow, 'harvest' behaves exactly the same
     as 'grab'.
   capabilities: [grab, harvest]
