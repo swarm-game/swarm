@@ -47,6 +47,24 @@
   properties: [portable]
   capabilities: [make]
 
+- name: paper
+  display:
+    attr: snow
+    char: '■'
+  description:
+  - A flat material made of pressed and dried wood fibers,
+    used as a surface on which to inscribe symbols.
+  properties: [portable]
+
+- name: PhD thesis
+  display:
+    attr: snow
+    char: 'P'
+  description:
+  - Perhaps writing one of these will help gain the trust and respect of
+    the native inhabitants.
+  properties: [portable]
+
 - name: rock
   display:
     attr: rock

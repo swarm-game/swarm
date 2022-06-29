@@ -15,6 +15,21 @@
 
 - in:
   - [1, log]
+  - [8, water]
+  out:
+  - [8, paper]
+
+- in:
+  - [256, paper]
+  - [1, LaTeX]
+  required:
+  - [1, big furnace]
+  out:
+  - [1, PhD thesis]
+  time: 65536
+
+- in:
+  - [1, log]
   out:
   - [1, logger]
 
