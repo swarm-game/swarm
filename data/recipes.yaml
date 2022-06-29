@@ -70,6 +70,12 @@
   - [8, bit (0)]
   - [8, bit (1)]
   out:
+  - [1, flash memory]
+
+- in:
+  - [1, flash memory]
+  - [8, wooden gear]
+  out:
   - [1, counter]
 
 #########################################

@@ -466,21 +466,6 @@
     could also be used as a primitive balance scale.
   properties: [portable]
 
-- name: counter
-  display:
-    attr: device
-    char: 'C'
-  description:
-  - "Increment and reset, what more could you want?"
-  - |
-    A counter enables the command 'count : string -> cmd int',
-    which counts how many occurrences of an entity are currently
-    in the inventory.  This is an upgraded version of the 'has'
-    command, which returns a bool instead of an int and does
-    not require any special device.
-  properties: [portable]
-  capabilities: [count]
-
 - name: Linux
   display:
     attr: entity
@@ -747,7 +732,10 @@
     attr: device
     char: '§'
   description:
-  - "Using a flash memory device, a robot can reprogram other robots using the
+  - "A compact, non-volatile memory device, capable of storing
+    up to 8 pZ of data."
+  - "Flash memory can be used as a component of other devices.  In addition,
+     a flash memory device can be used to other robots using the
      'reprogram' command."
   - "Only robots that have completed executing their previous command
      can be reprogrammed."
@@ -783,6 +771,20 @@
     uses the 'log' command)."
   properties: [portable]
   capabilities: [log]
+
+- name: counter
+  display:
+    attr: device
+    char: 'C'
+  description:
+  - |
+    A counter enables the command 'count : string -> cmd int',
+    which counts how many occurrences of an entity are currently
+    in the inventory.  This is an upgraded version of the 'has'
+    command, which returns a bool instead of an int and does
+    not require any special device.
+  properties: [portable]
+  capabilities: [count]
 
 - name: calculator
   display:
