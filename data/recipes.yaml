@@ -396,6 +396,14 @@
   out:
   - [1, grabber]
 
+- in:
+  - [4, circuit]
+  - [1, iron plate]
+  - [3, copper pipe]
+  - [16, iron gear]
+  out:
+  - [1, 3D printer]
+
 ## MAGIC
 
 - in:
