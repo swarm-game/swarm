@@ -824,3 +824,11 @@
   - "Valid comparison operators are <, <=, >, >=, ==, and !=."
   properties: [portable]
   capabilities: [compare]
+
+- name: I/O cable
+  display:
+    attr: device
+    char: 'Ю'
+  description:
+  - An I/O cable can be used to communicate with an adjacent robot.
+  properties: [portable]

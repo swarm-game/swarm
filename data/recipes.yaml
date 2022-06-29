@@ -533,3 +533,9 @@
   - [1, rubber]
   required:
   - [1, furnace]
+
+- in:
+  - [8, copper wire]
+  - [1, rubber]
+  out:
+  - [1, I/O cable]
