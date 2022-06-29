@@ -20,6 +20,12 @@
   - [8, paper]
 
 - in:
+  - [32, paper]
+  - [1, flash memory]
+  out:
+  - [1, dictionary]
+
+- in:
   - [256, paper]
   - [1, LaTeX]
   required:
