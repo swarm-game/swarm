@@ -1,5 +1,7 @@
 name: Test harvest command
-description: Test the difference between the grab and harvest commands.
+description: |
+  Test the difference between the grab and harvest commands.
+  https://github.com/swarm-game/swarm/issues/490
 win: |
   try {
     turn east; move;
