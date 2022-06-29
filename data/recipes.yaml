@@ -366,6 +366,15 @@
   out:
   - [1, tank treads]
 
+- in:
+  - [2, copper pipe]
+  - [2, iron gear]
+  - [1, iron plate]
+  - [1, water]
+  - [1, small motor]
+  out:
+  - [1, grabber]
+
 ## MAGIC
 
 - in:

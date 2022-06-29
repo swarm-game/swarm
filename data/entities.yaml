@@ -578,7 +578,7 @@
     attr: device
     char: '<'
   description:
-  - A grabber arm is an all-purpose device allowing a robot to
+  - A grabber arm is an all-purpose, hydraulically controlled device that can
     manipulate other items and robots via the 'grab', 'place', 'give',
     and 'install' commands.
   - The 'grab' command takes no arguments; it simply grabs whatever is
