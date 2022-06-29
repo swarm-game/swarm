@@ -648,6 +648,15 @@
   capabilities: [drill]
   properties: [portable]
 
+- name: printer
+  display:
+    attr: device
+    char: 'Д'
+  description:
+  - A printer is used to inscribe symbols on paper, thus reifying pure, platonic
+    information into a physical form.
+  properties: [portable]
+
 - name: 3D printer
   display:
     attr: device
