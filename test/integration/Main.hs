@@ -6,9 +6,10 @@
 module Main where
 
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^?!))
-import Control.Monad (filterM, forM_, void)
-import Control.Monad.State (StateT (runStateT))
+import Control.Monad (filterM, forM_, unless, void, when)
+import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
 import qualified Data.IntSet as IS
 import qualified Data.Map as M
@@ -160,7 +161,7 @@ testScenarioSolution _ci _em =
             assertBool "Robot 1 should not be in waiting set" $ not waiting
         , testSolution Default "Testing/504-teleport-self"
         , expectFailBecause "Awaiting fix (#509, #508?)" $
-          testSolution Default "Testing/508-capability-subset.yaml"
+            testSolution Default "Testing/508-capability-subset.yaml"
         ]
     ]
  where
@@ -181,28 +182,34 @@ testScenarioSolution _ci _em =
         case m of
           Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
           Just g -> do
-            noFatalErrors g
+            -- When debugging, try logging all robot messages.
+            -- printAllLogs
+            noBadErrors g
             verify g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
     w <- use winCondition
-    case w of
+    b <- gets badErrorsInLogs
+    when (null b) $ case w of
       Won _ -> return ()
       _ -> gameTick >> playUntilWin
 
-noFatalErrors :: GameState -> Assertion
-noFatalErrors g = do
-  let rm = g ^. robotMap
-  forM_
-    rm
-    ( \r -> do
-        let f = find isFatal (view leText <$> r ^. robotLog)
-        -- -----------------------------------------------
-        -- When debugging, try logging all robot messages:
-        -- forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
-        -- -----------------------------------------------
-        maybe (return ()) (assertFailure . T.unpack) f
-    )
+noBadErrors :: GameState -> Assertion
+noBadErrors g = do
+  let bad = badErrorsInLogs g
+  unless (null bad) (assertFailure . T.unpack . T.unlines . take 5 $ nubOrd bad)
+
+badErrorsInLogs :: GameState -> [Text]
+badErrorsInLogs g =
+  concatMap
+    (\r -> filter isBad (view leText <$> toList (r ^. robotLog)))
+    (g ^. robotMap)
  where
-  isFatal = ("Fatal error:" `T.isInfixOf`)
+  isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
+
+printAllLogs :: GameState -> IO ()
+printAllLogs g =
+  mapM_
+    (\r -> forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText))
+    (g ^. robotMap)
