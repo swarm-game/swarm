@@ -746,7 +746,12 @@ displayProperties = displayList . mapMaybe showProperty
   showProperty Infinite = Just "infinite"
   showProperty Liquid = Just "liquid"
   showProperty Unwalkable = Just "blocking"
-  showProperty _ = Nothing
+  -- Most things are portable so we don't show that.
+  showProperty Portable = Nothing
+  -- 'Known' is just a technical detail of how we handle some entities
+  -- in challenge scenarios and not really something the player needs
+  -- to know.
+  showProperty Known = Nothing
 
   displayList [] = emptyWidget
   displayList ps =
