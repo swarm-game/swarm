@@ -1578,17 +1578,19 @@ execConst c vs s k = do
     updateEntityAt loc (const Nothing)
     flagRedraw
 
-    -- Possibly regrow the entity.
+    -- Immediately regenerate entities with 'infinite' property.
+    when (e `hasProperty` Infinite) $
+      updateEntityAt loc (const (Just e))
+
+    -- Possibly regrow the entity, if it is growable and the 'harvest'
+    -- command was used.
     when ((e `hasProperty` Growable) && shouldHarvest) $ do
       let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
       createdAt <- getNow
 
-      if maxT == 0
-        then -- Special case: if the time is zero, growth is instant.
-          updateEntityAt loc (const (Just e))
-        else -- Otherwise, grow a new entity from a seed.
-          addSeedBot e (minT, maxT) loc createdAt
+      -- Grow a new entity from a seed.
+      addSeedBot e (minT, maxT) loc createdAt
 
     -- Add the picked up item to the robot's inventory.  If the
     -- entity yields something different, add that instead.

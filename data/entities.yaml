@@ -306,8 +306,7 @@
     char: ' '
   description:
   - Liquid dihydrogen monoxide, which seems to be plentiful on this planet.
-  properties: [portable, growable, liquid]
-  growth: [0,0]
+  properties: [portable, infinite, liquid]
 
 - name: wavy water
   display:
@@ -315,8 +314,7 @@
     char: '~'
   description:
   - A wavy section of water.  The same as normal water, but with more waves.
-  properties: [portable, growable, liquid]
-  growth: [0,0]
+  properties: [portable, infinite, liquid]
   yields: water
 
 - name: boat
@@ -339,8 +337,7 @@
   description:
   - A substance composed mostly of tiny rocks and mineral particles.  It
     tends to be found near water, and can be used in a furnace to make glass.
-  properties: [portable, growable]
-  growth: [0,0]
+  properties: [portable, infinite]
 
 - name: glass
   display:
