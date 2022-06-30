@@ -9,7 +9,26 @@
 # Specify additional command line arguments
 #
 # - arguments: [--color, --cpp-simple, -XQuasiQuotes]
-
+- arguments:
+  - '-XBangPatterns'
+  - '-XDeriveAnyClass'
+  - '-XDeriveDataTypeable'
+  - '-XDeriveFunctor'
+  - '-XDeriveGeneric'
+  - '-XDeriveTraversable'
+  - '-XFlexibleContexts'
+  - '-XFlexibleInstances'
+  - '-XGADTSyntax'
+  - '-XMultiParamTypeClasses'
+  - '-XNumericUnderscores'
+  - '-XRankNTypes'
+  - '-XScopedTypeVariables'
+  - '-XStandaloneDeriving'
+  - '-XTupleSections'
+  - '-XTypeApplications'
+  - '-XTypeOperators'
+  - '-XImportQualifiedPost'
+  - '-XLambdaCase'
 
 # Control which extensions/flags/modules/functions can be used
 #
