@@ -1,5 +1,10 @@
 name: Wait for one tick
-description: Robots waiting for one tick should not be put into inactive robot queue.
+description: |
+  Robots waiting for one tick should not be put into inactive robot queue.
+  https://github.com/swarm-game/swarm/issues/475
+# The game state validation is performed in integration test,
+# here we just set a robot to wait for one tick, during which
+# the base wins.
 win: |
   try {
     teleport self (0,0);
