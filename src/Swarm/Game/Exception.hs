@@ -36,7 +36,7 @@ import Swarm.Util
 -- $setup
 -- >>> :set -XOverloadedStrings
 -- >>> import Control.Lens
--- >>> import Data.Set qualified as S
+-- >>> import qualified Data.Set as S
 -- >>> import Data.Text (unpack)
 -- >>> import Swarm.Language.Syntax
 -- >>> import Swarm.Language.Capability

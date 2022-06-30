@@ -61,7 +61,7 @@ import Swarm.Language.Types
 -- Imports for doctests (cabal-docspec needs this)
 
 -- $setup
--- >>> import Data.Map.Strict qualified as Map
+-- >>> import qualified Data.Map.Strict as Map
 
 -- | When parsing a term using a quasiquoter (i.e. something in the
 --   Swarm source code that will be parsed at compile time), we want
