@@ -1,6 +1,7 @@
 name: Test harvest command
 description: |
-  Test the difference between the grab and harvest commands.
+  Test the difference between the grab and harvest commands,
+  and test that grab doesn't drain water.
   https://github.com/swarm-game/swarm/issues/490
 win: |
   try {
@@ -8,7 +9,10 @@ win: |
     t1 <- ishere "tree";
     move;
     t2 <- ishere "tree";
-    return (t1 && not t2)
+    create "boat"; install self "boat";
+    turn right; move; grab;
+    t3 <- ishere "water";
+    return (t1 && not t2 && t3)
   } { return false }
 solution: |
   move; harvest; move; grab
@@ -31,8 +35,10 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
+    '~': [stone, water]
   upperleft: [-1, 1]
   map: |
     ┌───┐
     │.TT│
+    │~~~│
     └───┘
