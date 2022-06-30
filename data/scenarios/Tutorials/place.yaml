@@ -1,6 +1,6 @@
 name: Place
 description: |
-  Learn how to interact with the world by grabbing entities and placing them.
+  Learn how to interact with the world by harvesting entities and placing them.
 #
 # Placing the tree is motivated by speeding up tree collection as their growth
 # is really slow. It can be cheesed by speeding up the game, but there is no need
@@ -9,16 +9,18 @@ description: |
 goal:
   - Previously you learned how to plunder a plentiful forest for wood.
     Now you will learn how to plant trees to obtain as much wood as you need.
-  - There is a fast-growing tree (called "spruce") ahead of you and a new
-    one will grow there once you grab it.
-  - You can plant a tree seed by 'place "spruce"; grab' - that way you can
+  - There is a fast-growing tree (called "spruce") ahead of you.  You could 'grab'
+    it as before, but you now have a new device called a 'harvester'.
+    If you 'harvest' a tree rather than 'grab' it, a new tree will grow in its
+    place.
+  - You can plant a tree seed by 'place "spruce"; harvest' - that way you can
     immediately place the next seed.
   - You can speed this up by placing the tree in all available cells.
     That way you can have eight times as many trees growing at once.
   - Your goal is to collect 6 trees.
   - |
     TIP: You can get a sneak peak at a feature we will explain later and type
-    'def t = move; place "spruce"; grab; end' after which you only need to type 't'
+    'def t = move; place "spruce"; harvest; end' after which you only need to type 't'
     instead of retyping the whole command or searching in your command history.
 entities:
   # faster tree (the normal one grows 500-600 ticks)
@@ -41,12 +43,12 @@ win: |
     return (t >= 6);
   } { return false }
 solution: |
-  def t = move; place "spruce"; grab; end;
-  def g = grab; move end;
+  def t = move; place "spruce"; harvest; end;
+  def h = harvest; move end;
   move;
-  move; grab; t; t; t; t; t;
+  move; harvest; t; t; t; t; t;
   wait 256;
-  turn back; g; g; g; g; g; g;
+  turn back; h; h; h; h; h; h;
 robots:
   - name: base
     loc: [0,0]
@@ -54,6 +56,7 @@ robots:
     devices:
       - treads
       - grabber
+      - harvester
       - logger
       - compass
       - dictionary

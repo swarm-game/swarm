@@ -78,6 +78,13 @@
   - [1, comparator]
 
 - in:
+  - [2, board]
+  - [2, wooden gear]
+  - [1, box]
+  out:
+  - [1, harvester]
+
+- in:
   - [1, circuit]
   - [1, board]
   - [8, wooden gear]
