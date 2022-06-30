@@ -13,7 +13,7 @@ win: |
     return (t1 && not t2 && t3)
   } { return false }
 solution: |
-  move; harvest; move; grab; turn right; move; grab; grab; grab; grab
+  move; harvest; move; grab; turn right; move; grab; grab; harvest; grab
 robots:
   - name: base
     loc: [0,0]
