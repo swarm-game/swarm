@@ -762,11 +762,9 @@
   - "A compact, non-volatile memory device, capable of storing
     up to 8 pZ of data."
   - "Flash memory can be used as a component of other devices.  In addition,
-     a flash memory device can be used to other robots using the
+     a flash memory device can be used to reprogram other robots using the
      'reprogram' command."
-  - "Only robots that have completed executing their previous command
-     can be reprogrammed."
-  - "The robot being reprogrammed must possess enough capabilities to run the new command;
+  - "The robot being reprogrammed must be idle, and must possess enough capabilities to run the new command;
      otherwise reprogramming will fail."
   properties: [portable]
   capabilities: [reprogram]
