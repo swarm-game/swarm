@@ -5,20 +5,32 @@
 -- | Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), use, view, (&), (.~), (<&>), (^.))
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^?!))
 import Control.Monad (filterM, forM_, void)
 import Control.Monad.State (StateT (runStateT))
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Foldable (Foldable (toList), find)
+import qualified Data.IntSet as IS
+import qualified Data.Map as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (leText, machine, robotLog)
+import Swarm.Game.Robot (leText, machine, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
-import Swarm.Game.State (GameState, WinCondition (Won), initGameStateForScenario, robotMap, winCondition, winSolution)
+import Swarm.Game.State (
+  GameState,
+  WinCondition (Won),
+  activeRobots,
+  initGameStateForScenario,
+  robotMap,
+  ticks,
+  waitingRobots,
+  winCondition,
+  winSolution,
+ )
 import Swarm.Game.Step (gameTick)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
@@ -137,6 +149,15 @@ testScenarioSolution _ci _em =
         [ expectFailBecause "Awaiting fix (#394)" $
             testSolution Default "Testing/394-build-drill"
         , testSolution Default "Testing/428-drowning-destroy"
+        , testSolution' Default "Testing/475-wait-one" $ \g -> do
+            let t = g ^. ticks
+                r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
+                active = IS.member 1 $ g ^. activeRobots
+                waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
+            assertBool "The game should only take two ticks" $ t == 2
+            assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
+            assertBool "Robot 1 should be still active" active
+            assertBool "Robot 1 should not be in waiting set" $ not waiting
         , testSolution Default "Testing/504-teleport-self"
         ]
     ]
