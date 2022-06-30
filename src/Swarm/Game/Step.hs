@@ -1290,7 +1290,6 @@ execConst c vs s k = do
       -- hopefully without duplicating too much code.
       [VDelay cmd e] -> do
         r <- get @Robot
-        em <- use entityMap
         creative <- use creativeMode
 
         pid <- use robotID
@@ -1298,8 +1297,7 @@ execConst c vs s k = do
         deviceSets <- checkRequiredDevices (r ^. robotInventory) cmd "You" FixByObtain
 
         let devices =
-              stdDevices
-                `S.union` if creative -- if given a choice between required devices giving same capability
+              if creative -- if given a choice between required devices giving same capability
                   then S.unions deviceSets -- give them all in creative
                   else S.unions $ map (S.take 1) deviceSets -- give first one otherwise
 
