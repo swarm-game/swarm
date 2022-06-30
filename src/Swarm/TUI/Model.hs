@@ -30,6 +30,7 @@ module Swarm.TUI.Model (
   MainMenuEntry (..),
   mainMenu,
   Menu (..),
+  _NewGameMenu,
 
   -- * UI state
 
@@ -75,7 +76,8 @@ module Swarm.TUI.Model (
   -- ** UI Model
   UIState,
   uiMenu,
-  uiPrevMenu,
+  uiPlaying,
+  uiNextScenario,
   uiCheatMode,
   uiFocusRing,
   uiWorldCursor,
@@ -424,8 +426,7 @@ data ModalType
   | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = Cancel | Confirm
-  deriving (Eq, Show)
+data ButtonSelection = CancelButton | QuitButton | NextButton Scenario
 
 data Modal = Modal
   { _modalType :: ModalType
@@ -438,7 +439,7 @@ data MainMenuEntry = NewGame | Tutorial | About | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
-  = NoMenu
+  = NoMenu -- We started playing directly from command line, no menu to show
   | MainMenu (BL.List Name MainMenuEntry)
   | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
   | TutorialMenu
@@ -500,7 +501,8 @@ markGoalRead gs = gs
 -- see the lenses below.
 data UIState = UIState
   { _uiMenu :: Menu
-  , _uiPrevMenu :: Menu
+  , _uiPlaying :: Bool
+  , _uiNextScenario :: Maybe Scenario
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
@@ -551,8 +553,13 @@ let exclude = ['_lgTicksPerSecond]
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
 
--- | The previous menu state, to go back after playing a game
-uiPrevMenu :: Lens' UIState Menu
+-- | Are we currently playing the game?  True = we are playing, and
+--   should thus display a world, REPL, etc.; False = we should
+--   display the current menu.
+uiPlaying :: Lens' UIState Bool
+
+-- | The next scenario after the current one, if any.
+uiNextScenario :: Lens' UIState (Maybe Scenario)
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
@@ -747,7 +754,8 @@ initUIState showMainMenu cheatMode = liftIO $ do
   return $
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
-      , _uiPrevMenu = NoMenu
+      , _uiPlaying = not showMainMenu
+      , _uiNextScenario = Nothing
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiWorldCursor = Nothing
@@ -867,7 +875,7 @@ scenarioToUIState :: Scenario -> UIState -> IO UIState
 scenarioToUIState scene u =
   return $
     u
-      & uiMenu .~ NoMenu
+      & uiPlaying .~ True
       & uiGoal .~ maybe NoGoal UnreadGoal (scene ^. scenarioGoal)
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
@@ -875,3 +883,4 @@ scenarioToUIState scene u =
       & uiShowZero .~ True
       & lgTicksPerSecond .~ initLgTicksPerSecond
       & resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+      & uiReplHistory %~ restartREPLHistory

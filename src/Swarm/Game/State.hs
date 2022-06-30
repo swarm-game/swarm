@@ -36,6 +36,7 @@ module Swarm.Game.State (
   robotMap,
   robotsByLocation,
   activeRobots,
+  waitingRobots,
   availableRecipes,
   availableCommands,
   allDiscoveredEntities,
@@ -248,11 +249,15 @@ data GameState = GameState
 -- Lenses
 ------------------------------------------------------------
 
--- We want to access _activeRobots via a Lens inside this module but to expose
--- it as a Getter externally to protect invariants.
-makeLensesFor [("_activeRobots", "internalActiveRobots")] ''GameState
+-- We want to access active and waiting robots via lenses inside
+-- this module but to expose it as a Getter to protect invariants.
+makeLensesFor
+  [ ("_activeRobots", "internalActiveRobots")
+  , ("_waitingRobots", "internalWaitingRobots")
+  ]
+  ''GameState
 
-let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_adjList, '_nameList]
+let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -306,8 +311,10 @@ activeRobots :: Getter GameState IntSet
 activeRobots = internalActiveRobots
 
 -- | The names of the robots that are currently sleeping, indexed by wake up
--- | time. Internal.
-waitingRobots :: Lens' GameState (Map Integer [RID])
+--   time. Note that this may not include all sleeping robots, particularly
+--   those that are only taking a short nap (e.g. wait 1).
+waitingRobots :: Getter GameState (Map Integer [RID])
+waitingRobots = internalWaitingRobots
 
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
@@ -488,7 +495,7 @@ ticks :: Lens' GameState Integer
 sleepUntil :: Has (State GameState) sig m => RID -> Integer -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
-  waitingRobots . at time . non [] %= (rid :)
+  internalWaitingRobots . at time . non [] %= (rid :)
 
 -- | Takes a robot out of the activeRobots set.
 sleepForever :: Has (State GameState) sig m => RID -> m ()
@@ -504,7 +511,7 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
-  mrids <- waitingRobots . at time <<.= Nothing
+  mrids <- internalWaitingRobots . at time <<.= Nothing
   case mrids of
     Nothing -> return ()
     Just rids -> do
