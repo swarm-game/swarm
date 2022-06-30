@@ -1,14 +1,4 @@
 restylers_version: dev
 restylers:
-  - name: fourmolu
-    enabled: true
-    fourmoluimage: 'restyled/restyler-fourmolu:v0.3.0.0'
-    command:
-      - fourmolu
-      - '--cabal-default-extensions'
-      - '--mode'
-      - inplace
-    arguments: []
-    include:
-      - '**/*.hs'
-    interpreters: []
+  - fourmolu:
+      arguments: ['--cabal-default-extensions']
