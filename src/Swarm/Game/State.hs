@@ -609,6 +609,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _waitingRobots = M.empty
       , _gensym = initGensym
       , _randGen = mkStdGen seed
+      , _entityMap = g ^. entityMap <> scenario ^. scenarioEntities
       , _recipesOut = addRecipesWith outRecipeMap recipesOut
       , _recipesIn = addRecipesWith inRecipeMap recipesIn
       , _world = theWorld seed

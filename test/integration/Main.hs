@@ -161,7 +161,7 @@ testScenarioSolution _ci _em =
             assertBool "Robot 1 should not be in waiting set" $ not waiting
         , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
-        , expectFailBecause "Awaiting fix (#509, #508?)" $
+        , expectFailBecause "Awaiting fix (#508)" $
             testSolution Default "Testing/508-capability-subset.yaml"
         ]
     ]
