@@ -733,8 +733,27 @@ explainFocusedItem s = case focusedItem s of
 
 explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
-  displayParagraphs (e ^. entityDescription)
-    <=> explainRecipes s e
+  vBox
+    [ displayProperties (e ^. entityProperties)
+    , displayParagraphs (e ^. entityDescription)
+    , explainRecipes s e
+    ]
+
+displayProperties :: [EntityProperty] -> Widget Name
+displayProperties = displayList . mapMaybe showProperty
+ where
+  showProperty Growable = Just "growing"
+  showProperty Infinite = Just "infinite"
+  showProperty Liquid = Just "liquid"
+  showProperty Unwalkable = Just "blocking"
+  showProperty _ = Nothing
+
+  displayList [] = emptyWidget
+  displayList ps =
+    vBox
+      [ hBox . L.intersperse (txt ", ") . map (withAttr robotAttr . txt) $ ps
+      , txt " "
+      ]
 
 explainRecipes :: AppState -> Entity -> Widget Name
 explainRecipes s e
