@@ -1,6 +1,6 @@
 name: Place
 description: |
-  Learn how to interact with the world by grabbing entities and placing them.
+  Learn how to interact with the world by harvesting entities and placing them.
 #
 # Placing the tree is motivated by speeding up tree collection as their growth
 # is really slow. It can be cheesed by speeding up the game, but there is no need
@@ -10,8 +10,9 @@ goal:
   - Previously you learned how to plunder a plentiful forest for wood.
     Now you will learn how to plant trees to obtain as much wood as you need.
   - There is a fast-growing tree (called "spruce") ahead of you.  You could 'grab'
-    it as before.  However, if you use the 'harvest' command instead, a new
-    tree will grow in its place.
+    it as before, but you now have a new device called a 'harvester'.
+    If you 'harvest' a tree rather than 'grab' it, a new tree will grow in its
+    place.
   - You can plant a tree seed by 'place "spruce"; harvest' - that way you can
     immediately place the next seed.
   - You can speed this up by placing the tree in all available cells.
