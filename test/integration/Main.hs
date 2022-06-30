@@ -5,20 +5,33 @@
 -- | Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), use, view, (&), (.~), (<&>), (^.))
-import Control.Monad (filterM, forM_, void)
-import Control.Monad.State (StateT (runStateT))
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^?!))
+import Control.Monad (filterM, forM_, unless, void, when)
+import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
+import qualified Data.IntSet as IS
+import qualified Data.Map as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (leText, machine, robotLog)
+import Swarm.Game.Robot (leText, machine, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
-import Swarm.Game.State (GameState, WinCondition (Won), initGameStateForScenario, robotMap, winCondition, winSolution)
+import Swarm.Game.State (
+  GameState,
+  WinCondition (Won),
+  activeRobots,
+  initGameStateForScenario,
+  robotMap,
+  ticks,
+  waitingRobots,
+  winCondition,
+  winSolution,
+ )
 import Swarm.Game.Step (gameTick)
 import qualified Swarm.Language.Context as Ctx
 import Swarm.Language.Pipeline (processTerm)
@@ -137,8 +150,19 @@ testScenarioSolution _ci _em =
         [ expectFailBecause "Awaiting fix (#394)" $
             testSolution Default "Testing/394-build-drill"
         , testSolution Default "Testing/428-drowning-destroy"
+        , testSolution' Default "Testing/475-wait-one" $ \g -> do
+            let t = g ^. ticks
+                r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
+                active = IS.member 1 $ g ^. activeRobots
+                waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
+            assertBool "The game should only take two ticks" $ t == 2
+            assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
+            assertBool "Robot 1 should be still active" active
+            assertBool "Robot 1 should not be in waiting set" $ not waiting
         , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
+        , expectFailBecause "Awaiting fix (#509, #508?)" $
+            testSolution Default "Testing/508-capability-subset.yaml"
         ]
     ]
  where
@@ -159,28 +183,34 @@ testScenarioSolution _ci _em =
         case m of
           Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
           Just g -> do
-            noFatalErrors g
+            -- When debugging, try logging all robot messages.
+            -- printAllLogs
+            noBadErrors g
             verify g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
     w <- use winCondition
-    case w of
+    b <- gets badErrorsInLogs
+    when (null b) $ case w of
       Won _ -> return ()
       _ -> gameTick >> playUntilWin
 
-noFatalErrors :: GameState -> Assertion
-noFatalErrors g = do
-  let rm = g ^. robotMap
-  forM_
-    rm
-    ( \r -> do
-        let f = find isFatal (view leText <$> r ^. robotLog)
-        -- -----------------------------------------------
-        -- When debugging, try logging all robot messages:
-        -- forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
-        -- -----------------------------------------------
-        maybe (return ()) (assertFailure . T.unpack) f
-    )
+noBadErrors :: GameState -> Assertion
+noBadErrors g = do
+  let bad = badErrorsInLogs g
+  unless (null bad) (assertFailure . T.unpack . T.unlines . take 5 $ nubOrd bad)
+
+badErrorsInLogs :: GameState -> [Text]
+badErrorsInLogs g =
+  concatMap
+    (\r -> filter isBad (view leText <$> toList (r ^. robotLog)))
+    (g ^. robotMap)
  where
-  isFatal = ("Fatal error:" `T.isInfixOf`)
+  isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
+
+printAllLogs :: GameState -> IO ()
+printAllLogs g =
+  mapM_
+    (\r -> forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText))
+    (g ^. robotMap)
