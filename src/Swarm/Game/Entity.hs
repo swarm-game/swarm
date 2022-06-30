@@ -1,11 +1,4 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -94,15 +87,15 @@ import Data.Function (on)
 import Data.Hashable
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
-import qualified Data.IntMap as IM
+import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
-import qualified Data.IntSet as IS
+import Data.IntSet qualified as IS
 import Data.List (foldl')
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear (V2)
 import Text.Read (readMaybe)

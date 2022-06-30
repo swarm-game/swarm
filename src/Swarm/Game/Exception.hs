@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -21,10 +20,10 @@ module Swarm.Game.Exception (
 
 import Data.Set (Set)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Control.Lens ((^.))
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
@@ -37,7 +36,7 @@ import Swarm.Util
 -- $setup
 -- >>> :set -XOverloadedStrings
 -- >>> import Control.Lens
--- >>> import qualified Data.Set as S
+-- >>> import Data.Set qualified as S
 -- >>> import Data.Text (unpack)
 -- >>> import Swarm.Language.Syntax
 -- >>> import Swarm.Language.Capability

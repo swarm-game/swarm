@@ -9,7 +9,7 @@
 module Swarm.Language.Pipeline.QQ (tmQ) where
 
 import Data.Generics
-import qualified Language.Haskell.TH as TH
+import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Witch (from)
 

@@ -14,8 +14,8 @@ import Data.Foldable (toList)
 import Data.List (find)
 
 import Brick (EventM)
-import qualified Brick.Widgets.List as BL
-import qualified Graphics.Vty as V
+import Brick.Widgets.List qualified as BL
+import Graphics.Vty qualified as V
 
 -- | Handle a list event, taking an extra predicate to identify which
 --   list elements are separators; separators will be skipped if

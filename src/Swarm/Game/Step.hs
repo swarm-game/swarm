@@ -1,13 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Swarm.Game.Step
@@ -26,21 +19,21 @@ import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (traverse_)
-import qualified Data.Functor.Const as F
+import Data.Functor.Const qualified as F
 import Data.Int (Int64)
-import qualified Data.IntMap as IM
-import qualified Data.IntSet as IS
+import Data.IntMap qualified as IM
+import Data.IntSet qualified as IS
 import Data.List (find)
-import qualified Data.List as L
-import qualified Data.Map as M
+import Data.List qualified as L
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
-import qualified Data.Sequence as Seq
-import qualified Data.Set as S
+import Data.Sequence qualified as Seq
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Linear (V2 (..), zero, (^+^))
 import System.Clock (TimeSpec)
-import qualified System.Clock
+import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
@@ -48,13 +41,13 @@ import Prelude hiding (lookup)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
-import qualified Swarm.Game.Entity as E
+import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Value
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline

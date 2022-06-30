@@ -1,7 +1,6 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -19,7 +18,7 @@ import Brick
 import Brick.Forms
 import Brick.Widgets.Dialog
 import Brick.Widgets.List
-import qualified Graphics.Vty as V
+import Graphics.Vty qualified as V
 
 import Data.Yaml
 import Witch (from)

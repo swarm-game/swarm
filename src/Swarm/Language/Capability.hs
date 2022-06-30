@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Language.Capability
@@ -27,9 +22,9 @@ import Data.Char (toLower)
 import Data.Hashable (Hashable)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Read (readMaybe)
 import Witch (from)
 import Prelude hiding (lookup)

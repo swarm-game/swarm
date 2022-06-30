@@ -1,8 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.TUI.View
@@ -45,16 +41,16 @@ module Swarm.TUI.View (
 import Control.Arrow ((&&&))
 import Control.Lens hiding (Const, from)
 import Data.Array (range)
-import qualified Data.Foldable as F
-import qualified Data.IntMap as IM
-import qualified Data.List as L
+import Data.Foldable qualified as F
+import Data.IntMap qualified as IM
+import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.Split (chunksOf)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Linear
 import System.Clock (TimeSpec (..))
 import Text.Printf
@@ -67,8 +63,8 @@ import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
-import qualified Brick.Widgets.List as BL
-import qualified Brick.Widgets.Table as BT
+import Brick.Widgets.List qualified as BL
+import Brick.Widgets.Table qualified as BT
 
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
@@ -78,7 +74,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItemName, scenarioName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax

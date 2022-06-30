@@ -20,8 +20,8 @@ module Swarm.Game.Value (
 
 import Data.Bool (bool)
 import Data.List (foldl')
-import qualified Data.Map as M
-import qualified Data.Set as S
+import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Prelude

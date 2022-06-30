@@ -42,6 +42,7 @@ common common
                     -Wincomplete-uni-patterns
                     -Wincomplete-record-updates
                     -Wno-star-is-type
+                    -Wprepositive-qualified-module
   if impl(ghc >= 8.4)
     ghc-options:    -Wpartial-fields
   default-language: Haskell2010
@@ -130,7 +131,32 @@ library
                       yaml                          >= 0.11 && < 0.12,
     hs-source-dirs:   src
     default-language: Haskell2010
-    default-extensions: StrictData
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
+      -- Harmless extensions from GHC2021
+      BangPatterns
+      DeriveAnyClass
+      DeriveDataTypeable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveTraversable
+      FlexibleContexts
+      FlexibleInstances
+      GADTSyntax
+      MultiParamTypeClasses
+      NumericUnderscores
+      RankNTypes
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeApplications
+      TypeOperators
+      -- This is also harmless and in GHC2021, but we warn on prequalified
+      ImportQualifiedPost
+      -- Until we get \cases we use \case a lot
+      LambdaCase
 
 executable swarm
     import:           stan-config, common
@@ -144,6 +170,7 @@ executable swarm
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -threaded
+    default-extensions: ImportQualifiedPost
 
 test-suite swarm-unit
     import:           stan-config, common
@@ -166,6 +193,7 @@ test-suite swarm-unit
     hs-source-dirs:   test/unit
     default-language: Haskell2010
     ghc-options:      -threaded
+    default-extensions: ImportQualifiedPost
 
 test-suite swarm-integration
     import:           stan-config, common
@@ -191,6 +219,7 @@ test-suite swarm-integration
     hs-source-dirs:   test/integration
     default-language: Haskell2010
     ghc-options:      -threaded
+    default-extensions: ImportQualifiedPost
 
 benchmark benchmark
   import:         stan-config, common
@@ -208,3 +237,4 @@ benchmark benchmark
                   text
   default-language: Haskell2010
   ghc-options:      -threaded
+  default-extensions: ImportQualifiedPost

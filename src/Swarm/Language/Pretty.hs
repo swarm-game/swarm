@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -19,10 +18,10 @@ import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Prettyprinter
-import qualified Prettyprinter.Render.String as RS
-import qualified Prettyprinter.Render.Text as RT
+import Prettyprinter.Render.String qualified as RS
+import Prettyprinter.Render.Text qualified as RT
 import Witch
 
 import Control.Unification

@@ -89,7 +89,7 @@ module Swarm.Game.CESK (
 
 import Control.Lens.Combinators (pattern Empty)
 import Data.IntMap.Strict (IntMap)
-import qualified Data.IntMap.Strict as IM
+import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
 import Witch (from)
 

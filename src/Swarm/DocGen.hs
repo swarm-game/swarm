@@ -1,10 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTSyntax #-}
-{-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 
 module Swarm.DocGen (
   generateDocs,
