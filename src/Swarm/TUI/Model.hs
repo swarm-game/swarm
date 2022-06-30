@@ -1,8 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.TUI.Model
@@ -24,10 +27,10 @@ module Swarm.TUI.Model (
   Modal (..),
   modalType,
   modalDialog,
-  modalWidget,
   MainMenuEntry (..),
   mainMenu,
   Menu (..),
+  _NewGameMenu,
 
   -- * UI state
 
@@ -39,6 +42,7 @@ module Swarm.TUI.Model (
   REPLHistory,
   replIndex,
   replLength,
+  replSeq,
   newREPLHistory,
   addREPLItem,
   restartREPLHistory,
@@ -48,16 +52,34 @@ module Swarm.TUI.Model (
   replIndexIsAtInput,
   TimeDir (..),
 
+  -- ** Prompt utils
+  REPLPrompt (..),
+  replPromptAsWidget,
+  promptTextL,
+  promptUpdateL,
+  mkReplForm,
+  removeEntry,
+  resetWithREPLForm,
+
   -- ** Inventory
   InventoryListEntry (..),
   _Separator,
   _InventoryEntry,
   _InstalledEntry,
 
+  -- ** Goal status
+  GoalStatus (..),
+  goalNeedsDisplay,
+  markGoalRead,
+
   -- ** UI Model
   UIState,
   uiMenu,
+  uiPlaying,
+  uiNextScenario,
+  uiCheatMode,
   uiFocusRing,
+  uiWorldCursor,
   uiReplForm,
   uiReplType,
   uiReplHistory,
@@ -68,6 +90,7 @@ module Swarm.TUI.Model (
   uiScrollToEnd,
   uiError,
   uiModal,
+  uiGoal,
   lgTicksPerSecond,
   lastFrameTime,
   accumulatedTime,
@@ -84,14 +107,18 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initFocusRing,
-  replPrompt,
+  defaultPrompt,
   initReplForm,
   initLgTicksPerSecond,
   initUIState,
+  lastEntry,
 
   -- ** Updating
   populateInventoryList,
   infoScroll,
+  recipesScroll,
+  commandsScroll,
+  robotsScroll,
 
   -- * App state
   AppState,
@@ -102,6 +129,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
+  scenarioToAppState,
   Seed,
 
   -- ** Utility
@@ -117,24 +145,26 @@ import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import System.Clock
 
 import Brick
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
-import qualified Brick.Widgets.List as BL
+import Brick.Widgets.List qualified as BL
 
+import Control.Applicative (Applicative (liftA2))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem)
+import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, scenarioGoal)
 import Swarm.Game.State
+import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
 
@@ -172,16 +202,33 @@ data Name
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
+  | -- | The inventory item position in the InventoryList.
+    InventoryListItem Int
   | -- | The list of main menu choices.
     MenuList
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
-  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+  | -- | The scrollable viewport for the recipe list.
+    RecipesViewport
+  | -- | The scrollable viewport for the commands list.
+    CommandsViewport
+  | -- | The scrollable viewport for the robots list.
+    RobotsViewport
+  deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
 infoScroll = viewportScroll InfoViewport
+
+recipesScroll :: ViewportScroll Name
+recipesScroll = viewportScroll RecipesViewport
+
+commandsScroll :: ViewportScroll Name
+commandsScroll = viewportScroll CommandsViewport
+
+robotsScroll :: ViewportScroll Name
+robotsScroll = viewportScroll RobotsViewport
 
 ------------------------------------------------------------
 -- REPL History
@@ -297,23 +344,86 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 ------------------------------------------------------------
+-- Repl Prompt
+------------------------------------------------------------
+
+-- | This data type represent what is prompted to the player
+--   and how the REPL show interpret the user input.
+data REPLPrompt
+  = -- | Interpret the given text as a regular command
+    CmdPrompt Text
+  | -- | Interpret the given text as "search this text in history"
+    SearchPrompt Text REPLHistory
+
+-- | Get the last REPLEntry in REPLHistory matching the given text
+lastEntry :: Text -> REPLHistory -> Maybe Text
+lastEntry t h =
+  case Seq.viewr $ Seq.filter matchEntry $ h ^. replSeq of
+    Seq.EmptyR -> Nothing
+    _ Seq.:> a -> Just (replItemText a)
+ where
+  matchesText histItem = t `T.isInfixOf` replItemText histItem
+  matchEntry = liftA2 (&&) matchesText isREPLEntry
+
+-- | Given some text,  removes the REPLEntry within REPLHistory which is equal to that.
+--   This is used when the user enters in search mode and want to traverse the history.
+--   If a command has been used many times, the history will be populated with it causing
+--   the effect that search command always finds the same command.
+removeEntry :: Text -> REPLHistory -> REPLHistory
+removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
+
+defaultPrompt :: REPLPrompt
+defaultPrompt = CmdPrompt ""
+
+-- | Lens for accesing the text of the prompt.
+promptTextL :: Lens' REPLPrompt Text
+promptTextL = lens g s
+ where
+  -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).
+  -- This should be force in the ADT itself... right know this here
+  -- The compiler will complain about "Non complete patterns" on this two function.
+  g :: REPLPrompt -> Text
+  g (CmdPrompt t) = t
+  g (SearchPrompt t _) = t
+
+  s :: REPLPrompt -> Text -> REPLPrompt
+  s (CmdPrompt _) t = CmdPrompt t
+  s (SearchPrompt _ h) t = SearchPrompt t h
+
+-- | Turn the repl prompt into a decorator for the form
+replPromptAsWidget :: REPLPrompt -> Widget Name
+replPromptAsWidget (CmdPrompt _) = txt "> "
+replPromptAsWidget (SearchPrompt t rh) =
+  case lastEntry t rh of
+    Nothing -> txt "[nothing found] "
+    Just lastentry
+      | T.null t -> txt "[find] "
+      | otherwise -> txt $ "[found: \"" <> lastentry <> "\"] "
+
+-- | Creates the repl form as a decorated form.
+mkReplForm :: REPLPrompt -> Form REPLPrompt AppEvent Name
+mkReplForm r = newForm [(replPromptAsWidget r <+>) @@= editTextField promptTextL REPLInput (Just 1)] r
+
+------------------------------------------------------------
 -- Menus and dialogs
 ------------------------------------------------------------
 
 data ModalType
   = HelpModal
+  | RecipesModal
+  | CommandsModal
+  | RobotsModal
   | WinModal
   | QuitModal
   | DescriptionModal Entity
+  | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = Cancel | Confirm
-  deriving (Eq, Show)
+data ButtonSelection = CancelButton | QuitButton | NextButton Scenario
 
 data Modal = Modal
   { _modalType :: ModalType
   , _modalDialog :: Dialog ButtonSelection
-  , _modalWidget :: Widget Name
   }
 
 makeLenses ''Modal
@@ -322,7 +432,7 @@ data MainMenuEntry = NewGame | Tutorial | About | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
-  = NoMenu
+  = NoMenu -- We started playing directly from command line, no menu to show
   | MainMenu (BL.List Name MainMenuEntry)
   | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
   | TutorialMenu
@@ -351,6 +461,32 @@ data InventoryListEntry
 makePrisms ''InventoryListEntry
 
 ------------------------------------------------------------
+-- Goal status
+------------------------------------------------------------
+
+-- | Status of the scenario goal: whether there is one, and whether it has been
+--   displayed to the user initially.
+data GoalStatus
+  = -- | There is no goal.
+    NoGoal
+  | -- | There is a goal, and we should display it to the user initially.
+    UnreadGoal [Text]
+  | -- | There is a goal, and we have already displayed it to the user.
+    --   It can be displayed again if the user chooses.
+    ReadGoal [Text]
+  deriving (Eq, Show)
+
+-- | Do we need to display the goal initially to the user?
+goalNeedsDisplay :: GoalStatus -> Maybe [Text]
+goalNeedsDisplay (UnreadGoal g) = Just g
+goalNeedsDisplay _ = Nothing
+
+-- | Mark the goal as having been read.
+markGoalRead :: GoalStatus -> GoalStatus
+markGoalRead (UnreadGoal g) = ReadGoal g
+markGoalRead gs = gs
+
+------------------------------------------------------------
 -- UI state + AppState
 ------------------------------------------------------------
 
@@ -358,8 +494,12 @@ makePrisms ''InventoryListEntry
 -- see the lenses below.
 data UIState = UIState
   { _uiMenu :: Menu
+  , _uiPlaying :: Bool
+  , _uiNextScenario :: Maybe Scenario
+  , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
-  , _uiReplForm :: Form Text AppEvent Name
+  , _uiWorldCursor :: Maybe W.Coords
+  , _uiReplForm :: Form REPLPrompt AppEvent Name
   , _uiReplType :: Maybe Polytype
   , _uiReplLast :: Text
   , _uiReplHistory :: REPLHistory
@@ -369,6 +509,7 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
+  , _uiGoal :: GoalStatus
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
   , _uiInventoryShouldUpdate :: Bool
@@ -405,12 +546,26 @@ let exclude = ['_lgTicksPerSecond]
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
 
+-- | Are we currently playing the game?  True = we are playing, and
+--   should thus display a world, REPL, etc.; False = we should
+--   display the current menu.
+uiPlaying :: Lens' UIState Bool
+
+-- | The next scenario after the current one, if any.
+uiNextScenario :: Lens' UIState (Maybe Scenario)
+
+-- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
+uiCheatMode :: Lens' UIState Bool
+
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
+-- | The last clicked position on the world view.
+uiWorldCursor :: Lens' UIState (Maybe W.Coords)
+
 -- | The form where the user can type input at the REPL.
-uiReplForm :: Lens' UIState (Form Text AppEvent Name)
+uiReplForm :: Lens' UIState (Form REPLPrompt AppEvent Name)
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).
@@ -446,6 +601,10 @@ uiError :: Lens' UIState (Maybe Text)
 -- | When this is @Just@, it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
+
+-- | Status of the scenario goal: whether there is one, and whether it
+--   has been displayed to the user initially.
+uiGoal :: Lens' UIState GoalStatus
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -506,6 +665,23 @@ accumulatedTime :: Lens' UIState TimeSpec
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' UIState (Map Text Text)
 
+-- | Lens for accesing the text of the prompt.
+promptUpdateL :: Lens UIState (Form REPLPrompt AppEvent Name) Text Text
+promptUpdateL = lens g s
+ where
+  -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).
+  -- This should be force in the ADT itself... right know this here
+  -- The compiler will complain about "Non complete patterns" on this two function.
+  g :: UIState -> Text
+  g ui = case formState (ui ^. uiReplForm) of
+    CmdPrompt t -> t
+    SearchPrompt t _ -> t
+
+  s :: UIState -> Text -> Form REPLPrompt AppEvent Name
+  s ui inputText = case formState (ui ^. uiReplForm) of
+    CmdPrompt _ -> mkReplForm $ CmdPrompt inputText
+    SearchPrompt _ _ -> mkReplForm $ SearchPrompt inputText (ui ^. uiReplHistory)
+
 --------------------------------------------------
 -- Lenses for AppState
 
@@ -545,16 +721,12 @@ focusedEntity =
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
--- | The default REPL prompt.
-replPrompt :: Text
-replPrompt = "> "
-
 -- | The initial state of the REPL entry form.
-initReplForm :: Form Text AppEvent Name
+initReplForm :: Form REPLPrompt AppEvent Name
 initReplForm =
   newForm
-    [(txt replPrompt <+>) @@= editTextField id REPLInput (Just 1)]
-    ""
+    [(replPromptAsWidget defaultPrompt <+>) @@= editTextField promptTextL REPLInput (Just 1)]
+    (CmdPrompt "")
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int
@@ -565,8 +737,8 @@ initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Bool -> ExceptT Text IO UIState
-initUIState showMainMenu = liftIO $ do
+initUIState :: Bool -> Bool -> ExceptT Text IO UIState
+initUIState showMainMenu cheatMode = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
   appDataMap <- readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
@@ -574,7 +746,11 @@ initUIState showMainMenu = liftIO $ do
   return $
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      , _uiPlaying = not showMainMenu
+      , _uiNextScenario = Nothing
+      , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
+      , _uiWorldCursor = Nothing
       , _uiReplForm = initReplForm
       , _uiReplType = Nothing
       , _uiReplHistory = newREPLHistory history
@@ -585,6 +761,7 @@ initUIState showMainMenu = liftIO $ do
       , _uiScrollToEnd = False
       , _uiError = Nothing
       , _uiModal = Nothing
+      , _uiGoal = NoGoal
       , _uiShowFPS = False
       , _uiShowZero = True
       , _uiInventoryShouldUpdate = False
@@ -651,12 +828,51 @@ populateInventoryList (Just r) = do
   -- the hash of the current robot.
   uiInventory .= Just (r ^. inventoryHash, lst)
 
+-- | Set the REPLForm to the given value, resetting type error checks to Nothing
+--   and removing uiError.
+resetWithREPLForm :: Form REPLPrompt AppEvent Name -> UIState -> UIState
+resetWithREPLForm f =
+  (uiReplForm .~ f)
+    . (uiReplType .~ Nothing)
+    . (uiError .~ Nothing)
+
 ------------------------------------------------------------
 -- App state (= UI state + game state) initialization
 ------------------------------------------------------------
 
 -- | Initialize the 'AppState'.
-initAppState :: Maybe Seed -> Maybe String -> Maybe String -> ExceptT Text IO AppState
-initAppState seed scenarioName toRun = do
-  let showMenu = isNothing scenarioName && isNothing toRun
-  AppState <$> initGameState seed scenarioName toRun <*> initUIState showMenu
+initAppState :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
+initAppState userSeed scenarioName toRun cheatMode = do
+  let skipMenu = isJust scenarioName || isJust toRun || isJust userSeed
+  gs <- initGameState
+  ui <- initUIState (not skipMenu) cheatMode
+  case skipMenu of
+    False -> return $ AppState gs ui
+    True -> do
+      scenario <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
+      liftIO $ scenarioToAppState scenario userSeed toRun $ AppState gs ui
+
+-- XXX do we need to keep an old entity map around???
+
+-- | Modify the 'AppState' appropriately when starting a new scenario.
+scenarioToAppState :: Scenario -> Maybe Seed -> Maybe String -> AppState -> IO AppState
+scenarioToAppState scene userSeed toRun (AppState g u) = do
+  g' <- scenarioToGameState scene userSeed toRun g
+  u' <- scenarioToUIState scene u
+
+  return $ AppState g' u'
+
+-- | Modify the UI state appropriately when starting a new scenario.
+scenarioToUIState :: Scenario -> UIState -> IO UIState
+scenarioToUIState scene u =
+  return $
+    u
+      & uiPlaying .~ True
+      & uiGoal .~ maybe NoGoal UnreadGoal (scene ^. scenarioGoal)
+      & uiFocusRing .~ initFocusRing
+      & uiInventory .~ Nothing
+      & uiShowFPS .~ False
+      & uiShowZero .~ True
+      & lgTicksPerSecond .~ initLgTicksPerSecond
+      & resetWithREPLForm (mkReplForm $ CmdPrompt "")
+      & uiReplHistory %~ restartREPLHistory

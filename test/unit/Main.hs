@@ -21,6 +21,7 @@ import Witch (from)
 
 import Swarm.Game.CESK
 import Swarm.Game.Display
+import Swarm.Game.Entity (EntityMap)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Robot
@@ -218,7 +219,7 @@ prettyConst =
     , testCase
         "pairs #225 - nested pairs are printed right-associative"
         ( equalPretty "(1, 2, 3)" $
-            (TPair (TInt 1) (TPair (TInt 2) (TInt 3)))
+            TPair (TInt 1) (TPair (TInt 2) (TInt 3))
         )
     ]
  where
@@ -408,8 +409,8 @@ eval g =
     , testGroup
         "exceptions"
         [ testCase
-            "raise"
-            ("raise \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
+            "fail"
+            ("fail \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
         , testCase
             "try / no exception 1"
             ("try {return 1} {return 2}" `evaluatesTo` VInt 1)
@@ -417,11 +418,11 @@ eval g =
             "try / no exception 2"
             ("try {return 1} {let x = x in x}" `evaluatesTo` VInt 1)
         , testCase
-            "try / raise"
-            ("try {raise \"foo\"} {return 3}" `evaluatesTo` VInt 3)
+            "try / fail"
+            ("try {fail \"foo\"} {return 3}" `evaluatesTo` VInt 3)
         , testCase
-            "try / raise / raise"
-            ("try {raise \"foo\"} {raise \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
+            "try / fail / fail"
+            ("try {fail \"foo\"} {fail \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
         , testCase
             "try / div by 0"
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
@@ -485,10 +486,13 @@ eval g =
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
   evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
    where
-    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False
+    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False 0
+
+  entMap :: EntityMap
+  entMap = g ^. entityMap
 
   runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
-  runCESK _ (Up exn _ []) = return (Left (formatExn exn))
+  runCESK _ (Up exn _ []) = return (Left (formatExn entMap exn))
   runCESK !steps cesk = case finalValue cesk of
     Just (v, _) -> return (Right (v, steps))
     Nothing -> stepCESK cesk >>= runCESK (steps + 1)
@@ -626,6 +630,6 @@ inventory =
         )
     ]
  where
-  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] []
-  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] []
-  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] []
+  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
+  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
+  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []

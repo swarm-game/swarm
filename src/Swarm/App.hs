@@ -30,15 +30,15 @@ app =
     { appDraw = drawUI
     , appChooseCursor = chooseCursor
     , appHandleEvent = handleEvent
-    , appStartEvent = \s -> s <$ enablePasteMode
+    , appStartEvent = (<$ enablePasteMode)
     , appAttrMap = const swarmAttrMap
     }
 
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
-appMain :: Maybe Seed -> Maybe String -> Maybe String -> IO ()
-appMain seed scenario toRun = do
-  res <- runExceptT $ initAppState seed scenario toRun
+appMain :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
+appMain seed scenario toRun cheat = do
+  res <- runExceptT $ initAppState seed scenario toRun cheat
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
@@ -66,6 +66,7 @@ appMain seed scenario toRun = do
 
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
+      V.setMode (V.outputIface initialVty) V.Mouse True
       void $ customMain initialVty buildVty (Just chan) app s
 
 -- | If available for the terminal emulator, enable bracketed paste mode.

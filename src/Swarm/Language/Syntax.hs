@@ -6,7 +6,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -26,6 +25,7 @@ module Swarm.Language.Syntax (
   toDirection,
   fromDirection,
   allDirs,
+  isCardinal,
   dirInfo,
   north,
   south,
@@ -85,7 +85,7 @@ import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Witch.From (from)
 
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -120,18 +120,22 @@ dirInfo d = case d of
   DLeft -> relative (\(V2 x y) -> V2 (- y) x)
   DRight -> relative (\(V2 x y) -> V2 y (- x))
   DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
+  DDown -> relative (const down)
   DForward -> relative id
   DNorth -> cardinal north
   DSouth -> cardinal south
   DEast -> cardinal east
   DWest -> cardinal west
-  DDown -> cardinal down
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
   directionSyntax = toLower . T.tail . from . show $ d
   cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative vf = DirInfo directionSyntax Nothing vf
+  relative = DirInfo directionSyntax Nothing
+
+-- | Check if the direction is absolute (e.g. 'north' or 'south').
+isCardinal :: Direction -> Bool
+isCardinal = isJust . dirAbs . dirInfo
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
@@ -149,7 +153,7 @@ east = V2 1 0
 west :: V2 Int64
 west = V2 (-1) 0
 
--- | The direction for moving vertically down = @V2 0 0@.
+-- | The direction for viewing the current cell = @V2 0 0@.
 down :: V2 Int64
 down = V2 0 0
 
@@ -290,12 +294,10 @@ data Const
     Return
   | -- | Try/catch block
     Try
-  | -- | Raise an exception
-    Raise
   | -- | Undefined
     Undefined
-  | -- | Error
-    ErrorStr
+  | -- | User error
+    Fail
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -343,10 +345,18 @@ data Const
     -- | Application operator - helps to avoid parentheses:
     --   @f $ g $ h x  =  f (g (h x))@
     AppF
-  | -- God-like sensing operations
+  | -- God-like commands that are omnipresent or omniscient.
 
-    -- | Run a command as if you were another robot.
+    -- | Teleport a robot to the given position.
+    Teleport
+  | -- | Run a command as if you were another robot.
     As
+  | -- | Find a robot by name.
+    RobotNamed
+  | -- | Find a robot by number.
+    RobotNumbered
+  | -- | Check if an entity is known.
+    Knows
   deriving (Eq, Ord, Enum, Bounded, Data, Show)
 
 allConst :: [Const]
@@ -455,9 +465,8 @@ constInfo c = case c of
   Run -> commandLow 1
   Return -> commandLow 1
   Try -> commandLow 2
-  Raise -> commandLow 1
   Undefined -> functionLow 0
-  ErrorStr -> function "error" 1
+  Fail -> functionLow 1
   If -> functionLow 3
   Inl -> functionLow 1
   Inr -> functionLow 1
@@ -483,7 +492,11 @@ constInfo c = case c of
   Format -> functionLow 1
   Concat -> binaryOp "++" 6 R
   AppF -> binaryOp "$" 0 R
+  Teleport -> commandLow 2
   As -> commandLow 2
+  RobotNamed -> commandLow 1
+  RobotNumbered -> commandLow 1
+  Knows -> commandLow 1
  where
   unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
   binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}

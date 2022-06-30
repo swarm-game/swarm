@@ -1,9 +1,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -21,6 +19,7 @@ module Swarm.Util.Yaml (
   ParserE,
   liftE,
   withE,
+  getE,
   FromJSONE (..),
   decodeFileEitherE,
   (..:),
@@ -32,6 +31,7 @@ module Swarm.Util.Yaml (
 ) where
 
 import Control.Monad.Reader
+import Data.Aeson.Key (fromText)
 import Data.Aeson.Types (explicitParseField, explicitParseFieldMaybe)
 import Data.Bifunctor (first)
 import Data.Maybe (fromMaybe)
@@ -59,8 +59,13 @@ type ParserE e = With e Parser
 liftE :: Functor f => f a -> With e f a
 liftE = E . const
 
+-- | Locally merge an environment with the current one for given action.
 withE :: Semigroup e => e -> With e f a -> With e f a
 withE e (E f) = E (f . (<> e))
+
+-- | Get the current environment.
+getE :: (Monad f) => With e f e
+getE = E return
 
 ------------------------------------------------------------
 -- FromJSONE
@@ -79,7 +84,7 @@ class FromJSONE e a where
   parseJSONE = liftE . parseJSON
 
   parseJSONE' :: e -> Value -> Parser a
-  parseJSONE' e = ($e) . runE . parseJSONE
+  parseJSONE' e = ($ e) . runE . parseJSONE
 
 instance FromJSONE e Int
 
@@ -116,12 +121,12 @@ decodeFileEitherE e file = do
 -- | A variant of '.:' for 'ParserE': project out a field of an
 --   'Object', passing along the extra environment.
 (..:) :: FromJSONE e a => Object -> Text -> ParserE e a
-v ..: x = E $ \e -> explicitParseField (parseJSONE' e) v x
+v ..: x = E $ \e -> explicitParseField (parseJSONE' e) v (fromText x)
 
 -- | A variant of '.:?' for 'ParserE': project out an optional field of an
 --   'Object', passing along the extra environment.
 (..:?) :: FromJSONE e a => Object -> Text -> ParserE e (Maybe a)
-v ..:? x = E $ \e -> explicitParseFieldMaybe (parseJSONE' e) v x
+v ..:? x = E $ \e -> explicitParseFieldMaybe (parseJSONE' e) v (fromText x)
 
 -- | A variant of '.!=' for any functor.
 (..!=) :: Functor f => f (Maybe a) -> a -> f a

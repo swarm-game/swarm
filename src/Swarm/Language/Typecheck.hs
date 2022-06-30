@@ -7,7 +7,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -477,9 +476,8 @@ inferConst c = toU $ case c of
   Force -> [tyQ| {a} -> a |]
   Return -> [tyQ| a -> cmd a |]
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
-  Raise -> [tyQ| string -> cmd a |]
   Undefined -> [tyQ| a |]
-  ErrorStr -> [tyQ| string -> a |]
+  Fail -> [tyQ| string -> a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT
@@ -498,7 +496,11 @@ inferConst c = toU $ case c of
   Format -> [tyQ| a -> string |]
   Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
+  Teleport -> [tyQ| robot -> (int * int) -> cmd () |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
+  RobotNamed -> [tyQ| string -> cmd robot |]
+  RobotNumbered -> [tyQ| int -> cmd robot |]
+  Knows -> [tyQ| string -> cmd bool |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]

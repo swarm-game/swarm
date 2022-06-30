@@ -1,5 +1,4 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Swarm.Game.CESK
@@ -321,7 +320,7 @@ prettyCESK (Out v _ k) =
     ]
 prettyCESK (Up e _ k) =
   unlines
-    [ "! " ++ from (formatExn e)
+    [ "! " ++ from (formatExn mempty e)
     , "  " ++ prettyCont k
     ]
 prettyCESK (Waiting t cek) =

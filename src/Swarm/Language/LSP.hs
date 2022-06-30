@@ -1,9 +1,7 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Language.Parse
+-- Module      :  Swarm.Language.LSP
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -84,8 +82,8 @@ validateSwarmCode doc version content = do
     let diags =
           [ J.Diagnostic
               ( J.Range
-                  (J.Position startLine startCol)
-                  (J.Position endLine endCol)
+                  (J.Position (fromIntegral startLine) (fromIntegral startCol))
+                  (J.Position (fromIntegral endLine) (fromIntegral endCol))
               )
               (Just J.DsWarning) -- severity
               Nothing -- code
@@ -114,6 +112,6 @@ handlers =
         mdoc <- getVirtualFile doc
         case mdoc of
           Just vf@(VirtualFile _ version _rope) -> do
-            validateSwarmCode doc (Just version) (virtualFileText vf)
-          _ -> debug $ "No virtual file found for: " <> (from (show msg))
+            validateSwarmCode doc (Just $ fromIntegral version) (virtualFileText vf)
+          _ -> debug $ "No virtual file found for: " <> from (show msg)
     ]

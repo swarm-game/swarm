@@ -1,0 +1,50 @@
+name: Grab
+description: |
+  Learn how to interact with the world by grabbing entities.
+goal:
+  - Previously you learned how to make new things (like a branch predictor) from ingredients.
+    Now you will learn how to obtain the ingredients you need.
+  - There are trees ahead of you, 'move' to each one and 'grab' it.
+  - You can learn more by selecting the grabber device in your inventory.
+  - |
+    TIP: You can use the arrow key Up ('↑') to reuse your previous commands.
+win: |
+  try {
+    t <- as base {count "tree"};
+    return (t >= 6);
+  } { return false }
+solution:
+  move;
+  move; grab;
+  move; grab;
+  move; grab;
+  move; grab;
+  move; grab;
+  move; grab;
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - grabber
+      - logger
+      - compass
+    inventory:
+      - [0, tree]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    'T': [grass, tree]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌────────┐
+    │..TTTTTT│
+    └────────┘

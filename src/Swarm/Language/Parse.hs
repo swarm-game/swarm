@@ -1,10 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
 -- Module      :  Swarm.Language.Parse
@@ -215,7 +213,7 @@ parseDirection = asum (map alternative allDirs) <?> "direction constant"
  where
   alternative d = d <$ (reserved . dirSyntax . dirInfo) d
 
--- | Parse Const as reserved words (e.g. @Raise <$ reserved "raise"@)
+-- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
 parseConst = asum (map alternative consts) <?> "built-in user function"
  where

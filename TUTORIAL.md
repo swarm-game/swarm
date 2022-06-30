@@ -45,10 +45,10 @@ To skip past the main menu for now and ensure you're playing on the
 same world described in this tutorial, start Swarm with a command line
 like
 ```
-stack run -- -c 00-classic -s 0
+stack run -- -s 0
 ```
-This tells Swarm to load the `00-classic` scenario and use 0 as the
-seed for the random number generator.
+This tells Swarm to use 0 as the seed for the random number generator
+(and automatically load a new game rather than showing the main menu).
 
 You should then be greeted by a screen that looks something like this:
 
@@ -71,7 +71,7 @@ Pretty much the only thing you can do at this point is build robots.  Let's buil
 one!  Tab back to the REPL (or hit the <kbd>Meta</kbd>+<kbd>R</kbd>
 shortcut) and type
 ```
-build {turn north; move}
+build {move}
 ```
 then hit Enter.  You should see a robot appear and travel to the
 north one step before stopping.  It should look something like this:
@@ -187,9 +187,12 @@ def m2 = m; m end;   def m4 = m2; m2 end;   def m8 = m4; m4 end
 Great, now we have commands that will execute `move` multiple times.
 Now let's use them:
 ```
-build { turn west; m4; m }
+build { turn left; m4; m }
 ```
 This should build a robot that moves toward the green mass to the west.
+The base is still turned north, so the robot needs to turn left
+to be oriented to the west. Once you have a compass to install on
+the robot, you will be able to `turn west` directly.
 
 You might wonder at this point if it is possible to create a function
 that takes a number as input and moves that many steps forward, like
@@ -213,7 +216,7 @@ Let's build another robot, but this time we will capture it in a
 variable using the above syntax.  Then we can use the `view` command
 to focus on it instead of the base:
 ```
-r <- build { turn west; m4; m }; view r
+r <- build { turn left; m4; m }; view r
 ```
 Note that `base` executes the `view r` command as soon as it
 finishes executing the `build` command, which is about the same time
@@ -248,20 +251,21 @@ which you may have noticed in the recently viewed robot's inventory.
 You can `scan` items in the world to learn about them, and later
 `upload` what you have learned to the base.
 
-Let's build a robot to learn about those green `?` things to the west:
+Let's build a robot to learn about those green `?` things to the south:
 ```
-build {turn west; m4; move; scan west; turn back; m4; upload base}
+build {turn back; m; scan forward; upload base}
 ```
 The `turn` command we used to turn the robot takes a direction as an
-argument, which can be either an absolute direction
-(`north`, `south`, `east`, or `west`) or a relative direction
-(`forward`, `back`, `left`, `right`, or `down`).  Instead of `upload
-base` we could have also written `upload parent`; every robot has a
-special variable `parent` which refers to the robot that built it.
+argument, which can be either a relative direction (`forward`, `back`,
+`left`, `right`, or `down`) or an absolute direction (`north`, `south`,
+`east`, or `west`) for which you need a `compass`.
+Instead of `upload base` we could have also written `upload parent`;
+every robot has a special variable `parent` which refers to the robot
+that built it.
 
 Notice that the robot did not actually need to walk on top of a `?` to
-learn about it, since it could `scan west` to scan the cell one unit
-to the west (you can also `scan down` to scan an item directly beneath the
+learn about it, since it could `scan forward` to scan the cell one unit
+in its direction (you can also `scan down` to scan an item directly beneath the
 robot).  Also, it was able to `upload` at a distance of one cell away from
 the base.
 
@@ -281,14 +285,14 @@ Getting some resources
 
 So those tree things look like they might be useful.  Let's get one!
 ```
-build {turn west; m8; thing <- grab; turn back; m8; give base thing }
+build {turn back; m2; thing <- grab; turn back; m2; give base thing }
 ```
 You can see that the
 `grab` command returns the name of the thing it grabbed, which is
 especially helpful when grabbing something unknown. (In this case we
-also could have just written `...; grab; ...; give "base" "tree"; ...`.)
+also could have just written `...; grab; ...; give base "tree"`.)
 
-You should see a robot head west from your base, grab a tree, and
+You should see a robot head south from your base, grab a tree, and
 return to the base.  If all works properly, after the newly built
 robot executes the `give` command, the number next to the `tree` entry
 in your inventory should turn from 0 to 1.  Note that in this case, we
@@ -338,21 +342,21 @@ First, we have to make a `logger` device.  A `logger` can be made from
 one `log`, which you should already have in your inventory, so simply
 type `make "logger"` at the REPL.
 
-Now, how de we `build` a robot with the `logger` installed?  The
+Now, how do we `build` a robot with the `logger` installed?  The
 easiest way is to have the robot explicitly use the `log` command; the
 `build` command analyzes the given program and automatically installs
 any devices that will be necessary to execute it.  (It is also
 possible to manually install devices with the `install` command.)  So
 let's type the following:
 ```
-crasher <- build {setname "crasher"; log "hi!"; turn south; move; grab; move}
+crasher <- build {setname "crasher"; log "hi!"; turn left; move; grab; move}
 ```
 (The `setname "crasher"` command is not strictly necessary, but will
 help us understand the logs we look at later --- otherwise the log
 entries would be indexed by some randomly generated robot name.)  The
 world should now look something like the below.  Notice that the
 `logger` is gone from your inventory---it was automatically installed
-on `crasher`.  Notice also that `crasher` only moved one unit south,
+on `crasher`.  Notice also that `crasher` only moved one unit west,
 even though we told it to move two steps!  What went wrong?
 
 ![Let's crash a robot!](images/tutorial/crasher.png)
@@ -382,9 +386,9 @@ the `upload` command, which we have seen before.  In addition to
 uploading knowledge about entities, it turns out that it also uploads
 the log from a `logger`.
 ```
-build {turn west; m8; m; thing <- grab; turn back; m8; m; give base thing}
+build {turn back; m4; thing <- grab; turn back; m4; give base thing}
 make "log"; make "logger"
-build {setname "salvager"; turn south; move; log "salvaging..."; salvage; turn back; move; upload base}
+build {setname "salvager"; turn left; move; log "salvaging..."; salvage; turn back; move; upload base}
 ```
 The world should now look something like this:
 
@@ -416,18 +420,5 @@ There is some rudimentary [Language Server-based editor
 support](https://github.com/swarm-game/swarm/blob/main/docs/EDITORS.md)
 giving syntax and error highlighting for `.sw` files; at the moment
 Emacs is supported along with VSCode.
-
-Creative Mode
--------------
-
-For now, there is a secret way to switch between Classic mode and
-Creative mode.  In Classic mode, the kinds of actions your robots can
-do, and the kinds of programs they can interpret, is restricted by
-what devices they have installed.  In Creative mode you can do
-anything you like, including fabricate arbitrary items out of thin air
-using the `create` command. Also, unknown entities will not be hidden
-in the world map.
-
-To switch, highlight the world view panel, then hit the <kbd>M</kbd> key.
 
 Now go forth and build your swarm!

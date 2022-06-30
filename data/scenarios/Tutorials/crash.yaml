@@ -1,0 +1,111 @@
+name: Debug robots
+description: |
+  Learn how to view built robots and debug them.
+goal:
+  - Before you send your robots far away you need to learn how
+    to figure out what went wrong with them if they crash.
+  - Send a robot to walk four steps straight east into the mountain,
+    but use the bind syntax 'r <- build {COMMANDS}'.
+  - |
+    Since you expect the robot will crash into the mountain,
+    add a 'log' command so that we will see what command failed:
+  - |
+    'r <- build {log "Hi!"; move;move;move; log "3"; move; log "OK"}'
+  - After that you can 'view r', to see how far it got.
+  - The instructions on how to win will appear in the crashed robots log.
+entities:
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - Do 'place "Win"' once you are done with this challenge.
+      - You might need to 'grab' the entity you are standing on
+        or move to an empty cell.
+    properties: [known, portable]
+  - name: knownwater
+    display:
+      attr: water
+      char: '~'
+    description:
+    - A running stream of of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+  - name: knowntree
+    display:
+      attr: plant
+      char: 'T'
+    description:
+    - A tree.
+    properties: [known, portable, growable]
+    growth: [0,0]
+  - name: knownmountain
+    display:
+      attr: snow
+      char: 'A'
+    description:
+    - A mountain.
+    properties: [known, unwalkable]
+    growth: [0,0]
+win: |
+  try {
+    as base {has "Win"}
+  } { return false }
+solution: |
+  crasher <- build {move; move; move; log "bye"; move};
+  wait 32;
+  salvager <- build {
+    log "I will bring home the Win!";
+    move; move; move; salvage; turn back; move; move; give base "Win"
+  };
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+    inventory:
+      - [10, logger]
+      - [10, compass]
+      - [10, scanner]
+      - [10, plasma cutter]
+  - name: secret
+    loc: [3, 0]
+    dir: [0, 0]
+    devices:
+      - logger
+      - flash memory
+      - dictionary
+      - 3D printer
+    inventory:
+      - [100000, Win]
+    display:
+      char: '▒'
+      attr: grass
+    system: true
+    program: |
+      run "data/scenarios/Tutorials/secret.sw"
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    '~': [ice, knownwater]
+    'T': [grass, knowntree]
+    'A': [stone, knownmountain]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 3]
+  map: |
+    ┌─────┐
+    │AAAT~│
+    │..A.~│
+    │....A│
+    └─────┘

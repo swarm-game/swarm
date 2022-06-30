@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Language.Capability
@@ -17,6 +18,7 @@
 module Swarm.Language.Capability (
   Capability (..),
   CapCtx,
+  capabilityName,
   requiredCaps,
   constCaps,
 ) where
@@ -47,6 +49,8 @@ data Capability
   | -- | Execute the 'Move' command
     CMove
   | -- | Execute the 'Turn' command
+    --
+    -- NOTE: using cardinal directions is separate 'COrient' capability
     CTurn
   | -- | Execute the 'Selfdestruct' command
     CSelfdestruct
@@ -90,6 +94,8 @@ data Capability
     CCond
   | -- | Evaluate comparison operations
     CCompare
+  | -- | Use cardinal direction constants.
+    COrient
   | -- | Evaluate arithmetic operations
     CArith
   | -- | Store and look up definitions in an environment
@@ -104,14 +110,19 @@ data Capability
     CWhoami
   | -- | Capability to set its own name
     CSetname
+  | -- | Capability to move unrestricted to any place
+    CTeleport
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
     CGod
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
 
+capabilityName :: Capability -> Text
+capabilityName = from @String . map toLower . drop 1 . show
+
 instance ToJSON Capability where
-  toJSON = String . from . map toLower . drop 1 . show
+  toJSON = String . capabilityName
 
 instance FromJSON Capability where
   parseJSON = withText "Capability" tryRead
@@ -180,13 +191,13 @@ requiredCaps ctx tm = first (S.insert CPower) $ case tm of
 --   capabilities to *evaluate* it), which does not seem worth it at
 --   all.
 requiredCaps' :: CapCtx -> Term -> Set Capability
-requiredCaps' ctx = go
+requiredCaps' = go
  where
-  go tm = case tm of
+  go ctx tm = case tm of
     -- Some primitive literals that don't require any special
     -- capability.
     TUnit -> S.empty
-    TDir _ -> S.empty
+    TDir d -> if isCardinal d then S.singleton COrient else S.empty
     TInt _ -> S.empty
     TAntiInt _ -> S.empty
     TString _ -> S.empty
@@ -194,7 +205,7 @@ requiredCaps' ctx = go
     TBool _ -> S.empty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
-    TConst c -> constCaps c
+    TConst c -> maybe S.empty S.singleton (constCaps c)
     -- Note that a variable might not show up in the context, and
     -- that's OK.  In particular, only variables bound by 'TDef' go
     -- in the context; variables bound by a lambda or let will not
@@ -212,102 +223,114 @@ requiredCaps' ctx = go
     -- the application site.  Again, this is overly conservative in
     -- the case that the argument is unused, but in that case the
     -- unused argument could be removed.
-    TLam _ _ t -> S.insert CLambda $ go t
+    --
+    -- Note, however, that we do need to *delete* the argument from
+    -- the context, in case the context already contains a definition
+    -- with the same name: inside the lambda that definition will be
+    -- shadowed, so we do not want the name to be associated to any
+    -- capabilities.
+    TLam x _ t -> S.insert CLambda $ go (delete x ctx) t
     -- An application simply requires the union of the capabilities
     -- from the left- and right-hand sides.  This assumes that the
     -- argument will be used at least once by the function.
-    TApp t1 t2 -> go t1 `S.union` go t2
+    TApp t1 t2 -> go ctx t1 `S.union` go ctx t2
     -- Similarly, for a let, we assume that the let-bound expression
-    -- will be used at least once in the body.
-    TLet r _ _ t1 t2 ->
+    -- will be used at least once in the body. We delete the let-bound
+    -- name from the context when recursing for the same reason as
+    -- lambda.
+    TLet r x _ t1 t2 ->
       (if r then S.insert CRecursion else id) $
-        S.insert CEnv $ go t1 `S.union` go t2
+        S.insert CEnv $ go (delete x ctx) t1 `S.union` go (delete x ctx) t2
+    -- We also delete the name in a TBind, if any, while recursing on
+    -- the RHS.
+    TBind mx t1 t2 -> go ctx t1 `S.union` go (maybe id delete mx ctx) t2
     -- Everything else is straightforward.
-    TPair t1 t2 -> go t1 `S.union` go t2
-    TBind _ t1 t2 -> go t1 `S.union` go t2
-    TDelay _ t -> go t
+    TPair t1 t2 -> go ctx t1 `S.union` go ctx t2
+    TDelay _ t -> go ctx t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning S.empty is safe.
     TDef {} -> S.empty
 
 -- | Capabilities needed to evaluate or execute a constant.
-constCaps :: Const -> Set Capability
-constCaps =
-  S.fromList . \case
-    -- Some built-in constants that don't require any special capability.
-    Wait -> []
-    Noop -> []
-    AppF -> []
-    Force -> []
-    Return -> []
-    Self -> []
-    Parent -> []
-    Base -> []
-    Setname -> []
-    Undefined -> []
-    ErrorStr -> []
-    -- Some straightforward ones.
-    Log -> [CLog]
-    Selfdestruct -> [CSelfdestruct]
-    Move -> [CMove]
-    Turn -> [CTurn]
-    Grab -> [CGrab]
-    Place -> [CPlace]
-    Give -> [CGive]
-    Install -> [CInstall]
-    Make -> [CMake]
-    Has -> []
-    Count -> [CCount]
-    If -> [CCond]
-    Create -> [CCreate]
-    Blocked -> [CSensefront]
-    Scan -> [CScan]
-    Ishere -> [CSensehere]
-    Upload -> [CScan]
-    Build -> [CBuild]
-    Salvage -> [CSalvage]
-    Reprogram -> [CReprogram]
-    Drill -> [CDrill]
-    -- Some God-like sensing abilities.
-    As -> [CGod]
-    -- String operations, which for now are enabled by CLog
-    Format -> [CLog]
-    Concat -> [CLog]
-    -- Some additional straightforward ones, which however currently
-    -- cannot be used in classic mode since there is no craftable item
-    -- which conveys their capability.
-    Appear -> [CAppear] -- paint?
-    Whereami -> [CSenseloc] -- GPS?
-    Random -> [CRandom] -- randomness device (with bitcoins)?
-    Neg -> [CArith] -- ALU? pocket calculator?
-    Whoami -> [CWhoami] -- mirror, needs a recipe
+constCaps :: Const -> Maybe Capability
+constCaps = \case
+  -- Some built-in constants that don't require any special capability.
+  Wait -> Nothing
+  Noop -> Nothing
+  AppF -> Nothing
+  Force -> Nothing
+  Return -> Nothing
+  Parent -> Nothing
+  Base -> Nothing
+  Setname -> Nothing
+  Undefined -> Nothing
+  Fail -> Nothing
+  -- Some straightforward ones.
+  Log -> Just CLog
+  Selfdestruct -> Just CSelfdestruct
+  Move -> Just CMove
+  Turn -> Just CTurn
+  Grab -> Just CGrab
+  Place -> Just CPlace
+  Give -> Just CGive
+  Install -> Just CInstall
+  Make -> Just CMake
+  Has -> Nothing
+  Count -> Just CCount
+  If -> Just CCond
+  Blocked -> Just CSensefront
+  Scan -> Just CScan
+  Ishere -> Just CSensehere
+  Upload -> Just CScan
+  Build -> Just CBuild
+  Salvage -> Just CSalvage
+  Reprogram -> Just CReprogram
+  Drill -> Just CDrill
+  Neg -> Just CArith
+  Add -> Just CArith
+  Sub -> Just CArith
+  Mul -> Just CArith
+  Div -> Just CArith
+  Exp -> Just CArith
+  Whoami -> Just CWhoami
+  Self -> Just CWhoami
+  -- Some God-like abilities.
+  As -> Just CGod
+  RobotNamed -> Just CGod
+  RobotNumbered -> Just CGod
+  Create -> Just CGod
+  -- String operations, which for now are enabled by CLog
+  Format -> Just CLog
+  Concat -> Just CLog
+  -- Some additional straightforward ones, which however currently
+  -- cannot be used in classic mode since there is no craftable item
+  -- which conveys their capability.
+  Teleport -> Just CTeleport -- Some space-time machine like Tardis?
+  Appear -> Just CAppear -- paint?
+  Whereami -> Just CSenseloc -- GPS?
+  Random -> Just CRandom -- randomness device (with bitcoins)?
 
-    -- comparator?
-    Eq -> [CCompare]
-    Neq -> [CCompare]
-    Lt -> [CCompare]
-    Gt -> [CCompare]
-    Leq -> [CCompare]
-    Geq -> [CCompare]
-    And -> []
-    Or -> []
-    Add -> [CArith]
-    Sub -> [CArith]
-    Mul -> [CArith]
-    Div -> [CArith]
-    Exp -> [CArith]
-    -- Some more constants which *ought* to have their own capability but
-    -- currently don't.
-    Say -> []
-    View -> [] -- XXX this should also require something.
-    Run -> [] -- XXX this should also require a capability
-    -- which the base starts out with.
-    Not -> [] -- XXX some kind of boolean logic cap?
-    Inl -> [] -- XXX should require cap for sums
-    Inr -> []
-    Case -> []
-    Fst -> [] -- XXX should require cap for pairs
-    Snd -> []
-    Try -> [] -- XXX these definitely need to require
-    Raise -> [] -- something.
+  -- comparator?
+  Eq -> Just CCompare
+  Neq -> Just CCompare
+  Lt -> Just CCompare
+  Gt -> Just CCompare
+  Leq -> Just CCompare
+  Geq -> Just CCompare
+  And -> Nothing
+  Or -> Nothing
+  -- Some more constants which *ought* to have their own capability but
+  -- currently don't.
+  Say -> Nothing
+  View -> Nothing -- XXX this should also require something.
+  Run -> Nothing -- XXX this should also require a capability
+  -- which the base starts out with.
+  Not -> Nothing -- XXX some kind of boolean logic cap?
+  Inl -> Nothing -- XXX should require cap for sums
+  Inr -> Nothing
+  Case -> Nothing
+  Fst -> Nothing -- XXX should require cap for pairs
+  Snd -> Nothing
+  Try -> Nothing -- XXX these definitely need to require something.
+  Knows -> Nothing

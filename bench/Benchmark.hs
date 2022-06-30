@@ -15,7 +15,7 @@ import Linear.V2 (V2 (V2))
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Robot (URobot, mkRobot)
-import Swarm.Game.State (GameState, addURobot, creativeMode, classicGame0, world)
+import Swarm.Game.State (GameState, addURobot, classicGame0, creativeMode, world)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.World (newWorld)
@@ -60,25 +60,25 @@ circlerProgram =
     let forever : cmd () -> cmd () = \c. c; forever c
     in forever (
       move;
-      turn east;
+      turn right;
       move;
-      turn south;
+      turn right;
       move;
-      turn west;
+      turn right;
       move;
-      turn north
+      turn right;
     )
   |]
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> V2 Int64 -> URobot
-initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False
+initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
 mkGameState :: (V2 Int64 -> URobot) -> Int -> IO GameState
 mkGameState robotMaker numRobots = do
-  let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0 .. numRobots -1]]
+  let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
   Right initState <- runExceptT classicGame0
   execStateT
     (mapM addURobot robots)

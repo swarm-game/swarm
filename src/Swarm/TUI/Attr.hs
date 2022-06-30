@@ -38,9 +38,18 @@ swarmAttrMap =
     , (flowerAttr, fg (V.rgbColor @Int 200 0 200))
     , (copperAttr, fg V.yellow)
     , (copperAttr', fg (V.rgbColor @Int 78 117 102))
+    , (ironAttr, fg (V.rgbColor @Int 97 102 106))
+    , (ironAttr', fg (V.rgbColor @Int 183 65 14))
+    , (quartzAttr, fg V.white)
+    , (silverAttr, fg (V.rgbColor @Int 192 192 192))
+    , (goldAttr, fg (V.rgbColor @Int 255 215 0))
     , (snowAttr, fg V.white)
     , (sandAttr, fg (V.rgbColor @Int 194 178 128))
     , (fireAttr, fg V.red `V.withStyle` V.bold)
+    , (redAttr, fg V.red)
+    , (notifAttr, fg V.yellow `V.withStyle` V.bold)
+    , (greenAttr, fg V.green)
+    , (blueAttr, fg V.blue)
     , (deviceAttr, fg V.yellow `V.withStyle` V.bold)
     , -- Terrain attributes
       (dirtAttr, fg (V.rgbColor @Int 165 42 42))
@@ -66,11 +75,20 @@ robotAttr
   , flowerAttr
   , copperAttr
   , copperAttr'
+  , ironAttr
+  , ironAttr'
+  , quartzAttr
+  , silverAttr
+  , goldAttr
   , snowAttr
   , sandAttr
   , rockAttr
   , baseAttr
   , fireAttr
+  , redAttr
+  , notifAttr
+  , greenAttr
+  , blueAttr
   , woodAttr
   , deviceAttr
   , dirtAttr
@@ -94,14 +112,23 @@ plantAttr = "plant"
 flowerAttr = "flower"
 copperAttr = "copper"
 copperAttr' = "copper'"
+ironAttr = "iron"
+ironAttr' = "iron'"
+quartzAttr = "quartz"
+silverAttr = "silver"
+goldAttr = "gold"
 snowAttr = "snow"
 sandAttr = "sand"
 fireAttr = "fire"
+redAttr = "red"
+highlightAttr = "highlight"
+greenAttr = "green"
+blueAttr = "blue"
 rockAttr = "rock"
 woodAttr = "wood"
 baseAttr = "base"
 deviceAttr = "device"
-highlightAttr = "highlight"
+notifAttr = "notif"
 sepAttr = "sep"
 infoAttr = "info"
 defAttr = "def"

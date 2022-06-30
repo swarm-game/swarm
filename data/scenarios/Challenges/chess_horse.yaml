@@ -1,0 +1,63 @@
+name: Chess Knight
+description: In this quirky challenge, you move as the chess knight piece. Can you capture the enemy king?
+goal:
+  - Robots can use the 'move' command to move.
+    But they only 'turn' in cardinal directions. 
+  - You are special. You are a knight. 
+  - Go forth and capture the King!
+entities:
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+win: |
+  try {
+    bloc <- as base {whereami};
+    king <- robotNamed "king";
+    kloc <- as king {whereami};
+    return (bloc == kloc)
+  } { return false }
+solution: |
+  move; move; move; turn right; move; turn left; move;
+robots:
+  - name: horse
+    loc: [0,0]
+    dir: [2,-1]
+    devices:
+      - treads
+      - logger
+    inventory: []
+    display:
+      char: '♘'
+  - name: king
+    loc: [7,-6]
+    dir: [0,0]
+    display:
+      char: '♚'
+world:
+  default: [ice, knownwater]
+  palette:
+    '.': [grass, null]
+    '#': [ice, null]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌────────┐
+    │.#.#.#.#│
+    │#.#.#.#.│
+    │.#.#.#.#│
+    │#.#.#.#.│
+    │.#.#.#.#│
+    │#.#.#.#.│
+    │.#.#.#.#│
+    │#.#.#.#.│
+    └────────┘

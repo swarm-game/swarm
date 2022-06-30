@@ -1,0 +1,71 @@
+name: Install
+description: |
+  Learn how to install devices and gain new capabilities.
+goal:
+    - You know how to 'grab' things lying around, so you are ready to get
+      an upgrade!
+    - By installing devices, you learn new capabilites which allow you to
+      perform more complex commands.
+    - Before you start building new robots in the later tutorials, you need
+      to gain the "build" capability.
+    - Try typing 'build {}' - you should get an error telling you that you
+      must install a device for it first.
+    - Fortunately, there is a "3D printer" lying nearby, that provides the
+      missing capability, go 'grab' it.
+    - When you have it, install the device with 'install base "3D printer"'.
+    - 'You win by building your first robot:'
+    - 'build {log "Hello World!"}'
+entities:
+  - name: knownprinter
+    display:
+      attr: device
+      char: '3'
+    description:
+      - A 3D printer, that you should grab and install.
+    yields: 3D printer
+    properties: [known, portable]
+  - name: knownwater
+    display:
+      attr: water
+      char: '~'
+    description:
+    - A running stream of of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+win: |
+  try {
+    _ <- robotNumbered 1;
+    return true;
+  } { return false }
+solution: |
+  turn south; move; grab; install base "3D printer"; build {log "Hello World!"};
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - treads
+      - compass
+      - grabber
+    inventory:
+      - [1, logger]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    '~': [ice, knownwater]
+    '3': [grass, knownprinter]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │...│
+    │3..│
+    │~~~│
+    └───┘

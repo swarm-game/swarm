@@ -1,8 +1,8 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -25,6 +25,7 @@ module Swarm.Game.Recipe (
   recipeOutputs,
   recipeRequirements,
   recipeTime,
+  recipeWeight,
 
   -- * Loading recipes
   loadRecipes,
@@ -32,6 +33,9 @@ module Swarm.Game.Recipe (
   inRecipeMap,
 
   -- * Looking up recipes
+  MissingIngredient (..),
+  MissingType (..),
+  knowsIngredientsFor,
   recipesFor,
   make,
   make',
@@ -56,6 +60,7 @@ import Control.Carrier.Throw.Either (runThrow)
 import Paths_swarm
 import Swarm.Game.Entity as E
 import Swarm.Util
+import Swarm.Util.Yaml
 
 -- | An ingredient list is a list of entities with multiplicity.  It
 --   is polymorphic in the entity type so that we can use either
@@ -72,6 +77,7 @@ data Recipe e = Recipe
   , _recipeOutputs :: IngredientList e
   , _recipeRequirements :: IngredientList e
   , _recipeTime :: Integer
+  , _recipeWeight :: Integer
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
@@ -90,18 +96,25 @@ recipeTime :: Lens' (Recipe e) Integer
 --   are not consumed by the recipe (e.g. a furnace).
 recipeRequirements :: Lens' (Recipe e) (IngredientList e)
 
+-- | How this recipe is weighted against other recipes.  Any time
+--   there are multiple valid recipes that fit certain criteria, one
+--   of the recipes will be randomly chosen with probability
+--   proportional to its weight.
+recipeWeight :: Lens' (Recipe e) Integer
+
 ------------------------------------------------------------
 -- Serializing
 ------------------------------------------------------------
 
 instance ToJSON (Recipe Text) where
-  toJSON (Recipe ins outs reqs time) =
+  toJSON (Recipe ins outs reqs time weight) =
     object $
       [ "in" .= ins
       , "out" .= outs
       ]
         ++ ["required" .= reqs | not (null reqs)]
         ++ ["time" .= time | time /= 1]
+        ++ ["weight" .= weight | weight /= 1]
 
 instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
@@ -110,12 +123,23 @@ instance FromJSON (Recipe Text) where
       <*> v .: "out"
       <*> v .:? "required" .!= []
       <*> v .:? "time" .!= 1
+      <*> v .:? "weight" .!= 1
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'
 --   records; or.
 resolveRecipes :: EntityMap -> [Recipe Text] -> Validation [Text] [Recipe Entity]
 resolveRecipes em = (traverse . traverse) (\t -> maybe (Failure [t]) Success (lookupEntityName t em))
+
+instance FromJSONE EntityMap (Recipe Entity) where
+  parseJSONE v = do
+    rt <- liftE $ parseJSON @(Recipe Text) v
+    em <- getE
+    let erEnt :: Validation [Text] (Recipe Entity)
+        erEnt = traverse (\t -> maybe (Failure [t]) Success (lookupEntityName t em)) rt
+    case validationToEither erEnt of
+      Right rEnt -> return rEnt
+      Left err -> fail . from @Text . T.unlines $ err
 
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
@@ -154,16 +178,30 @@ recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
 inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 inRecipeMap = buildRecipeMap recipeInputs
 
+data MissingIngredient = MissingIngredient MissingType Count Entity
+  deriving (Show, Eq)
+
+data MissingType = MissingInput | MissingCatalyst
+  deriving (Show, Eq)
+
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
 --   Requirements are not consumed and so can use installed.
-missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [(Count, Entity)]
-missingIngredientsFor (inv, ins) (Recipe inps _ reqs _) =
-  findLacking inv inps
-    <> findLacking ins (findLacking inv reqs)
+missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [MissingIngredient]
+missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
+  mkMissing MissingInput (findLacking inv inps)
+    <> mkMissing MissingCatalyst (findLacking ins (findLacking inv reqs))
  where
+  mkMissing k = map (uncurry (MissingIngredient k))
   findLacking inven = filter ((> 0) . fst) . map (countNeeded inven)
   countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
+
+-- | Figure out if a recipe is available, but it can be lacking items.
+knowsIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> Bool
+knowsIngredientsFor (inv, ins) recipe =
+  knowsAll inv (recipe ^. recipeInputs) && knowsAll ins (recipe ^. recipeRequirements)
+ where
+  knowsAll xs = all (E.contains xs . snd)
 
 -- | Try to make a recipe, deleting the recipe's inputs from the
 --   inventory. Return either a description of which items are
@@ -178,7 +216,7 @@ make ::
   -- failure (with count of missing) or success with a new inventory,
   -- a function to add results and the recipe repeated
   Either
-    [(Count, Entity)]
+    [MissingIngredient]
     (Inventory, Inventory -> Inventory, Recipe Entity)
 make invs r = finish <$> make' invs r
  where
@@ -186,7 +224,7 @@ make invs r = finish <$> make' invs r
   addOuts out inv' = foldl' (flip $ uncurry insertCount) inv' out
 
 -- | Try to make a recipe, but do not insert it yet.
-make' :: (Inventory, Inventory) -> Recipe Entity -> Either [(Count, Entity)] (Inventory, IngredientList Entity)
+make' :: (Inventory, Inventory) -> Recipe Entity -> Either [MissingIngredient] (Inventory, IngredientList Entity)
 make' invs@(inv, _) r =
   case missingIngredientsFor invs r of
     [] ->

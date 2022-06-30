@@ -4,8 +4,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -102,7 +100,7 @@ import qualified Data.IntSet as IS
 import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -117,7 +115,7 @@ import Swarm.Util.Yaml
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (toDirection)
-import Swarm.Util (plural, (?))
+import Swarm.Util (plural, reflow, (?))
 
 import Paths_swarm
 
@@ -278,9 +276,11 @@ mkEntity ::
   [Text] ->
   -- | Properties
   [EntityProperty] ->
+  -- | Capabilities
+  [Capability] ->
   Entity
-mkEntity disp nm descr props =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props [] empty
+mkEntity disp nm descr props caps =
+  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props caps empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -291,7 +291,7 @@ mkEntity disp nm descr props =
 --   capabilities they provide (if any).
 data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
-  , entitiesByCap :: Map Capability Entity
+  , entitiesByCap :: Map Capability [Entity]
   }
 
 instance Semigroup EntityMap where
@@ -305,10 +305,10 @@ instance Monoid EntityMap where
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
 lookupEntityName nm = M.lookup nm . entitiesByName
 
--- | Find an entity which is a device that provides the given
+-- | Find all entities which are devices that provide the given
 --   capability.
-deviceForCap :: Capability -> EntityMap -> Maybe Entity
-deviceForCap cap = M.lookup cap . entitiesByCap
+deviceForCap :: Capability -> EntityMap -> [Entity]
+deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
@@ -317,7 +317,7 @@ buildEntityMap :: [Entity] -> EntityMap
 buildEntityMap es =
   EntityMap
     { entitiesByName = M.fromList . map (view entityName &&& id) $ es
-    , entitiesByCap = M.fromList . concatMap (\e -> map (,e) (e ^. entityCapabilities)) $ es
+    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (e ^. entityCapabilities)) $ es
     }
 
 ------------------------------------------------------------
@@ -327,9 +327,8 @@ buildEntityMap es =
 instance FromJSON Entity where
   parseJSON = withObject "Entity" $ \v ->
     rehashEntity
-      <$> ( Entity
-              <$> pure 0
-              <*> v .: "display"
+      <$> ( Entity 0
+              <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
               <*> (map reflow <$> (v .: "description"))
@@ -340,8 +339,6 @@ instance FromJSON Entity where
               <*> v .:? "capabilities" .!= []
               <*> pure empty
           )
-   where
-    reflow = T.unwords . T.words
 
 -- | If we have access to an 'EntityMap', we can parse the name of an
 --   'Entity' as a string and look it up in the map.
@@ -487,6 +484,10 @@ instance Hashable Inventory where
   hash = inventoryHash
   hashWithSalt s = hashWithSalt s . inventoryHash
 
+-- | Inventories are compared by hash for efficiency.
+instance Eq Inventory where
+  (==) = (==) `on` hash
+
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
 lookup :: Entity -> Inventory -> Count
@@ -599,4 +600,4 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   -- of the way each entity with count k contributes (k+1) times its
   -- hash.  So if the two inventories share an entity e, just adding their
   -- hashes would mean e now contributes (k+2) times its hash.
-  common = IS.foldl' (+) 0 $ (IM.keysSet cs1) `IS.intersection` (IM.keysSet cs2)
+  common = IS.foldl' (+) 0 $ IM.keysSet cs1 `IS.intersection` IM.keysSet cs2

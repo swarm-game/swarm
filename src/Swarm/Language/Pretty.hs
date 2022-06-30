@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
