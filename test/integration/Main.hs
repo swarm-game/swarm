@@ -137,7 +137,7 @@ testScenarioSolution _ci _em =
         [ expectFailBecause "Awaiting fix (#394)" $
             testSolution Default "Testing/394-build-drill"
         , testSolution Default "Testing/428-drowning-destroy"
-        , testSolution Default "Testing/harvest"
+        , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
         ]
     ]
