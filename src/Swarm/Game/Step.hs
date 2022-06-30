@@ -152,7 +152,7 @@ gameTick = do
       -- fresh CESK machine, using a copy of the current game state.
       v <- runThrow @Exn . evalState @GameState g $ evalPT t
       case v of
-        Left _exn -> return () -- XXX
+        Left _exn -> return () -- TODO: #512 Check errors in win condition
         Right (VBool True) -> winCondition .= Won False
         _ -> return ()
     _ -> return ()
@@ -1090,7 +1090,7 @@ execConst c vs s k = do
       _ -> badConst
     Say -> case vs of
       [VString msg] -> do
-        rn <- use robotName -- XXX use robot name + ID
+        rn <- use robotName -- TODO: #513 use robot name + ID
         emitMessage (T.concat [rn, ": ", msg])
         return $ Out VUnit s k
       _ -> badConst
@@ -1296,7 +1296,8 @@ execConst c vs s k = do
         pid <- use robotID
 
         let -- Standard devices that are always installed.
-            -- XXX in the future, make a way to build these and just start the base
+            -- TODO: #35
+            -- In the future, make a way to build these and just start the base
             -- out with a large supply of each?
             stdDeviceList =
               ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
