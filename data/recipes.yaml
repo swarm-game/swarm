@@ -15,6 +15,27 @@
 
 - in:
   - [1, log]
+  - [8, water]
+  out:
+  - [8, paper]
+
+- in:
+  - [32, paper]
+  - [1, flash memory]
+  out:
+  - [1, dictionary]
+
+- in:
+  - [256, paper]
+  - [1, LaTeX]
+  required:
+  - [1, big furnace]
+  out:
+  - [1, PhD thesis]
+  time: 65536
+
+- in:
+  - [1, log]
   out:
   - [1, logger]
 
@@ -63,6 +84,13 @@
   out:
   - [1, harvester]
 
+- in:
+  - [1, circuit]
+  - [1, board]
+  - [8, wooden gear]
+  out:
+  - [1, printer]
+
 #########################################
 ##                BITS                 ##
 #########################################
@@ -76,6 +104,12 @@
 - in:
   - [8, bit (0)]
   - [8, bit (1)]
+  out:
+  - [1, flash memory]
+
+- in:
+  - [1, flash memory]
+  - [8, wooden gear]
   out:
   - [1, counter]
 
@@ -373,6 +407,23 @@
   out:
   - [1, tank treads]
 
+- in:
+  - [2, copper pipe]
+  - [2, iron gear]
+  - [1, iron plate]
+  - [1, water]
+  - [1, small motor]
+  out:
+  - [1, grabber]
+
+- in:
+  - [4, circuit]
+  - [1, iron plate]
+  - [3, copper pipe]
+  - [16, iron gear]
+  out:
+  - [1, 3D printer]
+
 ## MAGIC
 
 - in:
@@ -540,3 +591,9 @@
   - [1, rubber]
   required:
   - [1, furnace]
+
+- in:
+  - [8, copper wire]
+  - [1, rubber]
+  out:
+  - [1, I/O cable]

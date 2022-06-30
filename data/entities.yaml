@@ -47,6 +47,24 @@
   properties: [portable]
   capabilities: [make]
 
+- name: paper
+  display:
+    attr: snow
+    char: '■'
+  description:
+  - A flat material made of pressed and dried wood fibers,
+    used as a surface on which to inscribe symbols.
+  properties: [portable]
+
+- name: PhD thesis
+  display:
+    attr: snow
+    char: 'P'
+  description:
+  - Perhaps writing one of these will help gain the trust and respect of
+    the native inhabitants.
+  properties: [portable]
+
 - name: rock
   display:
     attr: rock
@@ -463,21 +481,6 @@
     could also be used as a primitive balance scale.
   properties: [portable]
 
-- name: counter
-  display:
-    attr: device
-    char: 'C'
-  description:
-  - "Increment and reset, what more could you want?"
-  - |
-    A counter enables the command 'count : string -> cmd int',
-    which counts how many occurrences of an entity are currently
-    in the inventory.  This is an upgraded version of the 'has'
-    command, which returns a bool instead of an int and does
-    not require any special device.
-  properties: [portable]
-  capabilities: [count]
-
 - name: Linux
   display:
     attr: entity
@@ -575,7 +578,7 @@
     attr: device
     char: '<'
   description:
-  - A grabber arm is an all-purpose device allowing a robot to
+  - A grabber arm is an all-purpose, hydraulically controlled device that can
     manipulate other items and robots via the 'grab', 'place', 'give',
     and 'install' commands.
   - The 'grab' command takes no arguments; it simply grabs whatever is
@@ -655,6 +658,15 @@
   - A metal drill is also able to drill deeper than a regular drill.  Thus, some resources
     are only reachable using a metal drill.
   capabilities: [drill]
+  properties: [portable]
+
+- name: printer
+  display:
+    attr: device
+    char: 'Д'
+  description:
+  - A printer is used to inscribe symbols on paper, thus reifying pure, platonic
+    information into a physical form.
   properties: [portable]
 
 - name: 3D printer
@@ -759,11 +771,12 @@
     attr: device
     char: '§'
   description:
-  - "Using a flash memory device, a robot can reprogram other robots using the
+  - "A compact, non-volatile memory device, capable of storing
+    up to 8 pZ of data."
+  - "Flash memory can be used as a component of other devices.  In addition,
+     a flash memory device can be used to reprogram other robots using the
      'reprogram' command."
-  - "Only robots that have completed executing their previous command
-     can be reprogrammed."
-  - "The robot being reprogrammed must possess enough capabilities to run the new command;
+  - "The robot being reprogrammed must be idle, and must possess enough capabilities to run the new command;
      otherwise reprogramming will fail."
   properties: [portable]
   capabilities: [reprogram]
@@ -795,6 +808,20 @@
     uses the 'log' command)."
   properties: [portable]
   capabilities: [log]
+
+- name: counter
+  display:
+    attr: device
+    char: 'C'
+  description:
+  - |
+    A counter enables the command 'count : string -> cmd int',
+    which counts how many occurrences of an entity are currently
+    in the inventory.  This is an upgraded version of the 'has'
+    command, which returns a bool instead of an int and does
+    not require any special device.
+  properties: [portable]
+  capabilities: [count]
 
 - name: calculator
   display:
@@ -836,3 +863,11 @@
   - "Valid comparison operators are <, <=, >, >=, ==, and !=."
   properties: [portable]
   capabilities: [compare]
+
+- name: I/O cable
+  display:
+    attr: device
+    char: 'Ю'
+  description:
+  - An I/O cable can be used to communicate with an adjacent robot.
+  properties: [portable]
