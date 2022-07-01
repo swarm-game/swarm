@@ -3,19 +3,16 @@
 
 module Main where
 
-import Data.Foldable (asum)
-import Data.Text (
-  Text,
-  pack,
- )
-import Data.Text.IO qualified as Text
-import GitHash
+import qualified Data.Foldable
+import Data.Text (Text, pack)
+import qualified Data.Text.IO as Text
+import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
-import System.Exit
+import System.Exit (exitFailure, exitSuccess)
 
 data CLI
   = Run
@@ -50,7 +47,7 @@ cliParser =
       ]
   editor :: Parser (Maybe EditorType)
   editor =
-    asum
+    Data.Foldable.asum
       [ pure Nothing
       , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
       , Just EMacs <$ switch (long "emacs" <> help "Generate for the EMacs editor")
