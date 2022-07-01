@@ -1,4 +1,3 @@
-
 -- |
 -- Module      :  Swarm.Language.Capability
 -- Copyright   :  Brent Yorgey
