@@ -3,9 +3,9 @@
 
 module Main where
 
-import qualified Data.Foldable
+import Data.Foldable qualified
 import Data.Text (Text, pack)
-import qualified Data.Text.IO as Text
+import Data.Text.IO qualified as Text
 import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
