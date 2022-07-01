@@ -3,6 +3,7 @@
 module Swarm.DocGen (
   generateDocs,
   GenerateDocs (..),
+  EditorType (..),
 ) where
 
 import Control.Lens (view, (^.))
@@ -27,6 +28,10 @@ import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Util (isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Swarm.Language.Syntax qualified as Syntax
+import Swarm.Language.Syntax (ConstMeta(..))
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -39,11 +44,53 @@ import Text.Dot qualified as Dot
 data GenerateDocs where
   -- | Entity dependencies by recipes.
   RecipeGraph :: GenerateDocs
+  -- | Keyword lists for editors.
+  EditorKeywords :: EditorType -> GenerateDocs
   deriving (Eq, Show)
+
+data EditorType = EMacs | VSCode deriving (Eq, Show)
 
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
   RecipeGraph -> generateRecipe >>= putStrLn
+  EditorKeywords e -> generateEditorKeywords e
+
+-- ----------------------------------------------------------------------------
+-- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
+-- ----------------------------------------------------------------------------
+
+generateEditorKeywords :: EditorType -> IO ()
+generateEditorKeywords = \case
+  EMacs -> error "not implemented"
+  VSCode -> do
+    putStrLn "Functions and commands:"
+    T.putStrLn keywordsCommands
+    putStrLn "\nDirections:"
+    T.putStrLn keywordsDirections
+    putStrLn "\nOperators:"
+    T.putStrLn operatorNames
+
+-- get basic functions/commands
+keywordsCommands :: Text
+keywordsCommands = T.intercalate  "|" $ map (Syntax.syntax . Syntax.constInfo) (filter Syntax.isUserFunc Syntax.allConst)
+
+-- get list of directions
+keywordsDirections :: Text
+keywordsDirections = T.intercalate "|" $  map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
+
+operatorNames :: Text
+operatorNames = T.intercalate  "|" $ map (escape . Syntax.syntax . Syntax.constInfo) (filter isOperator Syntax.allConst)
+  where
+    special :: String
+    special = "*+$[]|^"
+    slashNotComment = \case
+      '/' -> "/(?![/|*])"
+      c -> T.singleton c
+    escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c) 
+    isOperator c = case Syntax.constMeta $ Syntax.constInfo c of
+      ConstMUnOp {} -> True
+      ConstMBinOp {} -> True
+      ConstMFunc {} -> False
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
