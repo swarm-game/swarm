@@ -96,7 +96,7 @@ data RobotContext = RobotContext
     _defTypes :: TCtx
   , -- | Map defintion names to the capabilities
     --   required to evaluate/execute them.
-    _defCaps :: CapCtx
+    _defCaps :: ReqCtx
   , -- | Map defintion names to their values. Note that since
     --   definitions are delayed, the values will just consist of
     --   'VRef's pointing into the store.

@@ -97,7 +97,7 @@ import Swarm.Game.Entity (Entity, Inventory)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
 import Swarm.Game.World (World)
-import Swarm.Language.Capability (CapCtx)
+import Swarm.Language.Capability (ReqCtx)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
@@ -146,8 +146,8 @@ data Frame
   | -- | We were executing a command that might have definitions; next
     --   we should take the resulting 'Env' and add it to the robot's
     --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
-    --   'CapCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
-    FLoadEnv TCtx CapCtx
+    --   'ReqCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
+    FLoadEnv TCtx ReqCtx
   | -- | We were executing a definition; next we should take the resulting value
     --   and return a context binding the variable to the value.
     FDef Var

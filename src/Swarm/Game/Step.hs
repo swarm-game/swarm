@@ -1213,6 +1213,10 @@ execConst c vs s k = do
 
         _ <- checkRequiredDevices (childRobot ^. installedDevices) cmd "The target robot" FixByInstall
 
+        -- XXX be willing to install extra devices, give extra
+        -- inventory.  Maybe take two inventories: parent + child
+        -- (child = empty in case of Build)
+
         -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
@@ -1236,7 +1240,7 @@ execConst c vs s k = do
       -- have to be generalized.  The difficulty is that we do a
       -- capability check on the delayed program at runtime, just
       -- before creating the newly built robot (see the call to
-      -- 'requiredCaps' below); but if we have a VRef instead of a
+      -- 'requirements' below); but if we have a VRef instead of a
       -- VDelay, we may only be able to get a Value out of it instead
       -- of a Term as we currently do, and capability checking a Value
       -- is annoying and/or problematic.  One solution might be to
@@ -1440,6 +1444,8 @@ execConst c vs s k = do
     let nextLoc = loc ^+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
 
+  -- XXX return both devices + needed inventory
+
   -- Find out the required devices for running the command on the
   -- target robot - this is common for 'Build' and 'Reprogram'.
   --
@@ -1463,9 +1469,9 @@ execConst c vs s k = do
     let -- Find out what capabilities are required by the program that will
         -- be run on the target robot, and what devices would provide those
         -- capabilities.
-        (caps, _capCtx) = Lens.over _1 S.toList $ requiredCaps currentContext cmd
+        (caps, _capCtx) = Lens.over _1 S.toList $ requirements currentContext cmd
 
-        -- list of possible devices per capability
+        -- list of possible devices per requirement
         capDevices = map (`deviceForCap` em) caps
 
         -- device is ok if it is available in the inventory of parent

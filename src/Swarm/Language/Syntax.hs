@@ -573,7 +573,7 @@ pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
@@ -620,6 +620,10 @@ data Term
   | -- | A memory reference.  These likewise never show up in surface syntax,
     --   but are here to facilitate pretty-printing.
     TRef Int
+  | -- | Require a specific device to be installed.
+    TRequireDevice Text
+  | -- | Require a certain number of an entity.
+    TRequire Integer Text
   | -- | A variable.
     TVar Var
   | -- | A pair.
@@ -668,6 +672,8 @@ fvT f = go S.empty
     TBool {} -> pure t
     TRobot {} -> pure t
     TRef {} -> pure t
+    TRequireDevice {} -> pure t
+    TRequire {} -> pure t
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)

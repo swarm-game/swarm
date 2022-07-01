@@ -83,6 +83,7 @@ library
                       Swarm.Language.Types
                       Swarm.Language.Syntax
                       Swarm.Language.Capability
+                      Swarm.Language.Requirement
                       Swarm.Language.Parse
                       Swarm.Language.Parse.QQ
                       Swarm.Language.Pretty

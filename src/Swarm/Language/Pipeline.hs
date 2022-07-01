@@ -23,7 +23,6 @@ module Swarm.Language.Pipeline (
 
 import Data.Bifunctor (first)
 import Data.Data (Data)
-import Data.Set (Set)
 import Data.Text (Text)
 import Data.Yaml as Y
 import Witch
@@ -45,9 +44,9 @@ data ProcessedTerm
       -- ^ The elaborated term
       TModule
       -- ^ The type of the term (and of any embedded definitions)
-      (Set Capability)
-      -- ^ Capabilities required by the term
-      CapCtx
+      Requirements
+      -- ^ Requirements of the term
+      ReqCtx
       -- ^ Capability context for any definitions embedded in the term
   deriving (Data, Show)
 
@@ -77,7 +76,7 @@ processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
-processTerm' :: TCtx -> CapCtx -> Text -> Either Text (Maybe ProcessedTerm)
+processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
   mt <- readTerm txt
   first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
@@ -100,8 +99,8 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
   msg = prettyText te
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
-processParsedTerm' :: TCtx -> CapCtx -> Syntax -> Either TypeErr ProcessedTerm
+processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
   ty <- inferTop ctx t
-  let (caps, capCtx') = requiredCaps capCtx (sTerm t)
+  let (caps, capCtx') = requirements capCtx (sTerm t)
   return $ ProcessedTerm (elaborate (sTerm t)) ty caps capCtx'

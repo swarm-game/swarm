@@ -324,6 +324,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwError $ CantInfer l t
+  TRequireDevice _ -> return $ UTyCmd UTyUnit
+  TRequire _ _ -> return $ UTyCmd UTyUnit
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
   -- if t : ty, then  {t} : {ty}.

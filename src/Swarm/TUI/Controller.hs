@@ -589,7 +589,7 @@ handleREPLEvent s = \case
   Key V.KEnter -> do
     let entry = formState (s ^. uiState . uiReplForm)
         topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-        topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
+        topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
         topValCtx = s ^. gameState . robotMap . ix 0 . robotContext . defVals
         topStore =
           fromMaybe emptyStore $
@@ -602,7 +602,7 @@ handleREPLEvent s = \case
     if not $ s ^. gameState . replWorking
       then continue $ case entry of
         CmdPrompt uinput _ ->
-          case processTerm' topTypeCtx topCapCtx uinput of
+          case processTerm' topTypeCtx topReqCtx uinput of
             Right mt ->
               maybe id startBaseProgram mt
                 . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
@@ -673,7 +673,7 @@ validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
     CmdPrompt uinput _ ->
-      let result = processTerm' topTypeCtx topCapCtx uinput
+      let result = processTerm' topTypeCtx topReqCtx uinput
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
@@ -683,7 +683,7 @@ validateREPLForm s =
  where
   replPrompt = s ^. uiState . uiReplForm . to formState
   topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-  topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
+  topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
   validate result = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
