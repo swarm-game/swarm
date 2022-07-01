@@ -9,7 +9,7 @@ import Data.Text.IO qualified as Text
 import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
-import Swarm.DocGen (EditorType (..), GenerateDocs (..), generateDocs, SheetType (..))
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import System.Exit (exitFailure, exitSuccess)
