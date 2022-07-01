@@ -424,6 +424,14 @@
   out:
   - [1, 3D printer]
 
+- in:
+  - [2, copper wire]
+  - [4, iron gear]
+  - [8, solar panel]
+  - [1, circuit]
+  out:
+  - [1, plasma cutter]
+
 ## MAGIC
 
 - in:
