@@ -3,6 +3,7 @@
 
 module Main where
 
+import Data.Foldable (asum)
 import Data.Text (
   Text,
   pack,
@@ -15,7 +16,6 @@ import Swarm.DocGen (EditorType (..), GenerateDocs (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import System.Exit
-import Data.Foldable (asum)
 
 data CLI
   = Run
@@ -49,11 +49,12 @@ cliParser =
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
       ]
   editor :: Parser (Maybe EditorType)
-  editor = asum
-    [ pure Nothing 
-    , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
-    , Just EMacs <$ switch (long "emacs" <> help "Generate for the EMacs editor")
-    ]
+  editor =
+    asum
+      [ pure Nothing
+      , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
+      , Just EMacs <$ switch (long "emacs" <> help "Generate for the EMacs editor")
+      ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   scenario :: Parser (Maybe String)
