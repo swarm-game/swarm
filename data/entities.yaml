@@ -613,13 +613,12 @@
   capabilities: [grab, harvest]
   properties: [portable]
 
-- name: plasma cutter
+- name: toolkit
   display:
     attr: device
-    char: 'P'
+    char: 'Ѣ'
   description:
-  - "A plasma cutter uses a jet of hot plasma to cut through metal like
-    butter.  Used via the 'salvage' command to cut apart old robots."
+  - "A toolkit can be used, via the 'salvage' command, to take apart old robots."
   - "'salvage' takes no arguments. It looks for an inactive
     robot (one which is not currently running a program) in the
     current cell. If an inactive robot is found, its log (if any) is

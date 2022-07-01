@@ -72,7 +72,7 @@ robots:
       - [10, logger]
       - [10, compass]
       - [10, scanner]
-      - [10, plasma cutter]
+      - [10, toolkit]
       - [10, solar panel]
       - [10, treads]
       - [10, grabber]

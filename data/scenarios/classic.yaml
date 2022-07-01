@@ -13,7 +13,7 @@ robots:
       - grabber
       - life support system
       - logger
-      - plasma cutter
+      - toolkit
       - solar panel
       - workbench
     inventory:
@@ -22,7 +22,7 @@ robots:
       - [70, grabber]
       - [100, solar panel]
       - [50, scanner]
-      - [10, plasma cutter]
+      - [5, toolkit]
 world:
   seed: null
   offset: true
