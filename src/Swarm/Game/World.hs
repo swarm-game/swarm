@@ -1,10 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -52,13 +46,13 @@ module Swarm.Game.World (
 
 import Control.Arrow ((&&&))
 import Control.Lens
-import qualified Data.Array as A
+import Data.Array qualified as A
 import Data.Array.IArray
-import qualified Data.Array.Unboxed as U
+import Data.Array.Unboxed qualified as U
 import Data.Bits
 import Data.Foldable (foldl')
 import Data.Int (Int64)
-import qualified Data.Map.Strict as M
+import Data.Map.Strict qualified as M
 import GHC.Generics (Generic)
 import Linear
 import Prelude hiding (lookup)

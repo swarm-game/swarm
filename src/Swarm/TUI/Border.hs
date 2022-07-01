@@ -34,7 +34,7 @@ import Brick
 import Brick.Widgets.Border
 import Control.Lens (makeLenses, to, (^.))
 import Data.Function ((&))
-import qualified Graphics.Vty as V
+import Graphics.Vty qualified as V
 
 -- | Labels for a horizontal border, with optional left, middle, and
 --   right labels.

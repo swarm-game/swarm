@@ -1,9 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeApplications #-}
-
 -- |
 -- Module      :  Swarm.Language.Capability
 -- Copyright   :  Brent Yorgey
@@ -27,9 +21,9 @@ import Data.Char (toLower)
 import Data.Hashable (Hashable)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Read (readMaybe)
 import Witch (from)
 import Prelude hiding (lookup)
@@ -56,6 +50,8 @@ data Capability
     CSelfdestruct
   | -- | Execute the 'Grab' command
     CGrab
+  | -- | Execute the 'Harvest' command
+    CHarvest
   | -- | Execute the 'Place' command
     CPlace
   | -- | Execute the 'Give' command
@@ -272,6 +268,7 @@ constCaps = \case
   Move -> Just CMove
   Turn -> Just CTurn
   Grab -> Just CGrab
+  Harvest -> Just CHarvest
   Place -> Just CPlace
   Give -> Just CGive
   Install -> Just CInstall

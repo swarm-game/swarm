@@ -11,11 +11,11 @@ import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
-import qualified Data.IntSet as IS
-import qualified Data.Map as M
+import Data.IntSet qualified as IS
+import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
@@ -33,7 +33,7 @@ import Swarm.Game.State (
   winSolution,
  )
 import Swarm.Game.Step (gameTick)
-import qualified Swarm.Language.Context as Ctx
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
@@ -159,6 +159,7 @@ testScenarioSolution _ci _em =
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
             assertBool "Robot 1 should not be in waiting set" $ not waiting
+        , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
         , expectFailBecause "Awaiting fix (#508)" $
             testSolution Default "Testing/508-capability-subset.yaml"

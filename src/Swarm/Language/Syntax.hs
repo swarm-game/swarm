@@ -1,12 +1,6 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -73,10 +67,10 @@ module Swarm.Language.Syntax (
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Data.Lens (uniplate)
 import Data.Int (Int64)
-import qualified Data.Map as M
-import qualified Data.Set as S
+import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Text hiding (filter, map)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Linear
 
 import Data.Aeson.Types
@@ -214,6 +208,8 @@ data Const
     Turn
   | -- | Grab an item from the current location.
     Grab
+  | -- | Harvest an item from the current location.
+    Harvest
   | -- | Try to place an item at the current location.
     Place
   | -- | Give an item to another robot at the current location.
@@ -436,6 +432,7 @@ constInfo c = case c of
   Move -> commandLow 0
   Turn -> commandLow 1
   Grab -> commandLow 0
+  Harvest -> commandLow 0
   Place -> commandLow 1
   Give -> commandLow 2
   Install -> commandLow 2

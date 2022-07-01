@@ -1,11 +1,5 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -30,6 +24,10 @@ module Swarm.Util (
   getSwarmDataPath,
   getSwarmHistoryPath,
   readAppData,
+
+  -- * Text utilities
+  isIdentChar,
+  replaceLast,
 
   -- * English language utilities
   reflow,
@@ -66,20 +64,21 @@ import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
 import Control.Monad (forM, unless, when)
+import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text, toUpper)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import Linear (V2)
-import qualified NLP.Minimorph.English as MM
+import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import Paths_swarm (getDataDir)
 import System.Directory (
@@ -164,6 +163,31 @@ readAppData = do
           )
   M.fromList . mapMaybe sequenceA
     <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+
+------------------------------------------------------------
+-- Some Text-y stuff
+
+-- | Predicate to test for characters which can be part of a valid
+--   identifier: alphanumeric, underscore, or single quote.
+--
+-- >>> isIdentChar 'A' && isIdentChar 'b' && isIdentChar '9'
+-- True
+-- >>> isIdentChar '_' && isIdentChar '\''
+-- True
+-- >>> isIdentChar '$' || isIdentChar '.' || isIdentChar ' '
+-- False
+isIdentChar :: Char -> Bool
+isIdentChar c = isAlphaNum c || c == '_' || c == '\''
+
+-- | @replaceLast r t@ replaces the last word of @t@ with @r@.
+--
+-- >>> :set -XOverloadedStrings
+-- >>> replaceLast "foo" "bar baz quux"
+-- "bar baz foo"
+-- >>> replaceLast "move" "(make"
+-- "(move"
+replaceLast :: Text -> Text -> Text
+replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
 
 ------------------------------------------------------------
 -- Some language-y stuff

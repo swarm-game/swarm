@@ -1,10 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -54,6 +50,7 @@ module Swarm.TUI.Model (
 
   -- ** Prompt utils
   REPLPrompt (..),
+  mkCmdPrompt,
   replPromptAsWidget,
   promptTextL,
   promptUpdateL,
@@ -350,8 +347,10 @@ replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 -- | This data type represent what is prompted to the player
 --   and how the REPL show interpret the user input.
 data REPLPrompt
-  = -- | Interpret the given text as a regular command
-    CmdPrompt Text
+  = -- | Interpret the given text as a regular command.
+    --   The list is for potential completions, which we can
+    --   cycle through by hitting Tab repeatedly
+    CmdPrompt Text [Text]
   | -- | Interpret the given text as "search this text in history"
     SearchPrompt Text REPLHistory
 
@@ -372,10 +371,14 @@ lastEntry t h =
 removeEntry :: Text -> REPLHistory -> REPLHistory
 removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
 
+mkCmdPrompt :: Text -> REPLPrompt
+mkCmdPrompt t = CmdPrompt t []
+
 defaultPrompt :: REPLPrompt
-defaultPrompt = CmdPrompt ""
+defaultPrompt = mkCmdPrompt ""
 
 -- | Lens for accesing the text of the prompt.
+--   Notice that setting the text clears any pending completions.
 promptTextL :: Lens' REPLPrompt Text
 promptTextL = lens g s
  where
@@ -383,16 +386,16 @@ promptTextL = lens g s
   -- This should be force in the ADT itself... right know this here
   -- The compiler will complain about "Non complete patterns" on this two function.
   g :: REPLPrompt -> Text
-  g (CmdPrompt t) = t
+  g (CmdPrompt t _) = t
   g (SearchPrompt t _) = t
 
   s :: REPLPrompt -> Text -> REPLPrompt
-  s (CmdPrompt _) t = CmdPrompt t
+  s (CmdPrompt _ _) t = mkCmdPrompt t
   s (SearchPrompt _ h) t = SearchPrompt t h
 
 -- | Turn the repl prompt into a decorator for the form
 replPromptAsWidget :: REPLPrompt -> Widget Name
-replPromptAsWidget (CmdPrompt _) = txt "> "
+replPromptAsWidget (CmdPrompt {}) = txt "> "
 replPromptAsWidget (SearchPrompt t rh) =
   case lastEntry t rh of
     Nothing -> txt "[nothing found] "
@@ -666,6 +669,7 @@ accumulatedTime :: Lens' UIState TimeSpec
 appData :: Lens' UIState (Map Text Text)
 
 -- | Lens for accesing the text of the prompt.
+--   Notice that setting the text clears any pending completions.
 promptUpdateL :: Lens UIState (Form REPLPrompt AppEvent Name) Text Text
 promptUpdateL = lens g s
  where
@@ -674,12 +678,12 @@ promptUpdateL = lens g s
   -- The compiler will complain about "Non complete patterns" on this two function.
   g :: UIState -> Text
   g ui = case formState (ui ^. uiReplForm) of
-    CmdPrompt t -> t
+    CmdPrompt t _ -> t
     SearchPrompt t _ -> t
 
   s :: UIState -> Text -> Form REPLPrompt AppEvent Name
   s ui inputText = case formState (ui ^. uiReplForm) of
-    CmdPrompt _ -> mkReplForm $ CmdPrompt inputText
+    CmdPrompt _ _ -> mkReplForm $ mkCmdPrompt inputText
     SearchPrompt _ _ -> mkReplForm $ SearchPrompt inputText (ui ^. uiReplHistory)
 
 --------------------------------------------------
@@ -726,7 +730,7 @@ initReplForm :: Form REPLPrompt AppEvent Name
 initReplForm =
   newForm
     [(replPromptAsWidget defaultPrompt <+>) @@= editTextField promptTextL REPLInput (Just 1)]
-    (CmdPrompt "")
+    (mkCmdPrompt "")
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int
@@ -874,5 +878,5 @@ scenarioToUIState scene u =
       & uiShowFPS .~ False
       & uiShowZero .~ True
       & lgTicksPerSecond .~ initLgTicksPerSecond
-      & resetWithREPLForm (mkReplForm $ CmdPrompt "")
+      & resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
       & uiReplHistory %~ restartREPLHistory

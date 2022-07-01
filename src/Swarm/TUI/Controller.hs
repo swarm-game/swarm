@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
@@ -49,12 +46,12 @@ import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import qualified Data.Vector as V
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Data.Vector qualified as V
 import Linear
 import System.Clock
 import Witch (into)
@@ -63,12 +60,12 @@ import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Dialog
-import qualified Brick.Widgets.List as BL
-import qualified Graphics.Vty as V
+import Brick.Widgets.List qualified as BL
+import Graphics.Vty qualified as V
 
 import Brick.Widgets.List (handleListEvent)
-import qualified Control.Carrier.Lift as Fused
-import qualified Control.Carrier.State.Lazy as Fused
+import Control.Carrier.Lift qualified as Fused
+import Control.Carrier.State.Lazy qualified as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -76,9 +73,10 @@ import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), sce
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
@@ -231,8 +229,6 @@ handleMainEvent s = \case
     ReadGoal g -> toggleModal s (GoalModal g) >>= continue
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
-  CharKey '\t' -> continue $ s & uiState . uiFocusRing %~ focusNext
-  Key V.KBackTab -> continue $ s & uiState . uiFocusRing %~ focusPrev
   -- special keys that work on all panels
   MetaKey 'w' -> setFocus s WorldPanel
   MetaKey 'e' -> setFocus s RobotPanel
@@ -587,76 +583,96 @@ stripCmd pty = pty
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleREPLEvent s (ControlKey 'c') =
-  continue $
-    s
-      & gameState . robotMap . ix 0 . machine %~ cancel
-handleREPLEvent s (Key V.KEnter) =
-  if not $ s ^. gameState . replWorking
-    then continue $ case entry of
-      CmdPrompt uinput ->
-        case processTerm' topTypeCtx topCapCtx uinput of
-          Right mt ->
-            maybe id startBaseProgram mt
-              . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
-              . (uiState %~ resetWithREPLForm (set promptUpdateL "" (s ^. uiState)))
-              $ s
-          Left err -> s & uiState . uiError ?~ err
-      SearchPrompt t hist ->
-        case lastEntry t hist of
-          Nothing -> s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
-          Just found
-            | T.null t -> s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
-            | otherwise ->
-              s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt found)
-                & validateREPLForm
-    else continueWithoutRedraw s
+handleREPLEvent s = \case
+  ControlKey 'c' ->
+    continue $ s & gameState . robotMap . ix 0 . machine %~ cancel
+  Key V.KEnter -> do
+    let entry = formState (s ^. uiState . uiReplForm)
+        topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
+        topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
+        topValCtx = s ^. gameState . robotMap . ix 0 . robotContext . defVals
+        topStore =
+          fromMaybe emptyStore $
+            s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
+        startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
+          (gameState . replStatus .~ REPLWorking ty Nothing)
+            . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
+            . (gameState %~ execState (activateRobot 0))
+
+    if not $ s ^. gameState . replWorking
+      then continue $ case entry of
+        CmdPrompt uinput _ ->
+          case processTerm' topTypeCtx topCapCtx uinput of
+            Right mt ->
+              maybe id startBaseProgram mt
+                . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
+                . (uiState %~ resetWithREPLForm (set promptUpdateL "" (s ^. uiState)))
+                $ s
+            Left err -> s & uiState . uiError ?~ err
+        SearchPrompt t hist ->
+          case lastEntry t hist of
+            Nothing -> s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+            Just found
+              | T.null t -> s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+              | otherwise ->
+                s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
+                  & validateREPLForm
+      else continueWithoutRedraw s
+  Key V.KUp -> continue $ s & adjReplHistIndex Older
+  Key V.KDown -> continue $ s & adjReplHistIndex Newer
+  ControlKey 'r' -> continue $
+    case s ^. uiState . uiReplForm . to formState of
+      CmdPrompt uinput _ ->
+        let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
+         in s & uiState . uiReplForm .~ newform
+      SearchPrompt ftext rh -> case lastEntry ftext rh of
+        Nothing -> s
+        Just found ->
+          let newform = mkReplForm $ SearchPrompt ftext (removeEntry found rh)
+           in s & uiState . uiReplForm .~ newform
+  CharKey '\t' -> do
+    let formSt = s ^. uiState . uiReplForm . to formState
+        newform = mkReplForm $ tabComplete s formSt
+    continue $
+      s & uiState . uiReplForm .~ newform
+        & validateREPLForm
+  EscapeKey ->
+    case s ^. uiState . uiReplForm . to formState of
+      CmdPrompt {} -> continueWithoutRedraw s
+      SearchPrompt _ _ ->
+        continue $ s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+  ev -> do
+    f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
+    continue $
+      case formState f' of
+        CmdPrompt {} -> validateREPLForm (s & uiState . uiReplForm .~ f')
+        SearchPrompt t _ ->
+          let newform = set promptUpdateL t (s ^. uiState)
+           in s & uiState . uiReplForm .~ newform
+
+-- | Try to complete the last word in a partially entered REPL prompt using
+--   things reserved words and names in scope.
+tabComplete :: AppState -> REPLPrompt -> REPLPrompt
+tabComplete _ p@(SearchPrompt {}) = p
+tabComplete _ (CmdPrompt "" []) = CmdPrompt "" []
+tabComplete s (CmdPrompt t []) = case matches of
+  [] -> CmdPrompt t []
+  [m] -> CmdPrompt (completeWith m) []
+  (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
-  entry = formState (s ^. uiState . uiReplForm)
-  topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-  topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
-  topValCtx = s ^. gameState . robotMap . ix 0 . robotContext . defVals
-  topStore =
-    fromMaybe emptyStore $
-      s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
-  startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
-    (gameState . replStatus .~ REPLWorking ty Nothing)
-      . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
-      . (gameState %~ execState (activateRobot 0))
-handleREPLEvent s (Key V.KUp) =
-  continue $ s & adjReplHistIndex Older
-handleREPLEvent s (Key V.KDown) =
-  continue $ s & adjReplHistIndex Newer
-handleREPLEvent s (ControlKey 'r') = continue $
-  case s ^. uiState . uiReplForm . to formState of
-    CmdPrompt uinput ->
-      let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
-       in s & uiState . uiReplForm .~ newform
-    SearchPrompt ftext rh -> case lastEntry ftext rh of
-      Nothing -> s
-      Just found ->
-        let newform = mkReplForm $ SearchPrompt ftext (removeEntry found rh)
-         in s & uiState . uiReplForm .~ newform
-handleREPLEvent s EscapeKey =
-  case s ^. uiState . uiReplForm . to formState of
-    CmdPrompt _ -> continueWithoutRedraw s
-    SearchPrompt _ _ ->
-      continue $ s & uiState %~ resetWithREPLForm (mkReplForm $ CmdPrompt "")
-handleREPLEvent s ev = do
-  f' <- handleFormEvent ev (s ^. uiState . uiReplForm)
-  continue $
-    case formState f' of
-      CmdPrompt _ -> validateREPLForm (s & uiState . uiReplForm .~ f')
-      SearchPrompt t _ ->
-        let newform = set promptUpdateL t (s ^. uiState)
-         in s & uiState . uiReplForm .~ newform
+  completeWith m = T.append t (T.drop (T.length lastWord) m)
+  lastWord = T.takeWhileEnd isIdentChar t
+  names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
+  possibleWords = reservedWords ++ names
+  matches = filter (lastWord `T.isPrefixOf`) possibleWords
+tabComplete _ (CmdPrompt t (m : ms)) = CmdPrompt (replaceLast m t) (ms ++ [m])
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
-    CmdPrompt uinput ->
+    CmdPrompt uinput _ ->
       let result = processTerm' topTypeCtx topCapCtx uinput
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
@@ -686,7 +702,7 @@ adjReplHistIndex d s =
 
   replLast = s ^. uiState . uiReplLast
   saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState . promptTextL)
-  showNewEntry = uiState . uiReplForm %~ updateFormState (CmdPrompt newEntry)
+  showNewEntry = uiState . uiReplForm %~ updateFormState (mkCmdPrompt newEntry)
   -- get REPL data
   getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
   oldEntry = getCurrEntry s

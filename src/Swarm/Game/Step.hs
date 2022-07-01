@@ -1,13 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Swarm.Game.Step
@@ -26,21 +19,21 @@ import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (traverse_)
-import qualified Data.Functor.Const as F
+import Data.Functor.Const qualified as F
 import Data.Int (Int64)
-import qualified Data.IntMap as IM
-import qualified Data.IntSet as IS
+import Data.IntMap qualified as IM
+import Data.IntSet qualified as IS
 import Data.List (find)
-import qualified Data.List as L
-import qualified Data.Map as M
+import Data.List qualified as L
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
-import qualified Data.Sequence as Seq
-import qualified Data.Set as S
+import Data.Sequence qualified as Seq
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Linear (V2 (..), zero, (^+^))
 import System.Clock (TimeSpec)
-import qualified System.Clock
+import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
@@ -48,13 +41,13 @@ import Prelude hiding (lookup)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
-import qualified Swarm.Game.Entity as E
+import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Value
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
@@ -757,43 +750,8 @@ execConst c vs s k = do
         flagRedraw
         return $ Out VUnit s k
       _ -> badConst
-    Grab -> do
-      -- Ensure there is an entity here.
-      loc <- use robotLocation
-      e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
-
-      -- Ensure it can be picked up.
-      (e `hasProperty` Portable)
-        `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
-
-      -- Remove the entity from the world.
-      updateEntityAt loc (const Nothing)
-      flagRedraw
-
-      -- Possibly regrow the entity.
-      when (e `hasProperty` Growable) $ do
-        let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
-
-        createdAt <- getNow
-
-        if maxT == 0
-          then -- Special case: if the time is zero, growth is instant.
-            updateEntityAt loc (const (Just e))
-          else -- Otherwise, grow a new entity from a seed.
-            addSeedBot e (minT, maxT) loc createdAt
-
-      -- Add the picked up item to the robot's inventory.  If the
-      -- entity yields something different, add that instead.
-      let yieldName = e ^. entityYields
-      e' <- case yieldName of
-        Nothing -> return e
-        Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
-
-      robotInventory %= insert e'
-      updateDiscoveredEntities e'
-
-      -- Return the name of the item obtained.
-      return $ Out (VString (e' ^. entityName)) s k
+    Grab -> doGrab False
+    Harvest -> doGrab True
     Turn -> case vs of
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
@@ -1589,6 +1547,48 @@ execConst c vs s k = do
   returnEvalArith = case vs of
     [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
     _ -> badConst
+
+  -- The code for grab and harvest is almost identical, hence factored
+  -- out here.
+  doGrab shouldHarvest = do
+    -- Ensure there is an entity here.
+    loc <- use robotLocation
+    e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
+
+    -- Ensure it can be picked up.
+    (e `hasProperty` Portable)
+      `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
+
+    -- Remove the entity from the world.
+    updateEntityAt loc (const Nothing)
+    flagRedraw
+
+    -- Immediately regenerate entities with 'infinite' property.
+    when (e `hasProperty` Infinite) $
+      updateEntityAt loc (const (Just e))
+
+    -- Possibly regrow the entity, if it is growable and the 'harvest'
+    -- command was used.
+    when ((e `hasProperty` Growable) && shouldHarvest) $ do
+      let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
+
+      createdAt <- getNow
+
+      -- Grow a new entity from a seed.
+      addSeedBot e (minT, maxT) loc createdAt
+
+    -- Add the picked up item to the robot's inventory.  If the
+    -- entity yields something different, add that instead.
+    let yieldName = e ^. entityYields
+    e' <- case yieldName of
+      Nothing -> return e
+      Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
+
+    robotInventory %= insert e'
+    updateDiscoveredEntities e'
+
+    -- Return the name of the item obtained.
+    return $ Out (VString (e' ^. entityName)) s k
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
