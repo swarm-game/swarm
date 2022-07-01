@@ -2,14 +2,14 @@ name: Scan
 description: |
   Learn how to send robots to safely scan your surroundings.
 goal:
-  - When you land on an alien planet, all the entites in the
+  - When you land on an alien planet, all the entities in the
     world will be unfamiliar to you.
   - But you can learn what they are using the scanner device.
-  - Send robots to move to the unknown entites (marked as '?'),
+  - Send robots to move to the unknown entities (marked as '?'),
     'scan forward' and after that come back and 'upload base'.
   - |
     TIP: You can also 'scan left' or 'scan north', to save on a few
-    'turn' commands.  
+    'turn' commands.
 win: |
   try {
     bm <- as base {knows "mountain"};

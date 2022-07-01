@@ -5,7 +5,7 @@ goal:
     - Before we get to solving more complex challenges,
       it would be good to get used to how the commands
       in Swarm language work and how they don't.
-    - Previosly, you have used the 'turn' command,
+    - Previously, you have used the 'turn' command,
       which takes one parameter, which must be a direction.
     - What happens if you do not pass it a direction?
     - 'Try these commands:'

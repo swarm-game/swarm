@@ -18,9 +18,9 @@ Finally, move into the open world and guide through obtaining ingredients and cr
 It is important that at least the base robot has a `logger` device installed.
 Without it, the players will not see the errors and will be very confused.
 
-### Known entites
+### Known entities
 
-Before introducing `scan` command, we intend to show all entites on the map as known
+Before introducing `scan` command, we intend to show all entities on the map as known
 and not hide them with `?`.
 
 Until #387 is done, the workaround is to create a new entity with known property:
@@ -37,16 +37,16 @@ Until #387 is done, the workaround is to create a new entity with known property
     growth: [500,600]
 ```
 
-The box drawing entites are already known.
+The box drawing entities are already known.
 
-### New entites to get old ones
+### New entities to get old ones
 
-The `yeilds` key is another trick which can be used to hide `known` entites from player.
-When the player `grab`s such entity the specified entity is yeilded instead.
+The `yields` key is another trick which can be used to hide `known` entities from player.
+When the player `grab`s such entity the specified entity is yielded instead.
 
-But `yeilds` is also useful for other cosmetic entites like "wavy water".
+But `yields` is also useful for other cosmetic entities like "wavy water".
 
-Note that entites like "known printer" and "wavy water" do not have recipes.
+Note that entities like "known printer" and "wavy water" do not have recipes.
 
 However, it does not solve everything. For example the "spruce" replacement for "tree"
 needs to yield itself, so that the player does not plant the slow "tree".
