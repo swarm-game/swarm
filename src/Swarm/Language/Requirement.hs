@@ -8,9 +8,21 @@
 -- A requirement is something that is needed in order to successfully
 -- build a robot running a certain program.
 module Swarm.Language.Requirement (
+  -- * Requirements
+
+  -- ** The 'Requirement' type
   Requirement (..),
+
+  -- ** The 'Requirements' type and utility functions
   Requirements (..),
+  singleton,
+  singletonCap,
+  singletonDev,
+  singletonInv,
+  insert,
   ReqCtx,
+
+  -- * Requirements analysis
   requirements,
 ) where
 
@@ -82,10 +94,26 @@ instance Semigroup Requirements where
 instance Monoid Requirements where
   mempty = Requirements S.empty S.empty M.empty
 
+-- | Create a 'Requirements' set with a single 'Requirement'.
 singleton :: Requirement -> Requirements
 singleton (ReqCap c) = Requirements (S.singleton c) S.empty M.empty
 singleton (ReqDev d) = Requirements S.empty (S.singleton d) M.empty
 singleton (ReqInv n e) = Requirements S.empty S.empty (M.singleton e n)
+
+-- | For convenience, create a 'Requirements' set with a single
+--   'Capability' requirement.
+singletonCap :: Capability -> Requirements
+singletonCap = singleton . ReqCap
+
+-- | For convenience, create a 'Requirements' set with a single
+--   device requirement.
+singletonDev :: Text -> Requirements
+singletonDev = singleton . ReqDev
+
+-- | For convenience, create a 'Requirements' set with a single
+--   inventory requirement.
+singletonInv :: Integer -> Text -> Requirements
+singletonInv n e = singleton (ReqInv n e)
 
 insert :: Requirement -> Requirements -> Requirements
 insert = (<>) . singleton
@@ -118,7 +146,7 @@ requirements ctx tm = case tm of
   -- capabilities it requires.
   TDef r x _ t ->
     let bodyReqs = (if r then insert (ReqCap CRecursion) else id) (requirements' ctx t)
-     in (singleton (ReqCap CEnv), Ctx.singleton x bodyReqs)
+     in (singletonCap CEnv, Ctx.singleton x bodyReqs)
   TBind _ t1 t2 ->
     -- First, see what capabilities are required to execute the
     -- first command.  It may also define some names, so we get a
@@ -155,7 +183,7 @@ requirements' = go
     -- Some primitive literals that don't require any special
     -- capability.
     TUnit -> mempty
-    TDir d -> if isCardinal d then singleton (ReqCap COrient) else mempty
+    TDir d -> if isCardinal d then singletonCap COrient else mempty
     TInt _ -> mempty
     TAntiInt _ -> mempty
     TString _ -> mempty
@@ -163,10 +191,10 @@ requirements' = go
     TBool _ -> mempty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
-    TConst c -> maybe mempty (singleton . ReqCap) (constCaps c)
+    TConst c -> maybe mempty singletonCap (constCaps c)
     -- Simply record device or inventory requirements.
-    TRequireDevice d -> singleton (ReqDev d)
-    TRequire n e -> singleton (ReqInv n e)
+    TRequireDevice d -> singletonDev d
+    TRequire n e -> singletonInv n e
     -- Note that a variable might not show up in the context, and
     -- that's OK.  In particular, only variables bound by 'TDef' go
     -- in the context; variables bound by a lambda or let will not

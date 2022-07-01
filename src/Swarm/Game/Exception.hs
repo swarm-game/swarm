@@ -18,15 +18,15 @@ module Swarm.Game.Exception (
   formatIncapableFix,
 ) where
 
-import Data.Set (Set)
+import Control.Lens ((^.))
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 
-import Control.Lens ((^.))
-import Data.Set qualified as S
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
 import Swarm.Util
 
@@ -65,7 +65,7 @@ data Exn
   | -- | A robot tried to do something for which it does not have some
     --   of the required capabilities.  This cannot be caught by a
     --   @try@ block.
-    Incapable IncapableFix (Set Capability) Term
+    Incapable IncapableFix Requirements Term
   | -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
     --   grab, /etc./).
@@ -97,6 +97,8 @@ formatIncapableFix = \case
   FixByInstall -> "install"
   FixByObtain -> "obtain"
 
+-- XXX update this to do something with the rest of Requirements!
+
 -- | Pretty print the incapable exception with an actionable suggestion
 --   on how to fix it.
 --
@@ -121,8 +123,8 @@ formatIncapableFix = \case
 --   'random'
 --   but no device yet provides it. See
 --   https://github.com/swarm-game/swarm/issues/26
-formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
-formatIncapable em f caps tm
+formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
+formatIncapable em f (Requirements caps _ _) tm
   | CGod `S.member` caps =
     unlinesExText
       [ "Thou shalt not utter such blasphemy:"
