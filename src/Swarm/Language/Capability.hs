@@ -317,14 +317,14 @@ constCaps = \case
   -- Some more constants which *ought* to have their own capability but
   -- currently don't.
   Say -> Nothing
-  View -> Nothing -- XXX this should also require something.
-  Run -> Nothing -- XXX this should also require a capability
+  View -> Nothing -- TODO: #26 this should also require something.
+  Run -> Nothing -- TODO: #26 this should also require a capability
   -- which the base starts out with.
-  Not -> Nothing -- XXX some kind of boolean logic cap?
-  Inl -> Nothing -- XXX should require cap for sums
+  Not -> Nothing -- TODO: #26 some kind of boolean logic cap?
+  Inl -> Nothing -- TODO: #26 should require cap for sums
   Inr -> Nothing
   Case -> Nothing
-  Fst -> Nothing -- XXX should require cap for pairs
+  Fst -> Nothing -- TODO: #26 should require cap for pairs
   Snd -> Nothing
-  Try -> Nothing -- XXX these definitely need to require something.
+  Try -> Nothing -- TODO: #26 these definitely need to require something.
   Knows -> Nothing
