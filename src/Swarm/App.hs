@@ -1,4 +1,3 @@
-
 -- |
 -- Module      :  Swarm.App
 -- Copyright   :  Brent Yorgey
