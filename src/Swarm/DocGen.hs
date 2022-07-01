@@ -4,6 +4,7 @@ module Swarm.DocGen (
   generateDocs,
   GenerateDocs (..),
   EditorType (..),
+  SheetType (..),
 
   -- ** Formatted keyword lists
   keywordsCommands,
@@ -19,6 +20,7 @@ import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
+import Data.List (transpose)
 import Data.Map.Lazy (Map)
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe)
@@ -34,8 +36,11 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
+import Swarm.Language.Capability (capabilityName, constCaps)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..), ConstMeta (..))
 import Swarm.Language.Syntax qualified as Syntax
+import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
@@ -53,9 +58,13 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
+  CheatSheet :: Maybe SheetType -> GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
+  deriving (Eq, Show, Enum, Bounded)
+
+data SheetType = Entities | Commands | Capabilities | Recipes
   deriving (Eq, Show, Enum, Bounded)
 
 generateDocs :: GenerateDocs -> IO ()
@@ -72,6 +81,11 @@ generateDocs = \case
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
         mapM_ editorGen [minBound .. maxBound]
+  CheatSheet s -> case s of
+    Nothing -> error "Not implemented"
+    Just st -> case st of
+      Commands -> T.putStrLn commandTable
+      _ -> error "Not implemented"
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -133,6 +147,47 @@ operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperato
     ConstMUnOp {} -> True
     ConstMBinOp {} -> True
     ConstMFunc {} -> False
+
+-- ----------------------------------------------------------------------------
+-- GENERATE TABLES: ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
+-- ----------------------------------------------------------------------------
+
+wrap :: Char -> Text -> Text
+wrap c = T.cons c . flip T.snoc c
+
+codeQuote :: Text -> Text
+codeQuote = wrap '`'
+
+separatingLine :: [Int] -> Text
+separatingLine ws = T.cons '|' . T.concat $ map (flip T.snoc '|' . flip T.replicate "-" . (2 +)) ws
+
+listToRow :: [Int] -> [Text] -> Text
+listToRow mw xs = wrap '|' . T.intercalate "|" $ zipWith format mw xs
+ where
+  format w x = wrap ' ' x <> T.replicate (w - T.length x) " "
+
+maxWidths :: [[Text]] -> [Int]
+maxWidths = map (maximum . map T.length) . transpose
+
+-- -------
+
+commandHeader :: [Text]
+commandHeader = ["Syntax", "Type", "Capability", "Description"]
+
+commandToList :: Const -> [Text]
+commandToList c =
+  [ codeQuote $ constSyntax c
+  , codeQuote . prettyText $ inferConst c
+  , maybe "" capabilityName $ constCaps c
+  , ""
+  ]
+
+commandTable :: Text
+commandTable = T.unlines $ header <> map (listToRow mw) commandRows
+ where
+  mw = maxWidths (commandHeader : commandRows)
+  commandRows = map commandToList Syntax.allConst
+  header = [listToRow mw commandHeader, separatingLine mw]
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES

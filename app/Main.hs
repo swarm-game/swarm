@@ -9,7 +9,7 @@ import Data.Text.IO qualified as Text
 import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
-import Swarm.DocGen (EditorType (..), GenerateDocs (..), generateDocs)
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), generateDocs, SheetType (..))
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import System.Exit (exitFailure, exitSuccess)
@@ -44,6 +44,7 @@ cliParser =
     subparser . mconcat $
       [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
+      , command "cheatsheet" (info (pure $ CheatSheet $ Just Commands) $ progDesc "Output nice Wiki tables")
       ]
   editor :: Parser (Maybe EditorType)
   editor =
