@@ -73,6 +73,9 @@ robots:
       - [10, compass]
       - [10, scanner]
       - [10, plasma cutter]
+      - [10, solar panel]
+      - [10, treads]
+      - [10, grabber]
   - name: secret
     loc: [3, 0]
     dir: [0, 0]
