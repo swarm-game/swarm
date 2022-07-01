@@ -235,8 +235,8 @@ jobs:
           cabal-docspec $ARG_COMPILER
       - name: hlint
         run: |
-          if [ $((HCNUMVER < 90000)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XStrictData src) ; fi
-          if [ $((HCNUMVER < 90000)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 app) ; fi
+          if [ $((HCNUMVER < 90000)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src) ; fi
+          if [ $((HCNUMVER < 90000)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XImportQualifiedPost app) ; fi
       - name: cabal check
         run: |
           cd ${PKGDIR_swarm} || false
