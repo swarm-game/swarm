@@ -750,43 +750,8 @@ execConst c vs s k = do
         flagRedraw
         return $ Out VUnit s k
       _ -> badConst
-    Grab -> do
-      -- Ensure there is an entity here.
-      loc <- use robotLocation
-      e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
-
-      -- Ensure it can be picked up.
-      (e `hasProperty` Portable)
-        `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
-
-      -- Remove the entity from the world.
-      updateEntityAt loc (const Nothing)
-      flagRedraw
-
-      -- Possibly regrow the entity.
-      when (e `hasProperty` Growable) $ do
-        let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
-
-        createdAt <- getNow
-
-        if maxT == 0
-          then -- Special case: if the time is zero, growth is instant.
-            updateEntityAt loc (const (Just e))
-          else -- Otherwise, grow a new entity from a seed.
-            addSeedBot e (minT, maxT) loc createdAt
-
-      -- Add the picked up item to the robot's inventory.  If the
-      -- entity yields something different, add that instead.
-      let yieldName = e ^. entityYields
-      e' <- case yieldName of
-        Nothing -> return e
-        Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
-
-      robotInventory %= insert e'
-      updateDiscoveredEntities e'
-
-      -- Return the name of the item obtained.
-      return $ Out (VString (e' ^. entityName)) s k
+    Grab -> doGrab False
+    Harvest -> doGrab True
     Turn -> case vs of
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
@@ -1592,6 +1557,48 @@ execConst c vs s k = do
   returnEvalArith = case vs of
     [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
     _ -> badConst
+
+  -- The code for grab and harvest is almost identical, hence factored
+  -- out here.
+  doGrab shouldHarvest = do
+    -- Ensure there is an entity here.
+    loc <- use robotLocation
+    e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
+
+    -- Ensure it can be picked up.
+    (e `hasProperty` Portable)
+      `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
+
+    -- Remove the entity from the world.
+    updateEntityAt loc (const Nothing)
+    flagRedraw
+
+    -- Immediately regenerate entities with 'infinite' property.
+    when (e `hasProperty` Infinite) $
+      updateEntityAt loc (const (Just e))
+
+    -- Possibly regrow the entity, if it is growable and the 'harvest'
+    -- command was used.
+    when ((e `hasProperty` Growable) && shouldHarvest) $ do
+      let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
+
+      createdAt <- getNow
+
+      -- Grow a new entity from a seed.
+      addSeedBot e (minT, maxT) loc createdAt
+
+    -- Add the picked up item to the robot's inventory.  If the
+    -- entity yields something different, add that instead.
+    let yieldName = e ^. entityYields
+    e' <- case yieldName of
+      Nothing -> return e
+      Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
+
+    robotInventory %= insert e'
+    updateDiscoveredEntities e'
+
+    -- Return the name of the item obtained.
+    return $ Out (VString (e' ^. entityName)) s k
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.

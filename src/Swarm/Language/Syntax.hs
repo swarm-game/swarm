@@ -208,6 +208,8 @@ data Const
     Turn
   | -- | Grab an item from the current location.
     Grab
+  | -- | Harvest an item from the current location.
+    Harvest
   | -- | Try to place an item at the current location.
     Place
   | -- | Give an item to another robot at the current location.
@@ -430,6 +432,7 @@ constInfo c = case c of
   Move -> commandLow 0
   Turn -> commandLow 1
   Grab -> commandLow 0
+  Harvest -> commandLow 0
   Place -> commandLow 1
   Give -> commandLow 2
   Install -> commandLow 2

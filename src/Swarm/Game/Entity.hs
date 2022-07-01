@@ -121,11 +121,13 @@ import Paths_swarm
 data EntityProperty
   = -- | Robots can't move onto a cell containing this entity.
     Unwalkable
-  | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab').
+  | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab' or 'Swarm.Language.Syntax.Harvest').
     Portable
-  | -- | Regrows from a seed after it is grabbed.
+  | -- | Regrows from a seed after it is harvested.
     Growable
-  | -- | Robots drown if they walk on this.
+  | -- | Regenerates infinitely when grabbed or harvested.
+    Infinite
+  | -- | Robots drown if they walk on this without a boat.
     Liquid
   | -- | Robots automatically know what this is without having to scan it.
     Known

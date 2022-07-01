@@ -42,14 +42,6 @@ world:
     │.│  │.│
     └─┘  └─┘
 entities:
-  - name: Tardis
-    display:
-      attr: water
-      char: '█'
-    description:
-    - Bigger on the inside.
-    properties: [known, portable]
-    capabilities: [senseloc, teleport]
   - name: GPS
     display:
       attr: water
@@ -58,6 +50,14 @@ entities:
     - Satellite navigation device.
     properties: [known, portable]
     capabilities: [senseloc]
+  - name: Tardis
+    display:
+      attr: water
+      char: '█'
+    description:
+    - Bigger on the inside.
+    properties: [known, portable]
+    capabilities: [senseloc, teleport]
   - name: knownwater
     display:
       attr: water

@@ -159,9 +159,9 @@ testScenarioSolution _ci _em =
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
             assertBool "Robot 1 should not be in waiting set" $ not waiting
+        , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
-        , expectFailBecause "Awaiting fix (#508)" $
-            testSolution Default "Testing/508-capability-subset.yaml"
+        , testSolution Default "Testing/508-capability-subset.yaml"
         ]
     ]
  where
