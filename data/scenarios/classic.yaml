@@ -13,6 +13,7 @@ robots:
       - grabber
       - life support system
       - logger
+      - plasma cutter
       - solar panel
       - workbench
     inventory:
