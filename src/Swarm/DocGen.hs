@@ -27,7 +27,7 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
-import Swarm.Language.Syntax (ConstMeta (..), Const (..))
+import Swarm.Language.Syntax (Const (..), ConstMeta (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Util (isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
@@ -64,7 +64,7 @@ generateDocs = \case
               putStrLn $ "-- " <> show et
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
-        mapM_ editorGen [minBound..maxBound]
+        mapM_ editorGen [minBound .. maxBound]
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -93,7 +93,7 @@ builtinCommandsEMacs = [If, Run, Return, Try, Fail, Force, Fst, Snd]
 editorList :: EditorType -> [Text] -> Text
 editorList = \case
   EMacs -> T.unlines . map (("  " <>) . quote)
-  VSCode -> T.intercalate "|" 
+  VSCode -> T.intercalate "|"
  where
   quote = T.cons '"' . flip T.snoc '"'
 
