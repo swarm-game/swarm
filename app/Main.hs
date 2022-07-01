@@ -3,18 +3,16 @@
 
 module Main where
 
-import Data.Text (
-  Text,
-  pack,
- )
+import Data.Foldable qualified
+import Data.Text (Text, pack)
 import Data.Text.IO qualified as Text
-import GitHash
+import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
-import Swarm.DocGen (GenerateDocs (..), generateDocs)
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
-import System.Exit
+import System.Exit (exitFailure, exitSuccess)
 
 data CLI
   = Run
@@ -29,9 +27,11 @@ data CLI
 cliParser :: Parser CLI
 cliParser =
   subparser
-    ( command "format" (info (format <**> helper) (progDesc "Format a file"))
-        <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
-        <> command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
+    ( mconcat
+        [ command "format" (info (format <**> helper) (progDesc "Format a file"))
+        , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+        , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
+        ]
     )
     <|> Run <$> seed <*> scenario <*> run <*> cheat
  where
@@ -41,8 +41,17 @@ cliParser =
       <|> (Format . File <$> strArgument (metavar "FILE"))
   docgen :: Parser GenerateDocs
   docgen =
-    subparser
-      (command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes"))
+    subparser . mconcat $
+      [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
+      , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
+      ]
+  editor :: Parser (Maybe EditorType)
+  editor =
+    Data.Foldable.asum
+      [ pure Nothing
+      , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
+      , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
+      ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   scenario :: Parser (Maybe String)

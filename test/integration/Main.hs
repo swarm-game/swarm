@@ -9,6 +9,7 @@ import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^?!))
 import Control.Monad (filterM, forM_, unless, void, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
+import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
 import Data.IntSet qualified as IS
@@ -16,7 +17,10 @@ import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
+import Swarm.DocGen (EditorType (..))
+import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
 import Swarm.Game.Robot (leText, machine, robotLog, waitingUntil)
@@ -62,6 +66,7 @@ main = do
           , exampleTests scenarioPrograms
           , scenarioTests em scenarioPaths
           , testScenarioSolution ci em
+          , testEditorFiles
           ]
 
 exampleTests :: [(FilePath, String)] -> TestTree
@@ -214,3 +219,38 @@ printAllLogs g =
   mapM_
     (\r -> forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText))
     (g ^. robotMap)
+
+-- | Test that editor files are up-to-date.
+testEditorFiles :: TestTree
+testEditorFiles =
+  testGroup
+    "editors"
+    [ testGroup
+        "VS Code"
+        [ testTextInVSCode "operators" (const DocGen.operatorNames)
+        , testTextInVSCode "commands" DocGen.keywordsCommands
+        , testTextInVSCode "directions" DocGen.keywordsDirections
+        ]
+    , testGroup
+        "Emacs"
+        [ testTextInEmacs "builtin" (const DocGen.builtinCommandsListEmacs)
+        , testTextInEmacs "commands" DocGen.keywordsCommands
+        , testTextInEmacs "directions" DocGen.keywordsDirections
+        ]
+    ]
+ where
+  testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.json"
+  testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
+  testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
+  testTextInFile whitespace name t fp = testCase name $ do
+    let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines
+        removeLW = if whitespace then removeLW' else id
+    f <- T.readFile fp
+    assertBool
+      ( "EDITOR FILE IS NOT UP TO DATE!\n"
+          <> "I could not find the text:\n"
+          <> T.unpack t
+          <> "\nin file "
+          <> fp
+      )
+      (removeLW t `T.isInfixOf` removeLW f)
