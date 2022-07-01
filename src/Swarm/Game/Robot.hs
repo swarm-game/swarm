@@ -30,7 +30,7 @@ module Swarm.Game.Robot (
   -- * Robot context
   RobotContext,
   defTypes,
-  defCaps,
+  defReqs,
   defVals,
   defStore,
 
@@ -82,11 +82,12 @@ import Data.Yaml ((.!=), (.:), (.:?))
 import Swarm.Util.Yaml
 
 import Swarm.Game.CESK
-import Swarm.Game.Display
+import Swarm.Game.Display (Display, defaultRobotDisplay)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
-import Swarm.Language.Capability
-import Swarm.Language.Context
+import Swarm.Language.Capability (Capability)
+import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Types (TCtx)
 
 -- | A record that stores the information
@@ -96,7 +97,7 @@ data RobotContext = RobotContext
     _defTypes :: TCtx
   , -- | Map defintion names to the capabilities
     --   required to evaluate/execute them.
-    _defCaps :: ReqCtx
+    _defReqs :: ReqCtx
   , -- | Map defintion names to their values. Note that since
     --   definitions are delayed, the values will just consist of
     --   'VRef's pointing into the store.
@@ -374,7 +375,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys ts =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = RobotContext empty empty empty emptyStore
+    , _robotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
     , _robotID = rid
     , _robotParentID = pid
     , _robotCreatedAt = ts

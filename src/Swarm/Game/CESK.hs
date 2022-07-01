@@ -97,10 +97,10 @@ import Swarm.Game.Entity (Entity, Inventory)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
 import Swarm.Game.World (World)
-import Swarm.Language.Capability (ReqCtx)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
+import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 

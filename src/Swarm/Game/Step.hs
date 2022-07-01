@@ -52,6 +52,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Util
 
@@ -531,10 +532,10 @@ stepCESK cesk = case cesk of
   -- environment, store, and type and capability contexts into the robot's
   -- top-level environment and contexts, so they will be available to
   -- future programs.
-  Out (VResult v e) s (FLoadEnv ctx cctx : k) -> do
+  Out (VResult v e) s (FLoadEnv ctx rctx : k) -> do
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
-    robotContext . defCaps %= (`union` cctx)
+    robotContext . defReqs <>= rctx
     return $ Out v s k
   Out v s (FLoadEnv {} : k) -> return $ Out v s k
   -- Any other type of value wiwth an FExec frame is an error (should
@@ -1463,13 +1464,15 @@ execConst c vs s k = do
     IncapableFix ->
     m [S.Set Entity]
   checkRequiredDevices inventory cmd subject fixI = do
-    currentContext <- use $ robotContext . defCaps
+    currentContext <- use $ robotContext . defReqs
     em <- use entityMap
     creative <- use creativeMode
     let -- Find out what capabilities are required by the program that will
         -- be run on the target robot, and what devices would provide those
         -- capabilities.
-        (caps, _capCtx) = Lens.over _1 S.toList $ requirements currentContext cmd
+        (reqs, _capCtx) = R.requirements currentContext cmd
+
+        -- XXX handle different requirements separately
 
         -- list of possible devices per requirement
         capDevices = map (`deviceForCap` em) caps

@@ -27,11 +27,11 @@ import Data.Text (Text)
 import Data.Yaml as Y
 import Witch
 
-import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Elaborate
 import Swarm.Language.Parse
 import Swarm.Language.Pretty
+import Swarm.Language.Requirement
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types

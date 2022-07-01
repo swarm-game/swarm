@@ -73,7 +73,7 @@ data Requirements = Requirements
   , devReqs :: Set Text
   , invReqs :: Map Text Integer
   }
-  deriving (Eq)
+  deriving (Eq, Ord, Show, Data)
 
 instance Semigroup Requirements where
   Requirements c1 d1 i1 <> Requirements c2 d2 i2 =
