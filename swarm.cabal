@@ -60,6 +60,7 @@ common ghc2021-extensions
       DeriveFunctor
       DeriveGeneric
       DeriveTraversable
+      ExplicitForAll
       FlexibleContexts
       FlexibleInstances
       GADTSyntax
