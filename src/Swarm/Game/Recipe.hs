@@ -1,12 +1,7 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Game.Recipe
@@ -45,11 +40,11 @@ import Control.Lens hiding (from, (.=))
 import Data.Bifunctor (second)
 import Data.Either.Validation
 import Data.IntMap (IntMap)
-import qualified Data.IntMap as IM
+import Data.IntMap qualified as IM
 import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Witch
 
 import Data.Yaml

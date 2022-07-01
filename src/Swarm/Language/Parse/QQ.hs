@@ -9,7 +9,7 @@
 module Swarm.Language.Parse.QQ (tyQ) where
 
 import Data.Generics
-import qualified Language.Haskell.TH as TH
+import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 
 import Swarm.Language.Parse

@@ -1,9 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -93,20 +90,20 @@ import Control.Monad.Except
 import Data.Array (Array, listArray)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
-import qualified Data.IntMap as IM
+import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
-import qualified Data.IntSet as IS
+import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition)
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T (lines)
-import qualified Data.Text.IO as T (readFile)
+import Data.Text qualified as T (lines)
+import Data.Text.IO qualified as T (readFile)
 import Linear
-import qualified System.Clock
+import System.Clock qualified
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
 
@@ -121,10 +118,10 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario
 import Swarm.Game.Value
-import qualified Swarm.Game.World as W
+import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed)
 import Swarm.Language.Capability (constCaps)
-import qualified Swarm.Language.Context as Ctx
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)

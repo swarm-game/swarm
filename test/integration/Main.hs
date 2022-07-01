@@ -11,11 +11,11 @@ import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
-import qualified Data.IntSet as IS
-import qualified Data.Map as M
+import Data.IntSet qualified as IS
+import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
@@ -33,7 +33,7 @@ import Swarm.Game.State (
   winSolution,
  )
 import Swarm.Game.Step (gameTick)
-import qualified Swarm.Language.Context as Ctx
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)

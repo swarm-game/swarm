@@ -1,11 +1,5 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -74,17 +68,17 @@ import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text, toUpper)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import Linear (V2)
-import qualified NLP.Minimorph.English as MM
+import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import Paths_swarm (getDataDir)
 import System.Directory (
