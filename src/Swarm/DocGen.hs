@@ -24,6 +24,8 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -31,13 +33,11 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
+import Swarm.Language.Syntax (ConstMeta (..))
+import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Util (isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
-import Data.Text qualified as T
-import Data.Text.IO qualified as T
-import Swarm.Language.Syntax qualified as Syntax
-import Swarm.Language.Syntax (ConstMeta(..))
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -78,25 +78,25 @@ generateEditorKeywords = \case
 
 -- get basic functions/commands
 keywordsCommands :: Text
-keywordsCommands = T.intercalate  "|" $ map (Syntax.syntax . Syntax.constInfo) (filter Syntax.isUserFunc Syntax.allConst)
+keywordsCommands = T.intercalate "|" $ map (Syntax.syntax . Syntax.constInfo) (filter Syntax.isUserFunc Syntax.allConst)
 
 -- get list of directions
 keywordsDirections :: Text
-keywordsDirections = T.intercalate "|" $  map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
+keywordsDirections = T.intercalate "|" $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
 
 operatorNames :: Text
-operatorNames = T.intercalate  "|" $ map (escape . Syntax.syntax . Syntax.constInfo) (filter isOperator Syntax.allConst)
-  where
-    special :: String
-    special = "*+$[]|^"
-    slashNotComment = \case
-      '/' -> "/(?![/|*])"
-      c -> T.singleton c
-    escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c) 
-    isOperator c = case Syntax.constMeta $ Syntax.constInfo c of
-      ConstMUnOp {} -> True
-      ConstMBinOp {} -> True
-      ConstMFunc {} -> False
+operatorNames = T.intercalate "|" $ map (escape . Syntax.syntax . Syntax.constInfo) (filter isOperator Syntax.allConst)
+ where
+  special :: String
+  special = "*+$[]|^"
+  slashNotComment = \case
+    '/' -> "/(?![/|*])"
+    c -> T.singleton c
+  escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
+  isOperator c = case Syntax.constMeta $ Syntax.constInfo c of
+    ConstMUnOp {} -> True
+    ConstMBinOp {} -> True
+    ConstMFunc {} -> False
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
