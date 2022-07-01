@@ -47,7 +47,7 @@ entities:
       attr: water
       char: 'G'
     description:
-    - Satellite navigation device.
+    - A satellite navigation device.
     properties: [known, portable]
     capabilities: [senseloc]
   - name: Tardis
