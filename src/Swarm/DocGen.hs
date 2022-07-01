@@ -27,7 +27,7 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
-import Swarm.Language.Syntax (ConstMeta (..))
+import Swarm.Language.Syntax (ConstMeta (..), Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Util (isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
@@ -45,15 +45,26 @@ data GenerateDocs where
   -- | Entity dependencies by recipes.
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
-  EditorKeywords :: EditorType -> GenerateDocs
+  EditorKeywords :: Maybe EditorType -> GenerateDocs
   deriving (Eq, Show)
 
-data EditorType = EMacs | VSCode deriving (Eq, Show)
+data EditorType = EMacs | VSCode
+  deriving (Eq, Show, Enum, Bounded)
 
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
   RecipeGraph -> generateRecipe >>= putStrLn
-  EditorKeywords e -> generateEditorKeywords e
+  EditorKeywords e ->
+    case e of
+      Just et -> generateEditorKeywords et
+      Nothing -> do
+        putStrLn "All editor completions:"
+        let editorGen et = do
+              putStrLn $ replicate 40 '-'
+              putStrLn $ "-- " <> show et
+              putStrLn $ replicate 40 '-'
+              generateEditorKeywords et
+        mapM_ editorGen [minBound..maxBound]
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -61,25 +72,46 @@ generateDocs = \case
 
 generateEditorKeywords :: EditorType -> IO ()
 generateEditorKeywords = \case
-  EMacs -> error "not implemented"
+  EMacs -> do
+    putStrLn "(x-builtins '("
+    T.putStr . editorList EMacs $ map constSyntax builtinCommandsEMacs
+    putStrLn "))\n(x-commands '("
+    T.putStr $ keywordsCommands EMacs
+    T.putStr $ keywordsDirections EMacs
+    putStrLn "))"
   VSCode -> do
     putStrLn "Functions and commands:"
-    T.putStrLn keywordsCommands
+    T.putStrLn $ keywordsCommands VSCode
     putStrLn "\nDirections:"
-    T.putStrLn keywordsDirections
+    T.putStrLn $ keywordsDirections VSCode
     putStrLn "\nOperators:"
     T.putStrLn operatorNames
 
--- get basic functions/commands
-keywordsCommands :: Text
-keywordsCommands = T.intercalate "|" $ map (Syntax.syntax . Syntax.constInfo) (filter Syntax.isUserFunc Syntax.allConst)
+builtinCommandsEMacs :: [Const]
+builtinCommandsEMacs = [If, Run, Return, Try, Fail, Force, Fst, Snd]
 
--- get list of directions
-keywordsDirections :: Text
-keywordsDirections = T.intercalate "|" $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
+editorList :: EditorType -> [Text] -> Text
+editorList = \case
+  EMacs -> T.unlines . map (("  " <>) . quote)
+  VSCode -> T.intercalate "|" 
+ where
+  quote = T.cons '"' . flip T.snoc '"'
+
+constSyntax :: Const -> Text
+constSyntax = Syntax.syntax . Syntax.constInfo
+
+-- | Get formatted list of basic functions/commands.
+keywordsCommands :: EditorType -> Text
+keywordsCommands e = editorList e $ map constSyntax (filter isFunc Syntax.allConst)
+ where
+  isFunc c = Syntax.isUserFunc c && (e /= EMacs || c `notElem` builtinCommandsEMacs)
+
+-- | Get formatted list of directions.
+keywordsDirections :: EditorType -> Text
+keywordsDirections e = editorList e $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
 
 operatorNames :: Text
-operatorNames = T.intercalate "|" $ map (escape . Syntax.syntax . Syntax.constInfo) (filter isOperator Syntax.allConst)
+operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperator Syntax.allConst)
  where
   special :: String
   special = "*+$[]|^"
