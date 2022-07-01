@@ -50,8 +50,35 @@ common stan-config
     ghc-options:      -fwrite-ide-info
                       -hiedir=.hie
 
+-- Harmless extensions from GHC2021
+common ghc2021-extensions
+    ghc-options:  -Wprepositive-qualified-module
+    default-extensions:
+      BangPatterns
+      DeriveAnyClass
+      DeriveDataTypeable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveTraversable
+      ExplicitForAll
+      FlexibleContexts
+      FlexibleInstances
+      GADTSyntax
+      MultiParamTypeClasses
+      NumericUnderscores
+      RankNTypes
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeApplications
+      TypeOperators
+      -- Note we warn on prequalified
+      ImportQualifiedPost
+      -- Not GHC2021, but until we get \cases we use \case a lot
+      LambdaCase
+
 library
-    import:           stan-config, common
+    import:           stan-config, common, ghc2021-extensions
     exposed-modules:  Swarm.Language.Context
                       Swarm.Language.Types
                       Swarm.Language.Syntax
@@ -130,7 +157,10 @@ library
                       yaml                          >= 0.11 && < 0.12,
     hs-source-dirs:   src
     default-language: Haskell2010
-    default-extensions: StrictData
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
 
 executable swarm
     import:           stan-config, common
@@ -144,9 +174,10 @@ executable swarm
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -threaded
+    default-extensions: ImportQualifiedPost
 
 test-suite swarm-unit
-    import:           stan-config, common
+    import:           stan-config, common, ghc2021-extensions
     main-is:          Main.hs
     type:             exitcode-stdio-1.0
 
@@ -168,7 +199,7 @@ test-suite swarm-unit
     ghc-options:      -threaded
 
 test-suite swarm-integration
-    import:           stan-config, common
+    import:           stan-config, common, ghc2021-extensions
     main-is:          Main.hs
     type:             exitcode-stdio-1.0
 
@@ -193,7 +224,7 @@ test-suite swarm-integration
     ghc-options:      -threaded
 
 benchmark benchmark
-  import:         stan-config, common
+  import:         stan-config, common, ghc2021-extensions
   main-is:        Benchmark.hs
   hs-source-dirs: bench
   type:           exitcode-stdio-1.0

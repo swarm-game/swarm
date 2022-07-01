@@ -1,8 +1,5 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 -- |
 -- Module      :  Swarm.Language.Context
@@ -20,7 +17,7 @@ import Control.Lens.Prism (prism)
 import Control.Monad.Reader (MonadReader, local)
 import Data.Data (Data)
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Text (Text)
 import Prelude hiding (lookup)
 

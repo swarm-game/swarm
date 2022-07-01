@@ -1,12 +1,6 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -73,10 +67,10 @@ module Swarm.Language.Syntax (
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Data.Lens (uniplate)
 import Data.Int (Int64)
-import qualified Data.Map as M
-import qualified Data.Set as S
+import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Text hiding (filter, map)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Linear
 
 import Data.Aeson.Types

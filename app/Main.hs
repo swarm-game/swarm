@@ -7,7 +7,7 @@ import Data.Text (
   Text,
   pack,
  )
-import qualified Data.Text.IO as Text
+import Data.Text.IO qualified as Text
 import GitHash
 import Options.Applicative
 import Swarm.App (appMain)

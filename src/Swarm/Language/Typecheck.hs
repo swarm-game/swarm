@@ -1,12 +1,5 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -56,18 +49,18 @@ import Control.Monad.Reader
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Prelude hiding (lookup)
 
 import Control.Unification hiding (applyBindings, (=:=))
-import qualified Control.Unification as U
+import Control.Unification qualified as U
 import Control.Unification.IntVar
 
 import Swarm.Language.Context hiding (lookup)
-import qualified Swarm.Language.Context as Ctx
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
