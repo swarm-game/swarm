@@ -6,9 +6,10 @@ win: |
   try {
     r <- robotNumbered 1;
     p <- as r {whereami};
+    boatInstalled <- as r {installed "boat"};
     b1 <- as r {count "boat"};
     b0 <- as base {count "boat"};
-    return (p == (2,0) && b0 == 0 && b1 == 1);
+    return (p == (2,0) && b0 == 0 && boatInstalled && b1 == 0);
   } { return false }
 creative: true
 solution: |
@@ -18,7 +19,6 @@ robots:
     loc: [0,0]
     dir: [1,0]
     devices:
-      - logger
       - 3D printer
 world:
   default: [blank, null]
