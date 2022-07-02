@@ -171,6 +171,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/201-require-device.yaml"
         , testSolution Default "Testing/201-require-device-creative.yaml"
         , testSolution Default "Testing/201-require-device-creative1.yaml"
+        , testSolution Default "Testing/201-require-entities.yaml"
         ]
     ]
  where

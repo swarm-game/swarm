@@ -7,3 +7,4 @@
 201-require-device.yaml
 201-require-device-creative.yaml
 201-require-device-creative1.yaml
+201-require-entities.yaml

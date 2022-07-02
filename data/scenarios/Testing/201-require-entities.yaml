@@ -1,0 +1,47 @@
+name: Require entities
+description: |
+  Require some entities using the 'require' command.
+  https://github.com/swarm-game/swarm/issues/201
+win: |
+  try {
+    r <- robotNumbered 1;
+    p <- as r {whereami};
+    r1 <- as r {count "rock"};
+    r0 <- as base {count "rock"};
+    return (p == (4,0) && r0 == 5 && r1 == 1);
+  } { return false }
+solution: |
+  build {require 5 "rock"; }
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - 3D printer
+    inventory:
+      - [10, rock]
+world:
+  default: [blank, null]
+  palette:
+    '.': [grass, null]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────┐
+    │.....│
+    └─────┘
+entities:
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water
