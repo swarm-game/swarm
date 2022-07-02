@@ -17,6 +17,7 @@ module Swarm.Game.Step where
 import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
+import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (traverse_)
@@ -33,6 +34,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Tuple (swap)
 import Linear (V2 (..), zero, (^+^))
 import System.Clock (TimeSpec)
 import System.Clock qualified
@@ -1469,7 +1471,7 @@ execConst c vs s k = do
     Text ->
     IncapableFix ->
     m (Set Entity, Inventory)
-  checkRequirements parentInventory _childInventory childDevices cmd subject fixI = do
+  checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
     currentContext <- use $ robotContext . defReqs
     em <- use entityMap
     creative <- use creativeMode
@@ -1479,12 +1481,21 @@ execConst c vs s k = do
         -- (Though perhaps there is an argument that this ought to be
         -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
         -- See #349
-        (R.Requirements (S.toList -> caps) (S.toList -> devNames) _inv, _capCtx) = R.requirements currentContext cmd
+        (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentContext cmd
 
     -- Check that all required device names exist, and fail with
     -- an exception if not
     devs <- forM devNames $ \devName ->
       E.lookupEntityName devName em `isJustOrFail` ["Unknown device required: " <> devName]
+
+    -- Check that all required inventory entity names exist, and fail
+    -- with an exception if not
+    reqElems <- forM (M.assocs reqInvNames) $ \(eName, n) ->
+      (n,)
+        <$> ( E.lookupEntityName eName em
+                `isJustOrFail` ["Unknown entity required: " <> eName]
+            )
+    let reqInv = E.fromElems reqElems
 
     let -- List of possible devices per requirement.  Devices for
         -- required capabilities come first, then singleton devices
@@ -1511,11 +1522,14 @@ execConst c vs s k = do
         -- capabilities not provided by any device in inventory
         missingCaps = S.fromList . map fst . filter (null . snd) $ zip caps deviceSets
 
-    let alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
+        alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
+
+        -- Figure out what is missing from the required inventory
+        missingChildInv = reqInv `E.difference` childInventory
 
     if creative
       then -- In creative mode, just return ALL the devices
-        return (S.unions (map S.fromList capDevices) `S.difference` alreadyInstalled, E.empty) -- XXX
+        return (S.unions (map S.fromList capDevices) `S.difference` alreadyInstalled, missingChildInv)
       else do
         -- check if robot has all devices to execute new command
         all null missingDeviceSets
@@ -1529,8 +1543,26 @@ execConst c vs s k = do
 
         -- XXX Do device minimization
         let minimalDeviceSet = S.fromList $ map (head . S.toList) deviceSets
+            minimalInstallSet = minimalDeviceSet `S.difference` alreadyInstalled
 
-        return (minimalDeviceSet `S.difference` alreadyInstalled, E.empty) -- XXX
+            -- Check that we have enough in our inventory to cover the
+            -- required installs PLUS what's missing from the child
+            -- inventory.
+
+            -- What we need
+            neededParentInv =
+              missingChildInv
+                `E.union` (fromList . S.toList $ minimalInstallSet)
+
+            -- What are we missing?
+            missingParentInv = neededParentInv `E.difference` parentInventory
+            missingMap = M.fromList . map (swap . second (^. entityName)) . E.elems $ missingParentInv
+
+        -- If we're missing anything, throw an error
+        E.isEmpty missingParentInv
+          `holdsOr` Incapable fixI (R.Requirements S.empty S.empty missingMap) cmd
+
+        return (minimalInstallSet, missingChildInv)
 
   -- replace some entity in the world with another entity
   changeWorld' ::

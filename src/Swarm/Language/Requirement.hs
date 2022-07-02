@@ -71,7 +71,7 @@ data Requirement
     --   Inventory requirements are additive, that is, say, requiring 5
     --   of entity `e` and later requiring 7 is the same as requiring
     --   12.
-    ReqInv Integer Text
+    ReqInv Int Text
   deriving (Eq, Ord, Show, Read, Generic, Hashable, Data)
 
 -- | It is tempting to define @Requirements = Set Requirement@, but
@@ -84,7 +84,7 @@ data Requirement
 data Requirements = Requirements
   { capReqs :: Set Capability
   , devReqs :: Set Text
-  , invReqs :: Map Text Integer
+  , invReqs :: Map Text Int
   }
   deriving (Eq, Ord, Show, Data)
 
@@ -113,7 +113,7 @@ singletonDev = singleton . ReqDev
 
 -- | For convenience, create a 'Requirements' set with a single
 --   inventory requirement.
-singletonInv :: Integer -> Text -> Requirements
+singletonInv :: Int -> Text -> Requirements
 singletonInv n e = singleton (ReqInv n e)
 
 insert :: Requirement -> Requirements -> Requirements

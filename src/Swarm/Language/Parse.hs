@@ -245,7 +245,7 @@ parseTermAtom =
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
         <|> reserved "require"
           *> ( (TRequireDevice <$> stringLiteral)
-                <|> (TRequire <$> integer <*> stringLiteral)
+                <|> (TRequire <$> (fromIntegral <$> integer) <*> stringLiteral)
              )
         <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
