@@ -1,4 +1,4 @@
-name: Require device
+name: Require existing device in creative mode
 description: |
   Require a device the base has using the 'require' command in creative mode.
   https://github.com/swarm-game/swarm/issues/201
