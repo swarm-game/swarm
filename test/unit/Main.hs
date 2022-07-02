@@ -139,11 +139,11 @@ parser =
             )
         ]
     , testCase
-      "require device"
-      (valid "require \"boat\"")
+        "require device"
+        (valid "require \"boat\"")
     , testCase
-      "require entities"
-      (valid "require 64 \"rock\"")
+        "require entities"
+        (valid "require 64 \"rock\"")
     ]
  where
   valid = flip process ""
