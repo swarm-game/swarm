@@ -28,11 +28,15 @@ import Data.Data (Data)
 import Data.Yaml
 import GHC.Generics (Generic)
 
-import Swarm.Language.Syntax (Const (..))
+import Data.Bifunctor (first)
+import Swarm.Language.Context
+import Swarm.Language.Syntax
 
 -- | Various capabilities which robots can have.
 data Capability
-  = -- | Execute the 'Move' command
+  = -- | Be powered, i.e. execute anything at all
+    CPower
+  | -- | Execute the 'Move' command
     CMove
   | -- | Execute the 'Turn' command
     --

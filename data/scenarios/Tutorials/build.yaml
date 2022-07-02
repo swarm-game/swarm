@@ -56,6 +56,9 @@ robots:
     inventory:
       - [10, logger]
       - [10, compass]
+      - [10, solar panel]
+      - [10, grabber]
+      - [10, treads]
 world:
   default: [blank, none]
   palette:

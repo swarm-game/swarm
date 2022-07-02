@@ -29,17 +29,9 @@
 
 Whenever swarm language adds new features, the highlighing needs to be updated.
 
-To save some time, get the current reserved words by running `cabal repl`:
-```haskell
-import Swarm.Language.Syntax 
-import qualified Data.Text as T
-:set -XOverloadedStrings
-
--- get basic functions/commands
-T.intercalate  "|" $ map (syntax . constInfo) (filter isUserFunc allConst)
-
--- get list of directions
-T.intercalate "|" $  map (dirSyntax . dirInfo) allDirs
+To save some time, get the current reserved words by running `swarm generate`:
+```bash
+cabal run swarm:swarm -- generate editors
 ```
 
 You still have to add for example types manually.

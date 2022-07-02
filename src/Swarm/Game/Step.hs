@@ -1268,20 +1268,10 @@ execConst c vs s k = do
       -- hopefully without duplicating too much code.
       [VDelay cmd e] -> do
         r <- get @Robot
-        em <- use entityMap
-
         pid <- use robotID
 
-        let -- Standard devices that are always installed.
-            -- XXX in the future, make a way to build these and just start the base
-            -- out with a large supply of each?
-            stdDeviceList =
-              ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
-            stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
-            addStdDevs i = foldr insert i stdDevices
-
         (toInstall, toGive) <-
-          checkRequirements (addStdDevs $ r ^. robotInventory) E.empty E.empty cmd "You" FixByObtain
+          checkRequirements (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtain
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1389,7 +1379,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp

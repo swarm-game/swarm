@@ -3,6 +3,14 @@
 module Swarm.DocGen (
   generateDocs,
   GenerateDocs (..),
+  EditorType (..),
+
+  -- ** Formatted keyword lists
+  keywordsCommands,
+  keywordsDirections,
+  operatorNames,
+  builtinCommandsListEmacs,
+  editorList,
 ) where
 
 import Control.Lens (view, (^.))
@@ -17,6 +25,8 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -24,6 +34,8 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
+import Swarm.Language.Syntax (Const (..), ConstMeta (..))
+import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Util (isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
@@ -39,11 +51,88 @@ import Text.Dot qualified as Dot
 data GenerateDocs where
   -- | Entity dependencies by recipes.
   RecipeGraph :: GenerateDocs
+  -- | Keyword lists for editors.
+  EditorKeywords :: Maybe EditorType -> GenerateDocs
   deriving (Eq, Show)
+
+data EditorType = Emacs | VSCode
+  deriving (Eq, Show, Enum, Bounded)
 
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
   RecipeGraph -> generateRecipe >>= putStrLn
+  EditorKeywords e ->
+    case e of
+      Just et -> generateEditorKeywords et
+      Nothing -> do
+        putStrLn "All editor completions:"
+        let editorGen et = do
+              putStrLn $ replicate 40 '-'
+              putStrLn $ "-- " <> show et
+              putStrLn $ replicate 40 '-'
+              generateEditorKeywords et
+        mapM_ editorGen [minBound .. maxBound]
+
+-- ----------------------------------------------------------------------------
+-- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
+-- ----------------------------------------------------------------------------
+
+generateEditorKeywords :: EditorType -> IO ()
+generateEditorKeywords = \case
+  Emacs -> do
+    putStrLn "(x-builtins '("
+    T.putStr . editorList Emacs $ map constSyntax builtinCommandsEmacs
+    putStrLn "))\n(x-commands '("
+    T.putStr $ keywordsCommands Emacs
+    T.putStr $ keywordsDirections Emacs
+    putStrLn "))"
+  VSCode -> do
+    putStrLn "Functions and commands:"
+    T.putStrLn $ keywordsCommands VSCode
+    putStrLn "\nDirections:"
+    T.putStrLn $ keywordsDirections VSCode
+    putStrLn "\nOperators:"
+    T.putStrLn operatorNames
+
+builtinCommandsEmacs :: [Const]
+builtinCommandsEmacs = [If, Run, Return, Try, Fail, Force, Fst, Snd]
+
+builtinCommandsListEmacs :: Text
+builtinCommandsListEmacs = editorList Emacs $ map constSyntax builtinCommandsEmacs
+
+editorList :: EditorType -> [Text] -> Text
+editorList = \case
+  Emacs -> T.unlines . map (("  " <>) . quote)
+  VSCode -> T.intercalate "|"
+ where
+  quote = T.cons '"' . flip T.snoc '"'
+
+constSyntax :: Const -> Text
+constSyntax = Syntax.syntax . Syntax.constInfo
+
+-- | Get formatted list of basic functions/commands.
+keywordsCommands :: EditorType -> Text
+keywordsCommands e = editorList e $ map constSyntax (filter isFunc Syntax.allConst)
+ where
+  isFunc c = Syntax.isUserFunc c && (e /= Emacs || c `notElem` builtinCommandsEmacs)
+
+-- | Get formatted list of directions.
+keywordsDirections :: EditorType -> Text
+keywordsDirections e = editorList e $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
+
+operatorNames :: Text
+operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperator Syntax.allConst)
+ where
+  special :: String
+  special = "*+$[]|^"
+  slashNotComment = \case
+    '/' -> "/(?![/|*])"
+    c -> T.singleton c
+  escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
+  isOperator c = case Syntax.constMeta $ Syntax.constInfo c of
+    ConstMUnOp {} -> True
+    ConstMBinOp {} -> True
+    ConstMFunc {} -> False
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES

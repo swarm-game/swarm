@@ -47,7 +47,7 @@
 				},
 				{
 				"name": "keyword.operator",
-				"match": "(<|>|==|<=|>=|!=|=|;|<-|-|\\+|\\*|\\^|\\$|/(?![/|*]))"
+				"match": "-|==|!=|<|>|<=|>=|\\|\\||&&|\\+|-|\\*|/(?![/|*])|\\^|\\+\\+|\\$"
 				},
 				{
 				"name": "keyword.operator.lambda",
@@ -56,7 +56,7 @@
 				},
 				{
 				"name": "keyword.other",
-				"match": "\\b(?i)(noop|wait|selfdestruct|move|turn|grab|place|give|install|make|has|count|drill|build|salvage|reprogram|say|log|view|appear|create|whereami|blocked|scan|upload|ishere|whoami|random|run|if|inl|inr|case|fst|snd|force|return|try|raise|not)\\b"
+				"match": "\\b(?i)(noop|wait|selfdestruct|move|turn|grab|harvest|place|give|install|make|has|count|drill|build|salvage|reprogram|say|log|view|appear|create|whereami|blocked|scan|upload|ishere|self|parent|base|whoami|setname|random|run|if|inl|inr|case|fst|snd|force|return|try|undefined|fail|not|format|teleport|as|robotnamed|robotnumbered|knows)\\b"
 				}
 			]
 			},

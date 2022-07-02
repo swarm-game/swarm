@@ -26,6 +26,7 @@ module Swarm.Language.Requirement (
   requirements,
 ) where
 
+import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Map (Map)
@@ -134,7 +135,7 @@ type ReqCtx = Ctx Requirements
 --   be safe in the sense that a robot with the indicated capabilities
 --   will always be able to run the given program.
 requirements :: ReqCtx -> Term -> (Requirements, ReqCtx)
-requirements ctx tm = case tm of
+requirements ctx tm = first (insert (ReqCap CPower)) $ case tm of
   -- First, at the top level, we have to keep track of the
   -- requirements for variables bound with the 'TDef' command.
 

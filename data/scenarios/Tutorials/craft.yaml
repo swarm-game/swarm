@@ -2,8 +2,8 @@ name: Crafting, part 1
 description: |
   Learn how to make new things using recipes.
 #
-# The players should read the recipes and aquaint themselves with the UI.
-# This also motivates the next tutorial about obtaining entites.
+# The players should read the recipes and acquaint themselves with the UI.
+# This also motivates the next tutorial about obtaining entities.
 #
 goal:
   - Robots can use the 'make' command to make things.

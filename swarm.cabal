@@ -21,6 +21,8 @@ category:           Game
 tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.3
 extra-source-files: CHANGELOG.md
                     example/*.sw
+                    editors/emacs/*.el
+                    editors/vscode/syntaxes/*.json
 data-dir:           data/
 data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt
 

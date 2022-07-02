@@ -13,8 +13,16 @@ robots:
       - grabber
       - life support system
       - logger
+      - toolkit
       - solar panel
       - workbench
+    inventory:
+      - [5, 3D printer]
+      - [100, treads]
+      - [70, grabber]
+      - [100, solar panel]
+      - [50, scanner]
+      - [5, toolkit]
 world:
   seed: null
   offset: true
