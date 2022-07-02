@@ -1217,18 +1217,16 @@ execConst c vs s k = do
         (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["You can only reprogram an adjacent robot."]
 
-        (_toInstall, _toGive) <-
+        -- Figure out if we can supply what the target robot requires,
+        -- and if so, what is needed.
+        (toInstall, toGive) <-
           checkRequirements
             (r ^. robotInventory)
             (childRobot ^. robotInventory)
             (childRobot ^. installedDevices)
             cmd
             "The target robot"
-            FixByInstall
-
-        -- XXX be willing to install extra devices, give extra
-        -- inventory.  Maybe take two inventories: parent + child
-        -- (child = empty in case of Build)
+            FixByObtain
 
         -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
@@ -1236,6 +1234,11 @@ execConst c vs s k = do
         -- declared in the parent robot
         robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
         robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
+
+        -- Give the target robot everything required.
+        provisionChild childRobotID (fromList . S.toList $ toInstall) toGive
+
+        -- Finally, re-activate the reprogrammed target robot.
         activateRobot childRobotID
 
         return $ Out VUnit s k
@@ -1266,7 +1269,6 @@ execConst c vs s k = do
       [VDelay cmd e] -> do
         r <- get @Robot
         em <- use entityMap
-        creative <- use creativeMode
 
         pid <- use robotID
 
@@ -1278,10 +1280,8 @@ execConst c vs s k = do
             stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
             addStdDevs i = foldr insert i stdDevices
 
-        (toInstall, _toGive) <- -- XXX use toGive
+        (toInstall, toGive) <-
           checkRequirements (addStdDevs $ r ^. robotInventory) E.empty E.empty cmd "You" FixByObtain
-
-        let devices = stdDevices `S.union` toInstall
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1301,16 +1301,13 @@ execConst c vs s k = do
               )
               defaultRobotDisplay
               (In cmd e s [FExec])
-              (S.toList devices)
+              []
               []
               False
               createdAt
 
-        -- Remove from the inventory any devices which were installed on the new robot,
-        -- if not in creative mode.
-        unless creative $
-          forM_ (devices `S.difference` stdDevices) $ \d ->
-            robotInventory %= delete d
+        -- Provision the new robot with the necessary devices and inventory.
+        provisionChild (newRobot ^. robotID) (fromList . S.toList $ toInstall) toGive
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
@@ -1626,6 +1623,32 @@ execConst c vs s k = do
 
     -- Return the name of the item obtained.
     return $ Out (VString (e' ^. entityName)) s k
+
+-- | Give some entities from a parent robot (the robot represented by
+--   the ambient @State Robot@ effect) to a child robot (represented
+--   by the given 'RID') as part of a 'Build' or 'Reprogram' command.
+--   The first 'Inventory' is devices to be installed, and the second
+--   is entities to be transferred.
+--
+--   In classic mode, the entities will be /transferred/ (that is,
+--   removed from the parent robot's inventory); in creative mode, the
+--   entities will be copied/created, that is, no entities will be
+--   removed from the parent robot.
+provisionChild ::
+  (Has (State Robot) sig m, Has (State GameState) sig m) =>
+  RID ->
+  Inventory ->
+  Inventory ->
+  m ()
+provisionChild childID toInstall toGive = do
+  -- Install and give devices to child
+  robotMap . ix childID . installedDevices %= E.union toInstall
+  robotMap . ix childID . robotInventory %= E.union toGive
+
+  -- Delete all items from parent in classic mode
+  creative <- use creativeMode
+  unless creative $
+    robotInventory %= (`E.difference` (toInstall `E.union` toGive))
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
