@@ -149,7 +149,7 @@ operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperato
     ConstMFunc {} -> False
 
 -- ----------------------------------------------------------------------------
--- GENERATE TABLES: ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
+-- GENERATE TABLES: COMMANDS, ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
 -- ----------------------------------------------------------------------------
 
 wrap :: Char -> Text -> Text
@@ -169,7 +169,9 @@ listToRow mw xs = wrap '|' . T.intercalate "|" $ zipWith format mw xs
 maxWidths :: [[Text]] -> [Int]
 maxWidths = map (maximum . map T.length) . transpose
 
--- -------
+-- ---------
+-- COMMANDS
+-- ---------
 
 commandHeader :: [Text]
 commandHeader = ["Syntax", "Type", "Capability", "Description"]
@@ -179,7 +181,7 @@ commandToList c =
   [ codeQuote $ constSyntax c
   , codeQuote . prettyText $ inferConst c
   , maybe "" capabilityName $ constCaps c
-  , ""
+  , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
   ]
 
 commandTable :: Text
