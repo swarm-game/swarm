@@ -28,8 +28,6 @@ import Data.Data (Data)
 import Data.Yaml
 import GHC.Generics (Generic)
 
-import Data.Bifunctor (first)
-import Swarm.Language.Context
 import Swarm.Language.Syntax
 
 -- | Various capabilities which robots can have.
