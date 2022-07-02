@@ -41,9 +41,6 @@ elaborate =
   rewrite (TDef True x ty t1) = TDef True x ty (mapFree1 x (TApp (TConst Force)) t1)
   -- Rewrite @f $ x@ to @f x@.
   rewrite (TApp (TApp (TConst AppF) r) l) = TApp r l
-  -- Rewrite @require@ to a no-op.
-  rewrite (TRequire _ _) = TConst Noop
-  rewrite (TRequireDevice _) = TConst Noop
   -- Leave any other subterms alone.
   rewrite t = t
 
