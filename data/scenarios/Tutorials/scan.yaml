@@ -40,6 +40,8 @@ robots:
       - [10, logger]
       - [10, compass]
       - [10, scanner]
+      - [10, treads]
+      - [10, solar panel]
 world:
   default: [blank, none]
   palette:

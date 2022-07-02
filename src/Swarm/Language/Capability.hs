@@ -32,12 +32,15 @@ import Data.Data (Data)
 import Data.Yaml
 import GHC.Generics (Generic)
 
+import Data.Bifunctor (first)
 import Swarm.Language.Context
 import Swarm.Language.Syntax
 
 -- | Various capabilities which robots can have.
 data Capability
-  = -- | Execute the 'Move' command
+  = -- | Be powered, i.e. execute anything at all
+    CPower
+  | -- | Execute the 'Move' command
     CMove
   | -- | Execute the 'Turn' command
     --
@@ -141,7 +144,7 @@ type CapCtx = Ctx (Set Capability)
 --   be safe in the sense that a robot with the indicated capabilities
 --   will always be able to run the given program.
 requiredCaps :: CapCtx -> Term -> (Set Capability, CapCtx)
-requiredCaps ctx tm = case tm of
+requiredCaps ctx tm = first (S.insert CPower) $ case tm of
   -- First, at the top level, we have to keep track of the
   -- capabilities needed by variables bound with the 'TDef' command.
 

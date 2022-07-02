@@ -19,7 +19,7 @@ robots:
     devices:
       - logger
       - grabber
-      - plasma cutter
+      - toolkit
       - 3D printer
     inventory:
       - [2, metal drill]

@@ -394,6 +394,15 @@
   - [1, metal drill]
 
 - in:
+  - [1, box]
+  - [2, board]
+  - [4, copper pipe]
+  - [2, iron plate]
+  - [2, rubber]
+  out:
+  - [1, toolkit]
+
+- in:
   - [2, small motor]
   - [8, iron plate]
   - [2, rubber]

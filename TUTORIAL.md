@@ -148,8 +148,8 @@ build {make "curry"}
 The info panel should automatically switch to showing your `logger`
 device, with an error message at the bottom saying something like
 ```
-build: this would require installing devices you don't have:
-  workbench
+build: You do not have required devices, please obtain:
+  - workbench
 ```
 This is telling you that in order to `build` a robot which has the right
 capabilities to run this program, you would need to
@@ -189,7 +189,7 @@ Now let's use them:
 ```
 build { turn left; m4; m }
 ```
-This should build a robot that moves toward the green mass to the west.
+This should build a robot that moves toward the west.
 The base is still turned north, so the robot needs to turn left
 to be oriented to the west. Once you have a compass to install on
 the robot, you will be able to `turn west` directly.

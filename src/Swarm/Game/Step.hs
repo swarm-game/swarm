@@ -1248,26 +1248,16 @@ execConst c vs s k = do
       -- hopefully without duplicating too much code.
       [VDelay cmd e] -> do
         r <- get @Robot
-        em <- use entityMap
         creative <- use creativeMode
 
         pid <- use robotID
 
-        let -- Standard devices that are always installed.
-            -- XXX in the future, make a way to build these and just start the base
-            -- out with a large supply of each?
-            stdDeviceList =
-              ["treads", "grabber", "solar panel", "scanner", "plasma cutter"]
-            stdDevices = S.fromList $ mapMaybe (`lookupEntityName` em) stdDeviceList
-            addStdDevs i = foldr insert i stdDevices
-
-        deviceSets <- checkRequiredDevices (addStdDevs $ r ^. robotInventory) cmd "You" FixByObtain
+        deviceSets <- checkRequiredDevices (r ^. robotInventory) cmd "You" FixByObtain
 
         let devices =
-              stdDevices
-                `S.union` if creative -- if given a choice between required devices giving same capability
-                  then S.unions deviceSets -- give them all in creative
-                  else S.unions $ map (S.take 1) deviceSets -- give first one otherwise
+              if creative -- if given a choice between required devices giving same capability
+                then S.unions deviceSets -- give them all in creative
+                else S.unions $ map (S.take 1) deviceSets -- give first one otherwise
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1295,7 +1285,7 @@ execConst c vs s k = do
         -- Remove from the inventory any devices which were installed on the new robot,
         -- if not in creative mode.
         unless creative $
-          forM_ (devices `S.difference` stdDevices) $ \d ->
+          forM_ devices $ \d ->
             robotInventory %= delete d
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
