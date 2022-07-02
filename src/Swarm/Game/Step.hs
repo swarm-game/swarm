@@ -15,7 +15,7 @@
 module Swarm.Game.Step where
 
 import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM_, guard, msum, unless, when)
+import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bool (bool)
 import Data.Either (partitionEithers, rights)
@@ -1479,15 +1479,22 @@ execConst c vs s k = do
         -- (Though perhaps there is an argument that this ought to be
         -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
         -- See #349
-        (R.Requirements (S.toList -> caps) _devs _inv, _capCtx) = R.requirements currentContext cmd
+        (R.Requirements (S.toList -> caps) (S.toList -> devNames) _inv, _capCtx) = R.requirements currentContext cmd
 
-        -- XXX handle different requirements separately
+    -- Check that all required device names exist, and fail with
+    -- an exception if not
+    devs <- forM devNames $ \devName ->
+      E.lookupEntityName devName em `isJustOrFail` ["Unknown device required: " <> devName]
 
-        -- list of possible devices per requirement
-        capDevices = map (`deviceForCap` em) caps
+    let -- List of possible devices per requirement.  Devices for
+        -- required capabilities come first, then singleton devices
+        -- that are required directly.  This order is important since
+        -- later we zip required capabilities with this list to figure
+        -- out which capabilities are missing.
+        capDevices = map (`deviceForCap` em) caps ++ map (: []) devs
 
         -- A device is OK if it is available in the inventory of the
-        -- parent robot, or installed in the child robot.
+        -- parent robot, or already installed in the child robot.
         deviceOK d = parentInventory `E.contains` d || childDevices `E.contains` d
 
         -- take a pair of device sets providing capabilities that is
@@ -1517,6 +1524,9 @@ execConst c vs s k = do
                         )
         -- check that there are in fact devices to provide every required capability
         not (any null deviceSets) `holdsOr` Incapable fixI (R.Requirements missingCaps S.empty M.empty) cmd
+
+        -- XXX Do device minimization
+        -- XXX Don't include devices the target robot already has (for e.g. reprogram)
         -- give back the devices required per capability
         return (S.fromList $ map (head . S.toList) deviceSets, E.empty) -- XXX
 

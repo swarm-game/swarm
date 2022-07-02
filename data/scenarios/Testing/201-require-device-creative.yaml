@@ -20,6 +20,7 @@ robots:
     dir: [1,0]
     devices:
       - 3D printer
+      - logger
 world:
   default: [blank, null]
   palette:

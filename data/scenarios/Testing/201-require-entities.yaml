@@ -18,8 +18,11 @@ robots:
     dir: [1,0]
     devices:
       - 3D printer
+      - logger
     inventory:
       - [10, rock]
+      - [1, solar panel]
+      - [1, treads]
 world:
   default: [blank, null]
   palette:
