@@ -4,7 +4,4 @@
 490-harvest.yaml
 504-teleport-self.yaml
 508-capability-subset.yaml
-201-require-device.yaml
-201-require-device-creative.yaml
-201-require-device-creative1.yaml
-201-require-entities.yaml
+201-require

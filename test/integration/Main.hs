@@ -167,11 +167,16 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
         , expectFailBecause "Awaiting fix (#508)" $
-            testSolution Default "Testing/508-capability-subset.yaml"
-        , testSolution Default "Testing/201-require-device.yaml"
-        , testSolution Default "Testing/201-require-device-creative.yaml"
-        , testSolution Default "Testing/201-require-device-creative1.yaml"
-        , testSolution Default "Testing/201-require-entities.yaml"
+            testSolution Default "Testing/508-capability-subset"
+        , testGroup
+            "Require (#201)"
+            [ testSolution Default "Testing/201-require/201-require-device"
+            , testSolution Default "Testing/201-require/201-require-device-creative"
+            , testSolution Default "Testing/201-require/201-require-device-creative1"
+            , testSolution Default "Testing/201-require/201-require-entities"
+            , testSolution Default "Testing/201-require/533-reprogram-simple"
+            , testSolution Default "Testing/201-require/533-reprogram"
+            ]
         ]
     ]
  where

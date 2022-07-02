@@ -1511,9 +1511,11 @@ execConst c vs s k = do
         -- capabilities not provided by any device in inventory
         missingCaps = S.fromList . map fst . filter (null . snd) $ zip caps deviceSets
 
+    let alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
+
     if creative
-      then -- In creative mode, just return ALL the devices?
-        return $ (S.unions (map S.fromList capDevices), E.empty) -- XXX
+      then -- In creative mode, just return ALL the devices
+        return (S.unions (map S.fromList capDevices) `S.difference` alreadyInstalled, E.empty) -- XXX
       else do
         -- check if robot has all devices to execute new command
         all null missingDeviceSets
@@ -1526,9 +1528,9 @@ execConst c vs s k = do
         not (any null deviceSets) `holdsOr` Incapable fixI (R.Requirements missingCaps S.empty M.empty) cmd
 
         -- XXX Do device minimization
-        -- XXX Don't include devices the target robot already has (for e.g. reprogram)
-        -- give back the devices required per capability
-        return (S.fromList $ map (head . S.toList) deviceSets, E.empty) -- XXX
+        let minimalDeviceSet = S.fromList $ map (head . S.toList) deviceSets
+
+        return (minimalDeviceSet `S.difference` alreadyInstalled, E.empty) -- XXX
 
   -- replace some entity in the world with another entity
   changeWorld' ::
