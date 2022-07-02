@@ -66,6 +66,7 @@ module Swarm.Game.Entity (
   countByName,
   contains,
   contains0plus,
+  isSubsetOf,
   elems,
 
   -- ** Modification
@@ -554,6 +555,11 @@ contains inv e = lookup e inv > 0
 -- | Check whether an inventory has an entry for entity (used by robots).
 contains0plus :: Entity -> Inventory -> Bool
 contains0plus e = isJust . IM.lookup (e ^. entityHash) . counts
+
+-- | Check if the first inventory is a subset of the second.
+--   Note that entities with a count of 0 are ignored.
+isSubsetOf :: Inventory -> Inventory -> Bool
+isSubsetOf inv1 inv2 = all (\(n, e) -> lookup e inv2 >= n) (elems inv1)
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory

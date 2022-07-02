@@ -644,8 +644,26 @@ inventory =
             )
             (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
         )
+    , testCase
+        "subset / yes"
+        ( assertBool
+            "{(0,x),(3,y),(2,z)} isSubsetOf {(3,y),(4,z)}"
+            ( E.insertCount 0 x (E.insertCount 3 y (E.insertCount 2 z E.empty))
+                `E.isSubsetOf` E.insertCount 3 y (E.insertCount 4 z E.empty)
+            )
+        )
+    , testCase
+        "subset / no"
+        ( assertBool
+            "{(2,x),(3,y)} isSubsetOf {(1,x),(4,y)}"
+            ( not
+                ( E.insertCount 2 x (E.insertCount 3 y E.empty)
+                    `E.isSubsetOf` E.insertCount 1 x (E.insertCount 4 y E.empty)
+                )
+            )
+        )
     ]
  where
   x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
   y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
-  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
+  z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
