@@ -66,8 +66,9 @@ module Swarm.Game.Entity (
   countByName,
   contains,
   contains0plus,
-  isSubsetOf,
   elems,
+  isSubsetOf,
+  isEmpty,
 
   -- ** Modification
   insert,
@@ -560,6 +561,12 @@ contains0plus e = isJust . IM.lookup (e ^. entityHash) . counts
 --   Note that entities with a count of 0 are ignored.
 isSubsetOf :: Inventory -> Inventory -> Bool
 isSubsetOf inv1 inv2 = all (\(n, e) -> lookup e inv2 >= n) (elems inv1)
+
+-- | Check whether an inventory is empty, meaning that it contains 0
+--   total entities (although it may still /know about/ some entities, that
+--   is, have them as keys with a count of 0).
+isEmpty :: Inventory -> Bool
+isEmpty = all ((== 0) . fst) . elems
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory

@@ -662,6 +662,18 @@ inventory =
                 )
             )
         )
+    , testCase
+        "isEmpty / yes"
+        ( assertBool
+            "isEmpty {(0,x),(0,y)}"
+            (E.isEmpty (E.insertCount 0 x (E.insertCount 0 y E.empty)))
+        )
+    , testCase
+        "isEmpty / no"
+        ( assertBool
+            "isEmpty {(0,x),(1,y)}"
+            (not (E.isEmpty (E.insertCount 0 x (E.insertCount 1 y E.empty))))
+        )
     ]
  where
   x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
