@@ -12,6 +12,9 @@ module Swarm.DocGen (
   operatorNames,
   builtinFunctionList,
   editorList,
+
+  -- ** Wiki pages
+  commandsPage,
 ) where
 
 import Control.Lens (view, (^.))
@@ -84,7 +87,7 @@ generateDocs = \case
   CheatSheet s -> case s of
     Nothing -> error "Not implemented"
     Just st -> case st of
-      Commands -> T.putStrLn commandTable
+      Commands -> T.putStrLn commandsPage
       _ -> error "Not implemented"
 
 -- ----------------------------------------------------------------------------
@@ -114,11 +117,11 @@ commands = filter Syntax.isCmd Syntax.allConst
 operators :: [Const]
 operators = filter Syntax.isOperator Syntax.allConst
 
-builtinFunction :: [Const]
-builtinFunction = filter Syntax.isBuiltinFunction Syntax.allConst
+builtinFunctions :: [Const]
+builtinFunctions = filter Syntax.isBuiltinFunction Syntax.allConst
 
 builtinFunctionList :: EditorType -> Text
-builtinFunctionList e = editorList e $ map constSyntax builtinFunction
+builtinFunctionList e = editorList e $ map constSyntax builtinFunctions
 
 editorList :: EditorType -> [Text] -> Text
 editorList = \case
@@ -183,18 +186,48 @@ commandToList :: Const -> [Text]
 commandToList c =
   map
     escapeTable
-    [ codeQuote $ constSyntax c
+    [ addLink (T.pack $ "#" <> show c) . codeQuote $ constSyntax c
     , codeQuote . prettyText $ inferConst c
     , maybe "" capabilityName $ constCaps c
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
     ]
+ where
+  addLink l t = T.concat ["[", t, "](", l, ")"]
 
-commandTable :: Text
-commandTable = T.unlines $ header <> map (listToRow mw) commandRows
+constTable :: [Const] -> Text
+constTable cs = T.unlines $ header <> map (listToRow mw) commandRows
  where
   mw = maxWidths (commandHeader : commandRows)
-  commandRows = map commandToList Syntax.allConst
+  commandRows = map commandToList cs
   header = [listToRow mw commandHeader, separatingLine mw]
+
+commandToSection :: Const -> Text
+commandToSection c =
+  T.unlines $
+    [ "## " <> T.pack (show c)
+    , ""
+    , "- syntax: " <> codeQuote (constSyntax c)
+    , "- type: " <> (codeQuote . prettyText $ inferConst c)
+    , maybe "" (("- required capabilities: " <>) . capabilityName) $ constCaps c
+    , ""
+    , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
+    ]
+      <> let l = Syntax.longDoc . Syntax.constDoc $ Syntax.constInfo c
+          in if T.null l then [] else ["", l]
+
+commandsPage :: Text
+commandsPage =
+  T.intercalate "\n\n" $
+    [ "# Commands"
+    , constTable commands
+    , "# Builtin functions"
+    , "These functions are evaluated immediately once they have enough arguments."
+    , constTable builtinFunctions
+    , "# Operators"
+    , constTable operators
+    , "# Detailed descriptions"
+    ]
+      <> map commandToSection (commands <> builtinFunctions <> operators)
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
