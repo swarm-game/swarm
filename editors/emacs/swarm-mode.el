@@ -51,6 +51,7 @@
                "install"
                "make"
                "has"
+               "installed"
                "count"
                "drill"
                "build"

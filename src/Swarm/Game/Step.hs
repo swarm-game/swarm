@@ -916,6 +916,11 @@ execConst c vs s k = do
         inv <- use robotInventory
         return $ Out (VBool ((> 0) $ countByName name inv)) s k
       _ -> badConst
+    Installed -> case vs of
+      [VString name] -> do
+        inv <- use installedDevices
+        return $ Out (VBool ((> 0) $ countByName name inv)) s k
+      _ -> badConst
     Count -> case vs of
       [VString name] -> do
         inv <- use robotInventory

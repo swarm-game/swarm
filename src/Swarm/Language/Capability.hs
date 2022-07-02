@@ -136,6 +136,8 @@ constCaps = \case
   Setname -> Nothing
   Undefined -> Nothing
   Fail -> Nothing
+  Has -> Nothing
+  Installed -> Nothing
   -- Some straightforward ones.
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
@@ -147,7 +149,6 @@ constCaps = \case
   Give -> Just CGive
   Install -> Just CInstall
   Make -> Just CMake
-  Has -> Nothing
   Count -> Just CCount
   If -> Just CCond
   Blocked -> Just CSensefront

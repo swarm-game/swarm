@@ -441,6 +441,7 @@ inferConst c = toU $ case c of
   Install -> [tyQ| robot -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
   Has -> [tyQ| string -> cmd bool |]
+  Installed -> [tyQ| string -> cmd bool |]
   Count -> [tyQ| string -> cmd int |]
   Reprogram -> [tyQ| robot -> {cmd a} -> cmd () |]
   Build -> [tyQ| {cmd a} -> cmd robot |]

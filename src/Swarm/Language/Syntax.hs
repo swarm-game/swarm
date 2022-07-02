@@ -220,6 +220,8 @@ data Const
     Make
   | -- | Sense whether we have a certain item.
     Has
+  | -- | Sense whether we have a certain device installed.
+    Installed
   | -- | Sense how many of a certain item we have.
     Count
   | -- | Drill through an entity.
@@ -438,6 +440,7 @@ constInfo c = case c of
   Install -> commandLow 2
   Make -> commandLow 1
   Has -> commandLow 1
+  Installed -> commandLow 1
   Count -> commandLow 1
   Reprogram -> commandLow 2
   Drill -> commandLow 1
