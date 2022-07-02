@@ -292,7 +292,7 @@ loadScenarioDir em dir = do
           "Warning: no " <> orderFileName <> " file found in " <> dirName
             <> ", using alphabetical order"
       return Nothing
-    True -> Just . lines <$> sendIO (readFile orderFile)
+    True -> Just . filter (not . null) . lines <$> sendIO (readFile orderFile)
   fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
 
   case morder of
