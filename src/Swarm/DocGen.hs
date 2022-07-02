@@ -158,6 +158,9 @@ wrap c = T.cons c . flip T.snoc c
 codeQuote :: Text -> Text
 codeQuote = wrap '`'
 
+escapeTable :: Text -> Text
+escapeTable = T.concatMap (\c -> if c == '|' then T.snoc "\\" c else T.singleton c)
+
 separatingLine :: [Int] -> Text
 separatingLine ws = T.cons '|' . T.concat $ map (flip T.snoc '|' . flip T.replicate "-" . (2 +)) ws
 
@@ -178,11 +181,13 @@ commandHeader = ["Syntax", "Type", "Capability", "Description"]
 
 commandToList :: Const -> [Text]
 commandToList c =
-  [ codeQuote $ constSyntax c
-  , codeQuote . prettyText $ inferConst c
-  , maybe "" capabilityName $ constCaps c
-  , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
-  ]
+  map
+    escapeTable
+    [ codeQuote $ constSyntax c
+    , codeQuote . prettyText $ inferConst c
+    , maybe "" capabilityName $ constCaps c
+    , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
+    ]
 
 commandTable :: Text
 commandTable = T.unlines $ header <> map (listToRow mw) commandRows
