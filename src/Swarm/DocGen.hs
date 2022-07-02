@@ -10,7 +10,7 @@ module Swarm.DocGen (
   keywordsCommands,
   keywordsDirections,
   operatorNames,
-  builtinCommandsListEmacs,
+  builtinFunctionList,
   editorList,
 ) where
 
@@ -38,7 +38,7 @@ import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Language.Capability (capabilityName, constCaps)
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Syntax (Const (..), ConstMeta (..))
+import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (isRightOr)
@@ -95,24 +95,30 @@ generateEditorKeywords :: EditorType -> IO ()
 generateEditorKeywords = \case
   Emacs -> do
     putStrLn "(x-builtins '("
-    T.putStr . editorList Emacs $ map constSyntax builtinCommandsEmacs
+    T.putStr $ builtinFunctionList Emacs
     putStrLn "))\n(x-commands '("
     T.putStr $ keywordsCommands Emacs
     T.putStr $ keywordsDirections Emacs
     putStrLn "))"
   VSCode -> do
     putStrLn "Functions and commands:"
-    T.putStrLn $ keywordsCommands VSCode
+    T.putStrLn $ builtinFunctionList VSCode <> "|" <> keywordsCommands VSCode
     putStrLn "\nDirections:"
     T.putStrLn $ keywordsDirections VSCode
     putStrLn "\nOperators:"
     T.putStrLn operatorNames
 
-builtinCommandsEmacs :: [Const]
-builtinCommandsEmacs = [If, Run, Return, Try, Fail, Force, Fst, Snd]
+commands :: [Const]
+commands = filter Syntax.isCmd Syntax.allConst
 
-builtinCommandsListEmacs :: Text
-builtinCommandsListEmacs = editorList Emacs $ map constSyntax builtinCommandsEmacs
+operators :: [Const]
+operators = filter Syntax.isOperator Syntax.allConst
+
+builtinFunction :: [Const]
+builtinFunction = filter Syntax.isBuiltinFunction Syntax.allConst
+
+builtinFunctionList :: EditorType -> Text
+builtinFunctionList e = editorList e $ map constSyntax builtinFunction
 
 editorList :: EditorType -> [Text] -> Text
 editorList = \case
@@ -126,16 +132,14 @@ constSyntax = Syntax.syntax . Syntax.constInfo
 
 -- | Get formatted list of basic functions/commands.
 keywordsCommands :: EditorType -> Text
-keywordsCommands e = editorList e $ map constSyntax (filter isFunc Syntax.allConst)
- where
-  isFunc c = Syntax.isUserFunc c && (e /= Emacs || c `notElem` builtinCommandsEmacs)
+keywordsCommands e = editorList e $ map constSyntax commands
 
 -- | Get formatted list of directions.
 keywordsDirections :: EditorType -> Text
 keywordsDirections e = editorList e $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
 
 operatorNames :: Text
-operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperator Syntax.allConst)
+operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
  where
   special :: String
   special = "*+$[]|^"
@@ -143,10 +147,6 @@ operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperato
     '/' -> "/(?![/|*])"
     c -> T.singleton c
   escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
-  isOperator c = case Syntax.constMeta $ Syntax.constInfo c of
-    ConstMUnOp {} -> True
-    ConstMBinOp {} -> True
-    ConstMFunc {} -> False
 
 -- ----------------------------------------------------------------------------
 -- GENERATE TABLES: COMMANDS, ENTITIES AND CAPABILITIES TO MARKDOWN TABLE

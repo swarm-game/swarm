@@ -38,6 +38,8 @@ module Swarm.Language.Syntax (
   arity,
   isCmd,
   isUserFunc,
+  isOperator,
+  isBuiltinFunction,
 
   -- * Syntax
   Syntax (..),
@@ -424,6 +426,23 @@ isCmd c = case constMeta $ constInfo c of
 isUserFunc :: Const -> Bool
 isUserFunc c = case constMeta $ constInfo c of
   ConstMFunc {} -> True
+  _ -> False
+
+-- | Whether the constant is an operator. Useful predicate for documentation.
+isOperator :: Const -> Bool
+isOperator c = case constMeta $ constInfo c of
+  ConstMUnOp {} -> True
+  ConstMBinOp {} -> True
+  ConstMFunc {} -> False
+
+-- | Whether the constant is a /function/ which is interpreted as soon
+--   as it is evaluated, but *not* including operators.
+--
+-- Note: This is used for documentation purposes and complements 'isCmd'
+-- and 'isOperator' in that exactly one will accept a given constant.
+isBuiltinFunction :: Const -> Bool
+isBuiltinFunction c = case constMeta $ constInfo c of
+  ConstMFunc _ cmd -> not cmd
   _ -> False
 
 -- | Information about constants used in parsing and pretty printing.
