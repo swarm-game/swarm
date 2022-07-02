@@ -627,6 +627,17 @@ inventory =
             (hash (E.insertCount 5 x E.empty))
             (hash (E.union (E.insertCount 2 x E.empty) (E.insertCount 3 x E.empty)))
         )
+    , testCase
+        "difference"
+        ( assertEqual
+            "{(2,x),(3,y)} difference {(3,x),(1,y)} = {(0,x), (2,y)}"
+            ( hash
+                ( E.insertCount 2 x (E.insertCount 3 y E.empty)
+                    `E.difference` E.insertCount 3 x (E.insertCount 1 y E.empty)
+                )
+            )
+            (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
+        )
     ]
  where
   x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []

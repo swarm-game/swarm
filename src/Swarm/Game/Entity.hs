@@ -75,6 +75,7 @@ module Swarm.Game.Entity (
   deleteCount,
   deleteAll,
   union,
+  difference,
 ) where
 
 import Brick (Widget)
@@ -596,3 +597,7 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   -- hash.  So if the two inventories share an entity e, just adding their
   -- hashes would mean e now contributes (k+2) times its hash.
   common = IS.foldl' (+) 0 $ IM.keysSet cs1 `IS.intersection` IM.keysSet cs2
+
+-- | Subtract the second inventory from the first.
+difference :: Inventory -> Inventory -> Inventory
+difference inv1 = foldl' (flip (uncurry deleteCount)) inv1 . elems
