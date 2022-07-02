@@ -2,5 +2,6 @@
 201-require-device-creative.yaml
 201-require-device-creative1.yaml
 201-require-entities.yaml
+201-require-entities-def.yaml
 533-reprogram-simple.yaml
 533-reprogram.yaml
