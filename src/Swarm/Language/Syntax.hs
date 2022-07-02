@@ -455,14 +455,14 @@ constInfo c = case c of
   Wait -> commandLow 0 "Wait for a number of time steps."
   Noop ->
     commandLow 0 . doc "Do nothing." $
-      [ "This is different than 'Wait' in that it does not take up a time step."
+      [ "This is different than `Wait` in that it does not take up a time step."
       , "It is useful for commands like if, which requires you to provide both branches."
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
     commandLow 0 . doc "Self-destruct the robot." $
       [ "Useful to not clutter the world."
-      , "This destroys the robot's inventory, so consider 'salvage' as an alternative."
+      , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> commandLow 0 "Move forward one step."
   Turn -> commandLow 1 "Turn in some direction."
@@ -470,7 +470,7 @@ constInfo c = case c of
   Harvest ->
     commandLow 0 . doc "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
-      , "Otherwise it works exactly like 'grab'."
+      , "Otherwise it works exactly like `grab`."
       ]
   Place ->
     commandLow 1 . doc "Place an item at the current location." $
@@ -485,8 +485,8 @@ constInfo c = case c of
       ["The other robot has to be nearby and idle."]
   Drill ->
     commandLow 1 . doc "Drill through an entity." $
-      [ "Usually you want to 'drill forward' when exploring to clear out obstacles."
-      , "When you have found a source to drill, you can stand on it and 'drill down'."
+      [ "Usually you want to `drill forward` when exploring to clear out obstacles."
+      , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
       ]
   Build ->
@@ -530,7 +530,7 @@ constInfo c = case c of
     commandLow 1 . doc "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
   Run -> commandLow 1 "Run a program loaded from a file."
-  Return -> commandLow 1 "Make the value a result in 'cmd'."
+  Return -> commandLow 1 "Make the value a result in `cmd`."
   Try -> commandLow 2 "Execute a command, catching errors."
   Undefined -> functionLow 0 "A value of any type, that is evaluated as error."
   Fail -> functionLow 1 "A value of any type, that is evaluated as error with message."
@@ -564,7 +564,7 @@ constInfo c = case c of
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."
       , "For exaple:"
-      , "'f $ g $ h x = f (g (h x))'"
+      , "`f $ g $ h x = f (g (h x))`"
       ]
   Teleport -> commandLow 2 "Teleport a robot to the given location."
   As -> commandLow 2 "Hypothetically run a command as if you were another robot."
