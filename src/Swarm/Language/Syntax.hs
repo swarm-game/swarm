@@ -443,7 +443,7 @@ constInfo c = case c of
   Selfdestruct ->
     commandLow 0 . doc "Self-destruct the robot." $
       [ "Useful to not clutter the world."
-      , "This destroys the robots inventory, so consider 'salvage' as an alternative."
+      , "This destroys the robot's inventory, so consider 'salvage' as an alternative."
       ]
   Move -> commandLow 0 "Move forward one step."
   Turn -> commandLow 1 "Turn in some direction."
@@ -451,19 +451,19 @@ constInfo c = case c of
   Harvest ->
     commandLow 0 . doc "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
-      , "Otherwise it works exactly like 'grab'"
+      , "Otherwise it works exactly like 'grab'."
       ]
   Place ->
     commandLow 1 . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Give -> commandLow 2 "Give an item to another robot closeby."
+  Give -> commandLow 2 "Give an item to another robot nearby."
   Install -> commandLow 2 "Install a device from inventory on a robot."
   Make -> commandLow 1 "Make an item using a recipe."
   Has -> commandLow 1 "Sense whether the robot has a given item in its inventory."
-  Count -> commandLow 1 "Get the count of a given item in robots inventory."
+  Count -> commandLow 1 "Get the count of a given item in a robot's inventory."
   Reprogram ->
-    commandLow 2 . doc "Reprogram another robot with new command." $
-      ["The other robot has to be closeby and idle."]
+    commandLow 2 . doc "Reprogram another robot with a new command." $
+      ["The other robot has to be nearby and idle."]
   Drill ->
     commandLow 1 . doc "Drill through an entity." $
       [ "Usually you want to 'drill forward' when exploring to clear out obstacles."
@@ -473,17 +473,17 @@ constInfo c = case c of
   Build ->
     commandLow 1 . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
-      , "If the command requires a device it will be installed from your inventory."
+      , "If the command requires devices they will be installed from your inventory."
       ]
   Salvage ->
     commandLow 0 . doc "Deconstruct an old robot." $
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
     commandLow 1 . doc "Emit a message." $ -- TODO: #513
-      [ "The message will be in global log, which you can not currently view."
+      [ "The message will be in a global log, which you can not currently view."
       , "https://github.com/swarm-game/swarm/issues/513"
       ]
-  Log -> commandLow 1 "Log the string in the robots logger."
+  Log -> commandLow 1 "Log the string in the robot's logger."
   View -> commandLow 1 "View the given robot."
   Appear ->
     commandLow 1 . doc "Set how the robot is displayed." $
@@ -493,23 +493,23 @@ constInfo c = case c of
   Create ->
     commandLow 1 . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
-  Whereami -> commandLow 0 "Get the current x, y coordinates."
+  Whereami -> commandLow 0 "Get the current x and y coordinates."
   Blocked -> commandLow 0 "See if the robot can move forward."
   Scan ->
     commandLow 0 . doc "Scan a nearby location for entities." $
       [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
-  Upload -> commandLow 1 "Upload robots known entities to another robot."
-  Ishere -> commandLow 1 "See if a specific entity is in current location."
-  Self -> functionLow 0 "Get a reference to current robot."
+  Upload -> commandLow 1 "Upload a robot's known entities and log to another robot."
+  Ishere -> commandLow 1 "See if a specific entity is in the current location."
+  Self -> functionLow 0 "Get a reference to the current robot."
   Parent -> functionLow 0 "Get a reference to the robot's parent."
-  Base -> functionLow 0 "Get a reference to the base robot."
+  Base -> functionLow 0 "Get a reference to the base."
   Whoami -> commandLow 0 "Get the robot's display name."
   Setname -> commandLow 1 "Set the robot's display name."
   Random ->
     commandLow 1 . doc "Get a uniformly random integer." $
-      ["The random integer will be from the range 0 to END inclusive of your choice."]
+      ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
   Run -> commandLow 1 "Run a program loaded from a file."
   Return -> commandLow 1 "Make the value a result in 'cmd'."
   Try -> commandLow 2 "Execute a command, catching errors."
@@ -523,15 +523,15 @@ constInfo c = case c of
   Case -> functionLow 3 "Evaluate one of the given functions on a value of sum type."
   Fst -> functionLow 1 "Get the first value of a pair."
   Snd -> functionLow 1 "Get the second value of a pair."
-  Force -> functionLow 1 "Force the evaluation of a delayed evaluation value."
+  Force -> functionLow 1 "Force the evaluation of a delayed value."
   Not -> functionLow 1 "Negate the boolean value."
-  Neg -> unaryOp "-" 7 P "Subtract the given integer value."
+  Neg -> unaryOp "-" 7 P "Negate the given integer value."
   Add -> binaryOp "+" 6 L "Add the given integer values."
   And -> binaryOp "&&" 3 R "Logical and (true if both values are true)."
   Or -> binaryOp "||" 2 R "Logical or (true if either value is true)."
-  Sub -> binaryOp "-" 6 L "Add the given integer values."
+  Sub -> binaryOp "-" 6 L "Subtract the given integer values."
   Mul -> binaryOp "*" 7 L "Multiply the given integer values."
-  Div -> binaryOp "/" 7 L "Divide the left integer value by the right one."
+  Div -> binaryOp "/" 7 L "Divide the left integer value by the right one, rounding down."
   Exp -> binaryOp "^" 8 R "Raise the left integer value to the power of the right one."
   Eq -> binaryOp "==" 4 N "Check that the left value is equal to the right one."
   Neq -> binaryOp "!=" 4 N "Check that the left value is not equal to the right one."
@@ -551,7 +551,7 @@ constInfo c = case c of
   As -> commandLow 2 "Hypothetically run a command as if you were another robot."
   RobotNamed -> commandLow 1 "Find a robot by name."
   RobotNumbered -> commandLow 1 "Find a robot by number."
-  Knows -> commandLow 1 "Check if the robot knows an entity."
+  Knows -> commandLow 1 "Check if the robot knows about an entity."
  where
   doc b ls = ConstDoc b (T.unlines ls)
   unaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side, constDoc = d}
