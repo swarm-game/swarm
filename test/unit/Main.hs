@@ -693,9 +693,6 @@ misc =
     [ testProperty
         "smallHittingSet produces hitting sets"
         (prop_hittingSet @QC.OrdA)
-    , testProperty
-        "foo"
-        prop_hittingSetMinimal
     ]
 
 prop_hittingSet :: Ord a => [Set a] -> Property
