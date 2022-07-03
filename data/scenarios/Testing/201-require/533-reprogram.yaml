@@ -20,12 +20,13 @@ win: |
     return (p == (2,0) && boatInstalled && drillInstalled
             && base_boats == 1 && base_solar == 1
             && base_treads == 1 && base_drills == 1
-            && base_rocks == 40 && fred_rocks == 10
+            && base_rocks == 42 && fred_rocks == 8
            );
   } { return false }
 solution: |
-  fred <- build {require "boat"; require 5 "rock"};
-  reprogram fred {require "boat"; require "metal drill"; move; move; require 5 "rock"}
+  fred <- build {require "boat"; require 5 "rock"; setname "fred"};
+  wait 5;
+  reprogram fred {require "boat"; require "metal drill"; move; require 3 "rock"; move; require 5 "rock"}
 robots:
   - name: base
     loc: [0,0]
