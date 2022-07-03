@@ -585,8 +585,9 @@ stripCmd pty = pty
 handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleREPLEvent s = \case
   ControlKey 'c' ->
-    continue $ s & gameState . robotMap . ix 0 . machine %~ cancel
-                 & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+    continue $
+      s & gameState . robotMap . ix 0 . machine %~ cancel
+        & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
   Key V.KEnter -> do
     let entry = formState (s ^. uiState . uiReplForm)
         topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
