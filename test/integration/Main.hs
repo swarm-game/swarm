@@ -143,6 +143,7 @@ testScenarioSolution _ci _em =
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
         , testSolution Default "Tutorials/scan"
+        , testSolution Default "Tutorials/require"
         ]
     , testGroup
         "Challenges"

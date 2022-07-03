@@ -9,3 +9,4 @@ install.yaml
 build.yaml
 crash.yaml
 scan.yaml
+require.yaml
