@@ -101,7 +101,11 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run seed scenario toRun cheat -> appMain seed scenario toRun cheat
+    Run seed scenario toRun cheat -> appMain webPort seed scenario toRun cheat
     Format fo -> formatFile fo
     DocGen g -> generateDocs g
     LSP -> lspMain
+ where
+  -- Switch to `Just 8080` to start the game web interface.
+  -- TODO: make this a command line flag, or start the web ui by default?
+  webPort = Nothing

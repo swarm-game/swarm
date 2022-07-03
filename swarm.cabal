@@ -113,6 +113,9 @@ library
                       Swarm.TUI.Model
                       Swarm.TUI.View
                       Swarm.TUI.Controller
+                      Swarm.Web.Main
+                      Swarm.Web.Index
+                      Swarm.Web.Htmx
                       Swarm.App
                       Swarm.Util
                       Swarm.DocGen
@@ -133,17 +136,22 @@ library
                       fused-effects                 >= 1.1.1.1 && < 1.2,
                       fused-effects-lens            >= 1.2.0.1 && < 1.3,
                       hashable                      >= 1.3.4 && < 1.5,
+                      http-api-data                 >= 0.4,
                       megaparsec                    >= 9.0 && < 9.3,
                       hsnoise                       >= 0.0.2 && < 0.1,
                       lens                          >= 4.19 && < 5.2,
                       linear                        >= 1.21.6 && < 1.22,
                       lsp                           >= 1.2 && < 1.5,
+                      lucid                         >= 2.11,
                       mtl                           >= 2.2.2 && < 2.3,
                       minimorph                     >= 0.3 && < 0.4,
                       murmur3                       >= 1.0.4 && < 1.1,
                       parser-combinators            >= 1.2 && < 1.4,
                       prettyprinter                 >= 1.7.0 && < 1.8,
                       random                        >= 1.2.0 && < 1.3,
+                      servant                       >= 0.19,
+                      servant-lucid                 >= 0.9,
+                      servant-server                >= 0.19,
                       simple-enumeration            >= 0.2 && < 0.3,
                       split                         >= 0.2.3 && < 0.3,
                       stm                           >= 2.5.0 && < 2.6,
@@ -154,6 +162,8 @@ library
                       unordered-containers          >= 0.2.14 && < 0.3,
                       vector                        >= 0.12 && < 0.13,
                       vty                           >= 5.33 && < 5.36,
+                      warp                          >= 3.2,
+                      wai                           >= 3.2,
                       witch                         >= 0.3.4 && < 1.1,
                       word-wrap                     >= 0.5 && < 0.6,
                       yaml                          >= 0.11 && < 0.12,
