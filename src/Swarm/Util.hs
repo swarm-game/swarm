@@ -335,8 +335,23 @@ l <>= a = modify (l <>~ a)
 --   is not guaranteed to be the /smallest possible/ such set, because
 --   that is NP-complete.  But we use various heuristics to try to
 --   find a small hitting set.
-
--- XXX add some doctests!
+--
+-- >>> import qualified Data.Set as S
+--
+-- >>> smallHittingSet [S.fromList ["a"]]
+-- fromList ["a"]
+--
+-- >>> smallHittingSet [S.fromList ["a", "b"], S.fromList ["b"]]
+-- fromList ["b"]
+--
+-- This example is not ideal:
+--
+-- >>> smallHittingSet [S.fromList ["a", "b"], S.fromList ["b", "c"]]
+-- fromList ["a","b"]
+--
+-- >>> smallHittingSet [S.fromList ["a", "c", "d"], S.fromList ["c"], S.fromList ["a", "e", "f"], S.fromList ["a"]]
+-- fromList ["a","c"]
+--
 -- XXX better heuristics!
 smallHittingSet :: Ord a => [Set a] -> Set a
 smallHittingSet ss = foldl' choose fixed choices
