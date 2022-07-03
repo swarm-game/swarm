@@ -11,29 +11,36 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
+import Control.Lens ((^.))
 import Control.Monad.Except
+import Data.IORef (newIORef, writeIORef)
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
+import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.State
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.View
+import Swarm.Web
+
+type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
 -- | The definition of the app used by the @brick@ library.
-app :: App AppState AppEvent Name
-app =
+app :: EventHandler -> App AppState AppEvent Name
+app eventHandler =
   App
     { appDraw = drawUI
     , appChooseCursor = chooseCursor
-    , appHandleEvent = handleEvent
+    , appHandleEvent = eventHandler
     , appStartEvent = enablePasteMode
     , appAttrMap = const swarmAttrMap
     }
 
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
-appMain :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
-appMain seed scenario toRun cheat = do
+appMain :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
+appMain port seed scenario toRun cheat = do
   res <- runExceptT $ initAppState seed scenario toRun cheat
   case res of
     Left errMsg -> T.putStrLn errMsg
@@ -58,12 +65,35 @@ appMain seed scenario toRun cheat = do
           threadDelay 33_333 -- cap maximum framerate at 30 FPS
           writeBChan chan Frame
 
-      -- Run the app.
+      eventHandler <- case port of
+        Nothing -> pure handleEvent
+        Just port' -> do
+          -- Share a reference to the state with the web ui
+          gsRef <- newIORef (s ^. gameState)
+          void $ forkIO $ webMain port' gsRef
+          pure $ \e -> do
+            s' <- get
+            liftIO $ writeIORef gsRef (s' ^. gameState)
+            handleEvent e
 
+      -- Run the app.
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
       V.setMode (V.outputIface initialVty) V.Mouse True
-      void $ customMain initialVty buildVty (Just chan) app s
+      void $ customMain initialVty buildVty (Just chan) (app eventHandler) s
+
+-- | A demo program to run the web service directly, without the terminal application.
+-- This is useful to live update the code using `ghcid -W --test "Swarm.App.demoWeb"`
+demoWeb :: IO ()
+demoWeb = do
+  res <- runExceptT $ initAppState Nothing demoScenario Nothing True
+  case res of
+    Left errMsg -> T.putStrLn errMsg
+    Right s -> do
+      gsRef <- newIORef (s ^. gameState)
+      webMain 8080 gsRef
+ where
+  demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 
 -- | If available for the terminal emulator, enable bracketed paste mode.
 enablePasteMode :: EventM n s ()
@@ -71,4 +101,5 @@ enablePasteMode = do
   vty <- getVtyHandle
   let output = V.outputIface vty
   when (V.supportsMode output V.BracketedPaste) $
-    liftIO $ V.setMode output V.BracketedPaste True
+    liftIO $
+      V.setMode output V.BracketedPaste True
