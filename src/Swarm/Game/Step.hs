@@ -542,7 +542,7 @@ stepCESK cesk = case cesk of
   Out (VResult v e) s (FLoadEnv ctx rctx : k) -> do
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
-    robotContext . defReqs <>= rctx
+    robotContext . defReqs %= (`union` rctx)
     return $ Out v s k
   Out v s (FLoadEnv {} : k) -> return $ Out v s k
   -- Any other type of value wiwth an FExec frame is an error (should
