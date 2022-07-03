@@ -549,7 +549,6 @@ drawKeyMenu s =
 
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
-    , ("Tab" "Tab Completion")
     ]
       ++ [("Ret", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
