@@ -330,7 +330,8 @@ l <>= a = modify (l <>~ a)
 ------------------------------------------------------------
 -- XXX
 
--- XXX comment me!
+-- XXX comment me!  + add some doctests!
+-- XXX better heuristics!
 minimalHittingSet :: Ord a => [Set a] -> Set a
 minimalHittingSet ss = foldl' choose fixed choices
  where
