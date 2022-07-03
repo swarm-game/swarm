@@ -1242,7 +1242,8 @@ execConst c vs s k = do
         robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
         robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
 
-        -- Give the target robot everything required.
+        -- Provision the target robot with any require devices and
+        -- inventory that are lacking.
         provisionChild childRobotID (fromList . S.toList $ toInstall) toGive
 
         -- Finally, re-activate the reprogrammed target robot.
@@ -1556,7 +1557,12 @@ execConst c vs s k = do
 
             -- What are we missing?
             missingParentInv = neededParentInv `E.difference` parentInventory
-            missingMap = M.fromList . map (swap . second (^. entityName)) . E.elems $ missingParentInv
+            missingMap =
+              M.fromList
+                . filter ((> 0) . snd)
+                . map (swap . second (^. entityName))
+                . E.elems
+                $ missingParentInv
 
         -- If we're missing anything, throw an error
         E.isEmpty missingParentInv
