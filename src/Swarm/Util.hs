@@ -55,6 +55,9 @@ module Swarm.Util (
   (<+=),
   (<<.=),
   (<>=),
+
+  -- * NP-complete utilities
+  minimalHittingSet,
 ) where
 
 import Control.Algebra (Has)
@@ -64,12 +67,16 @@ import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
 import Control.Monad (forM, unless, when)
+import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
+import Data.List (foldl', partition)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text (Text, toUpper)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -319,3 +326,16 @@ l <<.= b = l %%= (,b)
 (<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
 l <>= a = modify (l <>~ a)
 {-# INLINE (<>=) #-}
+
+------------------------------------------------------------
+-- XXX
+
+-- XXX comment me!
+minimalHittingSet :: Ord a => [Set a] -> Set a
+minimalHittingSet ss = foldl' choose fixed choices
+ where
+  (fixed, choices) = first S.unions . partition ((== 1) . S.size) $ ss
+
+  choose soFar choiceSet
+    | any (`S.member` soFar) choiceSet = soFar
+    | otherwise = S.insert (head (S.toList choiceSet)) soFar

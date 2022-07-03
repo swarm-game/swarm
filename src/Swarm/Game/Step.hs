@@ -1542,15 +1542,14 @@ execConst c vs s k = do
         -- check that there are in fact devices to provide every required capability
         not (any null deviceSets) `holdsOr` Incapable fixI (R.Requirements missingCaps S.empty M.empty) cmd
 
-        -- XXX Do device minimization
-        let minimalDeviceSet = S.fromList $ map (head . S.toList) deviceSets
+        let minimalDeviceSet = minimalHittingSet deviceSets
             minimalInstallSet = minimalDeviceSet `S.difference` alreadyInstalled
 
             -- Check that we have enough in our inventory to cover the
             -- required installs PLUS what's missing from the child
             -- inventory.
 
-            -- What we need
+            -- What do we need?
             neededParentInv =
               missingChildInv
                 `E.union` (fromList . S.toList $ minimalInstallSet)
