@@ -70,10 +70,14 @@ componentNav page =
 
 -- | Display a single robot information
 componentRobot :: Int -> GameState -> Html ()
-componentRobot rid _g = do
+componentRobot rid g = do
   with' div_ "grid p-4 place-content-center" do
     with' span_ "font-semibold pb-3" do
       "Robot " <> toHtml (show rid)
+    with' pre_ "whitespace-pre-wrap" do
+      case IM.lookup rid (g ^. robotMap) of
+        Nothing -> "Unknown robot"
+        Just r -> toHtml (show r)
 
 -- | Display the list of robots
 componentRobots :: GameState -> Html ()
