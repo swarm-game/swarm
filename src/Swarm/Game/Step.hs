@@ -1542,7 +1542,7 @@ execConst c vs s k = do
         -- check that there are in fact devices to provide every required capability
         not (any null deviceSets) `holdsOr` Incapable fixI (R.Requirements missingCaps S.empty M.empty) cmd
 
-        let minimalDeviceSet = minimalHittingSet deviceSets
+        let minimalDeviceSet = smallHittingSet deviceSets
             minimalInstallSet = minimalDeviceSet `S.difference` alreadyInstalled
 
             -- Check that we have enough in our inventory to cover the

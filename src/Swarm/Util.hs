@@ -57,7 +57,7 @@ module Swarm.Util (
   (<>=),
 
   -- * NP-complete utilities
-  minimalHittingSet,
+  smallHittingSet,
 ) where
 
 import Control.Algebra (Has)
@@ -328,12 +328,18 @@ l <>= a = modify (l <>~ a)
 {-# INLINE (<>=) #-}
 
 ------------------------------------------------------------
--- XXX
+-- Some NP-complete heuristics
 
--- XXX comment me!  + add some doctests!
+-- | Given a list of sets, find a hitting set, that is, a set which
+--   has at least one element in common with each set in the list.  It
+--   is not guaranteed to be the /smallest possible/ such set, because
+--   that is NP-complete.  But we use various heuristics to try to
+--   find a small hitting set.
+
+-- XXX add some doctests!
 -- XXX better heuristics!
-minimalHittingSet :: Ord a => [Set a] -> Set a
-minimalHittingSet ss = foldl' choose fixed choices
+smallHittingSet :: Ord a => [Set a] -> Set a
+smallHittingSet ss = foldl' choose fixed choices
  where
   (fixed, choices) = first S.unions . partition ((== 1) . S.size) $ ss
 
