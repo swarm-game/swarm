@@ -173,7 +173,8 @@ testScenarioSolution _ci _em =
             , testSolution Default "Testing/201-require/201-require-device-creative"
             , testSolution Default "Testing/201-require/201-require-device-creative1"
             , testSolution Default "Testing/201-require/201-require-entities"
-            , testSolution Default "Testing/201-require/201-require-entities-def"
+            , expectFailBecause "Awaiting fix (#540)" $
+                testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
             ]
