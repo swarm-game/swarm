@@ -149,18 +149,18 @@ requirements ctx tm = first (insert (ReqCap CPower)) $ case tm of
     let bodyReqs = (if r then insert (ReqCap CRecursion) else id) (requirements' ctx t)
      in (singletonCap CEnv, Ctx.singleton x bodyReqs)
   TBind _ t1 t2 ->
-    -- First, see what capabilities are required to execute the
+    -- First, see what the requirements are to execute the
     -- first command.  It may also define some names, so we get a
     -- map of those names to their required capabilities.
-    let (caps1, ctx1) = requirements ctx t1
+    let (reqs1, ctx1) = requirements ctx t1
 
         -- Now see what capabilities are required for the second
         -- command; use an extended context since it may refer to
         -- things defined in the first command.
         ctx' = ctx `Ctx.union` ctx1
-        (caps2, ctx2) = requirements ctx' t2
+        (reqs2, ctx2) = requirements ctx' t2
      in -- Finally return the union of everything.
-        (caps1 <> caps2, ctx' `Ctx.union` ctx2)
+        (reqs1 <> reqs2, ctx' `Ctx.union` ctx2)
   -- Any other term can't bind variables with 'TDef', so we no longer
   -- need to worry about tracking a returned context.
   _ -> (requirements' ctx tm, Ctx.empty)

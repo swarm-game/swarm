@@ -275,10 +275,10 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e s k =
+initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ reqCtx) e s k =
   case ctx of
     Empty -> In t e s (FExec : k)
-    _ -> In t e s (FExec : FLoadEnv ctx capCtx : k)
+    _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
 initMachine' (ProcessedTerm t _ _ _) e s k = In t e s k
 
 -- | Cancel the currently running computation.
