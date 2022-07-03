@@ -23,8 +23,10 @@ extra-source-files: CHANGELOG.md
                     example/*.sw
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
+                    data/assets/htmx/LICENSE
+                    data/assets/tailwind/LICENSE
 data-dir:           data/
-data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt
+data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, assets/**/*.js
 
 source-repository head
     type:     git
