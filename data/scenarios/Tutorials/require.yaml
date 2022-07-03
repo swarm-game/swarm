@@ -18,7 +18,7 @@ goal:
     - "Hint: robots will drown in the water unless they have a 'boat' device
       installed!"
 entities:
-  - name: flower
+  - name: periwinkle
     display:
       attr: flower
       char: '*'
@@ -35,7 +35,7 @@ entities:
     growth: [0,0]
 win: |
   try {
-    as base {has "flower"}
+    as base {has "periwinkle"}
   } { return false }
 solution: |
   build {require "boat"; move; move; move; move; move; f <- grab; turn back; move; move; move; move; move; give base f}
@@ -55,12 +55,13 @@ robots:
       - [10, treads]
       - [10, boat]
       - [10, grabber]
+      - [10, scanner]
 world:
   default: [blank, none]
   palette:
     '.': [grass, null]
     '~': [ice, knownwater]
-    '*': [grass, flower]
+    '*': [grass, periwinkle]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
