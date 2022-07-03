@@ -1242,7 +1242,7 @@ execConst c vs s k = do
         robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
         robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
 
-        -- Provision the target robot with any require devices and
+        -- Provision the target robot with any required devices and
         -- inventory that are lacking.
         provisionChild childRobotID (fromList . S.toList $ toInstall) toGive
 
