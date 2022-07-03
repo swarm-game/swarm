@@ -9,6 +9,7 @@ import Data.Foldable (traverse_)
 import Data.IntMap qualified as IM
 import Data.Text (Text)
 import Lucid
+import Text.Pretty.Simple (pShowNoColor)
 import Witch
 
 import Swarm.Game.CESK
@@ -77,7 +78,7 @@ componentRobot rid g = do
     with' pre_ "whitespace-pre-wrap" do
       case IM.lookup rid (g ^. robotMap) of
         Nothing -> "Unknown robot"
-        Just r -> toHtml (show r)
+        Just r -> toHtml (pShowNoColor r)
 
 -- | Display the list of robots
 componentRobots :: GameState -> Html ()
