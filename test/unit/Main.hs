@@ -9,10 +9,15 @@ import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Hashable
+import Data.List (subsequences)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Linear
+import Test.QuickCheck qualified as QC
+import Test.QuickCheck.Poly qualified as QC
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
@@ -32,6 +37,7 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.TUI.Model
+import Swarm.Util
 
 main :: IO ()
 main = do
@@ -41,7 +47,7 @@ main = do
     Right g -> defaultMain (tests g)
 
 tests :: GameState -> TestTree
-tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory]
+tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory, misc]
 
 parser :: TestTree
 parser =
@@ -679,3 +685,41 @@ inventory =
   x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
   y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
   z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
+
+misc :: TestTree
+misc =
+  testGroup
+    "Miscellaneous"
+    [ testProperty
+        "smallHittingSet produces hitting sets"
+        (prop_hittingSet @QC.OrdA)
+    , testProperty
+        "foo"
+        prop_hittingSetMinimal
+    ]
+
+prop_hittingSet :: Ord a => [Set a] -> Property
+prop_hittingSet ss = not (any S.null ss) ==> isHittingSet (smallHittingSet ss) ss
+
+isHittingSet :: (Foldable t, Ord a) => Set a -> t (Set a) -> Bool
+isHittingSet hs = not . any (S.null . S.intersection hs)
+
+-- This property does *not* hold (and should not, because the problem
+-- of producing a minimal hitting set is NP-hard), but we can use it
+-- to generate counterexamples.
+prop_hittingSetMinimal :: [Set El] -> Property
+prop_hittingSetMinimal ss = not (any S.null ss) ==> all ((S.size hs <=) . S.size) allHittingSets
+ where
+  allElts = S.unions ss
+  allSubsets = map S.fromList . subsequences . S.toList $ allElts
+  allHittingSets = filter (`isHittingSet` ss) allSubsets
+  hs = smallHittingSet ss
+
+-- Five elements seem to be the minimum necessary for a
+-- counterexample, but providing 6 helps QuickCheck find a
+-- counterexample much more quickly.
+data El = AA | BB | CC | DD | EE | FF
+  deriving (Eq, Ord, Show, Bounded, Enum)
+
+instance QC.Arbitrary El where
+  arbitrary = QC.arbitraryBoundedEnum

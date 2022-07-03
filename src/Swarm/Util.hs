@@ -56,7 +56,7 @@ module Swarm.Util (
   (<<.=),
   (<>=),
 
-  -- * NP-complete utilities
+  -- * Utilities for NP-hard approximation
   smallHittingSet,
 ) where
 
@@ -71,10 +71,11 @@ import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
-import Data.List (foldl', partition)
+import Data.List (maximumBy, partition)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Ord (comparing)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text, toUpper)
@@ -328,36 +329,60 @@ l <>= a = modify (l <>~ a)
 {-# INLINE (<>=) #-}
 
 ------------------------------------------------------------
--- Some NP-complete heuristics
+-- Some utilities for NP-hard approximation
 
--- | Given a list of sets, find a hitting set, that is, a set which
---   has at least one element in common with each set in the list.  It
---   is not guaranteed to be the /smallest possible/ such set, because
---   that is NP-complete.  But we use various heuristics to try to
---   find a small hitting set.
+-- | Given a list of /nonempty/ sets, find a hitting set, that is, a
+--   set which has at least one element in common with each set in the
+--   list.  It is not guaranteed to be the /smallest possible/ such
+--   set, because that is NP-hard.  Instead, we use a greedy algorithm
+--   that will give us a reasonably small hitting set: first, choose
+--   all elements in singleton sets, since those must necessarily be
+--   chosen.  Now take any sets which are still not hit, and find an
+--   element which occurs in the largest possible number of remaining
+--   sets. Add this element to the set of chosen elements, and filter
+--   out all the sets it hits.  Repeat, choosing a new element to hit
+--   the largest number of unhit sets at each step, until all sets are
+--   hit.  This algorithm produces a hitting set which might be larger
+--   than optimal by a factor of lg(m), where m is the number of sets
+--   in the input.
 --
 -- >>> import qualified Data.Set as S
+-- >>> shs = smallHittingSet . map S.fromList
 --
--- >>> smallHittingSet [S.fromList ["a"]]
--- fromList ["a"]
+-- >>> shs ["a"]
+-- fromList "a"
 --
--- >>> smallHittingSet [S.fromList ["a", "b"], S.fromList ["b"]]
--- fromList ["b"]
+-- >>> shs ["ab", "b"]
+-- fromList "b"
 --
--- This example is not ideal:
+-- >>> shs ["ab", "bc"]
+-- fromList "b"
 --
--- >>> smallHittingSet [S.fromList ["a", "b"], S.fromList ["b", "c"]]
--- fromList ["a","b"]
+-- >>> shs ["acd", "c", "aef", "a"]
+-- fromList "ac"
 --
--- >>> smallHittingSet [S.fromList ["a", "c", "d"], S.fromList ["c"], S.fromList ["a", "e", "f"], S.fromList ["a"]]
--- fromList ["a","c"]
+-- >>> shs ["abc", "abd", "acd", "bcd"]
+-- fromList "cd"
 --
--- XXX better heuristics!
+-- Here is an example of an input for which @smallHittingSet@ does
+-- /not/ produce a minimal hitting set. "bc" is also a hitting set and
+-- is smaller.  b, c, and d all occur in exactly two sets, but d is
+-- unluckily chosen first, leaving "be" and "ac" unhit and
+-- necessitating choosing one more element from each.
+--
+-- >>> shs ["bd", "be", "ac", "cd"]
+-- fromList "cde"
 smallHittingSet :: Ord a => [Set a] -> Set a
-smallHittingSet ss = foldl' choose fixed choices
+smallHittingSet ss = go fixed (filter (S.null . S.intersection fixed) choices)
  where
-  (fixed, choices) = first S.unions . partition ((== 1) . S.size) $ ss
+  (fixed, choices) = first S.unions . partition ((== 1) . S.size) . filter (not . S.null) $ ss
 
-  choose soFar choiceSet
-    | any (`S.member` soFar) choiceSet = soFar
-    | otherwise = S.insert (head (S.toList choiceSet)) soFar
+  go !soFar [] = soFar
+  go !soFar cs = go (S.insert best soFar) (filter (not . (best `S.member`)) cs)
+   where
+    best = mostCommon cs
+
+  -- Given a nonempty collection of sets, find an element which is shared among
+  -- as many of them as possible.
+  mostCommon :: Ord a => [Set a] -> a
+  mostCommon = fst . maximumBy (comparing snd) . M.assocs . M.fromListWith (+) . map (,1 :: Int) . concatMap S.toList
