@@ -75,10 +75,10 @@ import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItem
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
-import Swarm.Language.Types (Module (..), Polytype)
+import Swarm.Language.Typecheck (inferConst)
+import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Model
@@ -490,9 +490,7 @@ drawConst :: Const -> Widget Name
 drawConst c = hBox [padLeft (Pad $ 13 - T.length constName) (txt constName), txt constSig]
  where
   constName = syntax . constInfo $ c
-  constSig = case processParsedTerm (noLoc $ TConst c) of
-    Right (ProcessedTerm (TConst _) (Module pt _) _ _) -> " : " <> prettyText pt
-    _ -> "??"
+  constSig = " : " <> prettyText (inferConst c)
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
