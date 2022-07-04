@@ -1,0 +1,76 @@
+name: Require inventory
+description: |
+  Learn how to require inventory when building robots.
+goal:
+
+    - In the previous tutorial challenge, you learned how to use
+      'require' to require specific devices to be installed.
+      Sometimes, instead of requiring installed devices, you require
+      supplies in your inventory.  In this case, you can write
+      'require <int> <name>' to require a certain number of copies of
+      a certain entity to be placed in your inventory.
+    - For example, 'build {require 10 "flower"; move; move}' would
+      build a robot with 10 flowers in its inventory.
+    - Your goal in this challenge is to cover the entire gray area
+      with rocks!
+win: |
+  def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
+  def ifC = \test. \then. \else. b <- test; if b then else end;
+  try {
+    teleport self (0,0); turn south;
+    repeat 4 (
+      move; turn east;
+      repeat 4 (
+        move;
+        ifC (ishere "rock") {} {create "tree"};
+      );
+      turn back; move; move; move; move; turn left
+    );
+    ifC (has "tree") {return false} {return true}
+  } { return false }
+solution: |
+  build {require 4 "rock"; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
+  build {require 4 "rock"; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
+  build {require 4 "rock"; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
+  build {require 4 "rock"; move; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+      - dictionary
+    inventory:
+      - [10, solar panel]
+      - [10, logger]
+      - [10, treads]
+      - [10, boat]
+      - [10, grabber]
+      - [10, scanner]
+      - [100, rock]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    '_': [stone, null]
+    '~': [ice, knownwater]
+    '*': [grass, periwinkle]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────┐
+    │.....│
+    │.____│
+    │.____│
+    │.____│
+    │.____│
+    └─────┘

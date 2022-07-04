@@ -1,4 +1,4 @@
-name: Require
+name: Require devices
 description: |
   Learn how to require additional devices that would otherwise not be installed.
 goal:
