@@ -656,11 +656,12 @@ handleREPLEvent s = \case
 --   things reserved words and names in scope.
 tabComplete :: AppState -> REPLPrompt -> REPLPrompt
 tabComplete _ p@(SearchPrompt {}) = p
-tabComplete _ (CmdPrompt "" []) = CmdPrompt "" []
-tabComplete s (CmdPrompt t []) = case matches of
-  [] -> CmdPrompt t []
-  [m] -> CmdPrompt (completeWith m) []
-  (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+tabComplete s (CmdPrompt t [])
+  | T.null lastWord = CmdPrompt t []
+  | otherwise = case matches of
+    [] -> CmdPrompt t []
+    [m] -> CmdPrompt (completeWith m) []
+    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
   completeWith m = T.append t (T.drop (T.length lastWord) m)
   lastWord = T.takeWhileEnd isIdentChar t
