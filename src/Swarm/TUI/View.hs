@@ -413,13 +413,13 @@ robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
 
   basePos :: V2 Double
   basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? robotMap . ix 0 . robotLocation)
-  -- Keep the base and non sytem robot (e.g. no seed) unless you are cheating (for testing)
-  isRelevant robot = robot ^. robotID == 0 || cheat || not (robot ^. systemRobot)
+  -- Keep the base and non sytem robot (e.g. no seed)
+  isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base
-  isNear robot = distance (realToFrac <$> robot ^. robotLocation) basePos < 32
+  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation) basePos < 32
   robots :: [Robot]
   robots =
-    filter (\robot -> isRelevant robot && (cheat || creative || isNear robot))
+    filter (\robot -> cheat || (isRelevant robot && isNear robot))
       . IM.elems
       $ g ^. robotMap
   creative = g ^. creativeMode
