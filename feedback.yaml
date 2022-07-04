@@ -1,2 +1,4 @@
+# For use with https://github.com/NorfairKing/feedback
+
 loops:
   test: stack test --fast
