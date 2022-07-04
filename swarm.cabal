@@ -54,7 +54,8 @@ common stan-config
 
 -- Harmless extensions from GHC2021
 common ghc2021-extensions
-    ghc-options:  -Wprepositive-qualified-module
+    if flag(ci)
+      ghc-options:  -Wprepositive-qualified-module
     default-extensions:
       BangPatterns
       DeriveAnyClass
