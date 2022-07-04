@@ -549,7 +549,6 @@ drawKeyMenu s =
     [(NoHighlight, "F1", "help"), (NoHighlight, "F2", "robots")]
       <> notificationKey availableRecipes "F3" "Recipes"
       <> notificationKey availableCommands "F4" "Commands"
-      <> [(NoHighlight, "Tab", "cycle")]
       <> [(NoHighlight, "^v", "creative") | cheat]
       <> [(NoHighlight, "^g", "goal") | goal]
 
