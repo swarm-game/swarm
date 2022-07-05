@@ -341,10 +341,11 @@
     char: 'B'
   description:
   - A robot with a boat installed can float on top of water without drowning.
-  - "Note: most devices are automatically installed on robots that
-    will require them; but since floating is not associated with any
-    particular command, a boat must be manually installed (using the
-    'install' command) on any robot that will need it."
+  - |
+    Note: most devices are automatically installed on robots that
+    will require them; but this doesn't work in the case of boats since floating is not
+    associated with any particular command.  To manually ensure a boat is installed on
+    a robot, just add the special command 'require "boat"' to the robot's program.
   properties: [portable]
   capabilities: [float]
 
