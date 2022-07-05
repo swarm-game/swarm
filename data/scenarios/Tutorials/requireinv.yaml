@@ -47,12 +47,12 @@ robots:
       - 3D printer
       - dictionary
     inventory:
-      - [10, solar panel]
-      - [10, logger]
-      - [10, treads]
-      - [10, boat]
-      - [10, grabber]
-      - [10, scanner]
+      - [16, solar panel]
+      - [16, logger]
+      - [16, treads]
+      - [16, boat]
+      - [16, grabber]
+      - [16, scanner]
       - [100, rock]
 world:
   default: [blank, none]
