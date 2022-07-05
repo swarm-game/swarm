@@ -47,6 +47,7 @@ robots:
       - 3D printer
       - dictionary
     inventory:
+      - [16, compass]
       - [16, solar panel]
       - [16, logger]
       - [16, treads]
