@@ -113,9 +113,9 @@ allDirs = [minBound .. maxBound]
 -- | Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  DLeft -> relative (\(V2 x y) -> V2 (-y) x)
-  DRight -> relative (\(V2 x y) -> V2 y (-x))
-  DBack -> relative (\(V2 x y) -> V2 (-x) (-y))
+  DLeft -> relative (\(V2 x y) -> V2 (- y) x)
+  DRight -> relative (\(V2 x y) -> V2 y (- x))
+  DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
   DDown -> relative (const down)
   DForward -> relative id
   DNorth -> cardinal north
