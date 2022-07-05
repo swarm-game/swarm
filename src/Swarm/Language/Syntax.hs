@@ -30,6 +30,7 @@ module Swarm.Language.Syntax (
   Const (..),
   allConst,
   ConstInfo (..),
+  ConstDoc (..),
   ConstMeta (..),
   MBinAssoc (..),
   MUnAssoc (..),
@@ -37,6 +38,8 @@ module Swarm.Language.Syntax (
   arity,
   isCmd,
   isUserFunc,
+  isOperator,
+  isBuiltinFunction,
 
   -- * Syntax
   Syntax (..),
@@ -65,22 +68,21 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Lens (Plated (..), Traversal', (%~))
-import Data.Data.Lens (uniplate)
-import Data.Int (Int64)
-import Data.Map qualified as M
-import Data.Set qualified as S
-import Data.Text hiding (filter, map)
-import Data.Text qualified as T
-import Linear
-
 import Data.Aeson.Types
 import Data.Data (Data)
+import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
-import GHC.Generics (Generic)
-import Witch.From (from)
-
+import Data.Int (Int64)
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Set qualified as S
+import Data.String (IsString (fromString))
+import Data.Text hiding (filter, map)
+import Data.Text qualified as T
+import GHC.Generics (Generic)
+import Linear
 import Swarm.Language.Types
+import Witch.From (from)
 
 ------------------------------------------------------------
 -- Constants
@@ -196,7 +198,7 @@ data Const
     -- | Do nothing.  This is different than 'Wait'
     --   in that it does not take up a time step.
     Noop
-  | -- | Wait for one time step without doing anything.
+  | -- | Wait for a number of time steps without doing anything.
     Wait
   | -- | Self-destruct.
     Selfdestruct
@@ -362,8 +364,15 @@ data ConstInfo = ConstInfo
   { syntax :: Text
   , fixity :: Int
   , constMeta :: ConstMeta
+  , constDoc :: ConstDoc
   }
   deriving (Eq, Ord, Show)
+
+data ConstDoc = ConstDoc {briefDoc :: Text, longDoc :: Text}
+  deriving (Eq, Ord, Show)
+
+instance IsString ConstDoc where
+  fromString = flip ConstDoc "" . T.pack
 
 data ConstMeta
   = -- | Function with arity of which some are commands
@@ -419,6 +428,23 @@ isUserFunc c = case constMeta $ constInfo c of
   ConstMFunc {} -> True
   _ -> False
 
+-- | Whether the constant is an operator. Useful predicate for documentation.
+isOperator :: Const -> Bool
+isOperator c = case constMeta $ constInfo c of
+  ConstMUnOp {} -> True
+  ConstMBinOp {} -> True
+  ConstMFunc {} -> False
+
+-- | Whether the constant is a /function/ which is interpreted as soon
+--   as it is evaluated, but *not* including operators.
+--
+-- Note: This is used for documentation purposes and complements 'isCmd'
+-- and 'isOperator' in that exactly one will accept a given constant.
+isBuiltinFunction :: Const -> Bool
+isBuiltinFunction c = case constMeta $ constInfo c of
+  ConstMFunc _ cmd -> not cmd
+  _ -> False
+
 -- | Information about constants used in parsing and pretty printing.
 --
 -- It would be more compact to represent the information by testing
@@ -426,79 +452,131 @@ isUserFunc c = case constMeta $ constInfo c of
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> commandLow 0
-  Noop -> commandLow 0
-  Selfdestruct -> commandLow 0
-  Move -> commandLow 0
-  Turn -> commandLow 1
-  Grab -> commandLow 0
-  Harvest -> commandLow 0
-  Place -> commandLow 1
-  Give -> commandLow 2
-  Install -> commandLow 2
-  Make -> commandLow 1
-  Has -> commandLow 1
-  Count -> commandLow 1
-  Reprogram -> commandLow 2
-  Drill -> commandLow 1
-  Build -> commandLow 2
-  Salvage -> commandLow 0
-  Say -> commandLow 1
-  Log -> commandLow 1
-  View -> commandLow 1
-  Appear -> commandLow 1
-  Create -> commandLow 1
-  Whereami -> commandLow 0
-  Blocked -> commandLow 0
-  Scan -> commandLow 0
-  Upload -> commandLow 1
-  Ishere -> commandLow 1
-  Self -> functionLow 0
-  Parent -> functionLow 0
-  Base -> functionLow 0
-  Whoami -> commandLow 0
-  Setname -> commandLow 1
-  Random -> commandLow 1
-  Run -> commandLow 1
-  Return -> commandLow 1
-  Try -> commandLow 2
-  Undefined -> functionLow 0
-  Fail -> functionLow 1
-  If -> functionLow 3
-  Inl -> functionLow 1
-  Inr -> functionLow 1
-  Case -> functionLow 3
-  Fst -> functionLow 1
-  Snd -> functionLow 1
-  Force -> functionLow 1
-  Not -> functionLow 1
-  Neg -> unaryOp "-" 7 P
-  Add -> binaryOp "+" 6 L
-  And -> binaryOp "&&" 3 R
-  Or -> binaryOp "||" 2 R
-  Sub -> binaryOp "-" 6 L
-  Mul -> binaryOp "*" 7 L
-  Div -> binaryOp "/" 7 L
-  Exp -> binaryOp "^" 8 R
-  Eq -> binaryOp "==" 4 N
-  Neq -> binaryOp "!=" 4 N
-  Lt -> binaryOp "<" 4 N
-  Gt -> binaryOp ">" 4 N
-  Leq -> binaryOp "<=" 4 N
-  Geq -> binaryOp ">=" 4 N
-  Format -> functionLow 1
-  Concat -> binaryOp "++" 6 R
-  AppF -> binaryOp "$" 0 R
-  Teleport -> commandLow 2
-  As -> commandLow 2
-  RobotNamed -> commandLow 1
-  RobotNumbered -> commandLow 1
-  Knows -> commandLow 1
+  Wait -> commandLow 0 "Wait for a number of time steps."
+  Noop ->
+    commandLow 0 . doc "Do nothing." $
+      [ "This is different than `Wait` in that it does not take up a time step."
+      , "It is useful for commands like if, which requires you to provide both branches."
+      , "Usually it is automatically inserted where needed, so you do not have to worry about it."
+      ]
+  Selfdestruct ->
+    commandLow 0 . doc "Self-destruct the robot." $
+      [ "Useful to not clutter the world."
+      , "This destroys the robot's inventory, so consider `salvage` as an alternative."
+      ]
+  Move -> commandLow 0 "Move forward one step."
+  Turn -> commandLow 1 "Turn in some direction."
+  Grab -> commandLow 0 "Grab an item from the current location."
+  Harvest ->
+    commandLow 0 . doc "Harvest an item from the current location." $
+      [ "Leaves behind a growing seed if the harvested item is growable."
+      , "Otherwise it works exactly like `grab`."
+      ]
+  Place ->
+    commandLow 1 . doc "Place an item at the current location." $
+      ["The current location has to be empty for this to work."]
+  Give -> commandLow 2 "Give an item to another robot nearby."
+  Install -> commandLow 2 "Install a device from inventory on a robot."
+  Make -> commandLow 1 "Make an item using a recipe."
+  Has -> commandLow 1 "Sense whether the robot has a given item in its inventory."
+  Count -> commandLow 1 "Get the count of a given item in a robot's inventory."
+  Reprogram ->
+    commandLow 2 . doc "Reprogram another robot with a new command." $
+      ["The other robot has to be nearby and idle."]
+  Drill ->
+    commandLow 1 . doc "Drill through an entity." $
+      [ "Usually you want to `drill forward` when exploring to clear out obstacles."
+      , "When you have found a source to drill, you can stand on it and `drill down`."
+      , "See what recipes with drill you have available."
+      ]
+  Build ->
+    commandLow 1 . doc "Construct a new robot." $
+      [ "You can specify a command for the robot to execute."
+      , "If the command requires devices they will be installed from your inventory."
+      ]
+  Salvage ->
+    commandLow 0 . doc "Deconstruct an old robot." $
+      ["Salvaging a robot will give you its inventory, installed devices and log."]
+  Say ->
+    commandLow 1 . doc "Emit a message." $ -- TODO: #513
+      [ "The message will be in a global log, which you can not currently view."
+      , "https://github.com/swarm-game/swarm/issues/513"
+      ]
+  Log -> commandLow 1 "Log the string in the robot's logger."
+  View -> commandLow 1 "View the given robot."
+  Appear ->
+    commandLow 1 . doc "Set how the robot is displayed." $
+      [ "You can either specify one character or five (for each direction)."
+      , "The default is \"X^>v<\"."
+      ]
+  Create ->
+    commandLow 1 . doc "Create an item out of thin air." $
+      ["Only available in creative mode."]
+  Whereami -> commandLow 0 "Get the current x and y coordinates."
+  Blocked -> commandLow 0 "See if the robot can move forward."
+  Scan ->
+    commandLow 0 . doc "Scan a nearby location for entities." $
+      [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
+      , "If you can use sum types, you can also inspect the result directly."
+      ]
+  Upload -> commandLow 1 "Upload a robot's known entities and log to another robot."
+  Ishere -> commandLow 1 "See if a specific entity is in the current location."
+  Self -> functionLow 0 "Get a reference to the current robot."
+  Parent -> functionLow 0 "Get a reference to the robot's parent."
+  Base -> functionLow 0 "Get a reference to the base."
+  Whoami -> commandLow 0 "Get the robot's display name."
+  Setname -> commandLow 1 "Set the robot's display name."
+  Random ->
+    commandLow 1 . doc "Get a uniformly random integer." $
+      ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
+  Run -> commandLow 1 "Run a program loaded from a file."
+  Return -> commandLow 1 "Make the value a result in `cmd`."
+  Try -> commandLow 2 "Execute a command, catching errors."
+  Undefined -> functionLow 0 "A value of any type, that is evaluated as error."
+  Fail -> functionLow 1 "A value of any type, that is evaluated as error with message."
+  If ->
+    functionLow 3 . doc "If-Then-Else function." $
+      ["If the bool predicate is true then evaluate the first expression, otherwise the second."]
+  Inl -> functionLow 1 "Put the value into the left component of a sum type."
+  Inr -> functionLow 1 "Put the value into the right component of a sum type."
+  Case -> functionLow 3 "Evaluate one of the given functions on a value of sum type."
+  Fst -> functionLow 1 "Get the first value of a pair."
+  Snd -> functionLow 1 "Get the second value of a pair."
+  Force -> functionLow 1 "Force the evaluation of a delayed value."
+  Not -> functionLow 1 "Negate the boolean value."
+  Neg -> unaryOp "-" 7 P "Negate the given integer value."
+  Add -> binaryOp "+" 6 L "Add the given integer values."
+  And -> binaryOp "&&" 3 R "Logical and (true if both values are true)."
+  Or -> binaryOp "||" 2 R "Logical or (true if either value is true)."
+  Sub -> binaryOp "-" 6 L "Subtract the given integer values."
+  Mul -> binaryOp "*" 7 L "Multiply the given integer values."
+  Div -> binaryOp "/" 7 L "Divide the left integer value by the right one, rounding down."
+  Exp -> binaryOp "^" 8 R "Raise the left integer value to the power of the right one."
+  Eq -> binaryOp "==" 4 N "Check that the left value is equal to the right one."
+  Neq -> binaryOp "!=" 4 N "Check that the left value is not equal to the right one."
+  Lt -> binaryOp "<" 4 N "Check that the left value is lesser than the right one."
+  Gt -> binaryOp ">" 4 N "Check that the left value is greater than the right one."
+  Leq -> binaryOp "<=" 4 N "Check that the left value is lesser or equal to the right one."
+  Geq -> binaryOp ">=" 4 N "Check that the left value is greater or equal to the right one."
+  Format -> functionLow 1 "Turn an arbitrary value into a string."
+  Concat -> binaryOp "++" 6 R "Concatenate the given strings."
+  AppF ->
+    binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
+      [ "This operator is useful to avoid nesting parentheses."
+      , "For exaple:"
+      , "`f $ g $ h x = f (g (h x))`"
+      ]
+  Teleport -> commandLow 2 "Teleport a robot to the given location."
+  As -> commandLow 2 "Hypothetically run a command as if you were another robot."
+  RobotNamed -> commandLow 1 "Find a robot by name."
+  RobotNumbered -> commandLow 1 "Find a robot by number."
+  Knows -> commandLow 1 "Check if the robot knows about an entity."
  where
-  unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
-  binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}
-  command s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a True}
-  function s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False}
+  doc b ls = ConstDoc b (T.unlines ls)
+  unaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side, constDoc = d}
+  binaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side, constDoc = d}
+  command s a d = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a True, constDoc = d}
+  function s a d = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False, constDoc = d}
   -- takes the number of arguments for a commmand
   commandLow = command (lowShow c)
   functionLow = function (lowShow c)

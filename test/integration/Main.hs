@@ -228,12 +228,13 @@ testEditorFiles =
     [ testGroup
         "VS Code"
         [ testTextInVSCode "operators" (const DocGen.operatorNames)
+        , testTextInVSCode "builtin" DocGen.builtinFunctionList
         , testTextInVSCode "commands" DocGen.keywordsCommands
         , testTextInVSCode "directions" DocGen.keywordsDirections
         ]
     , testGroup
         "Emacs"
-        [ testTextInEmacs "builtin" (const DocGen.builtinCommandsListEmacs)
+        [ testTextInEmacs "builtin" DocGen.builtinFunctionList
         , testTextInEmacs "commands" DocGen.keywordsCommands
         , testTextInEmacs "directions" DocGen.keywordsDirections
         ]
