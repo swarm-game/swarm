@@ -1,0 +1,51 @@
+name: Require existing device in creative mode
+description: |
+  Require a device the base has using the 'require' command in creative mode.
+  https://github.com/swarm-game/swarm/issues/201
+win: |
+  try {
+    r <- robotNumbered 1;
+    p <- as r {whereami};
+    boatInstalled <- as r {installed "boat"};
+    b1 <- as r {count "boat"};
+    b0 <- as base {count "boat"};
+    return (p == (2,0) && b0 == 1 && boatInstalled && b1 == 0);
+  } { return false }
+creative: true
+solution: |
+  build {require "boat"; move; move}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - 3D printer
+    inventory:
+      - [1, boat]
+world:
+  default: [blank, null]
+  palette:
+    '.': [grass, null]
+    '~': [dirt, knownwater]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │.~.│
+    └───┘
+entities:
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water

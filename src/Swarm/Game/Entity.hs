@@ -67,6 +67,8 @@ module Swarm.Game.Entity (
   contains,
   contains0plus,
   elems,
+  isSubsetOf,
+  isEmpty,
 
   -- ** Modification
   insert,
@@ -75,6 +77,7 @@ module Swarm.Game.Entity (
   deleteCount,
   deleteAll,
   union,
+  difference,
 ) where
 
 import Brick (Widget)
@@ -554,6 +557,17 @@ contains inv e = lookup e inv > 0
 contains0plus :: Entity -> Inventory -> Bool
 contains0plus e = isJust . IM.lookup (e ^. entityHash) . counts
 
+-- | Check if the first inventory is a subset of the second.
+--   Note that entities with a count of 0 are ignored.
+isSubsetOf :: Inventory -> Inventory -> Bool
+isSubsetOf inv1 inv2 = all (\(n, e) -> lookup e inv2 >= n) (elems inv1)
+
+-- | Check whether an inventory is empty, meaning that it contains 0
+--   total entities (although it may still /know about/ some entities, that
+--   is, have them as keys with a count of 0).
+isEmpty :: Inventory -> Bool
+isEmpty = all ((== 0) . fst) . elems
+
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory
 delete = deleteCount 1
@@ -596,3 +610,7 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   -- hash.  So if the two inventories share an entity e, just adding their
   -- hashes would mean e now contributes (k+2) times its hash.
   common = IS.foldl' (+) 0 $ IM.keysSet cs1 `IS.intersection` IM.keysSet cs2
+
+-- | Subtract the second inventory from the first.
+difference :: Inventory -> Inventory -> Inventory
+difference inv1 = foldl' (flip (uncurry deleteCount)) inv1 . elems

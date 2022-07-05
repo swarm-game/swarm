@@ -48,7 +48,6 @@ import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Vector qualified as V
@@ -74,11 +73,12 @@ import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability
+import Swarm.Language.Capability (Capability (CMake))
 import Swarm.Language.Context
 import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
+import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.TUI.List
@@ -591,7 +591,7 @@ handleREPLEvent s = \case
   Key V.KEnter -> do
     let entry = formState (s ^. uiState . uiReplForm)
         topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-        topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
+        topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defReqs
         topValCtx = s ^. gameState . robotMap . ix 0 . robotContext . defVals
         topStore =
           fromMaybe emptyStore $
@@ -604,7 +604,7 @@ handleREPLEvent s = \case
     if not $ s ^. gameState . replWorking
       then continue $ case entry of
         CmdPrompt uinput _ ->
-          case processTerm' topTypeCtx topCapCtx uinput of
+          case processTerm' topTypeCtx topReqCtx uinput of
             Right mt ->
               maybe id startBaseProgram mt
                 . (uiState . uiReplHistory %~ addREPLItem (REPLEntry uinput))
@@ -676,7 +676,7 @@ validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
     CmdPrompt uinput _ ->
-      let result = processTerm' topTypeCtx topCapCtx uinput
+      let result = processTerm' topTypeCtx topReqCtx uinput
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
@@ -686,7 +686,7 @@ validateREPLForm s =
  where
   replPrompt = s ^. uiState . uiReplForm . to formState
   topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-  topCapCtx = s ^. gameState . robotMap . ix 0 . robotContext . defCaps
+  topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defReqs
   validate result = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
@@ -817,7 +817,7 @@ makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
 makeEntity s e = do
   let mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
-      mkPT = ProcessedTerm mkProg (Module mkTy empty) (S.singleton CMake) empty
+      mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
       topStore =
         fromMaybe emptyStore $
           s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore

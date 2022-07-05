@@ -97,10 +97,10 @@ import Swarm.Game.Entity (Entity, Inventory)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
 import Swarm.Game.World (World)
-import Swarm.Language.Capability (CapCtx)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
+import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 
@@ -146,8 +146,8 @@ data Frame
   | -- | We were executing a command that might have definitions; next
     --   we should take the resulting 'Env' and add it to the robot's
     --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
-    --   'CapCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
-    FLoadEnv TCtx CapCtx
+    --   'ReqCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
+    FLoadEnv TCtx ReqCtx
   | -- | We were executing a definition; next we should take the resulting value
     --   and return a context binding the variable to the value.
     FDef Var
@@ -275,10 +275,10 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ capCtx) e s k =
+initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ reqCtx) e s k =
   case ctx of
     Empty -> In t e s (FExec : k)
-    _ -> In t e s (FExec : FLoadEnv ctx capCtx : k)
+    _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
 initMachine' (ProcessedTerm t _ _ _) e s k = In t e s k
 
 -- | Cancel the currently running computation.

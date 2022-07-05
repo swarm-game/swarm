@@ -55,6 +55,9 @@ module Swarm.Util (
   (<+=),
   (<<.=),
   (<>=),
+
+  -- * Utilities for NP-hard approximation
+  smallHittingSet,
 ) where
 
 import Control.Algebra (Has)
@@ -64,12 +67,17 @@ import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
 import Control.Monad (forM, unless, when)
+import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
+import Data.List (maximumBy, partition)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Ord (comparing)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text (Text, toUpper)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -319,3 +327,62 @@ l <<.= b = l %%= (,b)
 (<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
 l <>= a = modify (l <>~ a)
 {-# INLINE (<>=) #-}
+
+------------------------------------------------------------
+-- Some utilities for NP-hard approximation
+
+-- | Given a list of /nonempty/ sets, find a hitting set, that is, a
+--   set which has at least one element in common with each set in the
+--   list.  It is not guaranteed to be the /smallest possible/ such
+--   set, because that is NP-hard.  Instead, we use a greedy algorithm
+--   that will give us a reasonably small hitting set: first, choose
+--   all elements in singleton sets, since those must necessarily be
+--   chosen.  Now take any sets which are still not hit, and find an
+--   element which occurs in the largest possible number of remaining
+--   sets. Add this element to the set of chosen elements, and filter
+--   out all the sets it hits.  Repeat, choosing a new element to hit
+--   the largest number of unhit sets at each step, until all sets are
+--   hit.  This algorithm produces a hitting set which might be larger
+--   than optimal by a factor of lg(m), where m is the number of sets
+--   in the input.
+--
+-- >>> import qualified Data.Set as S
+-- >>> shs = smallHittingSet . map S.fromList
+--
+-- >>> shs ["a"]
+-- fromList "a"
+--
+-- >>> shs ["ab", "b"]
+-- fromList "b"
+--
+-- >>> shs ["ab", "bc"]
+-- fromList "b"
+--
+-- >>> shs ["acd", "c", "aef", "a"]
+-- fromList "ac"
+--
+-- >>> shs ["abc", "abd", "acd", "bcd"]
+-- fromList "cd"
+--
+-- Here is an example of an input for which @smallHittingSet@ does
+-- /not/ produce a minimal hitting set. "bc" is also a hitting set and
+-- is smaller.  b, c, and d all occur in exactly two sets, but d is
+-- unluckily chosen first, leaving "be" and "ac" unhit and
+-- necessitating choosing one more element from each.
+--
+-- >>> shs ["bd", "be", "ac", "cd"]
+-- fromList "cde"
+smallHittingSet :: Ord a => [Set a] -> Set a
+smallHittingSet ss = go fixed (filter (S.null . S.intersection fixed) choices)
+ where
+  (fixed, choices) = first S.unions . partition ((== 1) . S.size) . filter (not . S.null) $ ss
+
+  go !soFar [] = soFar
+  go !soFar cs = go (S.insert best soFar) (filter (not . (best `S.member`)) cs)
+   where
+    best = mostCommon cs
+
+  -- Given a nonempty collection of sets, find an element which is shared among
+  -- as many of them as possible.
+  mostCommon :: Ord a => [Set a] -> a
+  mostCommon = fst . maximumBy (comparing snd) . M.assocs . M.fromListWith (+) . map (,1 :: Int) . concatMap S.toList

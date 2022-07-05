@@ -18,15 +18,17 @@ module Swarm.Game.Exception (
   formatIncapableFix,
 ) where
 
-import Data.Set (Set)
+import Control.Lens ((^.))
+import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Witch (from)
 
-import Control.Lens ((^.))
-import Data.Set qualified as S
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
 import Swarm.Util
 
@@ -36,12 +38,12 @@ import Swarm.Util
 -- $setup
 -- >>> :set -XOverloadedStrings
 -- >>> import Control.Lens
--- >>> import qualified Data.Set as S
 -- >>> import Data.Text (unpack)
 -- >>> import Swarm.Language.Syntax
 -- >>> import Swarm.Language.Capability
 -- >>> import Swarm.Game.Entity
 -- >>> import Swarm.Game.Display
+-- >>> import qualified Swarm.Language.Requirement as R
 
 -- ------------------------------------------------------------------
 
@@ -65,7 +67,7 @@ data Exn
   | -- | A robot tried to do something for which it does not have some
     --   of the required capabilities.  This cannot be caught by a
     --   @try@ block.
-    Incapable IncapableFix (Set Capability) Term
+    Incapable IncapableFix Requirements Term
   | -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
     --   grab, /etc./).
@@ -105,24 +107,30 @@ formatIncapableFix = \case
 -- >>> m = buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
 --
--- >>> incapableError (S.singleton CGod) (TConst As)
+-- >>> incapableError (R.singletonCap CGod) (TConst As)
 -- Thou shalt not utter such blasphemy:
 --   'as'
 --   If God in troth thou wantest to play, try thou a Creative game.
 --
--- >>> incapableError (S.singleton CAppear) (TConst Appear)
+-- >>> incapableError (R.singletonCap CAppear) (TConst Appear)
 -- You do not have the devices required for:
 --   'appear'
---   please install:
---    - the one ring or magic wand
+--   Please install:
+--   - the one ring or magic wand
 --
--- >>> incapableError (S.singleton CRandom) (TConst Random)
+-- >>> incapableError (R.singletonCap CRandom) (TConst Random)
 -- Missing the random capability for:
 --   'random'
 --   but no device yet provides it. See
 --   https://github.com/swarm-game/swarm/issues/26
-formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
-formatIncapable em f caps tm
+--
+-- >>> incapableError (R.singletonInv 3 "tree") (TConst Noop)
+-- You are missing required inventory for:
+--   'noop'
+--   Please obtain:
+--   - tree (3)
+formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
+formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
     unlinesExText
       [ "Thou shalt not utter such blasphemy:"
@@ -136,12 +144,19 @@ formatIncapable em f caps tm
       , "but no device yet provides it. See"
       , "https://github.com/swarm-game/swarm/issues/26"
       ]
-  | otherwise =
+  | not (S.null caps) =
     unlinesExText
       ( "You do not have the devices required for:" :
         squote (prettyText tm) :
-        "please " <> formatIncapableFix f <> ":" :
-        ((" - " <>) . formatDevices <$> filter (not . null) deviceSets)
+        "Please " <> formatIncapableFix f <> ":" :
+        (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
+      )
+  | otherwise =
+    unlinesExText
+      ( "You are missing required inventory for:" :
+        squote (prettyText tm) :
+        "Please obtain:" :
+        (("- " <>) . formatEntity <$> M.assocs inv)
       )
  where
   capList = S.toList caps
@@ -153,6 +168,8 @@ formatIncapable em f caps tm
     [ca] -> ca <> " capability"
     cas -> "capabilities " <> T.intercalate ", " cas
   formatDevices = T.intercalate " or " . map (^. entityName)
+  formatEntity (e, 1) = e
+  formatEntity (e, n) = e <> " (" <> from (show n) <> ")"
 
 -- | Exceptions that span multiple lines should be indented.
 unlinesExText :: [Text] -> Text

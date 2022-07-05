@@ -9,10 +9,15 @@ import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Hashable
+import Data.List (subsequences)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Linear
+import Test.QuickCheck qualified as QC
+import Test.QuickCheck.Poly qualified as QC
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
@@ -32,6 +37,7 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.TUI.Model
+import Swarm.Util
 
 main :: IO ()
 main = do
@@ -41,7 +47,7 @@ main = do
     Right g -> defaultMain (tests g)
 
 tests :: GameState -> TestTree
-tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory]
+tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory, misc]
 
 parser :: TestTree
 parser =
@@ -134,6 +140,43 @@ parser =
                     , "1 | 1 <== 2"
                     , "  |   ^"
                     , "unexpected '<'"
+                    ]
+                )
+            )
+        ]
+    , testGroup
+        "require - #201"
+        [ testCase
+            "require device"
+            (valid "require \"boat\"")
+        , testCase
+            "require entities"
+            (valid "require 64 \"rock\"")
+        , testCase
+            "invalid syntax to require"
+            ( process
+                "require x"
+                ( T.unlines
+                    [ "1:9:"
+                    , "  |"
+                    , "1 | require x"
+                    , "  |         ^"
+                    , "unexpected 'x'"
+                    , "expecting device name in double quotes or integer"
+                    ]
+                )
+            )
+        , testCase
+            "invalid syntax to require n"
+            ( process
+                "require 2 x"
+                ( T.unlines
+                    [ "1:11:"
+                    , "  |"
+                    , "1 | require 2 x"
+                    , "  |           ^"
+                    , "unexpected 'x'"
+                    , "expecting entity name in double quotes"
                     ]
                 )
             )
@@ -627,8 +670,84 @@ inventory =
             (hash (E.insertCount 5 x E.empty))
             (hash (E.union (E.insertCount 2 x E.empty) (E.insertCount 3 x E.empty)))
         )
+    , testCase
+        "difference"
+        ( assertEqual
+            "{(2,x),(3,y)} difference {(3,x),(1,y)} = {(0,x), (2,y)}"
+            ( hash
+                ( E.insertCount 2 x (E.insertCount 3 y E.empty)
+                    `E.difference` E.insertCount 3 x (E.insertCount 1 y E.empty)
+                )
+            )
+            (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
+        )
+    , testCase
+        "subset / yes"
+        ( assertBool
+            "{(0,x),(3,y),(2,z)} isSubsetOf {(3,y),(4,z)}"
+            ( E.insertCount 0 x (E.insertCount 3 y (E.insertCount 2 z E.empty))
+                `E.isSubsetOf` E.insertCount 3 y (E.insertCount 4 z E.empty)
+            )
+        )
+    , testCase
+        "subset / no"
+        ( assertBool
+            "{(2,x),(3,y)} isSubsetOf {(1,x),(4,y)}"
+            ( not
+                ( E.insertCount 2 x (E.insertCount 3 y E.empty)
+                    `E.isSubsetOf` E.insertCount 1 x (E.insertCount 4 y E.empty)
+                )
+            )
+        )
+    , testCase
+        "isEmpty / yes"
+        ( assertBool
+            "isEmpty {(0,x),(0,y)}"
+            (E.isEmpty (E.insertCount 0 x (E.insertCount 0 y E.empty)))
+        )
+    , testCase
+        "isEmpty / no"
+        ( assertBool
+            "isEmpty {(0,x),(1,y)}"
+            (not (E.isEmpty (E.insertCount 0 x (E.insertCount 1 y E.empty))))
+        )
     ]
  where
   x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
   y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
-  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
+  z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
+
+misc :: TestTree
+misc =
+  testGroup
+    "Miscellaneous"
+    [ testProperty
+        "smallHittingSet produces hitting sets"
+        (prop_hittingSet @QC.OrdA)
+    ]
+
+prop_hittingSet :: Ord a => [Set a] -> Property
+prop_hittingSet ss = not (any S.null ss) ==> isHittingSet (smallHittingSet ss) ss
+
+isHittingSet :: (Foldable t, Ord a) => Set a -> t (Set a) -> Bool
+isHittingSet hs = not . any (S.null . S.intersection hs)
+
+-- This property does *not* hold (and should not, because the problem
+-- of producing a minimal hitting set is NP-hard), but we can use it
+-- to generate counterexamples.
+prop_hittingSetMinimal :: [Set El] -> Property
+prop_hittingSetMinimal ss = not (any S.null ss) ==> all ((S.size hs <=) . S.size) allHittingSets
+ where
+  allElts = S.unions ss
+  allSubsets = map S.fromList . subsequences . S.toList $ allElts
+  allHittingSets = filter (`isHittingSet` ss) allSubsets
+  hs = smallHittingSet ss
+
+-- Five elements seem to be the minimum necessary for a
+-- counterexample, but providing 6 helps QuickCheck find a
+-- counterexample much more quickly.
+data El = AA | BB | CC | DD | EE | FF
+  deriving (Eq, Ord, Show, Bounded, Enum)
+
+instance QC.Arbitrary El where
+  arbitrary = QC.arbitraryBoundedEnum

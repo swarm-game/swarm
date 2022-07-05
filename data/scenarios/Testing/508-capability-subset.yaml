@@ -25,6 +25,7 @@ robots:
       - [1, GPS]
       - [1, Tardis]
       - [1, logger]
+      - [1, solar panel]
 world:
   default: [ice, knownwater]
   palette:

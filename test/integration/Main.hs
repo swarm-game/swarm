@@ -143,6 +143,8 @@ testScenarioSolution _ci _em =
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
         , testSolution Default "Tutorials/scan"
+        , testSolution Default "Tutorials/require"
+        , testSolution Default "Tutorials/requireinv"
         ]
     , testGroup
         "Challenges"
@@ -166,8 +168,18 @@ testScenarioSolution _ci _em =
             assertBool "Robot 1 should not be in waiting set" $ not waiting
         , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
-        , expectFailBecause "Awaiting fix (#508)" $
-            testSolution Default "Testing/508-capability-subset.yaml"
+        , testSolution Default "Testing/508-capability-subset"
+        , testGroup
+            "Require (#201)"
+            [ testSolution Default "Testing/201-require/201-require-device"
+            , testSolution Default "Testing/201-require/201-require-device-creative"
+            , testSolution Default "Testing/201-require/201-require-device-creative1"
+            , testSolution Default "Testing/201-require/201-require-entities"
+            , expectFailBecause "Awaiting fix (#540)" $
+                testSolution Default "Testing/201-require/201-require-entities-def"
+            , testSolution Default "Testing/201-require/533-reprogram-simple"
+            , testSolution Default "Testing/201-require/533-reprogram"
+            ]
         ]
     ]
  where

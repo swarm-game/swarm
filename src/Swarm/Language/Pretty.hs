@@ -119,6 +119,8 @@ instance PrettyPrec Term where
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
   prettyPrec _ (TRef r) = "@" <> pretty r
+  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TString d)
+  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TString e)
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t

@@ -97,6 +97,7 @@ reservedWords =
        , "true"
        , "false"
        , "forall"
+       , "require"
        ]
 
 -- | Skip spaces and comments.
@@ -242,6 +243,14 @@ parseTermAtom =
         <|> TInt <$> integer
         <|> TString <$> stringLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
+        <|> reserved "require"
+          *> ( ( TRequireDevice
+                  <$> (stringLiteral <?> "device name in double quotes")
+               )
+                <|> ( TRequire <$> (fromIntegral <$> integer)
+                        <*> (stringLiteral <?> "entity name in double quotes")
+                    )
+             )
         <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
