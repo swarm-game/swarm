@@ -32,6 +32,8 @@ win: |
     ifC (has "tree") {return false} {return true}
   } { return false }
 solution: |
+  // TODO: #540 simplify this solution once we can use `def`.
+
   build {require 4 "rock"; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
   build {require 4 "rock"; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
   build {require 4 "rock"; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
