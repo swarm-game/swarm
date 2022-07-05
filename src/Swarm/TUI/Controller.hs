@@ -656,7 +656,8 @@ handleREPLEvent s = \case
 --   things reserved words and names in scope.
 tabComplete :: AppState -> REPLPrompt -> REPLPrompt
 tabComplete _ p@(SearchPrompt {}) = p
-tabComplete s (CmdPrompt t [])
+tabComplete s (CmdPrompt t mms)
+  | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
   | T.null lastWord = CmdPrompt t []
   | otherwise = case matches of
     [] -> CmdPrompt t []
@@ -668,7 +669,6 @@ tabComplete s (CmdPrompt t [])
   names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
   matches = filter (lastWord `T.isPrefixOf`) possibleWords
-tabComplete _ (CmdPrompt t (m : ms)) = CmdPrompt (replaceLast m t) (ms ++ [m])
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
