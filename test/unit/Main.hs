@@ -144,12 +144,43 @@ parser =
                 )
             )
         ]
-    , testCase
-        "require device"
-        (valid "require \"boat\"")
-    , testCase
-        "require entities"
-        (valid "require 64 \"rock\"")
+    , testGroup
+        "require - #201"
+        [ testCase
+            "require device"
+            (valid "require \"boat\"")
+        , testCase
+            "require entities"
+            (valid "require 64 \"rock\"")
+        , testCase
+            "invalid syntax to require"
+            ( process
+                "require x"
+                ( T.unlines
+                    [ "1:9:"
+                    , "  |"
+                    , "1 | require x"
+                    , "  |         ^"
+                    , "unexpected 'x'"
+                    , "expecting device name in double quotes or integer"
+                    ]
+                )
+            )
+        , testCase
+            "invalid syntax to require n"
+            ( process
+                "require 2 x"
+                ( T.unlines
+                    [ "1:11:"
+                    , "  |"
+                    , "1 | require 2 x"
+                    , "  |           ^"
+                    , "unexpected 'x'"
+                    , "expecting entity name in double quotes"
+                    ]
+                )
+            )
+        ]
     ]
  where
   valid = flip process ""
