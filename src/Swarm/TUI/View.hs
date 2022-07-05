@@ -75,10 +75,10 @@ import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItem
 import Swarm.Game.State
 import Swarm.Game.Terrain (displayTerrain)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
-import Swarm.Language.Types (Module (..), Polytype)
+import Swarm.Language.Typecheck (inferConst)
+import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Model
@@ -466,7 +466,7 @@ availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox $ addHea
  where
   (vp, widgetList, addHeader) = case nl of
     RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe, id)
-    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand, (padLeftRight 18 constHeader :))
+    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand, (<> constWiki) . (padLeftRight 18 constHeader :))
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
   renderCommand = padLeftRight 18 . drawConst
@@ -486,13 +486,18 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
 constHeader :: Widget Name
 constHeader = padBottom (Pad 1) $ withAttr robotAttr $ padLeft (Pad 1) $ txt "command name : type"
 
+constWiki :: [Widget Name]
+constWiki =
+  padLeftRight 13
+    <$> [ padTop (Pad 2) $ txt "For the full list of available commands see the Wiki at:"
+        , txt "https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet"
+        ]
+
 drawConst :: Const -> Widget Name
 drawConst c = hBox [padLeft (Pad $ 13 - T.length constName) (txt constName), txt constSig]
  where
   constName = syntax . constInfo $ c
-  constSig = case processParsedTerm (noLoc $ TConst c) of
-    Right (ProcessedTerm (TConst _) (Module pt _) _ _) -> " : " <> prettyText pt
-    _ -> "??"
+  constSig = " : " <> prettyText (inferConst c)
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
@@ -544,7 +549,6 @@ drawKeyMenu s =
     [(NoHighlight, "F1", "help"), (NoHighlight, "F2", "robots")]
       <> notificationKey availableRecipes "F3" "Recipes"
       <> notificationKey availableCommands "F4" "Commands"
-      <> [(NoHighlight, "Tab", "cycle")]
       <> [(NoHighlight, "^v", "creative") | cheat]
       <> [(NoHighlight, "^g", "goal") | goal]
 

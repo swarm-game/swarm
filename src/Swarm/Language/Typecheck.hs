@@ -312,7 +312,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
 infer :: Syntax -> Infer UType
 infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TUnit -> return UTyUnit
-  TConst c -> instantiate $ inferConst c
+  TConst c -> instantiate . toU $ inferConst c
   TDir _ -> return UTyDir
   TInt _ -> return UTyInt
   TAntiInt _ -> return UTyInt
@@ -427,8 +427,8 @@ decomposeFunTy ty = do
   return (ty1, ty2)
 
 -- | Infer the type of a constant.
-inferConst :: Const -> UPolytype
-inferConst c = toU $ case c of
+inferConst :: Const -> Polytype
+inferConst c = case c of
   Wait -> [tyQ| int -> cmd () |]
   Noop -> [tyQ| cmd () |]
   Selfdestruct -> [tyQ| cmd () |]

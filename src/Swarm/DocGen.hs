@@ -4,13 +4,17 @@ module Swarm.DocGen (
   generateDocs,
   GenerateDocs (..),
   EditorType (..),
+  SheetType (..),
 
   -- ** Formatted keyword lists
   keywordsCommands,
   keywordsDirections,
   operatorNames,
-  builtinCommandsListEmacs,
+  builtinFunctionList,
   editorList,
+
+  -- ** Wiki pages
+  commandsPage,
 ) where
 
 import Control.Lens (view, (^.))
@@ -19,6 +23,7 @@ import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
+import Data.List (transpose)
 import Data.Map.Lazy (Map)
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe)
@@ -34,8 +39,11 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
-import Swarm.Language.Syntax (Const (..), ConstMeta (..))
+import Swarm.Language.Capability (capabilityName, constCaps)
+import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
+import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
@@ -53,9 +61,13 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
+  CheatSheet :: Maybe SheetType -> GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
+  deriving (Eq, Show, Enum, Bounded)
+
+data SheetType = Entities | Commands | Capabilities | Recipes
   deriving (Eq, Show, Enum, Bounded)
 
 generateDocs :: GenerateDocs -> IO ()
@@ -72,6 +84,11 @@ generateDocs = \case
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
         mapM_ editorGen [minBound .. maxBound]
+  CheatSheet s -> case s of
+    Nothing -> error "Not implemented"
+    Just st -> case st of
+      Commands -> T.putStrLn commandsPage
+      _ -> error "Not implemented"
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -81,24 +98,30 @@ generateEditorKeywords :: EditorType -> IO ()
 generateEditorKeywords = \case
   Emacs -> do
     putStrLn "(x-builtins '("
-    T.putStr . editorList Emacs $ map constSyntax builtinCommandsEmacs
+    T.putStr $ builtinFunctionList Emacs
     putStrLn "))\n(x-commands '("
     T.putStr $ keywordsCommands Emacs
     T.putStr $ keywordsDirections Emacs
     putStrLn "))"
   VSCode -> do
     putStrLn "Functions and commands:"
-    T.putStrLn $ keywordsCommands VSCode
+    T.putStrLn $ builtinFunctionList VSCode <> "|" <> keywordsCommands VSCode
     putStrLn "\nDirections:"
     T.putStrLn $ keywordsDirections VSCode
     putStrLn "\nOperators:"
     T.putStrLn operatorNames
 
-builtinCommandsEmacs :: [Const]
-builtinCommandsEmacs = [If, Run, Return, Try, Fail, Force, Fst, Snd]
+commands :: [Const]
+commands = filter Syntax.isCmd Syntax.allConst
 
-builtinCommandsListEmacs :: Text
-builtinCommandsListEmacs = editorList Emacs $ map constSyntax builtinCommandsEmacs
+operators :: [Const]
+operators = filter Syntax.isOperator Syntax.allConst
+
+builtinFunctions :: [Const]
+builtinFunctions = filter Syntax.isBuiltinFunction Syntax.allConst
+
+builtinFunctionList :: EditorType -> Text
+builtinFunctionList e = editorList e $ map constSyntax builtinFunctions
 
 editorList :: EditorType -> [Text] -> Text
 editorList = \case
@@ -112,16 +135,14 @@ constSyntax = Syntax.syntax . Syntax.constInfo
 
 -- | Get formatted list of basic functions/commands.
 keywordsCommands :: EditorType -> Text
-keywordsCommands e = editorList e $ map constSyntax (filter isFunc Syntax.allConst)
- where
-  isFunc c = Syntax.isUserFunc c && (e /= Emacs || c `notElem` builtinCommandsEmacs)
+keywordsCommands e = editorList e $ map constSyntax commands
 
 -- | Get formatted list of directions.
 keywordsDirections :: EditorType -> Text
 keywordsDirections e = editorList e $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
 
 operatorNames :: Text
-operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperator Syntax.allConst)
+operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
  where
   special :: String
   special = "*+$[]|^"
@@ -129,10 +150,84 @@ operatorNames = T.intercalate "|" $ map (escape . constSyntax) (filter isOperato
     '/' -> "/(?![/|*])"
     c -> T.singleton c
   escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
-  isOperator c = case Syntax.constMeta $ Syntax.constInfo c of
-    ConstMUnOp {} -> True
-    ConstMBinOp {} -> True
-    ConstMFunc {} -> False
+
+-- ----------------------------------------------------------------------------
+-- GENERATE TABLES: COMMANDS, ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
+-- ----------------------------------------------------------------------------
+
+wrap :: Char -> Text -> Text
+wrap c = T.cons c . flip T.snoc c
+
+codeQuote :: Text -> Text
+codeQuote = wrap '`'
+
+escapeTable :: Text -> Text
+escapeTable = T.concatMap (\c -> if c == '|' then T.snoc "\\" c else T.singleton c)
+
+separatingLine :: [Int] -> Text
+separatingLine ws = T.cons '|' . T.concat $ map (flip T.snoc '|' . flip T.replicate "-" . (2 +)) ws
+
+listToRow :: [Int] -> [Text] -> Text
+listToRow mw xs = wrap '|' . T.intercalate "|" $ zipWith format mw xs
+ where
+  format w x = wrap ' ' x <> T.replicate (w - T.length x) " "
+
+maxWidths :: [[Text]] -> [Int]
+maxWidths = map (maximum . map T.length) . transpose
+
+-- ---------
+-- COMMANDS
+-- ---------
+
+commandHeader :: [Text]
+commandHeader = ["Syntax", "Type", "Capability", "Description"]
+
+commandToList :: Const -> [Text]
+commandToList c =
+  map
+    escapeTable
+    [ addLink (T.pack $ "#" <> show c) . codeQuote $ constSyntax c
+    , codeQuote . prettyText $ inferConst c
+    , maybe "" capabilityName $ constCaps c
+    , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
+    ]
+ where
+  addLink l t = T.concat ["[", t, "](", l, ")"]
+
+constTable :: [Const] -> Text
+constTable cs = T.unlines $ header <> map (listToRow mw) commandRows
+ where
+  mw = maxWidths (commandHeader : commandRows)
+  commandRows = map commandToList cs
+  header = [listToRow mw commandHeader, separatingLine mw]
+
+commandToSection :: Const -> Text
+commandToSection c =
+  T.unlines $
+    [ "## " <> T.pack (show c)
+    , ""
+    , "- syntax: " <> codeQuote (constSyntax c)
+    , "- type: " <> (codeQuote . prettyText $ inferConst c)
+    , maybe "" (("- required capabilities: " <>) . capabilityName) $ constCaps c
+    , ""
+    , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
+    ]
+      <> let l = Syntax.longDoc . Syntax.constDoc $ Syntax.constInfo c
+          in if T.null l then [] else ["", l]
+
+commandsPage :: Text
+commandsPage =
+  T.intercalate "\n\n" $
+    [ "# Commands"
+    , constTable commands
+    , "# Builtin functions"
+    , "These functions are evaluated immediately once they have enough arguments."
+    , constTable builtinFunctions
+    , "# Operators"
+    , constTable operators
+    , "# Detailed descriptions"
+    ]
+      <> map commandToSection (commands <> builtinFunctions <> operators)
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
