@@ -224,6 +224,8 @@ data TypeErr
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
     CantInfer Location Term
+  | -- | An invalid argument was provided to @atomic@.
+    InvalidAtomic Location Term
   deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
@@ -238,6 +240,7 @@ getTypeErrLocation te = case te of
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
+  InvalidAtomic l _ -> Just l
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -338,6 +341,14 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- dynamically at runtime when evaluating recursive let or def expressions,
   -- so we don't have to worry about typechecking them here.
   SDelay _ dt -> UTyDelay <$> infer dt
+  -- The term 'atomic {t}' has the same type as 't', which must have a type
+  -- of the form 'cmd a'.  't' must also be syntactically free of variables.
+  SAtomic at -> do
+    validAtomic at
+    argTy <- fresh
+    check at (UTyCmd argTy)
+    return $ UTyCmd argTy
+
   -- Just look up variables in the context.
   TVar x -> lookup l x
   -- To infer the type of a lambda if the type of the argument is
@@ -508,3 +519,52 @@ check t ty = do
   ty' <- infer t
   _ <- ty =:= ty'
   return ()
+
+-- XXX this allows robots to run faster by doing multiple actions in
+-- one tick that would normally require a tick each!  e.g.
+-- atomic (move; move; move; move)  allows a robot to move a 4x speed.
+-- Need to update validAtomic to ensure it will execute at most 1
+-- command that takes a tick. See takesTick function.
+
+-- | Ensure a term is a valid argument to @atomic@.  Valid arguments
+--   may have:
+--
+--   - Literals, unit values
+--   - Primitive commands @grab@, @harvest@, @place@, ...
+--   - @if@, @case@
+--   - delay
+--   - Sequencing via bind
+--   - Application
+--   - Products and sums
+--
+--   However, a valid argument may NOT have variables of any kind!
+--   That includes lambdas, @def@, @let@, variables bound via @TBind@,
+--   any user-defined variables, or refs.  The goal is to ensure that
+--   any argument to @atomic@ is completely first-order and free of
+--   recursion, so that it's impossible to write a term which runs
+--   atomically for an indefinite amount of time and freezes the rest
+--   of the game.
+validAtomic :: Syntax -> Infer ()
+validAtomic s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
+  TUnit {} -> return ()
+  TConst {} -> return ()
+  TDir {} -> return ()
+  TInt {} -> return ()
+  TAntiInt {} -> return ()
+  TString {} -> return ()
+  TAntiString {} -> return ()
+  TBool {} -> return ()
+  TRobot {} -> return ()
+  TRequireDevice {} -> return ()
+  TRequire {} -> return ()
+  SPair s1 s2 -> validAtomic s1 *> validAtomic s2
+  SApp s1 s2 -> validAtomic s1 *> validAtomic s2
+  SBind _ s1 s2 -> validAtomic s1 *> validAtomic s2
+  SDelay _ s1 -> validAtomic s1
+  -- No variables or nested 'atomic' allowed!
+  TVar {} -> throwError (InvalidAtomic l t)
+  TRef {} -> throwError (InvalidAtomic l t)
+  SLam {} -> throwError (InvalidAtomic l t)
+  SLet {} -> throwError (InvalidAtomic l t)
+  SDef {} -> throwError (InvalidAtomic l t)
+  SAtomic {} -> throwError (InvalidAtomic l t)

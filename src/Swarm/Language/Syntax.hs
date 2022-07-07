@@ -53,6 +53,7 @@ module Swarm.Language.Syntax (
   pattern TDef,
   pattern TBind,
   pattern TDelay,
+  pattern TAtomic,
 
   -- * Terms
   Var,
@@ -653,8 +654,12 @@ pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
+-- | Match a TAtomic without syntax
+pattern TAtomic :: Term -> Term
+pattern TAtomic t = SAtomic (STerm t)
+
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TAtomic #-}
 
 ------------------------------------------------------------
 -- Terms
@@ -732,6 +737,8 @@ data Term
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType Syntax
+  | -- | Atomic evaluation.
+    SAtomic Syntax
   deriving (Eq, Show, Data)
 
 instance Plated Term where
@@ -772,6 +779,8 @@ fvT f = go S.empty
       SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
     SDelay m (Syntax l1 t1) ->
       SDelay m <$> (Syntax l1 <$> go bound t1)
+    SAtomic (Syntax l1 t1) ->
+      SAtomic <$> (Syntax l1 <$> go bound t1)
 
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via

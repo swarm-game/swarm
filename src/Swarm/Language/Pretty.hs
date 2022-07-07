@@ -121,6 +121,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TRef r) = "@" <> pretty r
   prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TString d)
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TString e)
+  prettyPrec _ (TAtomic t) = "atomic" <+> prettyPrec 11 t
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
@@ -195,3 +196,5 @@ instance PrettyPrec TypeErr where
     "Definitions may only be at the top level:" <+> ppr t
   prettyPrec _ (CantInfer _ t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
+  prettyPrec _ (InvalidAtomic _ t) =
+    "Invalid argument to 'atomic' (no variables or nested 'atomic' sections are allowed):" <+> ppr t

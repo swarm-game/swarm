@@ -350,8 +350,9 @@ tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
 --   stepping the robot.
 tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobotRec r
-  | not (isActive r) || r ^. tickSteps <= 0 = return r
-  | otherwise = stepRobot r >>= tickRobotRec
+  | isActive r && (r ^. runningAtomic || r ^. tickSteps > 0) =
+    stepRobot r >>= tickRobotRec
+  | otherwise = return r
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CESK machine for one step.
@@ -418,6 +419,8 @@ stepCESK cesk = case cesk of
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
     return $ Out v s k
 
+  -- Atomic blocks don't evaluate.
+  In (TAtomic t1) _ s k -> return $ Out (VAtomic t1) s k
   -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
   -- Once that's done, evaluate the second component.
@@ -502,6 +505,19 @@ stepCESK cesk = case cesk of
   Out (VCApp c args) s (FExec : k) -> do
     when (takesTick c) $ tickSteps .= 0
     evalConst c (reverse args) s k
+
+  -- To execute an atomic block, set the runningAtomic flag,
+  -- push an FFinishAtomic frame so that we unset the flag when done, and
+  -- proceed to execute the argument.
+  Out (VAtomic t) s (FExec : k) -> do
+    runningAtomic .= True
+    -- Note that we evaluate the atomic block in an empty environment,
+    -- since atomic blocks aren't allowed to contain any variables.
+    return $ In t empty s (FExec : FFinishAtomic : k)
+  -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
+  Out v s (FFinishAtomic : k) -> do
+    runningAtomic .= False
+    return $ Out v s k
 
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
@@ -1734,6 +1750,7 @@ compareValues v1 = case v1 of
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
+  VAtomic {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.
