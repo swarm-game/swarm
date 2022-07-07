@@ -40,6 +40,7 @@ module Swarm.Language.Syntax (
   isUserFunc,
   isOperator,
   isBuiltinFunction,
+  isExternal,
 
   -- * Syntax
   Syntax (..),
@@ -368,6 +369,7 @@ data ConstInfo = ConstInfo
   , fixity :: Int
   , constMeta :: ConstMeta
   , constDoc :: ConstDoc
+  , facing :: Facing
   }
   deriving (Eq, Ord, Show)
 
@@ -403,6 +405,15 @@ data MUnAssoc
   | -- |  Suffix unary operator (see 'Control.Monad.Combinators.Expr.Suffix')
     S
   deriving (Eq, Ord, Show)
+
+-- | Whether a command is internal or external commands.  External
+--   commands have some kind of effect on the external world; at most
+--   one external command can be executed per tick.  Internal commands
+--   are things like sensing commands, or commands that solely modify
+--   a robot's internal state; multiple internal commands may be
+--   executed per tick.
+data Facing = Internal | External
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
@@ -448,6 +459,12 @@ isBuiltinFunction c = case constMeta $ constInfo c of
   ConstMFunc _ cmd -> not cmd
   _ -> False
 
+-- | Whether the constant is an /external/ command, that has an
+--   external effect on the world.  At most one external command may be
+--   executed per tick.
+isExternal :: Const -> Bool
+isExternal = (== External) . facing . constInfo
+
 -- | Information about constants used in parsing and pretty printing.
 --
 -- It would be more compact to represent the information by testing
@@ -455,87 +472,87 @@ isBuiltinFunction c = case constMeta $ constInfo c of
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> commandLow 0 "Wait for a number of time steps."
+  Wait -> command 0 Internal "Wait for a number of time steps."
   Noop ->
-    commandLow 0 . doc "Do nothing." $
+    command 0 Internal . doc "Do nothing." $
       [ "This is different than `Wait` in that it does not take up a time step."
       , "It is useful for commands like if, which requires you to provide both branches."
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    commandLow 0 . doc "Self-destruct the robot." $
+    command 0 External . doc "Self-destruct the robot." $
       [ "Useful to not clutter the world."
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
-  Move -> commandLow 0 "Move forward one step."
-  Turn -> commandLow 1 "Turn in some direction."
-  Grab -> commandLow 0 "Grab an item from the current location."
+  Move -> command 0 External "Move forward one step."
+  Turn -> command 1 External "Turn in some direction."
+  Grab -> command 0 External "Grab an item from the current location."
   Harvest ->
-    commandLow 0 . doc "Harvest an item from the current location." $
+    command 0 External . doc "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
       ]
   Place ->
-    commandLow 1 . doc "Place an item at the current location." $
+    command 1 External . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Give -> commandLow 2 "Give an item to another robot nearby."
-  Install -> commandLow 2 "Install a device from inventory on a robot."
-  Make -> commandLow 1 "Make an item using a recipe."
-  Has -> commandLow 1 "Sense whether the robot has a given item in its inventory."
-  Installed -> commandLow 1 "Sense whether the robot has a specific device installed."
-  Count -> commandLow 1 "Get the count of a given item in a robot's inventory."
+  Give -> command 2 External "Give an item to another robot nearby."
+  Install -> command 2 External "Install a device from inventory on a robot."
+  Make -> command 1 External "Make an item using a recipe."
+  Has -> command 1 Internal "Sense whether the robot has a given item in its inventory."
+  Installed -> command 1 Internal "Sense whether the robot has a specific device installed."
+  Count -> command 1 Internal "Get the count of a given item in a robot's inventory."
   Reprogram ->
-    commandLow 2 . doc "Reprogram another robot with a new command." $
+    command 2 External . doc "Reprogram another robot with a new command." $
       ["The other robot has to be nearby and idle."]
   Drill ->
-    commandLow 1 . doc "Drill through an entity." $
+    command 1 External . doc "Drill through an entity." $
       [ "Usually you want to `drill forward` when exploring to clear out obstacles."
       , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
       ]
   Build ->
-    commandLow 1 . doc "Construct a new robot." $
+    command 1 External . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
       , "If the command requires devices they will be installed from your inventory."
       ]
   Salvage ->
-    commandLow 0 . doc "Deconstruct an old robot." $
+    command 0 External . doc "Deconstruct an old robot." $
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
-    commandLow 1 . doc "Emit a message." $ -- TODO: #513
+    command 1 External . doc "Emit a message." $ -- TODO: #513
       [ "The message will be in a global log, which you can not currently view."
       , "https://github.com/swarm-game/swarm/issues/513"
       ]
-  Log -> commandLow 1 "Log the string in the robot's logger."
-  View -> commandLow 1 "View the given robot."
+  Log -> command 1 Internal "Log the string in the robot's logger."
+  View -> command 1 External "View the given robot."
   Appear ->
-    commandLow 1 . doc "Set how the robot is displayed." $
+    command 1 External . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
       , "The default is \"X^>v<\"."
       ]
   Create ->
-    commandLow 1 . doc "Create an item out of thin air." $
+    command 1 External . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
-  Whereami -> commandLow 0 "Get the current x and y coordinates."
-  Blocked -> commandLow 0 "See if the robot can move forward."
+  Whereami -> command 0 Internal "Get the current x and y coordinates."
+  Blocked -> command 0 Internal "See if the robot can move forward."
   Scan ->
-    commandLow 0 . doc "Scan a nearby location for entities." $
+    command 0 Internal . doc "Scan a nearby location for entities." $
       [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
-  Upload -> commandLow 1 "Upload a robot's known entities and log to another robot."
-  Ishere -> commandLow 1 "See if a specific entity is in the current location."
+  Upload -> command 1 External "Upload a robot's known entities and log to another robot."
+  Ishere -> command 1 Internal "See if a specific entity is in the current location."
   Self -> functionLow 0 "Get a reference to the current robot."
   Parent -> functionLow 0 "Get a reference to the robot's parent."
   Base -> functionLow 0 "Get a reference to the base."
-  Whoami -> commandLow 0 "Get the robot's display name."
-  Setname -> commandLow 1 "Set the robot's display name."
+  Whoami -> command 0 Internal "Get the robot's display name."
+  Setname -> command 1 External "Set the robot's display name."
   Random ->
-    commandLow 1 . doc "Get a uniformly random integer." $
+    command 1 Internal . doc "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
-  Run -> commandLow 1 "Run a program loaded from a file."
-  Return -> commandLow 1 "Make the value a result in `cmd`."
-  Try -> commandLow 2 "Execute a command, catching errors."
+  Run -> command 1 External "Run a program loaded from a file."
+  Return -> command 1 Internal "Make the value a result in `cmd`."
+  Try -> command 2 Internal "Execute a command, catching errors."
   Undefined -> functionLow 0 "A value of any type, that is evaluated as error."
   Fail -> functionLow 1 "A value of any type, that is evaluated as error with message."
   If ->
@@ -570,19 +587,17 @@ constInfo c = case c of
       , "For exaple:"
       , "`f $ g $ h x = f (g (h x))`"
       ]
-  Teleport -> commandLow 2 "Teleport a robot to the given location."
-  As -> commandLow 2 "Hypothetically run a command as if you were another robot."
-  RobotNamed -> commandLow 1 "Find a robot by name."
-  RobotNumbered -> commandLow 1 "Find a robot by number."
-  Knows -> commandLow 1 "Check if the robot knows about an entity."
+  Teleport -> command 2 External "Teleport a robot to the given location."
+  As -> command 2 Internal "Hypothetically run a command as if you were another robot."
+  RobotNamed -> command 1 Internal "Find a robot by name."
+  RobotNumbered -> command 1 Internal "Find a robot by number."
+  Knows -> command 1 Internal "Check if the robot knows about an entity."
  where
   doc b ls = ConstDoc b (T.unlines ls)
-  unaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side, constDoc = d}
-  binaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side, constDoc = d}
-  command s a d = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a True, constDoc = d}
-  function s a d = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False, constDoc = d}
-  -- takes the number of arguments for a commmand
-  commandLow = command (lowShow c)
+  unaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side, constDoc = d, facing = Internal}
+  binaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side, constDoc = d, facing = Internal}
+  command a f d = ConstInfo {syntax = lowShow c, fixity = 11, constMeta = ConstMFunc a True, constDoc = d, facing = f}
+  function s a d = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False, constDoc = d, facing = Internal}
   functionLow = function (lowShow c)
 
 -- | Make infix operation, discarding any syntax related location

@@ -503,7 +503,7 @@ stepCESK cesk = case cesk of
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) s (FExec : k) -> do
-    when (takesTick c) $ tickSteps .= 0
+    when (isExternal c) $ tickSteps .= 0
     evalConst c (reverse args) s k
 
   -- To execute an atomic block, set the runningAtomic flag,
@@ -644,10 +644,6 @@ stepCESK cesk = case cesk of
   fUnionEnv e1 = \case
     FUnionEnv e2 : k -> FUnionEnv (e2 `union` e1) : k
     k -> FUnionEnv e1 : k
-
--- | Determine whether a constant should take up a tick or not when executed.
-takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, Whereami, Blocked, Ishere, Try, Random, Appear])
 
 -- | Eexecute a constant, catching any exception thrown and returning
 --   it via a CESK machine state.

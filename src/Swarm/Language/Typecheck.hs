@@ -224,8 +224,11 @@ data TypeErr
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
     CantInfer Location Term
-  | -- | An invalid argument was provided to @atomic@.
-    InvalidAtomic Location Term
+  | -- | An invalid argument was provided to @atomic@.  If the @Maybe
+    --   Int@ is @Just@, it means the argument takes too many ticks;
+    --   otherwise the problem is an invalid construct such as a
+    --   variable or nested @atomic@.
+    InvalidAtomic Location (Maybe Int) Term
   deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
@@ -240,7 +243,7 @@ getTypeErrLocation te = case te of
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
-  InvalidAtomic l _ -> Just l
+  InvalidAtomic l _ _ -> Just l
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -520,12 +523,6 @@ check t ty = do
   _ <- ty =:= ty'
   return ()
 
--- XXX this allows robots to run faster by doing multiple actions in
--- one tick that would normally require a tick each!  e.g.
--- atomic (move; move; move; move)  allows a robot to move a 4x speed.
--- Need to update validAtomic to ensure it will execute at most 1
--- command that takes a tick. See takesTick function.
-
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may have:
 --
@@ -544,27 +541,42 @@ check t ty = do
 --   recursion, so that it's impossible to write a term which runs
 --   atomically for an indefinite amount of time and freezes the rest
 --   of the game.
+--
+--   Also ensure that the atomic block takes at most one tick.  For
+--   example, @atomic {move; move}@ is invalid, since that would allow
+--   robots to move twice as fast as usual by doing both actions
+--   in one tick.
 validAtomic :: Syntax -> Infer ()
-validAtomic s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
-  TUnit {} -> return ()
-  TConst {} -> return ()
-  TDir {} -> return ()
-  TInt {} -> return ()
-  TAntiInt {} -> return ()
-  TString {} -> return ()
-  TAntiString {} -> return ()
-  TBool {} -> return ()
-  TRobot {} -> return ()
-  TRequireDevice {} -> return ()
-  TRequire {} -> return ()
-  SPair s1 s2 -> validAtomic s1 *> validAtomic s2
-  SApp s1 s2 -> validAtomic s1 *> validAtomic s2
-  SBind _ s1 s2 -> validAtomic s1 *> validAtomic s2
-  SDelay _ s1 -> validAtomic s1
+validAtomic s@(Syntax l t) = do
+  n <- analyzeAtomic s
+  when (n > 1) $ throwError (InvalidAtomic l (Just n) t)
+
+-- | Analyze an argument to @atomic@: ensure it contains no
+analyzeAtomic :: Syntax -> Infer Int
+analyzeAtomic (Syntax l t) = case t of
+  TUnit {} -> return 0
+  TConst c -> return $ if isExternal c then 1 else 0
+  TDir {} -> return 0
+  TInt {} -> return 0
+  TAntiInt {} -> return 0
+  TString {} -> return 0
+  TAntiString {} -> return 0
+  TBool {} -> return 0
+  TRobot {} -> return 0
+  TRequireDevice {} -> return 0
+  TRequire {} -> return 0
+  SPair s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
+  -- Special case for if --- number of ticks needed is *max* of branches
+  -- instead of sum
+  SApp (STerm (SApp (STerm (SApp (STerm (TConst If)) tst)) thn)) els ->
+    (+) <$> analyzeAtomic tst <*> (max <$> analyzeAtomic thn <*> analyzeAtomic els)
+  SApp s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
+  SBind _ s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
+  SDelay _ s1 -> analyzeAtomic s1
   -- No variables or nested 'atomic' allowed!
-  TVar {} -> throwError (InvalidAtomic l t)
-  TRef {} -> throwError (InvalidAtomic l t)
-  SLam {} -> throwError (InvalidAtomic l t)
-  SLet {} -> throwError (InvalidAtomic l t)
-  SDef {} -> throwError (InvalidAtomic l t)
-  SAtomic {} -> throwError (InvalidAtomic l t)
+  TVar {} -> throwError (InvalidAtomic l Nothing t)
+  TRef {} -> throwError (InvalidAtomic l Nothing t)
+  SLam {} -> throwError (InvalidAtomic l Nothing t)
+  SLet {} -> throwError (InvalidAtomic l Nothing t)
+  SDef {} -> throwError (InvalidAtomic l Nothing t)
+  SAtomic {} -> throwError (InvalidAtomic l Nothing t)
