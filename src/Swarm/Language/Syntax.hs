@@ -536,7 +536,7 @@ constInfo c = case c of
   Whereami -> command 0 Internal "Get the current x and y coordinates."
   Blocked -> command 0 Internal "See if the robot can move forward."
   Scan ->
-    command 0 Internal . doc "Scan a nearby location for entities." $
+    command 0 External . doc "Scan a nearby location for entities." $
       [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
