@@ -24,7 +24,6 @@ import Control.Lens ((^.))
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Witch (from)

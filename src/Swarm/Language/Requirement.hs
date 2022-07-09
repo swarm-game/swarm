@@ -27,6 +27,7 @@ module Swarm.Language.Requirement (
 ) where
 
 import Data.Bifunctor (first)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Map (Map)
@@ -72,7 +73,7 @@ data Requirement
     --   of entity `e` and later requiring 7 is the same as requiring
     --   12.
     ReqInv Int Text
-  deriving (Eq, Ord, Show, Read, Generic, Hashable, Data)
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, Data, FromJSON, ToJSON)
 
 -- | It is tempting to define @Requirements = Set Requirement@, but
 --   that would be wrong, since two identical 'ReqInv' should have
@@ -86,7 +87,7 @@ data Requirements = Requirements
   , devReqs :: Set Text
   , invReqs :: Map Text Int
   }
-  deriving (Eq, Ord, Show, Data)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup Requirements where
   Requirements c1 d1 i1 <> Requirements c2 d2 i2 =
