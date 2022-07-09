@@ -227,7 +227,7 @@ data TypeErr
   | -- | An invalid argument was provided to @atomic@.  If the @Maybe
     --   Int@ is @Just@, it means the argument takes too many ticks;
     --   otherwise the problem is an invalid construct such as a
-    --   variable or nested @atomic@.
+    --   non-local variable or nested @atomic@.
     InvalidAtomic Location (Maybe Int) Term
   deriving (Show)
 
@@ -534,10 +534,9 @@ check t ty = do
 --   - Application
 --   - Products and sums
 --
---   However, a valid argument may NOT have variables of any kind!
---   That includes lambdas, @def@, @let@, variables bound via @TBind@,
---   any user-defined variables, or refs.  The goal is to ensure that
---   any argument to @atomic@ is completely first-order and free of
+--   However, a valid argument may only contain variables which are
+--   bound locally, and may not contain any `def` or recursive `let`.
+--   The goal is to ensure that any argument to @atomic@ is free of
 --   recursion, so that it's impossible to write a term which runs
 --   atomically for an indefinite amount of time and freezes the rest
 --   of the game.
@@ -548,14 +547,14 @@ check t ty = do
 --   in one tick.
 validAtomic :: Syntax -> Infer ()
 validAtomic s@(Syntax l t) = do
-  n <- analyzeAtomic s
+  n <- analyzeAtomic S.empty s
   when (n > 1) $ throwError (InvalidAtomic l (Just n) t)
 
--- | Analyze an argument to @atomic@: ensure it contains no variables
---   or nested @atomic@ blocks, and count how many external commands
---   it will execute.
-analyzeAtomic :: Syntax -> Infer Int
-analyzeAtomic (Syntax l t) = case t of
+-- | Analyze an argument to @atomic@: ensure it contains no nested
+--   atomic blocks and no references to external variables, and count
+--   how many external commands it will execute.
+analyzeAtomic :: Set Var -> Syntax -> Infer Int
+analyzeAtomic locals (Syntax l t) = case t of
   TUnit {} -> return 0
   TConst c -> return $ if isExternal c then 1 else 0
   TDir {} -> return 0
@@ -567,18 +566,23 @@ analyzeAtomic (Syntax l t) = case t of
   TRobot {} -> return 0
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
-  SPair s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
+  SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   -- Special case for if: number of ticks needed is *max* of branches
   -- instead of sum, since exactly one of them will be executed
   SApp (STerm (SApp (STerm (SApp (STerm (TConst If)) tst)) thn)) els ->
-    (+) <$> analyzeAtomic tst <*> (max <$> analyzeAtomic thn <*> analyzeAtomic els)
-  SApp s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
-  SBind _ s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
-  SDelay _ s1 -> analyzeAtomic s1
-  -- No variables or nested 'atomic' allowed!
-  TVar {} -> throwError (InvalidAtomic l Nothing t)
-  TRef {} -> throwError (InvalidAtomic l Nothing t)
-  SLam {} -> throwError (InvalidAtomic l Nothing t)
-  SLet {} -> throwError (InvalidAtomic l Nothing t)
+    (+) <$> analyzeAtomic locals tst <*> (max <$> analyzeAtomic locals thn <*> analyzeAtomic locals els)
+  SApp s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
+  SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id S.insert mx locals) s2
+  SDelay _ s1 -> analyzeAtomic locals s1
+  -- Variables are only allowed if bound locally.
+  TVar x -> if x `S.member` locals then return 0 else throwError (InvalidAtomic l Nothing t)
+  -- Process local variable bindings.
+  SLam x _ s -> analyzeAtomic (S.insert x locals) s
+  SLet False x _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (S.insert x locals) s2
+  -- No recursive `let` or `def` allowed!
+  SLet True _ _ _ _ -> throwError (InvalidAtomic l Nothing t)
   SDef {} -> throwError (InvalidAtomic l Nothing t)
+  -- No references allowed!
+  TRef {} -> throwError (InvalidAtomic l Nothing t)
+  -- No nested 'atomic' allowed!
   SAtomic {} -> throwError (InvalidAtomic l Nothing t)
