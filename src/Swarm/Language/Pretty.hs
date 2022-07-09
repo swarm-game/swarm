@@ -121,7 +121,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TRef r) = "@" <> pretty r
   prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TString d)
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TString e)
-  prettyPrec _ (TAtomic t) = "atomic" <+> prettyPrec 11 t
+  prettyPrec p (TAtomic t) = pparens (p > 10) $ "atomic" <+> prettyPrec 11 t
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
