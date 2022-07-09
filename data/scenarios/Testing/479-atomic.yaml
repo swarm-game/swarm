@@ -1,3 +1,5 @@
+# See also 479-atomic-race.
+
 name: Atomic grab/harvest/place
 description: |
   'atomic' blocks should be able to prevent crashes due to race conditions
@@ -15,7 +17,8 @@ solution: |
     atomic (
       b <- ishere "weed";
       if b {harvest; return ()} {}
-    )
+    );
+    n <- random 4; wait n
   end;
   forever {tryharvest}
 robots:

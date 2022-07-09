@@ -180,6 +180,8 @@ testScenarioSolution _ci _em =
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
             ]
+        , expectFailBecause "Intended race condition" $
+            testSolution (Sec 5) "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
         ]
     ]
