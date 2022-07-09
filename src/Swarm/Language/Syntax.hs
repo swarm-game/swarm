@@ -472,7 +472,7 @@ isExternal = (== External) . facing . constInfo
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> command 0 Internal "Wait for a number of time steps."
+  Wait -> command 0 External "Wait for a number of time steps."
   Noop ->
     command 0 Internal . doc "Do nothing." $
       [ "This is different than `Wait` in that it does not take up a time step."
