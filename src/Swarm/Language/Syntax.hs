@@ -542,9 +542,9 @@ constInfo c = case c of
       ]
   Upload -> command 1 External "Upload a robot's known entities and log to another robot."
   Ishere -> command 1 Internal "See if a specific entity is in the current location."
-  Self -> functionLow 0 "Get a reference to the current robot."
-  Parent -> functionLow 0 "Get a reference to the robot's parent."
-  Base -> functionLow 0 "Get a reference to the base."
+  Self -> function 0 "Get a reference to the current robot."
+  Parent -> function 0 "Get a reference to the robot's parent."
+  Base -> function 0 "Get a reference to the base."
   Whoami -> command 0 Internal "Get the robot's display name."
   Setname -> command 1 External "Set the robot's display name."
   Random ->
@@ -553,18 +553,18 @@ constInfo c = case c of
   Run -> command 1 External "Run a program loaded from a file."
   Return -> command 1 Internal "Make the value a result in `cmd`."
   Try -> command 2 Internal "Execute a command, catching errors."
-  Undefined -> functionLow 0 "A value of any type, that is evaluated as error."
-  Fail -> functionLow 1 "A value of any type, that is evaluated as error with message."
+  Undefined -> function 0 "A value of any type, that is evaluated as error."
+  Fail -> function 1 "A value of any type, that is evaluated as error with message."
   If ->
-    functionLow 3 . doc "If-Then-Else function." $
+    function 3 . doc "If-Then-Else function." $
       ["If the bool predicate is true then evaluate the first expression, otherwise the second."]
-  Inl -> functionLow 1 "Put the value into the left component of a sum type."
-  Inr -> functionLow 1 "Put the value into the right component of a sum type."
-  Case -> functionLow 3 "Evaluate one of the given functions on a value of sum type."
-  Fst -> functionLow 1 "Get the first value of a pair."
-  Snd -> functionLow 1 "Get the second value of a pair."
-  Force -> functionLow 1 "Force the evaluation of a delayed value."
-  Not -> functionLow 1 "Negate the boolean value."
+  Inl -> function 1 "Put the value into the left component of a sum type."
+  Inr -> function 1 "Put the value into the right component of a sum type."
+  Case -> function 3 "Evaluate one of the given functions on a value of sum type."
+  Fst -> function 1 "Get the first value of a pair."
+  Snd -> function 1 "Get the second value of a pair."
+  Force -> function 1 "Force the evaluation of a delayed value."
+  Not -> function 1 "Negate the boolean value."
   Neg -> unaryOp "-" 7 P "Negate the given integer value."
   Add -> binaryOp "+" 6 L "Add the given integer values."
   And -> binaryOp "&&" 3 R "Logical and (true if both values are true)."
@@ -579,7 +579,7 @@ constInfo c = case c of
   Gt -> binaryOp ">" 4 N "Check that the left value is greater than the right one."
   Leq -> binaryOp "<=" 4 N "Check that the left value is lesser or equal to the right one."
   Geq -> binaryOp ">=" 4 N "Check that the left value is greater or equal to the right one."
-  Format -> functionLow 1 "Turn an arbitrary value into a string."
+  Format -> function 1 "Turn an arbitrary value into a string."
   Concat -> binaryOp "++" 6 R "Concatenate the given strings."
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
@@ -597,8 +597,7 @@ constInfo c = case c of
   unaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side, constDoc = d, facing = Internal}
   binaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side, constDoc = d, facing = Internal}
   command a f d = ConstInfo {syntax = lowShow c, fixity = 11, constMeta = ConstMFunc a True, constDoc = d, facing = f}
-  function s a d = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False, constDoc = d, facing = Internal}
-  functionLow = function (lowShow c)
+  function a d = ConstInfo {syntax = lowShow c, fixity = 11, constMeta = ConstMFunc a False, constDoc = d, facing = Internal}
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
