@@ -551,7 +551,9 @@ validAtomic s@(Syntax l t) = do
   n <- analyzeAtomic s
   when (n > 1) $ throwError (InvalidAtomic l (Just n) t)
 
--- | Analyze an argument to @atomic@: ensure it contains no
+-- | Analyze an argument to @atomic@: ensure it contains no variables
+--   or nested @atomic@ blocks, and count how many external commands
+--   it will execute.
 analyzeAtomic :: Syntax -> Infer Int
 analyzeAtomic (Syntax l t) = case t of
   TUnit {} -> return 0
@@ -566,8 +568,8 @@ analyzeAtomic (Syntax l t) = case t of
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
   SPair s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
-  -- Special case for if --- number of ticks needed is *max* of branches
-  -- instead of sum
+  -- Special case for if: number of ticks needed is *max* of branches
+  -- instead of sum, since exactly one of them will be executed
   SApp (STerm (SApp (STerm (SApp (STerm (TConst If)) tst)) thn)) els ->
     (+) <$> analyzeAtomic tst <*> (max <$> analyzeAtomic thn <*> analyzeAtomic els)
   SApp s1 s2 -> (+) <$> analyzeAtomic s1 <*> analyzeAtomic s2
