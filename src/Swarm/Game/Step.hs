@@ -339,8 +339,8 @@ withExceptions s k m = do
 ------------------------------------------------------------
 
 -- | Run a robot for one tick, which may consist of up to
---   'evalStepsPerTick' CESK machine steps and at most one command
---   execution.
+--   'evalStepsPerTick' CESK machine steps and at most one external
+--   command execution, whichever comes first.
 tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
 
