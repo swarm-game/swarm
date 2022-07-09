@@ -11,11 +11,13 @@ win: |
   } { return false }
 solution: |
   def forever = \c. force c ; forever c end
-  def tryharvest = \thing.
-      b <- ishere thing;
+  def tryharvest =
+    atomic (
+      b <- ishere "weed";
       if b {harvest; return ()} {}
+    )
   end;
-  forever {tryharvest "weed"}
+  forever {tryharvest}
 robots:
   - name: base
     loc: [0,0]
@@ -35,11 +37,13 @@ robots:
       - [100, weed]
     program: |
       def forever = \c. force c ; forever c end
-      def tryplant = \thing.
-          b <- ishere thing;
-          if b {} {place thing}
+      def tryplant =
+        atomic (
+          b <- ishere "weed";
+          if b {} {place "weed"}
+        )
       end;
-      forever {tryplant "weed"}
+      forever {tryplant}
 entities:
   - name: weed
     display:
