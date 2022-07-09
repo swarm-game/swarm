@@ -69,11 +69,6 @@ import Control.Effect.Lift
 import Data.Containers.ListUtils (nubOrd)
 import Data.Functor (void)
 
--- | The maximum number of CESK machine evaluation steps each robot is
---   allowed during a single game tick.
-evalStepsPerTick :: Int
-evalStepsPerTick = 100
-
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
 --   the 'Run' command; but eventually I want to get rid of that
@@ -342,7 +337,9 @@ withExceptions s k m = do
 --   'evalStepsPerTick' CESK machine steps and at most one external
 --   command execution, whichever comes first.
 tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
-tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
+tickRobot r = do
+  steps <- use robotStepsPerTick
+  tickRobotRec (r & tickSteps .~ steps)
 
 -- | Recursive helper function for 'tickRobot', which checks if the
 --   robot is actively running and still has steps left, and if so

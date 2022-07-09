@@ -30,6 +30,7 @@ module Swarm.Game.Scenario (
   scenarioRobots,
   scenarioWin,
   scenarioSolution,
+  scenarioStepsPerTick,
 
   -- * Loading from disk
   loadScenario,
@@ -92,6 +93,7 @@ data Scenario = Scenario
   , _scenarioRobots :: [URobot]
   , _scenarioWin :: Maybe ProcessedTerm
   , _scenarioSolution :: Maybe ProcessedTerm
+  , _scenarioStepsPerTick :: Maybe Int
   }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
@@ -111,6 +113,7 @@ instance FromJSONE EntityMap Scenario where
       <*> withE em (v ..: "robots")
       <*> liftE (v .:? "win")
       <*> liftE (v .:? "solution")
+      <*> liftE (v .:? "stepsPerTick")
 
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
@@ -153,6 +156,10 @@ scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
 scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
+
+-- | Optionally, specify the maximum number of steps each robot may
+--   take during a single tick.
+scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 
 -- | A description of a world parsed from a YAML file.  The
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a
