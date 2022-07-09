@@ -594,10 +594,38 @@ constInfo c = case c of
   Knows -> command 1 Internal "Check if the robot knows about an entity."
  where
   doc b ls = ConstDoc b (T.unlines ls)
-  unaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side, constDoc = d, facing = Internal}
-  binaryOp s p side d = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side, constDoc = d, facing = Internal}
-  command a f d = ConstInfo {syntax = lowShow c, fixity = 11, constMeta = ConstMFunc a True, constDoc = d, facing = f}
-  function a d = ConstInfo {syntax = lowShow c, fixity = 11, constMeta = ConstMFunc a False, constDoc = d, facing = Internal}
+  unaryOp s p side d =
+    ConstInfo
+      { syntax = s
+      , fixity = p
+      , constMeta = ConstMUnOp side
+      , constDoc = d
+      , facing = Internal
+      }
+  binaryOp s p side d =
+    ConstInfo
+      { syntax = s
+      , fixity = p
+      , constMeta = ConstMBinOp side
+      , constDoc = d
+      , facing = Internal
+      }
+  command a f d =
+    ConstInfo
+      { syntax = lowShow c
+      , fixity = 11
+      , constMeta = ConstMFunc a True
+      , constDoc = d
+      , facing = f
+      }
+  function a d =
+    ConstInfo
+      { syntax = lowShow c
+      , fixity = 11
+      , constMeta = ConstMFunc a False
+      , constDoc = d
+      , facing = Internal
+      }
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
