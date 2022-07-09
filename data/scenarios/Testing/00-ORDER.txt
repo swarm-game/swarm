@@ -5,3 +5,4 @@
 504-teleport-self.yaml
 508-capability-subset.yaml
 201-require
+479-atomic.yaml
