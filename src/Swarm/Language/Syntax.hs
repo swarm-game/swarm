@@ -588,7 +588,7 @@ constInfo c = case c of
       , "`f $ g $ h x = f (g (h x))`"
       ]
   Teleport -> command 2 External "Teleport a robot to the given location."
-  As -> command 2 Internal "Hypothetically run a command as if you were another robot."
+  As -> command 2 External "Hypothetically run a command as if you were another robot."
   RobotNamed -> command 1 Internal "Find a robot by name."
   RobotNumbered -> command 1 Internal "Find a robot by number."
   Knows -> command 1 Internal "Check if the robot knows about an entity."
