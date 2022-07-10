@@ -93,6 +93,10 @@ instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
+instance PrettyPrec UPolytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+
 instance PrettyPrec t => PrettyPrec (Ctx t) where
   prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
@@ -196,7 +200,12 @@ instance PrettyPrec TypeErr where
     "Definitions may only be at the top level:" <+> ppr t
   prettyPrec _ (CantInfer _ t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
-  prettyPrec _ (InvalidAtomic _ (Just n) t) =
-    "Atomic block would take too many ticks (" <> pretty n <> "):" <+> ppr t
-  prettyPrec _ (InvalidAtomic _ Nothing t) =
-    "Invalid argument to 'atomic' (no variables or nested 'atomic' sections are allowed):" <+> ppr t
+  prettyPrec _ (InvalidAtomic _ reason t) =
+    "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
+
+instance PrettyPrec InvalidAtomicReason where
+  prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"
+  prettyPrec _ AtomicDupingThing = "def, let, and lambda are not allowed"
+  prettyPrec _ AtomicRef = "references are not allowed"
+  prettyPrec _ (NonSimpleVarType x ty) = "reference to variable" <+> pretty x <+> "with non-simple type" <+> ppr ty
+  prettyPrec _ NestedAtomic = "nested atomic block"

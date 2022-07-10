@@ -17,6 +17,7 @@
 module Swarm.Language.Typecheck (
   -- * Type errors
   TypeErr (..),
+  InvalidAtomicReason (..),
   getTypeErrLocation,
 
   -- * Inference monad
@@ -224,12 +225,28 @@ data TypeErr
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
     CantInfer Location Term
-  | -- | An invalid argument was provided to @atomic@.  If the @Maybe
-    --   Int@ is @Just@, it means the argument takes too many ticks;
-    --   otherwise the problem is an invalid construct such as a
-    --   non-local variable or nested @atomic@.
-    InvalidAtomic Location (Maybe Int) Term
+  | -- | An invalid argument was provided to @atomic@.
+    InvalidAtomic Location InvalidAtomicReason Term
   deriving (Show)
+
+-- | Various reasons the body of an @atomic@ might be invalid.
+data InvalidAtomicReason
+  = -- | The arugment has too many external commands.
+    TooManyTicks Int
+  | -- | The argument uses some way to duplicate code: @def@, @let@, or lambda.
+    AtomicDupingThing
+  | -- | The argument used a reference.
+    AtomicRef
+  | -- | The argument referred to a variable with a non-simple type.
+    NonSimpleVarType Var UPolytype
+  | -- | The argument had a nested @atomic@
+    NestedAtomic
+  deriving (Show)
+
+-- If the @Maybe
+--   Int@ is @Just@, it means the argument takes too many ticks;
+--   otherwise the problem is an invalid construct such as a
+--   non-local variable or nested @atomic@.
 
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
@@ -524,31 +541,34 @@ check t ty = do
   return ()
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
---   may have:
+--   may not contain @def@, @let@, or lambda. Any variables which are
+--   referenced must have a primitive, first-order type such as
+--   @string@ or @int@ (in particular, no functions, @cmd@, or
+--   @delay@).  We simply assume that any locally bound variables are
+--   OK without checking their type: the only way to bind a variable
+--   locally is with a binder of the form @x <- c1; c2@, where @c1@ is
+--   some primitive command (since we can't refer to external
+--   variables of type @cmd a@).  If we wanted to do something more
+--   sophisticated with locally bound variables we would have to
+--   inline this analysis into typechecking proper, instead of having
+--   it be a separate, out-of-band check.
 --
---   - Literals, unit values
---   - Primitive commands @grab@, @harvest@, @place@, ...
---   - @if@, @case@
---   - delay
---   - Sequencing via bind
---   - Application
---   - Products and sums
+--   The goal is to ensure that any argument to @atomic@ is guaranteed
+--   to evaluate and execute in some small, finite amount of time, so
+--   that it's impossible to write a term which runs atomically for an
+--   indefinite amount of time and freezes the rest of the game.  Of
+--   course, nothing prevents one from writing a large amount of code
+--   inside an @atomic@ block; but we want the execution time to be
+--   linear in the size of the code.
 --
---   However, a valid argument may only contain variables which are
---   bound locally, and may not contain any `def` or recursive `let`.
---   The goal is to ensure that any argument to @atomic@ is free of
---   recursion, so that it's impossible to write a term which runs
---   atomically for an indefinite amount of time and freezes the rest
---   of the game.
---
---   Also ensure that the atomic block takes at most one tick.  For
---   example, @atomic {move; move}@ is invalid, since that would allow
---   robots to move twice as fast as usual by doing both actions
---   in one tick.
+--   We also ensure that the atomic block takes at most one tick,
+--   i.e. contains at most one external command. For example, @atomic
+--   {move; move}@ is invalid, since that would allow robots to move
+--   twice as fast as usual by doing both actions in one tick.
 validAtomic :: Syntax -> Infer ()
 validAtomic s@(Syntax l t) = do
   n <- analyzeAtomic S.empty s
-  when (n > 1) $ throwError (InvalidAtomic l (Just n) t)
+  when (n > 1) $ throwError (InvalidAtomic l (TooManyTicks n) t)
 
 -- | Analyze an argument to @atomic@: ensure it contains no nested
 --   atomic blocks and no references to external variables, and count
@@ -574,15 +594,44 @@ analyzeAtomic locals (Syntax l t) = case t of
   SApp s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id S.insert mx locals) s2
   SDelay _ s1 -> analyzeAtomic locals s1
-  -- Variables are only allowed if bound locally.
-  TVar x -> if x `S.member` locals then return 0 else throwError (InvalidAtomic l Nothing t)
-  -- Process local variable bindings.
-  SLam x _ s -> analyzeAtomic (S.insert x locals) s
-  SLet False x _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (S.insert x locals) s2
-  -- No recursive `let` or `def` allowed!
-  SLet True _ _ _ _ -> throwError (InvalidAtomic l Nothing t)
-  SDef {} -> throwError (InvalidAtomic l Nothing t)
+  -- Variables are allowed if bound locally, or if they have a simple type.
+  TVar x
+    | x `S.member` locals -> return 0
+    | otherwise -> do
+      mxTy <- asks $ Ctx.lookup x
+      case mxTy of
+        -- If the variable is undefined, return 0 to indicate the
+        -- atomic block is valid, because we'd rather have the error
+        -- caught by the real name+type checking.
+        Nothing -> return 0
+        Just xTy ->
+          if isSimpleUPolytype xTy
+            then return 0
+            else throwError (InvalidAtomic l (NonSimpleVarType x xTy) t)
+  -- No lambda, `let` or `def` allowed!
+  SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
+  SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)
+  SDef {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   -- No references allowed!
-  TRef {} -> throwError (InvalidAtomic l Nothing t)
+  TRef {} -> throwError (InvalidAtomic l AtomicRef t)
   -- No nested 'atomic' allowed!
-  SAtomic {} -> throwError (InvalidAtomic l Nothing t)
+  SAtomic {} -> throwError (InvalidAtomic l NestedAtomic t)
+
+-- | A simple polytype is a simple type with no quantifiers.
+isSimpleUPolytype :: UPolytype -> Bool
+isSimpleUPolytype (Forall [] ty) = isSimpleUType ty
+isSimpleUPolytype _ = False
+
+-- | A simple type is a sum or product of base types.
+isSimpleUType :: UType -> Bool
+isSimpleUType = \case
+  UTyBase {} -> True
+  UTyVar {} -> False
+  UTySum ty1 ty2 -> isSimpleUType ty1 && isSimpleUType ty2
+  UTyProd ty1 ty2 -> isSimpleUType ty1 && isSimpleUType ty2
+  UTyFun {} -> False
+  UTyCmd {} -> False
+  UTyDelay {} -> False
+  -- Make the pattern-match coverage checker happy
+  UVar {} -> False
+  UTerm {} -> False
