@@ -12,9 +12,9 @@ import Data.Aeson (eitherDecode, encode)
 import Data.Either
 import Data.Hashable
 import Data.List (subsequences)
+import Data.Maybe
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Maybe
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
