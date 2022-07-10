@@ -181,6 +181,40 @@ parser =
                 )
             )
         ]
+    , testGroup
+        "atomic - #479"
+        [ testCase
+            "atomic move"
+            ( valid "atomic move"
+            )
+        , testCase
+            "grabif"
+            (valid "def grabif : string -> cmd () = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
+        , testCase
+            "atomic move+move"
+            ( process
+                "atomic (move; move)"
+                "1: Invalid atomic block: block could take too many ticks (2): move; move"
+            )
+        , testCase
+            "atomic lambda"
+            ( process
+                "atomic ((\\c. c;c) move)"
+                "1: Invalid atomic block: def, let, and lambda are not allowed: \\c. c; c"
+            )
+        , testCase
+            "atomic non-simple"
+            ( process
+                "def dup = \\c. c; c end; atomic (dup (dup move))"
+                "1: Invalid atomic block: reference to variable dup with non-simple type ∀ a3. cmd a3 -> cmd a3: dup"
+            )
+        , testCase
+            "atomic nested"
+            ( process
+                "atomic (move; atomic (if true {} {}))"
+                "1: Invalid atomic block: nested atomic block"
+            )
+        ]
     ]
  where
   valid = flip process ""
