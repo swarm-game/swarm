@@ -4,7 +4,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module      :  Swarm.Game.Robot
