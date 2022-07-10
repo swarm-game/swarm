@@ -26,8 +26,8 @@ module Swarm.Language.Requirement (
   requirements,
 ) where
 
-import Data.Bifunctor (first)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Map (Map)

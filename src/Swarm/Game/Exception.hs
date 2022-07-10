@@ -21,13 +21,13 @@ module Swarm.Game.Exception (
 ) where
 
 import Control.Lens ((^.))
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Map qualified as M
 import Data.Set qualified as S
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Witch (from)
 import GHC.Generics (Generic)
+import Witch (from)
 
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
