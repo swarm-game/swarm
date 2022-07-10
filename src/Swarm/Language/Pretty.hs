@@ -206,6 +206,5 @@ instance PrettyPrec TypeErr where
 instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"
   prettyPrec _ AtomicDupingThing = "def, let, and lambda are not allowed"
-  prettyPrec _ AtomicRef = "references are not allowed"
   prettyPrec _ (NonSimpleVarType x ty) = "reference to variable" <+> pretty x <+> "with non-simple type" <+> ppr ty
   prettyPrec _ NestedAtomic = "nested atomic block"

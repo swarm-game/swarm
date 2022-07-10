@@ -235,8 +235,6 @@ data InvalidAtomicReason
     TooManyTicks Int
   | -- | The argument uses some way to duplicate code: @def@, @let@, or lambda.
     AtomicDupingThing
-  | -- | The argument used a reference.
-    AtomicRef
   | -- | The argument referred to a variable with a non-simple type.
     NonSimpleVarType Var UPolytype
   | -- | The argument had a nested @atomic@
@@ -612,10 +610,12 @@ analyzeAtomic locals (Syntax l t) = case t of
   SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SDef {} -> throwError (InvalidAtomic l AtomicDupingThing t)
-  -- No references allowed!
-  TRef {} -> throwError (InvalidAtomic l AtomicRef t)
   -- No nested 'atomic' allowed!
   SAtomic {} -> throwError (InvalidAtomic l NestedAtomic t)
+  -- We should never encounter a TRef since they do not show up in
+  -- surface syntax, only as values while evaluating (*after*
+  -- typechecking).
+  TRef {} -> throwError (CantInfer l t)
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool
