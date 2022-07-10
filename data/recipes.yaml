@@ -606,3 +606,9 @@
   - [1, rubber]
   out:
   - [1, I/O cable]
+
+- in:
+  - [1, rubber]
+  - [1, strange loop]
+  out:
+  - [1, rubber band]
