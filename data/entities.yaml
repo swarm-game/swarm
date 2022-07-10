@@ -875,11 +875,20 @@
     char: 'O'
   description:
   - "A rubber band can tie multiple commands together so that other robots can't execute
-    commands in between them.  It can be used via the 'atomic' command, for example:"
+    commands in between them.  It can be used via the 'atomic' command. For example, suppose
+    robot A executes the following code:"
+  - |
+    b <- ishere "rock"; if b {grab} {}
+
+  - "This seems like a safe way to execute 'grab' only when there is a
+    rock to grab.  However, it is actually possible for the 'grab' to
+    fail, if some robot B tries to grab the rock at the same time:
+    first, robot A executes 'ishere' which returns true; next, robot B
+    grabs the rock; finally, robot A tries to execute 'grab', which throws
+    an exception."
+  - "To prevent this situation, robot A can wrap the commands in 'atomic', like so:"
   - |
     atomic (b <- ishere "rock"; if b {grab} {})
-  - "Without the 'atomic' wrapper, it would be possible for some other robot to grab the
-    rock in between checking for its presence and grabbing it, causing the grab to fail.
-    'atomic' ensures this cannot happen."
+
   properties: [portable]
   capabilities: [atomic]
