@@ -417,7 +417,7 @@ stepCESK cesk = case cesk of
     return $ Out v s k
 
   -- Atomic blocks don't evaluate.
-  In (TAtomic t1) _ s k -> return $ Out (VAtomic t1) s k
+  In (TAtomic t1) e s k -> return $ Out (VAtomic t1 e) s k
   -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
   -- Once that's done, evaluate the second component.
@@ -506,11 +506,11 @@ stepCESK cesk = case cesk of
   -- To execute an atomic block, set the runningAtomic flag,
   -- push an FFinishAtomic frame so that we unset the flag when done, and
   -- proceed to execute the argument.
-  Out (VAtomic t) s (FExec : k) -> do
+  Out (VAtomic t e) s (FExec : k) -> do
     runningAtomic .= True
     -- Note that we evaluate the atomic block in an empty environment,
     -- since atomic blocks aren't allowed to contain any variables.
-    return $ In t empty s (FExec : FFinishAtomic : k)
+    return $ In t e s (FExec : FFinishAtomic : k)
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
   Out v s (FFinishAtomic : k) -> do
     runningAtomic .= False
