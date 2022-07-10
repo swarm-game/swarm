@@ -241,11 +241,6 @@ data InvalidAtomicReason
     NestedAtomic
   deriving (Show)
 
--- If the @Maybe
---   Int@ is @Just@, it means the argument takes too many ticks;
---   otherwise the problem is an invalid construct such as a
---   non-local variable or nested @atomic@.
-
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
   mismatchFailure = Mismatch NoLoc
@@ -362,9 +357,13 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- The term 'atomic {t}' has the same type as 't', which must have a type
   -- of the form 'cmd a'.  't' must also be syntactically free of variables.
   SAtomic at -> do
-    validAtomic at
     argTy <- fresh
     check at (UTyCmd argTy)
+    -- It's important that we typecheck the subterm @at@ *before* we
+    -- check that it is a valid argument to @atomic@: this way we can
+    -- ensure that we have already inferred the types of any variables
+    -- referenced.
+    validAtomic at
     return $ UTyCmd argTy
 
   -- Just look up variables in the context.
@@ -602,10 +601,26 @@ analyzeAtomic locals (Syntax l t) = case t of
         -- atomic block is valid, because we'd rather have the error
         -- caught by the real name+type checking.
         Nothing -> return 0
-        Just xTy ->
-          if isSimpleUPolytype xTy
+        Just xTy -> do
+          -- Use applyBindings to make sure that we apply as much
+          -- information as unification has learned at this point.  In
+          -- theory, continuing to typecheck other terms elsewhere in
+          -- the program could give us further information about xTy,
+          -- so we might have incomplete information at this point.
+          -- However, since variables referenced in an atomic block
+          -- must necessarily have simple types, it's unlikely this
+          -- will really make a difference.  The alternative, more
+          -- "correct" way to do this would be to simply emit some
+          -- constraints at this point saying that xTy must be a
+          -- simple type, and check later that the constraint holds,
+          -- after performing complete type inference.  However, since
+          -- this is much simpler, we'll stick with this until such
+          -- time as we have concrete examples showing that the more
+          -- correct, complex way is necessary.
+          xTy' <- applyBindings xTy
+          if isSimpleUPolytype xTy'
             then return 0
-            else throwError (InvalidAtomic l (NonSimpleVarType x xTy) t)
+            else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
   -- No lambda, `let` or `def` allowed!
   SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)
