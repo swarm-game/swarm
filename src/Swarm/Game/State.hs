@@ -617,7 +617,9 @@ scenarioToGameState scenario userSeed toRun g = do
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
       , _needsRedraw = False
-      , _replStatus = REPLDone
+      , _replStatus = case toRun of
+          Nothing -> REPLDone
+          Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
       , _messageQueue = []
       , _focusedRobotID = baseID
       , _ticks = 0
