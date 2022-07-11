@@ -16,6 +16,7 @@ module Swarm.Language.Capability (
   constCaps,
 ) where
 
+import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Char (toLower)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
@@ -108,7 +109,7 @@ data Capability
     --   checking challenge mode win conditions, and not for use by
     --   players.
     CGod
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data, FromJSONKey, ToJSONKey)
 
 capabilityName :: Capability -> Text
 capabilityName = from @String . map toLower . drop 1 . show

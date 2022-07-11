@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -88,6 +90,7 @@ import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
@@ -103,6 +106,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
+import GHC.Generics (Generic)
 import Linear
 import System.Clock qualified
 import System.Random (StdGen, mkStdGen, randomRIO)
@@ -140,7 +144,7 @@ data ViewCenterRule
     VCLocation (V2 Int64)
   | -- | The view should be centered on a certain robot.
     VCRobot RID
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
 makePrisms ''ViewCenterRule
 
@@ -153,7 +157,7 @@ data REPLStatus
     --   entered.  The @Maybe Value@ starts out as @Nothing@ and gets
     --   filled in with a result once the command completes.
     REPLWorking Polytype (Maybe Value)
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinCondition
   = -- | There is no winning condition.
@@ -164,7 +168,7 @@ data WinCondition
   | -- | The player has won. The boolean indicates whether they have
     --   already been congratulated.
     Won Bool
-  deriving (Show)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 makePrisms ''WinCondition
 
@@ -177,14 +181,14 @@ data RunStatus
   | -- | The game got paused while visiting the help,
     --   and it should unpause after returning back to the game.
     AutoPause
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A data type to keep track of discovered recipes and commands
 data Notifications a = Notifications
   { _notificationsCount :: Int
   , _notificationsContent :: [a]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 instance Semigroup (Notifications a) where
   Notifications count1 xs1 <> Notifications count2 xs2 = Notifications (count1 + count2) (xs1 <> xs2)

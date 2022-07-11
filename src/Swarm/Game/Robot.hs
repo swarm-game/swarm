@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -68,6 +69,7 @@ module Swarm.Game.Robot (
 ) where
 
 import Control.Lens hiding (contains)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (hashWithSalt)
 import Data.Int (Int64)
 import Data.Maybe (isNothing)
@@ -76,10 +78,12 @@ import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
+import GHC.Generics (Generic)
 import Linear
 import System.Clock (TimeSpec)
 
 import Data.Yaml ((.!=), (.:), (.:?))
+import Swarm.Util ()
 import Swarm.Util.Yaml
 
 import Swarm.Game.CESK
@@ -107,7 +111,7 @@ data RobotContext = RobotContext
     --   definitions.
     _defStore :: Store
   }
-  deriving (Show)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 makeLenses ''RobotContext
 
@@ -120,7 +124,7 @@ data LogEntry = LogEntry
   , -- | The time at which the entry was created.
     _leTime :: Integer
   }
-  deriving (Show)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 makeLenses ''LogEntry
 
@@ -149,6 +153,7 @@ data RobotR f = RobotR
   , _runningAtomic :: Bool
   , _robotCreatedAt :: TimeSpec
   }
+  deriving (Generic)
 
 deriving instance Show (f RID) => Show (RobotR f)
 

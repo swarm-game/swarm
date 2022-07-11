@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -364,7 +365,7 @@ data Const
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
-  deriving (Eq, Ord, Enum, Bounded, Data, Show)
+  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON)
 
 allConst :: [Const]
 allConst = [minBound .. maxBound]
@@ -654,10 +655,10 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 
 -- | The surface syntax for the language
 data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 data Location = NoLoc | Location Int Int
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup Location where
   NoLoc <> l = l
@@ -726,7 +727,7 @@ data DelayType
     --   @Just@ here is when we automatically generate a delayed
     --   expression while interpreting a recursive @let@ or @def@.
     MemoizedDelay (Maybe Var)
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | Terms of the Swarm language.
 data Term
@@ -784,7 +785,7 @@ data Term
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType Syntax
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Plated Term where
   plate = uniplate
