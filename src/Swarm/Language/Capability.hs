@@ -103,7 +103,6 @@ data Capability
   | -- | Capability to move unrestricted to any place
     CTeleport
   | -- | Capability to run commands atomically
-    -- XXX need to make device that provides this capability
     CAtomic
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
