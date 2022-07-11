@@ -508,8 +508,6 @@ stepCESK cesk = case cesk of
   -- proceed to execute the argument.
   Out (VAtomic t e) s (FExec : k) -> do
     runningAtomic .= True
-    -- Note that we evaluate the atomic block in an empty environment,
-    -- since atomic blocks aren't allowed to contain any variables.
     return $ In t e s (FExec : FFinishAtomic : k)
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
   Out v s (FFinishAtomic : k) -> do
