@@ -406,7 +406,7 @@ data MUnAssoc
     S
   deriving (Eq, Ord, Show)
 
--- | Whether a command is internal or external commands.  External
+-- | Whether a command is internal or external.  External
 --   commands have some kind of effect on the external world; at most
 --   one external command can be executed per tick.  Internal commands
 --   are things like sensing commands, or commands that solely modify
