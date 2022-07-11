@@ -82,8 +82,6 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
-  -- | An atomic block waiting to be executed.
-  VAtomic :: Term -> Env -> Value
   deriving (Eq, Show)
 
 -- | Pretty-print a value.
@@ -111,7 +109,6 @@ valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TRef n
-valueToTerm (VAtomic t _) = TAtomic t
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value

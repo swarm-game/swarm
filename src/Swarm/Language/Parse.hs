@@ -252,7 +252,6 @@ parseTermAtom =
                         <*> (stringLiteral <?> "entity name in double quotes")
                     )
              )
-        <|> SAtomic <$> (reserved "atomic" *> parseTermAtom)
         <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)

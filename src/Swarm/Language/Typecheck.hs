@@ -354,9 +354,11 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- dynamically at runtime when evaluating recursive let or def expressions,
   -- so we don't have to worry about typechecking them here.
   SDelay _ dt -> UTyDelay <$> infer dt
-  -- The term 'atomic {t}' has the same type as 't', which must have a type
-  -- of the form 'cmd a'.  't' must also be syntactically free of variables.
-  SAtomic at -> do
+  -- We need a special case for checking the argument to 'atomic'.
+  -- 'atomic t' has the same type as 't', which must have a type of
+  -- the form 'cmd a'.  't' must also be syntactically free of
+  -- variables.
+  SApp (STerm (TConst Atomic)) at -> do
     argTy <- fresh
     check at (UTyCmd argTy)
     -- It's important that we typecheck the subterm @at@ *before* we
@@ -521,6 +523,7 @@ inferConst c = case c of
   Format -> [tyQ| a -> string |]
   Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
+  Atomic -> [tyQ| cmd a -> cmd a |]
   Teleport -> [tyQ| robot -> (int * int) -> cmd () |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
   RobotNamed -> [tyQ| string -> cmd robot |]
@@ -573,6 +576,8 @@ validAtomic s@(Syntax l t) = do
 analyzeAtomic :: Set Var -> Syntax -> Infer Int
 analyzeAtomic locals (Syntax l t) = case t of
   TUnit {} -> return 0
+  -- No nested 'atomic' allowed!
+  TConst Atomic -> throwError (InvalidAtomic l NestedAtomic t)
   TConst c -> return $ if isExternal c then 1 else 0
   TDir {} -> return 0
   TInt {} -> return 0
@@ -625,8 +630,6 @@ analyzeAtomic locals (Syntax l t) = case t of
   SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SDef {} -> throwError (InvalidAtomic l AtomicDupingThing t)
-  -- No nested 'atomic' allowed!
-  SAtomic {} -> throwError (InvalidAtomic l NestedAtomic t)
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).

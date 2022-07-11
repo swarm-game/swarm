@@ -237,7 +237,6 @@ requirements' = go
     -- Everything else is straightforward.
     TPair t1 t2 -> go ctx t1 <> go ctx t2
     TDelay _ t -> go ctx t
-    TAtomic t -> insert (ReqCap CAtomic) $ go ctx t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning mempty is safe.

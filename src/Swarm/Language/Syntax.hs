@@ -54,7 +54,6 @@ module Swarm.Language.Syntax (
   pattern TDef,
   pattern TBind,
   pattern TDelay,
-  pattern TAtomic,
 
   -- * Terms
   Var,
@@ -347,6 +346,12 @@ data Const
     -- | Application operator - helps to avoid parentheses:
     --   @f $ g $ h x  =  f (g (h x))@
     AppF
+  | -- Concurrency
+
+    -- | When executing @atomic c@, a robot will not be interrupted,
+    --   that is, no other robots will execute any commands while
+    --   the robot is executing @c@.
+    Atomic
   | -- God-like commands that are omnipresent or omniscient.
 
     -- | Teleport a robot to the given position.
@@ -587,6 +592,10 @@ constInfo c = case c of
       , "For exaple:"
       , "`f $ g $ h x = f (g (h x))`"
       ]
+  Atomic ->
+    command 1 Internal . doc "Execute a block of commands atomically." $
+      [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
+      ]
   Teleport -> command 2 External "Teleport a robot to the given location."
   As -> command 2 External "Hypothetically run a command as if you were another robot."
   RobotNamed -> command 1 Internal "Find a robot by name."
@@ -696,12 +705,8 @@ pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
--- | Match a TAtomic without syntax
-pattern TAtomic :: Term -> Term
-pattern TAtomic t = SAtomic (STerm t)
-
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TAtomic #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
@@ -779,8 +784,6 @@ data Term
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType Syntax
-  | -- | Atomic evaluation.
-    SAtomic Syntax
   deriving (Eq, Show, Data)
 
 instance Plated Term where
@@ -821,8 +824,6 @@ fvT f = go S.empty
       SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
     SDelay m (Syntax l1 t1) ->
       SDelay m <$> (Syntax l1 <$> go bound t1)
-    SAtomic (Syntax l1 t1) ->
-      SAtomic <$> (Syntax l1 <$> go bound t1)
 
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via

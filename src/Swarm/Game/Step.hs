@@ -416,8 +416,6 @@ stepCESK cesk = case cesk of
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
     return $ Out v s k
 
-  -- Atomic blocks don't evaluate.
-  In (TAtomic t1) e s k -> return $ Out (VAtomic t1 e) s k
   -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
   -- Once that's done, evaluate the second component.
@@ -503,12 +501,6 @@ stepCESK cesk = case cesk of
     when (isExternal c) $ tickSteps .= 0
     evalConst c (reverse args) s k
 
-  -- To execute an atomic block, set the runningAtomic flag,
-  -- push an FFinishAtomic frame so that we unset the flag when done, and
-  -- proceed to execute the argument.
-  Out (VAtomic t e) s (FExec : k) -> do
-    runningAtomic .= True
-    return $ In t e s (FExec : FFinishAtomic : k)
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
   Out v s (FFinishAtomic : k) -> do
     runningAtomic .= False
@@ -1031,6 +1023,14 @@ execConst c vs s k = do
       [VInt hi] -> do
         n <- uniform (0, hi - 1)
         return $ Out (VInt n) s k
+      _ -> badConst
+    Atomic -> case vs of
+      -- To execute an atomic block, set the runningAtomic flag,
+      -- push an FFinishAtomic frame so that we unset the flag when done, and
+      -- proceed to execute the argument.
+      [cmd] -> do
+        runningAtomic .= True
+        return $ Out cmd s (FExec : FFinishAtomic : k)
       _ -> badConst
     As -> case vs of
       [VRobot rid, prog] -> do
@@ -1741,7 +1741,6 @@ compareValues v1 = case v1 of
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
-  VAtomic {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.

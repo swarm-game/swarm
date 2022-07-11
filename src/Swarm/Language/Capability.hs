@@ -169,6 +169,7 @@ constCaps = \case
   Exp -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
+  Atomic -> Just CAtomic
   -- Some God-like abilities.
   As -> Just CGod
   RobotNamed -> Just CGod

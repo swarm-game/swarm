@@ -209,7 +209,7 @@ parser =
             "atomic non-simple"
             ( process
                 "def dup = \\c. c; c end; atomic (dup (dup move))"
-                "1: Invalid atomic block: reference to variable dup with non-simple type ∀ a3. cmd a3 -> cmd a3: dup"
+                "1: Invalid atomic block: reference to variable with non-simple type ∀ a3. cmd a3 -> cmd a3: dup"
             )
         , testCase
             "atomic nested"
