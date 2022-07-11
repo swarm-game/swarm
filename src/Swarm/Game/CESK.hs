@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -88,9 +90,12 @@ module Swarm.Game.CESK (
 ) where
 
 import Control.Lens.Combinators (pattern Empty)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson qualified
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
+import GHC.Generics (Generic)
 import Witch (from)
 
 import Swarm.Game.Entity (Entity, Inventory)
@@ -163,7 +168,7 @@ data Frame
     FImmediate WorldUpdate RobotUpdate
   | -- | Update the memory cell at a certain location with the computed value.
     FUpdate Loc
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
@@ -175,7 +180,7 @@ type Cont = [Frame]
 type Loc = Int
 
 -- | 'Store' represents a store, indexing integer locations to 'Cell's.
-data Store = Store {next :: Loc, mu :: IntMap Cell} deriving (Show, Eq)
+data Store = Store {next :: Loc, mu :: IntMap Cell} deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 -- | A memory cell can be in one of three states.
 data Cell
@@ -199,7 +204,7 @@ data Cell
     --   the 'Cell', so that subsequent lookups can just use it
     --   without recomputing anything.
     V Value
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
@@ -258,7 +263,7 @@ data CESK
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
     Waiting Integer CESK
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
@@ -373,3 +378,9 @@ instance Show RobotUpdate where show _ = "RobotUpdate {???}"
 instance Eq WorldUpdate where _ == _ = True
 
 instance Eq RobotUpdate where _ == _ = True
+
+-- TODO: remove these instances once Update fields are concret
+instance FromJSON WorldUpdate where parseJSON _ = pure $ WorldUpdate $ \w -> Right w
+instance ToJSON WorldUpdate where toJSON _ = Data.Aeson.Null
+instance FromJSON RobotUpdate where parseJSON _ = pure $ RobotUpdate id
+instance ToJSON RobotUpdate where toJSON _ = Data.Aeson.Null

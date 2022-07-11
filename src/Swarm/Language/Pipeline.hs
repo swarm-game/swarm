@@ -25,6 +25,7 @@ import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
 import Data.Yaml as Y
+import GHC.Generics (Generic)
 import Witch
 
 import Swarm.Language.Context
@@ -48,7 +49,7 @@ data ProcessedTerm
       -- ^ Requirements of the term
       ReqCtx
       -- ^ Capability context for any definitions embedded in the term
-  deriving (Data, Show)
+  deriving (Data, Show, Eq, Generic)
 
 instance FromJSON ProcessedTerm where
   parseJSON = withText "Term" tryProcess
@@ -58,6 +59,9 @@ instance FromJSON ProcessedTerm where
       Left err -> fail $ "Could not parse term: " ++ from err
       Right Nothing -> fail "Term was only whitespace"
       Right (Just pt) -> return pt
+
+instance ToJSON ProcessedTerm where
+  toJSON (ProcessedTerm t _ _ _) = String $ prettyText t
 
 -- | Given a 'Text' value representing a Swarm program,
 --

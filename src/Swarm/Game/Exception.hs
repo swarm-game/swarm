@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -19,10 +21,12 @@ module Swarm.Game.Exception (
 ) where
 
 import Control.Lens ((^.))
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Generics (Generic)
 import Witch (from)
 
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
@@ -53,7 +57,7 @@ data IncapableFix
     FixByInstall
   | -- | Add the missing device to your inventory
     FixByObtain
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | The type of exceptions that can be thrown by robot programs.
 data Exn
@@ -74,7 +78,7 @@ data Exn
     CmdFailed Const Text
   | -- | The user program explicitly called 'Undefined' or 'Fail'.
     User Text
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Pretty-print an exception for displaying to the player.
 formatExn :: EntityMap -> Exn -> Text

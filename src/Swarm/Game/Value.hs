@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 
 -- |
@@ -18,12 +20,14 @@ module Swarm.Game.Value (
   Env,
 ) where
 
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Bool (bool)
 import Data.List (foldl')
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
+import GHC.Generics (Generic)
 import Prelude
 
 import Swarm.Language.Context
@@ -82,7 +86,7 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Pretty-print a value.
 prettyValue :: Value -> Text

@@ -291,6 +291,7 @@ data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
   , entitiesByCap :: Map Capability [Entity]
   }
+  deriving (Generic, FromJSON, ToJSON)
 
 instance Semigroup EntityMap where
   EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)
@@ -475,7 +476,7 @@ data Inventory = Inventory
     -- and not having it as a key in the map at all.
     inventoryHash :: Int
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 instance Hashable Inventory where
   -- Just return cached hash value.
