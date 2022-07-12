@@ -42,7 +42,7 @@ instance FromJSON TerrainType where
 
 -- | Display a terrain type as a single charcter widget.
 displayTerrain :: TerrainType -> Widget n
-displayTerrain t = displayWidget Nothing (terrainMap ! t)
+displayTerrain t = displayWidget (terrainMap ! t)
 
 -- | A map containing a 'Display' record for each different 'TerrainType'.
 terrainMap :: Map TerrainType Display

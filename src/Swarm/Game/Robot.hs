@@ -86,12 +86,13 @@ import Swarm.Util ()
 import Swarm.Util.Yaml
 
 import Swarm.Game.CESK
-import Swarm.Game.Display (Display, defaultRobotDisplay)
+import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Types (TCtx)
 
 -- | A record that stores the information
@@ -197,9 +198,19 @@ robotCreatedAt :: Lens' Robot TimeSpec
 robotName :: Lens' Robot Text
 robotName = robotEntity . entityName
 
--- | The 'Display' of a robot.
+-- | The 'Display' of a robot.  This is a special lens that
+--   automatically sets the 'curOrientation' to the orientation of the
+--   robot every time you do a @get@ operation.  Technically this does
+--   not satisfy the lens laws---in particular, the get/put law does
+--   not hold.  But we should think of the 'curOrientation' as being
+--   simply a cache of the displayed entity's direction.
 robotDisplay :: Lens' Robot Display
-robotDisplay = robotEntity . entityDisplay
+robotDisplay = lens getDisplay setDisplay
+ where
+  getDisplay r =
+    (r ^. robotEntity . entityDisplay)
+      & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
+  setDisplay r d = r & robotEntity . entityDisplay .~ d
 
 -- | The robot's current location, represented as (x,y).
 robotLocation :: Lens' Robot (V2 Int64)

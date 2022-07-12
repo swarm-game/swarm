@@ -621,9 +621,7 @@ drawWorld g =
      in case M.lookup (W.coordsToLoc coords) robotsByLoc of
           Just r
             | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
-            | otherwise ->
-              withAttr (r ^. robotDisplay . displayAttr) $
-                str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
+            | otherwise -> displayWidget (r ^. robotDisplay)
           Nothing -> eWidget
 
 data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot

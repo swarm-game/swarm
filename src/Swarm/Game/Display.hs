@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -22,11 +20,12 @@ module Swarm.Game.Display (
   -- ** Fields
   defaultChar,
   orientationMap,
+  curOrientation,
   displayAttr,
   displayPriority,
 
-  -- ** Lookup
-  lookupDisplay,
+  -- ** Rendering
+  displayChar,
   displayWidget,
 
   -- ** Construction
@@ -60,6 +59,7 @@ instance Hashable AttrName
 data Display = Display
   { _defaultChar :: Char
   , _orientationMap :: Map Direction Char
+  , _curOrientation :: Maybe Direction
   , _displayAttr :: AttrName
   , _displayPriority :: Priority
   }
@@ -76,6 +76,10 @@ defaultChar :: Lens' Display Char
 --   the 'defaultChar' will be used.
 orientationMap :: Lens' Display (Map Direction Char)
 
+-- | The display caches the current orientation of the entity, so we
+--   know which character to use from the orientation map.
+curOrientation :: Lens' Display (Maybe Direction)
+
 -- | The attribute to use for display.
 displayAttr :: Lens' Display AttrName
 
@@ -88,6 +92,7 @@ instance FromJSON Display where
     Display
       <$> v .: "char"
       <*> v .:? "orientationMap" .!= M.empty
+      <*> v .:? "curOrientation"
       <*> v .:? "attr" .!= entityAttr
       <*> v .:? "priority" .!= 1
 
@@ -100,16 +105,15 @@ instance ToJSON Display where
       ]
         ++ ["orientationMap" .= (d ^. orientationMap) | not (M.null (d ^. orientationMap))]
 
--- | Look up the character that should be used for a display, possibly
---   given an orientation as input.
-lookupDisplay :: Maybe Direction -> Display -> Char
-lookupDisplay Nothing disp = disp ^. defaultChar
-lookupDisplay (Just v) disp = M.lookup v (disp ^. orientationMap) ? (disp ^. defaultChar)
+-- | Look up the character that should be used for a display.
+displayChar :: Display -> Char
+displayChar disp = case disp ^. curOrientation of
+  Nothing -> disp ^. defaultChar
+  Just dir -> M.lookup dir (disp ^. orientationMap) ? (disp ^. defaultChar)
 
--- | Given the (optional) orientation of an entity and its display,
---   return a widget showing the entity.
-displayWidget :: Maybe Direction -> Display -> Widget n
-displayWidget orient disp = withAttr (disp ^. displayAttr) $ str [lookupDisplay orient disp]
+-- | Render a display as a UI widget.
+displayWidget :: Display -> Widget n
+displayWidget disp = withAttr (disp ^. displayAttr) $ str [displayChar disp]
 
 -- | The default way to display some terrain using the given character
 --   and attribute, with priority 0.
@@ -126,15 +130,17 @@ defaultEntityDisplay c =
   Display
     { _defaultChar = c
     , _orientationMap = M.empty
+    , _curOrientation = Nothing
     , _displayAttr = entityAttr
     , _displayPriority = 1
     }
 
--- | Construct a default robot display, with display characters
---   @"X^>v<"@, the default robot attribute, and priority 10.
+-- | Construct a default robot display for a given orientation, with
+--   display characters @"X^>v<"@, the default robot attribute, and
+--   priority 10.
 --
--- Note that the 'defaultChar' is used for direction 'DDown'
--- and is overriden for the special base robot.
+--   Note that the 'defaultChar' is used for direction 'DDown'
+--   and is overriden for the special base robot.
 defaultRobotDisplay :: Display
 defaultRobotDisplay =
   Display
@@ -146,6 +152,7 @@ defaultRobotDisplay =
           , (DSouth, 'v')
           , (DNorth, '^')
           ]
+    , _curOrientation = Nothing
     , _displayAttr = robotAttr
     , _displayPriority = 10
     }

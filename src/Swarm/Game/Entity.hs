@@ -110,7 +110,6 @@ import Swarm.Util.Yaml
 
 import Swarm.Game.Display
 import Swarm.Language.Capability
-import Swarm.Language.Syntax (toDirection)
 import Swarm.Util (plural, reflow, (?))
 
 import Paths_swarm
@@ -449,7 +448,7 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 
 -- | Display an entity as a single character.
 displayEntity :: Entity -> Widget n
-displayEntity e = displayWidget ((e ^. entityOrientation) >>= toDirection) (e ^. entityDisplay)
+displayEntity e = displayWidget (e ^. entityDisplay)
 
 ------------------------------------------------------------
 -- Inventory
