@@ -23,6 +23,7 @@ module Swarm.Game.Display (
   curOrientation,
   displayAttr,
   displayPriority,
+  invisible,
 
   -- ** Rendering
   displayChar,
@@ -63,11 +64,15 @@ data Display = Display
   , _curOrientation :: Maybe Direction
   , _displayAttr :: AttrName
   , _displayPriority :: Priority
+  , _invisible :: Bool
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
 
 instance Semigroup Display where
-  (<>) = maxOn _displayPriority
+  d1 <> d2
+    | _invisible d1 = d2
+    | _invisible d2 = d1
+    | otherwise = maxOn _displayPriority d1 d2
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Display
 
@@ -91,14 +96,18 @@ displayAttr :: Lens' Display AttrName
 --   on top of lower.
 displayPriority :: Lens' Display Priority
 
+-- | Whether the entity is currently invisible.
+invisible :: Lens' Display Bool
+
 instance FromJSON Display where
   parseJSON = withObject "Display" $ \v ->
     Display
-      <$> v .: "char"
+      <$> v .:? "char" .!= ' '
       <*> v .:? "orientationMap" .!= M.empty
       <*> v .:? "curOrientation"
       <*> v .:? "attr" .!= entityAttr
       <*> v .:? "priority" .!= 1
+      <*> v .:? "invisible" .!= False
 
 instance ToJSON Display where
   toJSON d =
@@ -108,6 +117,7 @@ instance ToJSON Display where
       , "priority" .= (d ^. displayPriority)
       ]
         ++ ["orientationMap" .= (d ^. orientationMap) | not (M.null (d ^. orientationMap))]
+        ++ ["invisible" .= (d ^. invisible) | d ^. invisible]
 
 -- | Look up the character that should be used for a display.
 displayChar :: Display -> Char
@@ -142,6 +152,7 @@ defaultEntityDisplay c =
     , _curOrientation = Nothing
     , _displayAttr = entityAttr
     , _displayPriority = 1
+    , _invisible = False
     }
 
 -- | Construct a default robot display for a given orientation, with
@@ -164,4 +175,8 @@ defaultRobotDisplay =
     , _curOrientation = Nothing
     , _displayAttr = robotAttr
     , _displayPriority = 10
+    , _invisible = False
     }
+
+instance Monoid Display where
+  mempty = defaultEntityDisplay ' ' & invisible .~ True
