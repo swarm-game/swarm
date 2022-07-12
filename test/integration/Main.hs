@@ -180,6 +180,7 @@ testScenarioSolution _ci _em =
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
             ]
+        , testSolution Default "Testing/555-teleport-location"
         ]
     ]
  where
