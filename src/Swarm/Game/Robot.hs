@@ -41,6 +41,7 @@ module Swarm.Game.Robot (
   robotCreatedAt,
   robotDisplay,
   robotLocation,
+  unsafeSetRobotLocation,
   robotOrientation,
   robotInventory,
   installedDevices,
@@ -159,7 +160,7 @@ deriving instance Show (f RID) => Show (RobotR f)
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID]
+let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID, '_robotLocation]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -212,8 +213,19 @@ robotDisplay = lens getDisplay setDisplay
       & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
   setDisplay r d = r & robotEntity . entityDisplay .~ d
 
--- | The robot's current location, represented as (x,y).
-robotLocation :: Lens' Robot (V2 Int64)
+-- | The robot's current location, represented as (x,y).  This is only
+--   a getter, since when changing a robot's location we must remember
+--   to update the 'robotsByLocation' map as well.  You can use the
+--   'updateRobotLocation' function for this purpose.
+robotLocation :: Getter Robot (V2 Int64)
+robotLocation = to _robotLocation
+
+-- | Set a robot's location.  This is unsafe and should never be
+--   called directly except by the 'updateRobotLocation' function.
+--   The reason is that we need to make sure the 'robotsByLocation'
+--   map stays in sync.
+unsafeSetRobotLocation :: V2 Int64 -> Robot -> Robot
+unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | Which way the robot is currently facing.
 robotOrientation :: Lens' Robot (Maybe (V2 Int64))
