@@ -448,7 +448,7 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 
 -- | Display an entity as a single character.
 displayEntity :: Entity -> Widget n
-displayEntity e = displayWidget (e ^. entityDisplay)
+displayEntity e = renderDisplay (e ^. entityDisplay)
 
 ------------------------------------------------------------
 -- Inventory

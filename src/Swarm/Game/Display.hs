@@ -26,7 +26,8 @@ module Swarm.Game.Display (
 
   -- ** Rendering
   displayChar,
-  displayWidget,
+  renderDisplay,
+  hidden,
 
   -- ** Construction
   defaultTerrainDisplay,
@@ -64,6 +65,9 @@ data Display = Display
   , _displayPriority :: Priority
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
+
+instance Semigroup Display where
+  (<>) = maxOn _displayPriority
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Display
 
@@ -112,8 +116,13 @@ displayChar disp = case disp ^. curOrientation of
   Just dir -> M.lookup dir (disp ^. orientationMap) ? (disp ^. defaultChar)
 
 -- | Render a display as a UI widget.
-displayWidget :: Display -> Widget n
-displayWidget disp = withAttr (disp ^. displayAttr) $ str [displayChar disp]
+renderDisplay :: Display -> Widget n
+renderDisplay disp = withAttr (disp ^. displayAttr) $ str [displayChar disp]
+
+-- | Modify a display to use a @?@ character for entities that are
+--   hidden/unknown.
+hidden :: Display -> Display
+hidden = (defaultChar .~ '?') . (curOrientation .~ Nothing)
 
 -- | The default way to display some terrain using the given character
 --   and attribute, with priority 0.

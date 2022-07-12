@@ -9,13 +9,11 @@
 module Swarm.Game.Terrain (
   -- * Terrain
   TerrainType (..),
-  displayTerrain,
   terrainMap,
 ) where
 
-import Brick (Widget)
 import Data.Aeson (FromJSON (..), withText)
-import Data.Map (Map, (!))
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Text.Read (readMaybe)
@@ -39,10 +37,6 @@ instance FromJSON TerrainType where
     case readMaybe (into @String (T.toTitle t) ++ "T") of
       Just ter -> return ter
       Nothing -> fail $ "Unknown terrain type: " ++ into @String t
-
--- | Display a terrain type as a single charcter widget.
-displayTerrain :: TerrainType -> Widget n
-displayTerrain t = displayWidget (terrainMap ! t)
 
 -- | A map containing a 'Display' record for each different 'TerrainType'.
 terrainMap :: Map TerrainType Display

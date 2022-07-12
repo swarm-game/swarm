@@ -28,7 +28,7 @@ import Data.IntSet qualified as IS
 import Data.List (find)
 import Data.List qualified as L
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -1314,11 +1314,8 @@ execConst c vs s k = do
     Salvage -> case vs of
       [] -> do
         loc <- use robotLocation
-        rm <- use robotMap
-        robotSet <- use (robotsByLocation . at loc)
-        let robotIDList = maybe [] IS.toList robotSet
-            mtarget = find okToSalvage . mapMaybe (`IM.lookup` rm) $ robotIDList
-            okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
+        let okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
+        mtarget <- gets (find okToSalvage . robotsAtLocation loc)
         case mtarget of
           Nothing -> return $ Out VUnit s k -- Nothing to salvage
           Just target -> do

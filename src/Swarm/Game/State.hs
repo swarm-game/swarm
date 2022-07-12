@@ -34,6 +34,7 @@ module Swarm.Game.State (
   paused,
   robotMap,
   robotsByLocation,
+  robotsAtLocation,
   activeRobots,
   waitingRobots,
   availableRecipes,
@@ -100,7 +101,7 @@ import Data.IntSet.Lens (setOf)
 import Data.List (partition)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
@@ -297,6 +298,15 @@ robotMap :: Lens' GameState (IntMap Robot)
 --   Fortunately, there are relatively few ways for these things to
 --   happen.
 robotsByLocation :: Lens' GameState (Map (V2 Int64) IntSet)
+
+-- | Get a list of all the robots at a particular location.
+robotsAtLocation :: V2 Int64 -> GameState -> [Robot]
+robotsAtLocation loc gs =
+  mapMaybe (`IM.lookup` (gs ^. robotMap))
+    . maybe [] IS.toList
+    . M.lookup loc
+    . view robotsByLocation
+    $ gs
 
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
