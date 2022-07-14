@@ -73,6 +73,7 @@
                "scan"
                "upload"
                "ishere"
+               "meet"
                "whoami"
                "setname"
                "random"

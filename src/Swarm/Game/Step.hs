@@ -1105,6 +1105,20 @@ execConst c vs s k = do
           Nothing -> return $ Out (VBool False) s k
           Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower name)) s k
       _ -> badConst
+    Meet -> case vs of
+      [] -> do
+        myID <- use robotID
+        loc <- use robotLocation
+        let meetable r =
+              (r ^. robotID /= myID)
+                && not (r ^. robotDisplay . invisible)
+                && not (r ^. systemRobot)
+
+        mfriend <- gets (find meetable . robotsAtLocation loc)
+        case mfriend of
+          Nothing -> return $ Out (VInj False VUnit) s k
+          Just friend -> return $ Out (VInj True (VRobot (friend ^. robotID))) s k
+      _ -> badConst
     Self -> do
       rid <- use robotID
       return $ Out (VRobot rid) s k

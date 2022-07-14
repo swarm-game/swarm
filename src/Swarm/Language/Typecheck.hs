@@ -457,6 +457,7 @@ inferConst c = case c of
   Scan -> [tyQ| dir -> cmd (() + string) |]
   Upload -> [tyQ| robot -> cmd () |]
   Ishere -> [tyQ| string -> cmd bool |]
+  Meet -> [tyQ| cmd (() + robot) |]
   Self -> [tyQ| robot |]
   Parent -> [tyQ| robot |]
   Base -> [tyQ| robot |]

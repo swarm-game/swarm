@@ -207,3 +207,4 @@ constCaps = \case
   Snd -> Nothing
   Try -> Nothing -- XXX these definitely need to require something.
   Knows -> Nothing
+  Meet -> Nothing

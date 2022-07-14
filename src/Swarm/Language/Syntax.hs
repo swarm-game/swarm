@@ -259,6 +259,8 @@ data Const
     Upload
   | -- | See if a specific entity is here. (This may be removed.)
     Ishere
+  | -- | See if another robot is nearby.
+    Meet
   | -- | Get a reference to oneself
     Self
   | -- | Get the robot's parent
@@ -525,6 +527,7 @@ constInfo c = case c of
       ]
   Upload -> commandLow 1 "Upload a robot's known entities and log to another robot."
   Ishere -> commandLow 1 "See if a specific entity is in the current location."
+  Meet -> commandLow 0 "Get a reference to a nearby robot, if any."
   Self -> functionLow 0 "Get a reference to the current robot."
   Parent -> functionLow 0 "Get a reference to the robot's parent."
   Base -> functionLow 0 "Get a reference to the base."
