@@ -231,7 +231,7 @@ data TypeErr
 
 -- | Various reasons the body of an @atomic@ might be invalid.
 data InvalidAtomicReason
-  = -- | The arugment has too many external commands.
+  = -- | The arugment has too many tangible commands.
     TooManyTicks Int
   | -- | The argument uses some way to duplicate code: @def@, @let@, or lambda.
     AtomicDupingThing
@@ -562,7 +562,7 @@ check t ty = do
 --   linear in the size of the code.
 --
 --   We also ensure that the atomic block takes at most one tick,
---   i.e. contains at most one external command. For example, @atomic
+--   i.e. contains at most one tangible command. For example, @atomic
 --   {move; move}@ is invalid, since that would allow robots to move
 --   twice as fast as usual by doing both actions in one tick.
 validAtomic :: Syntax -> Infer ()
@@ -572,13 +572,13 @@ validAtomic s@(Syntax l t) = do
 
 -- | Analyze an argument to @atomic@: ensure it contains no nested
 --   atomic blocks and no references to external variables, and count
---   how many external commands it will execute.
+--   how many tangible commands it will execute.
 analyzeAtomic :: Set Var -> Syntax -> Infer Int
 analyzeAtomic locals (Syntax l t) = case t of
   TUnit {} -> return 0
   -- No nested 'atomic' allowed!
   TConst Atomic -> throwError (InvalidAtomic l NestedAtomic t)
-  TConst c -> return $ if isExternal c then 1 else 0
+  TConst c -> return $ if isTangible c then 1 else 0
   TDir {} -> return 0
   TInt {} -> return 0
   TAntiInt {} -> return 0
@@ -589,7 +589,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
   SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
-  -- Special case for if: number of ticks needed is *max* of branches
+  -- Special case for if: number of tangible commands is *max* of branches
   -- instead of sum, since exactly one of them will be executed
   SApp (STerm (SApp (STerm (SApp (STerm (TConst If)) tst)) thn)) els ->
     (+) <$> analyzeAtomic locals tst <*> (max <$> analyzeAtomic locals thn <*> analyzeAtomic locals els)

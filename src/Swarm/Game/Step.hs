@@ -334,7 +334,7 @@ withExceptions s k m = do
 ------------------------------------------------------------
 
 -- | Run a robot for one tick, which may consist of up to
---   'evalStepsPerTick' CESK machine steps and at most one external
+--   'robotStepsPerTick' CESK machine steps and at most one tangible
 --   command execution, whichever comes first.
 tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobot r = do
@@ -498,7 +498,7 @@ stepCESK cesk = case cesk of
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) s (FExec : k) -> do
-    when (isExternal c) $ tickSteps .= 0
+    when (isTangible c) $ tickSteps .= 0
     evalConst c (reverse args) s k
 
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.

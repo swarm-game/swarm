@@ -41,7 +41,7 @@ module Swarm.Language.Syntax (
   isUserFunc,
   isOperator,
   isBuiltinFunction,
-  isExternal,
+  isTangible,
 
   -- * Syntax
   Syntax (..),
@@ -375,7 +375,7 @@ data ConstInfo = ConstInfo
   , fixity :: Int
   , constMeta :: ConstMeta
   , constDoc :: ConstDoc
-  , facing :: Facing
+  , tangibility :: Tangibility
   }
   deriving (Eq, Ord, Show)
 
@@ -412,13 +412,13 @@ data MUnAssoc
     S
   deriving (Eq, Ord, Show)
 
--- | Whether a command is internal or external.  External
+-- | Whether a command is tangible or not.  Tangible
 --   commands have some kind of effect on the external world; at most
---   one external command can be executed per tick.  Internal commands
+--   one tangible command can be executed per tick.  Intangible commands
 --   are things like sensing commands, or commands that solely modify
---   a robot's internal state; multiple internal commands may be
+--   a robot's internal state; multiple intangible commands may be
 --   executed per tick.
-data Facing = Internal | External
+data Tangibility = Intangible | Tangible
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
@@ -465,11 +465,11 @@ isBuiltinFunction c = case constMeta $ constInfo c of
   ConstMFunc _ cmd -> not cmd
   _ -> False
 
--- | Whether the constant is an /external/ command, that has an
---   external effect on the world.  At most one external command may be
+-- | Whether the constant is a /tangible/ command, that has an
+--   external effect on the world.  At most one tangible command may be
 --   executed per tick.
-isExternal :: Const -> Bool
-isExternal = (== External) . facing . constInfo
+isTangible :: Const -> Bool
+isTangible = (== Tangible) . tangibility . constInfo
 
 -- | Information about constants used in parsing and pretty printing.
 --
@@ -478,87 +478,87 @@ isExternal = (== External) . facing . constInfo
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> command 0 External "Wait for a number of time steps."
+  Wait -> command 0 Tangible "Wait for a number of time steps."
   Noop ->
-    command 0 Internal . doc "Do nothing." $
+    command 0 Intangible . doc "Do nothing." $
       [ "This is different than `Wait` in that it does not take up a time step."
       , "It is useful for commands like if, which requires you to provide both branches."
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    command 0 External . doc "Self-destruct the robot." $
+    command 0 Tangible . doc "Self-destruct the robot." $
       [ "Useful to not clutter the world."
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
-  Move -> command 0 External "Move forward one step."
-  Turn -> command 1 External "Turn in some direction."
-  Grab -> command 0 External "Grab an item from the current location."
+  Move -> command 0 Tangible "Move forward one step."
+  Turn -> command 1 Tangible "Turn in some direction."
+  Grab -> command 0 Tangible "Grab an item from the current location."
   Harvest ->
-    command 0 External . doc "Harvest an item from the current location." $
+    command 0 Tangible . doc "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
       ]
   Place ->
-    command 1 External . doc "Place an item at the current location." $
+    command 1 Tangible . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Give -> command 2 External "Give an item to another robot nearby."
-  Install -> command 2 External "Install a device from inventory on a robot."
-  Make -> command 1 External "Make an item using a recipe."
-  Has -> command 1 Internal "Sense whether the robot has a given item in its inventory."
-  Installed -> command 1 Internal "Sense whether the robot has a specific device installed."
-  Count -> command 1 Internal "Get the count of a given item in a robot's inventory."
+  Give -> command 2 Tangible "Give an item to another robot nearby."
+  Install -> command 2 Tangible "Install a device from inventory on a robot."
+  Make -> command 1 Tangible "Make an item using a recipe."
+  Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
+  Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."
+  Count -> command 1 Intangible "Get the count of a given item in a robot's inventory."
   Reprogram ->
-    command 2 External . doc "Reprogram another robot with a new command." $
+    command 2 Tangible . doc "Reprogram another robot with a new command." $
       ["The other robot has to be nearby and idle."]
   Drill ->
-    command 1 External . doc "Drill through an entity." $
+    command 1 Tangible . doc "Drill through an entity." $
       [ "Usually you want to `drill forward` when exploring to clear out obstacles."
       , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
       ]
   Build ->
-    command 1 External . doc "Construct a new robot." $
+    command 1 Tangible . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
       , "If the command requires devices they will be installed from your inventory."
       ]
   Salvage ->
-    command 0 External . doc "Deconstruct an old robot." $
+    command 0 Tangible . doc "Deconstruct an old robot." $
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
-    command 1 External . doc "Emit a message." $ -- TODO: #513
+    command 1 Tangible . doc "Emit a message." $ -- TODO: #513
       [ "The message will be in a global log, which you can not currently view."
       , "https://github.com/swarm-game/swarm/issues/513"
       ]
-  Log -> command 1 Internal "Log the string in the robot's logger."
-  View -> command 1 External "View the given robot."
+  Log -> command 1 Intangible "Log the string in the robot's logger."
+  View -> command 1 Tangible "View the given robot."
   Appear ->
-    command 1 External . doc "Set how the robot is displayed." $
+    command 1 Tangible . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
       , "The default is \"X^>v<\"."
       ]
   Create ->
-    command 1 External . doc "Create an item out of thin air." $
+    command 1 Tangible . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
-  Whereami -> command 0 Internal "Get the current x and y coordinates."
-  Blocked -> command 0 Internal "See if the robot can move forward."
+  Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
-    command 0 Internal . doc "Scan a nearby location for entities." $
+    command 0 Intangible . doc "Scan a nearby location for entities." $
       [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
-  Upload -> command 1 External "Upload a robot's known entities and log to another robot."
-  Ishere -> command 1 Internal "See if a specific entity is in the current location."
+  Upload -> command 1 Tangible "Upload a robot's known entities and log to another robot."
+  Ishere -> command 1 Intangible "See if a specific entity is in the current location."
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."
-  Whoami -> command 0 Internal "Get the robot's display name."
-  Setname -> command 1 External "Set the robot's display name."
+  Whoami -> command 0 Intangible "Get the robot's display name."
+  Setname -> command 1 Tangible "Set the robot's display name."
   Random ->
-    command 1 Internal . doc "Get a uniformly random integer." $
+    command 1 Intangible . doc "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
-  Run -> command 1 External "Run a program loaded from a file."
-  Return -> command 1 Internal "Make the value a result in `cmd`."
-  Try -> command 2 Internal "Execute a command, catching errors."
+  Run -> command 1 Tangible "Run a program loaded from a file."
+  Return -> command 1 Intangible "Make the value a result in `cmd`."
+  Try -> command 2 Intangible "Execute a command, catching errors."
   Undefined -> function 0 "A value of any type, that is evaluated as error."
   Fail -> function 1 "A value of any type, that is evaluated as error with message."
   If ->
@@ -594,14 +594,14 @@ constInfo c = case c of
       , "`f $ g $ h x = f (g (h x))`"
       ]
   Atomic ->
-    command 1 Internal . doc "Execute a block of commands atomically." $
+    command 1 Intangible . doc "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
       ]
-  Teleport -> command 2 External "Teleport a robot to the given location."
-  As -> command 2 External "Hypothetically run a command as if you were another robot."
-  RobotNamed -> command 1 Internal "Find a robot by name."
-  RobotNumbered -> command 1 Internal "Find a robot by number."
-  Knows -> command 1 Internal "Check if the robot knows about an entity."
+  Teleport -> command 2 Tangible "Teleport a robot to the given location."
+  As -> command 2 Tangible "Hypothetically run a command as if you were another robot."
+  RobotNamed -> command 1 Intangible "Find a robot by name."
+  RobotNumbered -> command 1 Intangible "Find a robot by number."
+  Knows -> command 1 Intangible "Check if the robot knows about an entity."
  where
   doc b ls = ConstDoc b (T.unlines ls)
   unaryOp s p side d =
@@ -610,7 +610,7 @@ constInfo c = case c of
       , fixity = p
       , constMeta = ConstMUnOp side
       , constDoc = d
-      , facing = Internal
+      , tangibility = Intangible
       }
   binaryOp s p side d =
     ConstInfo
@@ -618,7 +618,7 @@ constInfo c = case c of
       , fixity = p
       , constMeta = ConstMBinOp side
       , constDoc = d
-      , facing = Internal
+      , tangibility = Intangible
       }
   command a f d =
     ConstInfo
@@ -626,7 +626,7 @@ constInfo c = case c of
       , fixity = 11
       , constMeta = ConstMFunc a True
       , constDoc = d
-      , facing = f
+      , tangibility = f
       }
   function a d =
     ConstInfo
@@ -634,7 +634,7 @@ constInfo c = case c of
       , fixity = 11
       , constMeta = ConstMFunc a False
       , constDoc = d
-      , facing = Internal
+      , tangibility = Intangible
       }
 
 -- | Make infix operation, discarding any syntax related location
