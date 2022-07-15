@@ -563,7 +563,7 @@ check t ty = do
 --
 --   We also ensure that the atomic block takes at most one tick,
 --   i.e. contains at most one tangible command. For example, @atomic
---   {move; move}@ is invalid, since that would allow robots to move
+--   (move; move)@ is invalid, since that would allow robots to move
 --   twice as fast as usual by doing both actions in one tick.
 validAtomic :: Syntax -> Infer ()
 validAtomic s@(Syntax l t) = do
