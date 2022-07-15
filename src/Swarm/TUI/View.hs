@@ -419,11 +419,12 @@ robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
   isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation) basePos < 32
   robots :: [Robot]
   robots =
-    filter (\robot -> cheat || (isRelevant robot && isNear robot))
+    filter (\robot -> debugging || (isRelevant robot && isNear robot))
       . IM.elems
       $ g ^. robotMap
   creative = g ^. creativeMode
   cheat = s ^. uiState . uiCheatMode
+  debugging = creative && cheat
   g = s ^. gameState
 
 helpWidget :: Widget Name
