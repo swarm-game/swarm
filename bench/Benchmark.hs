@@ -9,7 +9,7 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Criterion.Main (Benchmark, bench, bgroup, defaultConfig, defaultMainWith, whnfAppIO)
 import Criterion.Types (Config (timeLimit))
-import qualified Data.Functor.Const as F
+import Data.Functor.Const qualified as F
 import Data.Int (Int64)
 import Linear.V2 (V2 (V2))
 import Swarm.Game.CESK (emptyStore, initMachine)
@@ -19,7 +19,7 @@ import Swarm.Game.State (GameState, addURobot, classicGame0, creativeMode, world
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.World (newWorld)
-import qualified Swarm.Language.Context as Context
+import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (north)
@@ -72,7 +72,7 @@ circlerProgram =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> V2 Int64 -> URobot
-initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False
+initRobot prog loc = mkRobot (F.Const ()) Nothing "" [] north loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.

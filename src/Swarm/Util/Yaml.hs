@@ -1,9 +1,5 @@
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -36,7 +32,7 @@ import Data.Aeson.Types (explicitParseField, explicitParseFieldMaybe)
 import Data.Bifunctor (first)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 import Data.Yaml as Y
 
 ------------------------------------------------------------

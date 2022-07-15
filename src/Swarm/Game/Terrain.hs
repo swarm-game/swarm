@@ -1,6 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
-
 -- |
 -- Module      :  Swarm.Game.Terrain
 -- Copyright   :  Brent Yorgey
@@ -19,8 +16,8 @@ module Swarm.Game.Terrain (
 import Brick (Widget)
 import Data.Aeson (FromJSON (..), withText)
 import Data.Map (Map, (!))
-import qualified Data.Map as M
-import qualified Data.Text as T
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Text.Read (readMaybe)
 import Witch (into)
 
@@ -51,9 +48,9 @@ displayTerrain t = displayWidget Nothing (terrainMap ! t)
 terrainMap :: Map TerrainType Display
 terrainMap =
   M.fromList
-    [ (StoneT, defaultTerrainDisplay '░' rockAttr)
-    , (DirtT, defaultTerrainDisplay '░' dirtAttr)
-    , (GrassT, defaultTerrainDisplay '░' grassAttr)
+    [ (StoneT, defaultTerrainDisplay '▒' rockAttr)
+    , (DirtT, defaultTerrainDisplay '▒' dirtAttr)
+    , (GrassT, defaultTerrainDisplay '▒' grassAttr)
     , (IceT, defaultTerrainDisplay ' ' iceAttr)
     , (BlankT, defaultTerrainDisplay ' ' defAttr)
     ]

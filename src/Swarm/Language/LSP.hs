@@ -16,14 +16,14 @@ import Control.Monad (void)
 import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text.IO as Text
+import Data.Text.IO qualified as Text
 import System.IO (stderr)
 import Witch
 
 import Language.LSP.Diagnostics
 import Language.LSP.Server
-import qualified Language.LSP.Types as J
-import qualified Language.LSP.Types.Lens as J
+import Language.LSP.Types qualified as J
+import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
 
 import Swarm.Language.Parse

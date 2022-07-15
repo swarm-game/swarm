@@ -8,7 +8,7 @@ main = do
   txt' <- (traverse . traverse) replace txt
   writeFile "logo.txt" (unlines txt')
 
-chars = "<^>vT~@░ "
+chars = "<^>vT~@▒ "
 
 replace :: Char -> IO Char
 replace ' ' = pick $ zip (replicate 8 0.005 ++ [1]) chars

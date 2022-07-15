@@ -1,5 +1,3 @@
-{-# LANGUAGE NumericUnderscores #-}
-
 -- |
 -- Module      :  Swarm.App
 -- Copyright   :  Brent Yorgey
@@ -14,10 +12,10 @@ import Control.Concurrent (forkIO, threadDelay)
 
 import Brick
 import Brick.BChan
-import qualified Graphics.Vty as V
+import Graphics.Vty qualified as V
 
 import Control.Monad.Except
-import qualified Data.Text.IO as T
+import Data.Text.IO qualified as T
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
@@ -66,6 +64,7 @@ appMain seed scenario toRun cheat = do
 
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
+      V.setMode (V.outputIface initialVty) V.Mouse True
       void $ customMain initialVty buildVty (Just chan) app s
 
 -- | If available for the terminal emulator, enable bracketed paste mode.

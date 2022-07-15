@@ -1,0 +1,42 @@
+name: Require entities
+description: |
+  Require some entities using the 'require' command.
+  https://github.com/swarm-game/swarm/issues/201
+win: |
+  try {
+    r <- robotNumbered 1;
+    r1 <- as r {count "rock"};
+    r0 <- as base {count "rock"};
+    return (r0 == 5 && r1 == 3);
+  } { return false }
+solution: |
+  build { require 5 "rock"; move; place "rock"; move; place "rock" }
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - 3D printer
+      - logger
+      - dictionary
+    inventory:
+      - [10, rock]
+      - [1, solar panel]
+      - [1, treads]
+      - [1, grabber]
+      - [1, logger]
+world:
+  default: [blank, null]
+  palette:
+    '.': [grass, null]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │...│
+    └───┘

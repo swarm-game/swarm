@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -17,9 +15,10 @@ import Data.Enumeration
 import Data.Hash.Murmur
 import Data.Int (Int64)
 import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Numeric.Noise.Perlin
 import Witch
 
@@ -45,6 +44,28 @@ data Hardness = Soft | Hard deriving (Eq, Ord, Show, Read)
 data Origin = Natural | Artificial deriving (Eq, Ord, Show, Read)
 type Seed = Int
 
+testWorld2Entites :: S.Set Text
+testWorld2Entites =
+  S.fromList
+    [ "mountain"
+    , "boulder"
+    , "LaTeX"
+    , "tree"
+    , "rock"
+    , "sand"
+    , "wavy water"
+    , "water"
+    , "flower"
+    , "bit (0)"
+    , "bit (1)"
+    , "Linux"
+    , "lambda"
+    , "pixel (R)"
+    , "pixel (G)"
+    , "pixel (B)"
+    , "copper ore"
+    ]
+
 -- | A more featureful test world.
 testWorld2 :: Seed -> WorldFun TerrainType Text
 testWorld2 baseSeed (Coords ix@(r, c)) =
@@ -58,7 +79,10 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
   genBiome Big Hard Natural
     | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
     | h `mod` 30 == 0 = (StoneT, Just "boulder")
-    | sample ix cl0 > 0 = (DirtT, Just "tree")
+    | sample ix cl0 > 0 =
+      case h `mod` 30 of
+        1 -> (DirtT, Just "LaTeX")
+        _ -> (DirtT, Just "tree")
     | otherwise = (GrassT, Nothing)
   genBiome Small Hard Natural
     | h `mod` 10 == 0 = (StoneT, Just "rock")
@@ -74,7 +98,7 @@ testWorld2 baseSeed (Coords ix@(r, c)) =
     | h `mod` 10 == 0 = (GrassT, Just (T.concat ["bit (", from (show ((r + c) `mod` 2)), ")"]))
     | otherwise = (GrassT, Nothing)
   genBiome Big Soft Artificial
-    | h `mod` 5000 == 0 = (DirtT, Just "linux")
+    | h `mod` 5000 == 0 = (DirtT, Just "Linux")
     | sample ix cl0 > 0.5 = (GrassT, Nothing)
     | otherwise = (DirtT, Nothing)
   genBiome Small Hard Artificial
@@ -113,17 +137,47 @@ testWorld2FromArray arr seed co@(Coords (r, c))
   tw2 = testWorld2 seed
   bnds = bounds arr
 
--- | Offset the world so the base starts on empty spot next to tree and grass.
-findGoodOrigin :: WorldFun t Text -> WorldFun t Text
-findGoodOrigin f = \(Coords (r, c)) -> f (Coords (r + rOffset, c + cOffset))
+-- | Offset a world by a multiple of the @skip@ in such a way that it
+--   satisfies the given predicate.
+findOffset :: Integer -> (WorldFun t Text -> Bool) -> WorldFun t Text -> WorldFun t Text
+findOffset skip isGood f = f'
  where
-  int' :: Enumeration Int64
-  int' = fromIntegral <$> int
-  (rOffset, cOffset) = fromMaybe (error "the impossible happened, no offsets were found") offsets
-  offsets = find isGoodPlace (enumerate (int' >< int'))
-  hasEntity mayE = (== mayE) . snd . f . Coords
-  isGoodPlace cs =
-    hasEntity Nothing cs
-      && any (hasEntity (Just "tree")) (neighbors cs)
-      && all (\c -> hasEntity (Just "tree") c || hasEntity Nothing c) (neighbors cs)
-  neighbors (x, y) = (,) <$> [x, x - 1, x + 1] <*> [y, y - 1, y + 1]
+  offset :: Enumeration Int64
+  offset = fromIntegral . (skip *) <$> int
+
+  f' =
+    fromMaybe (error "the impossible happened, no offsets were found!")
+      . find isGood
+      . map shift
+      . enumerate
+      $ offset >< offset
+
+  shift (dr, dc) (Coords (r, c)) = f (Coords (r - dr, c - dc))
+
+-- | Offset the world so the base starts in a 32x32 patch containing at least one
+--   of each of a list of required entities.
+findPatchWith :: [Text] -> WorldFun t Text -> WorldFun t Text
+findPatchWith reqs = findOffset 32 isGoodPatch
+ where
+  patchCoords = [(r, c) | r <- [-16 .. 16], c <- [-16 .. 16]]
+  isGoodPatch f = all (`S.member` es) reqs
+   where
+    es = S.fromList . mapMaybe (snd . f . Coords) $ patchCoords
+
+-- | Offset the world so the base starts on empty spot next to tree and grass.
+findTreeOffset :: WorldFun t Text -> WorldFun t Text
+findTreeOffset = findOffset 1 isGoodPlace
+ where
+  isGoodPlace f =
+    hasEntity Nothing (0, 0)
+      && any (hasEntity (Just "tree")) neighbors
+      && all (\c -> hasEntity (Just "tree") c || hasEntity Nothing c) neighbors
+   where
+    hasEntity mayE = (== mayE) . snd . f . Coords
+
+  neighbors = [(r, c) | r <- [-1 .. 1], c <- [-1 .. 1]]
+
+-- | Offset the world so the base starts in a good patch (near
+--   necessary items), next to a tree.
+findGoodOrigin :: WorldFun t Text -> WorldFun t Text
+findGoodOrigin = findTreeOffset . findPatchWith ["tree", "copper ore", "bit (0)", "bit (1)", "rock", "lambda", "water", "sand"]

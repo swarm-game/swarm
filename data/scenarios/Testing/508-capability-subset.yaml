@@ -1,0 +1,70 @@
+name: Install one device
+description: |
+  Install least amount of devices that provide needed capabilities
+  https://github.com/swarm-game/swarm/issues/508
+win: |
+  try {
+    r <- robotNumbered 1;
+    p <- as r {whereami};
+    g <- as base {count "GPS"};
+    t <- as base {count "Tardis"};
+    return (p == (5,0) && g == 1 && t == 0);
+  } { return false }
+solution: |
+  log "Hi, I can build teleporting robots!";
+  build {log "Hi, I can teleport!"; teleport self (5,0); p <- whereami; log $ "I am at " ++ format p}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - 3D printer
+    inventory:
+      - [1, mirror]
+      - [1, GPS]
+      - [1, Tardis]
+      - [1, logger]
+      - [1, solar panel]
+world:
+  default: [ice, knownwater]
+  palette:
+    '.': [grass, null]
+    ' ': [ice, knownwater]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌─┐  ┌─┐
+    │.│  │.│
+    └─┘  └─┘
+entities:
+  - name: GPS
+    display:
+      attr: water
+      char: 'G'
+    description:
+    - A satellite navigation device.
+    properties: [known, portable]
+    capabilities: [senseloc]
+  - name: Tardis
+    display:
+      attr: water
+      char: '█'
+    description:
+    - Bigger on the inside.
+    properties: [known, portable]
+    capabilities: [senseloc, teleport]
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water

@@ -57,8 +57,8 @@ You should then be greeted by a screen that looks something like this:
 The little white `Ω` in the middle represents your base. You will
 need to [explore](./TUTORIAL.md#exploring) to find out what all the `?` are.
 
-Start by using the <kbd>Tab</kbd> key to cycle through the four panels
-(the REPL, the info panel, the inventory panel, and the world panel),
+Start by clicking with the mouse to focus on your inventory
+(you can also use the keyboard shortcut <kbd>Meta</kbd>+<kbd>E</kbd>)
 and read about the various devices installed on your base.
 
 There is a lot to take in at first so feel free to just skim; this tutorial
@@ -68,7 +68,7 @@ Building your first robot
 -------------------------
 
 Pretty much the only thing you can do at this point is build robots.  Let's build
-one!  Tab back to the REPL (or hit the <kbd>Meta</kbd>+<kbd>R</kbd>
+one!  Make sure the REPL is focused again (by clicking it, or using the <kbd>Meta</kbd>+<kbd>R</kbd>
 shortcut) and type
 ```
 build {move}
@@ -148,8 +148,8 @@ build {make "curry"}
 The info panel should automatically switch to showing your `logger`
 device, with an error message at the bottom saying something like
 ```
-build: this would require installing devices you don't have:
-  workbench
+build: You do not have required devices, please obtain:
+  - workbench
 ```
 This is telling you that in order to `build` a robot which has the right
 capabilities to run this program, you would need to
@@ -189,7 +189,7 @@ Now let's use them:
 ```
 build { turn left; m4; m }
 ```
-This should build a robot that moves toward the green mass to the west.
+This should build a robot that moves toward the west.
 The base is still turned north, so the robot needs to turn left
 to be oriented to the west. Once you have a compass to install on
 the robot, you will be able to `turn west` directly.
@@ -233,7 +233,7 @@ still be executed by `base`.)  The name of your robot will likely be
 different than `sleepy_austin`; otherwise unnamed robots are given
 randomly chosen names.  To return to viewing `base` and its inventory,
 you can type `view base` at the prompt, or focus the world panel
-(either using <kbd>Tab</kbd> or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
+(either by clicking or <kbd>Meta</kbd>+<kbd>W</kbd>) and hit
 <kbd>C</kbd>.  If you ever want to view the other robot again, you can
 type `view r`: the variable `r` will be in scope at the REPL prompt
 from now on.
@@ -251,9 +251,9 @@ which you may have noticed in the recently viewed robot's inventory.
 You can `scan` items in the world to learn about them, and later
 `upload` what you have learned to the base.
 
-Let's build a robot to learn about those green `?` things to the west:
+Let's build a robot to learn about those green `?` things to the south:
 ```
-build {turn left; m4; move; scan forward; turn back; m4; upload base}
+build {turn back; m; scan forward; upload base}
 ```
 The `turn` command we used to turn the robot takes a direction as an
 argument, which can be either a relative direction (`forward`, `back`,
@@ -275,7 +275,7 @@ inventory:
 ![Scan a tree](images/tutorial/scantree.png)
 
 Apparently those things are trees!  Although you do not actually have
-any trees yet, you can tab over to your inventory to read about them.
+any trees yet, you can highlight them in your inventory to read about them.
 In the bottom left corner you will see a description of trees along
 with some *recipes* involving trees.  There is only one recipe,
 showing that we can use a tree to construct two branches and a log.
@@ -285,14 +285,14 @@ Getting some resources
 
 So those tree things look like they might be useful.  Let's get one!
 ```
-build {turn west; m8; thing <- grab; turn back; m8; give base thing }
+build {turn back; m2; thing <- grab; turn back; m2; give base thing }
 ```
 You can see that the
 `grab` command returns the name of the thing it grabbed, which is
 especially helpful when grabbing something unknown. (In this case we
-also could have just written `...; grab; ...; give "base" "tree"; ...`.)
+also could have just written `...; grab; ...; give base "tree"`.)
 
-You should see a robot head west from your base, grab a tree, and
+You should see a robot head south from your base, grab a tree, and
 return to the base.  If all works properly, after the newly built
 robot executes the `give` command, the number next to the `tree` entry
 in your inventory should turn from 0 to 1.  Note that in this case, we
@@ -316,12 +316,6 @@ You should now have two branches and a log in your inventory.  Take a
 look at them and see what recipes they enable!
 
 ![Make a log](images/tutorial/log.png)
-
-By this time you may also notice that the tree has grown back (whether
-it has finished growing back depends on how long you took to read the
-intervening tutorial, and on the random number generator).  Some items
-in the world will regrow after they have been harvested, and some will
-not.
 
 Debugging and cleaning up
 -------------------------
@@ -349,14 +343,14 @@ any devices that will be necessary to execute it.  (It is also
 possible to manually install devices with the `install` command.)  So
 let's type the following:
 ```
-crasher <- build {setname "crasher"; log "hi!"; turn back; move; grab; move}
+crasher <- build {setname "crasher"; log "hi!"; turn left; move; grab; move}
 ```
 (The `setname "crasher"` command is not strictly necessary, but will
 help us understand the logs we look at later --- otherwise the log
 entries would be indexed by some randomly generated robot name.)  The
 world should now look something like the below.  Notice that the
 `logger` is gone from your inventory---it was automatically installed
-on `crasher`.  Notice also that `crasher` only moved one unit south,
+on `crasher`.  Notice also that `crasher` only moved one unit west,
 even though we told it to move two steps!  What went wrong?
 
 ![Let's crash a robot!](images/tutorial/crasher.png)
@@ -386,9 +380,9 @@ the `upload` command, which we have seen before.  In addition to
 uploading knowledge about entities, it turns out that it also uploads
 the log from a `logger`.
 ```
-build {turn left; m8; m; thing <- grab; turn back; m8; m; give base thing}
+build {turn back; m4; thing <- grab; turn back; m4; give base thing}
 make "log"; make "logger"
-build {setname "salvager"; turn back; move; log "salvaging..."; salvage; turn back; move; upload base}
+build {setname "salvager"; turn left; move; log "salvaging..."; salvage; turn back; move; upload base}
 ```
 The world should now look something like this:
 

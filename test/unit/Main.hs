@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -9,11 +8,20 @@ module Main where
 import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Aeson (eitherDecode, encode)
+import Data.Either
 import Data.Hashable
+import Data.List (subsequences)
+import Data.Maybe
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Linear
+import Test.QuickCheck qualified as QC
+import Test.QuickCheck.Poly qualified as QC
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
@@ -33,6 +41,7 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.TUI.Model
+import Swarm.Util
 
 main :: IO ()
 main = do
@@ -42,7 +51,7 @@ main = do
     Right g -> defaultMain (tests g)
 
 tests :: GameState -> TestTree
-tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory]
+tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory, misc]
 
 parser :: TestTree
 parser =
@@ -139,9 +148,58 @@ parser =
                 )
             )
         ]
+    , testGroup
+        "require - #201"
+        [ testCase
+            "require device"
+            (valid "require \"boat\"")
+        , testCase
+            "require entities"
+            (valid "require 64 \"rock\"")
+        , testCase
+            "invalid syntax to require"
+            ( process
+                "require x"
+                ( T.unlines
+                    [ "1:9:"
+                    , "  |"
+                    , "1 | require x"
+                    , "  |         ^"
+                    , "unexpected 'x'"
+                    , "expecting device name in double quotes or integer"
+                    ]
+                )
+            )
+        , testCase
+            "invalid syntax to require n"
+            ( process
+                "require 2 x"
+                ( T.unlines
+                    [ "1:11:"
+                    , "  |"
+                    , "1 | require 2 x"
+                    , "  |           ^"
+                    , "unexpected 'x'"
+                    , "expecting entity name in double quotes"
+                    ]
+                )
+            )
+        ]
+    , testGroup
+        "json encoding"
+        [ testCase "simple expr" (roundTrip "42 + 43")
+        , testCase "module def" (roundTrip "def x = 41 end; def y = 42 end")
+        ]
     ]
  where
   valid = flip process ""
+
+  roundTrip txt = assertEqual "rountrip" term (decodeThrow $ encode term)
+   where
+    decodeThrow v = case eitherDecode v of
+      Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
+      Right x -> x
+    term = fromMaybe (error "") $ fromRight (error "") $ processTerm txt
 
   process :: Text -> Text -> Assertion
   process code expect = case processTerm code of
@@ -409,8 +467,8 @@ eval g =
     , testGroup
         "exceptions"
         [ testCase
-            "raise"
-            ("raise \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
+            "fail"
+            ("fail \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
         , testCase
             "try / no exception 1"
             ("try {return 1} {return 2}" `evaluatesTo` VInt 1)
@@ -418,11 +476,11 @@ eval g =
             "try / no exception 2"
             ("try {return 1} {let x = x in x}" `evaluatesTo` VInt 1)
         , testCase
-            "try / raise"
-            ("try {raise \"foo\"} {return 3}" `evaluatesTo` VInt 3)
+            "try / fail"
+            ("try {fail \"foo\"} {return 3}" `evaluatesTo` VInt 3)
         , testCase
-            "try / raise / raise"
-            ("try {raise \"foo\"} {raise \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
+            "try / fail / fail"
+            ("try {fail \"foo\"} {fail \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
         , testCase
             "try / div by 0"
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
@@ -486,7 +544,7 @@ eval g =
   evaluateCESK :: CESK -> IO (Either Text (Value, Int))
   evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
    where
-    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False
+    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False 0
 
   entMap :: EntityMap
   entMap = g ^. entityMap
@@ -628,8 +686,84 @@ inventory =
             (hash (E.insertCount 5 x E.empty))
             (hash (E.union (E.insertCount 2 x E.empty) (E.insertCount 3 x E.empty)))
         )
+    , testCase
+        "difference"
+        ( assertEqual
+            "{(2,x),(3,y)} difference {(3,x),(1,y)} = {(0,x), (2,y)}"
+            ( hash
+                ( E.insertCount 2 x (E.insertCount 3 y E.empty)
+                    `E.difference` E.insertCount 3 x (E.insertCount 1 y E.empty)
+                )
+            )
+            (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
+        )
+    , testCase
+        "subset / yes"
+        ( assertBool
+            "{(0,x),(3,y),(2,z)} isSubsetOf {(3,y),(4,z)}"
+            ( E.insertCount 0 x (E.insertCount 3 y (E.insertCount 2 z E.empty))
+                `E.isSubsetOf` E.insertCount 3 y (E.insertCount 4 z E.empty)
+            )
+        )
+    , testCase
+        "subset / no"
+        ( assertBool
+            "{(2,x),(3,y)} isSubsetOf {(1,x),(4,y)}"
+            ( not
+                ( E.insertCount 2 x (E.insertCount 3 y E.empty)
+                    `E.isSubsetOf` E.insertCount 1 x (E.insertCount 4 y E.empty)
+                )
+            )
+        )
+    , testCase
+        "isEmpty / yes"
+        ( assertBool
+            "isEmpty {(0,x),(0,y)}"
+            (E.isEmpty (E.insertCount 0 x (E.insertCount 0 y E.empty)))
+        )
+    , testCase
+        "isEmpty / no"
+        ( assertBool
+            "isEmpty {(0,x),(1,y)}"
+            (not (E.isEmpty (E.insertCount 0 x (E.insertCount 1 y E.empty))))
+        )
     ]
  where
   x = E.mkEntity (defaultEntityDisplay 'X') "fooX" [] [] []
   y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
-  _z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
+  z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
+
+misc :: TestTree
+misc =
+  testGroup
+    "Miscellaneous"
+    [ testProperty
+        "smallHittingSet produces hitting sets"
+        (prop_hittingSet @QC.OrdA)
+    ]
+
+prop_hittingSet :: Ord a => [Set a] -> Property
+prop_hittingSet ss = not (any S.null ss) ==> isHittingSet (smallHittingSet ss) ss
+
+isHittingSet :: (Foldable t, Ord a) => Set a -> t (Set a) -> Bool
+isHittingSet hs = not . any (S.null . S.intersection hs)
+
+-- This property does *not* hold (and should not, because the problem
+-- of producing a minimal hitting set is NP-hard), but we can use it
+-- to generate counterexamples.
+prop_hittingSetMinimal :: [Set El] -> Property
+prop_hittingSetMinimal ss = not (any S.null ss) ==> all ((S.size hs <=) . S.size) allHittingSets
+ where
+  allElts = S.unions ss
+  allSubsets = map S.fromList . subsequences . S.toList $ allElts
+  allHittingSets = filter (`isHittingSet` ss) allSubsets
+  hs = smallHittingSet ss
+
+-- Five elements seem to be the minimum necessary for a
+-- counterexample, but providing 6 helps QuickCheck find a
+-- counterexample much more quickly.
+data El = AA | BB | CC | DD | EE | FF
+  deriving (Eq, Ord, Show, Bounded, Enum)
+
+instance QC.Arbitrary El where
+  arbitrary = QC.arbitraryBoundedEnum

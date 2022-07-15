@@ -1,7 +1,5 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -41,7 +39,7 @@ import Brick (AttrName, Widget, str, withAttr)
 import Control.Lens hiding (Const, from, (.=))
 import Data.Hashable
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 
 import Data.Yaml
 import GHC.Generics (Generic)

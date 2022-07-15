@@ -3,17 +3,16 @@
 
 module Main where
 
-import Data.Text (
-  Text,
-  pack,
- )
-import qualified Data.Text.IO as Text
-import GitHash
+import Data.Foldable qualified
+import Data.Text (Text, pack)
+import Data.Text.IO qualified as Text
+import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
-import System.Exit
+import System.Exit (exitFailure, exitSuccess)
 
 data CLI
   = Run
@@ -22,13 +21,17 @@ data CLI
       (Maybe FilePath) -- file to run
       Bool -- cheat mode
   | Format Input
+  | DocGen GenerateDocs
   | LSP
 
 cliParser :: Parser CLI
 cliParser =
   subparser
-    ( command "format" (info (format <**> helper) (progDesc "Format a file"))
-        <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+    ( mconcat
+        [ command "format" (info (format <**> helper) (progDesc "Format a file"))
+        , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+        , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
+        ]
     )
     <|> Run <$> seed <*> scenario <*> run <*> cheat
  where
@@ -36,6 +39,20 @@ cliParser =
   format =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
+  docgen :: Parser GenerateDocs
+  docgen =
+    subparser . mconcat $
+      [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
+      , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
+      , command "cheatsheet" (info (pure $ CheatSheet $ Just Commands) $ progDesc "Output nice Wiki tables")
+      ]
+  editor :: Parser (Maybe EditorType)
+  editor =
+    Data.Foldable.asum
+      [ pure Nothing
+      , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
+      , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
+      ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   scenario :: Parser (Maybe String)
@@ -87,4 +104,5 @@ main = do
   case cli of
     Run seed scenario toRun cheat -> appMain seed scenario toRun cheat
     Format fo -> formatFile fo
+    DocGen g -> generateDocs g
     LSP -> lspMain

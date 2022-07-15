@@ -1,12 +1,5 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -56,18 +49,18 @@ import Control.Monad.Reader
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Prelude hiding (lookup)
 
 import Control.Unification hiding (applyBindings, (=:=))
-import qualified Control.Unification as U
+import Control.Unification qualified as U
 import Control.Unification.IntVar
 
 import Swarm.Language.Context hiding (lookup)
-import qualified Swarm.Language.Context as Ctx
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -319,7 +312,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
 infer :: Syntax -> Infer UType
 infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TUnit -> return UTyUnit
-  TConst c -> instantiate $ inferConst c
+  TConst c -> instantiate . toU $ inferConst c
   TDir _ -> return UTyDir
   TInt _ -> return UTyInt
   TAntiInt _ -> return UTyInt
@@ -331,6 +324,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwError $ CantInfer l t
+  TRequireDevice _ -> return $ UTyCmd UTyUnit
+  TRequire _ _ -> return $ UTyCmd UTyUnit
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
   -- if t : ty, then  {t} : {ty}.
@@ -432,19 +427,21 @@ decomposeFunTy ty = do
   return (ty1, ty2)
 
 -- | Infer the type of a constant.
-inferConst :: Const -> UPolytype
-inferConst c = toU $ case c of
+inferConst :: Const -> Polytype
+inferConst c = case c of
   Wait -> [tyQ| int -> cmd () |]
   Noop -> [tyQ| cmd () |]
   Selfdestruct -> [tyQ| cmd () |]
   Move -> [tyQ| cmd () |]
   Turn -> [tyQ| dir -> cmd () |]
   Grab -> [tyQ| cmd string |]
+  Harvest -> [tyQ| cmd string |]
   Place -> [tyQ| string -> cmd () |]
   Give -> [tyQ| robot -> string -> cmd () |]
   Install -> [tyQ| robot -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
   Has -> [tyQ| string -> cmd bool |]
+  Installed -> [tyQ| string -> cmd bool |]
   Count -> [tyQ| string -> cmd int |]
   Reprogram -> [tyQ| robot -> {cmd a} -> cmd () |]
   Build -> [tyQ| {cmd a} -> cmd robot |]
@@ -476,9 +473,8 @@ inferConst c = toU $ case c of
   Force -> [tyQ| {a} -> a |]
   Return -> [tyQ| a -> cmd a |]
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
-  Raise -> [tyQ| string -> cmd a |]
   Undefined -> [tyQ| a |]
-  ErrorStr -> [tyQ| string -> a |]
+  Fail -> [tyQ| string -> a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT
@@ -497,9 +493,11 @@ inferConst c = toU $ case c of
   Format -> [tyQ| a -> string |]
   Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
+  Teleport -> [tyQ| robot -> (int * int) -> cmd () |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
   RobotNamed -> [tyQ| string -> cmd robot |]
   RobotNumbered -> [tyQ| int -> cmd robot |]
+  Knows -> [tyQ| string -> cmd bool |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]

@@ -1,19 +1,11 @@
 name: Chess Knight
 description: In this quirky challenge, you move as the chess knight piece. Can you capture the enemy king?
+goal:
+  - Robots can use the 'move' command to move.
+    But they only 'turn' in cardinal directions. 
+  - You are special. You are a knight. 
+  - Go forth and capture the King!
 entities:
-  - name: goal
-    display:
-      attr: device
-      char: 'X'
-    description:
-    - |
-      Robots can use the 'move' command to move.
-      But they only 'turn' in cardinal directions. 
-
-      You are special. You are a knight. 
-
-      Go forth and capture the King!
-    properties: [portable]
   - name: knownwater
     display:
       attr: water
@@ -29,6 +21,8 @@ win: |
     kloc <- as king {whereami};
     return (bloc == kloc)
   } { return false }
+solution: |
+  move; move; move; turn right; move; turn left; move;
 robots:
   - name: horse
     loc: [0,0]
@@ -36,8 +30,7 @@ robots:
     devices:
       - treads
       - logger
-    inventory:
-      - [1, goal]
+    inventory: []
     display:
       char: '♘'
   - name: king

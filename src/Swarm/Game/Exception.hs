@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -19,15 +20,19 @@ module Swarm.Game.Exception (
   formatIncapableFix,
 ) where
 
-import Data.Set (Set)
-import Data.Text (Text)
-import qualified Data.Text as T
-
 import Control.Lens ((^.))
-import qualified Data.Set as S
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Map qualified as M
+import Data.Set qualified as S
+import Data.Text (Text)
+import Data.Text qualified as T
+import GHC.Generics (Generic)
+import Witch (from)
+
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
 import Swarm.Util
 
@@ -37,22 +42,22 @@ import Swarm.Util
 -- $setup
 -- >>> :set -XOverloadedStrings
 -- >>> import Control.Lens
--- >>> import qualified Data.Set as S
 -- >>> import Data.Text (unpack)
 -- >>> import Swarm.Language.Syntax
 -- >>> import Swarm.Language.Capability
 -- >>> import Swarm.Game.Entity
 -- >>> import Swarm.Game.Display
+-- >>> import qualified Swarm.Language.Requirement as R
 
 -- ------------------------------------------------------------------
 
 -- | Suggested way to fix incapable error.
 data IncapableFix
-  = -- | install the missing device on yourself/target
+  = -- | Install the missing device on yourself/target
     FixByInstall
-  | -- | add the missing device to your inventory
+  | -- | Add the missing device to your inventory
     FixByObtain
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | The type of exceptions that can be thrown by robot programs.
 data Exn
@@ -66,14 +71,14 @@ data Exn
   | -- | A robot tried to do something for which it does not have some
     --   of the required capabilities.  This cannot be caught by a
     --   @try@ block.
-    Incapable IncapableFix (Set Capability) Term
+    Incapable IncapableFix Requirements Term
   | -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
     --   grab, /etc./).
     CmdFailed Const Text
-  | -- | The user program explicitly called 'Raise', 'Undefined', or 'ErrorStr'.
+  | -- | The user program explicitly called 'Undefined' or 'Fail'.
     User Text
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Pretty-print an exception for displaying to the player.
 formatExn :: EntityMap -> Exn -> Text
@@ -106,29 +111,35 @@ formatIncapableFix = \case
 -- >>> m = buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
 --
--- >>> incapableError (S.singleton CGod) (TConst As)
--- Thee shalt not utter such blasphemy:
+-- >>> incapableError (R.singletonCap CGod) (TConst As)
+-- Thou shalt not utter such blasphemy:
 --   'as'
---   If't be true thee wanteth to playeth god, then tryeth Creative game.
+--   If God in troth thou wantest to play, try thou a Creative game.
 --
--- >>> incapableError (S.singleton CAppear) (TConst Appear)
+-- >>> incapableError (R.singletonCap CAppear) (TConst Appear)
 -- You do not have the devices required for:
 --   'appear'
---   please install:
---    - the one ring or magic wand
+--   Please install:
+--   - the one ring or magic wand
 --
--- >>> incapableError (S.singleton CRandom) (TConst Random)
+-- >>> incapableError (R.singletonCap CRandom) (TConst Random)
 -- Missing the random capability for:
 --   'random'
 --   but no device yet provides it. See
 --   https://github.com/swarm-game/swarm/issues/26
-formatIncapable :: EntityMap -> IncapableFix -> Set Capability -> Term -> Text
-formatIncapable em f caps tm
+--
+-- >>> incapableError (R.singletonInv 3 "tree") (TConst Noop)
+-- You are missing required inventory for:
+--   'noop'
+--   Please obtain:
+--   - tree (3)
+formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
+formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
     unlinesExText
-      [ "Thee shalt not utter such blasphemy:"
+      [ "Thou shalt not utter such blasphemy:"
       , squote $ prettyText tm
-      , "If't be true thee wanteth to playeth god, then tryeth Creative game."
+      , "If God in troth thou wantest to play, try thou a Creative game."
       ]
   | not (null capsNone) =
     unlinesExText
@@ -137,12 +148,19 @@ formatIncapable em f caps tm
       , "but no device yet provides it. See"
       , "https://github.com/swarm-game/swarm/issues/26"
       ]
-  | otherwise =
+  | not (S.null caps) =
     unlinesExText
       ( "You do not have the devices required for:" :
         squote (prettyText tm) :
-        "please " <> formatIncapableFix f <> ":" :
-        ((" - " <>) . formatDevices <$> filter (not . null) deviceSets)
+        "Please " <> formatIncapableFix f <> ":" :
+        (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
+      )
+  | otherwise =
+    unlinesExText
+      ( "You are missing required inventory for:" :
+        squote (prettyText tm) :
+        "Please obtain:" :
+        (("- " <>) . formatEntity <$> M.assocs inv)
       )
  where
   capList = S.toList caps
@@ -154,6 +172,8 @@ formatIncapable em f caps tm
     [ca] -> ca <> " capability"
     cas -> "capabilities " <> T.intercalate ", " cas
   formatDevices = T.intercalate " or " . map (^. entityName)
+  formatEntity (e, 1) = e
+  formatEntity (e, n) = e <> " (" <> from (show n) <> ")"
 
 -- | Exceptions that span multiple lines should be indented.
 unlinesExText :: [Text] -> Text

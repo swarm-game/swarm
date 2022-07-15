@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -19,10 +18,10 @@ import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Prettyprinter
-import qualified Prettyprinter.Render.String as RS
-import qualified Prettyprinter.Render.Text as RT
+import Prettyprinter.Render.String qualified as RS
+import Prettyprinter.Render.Text qualified as RT
 import Witch
 
 import Control.Unification
@@ -120,6 +119,8 @@ instance PrettyPrec Term where
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
   prettyPrec _ (TRef r) = "@" <> pretty r
+  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TString d)
+  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TString e)
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t

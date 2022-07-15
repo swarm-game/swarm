@@ -1,14 +1,9 @@
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Game.Scenario
@@ -27,6 +22,7 @@ module Swarm.Game.Scenario (
   -- ** Fields
   scenarioName,
   scenarioDescription,
+  scenarioGoal,
   scenarioCreative,
   scenarioSeed,
   scenarioEntities,
@@ -34,25 +30,28 @@ module Swarm.Game.Scenario (
   scenarioWorld,
   scenarioRobots,
   scenarioWin,
+  scenarioSolution,
 
   -- * Loading from disk
   loadScenario,
   ScenarioCollection (..),
   scenarioCollectionToList,
   ScenarioItem (..),
+  _SISingle,
   scenarioItemName,
   loadScenarios,
 ) where
 
 import Control.Arrow ((***))
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (filterM)
+import Control.Monad (filterM, unless, when)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Array
 import Data.Bifunctor (first)
-import Data.Char (isDigit, isSpace)
+import Data.Char (isSpace)
+import Data.List ((\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
@@ -62,7 +61,7 @@ import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath (takeBaseName, (<.>), (</>))
+import System.FilePath (takeBaseName, takeExtensions, (<.>), (</>))
 import Witch (from, into)
 
 import Control.Algebra (Has)
@@ -77,6 +76,7 @@ import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Util (reflow)
 import Swarm.Util.Yaml
 
 -- | A 'Scenario' contains all the information to describe a
@@ -84,6 +84,7 @@ import Swarm.Util.Yaml
 data Scenario = Scenario
   { _scenarioName :: Text
   , _scenarioDescription :: Text
+  , _scenarioGoal :: Maybe [Text]
   , _scenarioCreative :: Bool -- Maybe generalize this to a mode enumeration
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
@@ -91,6 +92,7 @@ data Scenario = Scenario
   , _scenarioWorld :: Seed -> WorldFun Int Entity
   , _scenarioRobots :: [URobot]
   , _scenarioWin :: Maybe ProcessedTerm
+  , _scenarioSolution :: Maybe ProcessedTerm
   }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
@@ -101,6 +103,7 @@ instance FromJSONE EntityMap Scenario where
     Scenario
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= "")
+      <*> liftE ((fmap . fmap . map) reflow (v .:? "goal"))
       <*> liftE (v .:? "creative" .!= False)
       <*> liftE (v .:? "seed")
       <*> pure em
@@ -108,12 +111,18 @@ instance FromJSONE EntityMap Scenario where
       <*> withE em (mkWorldFun (v .: "world"))
       <*> withE em (v ..: "robots")
       <*> liftE (v .:? "win")
+      <*> liftE (v .:? "solution")
 
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
 
--- | A description of the scenario.
+-- | A high-level description of the scenario, shown /e.g./ in the
+--   menu.
 scenarioDescription :: Lens' Scenario Text
+
+-- | An explanation of the goal of the scenario (if any), shown to the
+--   player during play.
+scenarioGoal :: Lens' Scenario (Maybe [Text])
 
 -- | Whether the scenario should start in creative mode.
 scenarioCreative :: Lens' Scenario Bool
@@ -140,6 +149,11 @@ scenarioRobots :: Lens' Scenario [URobot]
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
 scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
+
+-- | An optional solution of the scenario, expressed as a
+--   program of type @cmd a@. This is useful for automated
+--   testing of the win condition.
+scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
 
 -- | A description of a world parsed from a YAML file.  The
 --   'mkWorldFun' function is used to turn a 'WorldDescription' into a
@@ -239,12 +253,18 @@ scenarioItemName :: ScenarioItem -> Text
 scenarioItemName (SISingle s) = s ^. scenarioName
 scenarioItemName (SICollection name _) = name
 
--- | A scenario collection is a tree of scenarios, keyed by name.
-newtype ScenarioCollection = SC (Map FilePath ScenarioItem)
+-- | A scenario collection is a tree of scenarios, keyed by name,
+--   together with an optional order.  Invariant: every item in the
+--   scOrder exists as a key in the scMap.
+data ScenarioCollection = SC
+  { scOrder :: Maybe [FilePath]
+  , scMap :: Map FilePath ScenarioItem
+  }
 
 -- | Convert a scenario collection to a list of scenario items.
 scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
-scenarioCollectionToList (SC m) = M.elems m
+scenarioCollectionToList (SC Nothing m) = M.elems m
+scenarioCollectionToList (SC (Just order) m) = (m M.!) <$> order
 
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
@@ -252,15 +272,56 @@ loadScenarios em = runThrow $ do
   dataDir <- sendIO getDataDir
   loadScenarioDir em (dataDir </> "scenarios")
 
--- | Recursively load all scenarios from a particular directory.
+orderFileName :: FilePath
+orderFileName = "00-ORDER.txt"
+
+-- | Recursively load all scenarios from a particular directory, and also load
+--   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   EntityMap ->
   FilePath ->
   m ScenarioCollection
 loadScenarioDir em dir = do
-  fs <- sendIO $ listDirectory dir
-  SC . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
+  let orderFile = dir </> orderFileName
+      dirName = takeBaseName dir
+  orderExists <- sendIO $ doesFileExist orderFile
+  morder <- case orderExists of
+    False -> do
+      when (dirName /= "Testing") $
+        sendIO . putStrLn $
+          "Warning: no " <> orderFileName <> " file found in " <> dirName
+            <> ", using alphabetical order"
+      return Nothing
+    True -> Just . filter (not . null) . lines <$> sendIO (readFile orderFile)
+  fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
+
+  case morder of
+    Just order -> do
+      let missing = fs \\ order
+          dangling = order \\ fs
+
+      unless (null missing) $
+        sendIO . putStr . unlines $
+          ( "Warning: while processing " <> (dirName </> orderFileName) <> ": files not listed in "
+              <> orderFileName
+              <> " will be ignored"
+          ) :
+          map ("  - " <>) missing
+
+      unless (null dangling) $
+        sendIO . putStr . unlines $
+          ( "Warning: while processing " <> (dirName </> orderFileName)
+              <> ": nonexistent files will be ignored"
+          ) :
+          map ("  - " <>) dangling
+    Nothing -> pure ()
+
+  -- Only keep the files from 00-ORDER.txt that actually exist.
+  let morder' = filter (`elem` fs) <$> morder
+  SC morder' . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
+ where
+  keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
 
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
@@ -271,7 +332,7 @@ loadScenarioItem ::
   m ScenarioItem
 loadScenarioItem em path = do
   isDir <- sendIO $ doesDirectoryExist path
-  let collectionName = into @Text . dropWhile isSpace . dropWhile isDigit . takeBaseName $ path
+  let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
     True -> SICollection collectionName <$> loadScenarioDir em path
     False -> SISingle <$> loadScenarioFile em path
@@ -289,3 +350,9 @@ loadScenarioFile em fileName = do
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
     Right c -> return c
+
+------------------------------------------------------------
+-- Some lenses + prisms
+------------------------------------------------------------
+
+makePrisms ''ScenarioItem

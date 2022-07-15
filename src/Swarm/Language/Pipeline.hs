@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -24,16 +23,16 @@ module Swarm.Language.Pipeline (
 
 import Data.Bifunctor (first)
 import Data.Data (Data)
-import Data.Set (Set)
 import Data.Text (Text)
 import Data.Yaml as Y
+import GHC.Generics (Generic)
 import Witch
 
-import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Elaborate
 import Swarm.Language.Parse
 import Swarm.Language.Pretty
+import Swarm.Language.Requirement
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
@@ -46,11 +45,11 @@ data ProcessedTerm
       -- ^ The elaborated term
       TModule
       -- ^ The type of the term (and of any embedded definitions)
-      (Set Capability)
-      -- ^ Capabilities required by the term
-      CapCtx
+      Requirements
+      -- ^ Requirements of the term
+      ReqCtx
       -- ^ Capability context for any definitions embedded in the term
-  deriving (Data, Show)
+  deriving (Data, Show, Eq, Generic)
 
 instance FromJSON ProcessedTerm where
   parseJSON = withText "Term" tryProcess
@@ -60,6 +59,9 @@ instance FromJSON ProcessedTerm where
       Left err -> fail $ "Could not parse term: " ++ from err
       Right Nothing -> fail "Term was only whitespace"
       Right (Just pt) -> return pt
+
+instance ToJSON ProcessedTerm where
+  toJSON (ProcessedTerm t _ _ _) = String $ prettyText t
 
 -- | Given a 'Text' value representing a Swarm program,
 --
@@ -78,7 +80,7 @@ processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
-processTerm' :: TCtx -> CapCtx -> Text -> Either Text (Maybe ProcessedTerm)
+processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
   mt <- readTerm txt
   first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
@@ -101,8 +103,8 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
   msg = prettyText te
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
-processParsedTerm' :: TCtx -> CapCtx -> Syntax -> Either TypeErr ProcessedTerm
+processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
   ty <- inferTop ctx t
-  let (caps, capCtx') = requiredCaps capCtx (sTerm t)
+  let (caps, capCtx') = requirements capCtx (sTerm t)
   return $ ProcessedTerm (elaborate (sTerm t)) ty caps capCtx'

@@ -15,6 +15,27 @@
 
 - in:
   - [1, log]
+  - [8, water]
+  out:
+  - [8, paper]
+
+- in:
+  - [32, paper]
+  - [1, flash memory]
+  out:
+  - [1, dictionary]
+
+- in:
+  - [256, paper]
+  - [1, LaTeX]
+  required:
+  - [1, big furnace]
+  out:
+  - [1, PhD thesis]
+  time: 65536
+
+- in:
+  - [1, log]
   out:
   - [1, logger]
 
@@ -56,6 +77,20 @@
   out:
   - [1, comparator]
 
+- in:
+  - [2, board]
+  - [2, wooden gear]
+  - [1, box]
+  out:
+  - [1, harvester]
+
+- in:
+  - [1, circuit]
+  - [1, board]
+  - [8, wooden gear]
+  out:
+  - [1, printer]
+
 #########################################
 ##                BITS                 ##
 #########################################
@@ -69,6 +104,12 @@
 - in:
   - [8, bit (0)]
   - [8, bit (1)]
+  out:
+  - [1, flash memory]
+
+- in:
+  - [1, flash memory]
+  - [8, wooden gear]
   out:
   - [1, counter]
 
@@ -130,7 +171,7 @@
   required:
   - [1, metal drill]
   time: 9
-  weight: 16
+  weight: 160
 
 - in:
   - [5, rock]
@@ -187,7 +228,7 @@
   required:
   - [1, metal drill]
   time: 6
-  weight: 1
+  weight: 10
 
 - in:
   - [1, mountain]
@@ -197,7 +238,7 @@
   required:
   - [1, metal drill]
   time: 7
-  weight: 1
+  weight: 10
 
 - in:
   - [1, mountain]
@@ -207,7 +248,7 @@
   required:
   - [1, metal drill]
   time: 7
-  weight: 1
+  weight: 10
 
 ## MINES
 
@@ -291,6 +332,27 @@
   required:
   - [1, furnace]
 
+- in:
+  - [1, copper ore]
+  out:
+  - [10, copper wire]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, copper ore]
+  out:
+  - [2, copper pipe]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, iron ore]
+  out:
+  - [2, iron plate]
+  required:
+  - [1, big furnace]
+
 ## TOOLS
 
 - in:
@@ -331,6 +393,46 @@
   out:
   - [1, metal drill]
 
+- in:
+  - [1, box]
+  - [2, board]
+  - [4, copper pipe]
+  - [2, iron plate]
+  - [2, rubber]
+  out:
+  - [1, toolkit]
+
+- in:
+  - [2, small motor]
+  - [8, iron plate]
+  - [2, rubber]
+  out:
+  - [1, treads]
+
+- in:
+  - [4, big motor]
+  - [64, iron plate]
+  - [16, rubber]
+  out:
+  - [1, tank treads]
+
+- in:
+  - [2, copper pipe]
+  - [2, iron gear]
+  - [1, iron plate]
+  - [1, water]
+  - [1, small motor]
+  out:
+  - [1, grabber]
+
+- in:
+  - [4, circuit]
+  - [1, iron plate]
+  - [3, copper pipe]
+  - [16, iron gear]
+  out:
+  - [1, 3D printer]
+
 ## MAGIC
 
 - in:
@@ -364,6 +466,69 @@
   - [8, bit (1)]
   out:
   - [1, circuit]
+
+#########################################
+##             DEEP MINES              ##
+#########################################
+
+- in:
+  - [1, mountain]
+  out:
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 512
+  weight: 1
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, copper ore]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 1000
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, iron ore]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 500
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, silver]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 50
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, gold]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 20
+
+- in:
+  - [1, deep mine]
+  out:
+  - [1, mithril]
+  - [1, deep mine]
+  required:
+  - [1, metal drill]
+  time: 64
+  weight: 1
 
 #########################################
 ##               PIXELS                ##
@@ -408,6 +573,12 @@
   out:
   - [1, calculator]
 
+- in:
+  - [1, glass]
+  - [1, silver]
+  out:
+  - [1, mirror]
+
 #########################################
 ##                 LAMBDA              ##
 #########################################
@@ -417,3 +588,21 @@
   - [1, water]
   out:
   - [1, curry]
+
+#########################################
+##                 LATEX               ##
+#########################################
+
+- in:
+  - [1, LaTeX]
+  - [1, log]
+  out:
+  - [1, rubber]
+  required:
+  - [1, furnace]
+
+- in:
+  - [8, copper wire]
+  - [1, rubber]
+  out:
+  - [1, I/O cable]

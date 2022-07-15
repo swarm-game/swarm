@@ -1,0 +1,38 @@
+name: Test challenge
+description: A very difficult challenge that will test the utmost limits of your ability to 'move' and 'grab'. This is actually a placeholder challenge and will be replaced with more suitable challenges soon.
+goal:
+  - Use your grabber to harvest a lambda.
+win: |
+  try {
+    as base {has "lambda"}
+  } { return false }
+solution: |
+  move; move; grab
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - grabber
+    inventory:
+      - [0, lambda]
+world:
+  default: [blank, none]
+  palette:
+    '.': [grass, null]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    'λ': [grass, lambda]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────┐
+    │..λ..│
+    │....λ│
+    │...λ.│
+    └─────┘
