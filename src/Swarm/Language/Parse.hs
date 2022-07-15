@@ -98,7 +98,6 @@ reservedWords =
        , "false"
        , "forall"
        , "require"
-       , "atomic"
        ]
 
 -- | Skip spaces and comments.
