@@ -25,7 +25,7 @@ creative: true
 win: |
   try {
     p <- robotNamed "planter";
-    as p {n <- count "weed"; return (n == 0)}
+    as p {has "Win"}
   } { return false }
 solution: |
   def forever = \c. force c ; forever c end
@@ -57,7 +57,7 @@ robots:
         b <- ishere "weed";
         if b {} {place "weed"}
       end;
-      forever {tryplant}
+      forever {try {tryplant} {create "Win"}}
 entities:
   - name: weed
     display:
@@ -67,6 +67,13 @@ entities:
     - A fast-growing weed.
     properties: [known, portable, growable]
     growth: [1,2]
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - You win!
+    properties: [known, portable]
 world:
   default: [blank, none]
   palette:
