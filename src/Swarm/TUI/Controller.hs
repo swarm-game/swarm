@@ -286,7 +286,7 @@ setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
 -- | Set the game to Running if it was auto paused
-maybeUnpause :: AppState -> EventM Name AppState
+maybeUnpause :: MonadIO m => AppState -> m AppState
 maybeUnpause s
   | s ^. gameState . runStatus == AutoPause = do
     curTime <- liftIO $ getTime Monotonic
@@ -299,7 +299,7 @@ maybeUnpause s
   -- the world event handler for the KChar 'p'.
   resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
 
-toggleModal :: AppState -> ModalType -> EventM Name AppState
+toggleModal :: MonadIO m => AppState -> ModalType -> m AppState
 toggleModal s mt = case s ^. uiState . uiModal of
   Nothing -> pure $ s & (uiState . uiModal ?~ generateModal s mt) . ensurePause
   Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
@@ -329,7 +329,7 @@ handleModalEvent s = \case
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
 --   history to a @.swarm_history@ file, and return to the previous menu.
-quitGame :: AppState -> EventM Name (Next AppState)
+quitGame :: AppState -> EventM n (Next AppState)
 quitGame s = do
   let history = s ^. uiState . uiReplHistory
       hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
@@ -554,7 +554,8 @@ updateUI = do
       Won False -> do
         gameState . winCondition .= Won True
         s <- get
-        uiState . uiModal .= Just (generateModal s WinModal)
+        s' <- toggleModal s WinModal
+        put s'
         uiState . uiMenu %= advanceMenu
         return True
       _ -> return False
