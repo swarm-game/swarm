@@ -1,0 +1,84 @@
+name: Invisible maze
+description: There is a maze, but it can't be seen, only sensed... can you
+  program a robot to navigate it successfully?
+goal:
+  - There is a maze, but it can't be seen, only sensed... can you
+    program a robot to navigate it successfully?  You need to get a robot
+    to the goal square, labelled with an exclamation mark.
+  - In this challenge, it is guaranteed that the maze is a tree.
+win: |
+  try {
+    teleport self (27, -17);
+    mr <- meet;
+    return (mr != inl ())
+  } { return false }
+solution: |
+  def tL = turn left end;
+  def tR = turn right end;
+  def ifC = \test. \then. \else. b <- test; if b then else end;
+  def forever = \c. c ; forever c end;
+  def rightBlocked = tR; b <- blocked; tL; return b end;
+  def mazeStep = ifC rightBlocked {ifC blocked {tL} {move}} {tR; move} end;
+  build {forever mazeStep}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,1]
+    devices:
+      - dictionary
+      - 3D printer
+      - logger
+      - grabber
+    inventory:
+      - [50, solar panel]
+      - [50, treads]
+      - [50, compass]
+      - [50, scanner]
+      - [50, lambda]
+      - [50, branch predictor]
+      - [50, strange loop]
+      - [50, logger]
+      - [0, boulder]
+entities:
+  - name: wall
+    display:
+      invisible: true
+    description:
+    - An invisible wall.
+    properties: [unwalkable, known]
+  - name: goal
+    display:
+      char: '!'
+      attr: device
+    description:
+    - The place you're trying to reach!
+    properties: [known]
+world:
+  default: [grass, none]
+  palette:
+    '.': [grass, null]
+    'x': [grass, wall]
+    '@': [grass, boulder]
+    '!': [grass, goal]
+  upperleft: [-1,1]
+  map: |
+    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    @.........x...x..............@
+    @xx.xxxxx.x.x.xxx....xxxxxxx.@
+    @.x.x...x.x.x...xxxx.......x.@
+    @.....x.x.x.x.x....xxxxxxxxx.@
+    @xxxxxxxx.x.x.xxxx...........@
+    @.......x...x....xxxxxxxxxxxx@
+    @.xxxxx.xxxxxxxx.x...........@
+    @.x.x.x..x.....x.x.xxxxxxxxx.@
+    @.x.x.xx.x.xxxxx.x.x.....x...@
+    @.x.x.xx.x.x...x.x.x.x.x.x.xx@
+    @......x...x.x...x.x.x.x.x...@
+    @xxxxxxx.xxx.xxxxx.x.x.x.xxx.@
+    @....................x.x.x.x.@
+    @xxxxxxxxxxxxxxxxxxxxx.x.x.x.@
+    @..x...x...x...x.....x.x.x.x.@
+    @x...x...x...x...x.x.x.x.x.x.@
+    @xxxxxxxxxxxxxxxxx.x.x.x.x.x.@
+    @..................x...x...x!@
+    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
