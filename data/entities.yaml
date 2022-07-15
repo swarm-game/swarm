@@ -882,10 +882,9 @@
 
   - "This seems like a safe way to execute 'grab' only when there is a
     rock to grab.  However, it is actually possible for the 'grab' to
-    fail, if some robot B tries to grab the rock at the same time:
-    first, robot A executes 'ishere' which returns true; next, robot B
-    grabs the rock; finally, robot A tries to execute 'grab', which throws
-    an exception."
+    fail, if some other robot B snatches the rock right after robot A sensed
+    it and before robot A got around to grab it on the next game tick."
+  - This will make robot A very sad and it will crash.
   - "To prevent this situation, robot A can wrap the commands in 'atomic', like so:"
   - |
     atomic (b <- ishere "rock"; if b {grab} {})
