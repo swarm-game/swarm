@@ -226,6 +226,30 @@ parser =
                 "atomic (move; atomic (if true {} {}))"
                 "1: Invalid atomic block: nested atomic block"
             )
+        , testCase
+            "atomic wait"
+            ( process
+                "atomic (wait 1)"
+                "1: Invalid atomic block: 'wait' is not allowed"
+            )
+        , testCase
+            "atomic make"
+            ( process
+                "atomic (make \"PhD thesis\")"
+                "1: Invalid atomic block: 'make' is not allowed"
+            )
+        , testCase
+            "atomic drill"
+            ( process
+                "atomic (drill forward)"
+                "1: Invalid atomic block: 'drill' is not allowed"
+            )
+        , testCase
+            "atomic salvage"
+            ( process
+                "atomic (salvage)"
+                "1: Invalid atomic block: 'salvage' is not allowed"
+            )
         ]
     ]
  where

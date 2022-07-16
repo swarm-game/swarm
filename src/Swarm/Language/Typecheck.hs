@@ -239,6 +239,8 @@ data InvalidAtomicReason
     NonSimpleVarType Var UPolytype
   | -- | The argument had a nested @atomic@
     NestedAtomic
+  | -- | The argument contained a disallowed constant
+    DisallowedConst Const
   deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
@@ -577,8 +579,10 @@ analyzeAtomic :: Set Var -> Syntax -> Infer Int
 analyzeAtomic locals (Syntax l t) = case t of
   TUnit {} -> return 0
   -- No nested 'atomic' allowed!
-  TConst Atomic -> throwError (InvalidAtomic l NestedAtomic t)
-  TConst c -> return $ if isTangible c then 1 else 0
+  TConst Atomic -> throwError $ InvalidAtomic l NestedAtomic t
+  TConst c
+    | c `elem` allowedAtomicConsts -> return $ if isTangible c then 1 else 0
+    | otherwise -> throwError $ InvalidAtomic l (DisallowedConst c) t
   TDir {} -> return 0
   TInt {} -> return 0
   TAntiInt {} -> return 0
@@ -634,6 +638,82 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef {} -> throwError (CantInfer l t)
+
+-- | Constants which are allowed inside an @atomic@ block.  This is
+--   intentionally expressed as a whitelist, even though it's much
+--   longer this way, so that we can't create problems in the future
+--   by adding a constant that is problematic to use with @atomic@ but
+--   forgetting to disallow it.
+--
+--   Constants which definitely must NOT be allowed are ones which
+--   (might) take multiple ticks to execute: @wait@, @make@, @drill@,
+--   @salvage@, @as@, @build@.
+allowedAtomicConsts :: [Const]
+allowedAtomicConsts =
+  [ Noop
+  , Selfdestruct
+  , Move
+  , Turn
+  , Grab
+  , Harvest
+  , Place
+  , Give
+  , Install
+  , Has
+  , Installed
+  , Count
+  , Reprogram
+  , Say
+  , Log
+  , View
+  , Appear
+  , Create
+  , Whereami
+  , Blocked
+  , Scan
+  , Upload
+  , Ishere
+  , Self
+  , Parent
+  , Base
+  , Whoami
+  , Setname
+  , Random
+  , Run
+  , If
+  , Inl
+  , Inr
+  , Case
+  , Fst
+  , Snd
+  , Force
+  , Return
+  , Try
+  , Undefined
+  , Fail
+  , Not
+  , Neg
+  , Eq
+  , Neq
+  , Lt
+  , Gt
+  , Leq
+  , Geq
+  , Or
+  , And
+  , Add
+  , Sub
+  , Mul
+  , Div
+  , Exp
+  , Format
+  , Concat
+  , AppF
+  , Teleport
+  , RobotNamed
+  , RobotNumbered
+  , Knows
+  ]
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool
