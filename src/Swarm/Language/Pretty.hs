@@ -207,4 +207,4 @@ instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ AtomicDupingThing = "def, let, and lambda are not allowed"
   prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr ty
   prettyPrec _ NestedAtomic = "nested atomic block"
-  prettyPrec _ (DisallowedConst c) = "'" <> ppr c <> "' is not allowed"
+  prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"

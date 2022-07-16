@@ -42,6 +42,7 @@ module Swarm.Language.Syntax (
   isOperator,
   isBuiltinFunction,
   isTangible,
+  isLong,
 
   -- * Syntax
   Syntax (..),
@@ -412,13 +413,29 @@ data MUnAssoc
     S
   deriving (Eq, Ord, Show)
 
--- | Whether a command is tangible or not.  Tangible
---   commands have some kind of effect on the external world; at most
---   one tangible command can be executed per tick.  Intangible commands
---   are things like sensing commands, or commands that solely modify
---   a robot's internal state; multiple intangible commands may be
---   executed per tick.
-data Tangibility = Intangible | Tangible
+-- | Whether a command is tangible or not.  Tangible commands have
+--   some kind of effect on the external world; at most one tangible
+--   command can be executed per tick.  Intangible commands are things
+--   like sensing commands, or commands that solely modify a robot's
+--   internal state; multiple intangible commands may be executed per
+--   tick.  In addition, tangible commands can have a 'Length' (either
+--   'Short' or 'Long') indicating whether they require only one, or
+--   possibly more than one, tick to execute.  Long commands are
+--   excluded from @atomic@ blocks to avoid freezing the game.
+data Tangibility = Intangible | Tangible Length
+  deriving (Eq, Ord, Show, Read)
+
+-- | For convenience, @short = Tangible Short@.
+short :: Tangibility
+short = Tangible Short
+
+-- | For convenience, @long = Tangible Long@.
+long :: Tangibility
+long = Tangible Long
+
+-- | The length of a tangible command.  Short commands take exactly
+--   one tick to execute.  Long commands may require multiple ticks.
+data Length = Short | Long
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
@@ -469,7 +486,17 @@ isBuiltinFunction c = case constMeta $ constInfo c of
 --   external effect on the world.  At most one tangible command may be
 --   executed per tick.
 isTangible :: Const -> Bool
-isTangible = (== Tangible) . tangibility . constInfo
+isTangible c = case tangibility (constInfo c) of
+  Tangible {} -> True
+  _ -> False
+
+-- | Whether the constant is a /long/ command, that is, a tangible
+--   command which could require multiple ticks to execute.  Such
+--   commands cannot be allowed in @atomic@ blocks.
+isLong :: Const -> Bool
+isLong c = case tangibility (constInfo c) of
+  Tangible Long -> True
+  _ -> False
 
 -- | Information about constants used in parsing and pretty printing.
 --
@@ -478,7 +505,7 @@ isTangible = (== Tangible) . tangibility . constInfo
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> command 0 Tangible "Wait for a number of time steps."
+  Wait -> command 0 long "Wait for a number of time steps."
   Noop ->
     command 0 Intangible . doc "Do nothing." $
       [ "This is different than `Wait` in that it does not take up a time step."
@@ -486,58 +513,58 @@ constInfo c = case c of
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    command 0 Tangible . doc "Self-destruct the robot." $
+    command 0 short . doc "Self-destruct the robot." $
       [ "Useful to not clutter the world."
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
-  Move -> command 0 Tangible "Move forward one step."
-  Turn -> command 1 Tangible "Turn in some direction."
-  Grab -> command 0 Tangible "Grab an item from the current location."
+  Move -> command 0 short "Move forward one step."
+  Turn -> command 1 short "Turn in some direction."
+  Grab -> command 0 short "Grab an item from the current location."
   Harvest ->
-    command 0 Tangible . doc "Harvest an item from the current location." $
+    command 0 short . doc "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
       ]
   Place ->
-    command 1 Tangible . doc "Place an item at the current location." $
+    command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Give -> command 2 Tangible "Give an item to another robot nearby."
-  Install -> command 2 Tangible "Install a device from inventory on a robot."
-  Make -> command 1 Tangible "Make an item using a recipe."
+  Give -> command 2 short "Give an item to another robot nearby."
+  Install -> command 2 short "Install a device from inventory on a robot."
+  Make -> command 1 long "Make an item using a recipe."
   Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
   Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."
   Count -> command 1 Intangible "Get the count of a given item in a robot's inventory."
   Reprogram ->
-    command 2 Tangible . doc "Reprogram another robot with a new command." $
+    command 2 long . doc "Reprogram another robot with a new command." $
       ["The other robot has to be nearby and idle."]
   Drill ->
-    command 1 Tangible . doc "Drill through an entity." $
+    command 1 long . doc "Drill through an entity." $
       [ "Usually you want to `drill forward` when exploring to clear out obstacles."
       , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
       ]
   Build ->
-    command 1 Tangible . doc "Construct a new robot." $
+    command 1 long . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
       , "If the command requires devices they will be installed from your inventory."
       ]
   Salvage ->
-    command 0 Tangible . doc "Deconstruct an old robot." $
+    command 0 long . doc "Deconstruct an old robot." $
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
-    command 1 Tangible . doc "Emit a message." $ -- TODO: #513
+    command 1 short . doc "Emit a message." $ -- TODO: #513
       [ "The message will be in a global log, which you can not currently view."
       , "https://github.com/swarm-game/swarm/issues/513"
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
-  View -> command 1 Tangible "View the given robot."
+  View -> command 1 short "View the given robot."
   Appear ->
-    command 1 Tangible . doc "Set how the robot is displayed." $
+    command 1 short . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
       , "The default is \"X^>v<\"."
       ]
   Create ->
-    command 1 Tangible . doc "Create an item out of thin air." $
+    command 1 short . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Blocked -> command 0 Intangible "See if the robot can move forward."
@@ -546,17 +573,17 @@ constInfo c = case c of
       [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
-  Upload -> command 1 Tangible "Upload a robot's known entities and log to another robot."
+  Upload -> command 1 short "Upload a robot's known entities and log to another robot."
   Ishere -> command 1 Intangible "See if a specific entity is in the current location."
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."
   Whoami -> command 0 Intangible "Get the robot's display name."
-  Setname -> command 1 Tangible "Set the robot's display name."
+  Setname -> command 1 short "Set the robot's display name."
   Random ->
     command 1 Intangible . doc "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
-  Run -> command 1 Tangible "Run a program loaded from a file."
+  Run -> command 1 long "Run a program loaded from a file."
   Return -> command 1 Intangible "Make the value a result in `cmd`."
   Try -> command 2 Intangible "Execute a command, catching errors."
   Undefined -> function 0 "A value of any type, that is evaluated as error."
@@ -597,8 +624,8 @@ constInfo c = case c of
     command 1 Intangible . doc "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
       ]
-  Teleport -> command 2 Tangible "Teleport a robot to the given location."
-  As -> command 2 Tangible "Hypothetically run a command as if you were another robot."
+  Teleport -> command 2 short "Teleport a robot to the given location."
+  As -> command 2 long "Hypothetically run a command as if you were another robot."
   RobotNamed -> command 1 Intangible "Find a robot by name."
   RobotNumbered -> command 1 Intangible "Find a robot by number."
   Knows -> command 1 Intangible "Check if the robot knows about an entity."

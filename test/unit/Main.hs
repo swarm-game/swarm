@@ -230,25 +230,25 @@ parser =
             "atomic wait"
             ( process
                 "atomic (wait 1)"
-                "1: Invalid atomic block: 'wait' is not allowed"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: wait"
             )
         , testCase
             "atomic make"
             ( process
                 "atomic (make \"PhD thesis\")"
-                "1: Invalid atomic block: 'make' is not allowed"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: make"
             )
         , testCase
             "atomic drill"
             ( process
                 "atomic (drill forward)"
-                "1: Invalid atomic block: 'drill' is not allowed"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: drill"
             )
         , testCase
             "atomic salvage"
             ( process
                 "atomic (salvage)"
-                "1: Invalid atomic block: 'salvage' is not allowed"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: salvage"
             )
         ]
     ]
