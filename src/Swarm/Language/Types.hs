@@ -121,9 +121,10 @@ data TypeF t
     TyBaseF BaseTy
   | -- | A type variable.
     TyVarF Var
-  | -- | Commands, with return type.  Note that
-    --   commands form a monad.
-    TyCmdF t
+  | -- | Commands, with return type.  Note that commands form a monad.
+    --   The type of a command also includes a context of definitions
+    --   produced by the command.
+    TyCmdF t (Ctx t)
   | -- | Type of delayed computations.
     TyDelayF t
   | -- | Sum type.
@@ -201,7 +202,8 @@ type UCtx = Ctx UPolytype
 -- | A @Poly t@ is a universally quantified @t@.  The variables in the
 --   list are bound inside the @t@.  For example, the type @forall
 --   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
-data Poly t = Forall [Var] t deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
+data Poly t = Forall [Var] t
+  deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- | A polytype without unification variables.
 type Polytype = Poly Type
@@ -323,8 +325,8 @@ infixr 1 :->:
 pattern (:->:) :: Type -> Type -> Type
 pattern ty1 :->: ty2 = Fix (TyFunF ty1 ty2)
 
-pattern TyCmd :: Type -> Type
-pattern TyCmd ty1 = Fix (TyCmdF ty1)
+pattern TyCmd :: Type -> Ctx Type -> Type
+pattern TyCmd ty1 ctx = Fix (TyCmdF ty1 ctx)
 
 pattern TyDelay :: Type -> Type
 pattern TyDelay ty1 = Fix (TyDelayF ty1)
@@ -362,8 +364,8 @@ pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)
 pattern UTyFun :: UType -> UType -> UType
 pattern UTyFun ty1 ty2 = UTerm (TyFunF ty1 ty2)
 
-pattern UTyCmd :: UType -> UType
-pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
+pattern UTyCmd :: UType -> Ctx UType -> UType
+pattern UTyCmd ty1 ctx = UTerm (TyCmdF ty1 ctx)
 
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty1 = UTerm (TyDelayF ty1)

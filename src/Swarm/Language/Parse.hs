@@ -55,6 +55,7 @@ import Text.Megaparsec.Pos qualified as Pos
 import Data.Foldable (asum)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 
@@ -205,7 +206,7 @@ parseTypeAtom =
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
     <|> TyRobot <$ reserved "robot"
-    <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
+    <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom) <*> pure Ctx.empty -- XXX
     <|> TyDelay <$> braces parseType
     <|> parens parseType
 

@@ -15,6 +15,7 @@ module Swarm.Language.Context where
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
 import Control.Monad.Reader (MonadReader, local)
+import Control.Unification (Unifiable (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Map (Map)
@@ -44,6 +45,16 @@ instance AsEmpty (Ctx t) where
     isEmpty (Ctx c)
       | M.null c = Right ()
       | otherwise = Left (Ctx c)
+
+-- XXX is this the right thing to do?  In what situations would two
+-- Ctxs get unified?
+instance Unifiable Ctx where
+  zipMatch (Ctx ctx1) (Ctx ctx2)
+    | ks1 == ks2 = Just (Ctx (M.intersectionWith (curry Right) ctx1 ctx2))
+    | otherwise = Nothing
+   where
+    ks1 = M.keys ctx1
+    ks2 = M.keys ctx2
 
 -- | The empty context.
 empty :: Ctx t

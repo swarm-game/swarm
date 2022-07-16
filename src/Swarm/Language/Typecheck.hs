@@ -410,8 +410,8 @@ addLocToTypeErr s te = case te of
   _ -> throwError te
 
 -- | Decompose a type that is supposed to be a command type.
-decomposeCmdTy :: UType -> Infer UType
-decomposeCmdTy (UTyCmd a) = return a
+decomposeCmdTy :: UType -> Infer (UType, Ctx UType)
+decomposeCmdTy (UTyCmd a ctx) = return (a, ctx)
 decomposeCmdTy ty = do
   a <- fresh
   ty =:= UTyCmd a
