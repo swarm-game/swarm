@@ -360,7 +360,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- 'atomic t' has the same type as 't', which must have a type of
   -- the form 'cmd a'.  't' must also be syntactically free of
   -- variables.
-  SApp (STerm (TConst Atomic)) at -> do
+  TConst Atomic :$: at -> do
     argTy <- fresh
     check at (UTyCmd argTy)
     -- It's important that we typecheck the subterm @at@ *before* we
@@ -602,7 +602,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Special case for if: number of tangible commands is the *max* of
   -- the branches instead of the sum, since exactly one of them will be
   -- executed.
-  SApp (STerm (SApp (STerm (SApp (STerm (TConst If)) tst)) thn)) els ->
+  TConst If :$: tst :$: thn :$: els ->
     (+) <$> analyzeAtomic locals tst <*> (max <$> analyzeAtomic locals thn <*> analyzeAtomic locals els)
   -- Pairs, application, and delay are simple: just recurse and sum the results.
   SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2

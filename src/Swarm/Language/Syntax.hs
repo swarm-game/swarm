@@ -52,6 +52,7 @@ module Swarm.Language.Syntax (
   pattern TPair,
   pattern TLam,
   pattern TApp,
+  pattern (:$:),
   pattern TLet,
   pattern TDef,
   pattern TBind,
@@ -716,6 +717,12 @@ pattern TLam v ty t = SLam v ty (STerm t)
 -- | Match a TApp without syntax
 pattern TApp :: Term -> Term -> Term
 pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
+
+infixl 0 :$:
+
+-- | Convenient infix pattern synonym for application.
+pattern (:$:) :: Term -> Syntax -> Term
+pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without syntax
 pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
