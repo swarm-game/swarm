@@ -38,16 +38,16 @@ module Swarm.Game.Display (
 
 import Brick (AttrName, Widget, str, withAttr)
 import Control.Lens hiding (Const, from, (.=))
-import Data.Hashable
+import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
 
 import Data.Yaml
 import GHC.Generics (Generic)
 
-import Swarm.Language.Syntax
-import Swarm.TUI.Attr
-import Swarm.Util
+import Swarm.Language.Syntax (Direction (..))
+import Swarm.TUI.Attr (entityAttr, robotAttr)
+import Swarm.Util (maxOn, (?))
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
