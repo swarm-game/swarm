@@ -626,7 +626,7 @@ constInfo c = case c of
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
-  As -> command 2 long "Hypothetically run a command as if you were another robot."
+  As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
   RobotNamed -> command 1 Intangible "Find a robot by name."
   RobotNumbered -> command 1 Intangible "Find a robot by number."
   Knows -> command 1 Intangible "Check if the robot knows about an entity."
