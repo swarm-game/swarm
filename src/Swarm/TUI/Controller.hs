@@ -574,7 +574,7 @@ loadVisibleRegion = do
       gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
 stripCmd :: Polytype -> Polytype
-stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
+stripCmd (Forall xs (TyCmd ty _)) = Forall xs ty
 stripCmd pty = pty
 
 ------------------------------------------------------------
@@ -815,7 +815,7 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 --   base is not currently busy.
 makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
 makeEntity s e = do
-  let mkTy = Forall [] $ TyCmd TyUnit
+  let mkTy = Forall [] $ TyCmd TyUnit empty
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
       topStore =

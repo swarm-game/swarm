@@ -124,7 +124,7 @@ data TypeF t
   | -- | Commands, with return type.  Note that commands form a monad.
     --   The type of a command also includes a context of definitions
     --   produced by the command.
-    TyCmdF t (Ctx t)
+    TyCmdF t (Ctx (Poly t))
   | -- | Type of delayed computations.
     TyDelayF t
   | -- | Sum type.
@@ -204,6 +204,9 @@ type UCtx = Ctx UPolytype
 --   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
 data Poly t = Forall [Var] t
   deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+
+instance Unifiable Poly where
+  zipMatch = undefined -- XXX
 
 -- | A polytype without unification variables.
 type Polytype = Poly Type
@@ -325,7 +328,7 @@ infixr 1 :->:
 pattern (:->:) :: Type -> Type -> Type
 pattern ty1 :->: ty2 = Fix (TyFunF ty1 ty2)
 
-pattern TyCmd :: Type -> Ctx Type -> Type
+pattern TyCmd :: Type -> TCtx -> Type
 pattern TyCmd ty1 ctx = Fix (TyCmdF ty1 ctx)
 
 pattern TyDelay :: Type -> Type
@@ -364,7 +367,7 @@ pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)
 pattern UTyFun :: UType -> UType -> UType
 pattern UTyFun ty1 ty2 = UTerm (TyFunF ty1 ty2)
 
-pattern UTyCmd :: UType -> Ctx UType -> UType
+pattern UTyCmd :: UType -> UCtx -> UType
 pattern UTyCmd ty1 ctx = UTerm (TyCmdF ty1 ctx)
 
 pattern UTyDelay :: UType -> UType

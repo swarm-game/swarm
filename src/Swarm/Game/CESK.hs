@@ -280,7 +280,7 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ reqCtx) e s k =
+initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _ _)) ctx) _ reqCtx) e s k =
   case ctx of
     Empty -> In t e s (FExec : k)
     _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)

@@ -261,7 +261,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
     ty <- withBinding x (Forall [] xTy) $ infer t1
     xTy =:= ty
     pty <- generalize ty
-    return $ Module (UTyCmd UTyUnit) (singleton x pty)
+    return $ Module (UTyCmd UTyUnit (singleton x pty)) (singleton x pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
@@ -269,7 +269,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
     let upty = toU pty
     uty <- skolemize upty
     withBinding x upty $ check t1 uty
-    return $ Module (UTyCmd UTyUnit) (singleton x upty)
+    return $ Module (UTyCmd UTyUnit (singleton x upty)) (singleton x upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
@@ -277,7 +277,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   SBind mx c1 c2 -> do
     -- First, infer the left side.
     Module cmda ctx1 <- inferModule c1
-    a <- decomposeCmdTy cmda
+    (a, _ctx1) <- decomposeCmdTy cmda
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
@@ -324,8 +324,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwError $ CantInfer l t
-  TRequireDevice _ -> return $ UTyCmd UTyUnit
-  TRequire _ _ -> return $ UTyCmd UTyUnit
+  TRequireDevice _ -> return $ UTyCmd UTyUnit Ctx.empty
+  TRequire _ _ -> return $ UTyCmd UTyUnit Ctx.empty
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
   -- if t : ty, then  {t} : {ty}.
@@ -387,8 +387,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SDef {} -> throwError $ DefNotTopLevel l t
   SBind mx c1 c2 -> do
     ty1 <- infer c1
-    a <- decomposeCmdTy ty1
-    ty2 <- maybe id (`withBinding` Forall [] a) mx $ infer c2
+    (a, ctx1) <- decomposeCmdTy ty1
+    ty2 <- withBindings ctx1 . maybe id (`withBinding` Forall [] a) mx $ infer c2
     _ <- decomposeCmdTy ty2
     return ty2
  where
@@ -410,12 +410,12 @@ addLocToTypeErr s te = case te of
   _ -> throwError te
 
 -- | Decompose a type that is supposed to be a command type.
-decomposeCmdTy :: UType -> Infer (UType, Ctx UType)
+decomposeCmdTy :: UType -> Infer (UType, UCtx)
 decomposeCmdTy (UTyCmd a ctx) = return (a, ctx)
 decomposeCmdTy ty = do
   a <- fresh
-  ty =:= UTyCmd a
-  return a
+  ty =:= UTyCmd a Ctx.empty -- XXX empty is probably wrong???
+  return (a, Ctx.empty)
 
 -- | Decompose a type that is supposed to be a function type.
 decomposeFunTy :: UType -> Infer (UType, UType)

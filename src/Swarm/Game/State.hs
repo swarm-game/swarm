@@ -621,7 +621,7 @@ scenarioToGameState scenario userSeed toRun g = do
         -- otherwise the store of definition cells is not saved (see #333)
         _replStatus = case toRun of
           Nothing -> REPLDone
-          Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
+          Just _ -> REPLWorking (Forall [] (TyCmd TyUnit Ctx.empty)) Nothing
       , _messageQueue = []
       , _focusedRobotID = baseID
       , _ticks = 0
