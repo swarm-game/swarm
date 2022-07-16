@@ -629,7 +629,11 @@ scenarioToGameState scenario userSeed toRun g = do
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
       , _needsRedraw = False
-      , _replStatus = REPLDone
+      , -- When starting base with the run flag, REPL status must be set to working,
+        -- otherwise the store of definition cells is not saved (see #333)
+        _replStatus = case toRun of
+          Nothing -> REPLDone
+          Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
       , _messageQueue = []
       , _focusedRobotID = baseID
       , _ticks = 0
