@@ -190,6 +190,67 @@ parser =
         [ testCase "simple expr" (roundTrip "42 + 43")
         , testCase "module def" (roundTrip "def x = 41 end; def y = 42 end")
         ]
+    , testGroup
+        "atomic - #479"
+        [ testCase
+            "atomic move"
+            ( valid "atomic move"
+            )
+        , testCase
+            "grabif"
+            (valid "def grabif : string -> cmd () = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
+        , testCase
+            "placeif"
+            (valid "def placeif : string -> cmd bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; return true} {return false}) end")
+        , testCase
+            "atomic move+move"
+            ( process
+                "atomic (move; move)"
+                "1: Invalid atomic block: block could take too many ticks (2): move; move"
+            )
+        , testCase
+            "atomic lambda"
+            ( process
+                "atomic ((\\c. c;c) move)"
+                "1: Invalid atomic block: def, let, and lambda are not allowed: \\c. c; c"
+            )
+        , testCase
+            "atomic non-simple"
+            ( process
+                "def dup = \\c. c; c end; atomic (dup (dup move))"
+                "1: Invalid atomic block: reference to variable with non-simple type ∀ a3. cmd a3 -> cmd a3: dup"
+            )
+        , testCase
+            "atomic nested"
+            ( process
+                "atomic (move; atomic (if true {} {}))"
+                "1: Invalid atomic block: nested atomic block"
+            )
+        , testCase
+            "atomic wait"
+            ( process
+                "atomic (wait 1)"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: wait"
+            )
+        , testCase
+            "atomic make"
+            ( process
+                "atomic (make \"PhD thesis\")"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: make"
+            )
+        , testCase
+            "atomic drill"
+            ( process
+                "atomic (drill forward)"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: drill"
+            )
+        , testCase
+            "atomic salvage"
+            ( process
+                "atomic (salvage)"
+                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: salvage"
+            )
+        ]
     ]
  where
   valid = flip process ""

@@ -69,11 +69,6 @@ import Control.Effect.Lift
 import Data.Containers.ListUtils (nubOrd)
 import Data.Functor (void)
 
--- | The maximum number of CESK machine evaluation steps each robot is
---   allowed during a single game tick.
-evalStepsPerTick :: Int
-evalStepsPerTick = 100
-
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
 --   the 'Run' command; but eventually I want to get rid of that
@@ -339,10 +334,12 @@ withExceptions s k m = do
 ------------------------------------------------------------
 
 -- | Run a robot for one tick, which may consist of up to
---   'evalStepsPerTick' CESK machine steps and at most one command
---   execution.
+--   'robotStepsPerTick' CESK machine steps and at most one tangible
+--   command execution, whichever comes first.
 tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
-tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
+tickRobot r = do
+  steps <- use robotStepsPerTick
+  tickRobotRec (r & tickSteps .~ steps)
 
 -- | Recursive helper function for 'tickRobot', which checks if the
 --   robot is actively running and still has steps left, and if so
@@ -350,8 +347,9 @@ tickRobot = tickRobotRec . (tickSteps .~ evalStepsPerTick)
 --   stepping the robot.
 tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobotRec r
-  | not (isActive r) || r ^. tickSteps <= 0 = return r
-  | otherwise = stepRobot r >>= tickRobotRec
+  | isActive r && (r ^. runningAtomic || r ^. tickSteps > 0) =
+    stepRobot r >>= tickRobotRec
+  | otherwise = return r
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CESK machine for one step.
@@ -500,8 +498,13 @@ stepCESK cesk = case cesk of
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) s (FExec : k) -> do
-    when (takesTick c) $ tickSteps .= 0
+    when (isTangible c) $ tickSteps .= 0
     evalConst c (reverse args) s k
+
+  -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
+  Out v s (FFinishAtomic : k) -> do
+    runningAtomic .= False
+    return $ Out v s k
 
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
@@ -628,10 +631,6 @@ stepCESK cesk = case cesk of
   fUnionEnv e1 = \case
     FUnionEnv e2 : k -> FUnionEnv (e2 `union` e1) : k
     k -> FUnionEnv e1 : k
-
--- | Determine whether a constant should take up a tick or not when executed.
-takesTick :: Const -> Bool
-takesTick c = isCmd c && (c `notElem` [Selfdestruct, Noop, Return, Whereami, Blocked, Ishere, Try, Random, Appear])
 
 -- | Eexecute a constant, catching any exception thrown and returning
 --   it via a CESK machine state.
@@ -1024,6 +1023,14 @@ execConst c vs s k = do
       [VInt hi] -> do
         n <- uniform (0, hi - 1)
         return $ Out (VInt n) s k
+      _ -> badConst
+    Atomic -> case vs of
+      -- To execute an atomic block, set the runningAtomic flag,
+      -- push an FFinishAtomic frame so that we unset the flag when done, and
+      -- proceed to execute the argument.
+      [cmd] -> do
+        runningAtomic .= True
+        return $ Out cmd s (FExec : FFinishAtomic : k)
       _ -> badConst
     As -> case vs of
       [VRobot rid, prog] -> do

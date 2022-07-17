@@ -31,7 +31,7 @@ def tryGive: string -> (robot -> bool) -> int -> cmd (robot -> bool) = \msg.\f.\
   if (r != self && f r) {
     log $ "found the robot " ++ format i;
     l <- whereami;
-    rl <- as r {whereami};
+    rl <- as r {whereami}; wait 1;  // WHY is this 'wait 1' required???
     if (l != rl) {
       log $ "the robot" ++ format i ++ "is not in my cell";
       return f;

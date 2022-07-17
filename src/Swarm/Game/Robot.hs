@@ -55,6 +55,7 @@ module Swarm.Game.Robot (
   systemRobot,
   selfDestruct,
   tickSteps,
+  runningAtomic,
 
   -- ** Create
   mkRobot,
@@ -149,6 +150,7 @@ data RobotR f = RobotR
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _tickSteps :: Int
+  , _runningAtomic :: Bool
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
@@ -342,6 +344,9 @@ selfDestruct :: Lens' Robot Bool
 --   can tell when the counter increments.
 tickSteps :: Lens' Robot Int
 
+-- | Is the robot currently running an atomic block?
+runningAtomic :: Lens' Robot Bool
+
 -- | A general function for creating robots.
 mkRobot ::
   -- | ID number of the robot.
@@ -388,6 +393,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys ts =
     , _systemRobot = sys
     , _selfDestruct = False
     , _tickSteps = 0
+    , _runningAtomic = False
     }
  where
   inst = fromList devs
