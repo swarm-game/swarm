@@ -21,6 +21,8 @@ module Swarm.Game.Robot (
   leText,
   leRobotName,
   leTime,
+  leLocation,
+  leRobotID,
 
   -- * Robots
   RID,
@@ -116,15 +118,19 @@ makeLenses ''RobotContext
 
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
-  { -- | The time at which the entry was created.
-    --   Note that this is the first field we sort on.
-    _leTime :: Integer
-  , -- | The name of the robot that generated the entry.
-    _leRobotName :: Text
-  , -- | The text of the log entry.
-    _leText :: Text
+  { _leTime :: Integer
+  -- ^ The time at which the entry was created.
+  --   Note that this is the first field we sort on.
+  , _leRobotName :: Text
+  -- ^ The name of the robot that generated the entry.
+  , _leRobotID :: Int
+  -- ^ The ID of the robot that generated the entry.
+  , _leLocation :: V2 Int64
+  -- ^ Location of the robot at log entry creation.
+  , _leText :: Text
+  -- ^ The text of the log entry.
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 makeLenses ''LogEntry
 

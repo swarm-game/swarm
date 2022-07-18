@@ -57,6 +57,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -301,7 +302,7 @@ drawModal s = \case
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
-  MessagesModal -> messageQueueWidget (s ^. gameState)
+  MessagesModal -> messagesWidget (s ^. gameState)
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
@@ -513,12 +514,25 @@ descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 descriptionWidget :: AppState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry s e)
 
-messageQueueWidget :: GameState -> Widget Name
-messageQueueWidget gs = viewport MessageViewport Vertical (vBox widgetList)
+messagesWidget :: GameState -> Widget Name
+messagesWidget gs = viewport MessageViewport Vertical (vBox widgetList)
  where
-  widgetList = focusNewest . map (drawLogEntry') . toList $ gs ^. messageQueue
+  widgetList = focusNewest . map drawLogEntry' . toList . Seq.sort $ focusedLogs <> messages
   focusNewest = over (element 1) visible
-  drawLogEntry' e = hBox [txt $ "[" <> view leRobotName e <> "] ", txtWrapWith indent2 (e ^. leText)]
+  drawLogEntry' (e, isLog) =
+    withAttr (if isLog then notifAttr else robotColor (e ^. leRobotID)) $
+      hBox
+        [ txt $ "[" <> view leRobotName e <> "] "
+        , txtWrapWith indent2 (e ^. leText)
+        ]
+  focusedLogs = (,True) <$> gs ^. robotMap . ix (gs ^. focusedRobotID) . robotLog
+  messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
+  noOther e = gs ^. focusedRobotID == e ^. leRobotID
+  -- color each robot message with different color of the world (except those with background)
+  robotColor rid = fgCols !! (rid `mod` fgColLen)
+  fgCols = filter (`notElem` [waterAttr, iceAttr]) worldAttributes
+  fgColLen = length fgCols
+  
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in

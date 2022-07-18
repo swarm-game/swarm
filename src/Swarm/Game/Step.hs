@@ -154,8 +154,11 @@ gameTick = do
           em <- use entityMap
           time <- use ticks
           let unused = error "Unexpectedly used field"
-              rid = view robotName $ hypotheticalRobot unused unused
-          let m = LogEntry time rid $ formatExn em exn
+              h = hypotheticalRobot unused unused
+              hid = view robotID h
+              hn = view robotName h
+              farAway = V2 maxBound maxBound
+          let m = LogEntry time hn hid farAway $ formatExn em exn
           emitMessage m
         Right (VBool True) -> winCondition .= Won False
         _ -> return ()
@@ -283,9 +286,11 @@ randomName = do
 -- | Create a log entry given current robot and game time in ticks.
 createLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m LogEntry
 createLog msg = do
+  rid <- use robotID
   rn <- use robotName
   time <- use ticks
-  pure $ LogEntry time rn msg
+  loc <- use robotLocation
+  pure $ LogEntry time rn rid loc msg
 
 -- | Print some text via the robot's log.
 traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m ()
