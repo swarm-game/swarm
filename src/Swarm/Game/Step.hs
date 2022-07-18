@@ -150,6 +150,7 @@ gameTick = do
       -- fresh CESK machine, using a copy of the current game state.
       v <- runThrow @Exn . evalState @GameState g $ evalPT t
       case v of
+        -- Log exceptions in the message queue so we can check for them in tests
         Left exn -> do
           em <- use entityMap
           time <- use ticks
