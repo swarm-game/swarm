@@ -223,6 +223,7 @@ handleMainEvent s = \case
   FKey 4 | not (null (s ^. gameState . availableCommands . notificationsContent)) -> do
     s' <- toggleModal s CommandsModal
     continue (s' & gameState . availableCommands . notificationsCount .~ 0)
+  FKey 5 -> toggleModal s MessagesModal >>= continue
   ControlKey 'g' -> case s ^. uiState . uiGoal of
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
@@ -325,6 +326,7 @@ handleModalEvent s = \case
       Just RecipesModal -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
       Just CommandsModal -> handleInfoPanelEvent s' commandsScroll (VtyEvent ev)
       Just RobotsModal -> handleInfoPanelEvent s' robotsScroll (VtyEvent ev)
+      Just MessagesModal -> handleInfoPanelEvent s' messageScroll (VtyEvent ev)
       _ -> continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL

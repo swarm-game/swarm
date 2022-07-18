@@ -132,6 +132,7 @@ module Swarm.TUI.Model (
   -- ** Utility
   focusedItem,
   focusedEntity,
+  messageScroll,
 ) where
 
 import Control.Lens hiding (from, (<.>))
@@ -213,6 +214,8 @@ data Name
     CommandsViewport
   | -- | The scrollable viewport for the robots list.
     RobotsViewport
+  | -- | The message queue showing what robots say.
+    MessageViewport
   deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
@@ -226,6 +229,9 @@ commandsScroll = viewportScroll CommandsViewport
 
 robotsScroll :: ViewportScroll Name
 robotsScroll = viewportScroll RobotsViewport
+
+messageScroll :: ViewportScroll Name
+messageScroll = viewportScroll MessageViewport
 
 ------------------------------------------------------------
 -- REPL History
@@ -415,6 +421,7 @@ data ModalType
   = HelpModal
   | RecipesModal
   | CommandsModal
+  | MessagesModal
   | RobotsModal
   | WinModal
   | QuitModal
