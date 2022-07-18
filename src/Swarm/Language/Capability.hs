@@ -105,6 +105,9 @@ data Capability
     CTeleport
   | -- | Capability to run commands atomically
     CAtomic
+  | -- | Capabiltiy to do time-related things, like `wait` and get the
+    --   current time.
+    CTime
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
