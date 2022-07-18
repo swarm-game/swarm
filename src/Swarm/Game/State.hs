@@ -86,6 +86,7 @@ module Swarm.Game.State (
   wakeUpRobotsDoneSleeping,
   deleteRobot,
   activateRobot,
+  toggleRunStatus,
 ) where
 
 import Control.Algebra (Has)
@@ -108,12 +109,14 @@ import Data.List (partition)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Sequence (Seq ((:<|)))
+import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
 import GHC.Generics (Generic)
-import Linear (V2 (..))
+import Linear
 import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
@@ -191,6 +194,9 @@ data RunStatus
     AutoPause
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+toggleRunStatus :: RunStatus -> RunStatus
+toggleRunStatus s = if s == Running then ManualPause else Running
+
 -- | A data type to keep track of discovered recipes and commands
 data Notifications a = Notifications
   { _notificationsCount :: Int
@@ -255,7 +261,7 @@ data GameState = GameState
   , _viewCenter :: V2 Int64
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
-  , _messageQueue :: [Text]
+  , _messageQueue :: Seq LogEntry
   , _focusedRobotID :: RID
   , _ticks :: Integer
   , _robotStepsPerTick :: Int
@@ -421,7 +427,9 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
   matchesWorking (REPLWorking _ _) = True
 
 -- | A queue of global messages.
-messageQueue :: Lens' GameState [Text]
+--
+-- Note that we put the newest entry to the right.
+messageQueue :: Lens' GameState (Seq LogEntry)
 
 -- | The current robot in focus. It is only a Getter because
 --   this value should be updated only when viewCenterRule is.
@@ -509,10 +517,12 @@ maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
-emitMessage :: Has (State GameState) sig m => Text -> m ()
-emitMessage msg = do
-  q <- use messageQueue
-  messageQueue %= (msg :) . (if length q >= maxMessageQueueSize then init else id)
+emitMessage :: Has (State GameState) sig m => LogEntry -> m ()
+emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
+ where
+  tooLong s = Seq.length s >= maxMessageQueueSize
+  dropLastIfLong whole@(_oldest :<| newer) = if tooLong whole then newer else whole
+  dropLastIfLong emptyQueue = emptyQueue
 
 -- | The number of ticks elapsed since the game started.
 ticks :: Lens' GameState Integer
@@ -606,7 +616,7 @@ initGameState = do
       , _viewCenter = V2 0 0
       , _needsRedraw = False
       , _replStatus = REPLDone
-      , _messageQueue = []
+      , _messageQueue = Empty
       , _focusedRobotID = 0
       , _ticks = 0
       , _robotStepsPerTick = defaultRobotStepsPerTick
@@ -653,7 +663,7 @@ scenarioToGameState scenario userSeed toRun g = do
         _replStatus = case toRun of
           Nothing -> REPLDone
           Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
-      , _messageQueue = []
+      , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0
       , _robotStepsPerTick = (scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick

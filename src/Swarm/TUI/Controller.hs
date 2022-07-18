@@ -223,6 +223,7 @@ handleMainEvent s = \case
   FKey 4 | not (null (s ^. gameState . availableCommands . notificationsContent)) -> do
     s' <- toggleModal s CommandsModal
     continue (s' & gameState . availableCommands . notificationsCount .~ 0)
+  FKey 5 -> toggleModal s MessagesModal >>= continue
   ControlKey 'g' -> case s ^. uiState . uiGoal of
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
@@ -305,7 +306,7 @@ toggleModal s mt = case s ^. uiState . uiModal of
   Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
  where
   -- these modals do not pause the game
-  runningModals = [RobotsModal]
+  runningModals = [RobotsModal, MessagesModal]
   -- Set the game to AutoPause if needed
   ensurePause
     | s ^. gameState . paused || mt `elem` runningModals = id
@@ -318,6 +319,7 @@ handleModalEvent s = \case
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
       Just (Just QuitButton) -> quitGame s'
       Just (Just (NextButton scene)) -> startGame scene s'
+      Just (Just PauseButton) -> continue $ s & gameState . runStatus %~ toggleRunStatus 
       _ -> continue s'
   ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
@@ -325,6 +327,7 @@ handleModalEvent s = \case
       Just RecipesModal -> handleInfoPanelEvent s' recipesScroll (VtyEvent ev)
       Just CommandsModal -> handleInfoPanelEvent s' commandsScroll (VtyEvent ev)
       Just RobotsModal -> handleInfoPanelEvent s' robotsScroll (VtyEvent ev)
+      Just MessagesModal -> handleInfoPanelEvent s' messageScroll (VtyEvent ev)
       _ -> continue s'
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
@@ -744,7 +747,7 @@ handleWorldEvent s = \case
     curTime <- liftIO $ getTime Monotonic
     continue $
       s
-        & gameState . runStatus %~ (\status -> if status == Running then ManualPause else Running)
+        & gameState . runStatus %~ toggleRunStatus
         -- Also reset the last frame time to now. If we are pausing, it
         -- doesn't matter; if we are unpausing, this is critical to
         -- ensure the next frame doesn't think it has to catch up from

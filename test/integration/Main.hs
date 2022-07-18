@@ -30,6 +30,7 @@ import Swarm.Game.State (
   WinCondition (Won),
   activeRobots,
   initGameStateForScenario,
+  messageQueue,
   robotMap,
   ticks,
   waitingRobots,
@@ -224,9 +225,11 @@ noBadErrors g = do
 badErrorsInLogs :: GameState -> [Text]
 badErrorsInLogs g =
   concatMap
-    (\r -> filter isBad (view leText <$> toList (r ^. robotLog)))
+    (\r -> filter isBad (seqToTexts $ r ^. robotLog))
     (g ^. robotMap)
+    <> filter isBad (seqToTexts $ g ^. messageQueue)
  where
+  seqToTexts = map (view leText) . toList
   isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
 
 printAllLogs :: GameState -> IO ()
