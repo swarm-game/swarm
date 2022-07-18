@@ -132,6 +132,31 @@ sepAttr = "sep"
 infoAttr = "info"
 defAttr = "def"
 
+worldAttributes :: [AttrName]
+worldAttributes =
+  [ dirtAttr
+  , grassAttr
+  , stoneAttr
+  , waterAttr
+  , iceAttr
+  , robotAttr
+  , plantAttr
+  , flowerAttr
+  , copperAttr
+  , copperAttr'
+  , ironAttr
+  , ironAttr'
+  , quartzAttr
+  , silverAttr
+  , goldAttr
+  , snowAttr
+  , sandAttr
+  , fireAttr
+  , blueAttr
+  , rockAttr
+  , woodAttr
+  ]
+
 instance ToJSON AttrName where
   toJSON = toJSON . head . attrNameComponents
 
