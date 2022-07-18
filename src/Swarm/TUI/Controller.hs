@@ -306,7 +306,7 @@ toggleModal s mt = case s ^. uiState . uiModal of
   Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
  where
   -- these modals do not pause the game
-  runningModals = [RobotsModal]
+  runningModals = [RobotsModal, MessagesModal]
   -- Set the game to AutoPause if needed
   ensurePause
     | s ^. gameState . paused || mt `elem` runningModals = id
