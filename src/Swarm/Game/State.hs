@@ -115,6 +115,8 @@ import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 
+import Data.Sequence (Seq ((:<|)))
+import Data.Sequence qualified as Seq
 import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
@@ -131,8 +133,6 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
 import Swarm.Util
-import Data.Sequence (Seq ((:<|)))
-import Data.Sequence qualified as Seq
 
 ------------------------------------------------------------
 -- Subsidiary data types
