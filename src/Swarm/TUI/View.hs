@@ -578,7 +578,7 @@ drawKeyMenu s =
       , Just (NoHighlight, "F2", "robots")
       , notificationKey availableRecipes "F3" "Recipes"
       , notificationKey availableCommands "F4" "Commands"
-      , Just (NoHighlight, "F4", "Commands")
+      , Just (NoHighlight, "F5", "Messages")
       , may cheat (NoHighlight, "^v", "creative")
       , may goal (NoHighlight, "^g", "goal")
       ]
