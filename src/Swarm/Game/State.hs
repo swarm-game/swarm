@@ -131,6 +131,8 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
 import Swarm.Util
+import Data.Sequence (Seq ((:<|)))
+import Data.Sequence qualified as Seq
 
 ------------------------------------------------------------
 -- Subsidiary data types
@@ -241,7 +243,7 @@ data GameState = GameState
   , _viewCenter :: V2 Int64
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
-  , _messageQueue :: [Text]
+  , _messageQueue :: Seq LogEntry
   , _focusedRobotID :: RID
   , _ticks :: Integer
   }
@@ -395,7 +397,9 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
   matchesWorking (REPLWorking _ _) = True
 
 -- | A queue of global messages.
-messageQueue :: Lens' GameState [Text]
+--
+-- Note that we put the newest entry to the right.
+messageQueue :: Lens' GameState (Seq LogEntry)
 
 -- | The current robot in focus. It is only a Getter because
 --   this value should be updated only when viewCenterRule is.
@@ -483,10 +487,12 @@ maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
-emitMessage :: Has (State GameState) sig m => Text -> m ()
-emitMessage msg = do
-  q <- use messageQueue
-  messageQueue %= (msg :) . (if length q >= maxMessageQueueSize then init else id)
+emitMessage :: Has (State GameState) sig m => LogEntry -> m ()
+emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
+ where
+  tooLong s = Seq.length s >= maxMessageQueueSize
+  dropLastIfLong whole@(_oldest :<| newer) = if tooLong whole then newer else whole
+  dropLastIfLong emptyQueue = emptyQueue
 
 -- | The number of ticks elapsed since the game started.
 ticks :: Lens' GameState Integer
@@ -576,7 +582,7 @@ initGameState = do
       , _viewCenter = V2 0 0
       , _needsRedraw = False
       , _replStatus = REPLDone
-      , _messageQueue = []
+      , _messageQueue = Empty
       , _focusedRobotID = 0
       , _ticks = 0
       }
@@ -622,7 +628,7 @@ scenarioToGameState scenario userSeed toRun g = do
         _replStatus = case toRun of
           Nothing -> REPLDone
           Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
-      , _messageQueue = []
+      , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0
       }

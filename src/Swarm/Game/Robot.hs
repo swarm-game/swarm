@@ -116,12 +116,13 @@ makeLenses ''RobotContext
 
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
-  { -- | The text of the log entry.
-    _leText :: Text
+  { -- | The time at which the entry was created.
+    --   Note that this is the first field we sort on.
+    _leTime :: Integer
   , -- | The name of the robot that generated the entry.
     _leRobotName :: Text
-  , -- | The time at which the entry was created.
-    _leTime :: Integer
+  , -- | The text of the log entry.
+    _leText :: Text
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 

@@ -110,7 +110,7 @@ gameTick = do
 
             when (newLoc /= oldLoc) $ do
               robotsByLocation . at oldLoc %= deleteOne rn
-              robotsByLocation . at newLoc . non Empty %= IS.insert rn
+              robotsByLocation . at newLoc . non Empty %= IS.insert rn -- TODO: should this be above?
             time <- use ticks
             case waitingUntil curRobot' of
               Just wakeUpTime
@@ -150,7 +150,13 @@ gameTick = do
       -- fresh CESK machine, using a copy of the current game state.
       v <- runThrow @Exn . evalState @GameState g $ evalPT t
       case v of
-        Left _exn -> return () -- XXX
+        Left exn -> do
+          em <- use entityMap
+          time <- use ticks
+          let unused = error "Unexpectedly used field"
+              rid = view robotName $ hypotheticalRobot unused unused
+          let m = LogEntry time rid $ formatExn em exn
+          emitMessage m
         Right (VBool True) -> winCondition .= Won False
         _ -> return ()
     _ -> return ()
@@ -167,15 +173,20 @@ evalPT t = evaluateCESK (initMachine t empty emptyStore)
 getNow :: Has (Lift IO) sig m => m TimeSpec
 getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
 
+-- | Create a special robot to check some hypothetical, for example the win condition.
+--
+-- Use ID (-1) so it won't conflict with any robots currently in the robot map.
+hypotheticalRobot :: CESK -> TimeSpec -> Robot
+hypotheticalRobot c = mkRobot (Identity (-1)) Nothing "hypothesis" [] zero zero defaultRobotDisplay c [] [] True
+
 evaluateCESK ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
   CESK ->
   m Value
 evaluateCESK cesk = do
   createdAt <- getNow
-  -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
-  let r = mkRobot (Identity (-1)) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True createdAt
-  addRobot r -- Add the robot to the robot map, so it can look itself up if needed
+  let r = hypotheticalRobot cesk createdAt
+  addRobot r -- Add the special robot to the robot map, so it can look itself up if needed
   evalState r . runCESK $ cesk
 
 runCESK ::
@@ -269,14 +280,22 @@ randomName = do
 -- Debugging
 ------------------------------------------------------------
 
--- | For debugging only. Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m ()
-traceLog msg = do
+-- | Create a log entry given current robot and game time in ticks.
+createLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m LogEntry
+createLog msg = do
   rn <- use robotName
   time <- use ticks
-  robotLog %= (Seq.|> LogEntry msg rn time)
+  pure $ LogEntry time rn msg
 
--- | For debugging only. Print a showable value via the robot's log.
+-- | Print some text via the robot's log.
+traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m ()
+traceLog msg = do
+  m <- createLog msg
+  robotLog %= (Seq.|> m)
+
+-- | Print a showable value via the robot's log.
+--
+-- Useful for debugging.
 traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
 traceLogShow = traceLog . from . show
 
@@ -1061,15 +1080,13 @@ execConst c vs s k = do
       _ -> badConst
     Say -> case vs of
       [VString msg] -> do
-        rn <- use robotName -- XXX use robot name + ID
-        emitMessage (T.concat [rn, ": ", msg])
+        m <- createLog msg
+        emitMessage m
         return $ Out VUnit s k
       _ -> badConst
     Log -> case vs of
       [VString msg] -> do
-        rn <- use robotName
-        time <- use ticks
-        robotLog %= (Seq.|> LogEntry msg rn time)
+        traceLog msg
         return $ Out VUnit s k
       _ -> badConst
     View -> case vs of
