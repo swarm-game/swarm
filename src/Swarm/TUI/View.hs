@@ -41,6 +41,7 @@ module Swarm.TUI.View (
 import Control.Arrow ((&&&))
 import Control.Lens hiding (Const, from)
 import Data.Array (range)
+import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
 import Data.IntMap qualified as IM
 import Data.List qualified as L
@@ -210,7 +211,11 @@ drawGameUI s =
                 highlightAttr
                 fr
                 WorldPanel
-                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s) & addCursorPos)
+                ( plainBorder
+                    & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+                    & addCursorPos
+                    & addClock
+                )
                 (drawWorld $ s ^. gameState)
             , drawKeyMenu s
             , clickable REPLPanel $
@@ -233,6 +238,12 @@ drawGameUI s =
   addCursorPos = case s ^. uiState . uiWorldCursor of
     Just coord -> topLabels . rightLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
     Nothing -> id
+  addClock = case s ^. gameState . to focusedRobot of
+    Nothing -> id
+    Just r
+      | countByName "clock" (r ^. installedDevices) > 0 ->
+        bottomLabels . leftLabel ?~ padLeftRight 1 (drawClock (s ^. gameState . ticks))
+      | otherwise -> id
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
@@ -242,6 +253,17 @@ drawWorldCursorInfo g i@(W.Coords (y, x)) =
   hBox [entity, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
  where
   entity = snd $ drawCell (hiding g) (g ^. world) i
+
+drawClock :: Integer -> Widget n
+drawClock t =
+  str $
+    mconcat
+      [ printf "%x" (t `shiftR` 19)
+      , ":"
+      , printf "%02x" ((t `shiftR` 11) .&. ((1 `shiftL` 8) - 1))
+      , ":"
+      , printf "%02x" ((t `shiftR` 3) .&. ((1 `shiftL` 8) - 1))
+      ]
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
