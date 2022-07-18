@@ -517,7 +517,8 @@ descriptionWidget s e = padLeftRight 1 (explainEntry s e)
 messagesWidget :: GameState -> Widget Name
 messagesWidget gs = viewport MessageViewport Vertical (vBox widgetList)
  where
-  widgetList = map drawLogEntry' . toList . Seq.sort $ focusedLogs <> messages
+  widgetList = focusNewest . map drawLogEntry' . toList . Seq.sort $ focusedLogs <> messages
+  focusNewest = if gs ^. paused then id else over _last visible
   drawLogEntry' (e, isLog) =
     withAttr (if isLog then notifAttr else robotColor (e ^. leRobotID)) $
       hBox
