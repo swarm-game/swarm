@@ -260,11 +260,11 @@ drawClock :: Integer -> Widget n
 drawClock t =
   str $
     mconcat
-      [ printf "%x" (t `shiftR` 19)
+      [ printf "%x" (t `shiftR` 20)
       , ":"
-      , printf "%02x" ((t `shiftR` 11) .&. ((1 `shiftL` 8) - 1))
+      , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
       , ":"
-      , printf "%02x" ((t `shiftR` 3) .&. ((1 `shiftL` 8) - 1))
+      , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
       ]
 
 -- | Render the type of the current REPL input to be shown to the user.
