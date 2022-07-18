@@ -133,7 +133,7 @@ infoAttr = "info"
 defAttr = "def"
 
 worldAttributes :: [AttrName]
-worldAttributes = 
+worldAttributes =
   [ dirtAttr
   , grassAttr
   , stoneAttr
@@ -156,7 +156,6 @@ worldAttributes =
   , rockAttr
   , woodAttr
   ]
-
 
 instance ToJSON AttrName where
   toJSON = toJSON . head . attrNameComponents
