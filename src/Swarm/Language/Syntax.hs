@@ -252,7 +252,9 @@ data Const
     Create
   | -- Sensing / generation
 
-    -- | Get the current x, y coordinates
+    -- | Get current time
+    Time
+  | -- | Get the current x, y coordinates
     Whereami
   | -- | See if we can move forward or not.
     Blocked
@@ -567,6 +569,7 @@ constInfo c = case c of
   Create ->
     command 1 short . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
+  Time -> command 0 Intangible "Get the current time."
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->

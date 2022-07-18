@@ -174,6 +174,7 @@ constCaps = \case
   Whoami -> Just CWhoami
   Self -> Just CWhoami
   Atomic -> Just CAtomic
+  Time -> Just CTime
   -- Some God-like abilities.
   As -> Just CGod
   RobotNamed -> Just CGod

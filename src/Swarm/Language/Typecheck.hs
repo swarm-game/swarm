@@ -484,6 +484,7 @@ inferConst c = case c of
   View -> [tyQ| robot -> cmd () |]
   Appear -> [tyQ| string -> cmd () |]
   Create -> [tyQ| string -> cmd () |]
+  Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (() + string) |]
