@@ -57,7 +57,7 @@ entities:
     properties: [known, portable, growable]
     growth: [1,2]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
   upperleft: [0,0]

@@ -25,6 +25,7 @@ module Swarm.Game.Robot (
   leTime,
 
   -- * Robots
+  RobotPhase (..),
   RID,
   RobotR,
   Robot,
@@ -40,6 +41,7 @@ module Swarm.Game.Robot (
   -- ** Lenses
   robotEntity,
   robotName,
+  trobotName,
   robotCreatedAt,
   robotDisplay,
   trobotLocation,
@@ -216,10 +218,13 @@ robotEntity :: Lens' (RobotR phase) Entity
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
 
--- | The name of a robot.  Note that unlike entities, robot names are
---   expected to be globally unique
-robotName :: Lens' (RobotR phase) Text
+-- | The name of a robot.
+robotName :: Lens' Robot Text
 robotName = robotEntity . entityName
+
+-- | The name of a robot template.
+trobotName :: Lens' TRobot Text
+trobotName = robotEntity . entityName
 
 -- | The 'Display' of a robot.
 robotDisplay :: Lens' Robot Display

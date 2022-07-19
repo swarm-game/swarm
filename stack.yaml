@@ -6,6 +6,6 @@ extra-deps:
 - git: https://github.com/colinhect/hsnoise
   commit: 4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d
 - simple-enumeration-0.2.1@sha256:8625b269c1650d3dd0e3887351c153049f4369853e0d525219e07480ea004b9f,1178
-- fused-effects-1.1.1.1@sha256:c029c5fb0b2154281221a71ff25709d2a11347fe061fa8c2398e7fe52a16008d,4932
+- fused-effects-1.1.2.0
 - fused-effects-lens-1.2.0.1@sha256:675fddf183215b6f3c1f2a0823359a648756435fd1966284e61830ec28ad61fa,1466
 resolver: lts-19.8

@@ -27,7 +27,7 @@ robots:
       - treads
       - logger
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     '┌': [stone, upper left corner]

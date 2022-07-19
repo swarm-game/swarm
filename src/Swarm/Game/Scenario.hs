@@ -18,7 +18,8 @@
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
   -- * WorldDescription
-  WorldDescription,
+  Cell (..),
+  WorldDescription (..),
 
   -- * Scenario
   Scenario,
@@ -81,7 +82,7 @@ import Data.Vector qualified as V
 import Paths_swarm (getDataDir, getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
-import Swarm.Game.Robot (TRobot, robotName)
+import Swarm.Game.Robot (TRobot, trobotName)
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
@@ -98,7 +99,7 @@ type RobotMap = Map Text TRobot
 
 -- | XXX
 buildRobotMap :: [TRobot] -> RobotMap
-buildRobotMap = M.fromList . map (view robotName &&& id)
+buildRobotMap = M.fromList . map (view trobotName &&& id)
 
 ------------------------------------------------------------
 -- Lookup utilities
@@ -278,31 +279,6 @@ scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
 scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
-
--- | XXX
-mkWorldFun :: WorldDescription -> (Seed -> WorldFun Int Entity)
-mkWorldFun wd@(WorldDescription {..}) seed = _
- where
-  rs = fromIntegral $ length area
-  cs = fromIntegral $ length (head area)
-
-  Coords (ulr, ulc) = locToCoords ul
-
-  arr = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat area)
-
--- XXX but this is where we have to look up the robots, add them world, etc!
--- So maybe mkWorldFun should have a GameState effect
-
---   case defaultTerrain of
---     Nothing -> do
---       let arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
---       return $
---         fmap ((lkup em <$>) . first fromEnum)
---           . (if offsetOrigin wd then findGoodOrigin else id)
---           . testWorld2FromArray arr2
---     Just def -> do
---       let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
---       return $ \_ -> worldFunFromArray arr defTerrain
 
 ------------------------------------------------------------
 -- Loading scenarios

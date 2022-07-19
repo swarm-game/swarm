@@ -52,7 +52,7 @@ robots:
       - [10, solar panel]
       - [10, logger]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     '~': [ice, knownwater]

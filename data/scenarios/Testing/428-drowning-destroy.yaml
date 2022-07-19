@@ -42,7 +42,7 @@ entities:
     growth: [0,0]
     yields: water
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     ' ': [ice, knownwater]

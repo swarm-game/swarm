@@ -55,7 +55,7 @@ robots:
       - compass
       - logger
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     '├': [stone, left T]

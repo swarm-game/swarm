@@ -59,7 +59,7 @@ robots:
       - [16, scanner]
       - [100, rock]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     '_': [stone]

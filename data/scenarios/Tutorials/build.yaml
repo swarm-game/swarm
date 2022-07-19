@@ -60,7 +60,7 @@ robots:
       - [10, grabber]
       - [10, treads]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     '~': [ice, knownwater]

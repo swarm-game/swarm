@@ -27,7 +27,7 @@ robots:
     inventory:
       - [10, tree]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]

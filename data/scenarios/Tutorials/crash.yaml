@@ -93,7 +93,7 @@ robots:
     program: |
       run "data/scenarios/Tutorials/secret.sw"
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     '~': [ice, knownwater]

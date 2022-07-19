@@ -23,7 +23,7 @@ module Swarm.Game.World (
   coordsToLoc,
 
   -- * Worlds
-  WorldFun,
+  WorldFun (..),
   worldFunFromArray,
   World,
 
@@ -76,11 +76,11 @@ instance Wrapped Coords
 
 -- | Convert an (x,y) location to a 'Coords' value.
 locToCoords :: V2 Int64 -> Coords
-locToCoords (V2 x y) = Coords (- y, x)
+locToCoords (V2 x y) = Coords (-y, x)
 
 -- | Convert 'Coords' to an (x,y) location.
 coordsToLoc :: Coords -> V2 Int64
-coordsToLoc (Coords (r, c)) = V2 c (- r)
+coordsToLoc (Coords (r, c)) = V2 c (-r)
 
 ------------------------------------------------------------
 -- World function
@@ -89,14 +89,18 @@ coordsToLoc (Coords (r, c)) = V2 c (- r)
 -- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
 -- (exactly one per cell) and entities of type @e@ (at most one per
 -- cell).
-type WorldFun t e = Coords -> (t, Maybe e)
+newtype WorldFun t e = WF {runWF :: Coords -> (t, Maybe e)}
+
+instance Bifunctor WorldFun where
+  bimap g h (WF z) = WF (bimap g (fmap h) . z)
 
 -- | Create a world function from a finite array of specified cells
 --   plus a single default cell to use everywhere else.
 worldFunFromArray :: Array (Int64, Int64) (t, Maybe e) -> (t, Maybe e) -> WorldFun t e
-worldFunFromArray arr def (Coords (r, c))
-  | inRange bnds (r, c) = arr ! (r, c)
-  | otherwise = def
+worldFunFromArray arr def = WF $ \(Coords (r, c)) ->
+  if inRange bnds (r, c)
+    then arr ! (r, c)
+    else def
  where
   bnds = bounds arr
 
@@ -197,7 +201,7 @@ newWorld f = World f M.empty M.empty
 -- | Create a new empty 'World' consisting of nothing but the given
 --   terrain.
 emptyWorld :: t -> World t e
-emptyWorld t = newWorld (const (t, Nothing))
+emptyWorld t = newWorld (WF $ const (t, Nothing))
 
 -- | Look up the terrain value at certain coordinates: try looking it
 --   up in the tile cache first, and fall back to running the 'WorldFun'
@@ -208,7 +212,7 @@ emptyWorld t = newWorld (const (t, Nothing))
 lookupTerrain :: IArray U.UArray t => Coords -> World t e -> t
 lookupTerrain i (World f t _) =
   ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
-    ? fst (f i)
+    ? fst (runWF f i)
 
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
@@ -229,7 +233,7 @@ lookupEntity :: Coords -> World t e -> Maybe e
 lookupEntity i (World f t m) =
   M.lookup i m
     ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t)
-    ? snd (f i)
+    ? snd (runWF f i)
 
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
@@ -270,4 +274,4 @@ loadRegion reg (World f t m) = World f t' m
   loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
    where
     tileCorner = tileOrigin tc
-    (terrain, entities) = unzip $ map (f . plusOffset tileCorner) (range tileBounds)
+    (terrain, entities) = unzip $ map (runWF f . plusOffset tileCorner) (range tileBounds)

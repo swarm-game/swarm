@@ -55,7 +55,7 @@ robots:
     inventory:
       - [1, Win]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
     '.': [grass]
     '┌': [stone, upper left corner]
