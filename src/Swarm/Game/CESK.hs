@@ -168,6 +168,8 @@ data Frame
     FImmediate WorldUpdate RobotUpdate
   | -- | Update the memory cell at a certain location with the computed value.
     FUpdate Loc
+  | -- | Signal that we are done with an atomic computation.
+    FFinishAtomic
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.
@@ -351,6 +353,7 @@ prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
 prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FImmediate {} = "(_ : cmd a)"
 prettyFrame (FUpdate loc) = "store@" ++ show loc ++ "(_)"
+prettyFrame FFinishAtomic = "finishAtomic"
 
 --------------------------------------------------------------
 -- Wrappers for functions in FImmediate

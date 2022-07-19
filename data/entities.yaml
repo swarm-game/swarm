@@ -740,7 +740,7 @@
 - name: life support system
   display:
     attr: device
-    char: 'O'
+    char: 'Ж'
   description:
   - A state-of-the-art life support system which maintains the
     particular temperature and mixture of gases you need to survive.
@@ -868,3 +868,26 @@
   description:
   - An I/O cable can be used to communicate with an adjacent robot.
   properties: [portable]
+
+- name: rubber band
+  display:
+    attr: device
+    char: 'O'
+  description:
+  - "A rubber band can tie multiple commands together so that other robots can't execute
+    commands in between them.  It can be used via the 'atomic' command. For example, suppose
+    robot A executes the following code:"
+  - |
+    b <- ishere "rock"; if b {grab} {}
+
+  - "This seems like a safe way to execute 'grab' only when there is a
+    rock to grab.  However, it is actually possible for the 'grab' to
+    fail, if some other robot B snatches the rock right after robot A sensed
+    it and before robot A got around to grab it on the next game tick."
+  - This will make robot A very sad and it will crash.
+  - "To prevent this situation, robot A can wrap the commands in 'atomic', like so:"
+  - |
+    atomic (b <- ishere "rock"; if b {grab} {})
+
+  properties: [portable]
+  capabilities: [atomic]

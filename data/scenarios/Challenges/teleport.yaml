@@ -10,7 +10,7 @@ win: |
     as base {has "lambda"}
   } { return false }
 solution: |
-  turn back; move;move;move; wait 11; move;move;move; grab
+  turn back; move;move;move; wait 10; move;move;move; grab
 robots:
   - name: base
     loc: [3,0]
@@ -44,6 +44,7 @@ robots:
     dir: [0,0]
     program: |
       def forever = \prog. wait 10; prog; forever prog; end;
+      wait 5;
       destRob <- robotNamed "portkey1";
       destPos <- as destRob {whereami};
       myPos <- whereami;

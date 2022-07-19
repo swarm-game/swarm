@@ -103,6 +103,8 @@ data Capability
     CSetname
   | -- | Capability to move unrestricted to any place
     CTeleport
+  | -- | Capability to run commands atomically
+    CAtomic
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -168,6 +170,7 @@ constCaps = \case
   Exp -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
+  Atomic -> Just CAtomic
   -- Some God-like abilities.
   As -> Just CGod
   RobotNamed -> Just CGod

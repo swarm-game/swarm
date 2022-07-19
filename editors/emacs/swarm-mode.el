@@ -79,6 +79,7 @@
                "run"
                "return"
                "try"
+               "atomic"
                "teleport"
                "as"
                "robotnamed"

@@ -57,6 +57,7 @@ module Swarm.Game.State (
   messageQueue,
   focusedRobotID,
   ticks,
+  robotStepsPerTick,
 
   -- ** Notifications
   Notifications (..),
@@ -202,6 +203,11 @@ makeLenses ''Notifications
 -- The main GameState record type
 ------------------------------------------------------------
 
+-- | By default, robots may make a maximum of 100 CESK machine steps
+--   during one game tick.
+defaultRobotStepsPerTick :: Int
+defaultRobotStepsPerTick = 100
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
@@ -245,6 +251,7 @@ data GameState = GameState
   , _messageQueue :: [Text]
   , _focusedRobotID :: RID
   , _ticks :: Integer
+  , _robotStepsPerTick :: Int
   }
 
 ------------------------------------------------------------
@@ -501,6 +508,10 @@ emitMessage msg = do
 -- | The number of ticks elapsed since the game started.
 ticks :: Lens' GameState Integer
 
+-- | The maximum number of CESK machine steps a robot may take during
+--   a single tick.
+robotStepsPerTick :: Lens' GameState Int
+
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
 sleepUntil :: Has (State GameState) sig m => RID -> Integer -> m ()
@@ -589,6 +600,7 @@ initGameState = do
       , _messageQueue = []
       , _focusedRobotID = 0
       , _ticks = 0
+      , _robotStepsPerTick = defaultRobotStepsPerTick
       }
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
@@ -627,10 +639,15 @@ scenarioToGameState scenario userSeed toRun g = do
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
       , _needsRedraw = False
-      , _replStatus = REPLDone
+      , -- When starting base with the run flag, REPL status must be set to working,
+        -- otherwise the store of definition cells is not saved (see #333)
+        _replStatus = case toRun of
+          Nothing -> REPLDone
+          Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
       , _messageQueue = []
       , _focusedRobotID = baseID
       , _ticks = 0
+      , _robotStepsPerTick = (scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick
       }
  where
   em = g ^. entityMap
