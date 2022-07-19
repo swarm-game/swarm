@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -16,8 +17,11 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * The Scenario type
-  Scenario (..),
+  -- * WorldDescription
+  WorldDescription,
+
+  -- * Scenario
+  Scenario,
 
   -- ** Fields
   scenarioName,
@@ -33,6 +37,10 @@ module Swarm.Game.Scenario (
   scenarioSolution,
   scenarioStepsPerTick,
 
+  -- * Conversion
+
+  -- mkWorldFun,
+
   -- * Loading from disk
   loadScenario,
   ScenarioCollection (..),
@@ -43,7 +51,7 @@ module Swarm.Game.Scenario (
   loadScenarios,
 ) where
 
-import Control.Arrow ((***))
+import Control.Arrow ((&&&), (***))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, unless, when)
 import Data.Aeson.Key qualified as Key
@@ -73,13 +81,116 @@ import Data.Vector qualified as V
 import Paths_swarm (getDataDir, getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
-import Swarm.Game.Robot (TRobot)
+import Swarm.Game.Robot (TRobot, robotName)
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
 import Swarm.Util.Yaml
+
+------------------------------------------------------------
+-- Robot map
+------------------------------------------------------------
+
+-- | XXX
+type RobotMap = Map Text TRobot
+
+-- | XXX
+buildRobotMap :: [TRobot] -> RobotMap
+buildRobotMap = M.fromList . map (view robotName &&& id)
+
+------------------------------------------------------------
+-- Lookup utilities
+------------------------------------------------------------
+
+-- XXX
+getThing :: String -> (Text -> m -> Maybe a) -> Text -> ParserE m a
+getThing thing lkup name = do
+  m <- getE
+  case lkup name m of
+    Nothing -> fail $ "Unknown " <> thing <> " name: " ++ show name
+    Just a -> return a
+
+-- XXX
+getEntity :: Text -> ParserE EntityMap Entity
+getEntity = getThing "entity" lookupEntityName
+
+-- XXX
+getRobot :: Text -> ParserE RobotMap TRobot
+getRobot = getThing "robot" M.lookup
+
+------------------------------------------------------------
+-- World cells
+------------------------------------------------------------
+
+data Cell = Cell
+  { cellTerrain :: TerrainType
+  , cellEntity :: Maybe Entity
+  , cellRobot :: Maybe TRobot
+  }
+
+instance FromJSONE (EntityMap, RobotMap) Cell where
+  -- parseJSONE :: Value -> ParserE (EntityMap, RobotMap) Cell
+  -- XXX deduplicate this code?
+  parseJSONE = withArrayE "tuple" $ \v -> case V.toList v of
+    [t] -> liftE (Cell <$> parseJSON t <*> pure Nothing <*> pure Nothing)
+    [t, e] -> do
+      terr <- liftE $ parseJSON t
+      mName <- liftE $ parseJSON @(Maybe Text) e
+      ent <- traverse (localE fst . getEntity) mName
+      return (Cell terr ent Nothing)
+    [t, e, r] -> do
+      terr <- liftE $ parseJSON t
+      meName <- liftE $ parseJSON @(Maybe Text) e
+      ent <- traverse (localE fst . getEntity) meName
+      mrName <- liftE $ parseJSON @(Maybe Text) r
+      rob <- traverse (localE snd . getRobot) mrName
+      return (Cell terr ent rob)
+    _ -> fail "palette entry must be 1, 2, or 3 entries"
+
+------------------------------------------------------------
+-- World description
+------------------------------------------------------------
+
+-- | A description of a world parsed from a YAML file.  The
+--   'mkWorldFun' function is used to turn a 'WorldDescription' into a
+--   'WorldFun'.
+data WorldDescription = WorldDescription
+  { defaultTerrain :: Maybe Cell
+  , offsetOrigin :: Bool
+  , palette :: WorldPalette
+  , ul :: V2 Int64
+  , area :: [[Cell]]
+  }
+
+instance FromJSONE (EntityMap, RobotMap) WorldDescription where
+  parseJSONE = withObjectE "world description" $ \v -> do
+    pal <- v ..:? "palette" ..!= WorldPalette mempty
+    WorldDescription
+      <$> v ..:? "default"
+      <*> liftE (v .:? "offset" .!= False)
+      <*> pure pal
+      <*> liftE (v .:? "upperleft" .!= V2 0 0)
+      <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)
+
+-- | XXX
+paintMap :: MonadFail m => WorldPalette -> Text -> m [[Cell]]
+paintMap pal = traverse (traverse toCell . into @String) . T.lines
+ where
+  toCell c = case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
+    Nothing -> fail $ "Char not in world palette: " ++ show c
+    Just cell -> return cell
+
+newtype WorldPalette = WorldPalette
+  {unPalette :: KeyMap Cell}
+
+instance FromJSONE (EntityMap, RobotMap) WorldPalette where
+  parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
+
+------------------------------------------------------------
+-- Scenario
+------------------------------------------------------------
 
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
@@ -91,7 +202,7 @@ data Scenario = Scenario
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
-  , _scenarioWorld :: Seed -> WorldFun Int Entity
+  , _scenarioWorld :: WorldDescription
   , _scenarioRobots :: [TRobot]
   , _scenarioWin :: Maybe ProcessedTerm
   , _scenarioSolution :: Maybe ProcessedTerm
@@ -103,6 +214,8 @@ makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
+    rs <- withE em (v ..: "robots")
+    let rsMap = buildRobotMap rs
     Scenario
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= "")
@@ -111,11 +224,14 @@ instance FromJSONE EntityMap Scenario where
       <*> liftE (v .:? "seed")
       <*> pure em
       <*> withE em (v ..:? "recipes" ..!= [])
-      <*> withE em (mkWorldFun (v .: "world"))
-      <*> withE em (v ..: "robots")
+      <*> localE (,rsMap) (v ..: "world")
+      <*> pure rs
       <*> liftE (v .:? "win")
       <*> liftE (v .:? "solution")
       <*> liftE (v .:? "stepsPerTick")
+
+--------------------------------------------------
+-- Lenses
 
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
@@ -142,7 +258,7 @@ scenarioEntities :: Lens' Scenario EntityMap
 scenarioRecipes :: Lens' Scenario [Recipe Entity]
 
 -- | The starting world for the scenario.
-scenarioWorld :: Lens' Scenario (Seed -> WorldFun Int Entity)
+scenarioWorld :: Lens' Scenario WorldDescription
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.
@@ -163,77 +279,30 @@ scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
 --   take during a single tick.
 scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 
--- | A description of a world parsed from a YAML file.  The
---   'mkWorldFun' function is used to turn a 'WorldDescription' into a
---   'WorldFun'.
-data WorldDescription = WorldDescription
-  { defaultTerrain :: Maybe (TerrainType, Maybe Text)
-  , offsetOrigin :: Bool
-  , palette :: WorldPalette
-  , ul :: V2 Int64
-  , area :: Text
-  }
-
-instance FromJSON WorldDescription where
-  parseJSON = withObject "world description" $ \v ->
-    WorldDescription
-      <$> v .:? "default"
-      <*> v .:? "offset" .!= False
-      <*> v .:? "palette" .!= WorldPalette mempty
-      <*> v .:? "upperleft" .!= V2 0 0
-      <*> v .:? "map" .!= ""
-
-newtype WorldPalette = WorldPalette
-  {unPalette :: KeyMap (TerrainType, Maybe Text, Maybe Text)}
-
-instance FromJSON WorldPalette where
-  parseJSON = withObject "palette" $ fmap WorldPalette . mapM parsePaletteEntry
-   where
-    parsePaletteEntry :: Value -> Parser (TerrainType, Maybe Text, Maybe Text)
-    parsePaletteEntry = withArray "tuple" $ \v -> case V.toList v of
-      [t] -> (,Nothing,Nothing) <$> parseJSON t
-      [t, e] -> (,,Nothing) <$> parseJSON t <*> parseJSON e
-      [t, e, r] -> (,,) <$> parseJSON t <*> parseJSON e <*> parseJSON r
-      _ -> fail "foo"
-
-mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (Seed -> WorldFun Int Entity)
-mkWorldFun pwd = E $ \em -> do
-  wd <- pwd
-  let toEntity :: Char -> Parser (Int, Maybe Entity)
-      toEntity c = case KeyMap.lookup (Key.fromString [c]) (unPalette (palette wd)) of
-        Nothing -> fail $ "Char not in entity palette: " ++ show c
-        Just (t, mt, _) -> case mt of -- XXX
-          Nothing -> return (fromEnum t, Nothing)
-          Just name -> case lookupEntityName name em of
-            Nothing -> fail $ "Unknown entity name: " ++ show name
-            Just e -> return (fromEnum t, Just e)
-
-      grid = map (into @String) . T.lines $ area wd
-
-      rs = fromIntegral $ length grid
-      cs = fromIntegral $ length (head grid)
-
-      Coords (ulr, ulc) = locToCoords (ul wd)
-
-  arr <-
-    fmap (listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)))
-      . mapM toEntity
-      . concat
-      $ grid
-  case defaultTerrain wd of
-    Nothing -> do
-      let arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
-      return $
-        fmap ((lkup em <$>) . first fromEnum)
-          . (if offsetOrigin wd then findGoodOrigin else id)
-          . testWorld2FromArray arr2
-    Just def -> do
-      let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
-      return $ \_ -> worldFunFromArray arr defTerrain
+-- | XXX
+mkWorldFun :: WorldDescription -> (Seed -> WorldFun Int Entity)
+mkWorldFun wd@(WorldDescription {..}) seed = _
  where
-  lkup :: EntityMap -> Maybe Text -> Maybe Entity
-  lkup _ Nothing = Nothing
-  lkup em (Just t) = lookupEntityName t em
+  rs = fromIntegral $ length area
+  cs = fromIntegral $ length (head area)
+
+  Coords (ulr, ulc) = locToCoords ul
+
+  arr = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat area)
+
+-- XXX but this is where we have to look up the robots, add them world, etc!
+-- So maybe mkWorldFun should have a GameState effect
+
+--   case defaultTerrain of
+--     Nothing -> do
+--       let arr2 = bimap toEnum (fmap (^. entityName)) <$> arr
+--       return $
+--         fmap ((lkup em <$>) . first fromEnum)
+--           . (if offsetOrigin wd then findGoodOrigin else id)
+--           . testWorld2FromArray arr2
+--     Just def -> do
+--       let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
+--       return $ \_ -> worldFunFromArray arr defTerrain
 
 ------------------------------------------------------------
 -- Loading scenarios

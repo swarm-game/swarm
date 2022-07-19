@@ -42,6 +42,7 @@ module Swarm.Game.Robot (
   robotName,
   robotCreatedAt,
   robotDisplay,
+  trobotLocation,
   robotLocation,
   robotOrientation,
   robotInventory,
@@ -210,19 +211,23 @@ type Robot = RobotR 'ConcreteRobot
 --   directly reference fields inside this record; for example, one
 --   can use 'robotName' instead of writing @'robotEntity'
 --   . 'entityName'@.
-robotEntity :: Lens' Robot Entity
+robotEntity :: Lens' (RobotR phase) Entity
 
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
 
 -- | The name of a robot.  Note that unlike entities, robot names are
 --   expected to be globally unique
-robotName :: Lens' Robot Text
+robotName :: Lens' (RobotR phase) Text
 robotName = robotEntity . entityName
 
 -- | The 'Display' of a robot.
 robotDisplay :: Lens' Robot Display
 robotDisplay = robotEntity . entityDisplay
+
+-- XXX
+trobotLocation :: Lens' TRobot (Maybe (V2 Int64))
+trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | The robot's current location, represented as (x,y).
 robotLocation :: Lens' Robot (V2 Int64)

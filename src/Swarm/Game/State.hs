@@ -101,7 +101,7 @@ import Data.IntSet.Lens (setOf)
 import Data.List (partition)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
@@ -644,8 +644,12 @@ scenarioToGameState scenario userSeed toRun g = do
 
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
+  -- Keep only robots from the robot list with a concrete location;
+  -- the others existed only to serve as a template for robots drawn
+  -- in the world map
+  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
   robotList =
-    zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
+    zipWith setRobotID [0 ..] locatedRobots
       -- If the  --run flag was used, use it to replace the CESK machine of the
       -- robot whose id is 0, i.e. the first robot listed in the scenario.
       & ix 0 . machine
@@ -668,7 +672,7 @@ scenarioToGameState scenario userSeed toRun g = do
       (maybe False (`S.member` initialCaps) . constCaps)
       allConst
 
-  theWorld = W.newWorld . (scenario ^. scenarioWorld)
+  theWorld = W.newWorld . mkWorldFun (scenario ^. scenarioWorld)
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
