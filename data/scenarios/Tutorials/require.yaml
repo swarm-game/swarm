@@ -59,7 +59,7 @@ robots:
 world:
   default: [blank, none]
   palette:
-    '.': [grass, null]
+    '.': [grass]
     '~': [ice, knownwater]
     '*': [grass, periwinkle]
     '┌': [stone, upper left corner]

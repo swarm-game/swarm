@@ -35,7 +35,7 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
-    ' ': [grass, null]
+    ' ': [grass]
   upperleft: [-1, 1]
   map: |
     ┌─┐

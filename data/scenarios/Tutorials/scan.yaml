@@ -45,7 +45,7 @@ robots:
 world:
   default: [blank, none]
   palette:
-    '.': [grass, null]
+    '.': [grass]
     '~': [ice, wavy water]
     'T': [grass, tree]
     'A': [stone, mountain]

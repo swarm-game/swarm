@@ -69,6 +69,7 @@ import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 
+import Data.Vector qualified as V
 import Paths_swarm (getDataDir, getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
@@ -183,10 +184,17 @@ instance FromJSON WorldDescription where
       <*> v .:? "map" .!= ""
 
 newtype WorldPalette = WorldPalette
-  {unPalette :: KeyMap (TerrainType, Maybe Text)}
+  {unPalette :: KeyMap (TerrainType, Maybe Text, Maybe Text)}
 
 instance FromJSON WorldPalette where
-  parseJSON = withObject "palette" $ fmap WorldPalette . mapM parseJSON
+  parseJSON = withObject "palette" $ fmap WorldPalette . mapM parsePaletteEntry
+   where
+    parsePaletteEntry :: Value -> Parser (TerrainType, Maybe Text, Maybe Text)
+    parsePaletteEntry = withArray "tuple" $ \v -> case V.toList v of
+      [t] -> (,Nothing,Nothing) <$> parseJSON t
+      [t, e] -> (,,Nothing) <$> parseJSON t <*> parseJSON e
+      [t, e, r] -> (,,) <$> parseJSON t <*> parseJSON e <*> parseJSON r
+      _ -> fail "foo"
 
 mkWorldFun :: Parser WorldDescription -> ParserE EntityMap (Seed -> WorldFun Int Entity)
 mkWorldFun pwd = E $ \em -> do
@@ -194,7 +202,7 @@ mkWorldFun pwd = E $ \em -> do
   let toEntity :: Char -> Parser (Int, Maybe Entity)
       toEntity c = case KeyMap.lookup (Key.fromString [c]) (unPalette (palette wd)) of
         Nothing -> fail $ "Char not in entity palette: " ++ show c
-        Just (t, mt) -> case mt of
+        Just (t, mt, _) -> case mt of -- XXX
           Nothing -> return (fromEnum t, Nothing)
           Just name -> case lookupEntityName name em of
             Nothing -> fail $ "Unknown entity name: " ++ show name

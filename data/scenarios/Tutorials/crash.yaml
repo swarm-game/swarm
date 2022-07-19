@@ -95,7 +95,7 @@ robots:
 world:
   default: [blank, none]
   palette:
-    '.': [grass, null]
+    '.': [grass]
     '~': [ice, knownwater]
     'T': [grass, knowntree]
     'A': [stone, knownmountain]

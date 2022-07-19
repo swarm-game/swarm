@@ -57,7 +57,7 @@ robots:
 world:
   default: [blank, none]
   palette:
-    '.': [grass, null]
+    '.': [grass]
     '├': [stone, left T]
     '┤': [stone, right T]
     '┌': [stone, upper left corner]

@@ -44,7 +44,7 @@ entities:
 world:
   default: [blank, none]
   palette:
-    '.': [grass, null]
+    '.': [grass]
     ' ': [ice, knownwater]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]

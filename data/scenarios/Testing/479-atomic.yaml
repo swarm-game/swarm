@@ -59,7 +59,7 @@ entities:
 world:
   default: [blank, none]
   palette:
-    '.': [grass, null]
+    '.': [grass]
   upperleft: [0,0]
   map: |
     .

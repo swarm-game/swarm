@@ -41,8 +41,8 @@ robots:
 world:
   default: [ice, knownwater]
   palette:
-    '.': [grass, null]
-    '#': [ice, null]
+    '.': [grass]
+    '#': [ice]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
