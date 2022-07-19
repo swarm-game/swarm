@@ -240,12 +240,7 @@ drawGameUI s =
     Nothing -> id
   -- Add clock display in bottom left of the world view if focused robot
   -- has a clock installed
-  addClock = case s ^. gameState . to focusedRobot of
-    Nothing -> id
-    Just r
-      | countByName "clock" (r ^. installedDevices) > 0 ->
-        bottomLabels . leftLabel ?~ padLeftRight 1 (drawClock (s ^. gameState . ticks))
-      | otherwise -> id
+  addClock = bottomLabels . leftLabel ?~ padLeftRight 1 (drawClockDisplay s)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
@@ -256,16 +251,32 @@ drawWorldCursorInfo g i@(W.Coords (y, x)) =
  where
   entity = snd $ drawCell (hiding g) (g ^. world) i
 
-drawClock :: Integer -> Widget n
-drawClock t =
-  str $
-    mconcat
-      [ printf "%x" (t `shiftR` 20)
-      , ":"
-      , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
-      , ":"
-      , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
-      ]
+drawClockDisplay :: AppState -> Widget n
+drawClockDisplay s
+  | clockInstalled && gamePaused = clockWidget <+> txt " " <+> pauseWidget
+  | clockInstalled = clockWidget
+  | gamePaused = pauseWidget
+  | otherwise = txt ""
+ where
+  clockInstalled = case s ^. gameState . to focusedRobot of
+    Nothing -> False
+    Just r
+      | countByName "clock" (r ^. installedDevices) > 0 -> True
+      | otherwise -> False
+  gamePaused = s ^. gameState . paused
+  clockWidget = drawClock (s ^. gameState . ticks) gamePaused
+  pauseWidget = txt "(PAUSED)"
+
+drawClock :: Integer -> Bool -> Widget n
+drawClock t showTicks =
+  str . mconcat $
+    [ printf "%x" (t `shiftR` 20)
+    , ":"
+    , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
+    , ":"
+    , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
+    ]
+      ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
