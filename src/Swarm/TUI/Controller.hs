@@ -319,7 +319,7 @@ handleModalEvent s = \case
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
       Just (Just QuitButton) -> quitGame s'
       Just (Just (NextButton scene)) -> startGame scene s'
-      Just (Just PauseButton) -> continue $ s & gameState . runStatus %~ toggleRunStatus 
+      Just (Just PauseButton) -> continue $ s & gameState . runStatus %~ toggleRunStatus
       _ -> continue s'
   ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
