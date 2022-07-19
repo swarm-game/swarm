@@ -319,6 +319,7 @@ handleModalEvent s = \case
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
       Just (Just QuitButton) -> quitGame s'
       Just (Just (NextButton scene)) -> startGame scene s'
+      Just (Just PauseButton) -> continue $ s & gameState . runStatus %~ toggleRunStatus 
       _ -> continue s'
   ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
@@ -746,7 +747,7 @@ handleWorldEvent s = \case
     curTime <- liftIO $ getTime Monotonic
     continue $
       s
-        & gameState . runStatus %~ (\status -> if status == Running then ManualPause else Running)
+        & gameState . runStatus %~ toggleRunStatus
         -- Also reset the last frame time to now. If we are pausing, it
         -- doesn't matter; if we are unpausing, this is critical to
         -- ensure the next frame doesn't think it has to catch up from

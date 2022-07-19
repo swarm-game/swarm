@@ -83,6 +83,7 @@ module Swarm.Game.State (
   wakeUpRobotsDoneSleeping,
   deleteRobot,
   activateRobot,
+  toggleRunStatus,
 ) where
 
 import Control.Applicative ((<|>))
@@ -183,6 +184,9 @@ data RunStatus
     --   and it should unpause after returning back to the game.
     AutoPause
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+toggleRunStatus :: RunStatus -> RunStatus
+toggleRunStatus s = if s == Running then ManualPause else Running
 
 -- | A data type to keep track of discovered recipes and commands
 data Notifications a = Notifications
