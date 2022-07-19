@@ -1,7 +1,9 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -26,7 +28,7 @@ module Swarm.Game.Robot (
   RID,
   RobotR,
   Robot,
-  URobot,
+  TRobot,
 
   -- * Robot context
   RobotContext,
@@ -40,7 +42,6 @@ module Swarm.Game.Robot (
   robotName,
   robotCreatedAt,
   robotDisplay,
-  urobotLocation,
   robotLocation,
   robotOrientation,
   robotInventory,
@@ -71,16 +72,14 @@ module Swarm.Game.Robot (
 
 import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Either (fromRight)
 import Data.Hashable (hashWithSalt)
 import Data.Int (Int64)
-import Data.Maybe (isNothing)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
-import Data.Void
 import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
@@ -132,10 +131,30 @@ makeLenses ''LogEntry
 -- | A unique identifier for a robot.
 type RID = Int
 
+-- | The phase of a robot description record.
+data RobotPhase
+  = -- | The robot record has just been read in from a scenario
+    --   description; it represents a /template/ that may later be
+    --   instantiated as one or more concrete robots.
+    TemplateRobot
+  | -- | The robot record represents a concrete robot in the world.
+    ConcreteRobot
+
+-- | With a robot template, we may or may not have a location.  With a
+--   concrete robot we must have a location.
+type family RobotLocation (phase :: RobotPhase) :: * where
+  RobotLocation 'TemplateRobot = Maybe (V2 Int64)
+  RobotLocation 'ConcreteRobot = V2 Int64
+
+-- | Robot templates have no ID; concrete robots definitely do.
+type family RobotID (phase :: RobotPhase) :: * where
+  RobotID 'TemplateRobot = ()
+  RobotID 'ConcreteRobot = RID
+
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
 --   the robot has been assigned a unique ID.
-data RobotR f = RobotR
+data RobotR (phase :: RobotPhase) = RobotR
   { _robotEntity :: Entity
   , _installedDevices :: Inventory
   , -- | A cached view of the capabilities this robot has.
@@ -143,15 +162,9 @@ data RobotR f = RobotR
     _robotCapabilities :: Set Capability
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
-  , -- When f = Const (), then f 0 + Loc = 1 + Loc = Maybe Loc,
-    --   i.e. if we have no ID (e.g. having just been read from a .yaml file)
-    --   then we might or might not have a location
-    -- When f = Identity, then f 0 + Loc = 0 + Loc = Loc,
-    --   i.e. once we have an ID we must have a specific location as well
-    _robotLocation :: Either (f Void) (V2 Int64)
+  , _robotLocation :: RobotLocation phase
   , _robotContext :: RobotContext
-  , -- Might or might not have an ID yet; f = Const () (no ID) or Identity (ID).
-    _robotID :: f RID
+  , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
   , _machine :: CESK
   , _systemRobot :: Bool
@@ -162,12 +175,12 @@ data RobotR f = RobotR
   }
   deriving (Generic)
 
-deriving instance (Show (f RID), Show (f Void)) => Show (RobotR f)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID, '_robotLocation]
+let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -176,15 +189,16 @@ let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID, '
       )
       ''RobotR
 
--- | An Unidentified robot, i.e. a robot record without a unique ID number.
-type URobot = RobotR (Const ())
+-- | A template robot, i.e. a template robot record without a unique ID number,
+--   and possibly without a location.
+type TRobot = RobotR 'TemplateRobot
 
--- | A robot with a unique ID number.
-type Robot = RobotR Identity
+-- | A concrete robot, with a unique ID number and a specific location.
+type Robot = RobotR 'ConcreteRobot
 
--- In theory we could make all these lenses over (RobotR f), but that
--- leads to lots of type ambiguity problems later.  In practice we
--- only need lenses for Robots.
+-- In theory we could make all these lenses over (RobotR phase), but
+-- that leads to lots of type ambiguity problems later.  In practice
+-- we only need lenses for Robots.
 
 -- | Robots are not entities, but they have almost all the
 --   characteristics of one (or perhaps we could think of robots as
@@ -210,28 +224,8 @@ robotName = robotEntity . entityName
 robotDisplay :: Lens' Robot Display
 robotDisplay = robotEntity . entityDisplay
 
-f1M :: Iso' (Either (Const () Void) a) (Maybe a)
-f1M =
-  iso
-    (either (const Nothing) Just)
-    (maybe (Left (Const ())) Right)
-
-fII :: Iso' (Either (Identity Void) a) a
-fII =
-  iso
-    (either (absurd . runIdentity) id)
-    Right
-
-robotLocation_ :: Lens' (RobotR f) (Either (f Void) (V2 Int64))
-robotLocation_ = lens _robotLocation (\r l -> r {_robotLocation = l})
-
--- | A 'URobot' might have a location or not.
-urobotLocation :: Lens' URobot (Maybe (V2 Int64))
-urobotLocation = robotLocation_ . f1M
-
 -- | The robot's current location, represented as (x,y).
 robotLocation :: Lens' Robot (V2 Int64)
-robotLocation = robotLocation_ . fII
 
 -- | Which way the robot is currently facing.
 robotOrientation :: Lens' Robot (Maybe (V2 Int64))
@@ -247,16 +241,15 @@ robotContext :: Lens' Robot RobotContext
 -- | The (unique) ID number of the robot.  This is only a Getter since
 --   the robot ID is immutable.
 robotID :: Getter Robot RID
-robotID = to (runIdentity . _robotID)
 
--- | Set the ID number of a robot, changing it from unidentified to
---   identified.  If it didn't have a location already, just set the
+-- | Set the ID number of a robot, changing it from template to
+--   concrete.  If it didn't have a location already, just set the
 --   location to (0,0) by default.
-setRobotID :: RID -> URobot -> Robot
+setRobotID :: RID -> TRobot -> Robot
 setRobotID i r =
   r
-    { _robotID = Identity i
-    , _robotLocation = Right (fromRight (V2 0 0) (_robotLocation r))
+    { _robotID = i
+    , _robotLocation = fromMaybe (V2 0 0) (_robotLocation r)
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -382,7 +375,7 @@ runningAtomic :: Lens' Robot Bool
 -- | A general function for creating robots.
 mkRobot ::
   -- | ID number of the robot.
-  f Int ->
+  RobotID phase ->
   -- | ID number of the robot's parent, if it has one.
   Maybe Int ->
   -- | Name of the robot.
@@ -390,7 +383,7 @@ mkRobot ::
   -- | Description of the robot.
   [Text] ->
   -- | Initial location.
-  Either (f Void) (V2 Int64) ->
+  RobotLocation phase ->
   -- | Initial heading/direction.
   V2 Int64 ->
   -- | Robot display.
@@ -405,7 +398,7 @@ mkRobot ::
   Bool ->
   -- | Creation date
   TimeSpec ->
-  RobotR f
+  RobotR phase
 mkRobot rid pid name descr loc dir disp m devs inv sys ts =
   RobotR
     { _robotEntity =
@@ -432,15 +425,15 @@ mkRobot rid pid name descr loc dir disp m devs inv sys ts =
 
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
-instance FromJSONE EntityMap URobot where
+instance FromJSONE EntityMap TRobot where
   parseJSONE = withObjectE "robot" $ \v ->
     -- Note we can't generate a unique ID here since we don't have
     -- access to a 'State GameState' effect; a unique ID will be
     -- filled in later when adding the robot to the world.
-    mkRobot (Const ()) Nothing
+    mkRobot () Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
-      <*> liftE (review f1M <$> (v .:? "loc"))
+      <*> liftE (v .:? "loc")
       <*> liftE (v .: "dir")
       <*> liftE (v .:? "display" .!= defaultRobotDisplay)
       <*> liftE (mkMachine <$> (v .:? "program"))

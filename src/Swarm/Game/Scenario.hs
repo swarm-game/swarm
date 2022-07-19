@@ -72,7 +72,7 @@ import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 import Paths_swarm (getDataDir, getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
-import Swarm.Game.Robot (URobot)
+import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
@@ -91,7 +91,7 @@ data Scenario = Scenario
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioWorld :: Seed -> WorldFun Int Entity
-  , _scenarioRobots :: [URobot]
+  , _scenarioRobots :: [TRobot]
   , _scenarioWin :: Maybe ProcessedTerm
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
@@ -145,7 +145,7 @@ scenarioWorld :: Lens' Scenario (Seed -> WorldFun Int Entity)
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.
-scenarioRobots :: Lens' Scenario [URobot]
+scenarioRobots :: Lens' Scenario [TRobot]
 
 -- | An optional winning condition for the scenario, expressed as a
 --   program of type @cmd bool@.  By default, this program will be

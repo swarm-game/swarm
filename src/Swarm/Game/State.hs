@@ -77,7 +77,7 @@ module Swarm.Game.State (
   focusedRobot,
   clearFocusedRobotLogUpdated,
   addRobot,
-  addURobot,
+  addTRobot,
   emitMessage,
   sleepUntil,
   sleepForever,
@@ -463,12 +463,12 @@ clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
 
--- | Add an unidentified to the game state: first, generate a unique
---   ID number for it.  Then, add it to the main robot map, the active
---   robot set, and to to the index of robots by location. Return the
---   updated robot.
-addURobot :: Has (State GameState) sig m => URobot -> m Robot
-addURobot r = do
+-- | Add a concrete instance of a robot template to the game state:
+--   first, generate a unique ID number for it.  Then, add it to the
+--   main robot map, the active robot set, and to to the index of
+--   robots by location. Return the updated robot.
+addTRobot :: Has (State GameState) sig m => TRobot -> m Robot
+addTRobot r = do
   rid <- gensym <+= 1
   let r' = setRobotID rid r
   addRobot r'
