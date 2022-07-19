@@ -40,6 +40,7 @@ module Swarm.Game.Robot (
   robotName,
   robotCreatedAt,
   robotDisplay,
+  urobotLocation,
   robotLocation,
   robotOrientation,
   robotInventory,
@@ -70,6 +71,7 @@ module Swarm.Game.Robot (
 
 import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Either (fromRight)
 import Data.Hashable (hashWithSalt)
 import Data.Int (Int64)
 import Data.Maybe (isNothing)
@@ -78,14 +80,10 @@ import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
+import Data.Void
+import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
-import System.Clock (TimeSpec)
-
-import Data.Yaml ((.!=), (.:), (.:?))
-import Swarm.Util ()
-import Swarm.Util.Yaml
-
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, defaultRobotDisplay)
 import Swarm.Game.Entity hiding (empty)
@@ -94,6 +92,9 @@ import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Types (TCtx)
+import Swarm.Util ()
+import Swarm.Util.Yaml
+import System.Clock (TimeSpec)
 
 -- | A record that stores the information
 --   for all defintions stored in a 'Robot'
@@ -142,9 +143,15 @@ data RobotR f = RobotR
     _robotCapabilities :: Set Capability
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
-  , _robotLocation :: V2 Int64
+  , -- When f = Const (), then f 0 + Loc = 1 + Loc = Maybe Loc,
+    --   i.e. if we have no ID (e.g. having just been read from a .yaml file)
+    --   then we might or might not have a location
+    -- When f = Identity, then f 0 + Loc = 0 + Loc = Loc,
+    --   i.e. once we have an ID we must have a specific location as well
+    _robotLocation :: Either (f Void) (V2 Int64)
   , _robotContext :: RobotContext
-  , _robotID :: f RID -- Might or might not have an ID yet!
+  , -- Might or might not have an ID yet; f = Const () (no ID) or Identity (ID).
+    _robotID :: f RID
   , _robotParentID :: Maybe RID
   , _machine :: CESK
   , _systemRobot :: Bool
@@ -155,12 +162,12 @@ data RobotR f = RobotR
   }
   deriving (Generic)
 
-deriving instance Show (f RID) => Show (RobotR f)
+deriving instance (Show (f RID), Show (f Void)) => Show (RobotR f)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID]
+let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID, '_robotLocation]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -203,8 +210,28 @@ robotName = robotEntity . entityName
 robotDisplay :: Lens' Robot Display
 robotDisplay = robotEntity . entityDisplay
 
+f1M :: Iso' (Either (Const () Void) a) (Maybe a)
+f1M =
+  iso
+    (either (const Nothing) Just)
+    (maybe (Left (Const ())) Right)
+
+fII :: Iso' (Either (Identity Void) a) a
+fII =
+  iso
+    (either (absurd . runIdentity) id)
+    Right
+
+robotLocation_ :: Lens' (RobotR f) (Either (f Void) (V2 Int64))
+robotLocation_ = lens _robotLocation (\r l -> r {_robotLocation = l})
+
+-- | A 'URobot' might have a location or not.
+urobotLocation :: Lens' URobot (Maybe (V2 Int64))
+urobotLocation = robotLocation_ . f1M
+
 -- | The robot's current location, represented as (x,y).
 robotLocation :: Lens' Robot (V2 Int64)
+robotLocation = robotLocation_ . fII
 
 -- | Which way the robot is currently facing.
 robotOrientation :: Lens' Robot (Maybe (V2 Int64))
@@ -223,9 +250,14 @@ robotID :: Getter Robot RID
 robotID = to (runIdentity . _robotID)
 
 -- | Set the ID number of a robot, changing it from unidentified to
---   identified.
+--   identified.  If it didn't have a location already, just set the
+--   location to (0,0) by default.
 setRobotID :: RID -> URobot -> Robot
-setRobotID i r = r {_robotID = Identity i}
+setRobotID i r =
+  r
+    { _robotID = Identity i
+    , _robotLocation = Right (fromRight (V2 0 0) (_robotLocation r))
+    }
 
 -- | The ID number of the robot's parent, that is, the robot that
 --   built (or most recently reprogrammed) this robot, if there is
@@ -358,7 +390,7 @@ mkRobot ::
   -- | Description of the robot.
   [Text] ->
   -- | Initial location.
-  V2 Int64 ->
+  Either (f Void) (V2 Int64) ->
   -- | Initial heading/direction.
   V2 Int64 ->
   -- | Robot display.
@@ -408,7 +440,7 @@ instance FromJSONE EntityMap URobot where
     mkRobot (Const ()) Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
-      <*> liftE (v .: "loc")
+      <*> liftE (review f1M <$> (v .:? "loc"))
       <*> liftE (v .: "dir")
       <*> liftE (v .:? "display" .!= defaultRobotDisplay)
       <*> liftE (mkMachine <$> (v .:? "program"))

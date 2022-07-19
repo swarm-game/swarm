@@ -86,7 +86,7 @@ data Scenario = Scenario
   { _scenarioName :: Text
   , _scenarioDescription :: Text
   , _scenarioGoal :: Maybe [Text]
-  , _scenarioCreative :: Bool -- Maybe generalize this to a mode enumeration
+  , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]

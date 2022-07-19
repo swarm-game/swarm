@@ -169,7 +169,7 @@ evaluateCESK ::
 evaluateCESK cesk = do
   createdAt <- getNow
   -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
-  let r = mkRobot (Identity (-1)) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True createdAt
+  let r = mkRobot (Identity (-1)) Nothing "" [] (Right zero) zero defaultRobotDisplay cesk [] [] True createdAt
   addRobot r -- Add the robot to the robot map, so it can look itself up if needed
   evalState r . runCESK $ cesk
 
@@ -670,7 +670,7 @@ addSeedBot e (minT, maxT) loc ts =
         Nothing
         "seed"
         ["A growing seed."]
-        loc
+        (Right loc)
         (V2 0 0)
         ( defaultEntityDisplay '.'
             & displayAttr .~ (e ^. entityDisplay . displayAttr)
@@ -1300,7 +1300,7 @@ execConst c vs s k = do
               (Just pid)
               displayName
               ["A robot built by the robot named " <> r ^. robotName <> "."]
-              (r ^. robotLocation)
+              (Right (r ^. robotLocation))
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? east
               )
