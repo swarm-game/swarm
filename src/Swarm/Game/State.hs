@@ -194,6 +194,10 @@ data RunStatus
     AutoPause
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+-- | Switch (auto or manually) paused game to running and running to manually paused.
+--
+--   Note that this function is not safe to use in the app directly, because the UI
+--   also tracks time between ticks - use 'Swarm.TUI.Controller.safeTogglePause' instead.
 toggleRunStatus :: RunStatus -> RunStatus
 toggleRunStatus s = if s == Running then ManualPause else Running
 

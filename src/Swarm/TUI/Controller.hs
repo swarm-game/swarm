@@ -214,7 +214,7 @@ handleMainEvent s = \case
     continue s
   Key V.KEsc
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
-    | isJust (s ^. uiState . uiModal) -> maybeUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
+    | isJust (s ^. uiState . uiModal) -> safeTogglePause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
   FKey 2 -> toggleModal s RobotsModal >>= continue
   FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -286,25 +286,25 @@ mouseLocToWorldCoords gs (Brick.Location mouseLoc) = do
 setFocus :: AppState -> Name -> EventM Name (Next AppState)
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
--- | Set the game to Running if it was auto paused
-maybeUnpause :: AppState -> EventM Name AppState
-maybeUnpause s
-  | s ^. gameState . runStatus == AutoPause = do
-    curTime <- liftIO $ getTime Monotonic
-    pure $ s & (gameState . runStatus .~ Running) . resetLastFrameTime curTime
-  | otherwise = pure s
- where
-  -- When unpausing, it is critical to ensure the next frame doesn't
-  -- catch up from the time spent in pause.
-  -- TODO: manage unpause more safely to also cover
-  -- the world event handler for the KChar 'p'.
-  resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
+-- | Set the game to Running if it was (auto) paused otherwise to paused.
+--
+--   This function also sets the last frame time, so that the game does not
+--   suddenly try to catch up.
+safeTogglePause :: AppState -> EventM Name AppState
+safeTogglePause s = do
+  curTime <- liftIO $ getTime Monotonic
+  pure $
+    s
+      & (gameState . runStatus %~ toggleRunStatus)
+        . (uiState . lastFrameTime .~ curTime)
 
 toggleModal :: AppState -> ModalType -> EventM Name AppState
 toggleModal s mt = case s ^. uiState . uiModal of
   Nothing -> pure $ s & (uiState . uiModal ?~ generateModal s mt) . ensurePause
-  Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
+  Just _ -> safeUnpause <&> uiState . uiModal .~ Nothing
  where
+  -- only unpause the game if leaving autopausing modal
+  safeUnpause = if s ^. gameState . runStatus == AutoPause then safeTogglePause s else pure s
   -- these modals do not pause the game
   runningModals = [RobotsModal, MessagesModal]
   -- Set the game to AutoPause if needed
@@ -319,7 +319,7 @@ handleModalEvent s = \case
     case s ^? uiState . uiModal . _Just . modalDialog . to dialogSelection of
       Just (Just QuitButton) -> quitGame s'
       Just (Just (NextButton scene)) -> startGame scene s'
-      Just (Just PauseButton) -> continue $ s & gameState . runStatus %~ toggleRunStatus 
+      Just (Just PauseButton) -> safeTogglePause s >>= continue
       _ -> continue s'
   ev -> do
     s' <- s & uiState . uiModal . _Just . modalDialog %%~ handleDialogEvent ev
@@ -743,16 +743,7 @@ handleWorldEvent s = \case
     continue $ s & gameState . viewCenterRule .~ VCRobot 0
 
   -- pausing and stepping
-  CharKey 'p' -> do
-    curTime <- liftIO $ getTime Monotonic
-    continue $
-      s
-        & gameState . runStatus %~ toggleRunStatus
-        -- Also reset the last frame time to now. If we are pausing, it
-        -- doesn't matter; if we are unpausing, this is critical to
-        -- ensure the next frame doesn't think it has to catch up from
-        -- whenever the game was paused!
-        & uiState . lastFrameTime .~ curTime
+  CharKey 'p' -> safeTogglePause s >>= continue
   CharKey 's'
     | s ^. gameState . paused -> runGameTickUI s
     | otherwise -> continueWithoutRedraw s
