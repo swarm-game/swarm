@@ -83,65 +83,66 @@ readEntity em name =
 --   'testWorld2'.  If new entities are added, you SHOULD ALSO UPDATE
 --   'testWorld2Entities'.
 testWorld2 :: EntityMap -> Seed -> WorldFun TerrainType Entity
-testWorld2 em baseSeed = second (readEntity em) . WF $ \(Coords ix) ->
-  genBiome
-    ix
-    (bool Small Big (sample ix pn0 > 0))
-    (bool Soft Hard (sample ix pn1 > 0))
-    (bool Natural Artificial (sample ix pn2 > 0))
+testWorld2 em baseSeed = second (readEntity em) (WF tw2)
  where
-  h = murmur3 0 . into . show
+  tw2 (Coords ix@(r, c)) =
+    genBiome
+      (bool Small Big (sample ix pn0 > 0))
+      (bool Soft Hard (sample ix pn1 > 0))
+      (bool Natural Artificial (sample ix pn2 > 0))
+   where
+    h = murmur3 0 . into . show $ ix
 
-  genBiome ix Big Hard Natural
-    | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
-    | h ix `mod` 30 == 0 = (StoneT, Just "boulder")
-    | sample ix cl0 > 0 =
-      case h ix `mod` 30 of
-        1 -> (DirtT, Just "LaTeX")
-        _ -> (DirtT, Just "tree")
-    | otherwise = (GrassT, Nothing)
-  genBiome ix Small Hard Natural
-    | h ix `mod` 10 == 0 = (StoneT, Just "rock")
-    | otherwise = (StoneT, Nothing)
-  genBiome ix@(r, c) Big Soft Natural
-    | abs (sample ix pn1) < 0.1 = (DirtT, Just "sand")
-    | even (r + c) = (DirtT, Just "wavy water")
-    | otherwise = (DirtT, Just "water")
-  genBiome ix Small Soft Natural
-    | h ix `mod` 10 == 0 = (GrassT, Just "flower")
-    | otherwise = (GrassT, Nothing)
-  genBiome ix@(r, c) Small Soft Artificial
-    | h ix `mod` 10 == 0 = (GrassT, Just (T.concat ["bit (", from (show ((r + c) `mod` 2)), ")"]))
-    | otherwise = (GrassT, Nothing)
-  genBiome ix Big Soft Artificial
-    | h ix `mod` 5000 == 0 = (DirtT, Just "Linux")
-    | sample ix cl0 > 0.5 = (GrassT, Nothing)
-    | otherwise = (DirtT, Nothing)
-  genBiome ix@(r, c) Small Hard Artificial
-    | h ix `mod` 120 == 1 = (StoneT, Just "lambda")
-    | h ix `mod` 50 == 0 = (StoneT, Just (T.concat ["pixel (", from ["RGB" !! fromIntegral ((r + c) `mod` 3)], ")"]))
-    | otherwise = (StoneT, Nothing)
-  genBiome ix Big Hard Artificial
-    | sample ix cl0 > 0.85 = (StoneT, Just "copper ore")
-    | otherwise = (StoneT, Nothing)
+    genBiome Big Hard Natural
+      | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
+      | h `mod` 30 == 0 = (StoneT, Just "boulder")
+      | sample ix cl0 > 0 =
+        case h `mod` 30 of
+          1 -> (DirtT, Just "LaTeX")
+          _ -> (DirtT, Just "tree")
+      | otherwise = (GrassT, Nothing)
+    genBiome Small Hard Natural
+      | h `mod` 10 == 0 = (StoneT, Just "rock")
+      | otherwise = (StoneT, Nothing)
+    genBiome Big Soft Natural
+      | abs (sample ix pn1) < 0.1 = (DirtT, Just "sand")
+      | even (r + c) = (DirtT, Just "wavy water")
+      | otherwise = (DirtT, Just "water")
+    genBiome Small Soft Natural
+      | h `mod` 10 == 0 = (GrassT, Just "flower")
+      | otherwise = (GrassT, Nothing)
+    genBiome Small Soft Artificial
+      | h `mod` 10 == 0 = (GrassT, Just (T.concat ["bit (", from (show ((r + c) `mod` 2)), ")"]))
+      | otherwise = (GrassT, Nothing)
+    genBiome Big Soft Artificial
+      | h `mod` 5000 == 0 = (DirtT, Just "Linux")
+      | sample ix cl0 > 0.5 = (GrassT, Nothing)
+      | otherwise = (DirtT, Nothing)
+    genBiome Small Hard Artificial
+      | h `mod` 120 == 1 = (StoneT, Just "lambda")
+      | h `mod` 50 == 0 = (StoneT, Just (T.concat ["pixel (", from ["RGB" !! fromIntegral ((r + c) `mod` 3)], ")"]))
+      | otherwise = (StoneT, Nothing)
+    genBiome Big Hard Artificial
+      | sample ix cl0 > 0.85 = (StoneT, Just "copper ore")
+      | otherwise = (StoneT, Nothing)
 
-  sample (i, j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
+    sample (i, j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
 
-  pn :: Int -> Perlin
-  pn seed = perlin (seed + baseSeed) 6 0.05 0.6
+    pn :: Int -> Perlin
+    pn seed = perlin (seed + baseSeed) 6 0.05 0.6
 
-  pn0 = pn 0
-  pn1 = pn 1
-  pn2 = pn 2
+    pn0 = pn 0
+    pn1 = pn 1
+    pn2 = pn 2
 
-  -- alternative noise function
-  -- rg :: Int -> Ridged
-  -- rg seed = ridged seed 6 0.05 1 2
+    -- alternative noise function
+    -- rg :: Int -> Ridged
+    -- rg seed = ridged seed 6 0.05 1 2
 
-  clumps :: Int -> Perlin
-  clumps seed = perlin (seed + baseSeed) 4 0.08 0.5
+    clumps :: Int -> Perlin
+    clumps seed = perlin (seed + baseSeed) 4 0.08 0.5
 
-  cl0 = clumps 0
+    cl0 = clumps 0
 
 -- | Create a world function from a finite array of specified cells
 --   plus a seed to randomly generate the rest.
