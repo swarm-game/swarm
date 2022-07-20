@@ -127,6 +127,10 @@ data Cell = Cell
   , cellRobot :: Maybe TRobot
   }
 
+-- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
+--   entity and robot, if present, are immediately looked up and
+--   converted into 'Entity' and 'TRobot' values.  If they are not
+--   found, a parse error results.
 instance FromJSONE (EntityMap, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
     let tup = V.toList v
@@ -151,6 +155,13 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
 ------------------------------------------------------------
 -- World description
 ------------------------------------------------------------
+
+-- | A world palette maps characters to 'Cell' values.
+newtype WorldPalette = WorldPalette
+  {unPalette :: KeyMap Cell}
+
+instance FromJSONE (EntityMap, RobotMap) WorldPalette where
+  parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
 
 -- | A description of a world parsed from a YAML file.
 data WorldDescription = WorldDescription
@@ -181,12 +192,6 @@ paintMap pal = traverse (traverse toCell . into @String) . T.lines
   toCell c = case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
     Nothing -> fail $ "Char not in world palette: " ++ show c
     Just cell -> return cell
-
-newtype WorldPalette = WorldPalette
-  {unPalette :: KeyMap Cell}
-
-instance FromJSONE (EntityMap, RobotMap) WorldPalette where
-  parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
 
 ------------------------------------------------------------
 -- Scenario
