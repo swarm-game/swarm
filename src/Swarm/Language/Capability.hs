@@ -105,6 +105,9 @@ data Capability
     CTeleport
   | -- | Capability to run commands atomically
     CAtomic
+  | -- | Capabiltiy to do time-related things, like `wait` and get the
+    --   current time.
+    CTime
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -129,7 +132,6 @@ instance FromJSON Capability where
 constCaps :: Const -> Maybe Capability
 constCaps = \case
   -- Some built-in constants that don't require any special capability.
-  Wait -> Nothing
   Noop -> Nothing
   AppF -> Nothing
   Force -> Nothing
@@ -171,6 +173,8 @@ constCaps = \case
   Whoami -> Just CWhoami
   Self -> Just CWhoami
   Atomic -> Just CAtomic
+  Time -> Just CTime
+  Wait -> Just CTime
   -- Some God-like abilities.
   As -> Just CGod
   RobotNamed -> Just CGod

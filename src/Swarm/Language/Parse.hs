@@ -143,16 +143,23 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
 stringLiteral :: Parser Text
 stringLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
 
--- | Parse a positive integer literal token.  Note that negation is
---   handled as a separate operator.
+-- | Parse a positive integer literal token, in decimal, binary,
+--   octal, or hexadecimal notation.  Note that negation is handled as
+--   a separate operator.
 integer :: Parser Integer
-integer = lexeme L.decimal
+integer =
+  label "integer literal" $
+    lexeme $ do
+      n <-
+        string "0b" *> L.binary
+          <|> string "0o" *> L.octal
+          <|> string "0x" *> L.hexadecimal
+          <|> L.decimal
+      notFollowedBy alphaNumChar
+      return n
 
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
-
--- dbraces :: Parser a -> Parser a
--- dbraces = between (symbol "{{") (symbol "}}")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")

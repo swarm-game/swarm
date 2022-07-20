@@ -35,6 +35,7 @@ robots:
       - 3D printer
       - logger
       - flash memory
+      - clock
     inventory:
       - [2, boat]
       - [2, solar panel]

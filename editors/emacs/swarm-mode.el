@@ -68,6 +68,7 @@
                "view"
                "appear"
                "create"
+               "time"
                "whereami"
                "blocked"
                "scan"

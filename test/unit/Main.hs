@@ -166,7 +166,7 @@ parser =
                     , "1 | require x"
                     , "  |         ^"
                     , "unexpected 'x'"
-                    , "expecting device name in double quotes or integer"
+                    , "expecting device name in double quotes or integer literal"
                     ]
                 )
             )
@@ -250,6 +250,27 @@ parser =
                 "atomic (salvage)"
                 "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: salvage"
             )
+        ]
+    , testGroup
+        "integer literals"
+        [ testCase
+            "binary literal"
+            (valid "0b1011011101")
+        , testCase
+            "invalid binary literal"
+            (process "0b101201" "1:6:\n  |\n1 | 0b101201\n  |      ^\nunexpected '2'\n")
+        , testCase
+            "octal literal"
+            (valid "0o3726")
+        , testCase
+            "invalid octal literal"
+            (process "0o3826" "1:4:\n  |\n1 | 0o3826\n  |    ^\nunexpected '8'\n")
+        , testCase
+            "hex literal"
+            (valid "0xabcD6F")
+        , testCase
+            "invalid hex literal"
+            (process "0xabcD6G2" "1:8:\n  |\n1 | 0xabcD6G2\n  |        ^\nunexpected 'G'\n")
         ]
     ]
  where

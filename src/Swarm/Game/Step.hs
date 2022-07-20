@@ -910,6 +910,9 @@ execConst c vs s k = do
     Whereami -> do
       V2 x y <- use robotLocation
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
+    Time -> do
+      t <- use ticks
+      return $ Out (VInt t) s k
     Drill -> case vs of
       [VDir d] -> do
         rname <- use robotName

@@ -39,6 +39,7 @@ module Swarm.TUI.View (
 
 import Control.Lens hiding (Const, from)
 import Data.Array (range)
+import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
 import Data.IntMap qualified as IM
 import Data.List qualified as L
@@ -210,7 +211,11 @@ drawGameUI s =
                 highlightAttr
                 fr
                 WorldPanel
-                (plainBorder & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s) & addCursorPos)
+                ( plainBorder
+                    & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+                    & addCursorPos
+                    & addClock
+                )
                 (drawWorld $ s ^. gameState)
             , drawKeyMenu s
             , clickable REPLPanel $
@@ -231,8 +236,11 @@ drawGameUI s =
   ]
  where
   addCursorPos = case s ^. uiState . uiWorldCursor of
-    Just coord -> topLabels . rightLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
+    Just coord -> bottomLabels . leftLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
     Nothing -> id
+  -- Add clock display in top right of the world view if focused robot
+  -- has a clock installed
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay s)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
@@ -240,6 +248,33 @@ drawGameUI s =
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g i@(W.Coords (y, x)) =
   hBox [drawLoc g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
+
+drawClockDisplay :: AppState -> Widget n
+drawClockDisplay s
+  | clockInstalled && gamePaused = clockWidget <+> txt " " <+> pauseWidget
+  | clockInstalled = clockWidget
+  | gamePaused = pauseWidget
+  | otherwise = txt ""
+ where
+  clockInstalled = case s ^. gameState . to focusedRobot of
+    Nothing -> False
+    Just r
+      | countByName "clock" (r ^. installedDevices) > 0 -> True
+      | otherwise -> False
+  gamePaused = s ^. gameState . paused
+  clockWidget = drawClock (s ^. gameState . ticks) gamePaused
+  pauseWidget = txt "(PAUSED)"
+
+drawClock :: Integer -> Bool -> Widget n
+drawClock t showTicks =
+  str . mconcat $
+    [ printf "%x" (t `shiftR` 20)
+    , ":"
+    , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
+    , ":"
+    , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
+    ]
+      ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
