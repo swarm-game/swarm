@@ -90,7 +90,7 @@ testWorld2 em baseSeed = second (readEntity em) . WF $ \(Coords ix) ->
     (bool Soft Hard (sample ix pn1 > 0))
     (bool Natural Artificial (sample ix pn2 > 0))
  where
-  h ix = murmur3 0 (into (show ix))
+  h = murmur3 0 . into . show
 
   genBiome ix Big Hard Natural
     | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
