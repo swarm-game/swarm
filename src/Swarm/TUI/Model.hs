@@ -734,7 +734,7 @@ initReplForm =
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int
-initLgTicksPerSecond = 3 -- 2^3 = 8 ticks / second
+initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file, getting the current

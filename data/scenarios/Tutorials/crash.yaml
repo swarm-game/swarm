@@ -68,6 +68,7 @@ robots:
     devices:
       - logger
       - 3D printer
+      - clock
     inventory:
       - [10, logger]
       - [10, compass]

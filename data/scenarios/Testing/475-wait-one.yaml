@@ -26,6 +26,7 @@ robots:
     dir: [1,0]
     devices:
       - logger
+      - clock
     program: |
       log "I shall sleep"; wait 1; log "I have awoken"
 world:

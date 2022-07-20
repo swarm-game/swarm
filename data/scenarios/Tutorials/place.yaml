@@ -45,9 +45,14 @@ win: |
 solution: |
   def t = move; place "spruce"; harvest; end;
   def h = harvest; move end;
+  // wait without needing a clock: literally spin our wheels
+  def w4 = turn left; turn left; turn left; turn left end;
+  def w16 = w4; w4; w4; w4 end;
+  def w64 = w16; w16; w16; w16 end;
+  def w256 = w64; w64; w64; w64 end;
   move;
   move; harvest; t; t; t; t; t;
-  wait 256;
+  w256;
   turn back; h; h; h; h; h; h;
 robots:
   - name: base

@@ -10,7 +10,9 @@ win: |
     as base {has "lambda"}
   } { return false }
 solution: |
-  turn back; move;move;move; wait 10; move;move;move; grab
+  def w2 = turn back; turn back end;
+  def w10 = w2; w2; w2; w2; w2 end;
+  turn back; move;move;move; w10; move;move;move; grab
 robots:
   - name: base
     loc: [3,0]
@@ -19,6 +21,7 @@ robots:
       - treads
       - logger
       - grabber
+      - dictionary
     inventory:
       - [0, lambda]
   - name: portkey1

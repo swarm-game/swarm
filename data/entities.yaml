@@ -849,6 +849,7 @@
   description:
   - A clock is a device for keeping track of time.
   properties: [portable]
+  capabilities: [time]
 
 - name: comparator
   display:
