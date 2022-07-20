@@ -63,9 +63,9 @@ module Swarm.Game.Robot (
   tickSteps,
   runningAtomic,
 
-  -- ** Create
+  -- ** Creation & instantiation
   mkRobot,
-  setRobotID,
+  instantiateRobot,
 
   -- ** Query
   robotKnows,
@@ -281,11 +281,13 @@ robotContext :: Lens' Robot RobotContext
 --   the robot ID is immutable.
 robotID :: Getter Robot RID
 
--- | Set the ID number of a robot, changing it from template to
---   concrete.  If it didn't have a location already, just set the
---   location to (0,0) by default.
-setRobotID :: RID -> TRobot -> Robot
-setRobotID i r =
+-- | Instantiate a robot template to make it into a concrete robot, by
+--    providing a robot ID. Concrete robots also require a location;
+--    if the robot template didn't have a location already, just set
+--    the location to (0,0) by default.  If you want a different location,
+--    set it via 'trobotLocation' before calling 'instantiateRobot'.
+instantiateRobot :: RID -> TRobot -> Robot
+instantiateRobot i r =
   r
     { _robotID = i
     , _robotLocation = fromMaybe (V2 0 0) (_robotLocation r)

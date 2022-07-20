@@ -489,7 +489,7 @@ clearFocusedRobotLogUpdated = do
 addTRobot :: Has (State GameState) sig m => TRobot -> m Robot
 addTRobot r = do
   rid <- gensym <+= 1
-  let r' = setRobotID rid r
+  let r' = instantiateRobot rid r
   addRobot r'
   return r'
 
@@ -668,7 +668,7 @@ scenarioToGameState scenario userSeed toRun g = do
   -- in the world map
   locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
   robotList =
-    zipWith setRobotID [baseID ..] (locatedRobots ++ genRobots)
+    zipWith instantiateRobot [baseID ..] (locatedRobots ++ genRobots)
       -- If the  --run flag was used, use it to replace the CESK machine of the
       -- robot whose id is 0, i.e. the first robot listed in the scenario.
       & ix baseID . machine

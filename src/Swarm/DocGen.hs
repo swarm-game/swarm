@@ -36,7 +36,7 @@ import Data.Tuple (swap)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
-import Swarm.Game.Robot (installedDevices, robotInventory, setRobotID)
+import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Language.Capability (capabilityName, constCaps)
@@ -363,10 +363,10 @@ classicScenario = do
   loadScenario "data/scenarios/classic.yaml" entities
 
 startingDevices :: Scenario -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view installedDevices . setRobotID 0 . head . view scenarioRobots
+startingDevices = Set.fromList . map snd . E.elems . view installedDevices . instantiateRobot 0 . head . view scenarioRobots
 
 startingInventory :: Scenario -> Map Entity Int
-startingInventory = Map.fromList . map swap . E.elems . view robotInventory . setRobotID 0 . head . view scenarioRobots
+startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots
 
 -- | Ignore utility entites that are just used for tutorials and challenges.
 ignoredEntites :: Set Text
