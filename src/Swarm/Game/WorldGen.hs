@@ -85,6 +85,7 @@ readEntity em name =
 testWorld2 :: EntityMap -> Seed -> WorldFun TerrainType Entity
 testWorld2 em baseSeed = second (readEntity em) (WF tw2)
  where
+  tw2 :: Coords -> (TerrainType, Maybe Text)
   tw2 (Coords ix@(r, c)) =
     genBiome
       (bool Small Big (sample ix pn0 > 0))
