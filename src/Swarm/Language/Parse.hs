@@ -151,9 +151,9 @@ integer =
   label "integer literal" $
     lexeme $ do
       n <-
-        try (string "0b" *> L.binary)
-          <|> try (string "0o" *> L.octal)
-          <|> try (string "0x" *> L.hexadecimal)
+        string "0b" *> L.binary
+          <|> string "0o" *> L.octal
+          <|> string "0x" *> L.hexadecimal
           <|> L.decimal
       notFollowedBy alphaNumChar
       return n
