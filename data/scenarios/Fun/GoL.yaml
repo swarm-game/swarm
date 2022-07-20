@@ -33,6 +33,11 @@ robots:
         b <- scan back;
         return (cnt h + cnt f + cnt b)
       end;
+      def mod : int -> int -> int = \a. \b. a - (a/b)*b end;
+      def waitUntil = \p.
+        b <- p;
+        if b {wait 1} {waitUntil p}
+      end;
       forever (
         h <- scan down;
         alive <- return (h != inl ());
@@ -42,9 +47,13 @@ robots:
         turn left; move; turn right;
         total <- return (n1 + n2 + n3 - if alive {1} {0});
         if (alive && (total < 2 || total > 3))
-          {grab; return ()}
-          { if (not alive && total == 3) { place "rock" } {}
-          }
+          { grab; return () }
+          { if (not alive && total == 3)
+            { place "rock" }
+            {}
+          };
+        // synchronize
+        waitUntil (t <- time; return (mod t 0x20 == 0))
       )
 world:
   default: [ice]
