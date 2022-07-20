@@ -41,6 +41,7 @@ module Swarm.Game.Robot (
   robotCreatedAt,
   robotDisplay,
   robotLocation,
+  unsafeSetRobotLocation,
   robotOrientation,
   robotInventory,
   installedDevices,
@@ -87,12 +88,13 @@ import Swarm.Util ()
 import Swarm.Util.Yaml
 
 import Swarm.Game.CESK
-import Swarm.Game.Display (Display, defaultRobotDisplay)
+import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Types (TCtx)
 
 -- | A record that stores the information
@@ -160,7 +162,7 @@ deriving instance Show (f RID) => Show (RobotR f)
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID]
+let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog, '_robotID, '_robotLocation]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -199,12 +201,33 @@ robotCreatedAt :: Lens' Robot TimeSpec
 robotName :: Lens' Robot Text
 robotName = robotEntity . entityName
 
--- | The 'Display' of a robot.
+-- | The 'Display' of a robot.  This is a special lens that
+--   automatically sets the 'curOrientation' to the orientation of the
+--   robot every time you do a @get@ operation.  Technically this does
+--   not satisfy the lens laws---in particular, the get/put law does
+--   not hold.  But we should think of the 'curOrientation' as being
+--   simply a cache of the displayed entity's direction.
 robotDisplay :: Lens' Robot Display
-robotDisplay = robotEntity . entityDisplay
+robotDisplay = lens getDisplay setDisplay
+ where
+  getDisplay r =
+    (r ^. robotEntity . entityDisplay)
+      & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
+  setDisplay r d = r & robotEntity . entityDisplay .~ d
 
--- | The robot's current location, represented as (x,y).
-robotLocation :: Lens' Robot (V2 Int64)
+-- | The robot's current location, represented as (x,y).  This is only
+--   a getter, since when changing a robot's location we must remember
+--   to update the 'robotsByLocation' map as well.  You can use the
+--   'updateRobotLocation' function for this purpose.
+robotLocation :: Getter Robot (V2 Int64)
+robotLocation = to _robotLocation
+
+-- | Set a robot's location.  This is unsafe and should never be
+--   called directly except by the 'updateRobotLocation' function.
+--   The reason is that we need to make sure the 'robotsByLocation'
+--   map stays in sync.
+unsafeSetRobotLocation :: V2 Int64 -> Robot -> Robot
+unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | Which way the robot is currently facing.
 robotOrientation :: Lens' Robot (Maybe (V2 Int64))

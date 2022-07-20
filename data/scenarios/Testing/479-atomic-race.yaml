@@ -50,7 +50,7 @@ robots:
       - logger
       - grabber
     inventory:
-      - [100, weed]
+      - [25, weed]
     program: |
       def forever = \c. force c ; forever c end
       def tryplant =

@@ -23,7 +23,6 @@ module Swarm.TUI.View (
 
   -- * World
   drawWorld,
-  drawCell,
 
   -- * Robot panel
   drawRobotPanel,
@@ -38,7 +37,6 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
-import Control.Arrow ((&&&))
 import Control.Lens hiding (Const, from)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
@@ -46,9 +44,10 @@ import Data.Foldable qualified as F
 import Data.IntMap qualified as IM
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -67,6 +66,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 
+import Data.Semigroup (sconcat)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
@@ -74,7 +74,7 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItemName, scenarioName)
 import Swarm.Game.State
-import Swarm.Game.Terrain (displayTerrain)
+import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
@@ -247,9 +247,7 @@ drawGameUI s =
 
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g i@(W.Coords (y, x)) =
-  hBox [entity, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
- where
-  entity = snd $ drawCell (hiding g) (g ^. world) i
+  hBox [drawLoc g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
 
 drawClockDisplay :: AppState -> Widget n
 drawClockDisplay s
@@ -437,7 +435,7 @@ robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
     locWidget = hBox [worldCell, txt $ " " <> locStr]
      where
       rloc@(V2 x y) = robot ^. robotLocation
-      worldCell = snd $ drawCell (hiding g) (g ^. world) (W.locToCoords rloc)
+      worldCell = drawLoc g (W.locToCoords rloc)
       locStr = from (show x) <> " " <> from (show y)
 
     statusWidget = case robot ^. machine of
@@ -641,55 +639,37 @@ drawWorld g =
       let w = ctx ^. availWidthL
           h = ctx ^. availHeightL
           ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-      render . vBox . map hBox . chunksOf w . map drawLoc $ ixs
+      render . vBox . map hBox . chunksOf w . map (drawLoc g) $ ixs
+
+-- | Render the 'Display' for a specific location.
+drawLoc :: GameState -> W.Coords -> Widget Name
+drawLoc g = renderDisplay . displayLoc g
+
+-- | Get the 'Display' for a specific location, by combining the
+--   'Display's for the terrain, entity, and robots at the location.
+displayLoc :: GameState -> W.Coords -> Display
+displayLoc g coords =
+  sconcat . NE.fromList $
+    [terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))]
+      ++ maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
+      ++ map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
  where
-  -- XXX update how this works!  Gather all displays, all
-  -- entities...  Should make a Display remember which is the
-  -- currently selected char (based on orientation); Entity lens for
-  -- setting orientation updates the Display too.  Then we can just
-  -- get all the Displays for each cell, make a monoid based on
-  -- priority.
+  displayForEntity :: Entity -> Display
+  displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
 
-  robotsByLoc =
-    M.fromListWith (maxOn (^. robotDisplay . displayPriority)) . map (view robotLocation &&& id)
-      . IM.elems
-      $ g ^. robotMap
-
-  drawLoc :: W.Coords -> Widget Name
-  drawLoc coords =
-    let (ePrio, eWidget) = drawCell (hiding g) (g ^. world) coords
-     in case M.lookup (W.coordsToLoc coords) robotsByLoc of
-          Just r
-            | ePrio > (r ^. robotDisplay . displayPriority) -> eWidget
-            | otherwise ->
-              withAttr (r ^. robotDisplay . displayAttr) $
-                str [lookupDisplay ((r ^. robotOrientation) >>= toDirection) (r ^. robotDisplay)]
-          Nothing -> eWidget
-
-data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
-
-hiding :: GameState -> HideEntity
-hiding g
-  | g ^. creativeMode = HideNoEntity
-  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
-
--- | Draw a single cell of the world, either hiding entities that current robot does not know,
---   or hiding all/none depending on Left value (True/False).
-drawCell :: HideEntity -> W.World Int Entity -> W.Coords -> (Int, Widget Name)
-drawCell edr w i = case W.lookupEntity i w of
-  Nothing -> (0, displayTerrain (toEnum (W.lookupTerrain i w)))
-  Just e ->
-    ( e ^. entityDisplay . displayPriority
-    , displayEntity (hide e)
-    )
- where
   known e =
     e `hasProperty` Known
-      || case edr of
+      || case hidingMode g of
         HideAllEntities -> False
         HideNoEntity -> True
         HideEntityUnknownTo ro -> ro `robotKnows` e
-  hide e = (if known e then id else entityDisplay . defaultChar %~ const '?') e
+
+data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
+
+hidingMode :: GameState -> HideEntity
+hidingMode g
+  | g ^. creativeMode = HideNoEntity
+  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
 
 ------------------------------------------------------------
 -- Robot inventory panel
