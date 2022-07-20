@@ -40,7 +40,6 @@ solution: |
   build {require 4 "rock"; move; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"}
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     display:
       char: Ω
@@ -59,12 +58,11 @@ robots:
       - [16, scanner]
       - [100, rock]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
-    '.': [grass, null]
-    '_': [stone, null]
-    '~': [ice, knownwater]
-    '*': [grass, periwinkle]
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '_': [stone]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
@@ -74,7 +72,7 @@ world:
   upperleft: [-1, 1]
   map: |
     ┌─────┐
-    │.....│
+    │Ω....│
     │.____│
     │.____│
     │.____│

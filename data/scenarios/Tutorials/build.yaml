@@ -45,7 +45,6 @@ solution: |
   build {move; move; t <- grab; turn right; move; place t}
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     display:
       char: Ω
@@ -60,9 +59,10 @@ robots:
       - [10, grabber]
       - [10, treads]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
-    '.': [grass, null]
+    'Ω': [grass, null, base]
+    '.': [grass]
     '~': [ice, knownwater]
     '*': [grass, pickerelweed]
     '┌': [stone, upper left corner]
@@ -74,7 +74,7 @@ world:
   upperleft: [-1, 1]
   map: |
     ┌───┐
-    │..*│
+    │Ω.*│
     │...│
     │~~~│
     └───┘

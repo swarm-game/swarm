@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -23,7 +24,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
-import Data.Functor.Const qualified as F
 import Data.Int (Int64)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -152,7 +152,7 @@ evaluateCESK ::
 evaluateCESK cesk = do
   createdAt <- getNow
   -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
-  let r = mkRobot (Identity (-1)) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True createdAt
+  let r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True createdAt
   addRobot r -- Add the robot to the robot map, so it can look itself up if needed
   evalState r . runCESK $ cesk
 
@@ -647,13 +647,13 @@ seedProgram minTime randTime thing =
 addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> TimeSpec -> m ()
 addSeedBot e (minT, maxT) loc ts =
   void $
-    addURobot $
+    addTRobot $
       mkRobot
-        (F.Const ())
+        ()
         Nothing
         "seed"
         ["A growing seed."]
-        loc
+        (Just loc)
         (V2 0 0)
         ( defaultEntityDisplay '.'
             & displayAttr .~ (e ^. entityDisplay . displayAttr)
@@ -1279,13 +1279,13 @@ execConst c vs s k = do
 
         -- Construct the new robot and add it to the world.
         newRobot <-
-          addURobot $
+          addTRobot $
             mkRobot
-              (F.Const ())
+              ()
               (Just pid)
               displayName
               ["A robot built by the robot named " <> r ^. robotName <> "."]
-              (r ^. robotLocation)
+              (Just (r ^. robotLocation))
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? east
               )

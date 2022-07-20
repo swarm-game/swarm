@@ -60,7 +60,6 @@ solution: |
   };
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     display:
       char: Ω
@@ -78,7 +77,6 @@ robots:
       - [10, treads]
       - [10, grabber]
   - name: secret
-    loc: [3, 0]
     dir: [0, 0]
     devices:
       - logger
@@ -88,15 +86,16 @@ robots:
     inventory:
       - [100000, Win]
     display:
-      char: '▒'
-      attr: grass
+      invisible: true
     system: true
     program: |
       run "data/scenarios/Tutorials/secret.sw"
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
-    '.': [grass, null]
+    'Ω': [grass, null, base]
+    '!': [grass, null, secret]
+    '.': [grass]
     '~': [ice, knownwater]
     'T': [grass, knowntree]
     'A': [stone, knownmountain]
@@ -111,5 +110,5 @@ world:
     ┌─────┐
     │AAAT~│
     │..A.~│
-    │....A│
+    │Ω..!A│
     └─────┘

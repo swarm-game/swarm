@@ -21,15 +21,15 @@ solution: |
   move; move
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     devices:
       - treads
       - logger
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
-    '.': [grass, null]
+    '>': [grass, null, base]
+    '.': [grass]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
@@ -39,5 +39,5 @@ world:
   upperleft: [-1, 1]
   map: |
     ┌───┐
-    │...│
+    │>..│
     └───┘

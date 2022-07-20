@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -78,7 +79,7 @@ module Swarm.Game.State (
   focusedRobot,
   clearFocusedRobotLogUpdated,
   addRobot,
-  addURobot,
+  addTRobot,
   emitMessage,
   sleepUntil,
   sleepForever,
@@ -87,12 +88,16 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
+import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
+import Control.Effect.Lens
+import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
+import Data.Bifunctor (first)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -102,37 +107,39 @@ import Data.IntSet.Lens (setOf)
 import Data.List (partition)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
 import GHC.Generics (Generic)
-import Linear
-import System.Clock qualified
-import System.Random (StdGen, mkStdGen, randomRIO)
-import Witch (into)
-
-import Control.Algebra (Has)
-import Control.Effect.Lens
-import Control.Effect.State (State)
-
+import Linear (V2 (..))
 import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
-import Swarm.Game.Recipe
+import Swarm.Game.Recipe (
+  Recipe,
+  inRecipeMap,
+  loadRecipes,
+  outRecipeMap,
+ )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario
-import Swarm.Game.Value
+import Swarm.Game.Terrain (TerrainType (..))
+import Swarm.Game.Value (Value)
+import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
-import Swarm.Game.WorldGen (Seed)
+import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
-import Swarm.Util
+import Swarm.Util (isRightOr, (<+=), (<<.=), (?))
+import System.Clock qualified as Clock
+import System.Random (StdGen, mkStdGen, randomRIO)
+import Witch (into)
 
 ------------------------------------------------------------
 -- Subsidiary data types
@@ -361,7 +368,9 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 scenarios :: Lens' GameState ScenarioCollection
 
 -- | The current state of the world (terrain and entities only; robots
---   are stored in the 'robotMap').
+--   are stored in the 'robotMap').  Int is used instead of
+--   TerrainType because we need to be able to store terrain values in
+--   unboxed tile arrays.
 world :: Lens' GameState (W.World Int Entity)
 
 ------------------------------------------------------------
@@ -473,14 +482,14 @@ clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
 
--- | Add an unidentified to the game state: first, generate a unique
---   ID number for it.  Then, add it to the main robot map, the active
---   robot set, and to to the index of robots by location. Return the
---   updated robot.
-addURobot :: Has (State GameState) sig m => URobot -> m Robot
-addURobot r = do
+-- | Add a concrete instance of a robot template to the game state:
+--   first, generate a unique ID number for it.  Then, add it to the
+--   main robot map, the active robot set, and to to the index of
+--   robots by location. Return the updated robot.
+addTRobot :: Has (State GameState) sig m => TRobot -> m Robot
+addTRobot r = do
   rid <- gensym <+= 1
-  let r' = setRobotID rid r
+  let r' = instantiateRobot rid r
   addRobot r'
   return r'
 
@@ -592,7 +601,7 @@ initGameState = do
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
       , _scenarios = loadedScenarios
-      , _world = W.emptyWorld 0
+      , _world = W.emptyWorld (fromEnum StoneT)
       , _viewCenterRule = VCRobot 0
       , _viewCenter = V2 0 0
       , _needsRedraw = False
@@ -614,7 +623,7 @@ scenarioToGameState scenario userSeed toRun g = do
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)
 
-  now <- System.Clock.getTime System.Clock.Monotonic
+  now <- Clock.getTime Clock.Monotonic
   let robotList' = (robotCreatedAt .~ now) <$> robotList
 
   return $
@@ -632,7 +641,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _waitingRobots = M.empty
       , _gensym = initGensym
       , _randGen = mkStdGen seed
-      , _entityMap = g ^. entityMap <> scenario ^. scenarioEntities
+      , _entityMap = em
       , _recipesOut = addRecipesWith outRecipeMap recipesOut
       , _recipesIn = addRecipesWith inRecipeMap recipesIn
       , _world = theWorld seed
@@ -650,24 +659,28 @@ scenarioToGameState scenario userSeed toRun g = do
       , _robotStepsPerTick = (scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick
       }
  where
-  em = g ^. entityMap
+  em = g ^. entityMap <> scenario ^. scenarioEntities
 
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
+  -- Keep only robots from the robot list with a concrete location;
+  -- the others existed only to serve as a template for robots drawn
+  -- in the world map
+  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
   robotList =
-    zipWith setRobotID [0 ..] (scenario ^. scenarioRobots)
+    zipWith instantiateRobot [baseID ..] (locatedRobots ++ genRobots)
       -- If the  --run flag was used, use it to replace the CESK machine of the
       -- robot whose id is 0, i.e. the first robot listed in the scenario.
-      & ix 0 . machine
+      & ix baseID . machine
         %~ case toRun of
           Nothing -> id
           Just (into @Text -> f) -> const (initMachine [tmQ| run($str:f) |] Ctx.empty emptyStore)
-      -- If we are in creative mode, give robot 0 all the things
-      & ix 0 . robotInventory
+      -- If we are in creative mode, give base all the things
+      & ix baseID . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
-      & ix 0 . installedDevices
+      & ix baseID . installedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)
@@ -678,10 +691,44 @@ scenarioToGameState scenario userSeed toRun g = do
       (maybe False (`S.member` initialCaps) . constCaps)
       allConst
 
-  theWorld = W.newWorld . (scenario ^. scenarioWorld)
+  (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
+  theWorld = W.newWorld . wf
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
+
+-- | Take a world description, parsed from a scenario file, and turn
+--   it into a list of located robots and a world function.
+buildWorld :: EntityMap -> WorldDescription -> ([TRobot], Seed -> WorldFun Int Entity)
+buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
+ where
+  rs = fromIntegral $ length area
+  cs = fromIntegral $ length (head area)
+  Coords (ulr, ulc) = locToCoords ul
+
+  worldGrid :: [[(TerrainType, Maybe Entity)]]
+  worldGrid = (map . map) (cellTerrain &&& cellEntity) area
+
+  worldArray :: Array (Int64, Int64) (TerrainType, Maybe Entity)
+  worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
+
+  wf = case defaultTerrain of
+    Nothing ->
+      (if offsetOrigin then findGoodOrigin else id) . testWorld2FromArray em worldArray
+    Just (Cell t e _) -> const (worldFunFromArray worldArray (t, e))
+
+  -- Get all the robots described in cells and set their locations appropriately
+  robots :: [TRobot]
+  robots =
+    area
+      & traversed <.> traversed %@~ (,) -- add (r,c) indices
+      & concat
+      & mapMaybe
+        ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robot) ->
+            robot
+              & traverse . trobotLocation
+              ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
+        )
 
 -- | Create an initial game state for a specific scenario.
 initGameStateForScenario :: String -> Maybe Seed -> Maybe String -> ExceptT Text IO GameState

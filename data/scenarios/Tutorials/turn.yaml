@@ -48,16 +48,16 @@ solution: |
 
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     devices:
       - treads
       - compass
       - logger
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
-    '.': [grass, null]
+    '>': [grass, null, base]
+    '.': [grass]
     '├': [stone, left T]
     '┤': [stone, right T]
     '┌': [stone, upper left corner]
@@ -74,5 +74,5 @@ world:
     │.───┤
     │....│
     ├───.│
-    │....│
+    │>...│
     └────┘

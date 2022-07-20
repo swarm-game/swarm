@@ -29,7 +29,7 @@ robots:
 world:
   default: [ice, knownwater]
   palette:
-    '.': [grass, null]
+    '.': [grass]
     ' ': [ice, knownwater]
     '~': [ice, knownwavywater]
     'L': [grass, Linux]

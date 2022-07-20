@@ -28,7 +28,6 @@ solution: |
   }
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     display:
       char: Ω
@@ -43,9 +42,10 @@ robots:
       - [10, treads]
       - [10, solar panel]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
-    '.': [grass, null]
+    'Ω': [grass, null, base]
+    '.': [grass]
     '~': [ice, wavy water]
     'T': [grass, tree]
     'A': [stone, mountain]
@@ -60,5 +60,5 @@ world:
     ┌─────┐
     │AAAT~│
     │..A.~│
-    │....A│
+    │Ω...A│
     └─────┘

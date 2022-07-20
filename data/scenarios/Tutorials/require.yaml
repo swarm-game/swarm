@@ -41,7 +41,6 @@ solution: |
   build {require "boat"; move; move; move; move; move; f <- grab; turn back; move; move; move; move; move; give base f}
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     display:
       char: Ω
@@ -57,9 +56,10 @@ robots:
       - [10, grabber]
       - [10, scanner]
 world:
-  default: [blank, none]
+  default: [blank]
   palette:
-    '.': [grass, null]
+    'Ω': [grass, null, base]
+    '.': [grass]
     '~': [ice, knownwater]
     '*': [grass, periwinkle]
     '┌': [stone, upper left corner]
@@ -73,7 +73,7 @@ world:
     ┌──────┐
     │..~~..│
     │..~~..│
-    │..~~.*│
+    │Ω.~~.*│
     │..~~..│
     │..~~..│
     └──────┘
