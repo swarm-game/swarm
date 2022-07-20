@@ -161,9 +161,6 @@ integer =
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
 
--- dbraces :: Parser a -> Parser a
--- dbraces = between (symbol "{{") (symbol "}}")
-
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
