@@ -29,7 +29,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Terrain
 import Swarm.Game.World
 
--- | A simple test world I used for a while during early development.
+-- | A simple test world used for a while during early development.
 testWorld1 :: Coords -> (TerrainType, Maybe Text)
 testWorld1 (Coords (-5, 3)) = (StoneT, Just "flerb")
 testWorld1 (Coords (2, -1)) = (GrassT, Just "elephant")
@@ -47,6 +47,7 @@ data Hardness = Soft | Hard deriving (Eq, Ord, Show, Read)
 data Origin = Natural | Artificial deriving (Eq, Ord, Show, Read)
 type Seed = Int
 
+-- | A list of entities available in the initial world.
 testWorld2Entites :: S.Set Text
 testWorld2Entites =
   S.fromList
@@ -69,14 +70,18 @@ testWorld2Entites =
     , "copper ore"
     ]
 
--- XXX
+-- | Look up an entity name in an entity map, when we know the entity
+--   must exist.  This is only used for entities which are named in
+--   'testWorld2'.
 readEntity :: EntityMap -> Text -> Entity
 readEntity em name =
   fromMaybe
     (error $ "Unknown entity name in WorldGen: " <> show name)
     (lookupEntityName name em)
 
--- | A more featureful test world.
+-- | The main world of the classic game, for historical reasons named
+--   'testWorld2'.  If new entities are added, you SHOULD ALSO UPDATE
+--   'testWorld2Entities'.
 testWorld2 :: EntityMap -> Seed -> WorldFun TerrainType Entity
 testWorld2 em baseSeed = second (readEntity em) . WF $ \(Coords ix) ->
   genBiome

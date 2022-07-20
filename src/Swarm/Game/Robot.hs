@@ -44,9 +44,9 @@ module Swarm.Game.Robot (
   trobotName,
   robotCreatedAt,
   robotDisplay,
-  trobotLocation,
   robotLocation,
   unsafeSetRobotLocation,
+  trobotLocation,
   robotOrientation,
   robotInventory,
   installedDevices,
@@ -242,10 +242,6 @@ robotDisplay = lens getDisplay setDisplay
       & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
   setDisplay r d = r & robotEntity . entityDisplay .~ d
 
--- XXX
-trobotLocation :: Getter TRobot (Maybe (V2 Int64))
-trobotLocation = to _robotLocation
-
 -- | The robot's current location, represented as (x,y).  This is only
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
@@ -258,6 +254,12 @@ robotLocation :: Getter Robot (V2 Int64)
 --   map stays in sync.
 unsafeSetRobotLocation :: V2 Int64 -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
+
+-- | A template robot's location.  Unlike 'robotLocation', this is a
+--   lens, since when dealing with robot templates there is as yet no
+--   'robotsByLocation' map to keep up-to-date.
+trobotLocation :: Lens' TRobot (Maybe (V2 Int64))
+trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.
 robotOrientation :: Lens' Robot (Maybe (V2 Int64))

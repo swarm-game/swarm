@@ -52,14 +52,15 @@ module Swarm.Game.Scenario (
   loadScenarios,
 ) where
 
-import Control.Arrow ((&&&), (***))
+import Control.Algebra (Has)
+import Control.Arrow ((&&&))
+import Control.Carrier.Lift (Lift, sendIO)
+import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, unless, when)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Array
-import Data.Bifunctor (first)
 import Data.Char (isSpace)
 import Data.List ((\\))
 import Data.Map (Map)
@@ -67,37 +68,31 @@ import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Vector qualified as V
 import Data.Yaml as Y
 import GHC.Int (Int64)
 import Linear.V2
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath (takeBaseName, takeExtensions, (<.>), (</>))
-import Witch (from, into)
-
-import Control.Algebra (Has)
-import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
-
-import Data.Vector qualified as V
 import Paths_swarm (getDataDir, getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot, trobotName)
 import Swarm.Game.Terrain
-import Swarm.Game.World
-import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
 import Swarm.Util.Yaml
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (takeBaseName, takeExtensions, (<.>), (</>))
+import Witch (from, into)
 
 ------------------------------------------------------------
 -- Robot map
 ------------------------------------------------------------
 
--- | XXX
+-- | A map from names to robots, used to look up robots in scenario
+--   descriptions.
 type RobotMap = Map Text TRobot
 
--- | XXX
+-- | Create a 'RobotMap' from a list of robot templates.
 buildRobotMap :: [TRobot] -> RobotMap
 buildRobotMap = M.fromList . map (view trobotName &&& id)
 
@@ -105,7 +100,8 @@ buildRobotMap = M.fromList . map (view trobotName &&& id)
 -- Lookup utilities
 ------------------------------------------------------------
 
--- XXX
+-- | Look up a thing by name, throwing a parse error if it is not
+--   found.
 getThing :: String -> (Text -> m -> Maybe a) -> Text -> ParserE m a
 getThing thing lkup name = do
   m <- getE
@@ -113,11 +109,13 @@ getThing thing lkup name = do
     Nothing -> fail $ "Unknown " <> thing <> " name: " ++ show name
     Just a -> return a
 
--- XXX
+-- | Look up an entity by name in an 'EntityMap', throwing a parse
+--   error if it is not found.
 getEntity :: Text -> ParserE EntityMap Entity
 getEntity = getThing "entity" lookupEntityName
 
--- XXX
+-- | Look up a robot by name in a 'RobotMap', throwing a parse error
+--   if it is not found.
 getRobot :: Text -> ParserE RobotMap TRobot
 getRobot = getThing "robot" M.lookup
 
@@ -125,6 +123,8 @@ getRobot = getThing "robot" M.lookup
 -- World cells
 ------------------------------------------------------------
 
+-- | A single cell in a world map, which contains a terrain value,
+--   and optionally an entity and robot.
 data Cell = Cell
   { cellTerrain :: TerrainType
   , cellEntity :: Maybe Entity
@@ -132,23 +132,25 @@ data Cell = Cell
   }
 
 instance FromJSONE (EntityMap, RobotMap) Cell where
-  -- parseJSONE :: Value -> ParserE (EntityMap, RobotMap) Cell
-  -- XXX deduplicate this code?
-  parseJSONE = withArrayE "tuple" $ \v -> case V.toList v of
-    [t] -> liftE (Cell <$> parseJSON t <*> pure Nothing <*> pure Nothing)
-    [t, e] -> do
-      terr <- liftE $ parseJSON t
-      mName <- liftE $ parseJSON @(Maybe Text) e
-      ent <- traverse (localE fst . getEntity) mName
-      return (Cell terr ent Nothing)
-    [t, e, r] -> do
-      terr <- liftE $ parseJSON t
-      meName <- liftE $ parseJSON @(Maybe Text) e
-      ent <- traverse (localE fst . getEntity) meName
-      mrName <- liftE $ parseJSON @(Maybe Text) r
-      rob <- traverse (localE snd . getRobot) mrName
-      return (Cell terr ent rob)
-    _ -> fail "palette entry must be 1, 2, or 3 entries"
+  parseJSONE = withArrayE "tuple" $ \v -> do
+    let tup = V.toList v
+    when (null tup || length tup > 3) $ fail "palette entry must have length 1, 2, or 3"
+
+    terr <- liftE $ parseJSON (head tup)
+
+    ent <- case tup ^? ix 1 of
+      Nothing -> return Nothing
+      Just e -> do
+        meName <- liftE $ parseJSON @(Maybe Text) e
+        traverse (localE fst . getEntity) meName
+
+    rob <- case tup ^? ix 2 of
+      Nothing -> return Nothing
+      Just r -> do
+        mrName <- liftE $ parseJSON @(Maybe Text) r
+        traverse (localE snd . getRobot) mrName
+
+    return $ Cell terr ent rob
 
 ------------------------------------------------------------
 -- World description
@@ -175,7 +177,10 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
       <*> liftE (v .:? "upperleft" .!= V2 0 0)
       <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)
 
--- | XXX
+-- | "Paint" a world map using a 'WorldPalette', turning it from a raw
+--   string into a nested list of 'Cell' values by looking up each
+--   character in the palette, failing if any character in the raw map
+--   is not contained in the palette.
 paintMap :: MonadFail m => WorldPalette -> Text -> m [[Cell]]
 paintMap pal = traverse (traverse toCell . into @String) . T.lines
  where

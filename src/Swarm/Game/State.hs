@@ -88,10 +88,9 @@ module Swarm.Game.State (
   activateRobot,
 ) where
 
+import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
-import Control.Carrier.Accum.Strict (runAccum)
-import Control.Effect.Accum
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
@@ -99,7 +98,6 @@ import Control.Monad.Except
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
-import Data.Foldable qualified as F
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -110,22 +108,25 @@ import Data.List (partition)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
 import GHC.Generics (Generic)
-import Linear
+import Linear (V2 (..))
 import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
-import Swarm.Game.Recipe
+import Swarm.Game.Recipe (
+  Recipe,
+  inRecipeMap,
+  loadRecipes,
+  outRecipeMap,
+ )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario
 import Swarm.Game.Terrain (TerrainType (..))
-import Swarm.Game.Value
+import Swarm.Game.Value (Value)
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
@@ -135,8 +136,8 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
-import Swarm.Util
-import System.Clock qualified
+import Swarm.Util (isRightOr, (<+=), (<<.=), (?))
+import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
 
@@ -622,7 +623,7 @@ scenarioToGameState scenario userSeed toRun g = do
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)
 
-  now <- System.Clock.getTime System.Clock.Monotonic
+  now <- Clock.getTime Clock.Monotonic
   let robotList' = (robotCreatedAt .~ now) <$> robotList
 
   return $
@@ -660,7 +661,6 @@ scenarioToGameState scenario userSeed toRun g = do
  where
   em = g ^. entityMap <> scenario ^. scenarioEntities
 
-  -- XXX 0 is not correct any more, use gensym
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
   -- Keep only robots from the robot list with a concrete location;
@@ -668,9 +668,7 @@ scenarioToGameState scenario userSeed toRun g = do
   -- in the world map
   locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
   robotList =
-    -- XXX 0 isn't right, because others may have been added... use gensym,
-    -- make sure nowhere else in the code has 0 hardcoded
-    zipWith setRobotID [baseID ..] locatedRobots
+    zipWith setRobotID [baseID ..] (locatedRobots ++ genRobots)
       -- If the  --run flag was used, use it to replace the CESK machine of the
       -- robot whose id is 0, i.e. the first robot listed in the scenario.
       & ix baseID . machine
@@ -693,24 +691,25 @@ scenarioToGameState scenario userSeed toRun g = do
       (maybe False (`S.member` initialCaps) . constCaps)
       allConst
 
-  -- XXX use genRobots
   (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
   theWorld = W.newWorld . wf
   theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
-  -- XXX this is not correct any more?
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
 
--- | XXX
+-- | Take a world description, parsed from a scenario file, and turn
+--   it into a list of located robots and a world function.
 buildWorld :: EntityMap -> WorldDescription -> ([TRobot], Seed -> WorldFun Int Entity)
-buildWorld em wd@(WorldDescription {..}) = (F.toList robots, first fromEnum . wf)
+buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
   cs = fromIntegral $ length (head area)
   Coords (ulr, ulc) = locToCoords ul
 
-  (robots, worldGrid) = runIdentity . runAccum Seq.empty $ (traverse . traverse) processCell area
+  worldGrid :: [[(TerrainType, Maybe Entity)]]
+  worldGrid = (map . map) (cellTerrain &&& cellEntity) area
 
+  worldArray :: Array (Int64, Int64) (TerrainType, Maybe Entity)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
   wf = case defaultTerrain of
@@ -718,20 +717,18 @@ buildWorld em wd@(WorldDescription {..}) = (F.toList robots, first fromEnum . wf
       (if offsetOrigin then findGoodOrigin else id) . testWorld2FromArray em worldArray
     Just (Cell t e _) -> const (worldFunFromArray worldArray (t, e))
 
--- Nothing -> do
---   let arr2 = bimap toEnum (fmap (^. entityName)) <$> worldArray
---   return $
---      fmap ((lkup em <$>) . first fromEnum)
---        . (if offsetOrigin wd then findGoodOrigin else id)
---        . testWorld2FromArray arr2
--- Just def -> do
---   let defTerrain = (fromEnum *** (>>= (`lookupEntityName` em))) def
---   return $ \_ -> worldFunFromArray arr defTerrain
-
-processCell :: Has (Accum (Seq TRobot)) sig m => Cell -> m (TerrainType, Maybe Entity)
-processCell (Cell t e r) = do
-  maybe (return ()) (add . Seq.singleton) r
-  return (t, e)
+  -- Get all the robots described in cells and set their locations appropriately
+  robots :: [TRobot]
+  robots =
+    area
+      & traversed <.> traversed %@~ (,) -- add (r,c) indices
+      & concat
+      & mapMaybe
+        ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robot) ->
+            robot
+              & traverse . trobotLocation
+              ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
+        )
 
 -- | Create an initial game state for a specific scenario.
 initGameStateForScenario :: String -> Maybe Seed -> Maybe String -> ExceptT Text IO GameState

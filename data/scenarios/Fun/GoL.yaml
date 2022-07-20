@@ -1,0 +1,71 @@
+name: Conway's Game of Life
+description: A basic implementation of the rules of the Game of Life.
+robots:
+  - name: base
+    display:
+      attr: robot
+      char: 'Ω'
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - compass
+      - grabber
+      - clock
+      - logger
+    inventory:
+      - [1000, rock]
+  - name: cell
+    system: true
+    dir: [0,1]
+    display:
+      invisible: true
+    inventory:
+      - [1, rock]
+    program: |
+      def forever = \c. c; forever c; end;
+      def cnt = \x.
+        if (x == inl ()) {0} {1}
+      end;
+      def count3 =
+        h <- scan down;
+        f <- scan forward;
+        b <- scan back;
+        return (cnt h + cnt f + cnt b)
+      end;
+      forever (
+        h <- scan down;
+        alive <- return (h != inl ());
+        n1 <- count3;
+        turn left; move; turn right; n2 <- count3;
+        turn right; move; move; turn left; n3 <- count3;
+        turn left; move; turn right;
+        total <- return (n1 + n2 + n3 - if alive {1} {0});
+        if (alive && (total < 2 || total > 3))
+          {grab; return ()}
+          { if (not alive && total == 3) { place "rock" } {}
+          }
+      )
+world:
+  default: [ice]
+  palette:
+    'o': [ice, rock, cell]
+    '.': [ice, null, cell]
+  upperleft: [1,-1]
+  map: |
+    ..............................
+    ..............................
+    ......o.......................
+    .......o......................
+    .....ooo......................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
+    ..............................
