@@ -38,10 +38,6 @@ module Swarm.Game.Scenario (
   scenarioSolution,
   scenarioStepsPerTick,
 
-  -- * Conversion
-
-  -- mkWorldFun,
-
   -- * Loading from disk
   loadScenario,
   ScenarioCollection (..),
@@ -156,9 +152,7 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
 -- World description
 ------------------------------------------------------------
 
--- | A description of a world parsed from a YAML file.  The
---   'mkWorldFun' function is used to turn a 'WorldDescription' into a
---   'WorldFun'.
+-- | A description of a world parsed from a YAML file.
 data WorldDescription = WorldDescription
   { defaultTerrain :: Maybe Cell
   , offsetOrigin :: Bool
