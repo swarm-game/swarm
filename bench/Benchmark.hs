@@ -17,7 +17,7 @@ import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.State (GameState, addTRobot, classicGame0, creativeMode, world)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
-import Swarm.Game.World (newWorld, WorldFun(..))
+import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
