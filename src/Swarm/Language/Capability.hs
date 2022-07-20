@@ -132,7 +132,6 @@ instance FromJSON Capability where
 constCaps :: Const -> Maybe Capability
 constCaps = \case
   -- Some built-in constants that don't require any special capability.
-  Wait -> Nothing
   Noop -> Nothing
   AppF -> Nothing
   Force -> Nothing
@@ -175,6 +174,7 @@ constCaps = \case
   Self -> Just CWhoami
   Atomic -> Just CAtomic
   Time -> Just CTime
+  Wait -> Just CTime
   -- Some God-like abilities.
   As -> Just CGod
   RobotNamed -> Just CGod
