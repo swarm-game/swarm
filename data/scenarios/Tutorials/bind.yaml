@@ -41,7 +41,6 @@ solution: |
   place "Win"
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     devices:
       - treads
@@ -55,7 +54,7 @@ robots:
 world:
   default: [blank]
   palette:
-    '.': [grass]
+    '>': [grass, null, base]
     'T': [grass, tree]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
@@ -66,5 +65,5 @@ world:
   upperleft: [-1, 1]
   map: |
     ┌───┐
-    │.TT│
+    │>TT│
     └───┘

@@ -19,7 +19,9 @@ solution: |
   make "branch"; make "branch predictor"
 robots:
   - name: base
-    loc: [0,0]
+    display:
+      attr: robot
+      char: 'Ω'
     dir: [1,0]
     devices:
       - workbench
@@ -29,15 +31,15 @@ robots:
 world:
   default: [blank]
   palette:
+    'Ω': [grass, null, base]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
-    ' ': [grass]
   upperleft: [-1, 1]
   map: |
     ┌─┐
-    │ │
+    │Ω│
     └─┘

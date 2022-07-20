@@ -28,7 +28,6 @@ solution: |
   }
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     display:
       char: Ω
@@ -45,6 +44,7 @@ robots:
 world:
   default: [blank]
   palette:
+    'Ω': [grass, null, base]
     '.': [grass]
     '~': [ice, wavy water]
     'T': [grass, tree]
@@ -60,5 +60,5 @@ world:
     ┌─────┐
     │AAAT~│
     │..A.~│
-    │....A│
+    │Ω...A│
     └─────┘

@@ -40,7 +40,6 @@ solution: |
   build {require 4 "rock"; move; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"}
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     display:
       char: Ω
@@ -61,6 +60,7 @@ robots:
 world:
   default: [blank]
   palette:
+    'Ω': [grass, null, base]
     '.': [grass]
     '_': [stone]
     '┌': [stone, upper left corner]
@@ -72,7 +72,7 @@ world:
   upperleft: [-1, 1]
   map: |
     ┌─────┐
-    │.....│
+    │Ω....│
     │.____│
     │.____│
     │.____│

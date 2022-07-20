@@ -21,7 +21,6 @@ solution: |
   move; move
 robots:
   - name: base
-    loc: [0,0]
     dir: [1,0]
     devices:
       - treads
@@ -29,6 +28,7 @@ robots:
 world:
   default: [blank]
   palette:
+    '>': [grass, null, base]
     '.': [grass]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
@@ -39,5 +39,5 @@ world:
   upperleft: [-1, 1]
   map: |
     ┌───┐
-    │...│
+    │>..│
     └───┘
