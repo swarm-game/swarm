@@ -76,11 +76,11 @@ instance Wrapped Coords
 
 -- | Convert an (x,y) location to a 'Coords' value.
 locToCoords :: V2 Int64 -> Coords
-locToCoords (V2 x y) = Coords (-y, x)
+locToCoords (V2 x y) = Coords (- y, x)
 
 -- | Convert 'Coords' to an (x,y) location.
 coordsToLoc :: Coords -> V2 Int64
-coordsToLoc (Coords (r, c)) = V2 c (-r)
+coordsToLoc (Coords (r, c)) = V2 c (- r)
 
 ------------------------------------------------------------
 -- World function
