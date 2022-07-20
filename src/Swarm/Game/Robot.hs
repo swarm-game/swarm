@@ -220,6 +220,11 @@ robotEntity :: Lens' (RobotR phase) Entity
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
 
+-- robotName and trobotName could be generalized to robotName' ::
+-- Lens' (RobotR phase) Text.  However, type inference does not work
+-- very well with the polymorphic version, so we export both
+-- monomorphic versions instead.
+
 -- | The name of a robot.
 robotName :: Lens' Robot Text
 robotName = robotEntity . entityName
