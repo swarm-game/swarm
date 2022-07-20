@@ -225,7 +225,7 @@ instance FromJSONE EntityMap Scenario where
       <*> liftE (v .:? "seed")
       <*> pure em
       <*> withE em (v ..:? "recipes" ..!= [])
-      <*> localE (,rsMap) (v ..: "world")
+      <*> withE em (localE (,rsMap) (v ..: "world"))
       <*> pure rs
       <*> liftE (v .:? "win")
       <*> liftE (v .:? "solution")
