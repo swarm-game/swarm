@@ -236,11 +236,11 @@ drawGameUI s =
   ]
  where
   addCursorPos = case s ^. uiState . uiWorldCursor of
-    Just coord -> topLabels . rightLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
+    Just coord -> bottomLabels . leftLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
     Nothing -> id
-  -- Add clock display in bottom left of the world view if focused robot
+  -- Add clock display in top right of the world view if focused robot
   -- has a clock installed
-  addClock = bottomLabels . leftLabel ?~ padLeftRight 1 (drawClockDisplay s)
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay s)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
