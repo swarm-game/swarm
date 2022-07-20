@@ -24,8 +24,7 @@ robots:
   - name: portkey1
     system: true
     display:
-      char: ' '
-      attr: rock
+      invisible: true
     loc: [0,0]
     dir: [0,0]
     program: |
@@ -40,8 +39,7 @@ robots:
   - name: portkey2
     system: true
     display:
-      char: ' '
-      attr: rock
+      invisible: true
     loc: [16,0]
     dir: [0,0]
     program: |

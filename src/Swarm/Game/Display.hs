@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -22,12 +20,15 @@ module Swarm.Game.Display (
   -- ** Fields
   defaultChar,
   orientationMap,
+  curOrientation,
   displayAttr,
   displayPriority,
+  invisible,
 
-  -- ** Lookup
-  lookupDisplay,
-  displayWidget,
+  -- ** Rendering
+  displayChar,
+  renderDisplay,
+  hidden,
 
   -- ** Construction
   defaultTerrainDisplay,
@@ -37,16 +38,16 @@ module Swarm.Game.Display (
 
 import Brick (AttrName, Widget, str, withAttr)
 import Control.Lens hiding (Const, from, (.=))
-import Data.Hashable
+import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
 
 import Data.Yaml
 import GHC.Generics (Generic)
 
-import Swarm.Language.Syntax
-import Swarm.TUI.Attr
-import Swarm.Util
+import Swarm.Language.Syntax (Direction (..))
+import Swarm.TUI.Attr (entityAttr, robotAttr)
+import Swarm.Util (maxOn, (?))
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
@@ -60,10 +61,18 @@ instance Hashable AttrName
 data Display = Display
   { _defaultChar :: Char
   , _orientationMap :: Map Direction Char
+  , _curOrientation :: Maybe Direction
   , _displayAttr :: AttrName
   , _displayPriority :: Priority
+  , _invisible :: Bool
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
+
+instance Semigroup Display where
+  d1 <> d2
+    | _invisible d1 = d2
+    | _invisible d2 = d1
+    | otherwise = maxOn _displayPriority d1 d2
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Display
 
@@ -76,6 +85,10 @@ defaultChar :: Lens' Display Char
 --   the 'defaultChar' will be used.
 orientationMap :: Lens' Display (Map Direction Char)
 
+-- | The display caches the current orientation of the entity, so we
+--   know which character to use from the orientation map.
+curOrientation :: Lens' Display (Maybe Direction)
+
 -- | The attribute to use for display.
 displayAttr :: Lens' Display AttrName
 
@@ -83,13 +96,18 @@ displayAttr :: Lens' Display AttrName
 --   on top of lower.
 displayPriority :: Lens' Display Priority
 
+-- | Whether the entity is currently invisible.
+invisible :: Lens' Display Bool
+
 instance FromJSON Display where
   parseJSON = withObject "Display" $ \v ->
     Display
-      <$> v .: "char"
+      <$> v .:? "char" .!= ' '
       <*> v .:? "orientationMap" .!= M.empty
+      <*> v .:? "curOrientation"
       <*> v .:? "attr" .!= entityAttr
       <*> v .:? "priority" .!= 1
+      <*> v .:? "invisible" .!= False
 
 instance ToJSON Display where
   toJSON d =
@@ -99,17 +117,22 @@ instance ToJSON Display where
       , "priority" .= (d ^. displayPriority)
       ]
         ++ ["orientationMap" .= (d ^. orientationMap) | not (M.null (d ^. orientationMap))]
+        ++ ["invisible" .= (d ^. invisible) | d ^. invisible]
 
--- | Look up the character that should be used for a display, possibly
---   given an orientation as input.
-lookupDisplay :: Maybe Direction -> Display -> Char
-lookupDisplay Nothing disp = disp ^. defaultChar
-lookupDisplay (Just v) disp = M.lookup v (disp ^. orientationMap) ? (disp ^. defaultChar)
+-- | Look up the character that should be used for a display.
+displayChar :: Display -> Char
+displayChar disp = case disp ^. curOrientation of
+  Nothing -> disp ^. defaultChar
+  Just dir -> M.lookup dir (disp ^. orientationMap) ? (disp ^. defaultChar)
 
--- | Given the (optional) orientation of an entity and its display,
---   return a widget showing the entity.
-displayWidget :: Maybe Direction -> Display -> Widget n
-displayWidget orient disp = withAttr (disp ^. displayAttr) $ str [lookupDisplay orient disp]
+-- | Render a display as a UI widget.
+renderDisplay :: Display -> Widget n
+renderDisplay disp = withAttr (disp ^. displayAttr) $ str [displayChar disp]
+
+-- | Modify a display to use a @?@ character for entities that are
+--   hidden/unknown.
+hidden :: Display -> Display
+hidden = (defaultChar .~ '?') . (curOrientation .~ Nothing)
 
 -- | The default way to display some terrain using the given character
 --   and attribute, with priority 0.
@@ -126,15 +149,18 @@ defaultEntityDisplay c =
   Display
     { _defaultChar = c
     , _orientationMap = M.empty
+    , _curOrientation = Nothing
     , _displayAttr = entityAttr
     , _displayPriority = 1
+    , _invisible = False
     }
 
--- | Construct a default robot display, with display characters
---   @"X^>v<"@, the default robot attribute, and priority 10.
+-- | Construct a default robot display for a given orientation, with
+--   display characters @"X^>v<"@, the default robot attribute, and
+--   priority 10.
 --
--- Note that the 'defaultChar' is used for direction 'DDown'
--- and is overriden for the special base robot.
+--   Note that the 'defaultChar' is used for direction 'DDown'
+--   and is overriden for the special base robot.
 defaultRobotDisplay :: Display
 defaultRobotDisplay =
   Display
@@ -146,6 +172,11 @@ defaultRobotDisplay =
           , (DSouth, 'v')
           , (DNorth, '^')
           ]
+    , _curOrientation = Nothing
     , _displayAttr = robotAttr
     , _displayPriority = 10
+    , _invisible = False
     }
+
+instance Monoid Display where
+  mempty = defaultEntityDisplay ' ' & invisible .~ True

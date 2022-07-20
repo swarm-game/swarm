@@ -1,0 +1,25 @@
+name: Teleport updates robotsByLocation
+description: |
+  Teleporting another robot should correctly update the robotsByLocation map.
+  https://github.com/swarm-game/swarm/issues/555
+creative: True
+win: |
+  try {
+    as base {has "rock"}
+  } { return false }
+solution: |
+  fred <- robotNamed "fred";
+  myLoc <- whereami;
+  teleport fred myLoc;
+  salvage
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+  - name: fred
+    loc: [1,0]
+    dir: [0,0]
+    inventory:
+      - [1, rock]
+world:
+  default: [grass, null]

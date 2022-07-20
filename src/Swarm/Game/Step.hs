@@ -20,15 +20,17 @@ import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (traverse_)
+import Data.Functor (void)
 import Data.Int (Int64)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find)
 import Data.List qualified as L
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -66,8 +68,6 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Data.Containers.ListUtils (nubOrd)
-import Data.Functor (void)
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
@@ -89,23 +89,6 @@ gameTick = do
           then deleteRobot rn
           else do
             robotMap %= IM.insert rn curRobot'
-            let oldLoc = curRobot ^. robotLocation
-                newLoc = curRobot' ^. robotLocation
-
-                -- Make sure empty sets don't hang around in the
-                -- robotsByLocation map.  We don't want a key with an
-                -- empty set at every location any robot has ever
-                -- visited!
-                deleteOne _ Nothing = Nothing
-                deleteOne x (Just s)
-                  | IS.null s' = Nothing
-                  | otherwise = Just s'
-                 where
-                  s' = IS.delete x s
-
-            when (newLoc /= oldLoc) $ do
-              robotsByLocation . at oldLoc %= deleteOne rn
-              robotsByLocation . at newLoc . non Empty %= IS.insert rn
             time <- use ticks
             case waitingUntil curRobot' of
               Just wakeUpTime
@@ -729,18 +712,17 @@ execConst c vs s k = do
             (e `hasProperty` Liquid && CFloat `S.notMember` caps)
             destroyIfNotBase
 
-      robotLocation .= nextLoc
+      updateRobotLocation loc nextLoc
       flagRedraw
       return $ Out VUnit s k
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
-        myID <- use robotID
         -- Make sure the other robot exists and is close
         target <- getRobotWithinTouch rid
         -- either change current robot or one in robot map
-        let (.==) l a = if myID == rid then l .= a else robotMap . ix rid . l .= a
-        let nextLoc = V2 (fromIntegral x) (fromIntegral y)
-        let caps = target ^. robotCapabilities
+        let oldLoc = target ^. robotLocation
+            nextLoc = V2 (fromIntegral x) (fromIntegral y)
+            caps = target ^. robotCapabilities
 
         me <- entityAt nextLoc
         -- Make sure nothing is in the way.
@@ -751,9 +733,9 @@ execConst c vs s k = do
             let drowning = e `hasProperty` Liquid && CFloat `S.notMember` caps
             when (unwalkable || drowning) $ do
               d <- isDestroyable target
-              when d $ selfDestruct .== True
+              when d $ onTarget rid (selfDestruct .= True)
 
-        robotLocation .== nextLoc
+        onTarget rid $ updateRobotLocation oldLoc nextLoc
         flagRedraw
         return $ Out VUnit s k
       _ -> badConst
@@ -1321,11 +1303,8 @@ execConst c vs s k = do
     Salvage -> case vs of
       [] -> do
         loc <- use robotLocation
-        rm <- use robotMap
-        robotSet <- use (robotsByLocation . at loc)
-        let robotIDList = maybe [] IS.toList robotSet
-            mtarget = find okToSalvage . mapMaybe (`IM.lookup` rm) $ robotIDList
-            okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
+        let okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
+        mtarget <- gets (find okToSalvage . robotsAtLocation loc)
         case mtarget of
           Nothing -> return $ Out VUnit s k -- Nothing to salvage
           Just target -> do
@@ -1674,6 +1653,10 @@ execConst c vs s k = do
     -- Return the name of the item obtained.
     return $ Out (VString (e' ^. entityName)) s k
 
+------------------------------------------------------------
+-- Some utility functions
+------------------------------------------------------------
+
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented
 --   by the given 'RID') as part of a 'Build' or 'Reprogram' command.
@@ -1699,6 +1682,57 @@ provisionChild childID toInstall toGive = do
   creative <- use creativeMode
   unless creative $
     robotInventory %= (`E.difference` (toInstall `E.union` toGive))
+
+-- | Update the location of a robot, and simultaneously update the
+--   'robotsByLocation' map, so we can always look up robots by
+--   location.  This should be the /only/ way to update the location
+--   of a robot.
+updateRobotLocation ::
+  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  V2 Int64 ->
+  V2 Int64 ->
+  m ()
+updateRobotLocation oldLoc newLoc
+  | oldLoc == newLoc = return ()
+  | otherwise = do
+    rid <- use robotID
+    robotsByLocation . at oldLoc %= deleteOne rid
+    robotsByLocation . at newLoc . non Empty %= IS.insert rid
+    modify (unsafeSetRobotLocation newLoc)
+ where
+  -- Make sure empty sets don't hang around in the
+  -- robotsByLocation map.  We don't want a key with an
+  -- empty set at every location any robot has ever
+  -- visited!
+  deleteOne _ Nothing = Nothing
+  deleteOne x (Just s)
+    | IS.null s' = Nothing
+    | otherwise = Just s'
+   where
+    s' = IS.delete x s
+
+-- | Execute a stateful action on a target robot --- whether the
+--   current one or another.
+onTarget ::
+  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  RID ->
+  (forall sig' m'. (Has (State GameState) sig' m', Has (State Robot) sig' m') => m' ()) ->
+  m ()
+onTarget rid act = do
+  myID <- use robotID
+  case myID == rid of
+    True -> act
+    False -> do
+      mtgt <- use (robotMap . at rid)
+      case mtgt of
+        Nothing -> return ()
+        Just tgt -> do
+          tgt' <- execState @Robot tgt act
+          robotMap . ix rid .= tgt'
+
+------------------------------------------------------------
+-- Comparison
+------------------------------------------------------------
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
@@ -1758,6 +1792,10 @@ incomparable v1 v2 =
     CmdFailed Lt $
       T.unwords ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
+------------------------------------------------------------
+-- Arithmetic
+------------------------------------------------------------
+
 -- | Evaluate the application of an arithmetic operator, returning
 --   an exception in the case of a failing operation, or in case we
 --   incorrectly use it on a bad 'Const' in the library.
@@ -1783,6 +1821,10 @@ safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
   | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
   | otherwise = return $ a ^ b
+
+------------------------------------------------------------
+-- Updating discovered entities, recipes, and commands
+------------------------------------------------------------
 
 -- | Update the global list of discovered entities, and check for new recipes.
 updateDiscoveredEntities :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()

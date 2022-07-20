@@ -182,6 +182,7 @@ testScenarioSolution _ci _em =
             ]
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
+        , testSolution Default "Testing/555-teleport-location"
         ]
     ]
  where

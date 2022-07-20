@@ -46,6 +46,7 @@ module Swarm.Game.Robot (
   robotDisplay,
   trobotLocation,
   robotLocation,
+  unsafeSetRobotLocation,
   robotOrientation,
   robotInventory,
   installedDevices,
@@ -87,12 +88,13 @@ import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
 import Swarm.Game.CESK
-import Swarm.Game.Display (Display, defaultRobotDisplay)
+import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
@@ -226,16 +228,36 @@ robotName = robotEntity . entityName
 trobotName :: Lens' TRobot Text
 trobotName = robotEntity . entityName
 
--- | The 'Display' of a robot.
+-- | The 'Display' of a robot.  This is a special lens that
+--   automatically sets the 'curOrientation' to the orientation of the
+--   robot every time you do a @get@ operation.  Technically this does
+--   not satisfy the lens laws---in particular, the get/put law does
+--   not hold.  But we should think of the 'curOrientation' as being
+--   simply a cache of the displayed entity's direction.
 robotDisplay :: Lens' Robot Display
-robotDisplay = robotEntity . entityDisplay
+robotDisplay = lens getDisplay setDisplay
+ where
+  getDisplay r =
+    (r ^. robotEntity . entityDisplay)
+      & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
+  setDisplay r d = r & robotEntity . entityDisplay .~ d
 
 -- XXX
-trobotLocation :: Lens' TRobot (Maybe (V2 Int64))
-trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
+trobotLocation :: Getter TRobot (Maybe (V2 Int64))
+trobotLocation = to _robotLocation
 
--- | The robot's current location, represented as (x,y).
-robotLocation :: Lens' Robot (V2 Int64)
+-- | The robot's current location, represented as (x,y).  This is only
+--   a getter, since when changing a robot's location we must remember
+--   to update the 'robotsByLocation' map as well.  You can use the
+--   'updateRobotLocation' function for this purpose.
+robotLocation :: Getter Robot (V2 Int64)
+
+-- | Set a robot's location.  This is unsafe and should never be
+--   called directly except by the 'updateRobotLocation' function.
+--   The reason is that we need to make sure the 'robotsByLocation'
+--   map stays in sync.
+unsafeSetRobotLocation :: V2 Int64 -> Robot -> Robot
+unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | Which way the robot is currently facing.
 robotOrientation :: Lens' Robot (Maybe (V2 Int64))
