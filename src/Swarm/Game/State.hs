@@ -87,6 +87,7 @@ module Swarm.Game.State (
   deleteRobot,
   activateRobot,
   toggleRunStatus,
+  messageNotifications,
 ) where
 
 import Control.Algebra (Has)
@@ -143,6 +144,7 @@ import Swarm.Util (isRightOr, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
+import Data.Foldable (toList)
 
 ------------------------------------------------------------
 -- Subsidiary data types
@@ -266,6 +268,7 @@ data GameState = GameState
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
   , _messageQueue :: Seq LogEntry
+  --, _lastSeenMessageTime :: Integer
   , _focusedRobotID :: RID
   , _ticks :: Integer
   , _robotStepsPerTick :: Int
@@ -434,6 +437,16 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
 --
 -- Note that we put the newest entry to the right.
 messageQueue :: Lens' GameState (Seq LogEntry)
+
+messageNotifications :: Getter GameState (Notifications (LogEntry, Bool))
+messageNotifications = to getNotif
+ where
+  getNotif gs = Notifications {_notificationsCount=0, _notificationsContent=allMessages}
+    where
+      allMessages = toList . Seq.sort $ focusedLogs <> messages
+      focusedLogs = (,True) <$> gs ^. robotMap . ix (gs ^. focusedRobotID) . robotLog
+      messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
+      noOther e = gs ^. focusedRobotID == e ^. leRobotID
 
 -- | The current robot in focus. It is only a Getter because
 --   this value should be updated only when viewCenterRule is.

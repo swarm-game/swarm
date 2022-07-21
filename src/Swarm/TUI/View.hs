@@ -48,7 +48,6 @@ import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
-import Data.Foldable (toList)
 import Data.Foldable qualified as F
 import Data.IntMap qualified as IM
 import Data.List qualified as L
@@ -58,7 +57,6 @@ import Data.List.Split (chunksOf)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
-import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -335,7 +333,7 @@ drawModal s = \case
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
-  MessagesModal -> messagesWidget (s ^. gameState)
+  MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
@@ -500,14 +498,15 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
-data NotificationList = RecipeList | CommandList
+data NotificationList = RecipeList | CommandList | MessageList
 
 availableListWidget :: GameState -> NotificationList -> Widget Name
-availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox $ addHeader widgetList)
+availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox widgetList)
  where
-  (vp, widgetList, addHeader) = case nl of
-    RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe, id)
-    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand, (<> constWiki) . (padLeftRight 18 constHeader :))
+  (vp, widgetList) = case nl of
+    RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe)
+    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand & (<> constWiki) . (padLeftRight 18 constHeader :))
+    MessageList -> (MessageViewport, messagesWidget gs)
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
   renderCommand = padLeftRight 18 . drawConst
@@ -547,10 +546,11 @@ descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 descriptionWidget :: AppState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry s e)
 
-messagesWidget :: GameState -> Widget Name
-messagesWidget gs = viewport MessageViewport Vertical (vBox widgetList)
+-- | Draw a widget with messages to the current robot.
+messagesWidget :: GameState -> [Widget Name]
+messagesWidget gs = widgetList
  where
-  widgetList = focusNewest . map drawLogEntry' . toList . Seq.sort $ focusedLogs <> messages
+  widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
   focusNewest = if gs ^. paused then id else over _last visible
   drawLogEntry' (e, isLog) =
     withAttr (if isLog then notifAttr else robotColor (e ^. leRobotID)) $
@@ -558,9 +558,6 @@ messagesWidget gs = viewport MessageViewport Vertical (vBox widgetList)
         [ txt $ "[" <> view leRobotName e <> "] "
         , txtWrapWith indent2 (e ^. leText)
         ]
-  focusedLogs = (,True) <$> gs ^. robotMap . ix (gs ^. focusedRobotID) . robotLog
-  messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
-  noOther e = gs ^. focusedRobotID == e ^. leRobotID
   -- color each robot message with different color of the world (except those with background)
   robotColor rid = fgCols !! (rid `mod` fgColLen)
   fgCols = filter (`notElem` [waterAttr, iceAttr]) worldAttributes
@@ -589,7 +586,7 @@ drawKeyMenu s =
   cheat = s ^. uiState . uiCheatMode
   goal = (s ^. uiState . uiGoal) /= NoGoal
 
-  notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> Maybe (KeyHighlight, Text, Text)
+  notificationKey :: Getter GameState (Notifications a) -> Text -> Text -> Maybe (KeyHighlight, Text, Text)
   notificationKey notifLens key name
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
@@ -611,7 +608,7 @@ drawKeyMenu s =
       , Just (NoHighlight, "F2", "robots")
       , notificationKey availableRecipes "F3" "Recipes"
       , notificationKey availableCommands "F4" "Commands"
-      , Just (NoHighlight, "F5", "Messages")
+      , notificationKey messageNotifications "F5" "Messages"
       , may cheat (NoHighlight, "^v", "creative")
       , may goal (NoHighlight, "^g", "goal")
       ]
