@@ -101,6 +101,7 @@ import Control.Monad.Except
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
+import Data.Foldable (toList)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -145,7 +146,6 @@ import Swarm.Util (isRightOr, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
-import Data.Foldable (toList)
 
 ------------------------------------------------------------
 -- Subsidiary data types
@@ -454,17 +454,18 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
   matchesWorking REPLDone = False
   matchesWorking (REPLWorking _ _) = True
 
-
+-- | Get the notification list of messages from the point of view of focused robot.
 messageNotifications :: Getter GameState (Notifications (LogEntry, Bool))
 messageNotifications = to getNotif
  where
-  getNotif gs = Notifications {_notificationsCount=0, _notificationsContent=allMessages}
-    where
-      allMessages = toList . Seq.sort $ focusedLogs <> messages
-      focusedLogs = (,True) <$> gs ^. robotMap . ix (gs ^. focusedRobotID) . robotLog
-      messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
-      noOther e = gs ^. focusedRobotID == e ^. leRobotID
-
+  getNotif gs = Notifications {_notificationsCount = newCount, _notificationsContent = allMessages}
+   where
+    allMessages = toList . Seq.sort $ focusedLogs <> messages
+    focusedLogs = (,True) <$> maybe Empty (view robotLog) (focusedRobot gs)
+    messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
+    noOther e = gs ^. focusedRobotID == e ^. leRobotID
+    newCount = min 0 $ Seq.length messages - fromMaybe 0 oldestSeen
+    oldestSeen = {- succ <$> -} Seq.findIndexR (\(l, _) -> l ^. leTime <= gs ^. lastSeenMessageTime) messages
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result

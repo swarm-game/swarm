@@ -223,7 +223,15 @@ handleMainEvent s = \case
   FKey 4 | not (null (s ^. gameState . availableCommands . notificationsContent)) -> do
     s' <- toggleModal s CommandsModal
     continue (s' & gameState . availableCommands . notificationsCount .~ 0)
-  FKey 5 -> toggleModal s MessagesModal >>= continue
+  FKey 5 -> do
+    let t = s ^. gameState . ticks
+    s' <- toggleModal s MessagesModal
+    liftIO $ appendFile "/tmp/debug.log" $ "\n\nOLD LEN - " <> show (s ^. gameState . messageNotifications . notificationsCount)
+    liftIO $ appendFile "/tmp/debug.log" $ "\nOLD TIME - " <> show (s' ^. gameState . lastSeenMessageTime)
+    liftIO $ appendFile "/tmp/debug.log" $ "\nNEW TIME - " <> show t
+    liftIO $ appendFile "/tmp/debug.log" $ "\nNEW LEN - " <> show (s' ^. gameState . messageNotifications . notificationsCount)
+    liftIO $ appendFile "/tmp/debug.log" $ "\nMESSAGES - " <> show (view leTime <$> s' ^. gameState . messageQueue)
+    continue (s' & gameState . lastSeenMessageTime .~ t)
   ControlKey 'g' -> case s ^. uiState . uiGoal of
     NoGoal -> continueWithoutRedraw s
     UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
