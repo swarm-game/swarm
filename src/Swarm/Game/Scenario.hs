@@ -53,6 +53,7 @@ module Swarm.Game.Scenario (
 ) where
 
 import Control.Algebra (Has)
+import Control.Applicative (liftA2, (<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
@@ -262,9 +263,22 @@ instance FromJSONE EntityMap Scenario where
       <*> withE em (v ..:? "recipes" ..!= [])
       <*> withE em (localE (,rsMap) (v ..: "world"))
       <*> pure rs
-      <*> liftE (fromMaybe [] <$> (v .:? "objectives"))
+      <*> liftE (parseObjectives v)
       <*> liftE (v .:? "solution")
       <*> liftE (v .:? "stepsPerTick")
+   where
+    -- Parse either a list of objectives, or a single objective via
+    -- old-style 'win'/'goal' fields.
+    parseObjectives :: Object -> Parser [Objective]
+    parseObjectives v =
+      fromMaybe []
+        <$> liftA2
+          (<|>)
+          (v .:? "objectives")
+          ( do
+              g <- v .:? "goal" .!= []
+              (fmap . fmap) ((: []) . Objective g) (v .:? "win")
+          )
 
 --------------------------------------------------
 -- Lenses
