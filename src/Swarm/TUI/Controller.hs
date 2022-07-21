@@ -214,7 +214,7 @@ handleMainEvent s = \case
     continue s
   Key V.KEsc
     | isJust (s ^. uiState . uiError) -> continue $ s & uiState . uiError .~ Nothing
-    | isJust (s ^. uiState . uiModal) -> safeTogglePause s >>= (continue . (uiState . uiModal .~ Nothing))
+    | isJust (s ^. uiState . uiModal) -> safeAutoUnpause s >>= (continue . (uiState . uiModal .~ Nothing))
   FKey 1 -> toggleModal s HelpModal >>= continue
   FKey 2 -> toggleModal s RobotsModal >>= continue
   FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -298,13 +298,18 @@ safeTogglePause s = do
       & (gameState . runStatus %~ toggleRunStatus)
         . (uiState . lastFrameTime .~ curTime)
 
+-- | Only unpause the game if leaving autopaused modal.
+--
+-- Note that the game could have been paused before opening
+-- the modal, in that case, leave the game paused.
+safeAutoUnpause :: AppState -> EventM Name AppState
+safeAutoUnpause s = if s ^. gameState . runStatus == AutoPause then safeTogglePause s else pure s
+
 toggleModal :: AppState -> ModalType -> EventM Name AppState
 toggleModal s mt = case s ^. uiState . uiModal of
   Nothing -> pure $ s & (uiState . uiModal ?~ generateModal s mt) . ensurePause
-  Just _ -> safeUnpause <&> uiState . uiModal .~ Nothing
+  Just _ -> safeAutoUnpause s <&> uiState . uiModal .~ Nothing
  where
-  -- only unpause the game if leaving autopausing modal
-  safeUnpause = if s ^. gameState . runStatus == AutoPause then safeTogglePause s else pure s
   -- these modals do not pause the game
   runningModals = [RobotsModal, MessagesModal]
   -- Set the game to AutoPause if needed
