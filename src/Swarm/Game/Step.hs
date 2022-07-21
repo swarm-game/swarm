@@ -119,7 +119,7 @@ gameTick = do
   -- Possibly update the view center.
   modify recalcViewCenter
 
-  -- Possibly see if the winning condition for challenge mode is met.
+  -- Possibly see if the winning condition for the current objective is met.
   wc <- use winCondition
   case wc of
     WinConditions (obj :| objs) -> do
@@ -130,7 +130,7 @@ gameTick = do
       v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
       case v of
         Left _exn -> return () -- XXX
-        Right (VBool True) ->
+        Right (VBool True) -> do
           winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
         _ -> return ()
     _ -> return ()

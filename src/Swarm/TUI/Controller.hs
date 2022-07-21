@@ -68,7 +68,7 @@ import Control.Carrier.State.Lazy qualified as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), scenarioCollectionToList, _SISingle)
+import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scenarioCollectionToList, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -546,6 +546,19 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
+  -- Decide whether we need to update the current goal text.
+  curGoalStatus <- use (uiState . uiGoal)
+  let curGoal = case curGoalStatus of
+        NoGoal -> Nothing
+        UnreadGoal goal -> Just goal
+        ReadGoal goal -> Just goal
+  newGoal <-
+    preuse (gameState . winCondition . _WinConditions . _NonEmpty . _1 . objectiveGoal)
+
+  let goalUpdated = curGoal /= newGoal
+  when goalUpdated $
+    uiState . uiGoal .= maybe NoGoal UnreadGoal newGoal
+
   -- Decide whether to show a pop-up modal congratulating the user on
   -- successfully completing the current challenge.
   winModalUpdated <- do
@@ -559,7 +572,7 @@ updateUI = do
         return True
       _ -> return False
 
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || winModalUpdated
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || goalUpdated || winModalUpdated
   pure redraw
 
 -- | Make sure all tiles covering the visible part of the world are
