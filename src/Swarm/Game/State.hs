@@ -56,6 +56,7 @@ module Swarm.Game.State (
   replStatus,
   replWorking,
   messageQueue,
+  lastSeenMessageTime,
   focusedRobotID,
   ticks,
   robotStepsPerTick,
@@ -268,7 +269,7 @@ data GameState = GameState
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
   , _messageQueue :: Seq LogEntry
-  --, _lastSeenMessageTime :: Integer
+  , _lastSeenMessageTime :: Integer
   , _focusedRobotID :: RID
   , _ticks :: Integer
   , _robotStepsPerTick :: Int
@@ -386,6 +387,39 @@ scenarios :: Lens' GameState ScenarioCollection
 --   unboxed tile arrays.
 world :: Lens' GameState (W.World Int Entity)
 
+-- | The current center of the world view. Note that this cannot be
+--   modified directly, since it is calculated automatically from the
+--   'viewCenterRule'.  To modify the view center, either set the
+--   'viewCenterRule', or use 'modifyViewCenter'.
+viewCenter :: Getter GameState (V2 Int64)
+viewCenter = to _viewCenter
+
+-- | Whether the world view needs to be redrawn.
+needsRedraw :: Lens' GameState Bool
+
+-- | The current status of the REPL.
+replStatus :: Lens' GameState REPLStatus
+
+-- | A queue of global messages.
+--
+-- Note that we put the newest entry to the right.
+messageQueue :: Lens' GameState (Seq LogEntry)
+
+-- | Last time message queue has been viewed (used for notification).
+lastSeenMessageTime :: Lens' GameState Integer
+
+-- | The current robot in focus. It is only a Getter because
+--   this value should be updated only when viewCenterRule is.
+focusedRobotID :: Getter GameState RID
+focusedRobotID = to _focusedRobotID
+
+-- | The number of ticks elapsed since the game started.
+ticks :: Lens' GameState Integer
+
+-- | The maximum number of CESK machine steps a robot may take during
+--   a single tick.
+robotStepsPerTick :: Lens' GameState Int
+
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
@@ -413,19 +447,6 @@ viewCenterRule = lens getter setter
               Nothing -> g
               Just v2 -> g {_viewCenterRule = rule, _viewCenter = v2, _focusedRobotID = rid}
 
--- | The current center of the world view. Note that this cannot be
---   modified directly, since it is calculated automatically from the
---   'viewCenterRule'.  To modify the view center, either set the
---   'viewCenterRule', or use 'modifyViewCenter'.
-viewCenter :: Getter GameState (V2 Int64)
-viewCenter = to _viewCenter
-
--- | Whether the world view needs to be redrawn.
-needsRedraw :: Lens' GameState Bool
-
--- | The current status of the REPL.
-replStatus :: Lens' GameState REPLStatus
-
 -- | Whether the repl is currently working.
 replWorking :: Getter GameState Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
@@ -433,10 +454,6 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
   matchesWorking REPLDone = False
   matchesWorking (REPLWorking _ _) = True
 
--- | A queue of global messages.
---
--- Note that we put the newest entry to the right.
-messageQueue :: Lens' GameState (Seq LogEntry)
 
 messageNotifications :: Getter GameState (Notifications (LogEntry, Bool))
 messageNotifications = to getNotif
@@ -448,10 +465,6 @@ messageNotifications = to getNotif
       messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
       noOther e = gs ^. focusedRobotID == e ^. leRobotID
 
--- | The current robot in focus. It is only a Getter because
---   this value should be updated only when viewCenterRule is.
-focusedRobotID :: Getter GameState RID
-focusedRobotID = to _focusedRobotID
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -541,13 +554,6 @@ emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
   dropLastIfLong whole@(_oldest :<| newer) = if tooLong whole then newer else whole
   dropLastIfLong emptyQueue = emptyQueue
 
--- | The number of ticks elapsed since the game started.
-ticks :: Lens' GameState Integer
-
--- | The maximum number of CESK machine steps a robot may take during
---   a single tick.
-robotStepsPerTick :: Lens' GameState Int
-
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
 sleepUntil :: Has (State GameState) sig m => RID -> Integer -> m ()
@@ -634,6 +640,7 @@ initGameState = do
       , _needsRedraw = False
       , _replStatus = REPLDone
       , _messageQueue = Empty
+      , _lastSeenMessageTime = 0
       , _focusedRobotID = 0
       , _ticks = 0
       , _robotStepsPerTick = defaultRobotStepsPerTick
