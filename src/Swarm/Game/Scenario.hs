@@ -17,6 +17,11 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
+  -- * Objectives
+  Objective,
+  objectiveGoal,
+  objectiveCondition,
+
   -- * WorldDescription
   Cell (..),
   WorldDescription (..),
@@ -27,14 +32,13 @@ module Swarm.Game.Scenario (
   -- ** Fields
   scenarioName,
   scenarioDescription,
-  scenarioGoal,
   scenarioCreative,
   scenarioSeed,
   scenarioEntities,
   scenarioRecipes,
   scenarioWorld,
   scenarioRobots,
-  scenarioWin,
+  scenarioObjectives,
   scenarioSolution,
   scenarioStepsPerTick,
 
@@ -61,11 +65,12 @@ import Data.Char (isSpace)
 import Data.List ((\\))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Data.Yaml as Y
+import GHC.Generics (Generic)
 import GHC.Int (Int64)
 import Linear.V2
 import Paths_swarm (getDataDir, getDataFileName)
@@ -79,6 +84,34 @@ import Swarm.Util.Yaml
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (takeBaseName, takeExtensions, (<.>), (</>))
 import Witch (from, into)
+
+------------------------------------------------------------
+-- Scenario objectives
+------------------------------------------------------------
+
+data Objective = Objective
+  { _objectiveGoal :: [Text]
+  , _objectiveCondition :: ProcessedTerm
+  }
+  deriving (Show, Generic, ToJSON)
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
+
+-- | An explanation of the goal of the objective, shown to the
+--   player during play.
+objectiveGoal :: Lens' Objective [Text]
+
+-- | A winning condition for the objective, expressed as a
+--   program of type @cmd bool@.  By default, this program will be
+--   run to completion every tick (the usual limits on the number
+--   of CESK steps per tick do not apply).
+objectiveCondition :: Lens' Objective ProcessedTerm
+
+instance FromJSON Objective where
+  parseJSON = withObject "objective" $ \v ->
+    Objective
+      <$> (fmap . map) reflow (v .: "goal")
+      <*> (v .: "condition")
 
 ------------------------------------------------------------
 -- Robot map
@@ -202,14 +235,13 @@ paintMap pal = traverse (traverse toCell . into @String) . T.lines
 data Scenario = Scenario
   { _scenarioName :: Text
   , _scenarioDescription :: Text
-  , _scenarioGoal :: Maybe [Text]
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioWorld :: WorldDescription
   , _scenarioRobots :: [TRobot]
-  , _scenarioWin :: Maybe ProcessedTerm
+  , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
   }
@@ -224,14 +256,13 @@ instance FromJSONE EntityMap Scenario where
     Scenario
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= "")
-      <*> liftE ((fmap . fmap . map) reflow (v .:? "goal"))
       <*> liftE (v .:? "creative" .!= False)
       <*> liftE (v .:? "seed")
       <*> pure em
       <*> withE em (v ..:? "recipes" ..!= [])
       <*> withE em (localE (,rsMap) (v ..: "world"))
       <*> pure rs
-      <*> liftE (v .:? "win")
+      <*> liftE (fromMaybe [] <$> (v .:? "objectives"))
       <*> liftE (v .:? "solution")
       <*> liftE (v .:? "stepsPerTick")
 
@@ -244,10 +275,6 @@ scenarioName :: Lens' Scenario Text
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
 scenarioDescription :: Lens' Scenario Text
-
--- | An explanation of the goal of the scenario (if any), shown to the
---   player during play.
-scenarioGoal :: Lens' Scenario (Maybe [Text])
 
 -- | Whether the scenario should start in creative mode.
 scenarioCreative :: Lens' Scenario Bool
@@ -269,11 +296,8 @@ scenarioWorld :: Lens' Scenario WorldDescription
 --   include the base.
 scenarioRobots :: Lens' Scenario [TRobot]
 
--- | An optional winning condition for the scenario, expressed as a
---   program of type @cmd bool@.  By default, this program will be
---   run to completion every tick (the usual limits on the number
---   of CESK steps per tick do not apply).
-scenarioWin :: Lens' Scenario (Maybe ProcessedTerm)
+-- | A sequence of objectives for the scenario (if any).
+scenarioObjectives :: Lens' Scenario [Objective]
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated

@@ -21,7 +21,7 @@ module Swarm.Game.State (
   REPLStatus (..),
   WinCondition (..),
   _NoWinCondition,
-  _WinCondition,
+  _WinConditions,
   _Won,
   RunStatus (..),
   Seed,
@@ -105,6 +105,8 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
@@ -172,7 +174,7 @@ data WinCondition
     NoWinCondition
   | -- | The player has not won yet; this 'ProcessedTerm' of type @cmd
     --   bool@ is run every tick to determine whether they have won.
-    WinCondition ProcessedTerm
+    WinConditions (NonEmpty Objective)
   | -- | The player has won. The boolean indicates whether they have
     --   already been congratulated.
     Won Bool
@@ -468,7 +470,7 @@ viewingRegion :: GameState -> (Int64, Int64) -> (W.Coords, W.Coords)
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   V2 cx cy = g ^. viewCenter
-  (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
+  (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
 -- | Find out which robot is currently specified by the
@@ -693,7 +695,7 @@ scenarioToGameState scenario userSeed toRun g = do
 
   (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
   theWorld = W.newWorld . wf
-  theWinCondition = maybe NoWinCondition WinCondition (scenario ^. scenarioWin)
+  theWinCondition = maybe NoWinCondition WinConditions (NE.nonEmpty (scenario ^. scenarioObjectives))
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
 

@@ -11,3 +11,4 @@ crash.yaml
 scan.yaml
 require.yaml
 requireinv.yaml
+world.yaml

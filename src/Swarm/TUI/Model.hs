@@ -159,7 +159,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative (Applicative (liftA2))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, scenarioGoal)
+import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, objectiveGoal, scenarioObjectives)
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
@@ -872,7 +872,7 @@ scenarioToUIState scene u =
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ maybe NoGoal UnreadGoal (scene ^. scenarioGoal)
+      & uiGoal .~ maybe NoGoal UnreadGoal (scene ^? scenarioObjectives . _head . objectiveGoal)
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiShowFPS .~ False
