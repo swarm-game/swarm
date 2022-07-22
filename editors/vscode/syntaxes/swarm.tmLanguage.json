@@ -13,12 +13,17 @@
 			"patterns": [
 				{
 				"name": "keyword.control.dictionary.def",
-				"begin": "def\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-				"end": "end",
+				"begin": "\\b(?im)((def)\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?(=))\\b",
+				"end": "\\b(?i)((end))\\b",
 				"beginCaptures": {
-					"1": {"name": "variable.other"},
-					"3": {"name": "storage.type"},
-					"5": {"name": "storage.modifier"}
+					"1": {"name": "method"},
+					"2": {"name": "variable.other"},
+					"4": {"name": "storage.type"},
+					"6": {"name": "storage.modifier"},
+					"7": {"name": "method"}
+				},
+				"endCaptures": {
+					"1": {"name": "method"}
 				},
 				"patterns": [
 					{"include": "#keywords"},
@@ -30,8 +35,8 @@
 				},
 				{
 				"name": "keyword.control.dictionary.let",
-				"begin": "\\s*let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-				"end": "\\s*in",
+				"begin": "\\b(?im)(let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=)\\b",
+				"end": "\\b(?i)(in)\\b",
 				"beginCaptures": {
 					"1": {"name": "variable.other"},
 					"3": {"name": "storage.type"},
@@ -47,7 +52,7 @@
 				},
 				{
 				"name": "keyword.control.require",
-				"match": "require"
+				"match": "\\b(?i)(require)\\b"
 				},
 				{
 				"name": "keyword.operator",
@@ -103,7 +108,7 @@
 			"patterns": [
 				{
 				"name": "constant.numeric",
-				"match": "([0-9]*|0b[01]*|0o[0-8]*|0x\\x*)"
+				"match": "[0-9]*|0b[01]*|0o[0-8]*|0x\\x*"
 				}
 			]
 		}
