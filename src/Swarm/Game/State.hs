@@ -409,7 +409,7 @@ messageQueue :: Lens' GameState (Seq LogEntry)
 lastSeenMessageTime :: Lens' GameState Integer
 
 -- | The current robot in focus.
--- 
+--
 -- It is only a 'Getter' because this value should be updated only when
 -- the 'viewCenterRule' is specified to be a robot.
 --
