@@ -558,9 +558,9 @@ messagesWidget gs = widgetList
         [ txt $ "[" <> view leRobotName e <> "] "
         , txtWrapWith indent2 (e ^. leText)
         ]
-  -- color each robot message with different color of the world (except those with background)
+  -- color each robot message with different color of the world
   robotColor rid = fgCols !! (rid `mod` fgColLen)
-  fgCols = filter (`notElem` [waterAttr, iceAttr]) worldAttributes
+  fgCols = map fst worldAttributes
   fgColLen = length fgCols
 
 -- | Draw a menu explaining what key commands are available for the
@@ -899,8 +899,8 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
   -- If it's the focused entity, draw it highlighted.
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
-    | Just ingr == me = withAttr deviceAttr $ txtLines nm
-    | ingr == timeE = withAttr sandAttr $ txtLines nm
+    | Just ingr == me = withAttr highlightAttr $ txtLines nm
+    | ingr == timeE = withAttr yellowAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm
    where
