@@ -46,6 +46,10 @@
 				]
 				},
 				{
+				"name": "keyword.control.require",
+				"match": "require"
+				},
+				{
 				"name": "keyword.operator",
 				"match": "-|==|!=|<|>|<=|>=|\\|\\||&&|\\+|-|\\*|/(?![/|*])|\\^|\\+\\+|\\$"
 				},
