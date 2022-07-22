@@ -97,7 +97,6 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
 import GHC.Generics (Generic)
 import Witch (from)
-
 import Swarm.Game.Entity (Entity, Inventory)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V

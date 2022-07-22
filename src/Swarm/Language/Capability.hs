@@ -18,18 +18,16 @@ module Swarm.Language.Capability (
 
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Char (toLower)
+import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Yaml
+import GHC.Generics (Generic)
+import Swarm.Language.Syntax
 import Text.Read (readMaybe)
 import Witch (from)
 import Prelude hiding (lookup)
-
-import Data.Data (Data)
-import Data.Yaml
-import GHC.Generics (Generic)
-
-import Swarm.Language.Syntax
 
 -- | Various capabilities which robots can have.
 data Capability

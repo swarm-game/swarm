@@ -104,14 +104,11 @@ import Linear (V2)
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
-
 import Data.Yaml
 import Swarm.Util.Yaml
-
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Util (plural, reflow, (?))
-
 import Paths_swarm
 
 ------------------------------------------------------------

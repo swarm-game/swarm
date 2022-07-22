@@ -29,7 +29,6 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prelude
-
 import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax

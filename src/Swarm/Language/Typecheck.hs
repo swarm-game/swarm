@@ -47,6 +47,9 @@ module Swarm.Language.Typecheck (
 import Control.Category ((>>>))
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Unification hiding (applyBindings, (=:=))
+import Control.Unification qualified as U
+import Control.Unification.IntVar
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Map (Map)
@@ -54,17 +57,12 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
-import Prelude hiding (lookup)
-
-import Control.Unification hiding (applyBindings, (=:=))
-import Control.Unification qualified as U
-import Control.Unification.IntVar
-
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- Inference monad
@@ -616,32 +614,32 @@ analyzeAtomic locals (Syntax l t) = case t of
   TVar x
     | x `S.member` locals -> return 0
     | otherwise -> do
-      mxTy <- asks $ Ctx.lookup x
-      case mxTy of
-        -- If the variable is undefined, return 0 to indicate the
-        -- atomic block is valid, because we'd rather have the error
-        -- caught by the real name+type checking.
-        Nothing -> return 0
-        Just xTy -> do
-          -- Use applyBindings to make sure that we apply as much
-          -- information as unification has learned at this point.  In
-          -- theory, continuing to typecheck other terms elsewhere in
-          -- the program could give us further information about xTy,
-          -- so we might have incomplete information at this point.
-          -- However, since variables referenced in an atomic block
-          -- must necessarily have simple types, it's unlikely this
-          -- will really make a difference.  The alternative, more
-          -- "correct" way to do this would be to simply emit some
-          -- constraints at this point saying that xTy must be a
-          -- simple type, and check later that the constraint holds,
-          -- after performing complete type inference.  However, since
-          -- the current approach is much simpler, we'll stick with
-          -- this until such time as we have concrete examples showing
-          -- that the more correct, complex way is necessary.
-          xTy' <- applyBindings xTy
-          if isSimpleUPolytype xTy'
-            then return 0
-            else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
+        mxTy <- asks $ Ctx.lookup x
+        case mxTy of
+          -- If the variable is undefined, return 0 to indicate the
+          -- atomic block is valid, because we'd rather have the error
+          -- caught by the real name+type checking.
+          Nothing -> return 0
+          Just xTy -> do
+            -- Use applyBindings to make sure that we apply as much
+            -- information as unification has learned at this point.  In
+            -- theory, continuing to typecheck other terms elsewhere in
+            -- the program could give us further information about xTy,
+            -- so we might have incomplete information at this point.
+            -- However, since variables referenced in an atomic block
+            -- must necessarily have simple types, it's unlikely this
+            -- will really make a difference.  The alternative, more
+            -- "correct" way to do this would be to simply emit some
+            -- constraints at this point saying that xTy must be a
+            -- simple type, and check later that the constraint holds,
+            -- after performing complete type inference.  However, since
+            -- the current approach is much simpler, we'll stick with
+            -- this until such time as we have concrete examples showing
+            -- that the more correct, complex way is necessary.
+            xTy' <- applyBindings xTy
+            if isSimpleUPolytype xTy'
+              then return 0
+              else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
   -- No lambda, `let` or `def` allowed!
   SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)

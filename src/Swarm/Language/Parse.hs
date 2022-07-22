@@ -35,28 +35,26 @@ module Swarm.Language.Parse (
   getLocRange,
 ) where
 
+import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
+import Data.Foldable (asum)
 import Data.List (nub)
 import Data.List.NonEmpty qualified (head)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set qualified as S
+import Data.Set.Lens (setOf)
 import Data.Text (Text, index, toLower)
 import Data.Text qualified as T
 import Data.Void
-import Witch
-
-import Control.Monad.Combinators.Expr
-import Data.Map.Strict qualified as Map
+import Swarm.Language.Syntax
+import Swarm.Language.Types
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
-
-import Data.Foldable (asum)
-import Data.Set qualified as S
-import Data.Set.Lens (setOf)
-import Swarm.Language.Syntax
-import Swarm.Language.Types
+import Witch
 
 -- Imports for doctests (cabal-docspec needs this)
 
@@ -134,7 +132,7 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
     | toLower t `elem` reservedWords =
-      fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+        fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
     | otherwise = return t
    where
     t = into @Text s
@@ -185,11 +183,11 @@ parsePolytype =
     -- Otherwise, require all variables to be explicitly quantified
     | S.null free = return $ Forall xs ty
     | otherwise =
-      fail $
-        unlines
-          [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
-          , "  Try adding them to the 'forall'."
-          ]
+        fail $
+          unlines
+            [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
+            , "  Try adding them to the 'forall'."
+            ]
    where
     free = tyVars ty `S.difference` S.fromList xs
 

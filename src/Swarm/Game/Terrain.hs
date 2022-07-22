@@ -18,7 +18,6 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Text.Read (readMaybe)
 import Witch (into)
-
 import Swarm.Game.Display
 import Swarm.TUI.Attr
 

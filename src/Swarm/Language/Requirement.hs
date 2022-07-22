@@ -37,7 +37,6 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import GHC.Generics (Generic)
-
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx

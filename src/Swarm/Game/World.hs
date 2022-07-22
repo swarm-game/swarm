@@ -56,7 +56,6 @@ import Data.Map.Strict qualified as M
 import GHC.Generics (Generic)
 import Linear
 import Prelude hiding (lookup)
-
 import Control.Algebra (Has)
 import Control.Effect.State (State, get, modify)
 import Swarm.Util

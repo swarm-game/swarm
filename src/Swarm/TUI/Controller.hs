@@ -38,6 +38,14 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
+import Brick hiding (Direction)
+import Brick.Focus
+import Brick.Forms
+import Brick.Widgets.Dialog
+import Brick.Widgets.List (handleListEvent)
+import Brick.Widgets.List qualified as BL
+import Control.Carrier.Lift qualified as Fused
+import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
 import Control.Lens.Extras (is)
 import Control.Monad.Except
@@ -51,20 +59,8 @@ import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Vector qualified as V
-import Linear
-import System.Clock
-import Witch (into)
-
-import Brick hiding (Direction)
-import Brick.Focus
-import Brick.Forms
-import Brick.Widgets.Dialog
-import Brick.Widgets.List qualified as BL
 import Graphics.Vty qualified as V
-
-import Brick.Widgets.List (handleListEvent)
-import Control.Carrier.Lift qualified as Fused
-import Control.Carrier.State.Lazy qualified as Fused
+import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -85,6 +81,8 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import System.Clock
+import Witch (into)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
@@ -106,14 +104,14 @@ handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppStat
 handleEvent s
   | s ^. uiState . uiPlaying = handleMainEvent s
   | otherwise = case s ^. uiState . uiMenu of
-    -- If we reach the NoMenu case when uiPlaying is False, just
-    -- quit the app.  We should actually never reach this code (the
-    -- quitGame function would have already halted the app).
-    NoMenu -> \_ -> halt s
-    MainMenu l -> handleMainMenuEvent l s
-    NewGameMenu l -> handleNewGameMenuEvent l s
-    TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
-    AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
+      -- If we reach the NoMenu case when uiPlaying is False, just
+      -- quit the app.  We should actually never reach this code (the
+      -- quitGame function would have already halted the app).
+      NoMenu -> \_ -> halt s
+      MainMenu l -> handleMainMenuEvent l s
+      NewGameMenu l -> handleNewGameMenuEvent l s
+      TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
+      AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) s
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
@@ -151,7 +149,7 @@ startGame scene s = do
                 let nextMenuList = BL.listMoveDown curMenu
                     nextScenario
                       | BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1) =
-                        Nothing
+                          Nothing
                       | otherwise = BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
                  in s & uiState . uiNextScenario .~ nextScenario
               _ -> s & uiState . uiNextScenario .~ Nothing
@@ -202,7 +200,7 @@ handleMainEvent s = \case
   AppEvent Frame
     | s ^. gameState . paused -> continueWithoutRedraw s
     | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay ->
-      toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
+        toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
     | otherwise -> runFrameUI s
   -- ctrl-q works everywhere
   ControlKey 'q' ->
@@ -628,8 +626,8 @@ handleREPLEvent s = \case
             Just found
               | T.null t -> s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
               | otherwise ->
-                s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
-                  & validateREPLForm
+                  s & uiState %~ resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
+                    & validateREPLForm
       else continueWithoutRedraw s
   Key V.KUp -> continue $ s & adjReplHistIndex Older
   Key V.KDown -> continue $ s & adjReplHistIndex Newer
@@ -671,9 +669,9 @@ tabComplete s (CmdPrompt t mms)
   | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
   | T.null lastWord = CmdPrompt t []
   | otherwise = case matches of
-    [] -> CmdPrompt t []
-    [m] -> CmdPrompt (completeWith m) []
-    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+      [] -> CmdPrompt t []
+      [m] -> CmdPrompt (completeWith m) []
+      (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
   completeWith m = T.append t (T.drop (T.length lastWord) m)
   lastWord = T.takeWhileEnd isIdentChar t
@@ -745,7 +743,7 @@ handleWorldEvent s = \case
                  , V.KChar 'k'
                  , V.KChar 'l'
                  ] ->
-      scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
+        scrollView s (^+^ (worldScrollDist *^ keyToDir k)) >>= continue
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
     continue $ s & gameState . viewCenterRule .~ VCRobot 0
