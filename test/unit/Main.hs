@@ -921,10 +921,11 @@ play g = either (return . (,g) . Left) playPT . processTerm1
     cesk = initMachine pt empty emptyStore
     hr = hypotheticalRobot cesk 0
     hid = hr ^. robotID
-    gs = g
-      & execState (addRobot hr)
-      & viewCenterRule .~ VCRobot hid
-      & creativeMode .~ True
+    gs =
+      g
+        & execState (addRobot hr)
+        & viewCenterRule .~ VCRobot hid
+        & creativeMode .~ True
 
 playUntilDone :: RID -> StateT GameState IO (Either Text ())
 playUntilDone rid = do
