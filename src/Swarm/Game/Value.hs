@@ -28,10 +28,10 @@ import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prelude
 import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
+import Prelude
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.

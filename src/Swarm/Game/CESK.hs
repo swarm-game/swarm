@@ -96,7 +96,6 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
 import GHC.Generics (Generic)
-import Witch (from)
 import Swarm.Game.Entity (Entity, Inventory)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
@@ -107,6 +106,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Witch (from)
 
 ------------------------------------------------------------
 -- Frames and continuations
