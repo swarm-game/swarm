@@ -408,8 +408,13 @@ messageQueue :: Lens' GameState (Seq LogEntry)
 -- | Last time message queue has been viewed (used for notification).
 lastSeenMessageTime :: Lens' GameState Integer
 
--- | The current robot in focus. It is only a Getter because
---   this value should be updated only when viewCenterRule is.
+-- | The current robot in focus.
+-- 
+-- It is only a 'Getter' because this value should be updated only when
+-- the 'viewCenterRule' is specified to be a robot.
+--
+-- Technically it's the last robot ID specified by 'viewCenterRule',
+-- but that robot may not be alive anymore - to be safe use 'focusedRobot'.
 focusedRobotID :: Getter GameState RID
 focusedRobotID = to _focusedRobotID
 
@@ -440,7 +445,7 @@ viewCenterRule = lens getter setter
     case rule of
       VCLocation v2 -> g {_viewCenterRule = rule, _viewCenter = v2}
       VCRobot rid ->
-        let robotcenter = g ^? robotMap . ix rid <&> view robotLocation
+        let robotcenter = g ^? robotMap . ix rid . robotLocation
          in -- retrieve the loc of the robot if it exists, Nothing otherwise.
             -- sometimes, lenses are amazing...
             case robotcenter of
@@ -458,14 +463,14 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
 messageNotifications :: Getter GameState (Notifications (LogEntry, Bool))
 messageNotifications = to getNotif
  where
-  getNotif gs = Notifications {_notificationsCount = newCount, _notificationsContent = allMessages}
+  getNotif gs = Notifications {_notificationsCount = newCount, _notificationsContent = toList allMessages}
    where
-    allMessages = toList . Seq.sort $ focusedLogs <> messages
+    allMessages = Seq.sort $ focusedLogs <> messages
     focusedLogs = (,True) <$> maybe Empty (view robotLog) (focusedRobot gs)
     messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
     noOther e = gs ^. focusedRobotID == e ^. leRobotID
-    newCount = min 0 $ Seq.length messages - fromMaybe 0 oldestSeen
-    oldestSeen = {- succ <$> -} Seq.findIndexR (\(l, _) -> l ^. leTime <= gs ^. lastSeenMessageTime) messages
+    newCount = max 0 $ Seq.length allMessages - fromMaybe 0 oldestSeen
+    oldestSeen = succ <$> Seq.findIndexR (\(l, _) -> l ^. leTime <= gs ^. lastSeenMessageTime) allMessages
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -510,10 +515,10 @@ viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
   (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
--- | Find out which robot is currently specified by the
+-- | Find out which robot has been last specified by the
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
-focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotID)
+focusedRobot g = g ^. robotMap . at (g ^. focusedRobotID)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
 clearFocusedRobotLogUpdated :: Has (State GameState) sig m => m ()
@@ -641,7 +646,7 @@ initGameState = do
       , _needsRedraw = False
       , _replStatus = REPLDone
       , _messageQueue = Empty
-      , _lastSeenMessageTime = 0
+      , _lastSeenMessageTime = -1
       , _focusedRobotID = 0
       , _ticks = 0
       , _robotStepsPerTick = defaultRobotStepsPerTick

@@ -5,7 +5,7 @@
 -- | Swarm unit tests
 module Main where
 
-import Control.Lens (Getter, use, (&), (.~), (^.), _3)
+import Control.Lens (Getter, Ixed (ix), to, use, view, (&), (.~), (^.), (^?), (^?!), _1, _3)
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Aeson (eitherDecode, encode)
@@ -19,20 +19,13 @@ import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Test.QuickCheck qualified as QC
-import Test.QuickCheck.Poly qualified as QC
-import Test.Tasty
-import Test.Tasty.HUnit
-import Test.Tasty.QuickCheck
-import Witch (from)
-
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
-import Swarm.Game.Step (hypotheticalRobot, stepCESK)
+import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Game.Value
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -40,6 +33,12 @@ import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.TUI.Model
 import Swarm.Util
+import Test.QuickCheck qualified as QC
+import Test.QuickCheck.Poly qualified as QC
+import Test.Tasty
+import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
+import Witch (from)
 
 main :: IO ()
 main = do
@@ -806,36 +805,47 @@ testNotification gs =
   testGroup
     "Notifications"
     [ testCase "notifications at start" $ do
-        assertNoNew gs "messages at game start" messageNotifications
-        assertNoNew gs "recipes at game start" availableRecipes
-        assertNoNew gs "commands at game start" availableCommands
+        assertBool "There should be no messages in queue" (null (gs ^. messageQueue))
+        assertNew gs 0 "messages at game start" messageNotifications
+        assertNew gs 0 "recipes at game start" availableRecipes
+        assertNew gs 0 "commands at game start" availableCommands
     , testCase "new message after say" $ do
-        (gs', _r, Right _valAndSteps) <- eval gs "say \"Hello world!\""
+        gs' <- goodPlay "say \"Hello world!\""
+        assertBool "There should be one message in queue" (length (gs' ^. messageQueue) == 1)
         assertNew gs' 1 "message" messageNotifications
     , testCase "two new messages after say twice" $ do
-        (gs', _r, Right _valAndSteps) <- eval gs "say \"Hello!\"; say \"Goodbye!\""
-        assertNew gs' 2 "message" messageNotifications
+        gs' <- goodPlay "say \"Hello!\"; say \"Goodbye!\""
+        assertBool "There should be two messages in queue" (length (gs' ^. messageQueue) == 2)
+        assertNew gs' 2 "messages" messageNotifications
+    , testCase "one new message and one old message" $ do
+        gs' <- goodPlay "say \"Hello!\"; say \"Goodbye!\""
+        assertEqual "There should be two messages in queue" [0, 1] (view (_1 . leTime) <$> gs' ^. messageNotifications . notificationsContent)
+        assertNew (gs' & lastSeenMessageTime .~ 0) 1 "message" messageNotifications
     , testCase "new message after log" $ do
-        (gs', _r, Right _valAndSteps) <- eval gs "log \"Hello world!\""
+        gs' <- goodPlay "create \"logger\"; install self \"logger\"; log \"Hello world!\""
+        let r = gs' ^?! robotMap . ix (-1)
+        assertBool "There should be one log entry in robots log" (length (r ^. robotLog) == 1)
+        assertEqual "The hypothetical robot should be in focus" (Just (r ^. robotID)) (view robotID <$> focusedRobot gs')
+        assertEqual "There should be one log notification" [2] (view (_1 . leTime) <$> gs' ^. messageNotifications . notificationsContent)
         assertNew gs' 1 "message" messageNotifications
     , testCase "new message after build say" $ do
-        (gs', _r, Right _valAndSteps) <- eval gs "build {say \"Hello world!\"}; turn back; turn back;"
+        gs' <- goodPlay "build {say \"Hello world!\"}; turn back; turn back;"
+        assertBool "There should be one message in queue" (length (gs' ^. messageQueue) == 1)
         assertNew gs' 1 "message" messageNotifications
     , testCase "no new message after build log" $ do
-        (gs', _r, Right _valAndSteps) <- eval gs "build {log \"Hello world!\"}; turn back; turn back;"
-        assertNew gs' 1 "message" messageNotifications
+        gs' <- goodPlay "build {log \"Hello world!\"}; turn back; turn back;"
+        assertNew gs' 0 "message" messageNotifications
     ]
  where
-  assertNoNew :: s -> String -> Getter s (Notifications a) -> Assertion
-  assertNoNew g what l =
-    assertBool
-      ("There should be no new " <> what)
-      (g ^. l . notificationsCount == 0)
+  goodPlay :: Text -> IO GameState
+  goodPlay t = do
+    (e, g) <- play gs t
+    either (assertFailure . T.unpack) pure e
+    return g
   assertNew :: s -> Int -> String -> Getter s (Notifications a) -> Assertion
   assertNew g n what l =
-    assertBool
-      ("There should be exactly " <> show n <> " new " <> what)
-      (g ^. l . notificationsCount == n)
+    let c = g ^. l . notificationsCount
+     in assertEqual ("There should be exactly " <> show n <> " new " <> what) n c
 
 testMisc :: TestTree
 testMisc =
@@ -888,7 +898,11 @@ evalPT :: GameState -> ProcessedTerm -> IO (GameState, Robot, Either Text (Value
 evalPT g t = evalCESK g (initMachine t empty emptyStore)
 
 evalCESK :: GameState -> CESK -> IO (GameState, Robot, Either Text (Value, Int))
-evalCESK g cesk = fmap orderResult . flip runStateT (g & creativeMode .~ True) . flip runStateT r . runCESK 0 $ cesk
+evalCESK g cesk =
+  runCESK 0 cesk
+    & flip runStateT r
+    & flip runStateT (g & creativeMode .~ True)
+    & fmap orderResult
  where
   r = hypotheticalRobot cesk 0
   orderResult ((res, rr), rg) = (rg, rr, res)
@@ -898,3 +912,26 @@ runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use entityMap)
 runCESK !steps cesk = case finalValue cesk of
   Just (v, _) -> return (Right (v, steps))
   Nothing -> stepCESK cesk >>= runCESK (steps + 1)
+
+play :: GameState -> Text -> IO (Either Text (), GameState)
+play g = either (return . (,g) . Left) playPT . processTerm1
+ where
+  playPT pt = runStateT (playUntilDone (hr ^. robotID)) gs
+   where
+    cesk = initMachine pt empty emptyStore
+    hr = hypotheticalRobot cesk 0
+    hid = hr ^. robotID
+    gs = g
+      & execState (addRobot hr)
+      & viewCenterRule .~ VCRobot hid
+      & creativeMode .~ True
+
+playUntilDone :: RID -> StateT GameState IO (Either Text ())
+playUntilDone rid = do
+  w <- use robotMap
+  case w ^? ix rid . to isActive of
+    Just True -> do
+      gameTick
+      playUntilDone rid
+    Just False -> return $ Right ()
+    Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"
