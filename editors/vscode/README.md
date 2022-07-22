@@ -2,7 +2,7 @@
 
 This VSCode extension provides a basic highlighting and LSP client for the swarm programming language.
 
-![VSCode screenshot](https://github.com/swarm-game/swarm/blob/main/editors/vscode/images/editor_debug.png)
+![VSCode screenshot](https://raw.githubusercontent.com/swarm-game/swarm/main/editors/vscode/images/editor_debug.png)
 
 ## Extension Settings
 
