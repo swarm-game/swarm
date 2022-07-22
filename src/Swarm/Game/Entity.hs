@@ -99,17 +99,17 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Yaml
 import GHC.Generics (Generic)
 import Linear (V2)
-import Text.Read (readMaybe)
-import Witch
-import Prelude hiding (lookup)
-import Data.Yaml
-import Swarm.Util.Yaml
+import Paths_swarm
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Util (plural, reflow, (?))
-import Paths_swarm
+import Swarm.Util.Yaml
+import Text.Read (readMaybe)
+import Witch
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- Properties

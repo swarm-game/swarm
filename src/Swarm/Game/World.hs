@@ -44,7 +44,9 @@ module Swarm.Game.World (
   updateM,
 ) where
 
+import Control.Algebra (Has)
 import Control.Arrow ((&&&))
+import Control.Effect.State (State, get, modify)
 import Control.Lens
 import Data.Array qualified as A
 import Data.Array.IArray
@@ -55,10 +57,8 @@ import Data.Int (Int64)
 import Data.Map.Strict qualified as M
 import GHC.Generics (Generic)
 import Linear
-import Prelude hiding (lookup)
-import Control.Algebra (Has)
-import Control.Effect.State (State, get, modify)
 import Swarm.Util
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- World coordinates

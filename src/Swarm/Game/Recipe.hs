@@ -35,6 +35,9 @@ module Swarm.Game.Recipe (
   make',
 ) where
 
+import Control.Algebra (Has)
+import Control.Carrier.Lift (Lift, sendIO)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens hiding (from, (.=))
 import Data.Bifunctor (second)
 import Data.Either.Validation
@@ -44,16 +47,13 @@ import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import GHC.Generics (Generic)
-import Witch
 import Data.Yaml
-import Control.Algebra (Has)
-import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (runThrow)
+import GHC.Generics (Generic)
 import Paths_swarm
 import Swarm.Game.Entity as E
 import Swarm.Util
 import Swarm.Util.Yaml
+import Witch
 
 -- | An ingredient list is a list of entities with multiplicity.  It
 --   is polymorphic in the entity type so that we can use either
