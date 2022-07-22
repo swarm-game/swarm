@@ -5,7 +5,7 @@
 -- | Swarm unit tests
 module Main where
 
-import Control.Lens ((&), (.~), (^.))
+import Control.Lens (Getter, use, (&), (.~), (^.), _3)
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Aeson (eitherDecode, encode)
@@ -19,7 +19,6 @@ import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Linear
 import Test.QuickCheck qualified as QC
 import Test.QuickCheck.Poly qualified as QC
 import Test.Tasty
@@ -29,12 +28,11 @@ import Witch (from)
 
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity (EntityMap)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
-import Swarm.Game.Step (stepCESK)
+import Swarm.Game.Step (hypotheticalRobot, stepCESK)
 import Swarm.Game.Value
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -51,10 +49,20 @@ main = do
     Right g -> defaultMain (tests g)
 
 tests :: GameState -> TestTree
-tests g = testGroup "Tests" [parser, prettyConst, eval g, testModel, inventory, misc]
+tests g =
+  testGroup
+    "Tests"
+    [ testParser
+    , testPrettyConst
+    , testEval g
+    , testModel
+    , testInventory
+    , testNotification g
+    , testMisc
+    ]
 
-parser :: TestTree
-parser =
+testParser :: TestTree
+testParser =
   testGroup
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
@@ -292,8 +300,8 @@ parser =
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
 
-prettyConst :: TestTree
-prettyConst =
+testPrettyConst :: TestTree
+testPrettyConst =
   testGroup
     "Language - pretty"
     [ testCase
@@ -371,8 +379,8 @@ binOp a op b = from @String (p (show a) ++ op ++ p (show b))
  where
   p x = "(" ++ x ++ ")"
 
-eval :: GameState -> TestTree
-eval g =
+testEval :: GameState -> TestTree
+testEval g =
   testGroup
     "Language - evaluation"
     [ testGroup
@@ -612,30 +620,8 @@ eval g =
         assertEqual "" val v
         assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
 
-  processTerm1 :: Text -> Either Text ProcessedTerm
-  processTerm1 txt = processTerm txt >>= maybe wsErr Right
-   where
-    wsErr = Left "expecting a term, but got only whitespace"
-
   evaluate :: Text -> IO (Either Text (Value, Int))
-  evaluate = either (return . Left) evalPT . processTerm1
-
-  evalPT :: ProcessedTerm -> IO (Either Text (Value, Int))
-  evalPT t = evaluateCESK (initMachine t empty emptyStore)
-
-  evaluateCESK :: CESK -> IO (Either Text (Value, Int))
-  evaluateCESK cesk = flip evalStateT (g & creativeMode .~ True) . flip evalStateT r . runCESK 0 $ cesk
-   where
-    r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] False 0
-
-  entMap :: EntityMap
-  entMap = g ^. entityMap
-
-  runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
-  runCESK _ (Up exn _ []) = return (Left (formatExn entMap exn))
-  runCESK !steps cesk = case finalValue cesk of
-    Just (v, _) -> return (Right (v, steps))
-    Nothing -> stepCESK cesk >>= runCESK (steps + 1)
+  evaluate = fmap (^. _3) . eval g
 
 testModel :: TestTree
 testModel =
@@ -715,8 +701,8 @@ testModel =
   addInOutInt :: Int -> REPLHistory -> REPLHistory
   addInOutInt i = addREPLItem (REPLOutput $ toT i <> ":int") . addREPLItem (REPLEntry $ toT i)
 
-inventory :: TestTree
-inventory =
+testInventory :: TestTree
+testInventory =
   testGroup
     "Inventory"
     [ testCase
@@ -815,8 +801,44 @@ inventory =
   y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" [] [] []
   z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" [] [] []
 
-misc :: TestTree
-misc =
+testNotification :: GameState -> TestTree
+testNotification gs =
+  testGroup
+    "Notifications"
+    [ testCase "notifications at start" $ do
+        assertNoNew gs "messages at game start" messageNotifications
+        assertNoNew gs "recipes at game start" availableRecipes
+        assertNoNew gs "commands at game start" availableCommands
+    , testCase "new message after say" $ do
+        (gs', _r, Right _valAndSteps) <- eval gs "say \"Hello world!\""
+        assertNew gs' 1 "message" messageNotifications
+    , testCase "two new messages after say twice" $ do
+        (gs', _r, Right _valAndSteps) <- eval gs "say \"Hello!\"; say \"Goodbye!\""
+        assertNew gs' 1 "message" messageNotifications
+    , testCase "new message after log" $ do
+        (gs', _r, Right _valAndSteps) <- eval gs "log \"Hello world!\""
+        assertNew gs' 1 "message" messageNotifications
+    , testCase "new message after build say" $ do
+        (gs', _r, Right _valAndSteps) <- eval gs "build {say \"Hello world!\"}; turn back; turn back;"
+        assertNew gs' 1 "message" messageNotifications
+    , testCase "no new message after build log" $ do
+        (gs', _r, Right _valAndSteps) <- eval gs "build {log \"Hello world!\"}; turn back; turn back;"
+        assertNew gs' 1 "message" messageNotifications
+    ]
+ where
+  assertNoNew :: s -> String -> Getter s (Notifications a) -> Assertion
+  assertNoNew g what l =
+    assertBool
+      ("There should be no new " <> what)
+      (g ^. l . notificationsCount == 0)
+  assertNew :: s -> Int -> String -> Getter s (Notifications a) -> Assertion
+  assertNew g n what l =
+    assertBool
+      ("There should be exactly " <> show n <> " new " <> what)
+      (g ^. l . notificationsCount == 0)
+
+testMisc :: TestTree
+testMisc =
   testGroup
     "Miscellaneous"
     [ testProperty
@@ -849,3 +871,30 @@ data El = AA | BB | CC | DD | EE | FF
 
 instance QC.Arbitrary El where
   arbitrary = QC.arbitraryBoundedEnum
+
+-- ----------------------------------------------------------------------------
+-- Utility functions
+-- ----------------------------------------------------------------------------
+
+eval :: GameState -> Text -> IO (GameState, Robot, Either Text (Value, Int))
+eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) . processTerm1
+
+processTerm1 :: Text -> Either Text ProcessedTerm
+processTerm1 txt = processTerm txt >>= maybe wsErr Right
+ where
+  wsErr = Left "expecting a term, but got only whitespace"
+
+evalPT :: GameState -> ProcessedTerm -> IO (GameState, Robot, Either Text (Value, Int))
+evalPT g t = evalCESK g (initMachine t empty emptyStore)
+
+evalCESK :: GameState -> CESK -> IO (GameState, Robot, Either Text (Value, Int))
+evalCESK g cesk = fmap orderResult . flip runStateT (g & creativeMode .~ True) . flip runStateT r . runCESK 0 $ cesk
+ where
+  r = hypotheticalRobot cesk 0
+  orderResult ((res, rr), rg) = (rg, rr, res)
+
+runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
+runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use entityMap)
+runCESK !steps cesk = case finalValue cesk of
+  Just (v, _) -> return (Right (v, steps))
+  Nothing -> stepCESK cesk >>= runCESK (steps + 1)
