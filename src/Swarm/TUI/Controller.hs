@@ -227,7 +227,7 @@ handleMainEvent s = \case
     let t = s ^. gameState . ticks
     s' <- toggleModal s MessagesModal
     liftIO $ appendFile "/tmp/debug.log" $ "\n\nOLD LEN - " <> show (s ^. gameState . messageNotifications . notificationsCount)
-    liftIO $ appendFile "/tmp/debug.log" $ "\nOLD TIME - " <> show (s' ^. gameState . lastSeenMessageTime)
+    liftIO $ appendFile "/tmp/debug.log" $ "\nOLD TIME - " <> show (s ^. gameState . lastSeenMessageTime)
     liftIO $ appendFile "/tmp/debug.log" $ "\nNEW TIME - " <> show t
     liftIO $ appendFile "/tmp/debug.log" $ "\nNEW LEN - " <> show (s' ^. gameState . messageNotifications . notificationsCount)
     liftIO $ appendFile "/tmp/debug.log" $ "\nMESSAGES - " <> show (view leTime <$> s' ^. gameState . messageQueue)

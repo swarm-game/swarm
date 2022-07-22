@@ -814,7 +814,7 @@ testNotification gs =
         assertNew gs' 1 "message" messageNotifications
     , testCase "two new messages after say twice" $ do
         (gs', _r, Right _valAndSteps) <- eval gs "say \"Hello!\"; say \"Goodbye!\""
-        assertNew gs' 1 "message" messageNotifications
+        assertNew gs' 2 "message" messageNotifications
     , testCase "new message after log" $ do
         (gs', _r, Right _valAndSteps) <- eval gs "log \"Hello world!\""
         assertNew gs' 1 "message" messageNotifications
@@ -835,7 +835,7 @@ testNotification gs =
   assertNew g n what l =
     assertBool
       ("There should be exactly " <> show n <> " new " <> what)
-      (g ^. l . notificationsCount == 0)
+      (g ^. l . notificationsCount == n)
 
 testMisc :: TestTree
 testMisc =
