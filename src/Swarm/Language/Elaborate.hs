@@ -9,7 +9,6 @@
 module Swarm.Language.Elaborate where
 
 import Control.Lens (transform, (%~))
-
 import Swarm.Language.Syntax
 
 -- | Perform some elaboration / rewriting on a fully type-annotated

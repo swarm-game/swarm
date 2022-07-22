@@ -11,7 +11,6 @@ module Swarm.Language.Parse.QQ (tyQ) where
 import Data.Generics
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
-
 import Swarm.Language.Parse
 import Swarm.Util (liftText)
 

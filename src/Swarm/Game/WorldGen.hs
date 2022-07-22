@@ -10,6 +10,9 @@
 -- Procedural world generation via coherent noise.
 module Swarm.Game.WorldGen where
 
+import Control.Lens (view)
+import Data.Array.IArray
+import Data.Bifunctor (second)
 import Data.Bool
 import Data.Enumeration
 import Data.Hash.Murmur
@@ -20,14 +23,10 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric.Noise.Perlin
-import Witch
-
-import Control.Lens (view)
-import Data.Array.IArray
-import Data.Bifunctor (second)
 import Swarm.Game.Entity
 import Swarm.Game.Terrain
 import Swarm.Game.World
+import Witch
 
 -- | A simple test world used for a while during early development.
 testWorld1 :: Coords -> (TerrainType, Maybe Text)

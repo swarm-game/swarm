@@ -14,6 +14,8 @@
 module Swarm.Language.Pretty where
 
 import Control.Lens.Combinators (pattern Empty)
+import Control.Unification
+import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.String (fromString)
@@ -22,16 +24,12 @@ import Data.Text qualified as T
 import Prettyprinter
 import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
-import Witch
-
-import Control.Unification
-import Control.Unification.IntVar
-
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
+import Witch
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.

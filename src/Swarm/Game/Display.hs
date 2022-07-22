@@ -41,10 +41,8 @@ import Control.Lens hiding (Const, from, (.=))
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
-
 import Data.Yaml
 import GHC.Generics (Generic)
-
 import Swarm.Language.Syntax (Direction (..))
 import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
 import Swarm.Util (maxOn, (?))

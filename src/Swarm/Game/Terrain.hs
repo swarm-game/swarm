@@ -16,11 +16,10 @@ import Data.Aeson (FromJSON (..), withText)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Text.Read (readMaybe)
-import Witch (into)
-
 import Swarm.Game.Display
 import Swarm.TUI.Attr
+import Text.Read (readMaybe)
+import Witch (into)
 
 -- | The different possible types of terrain. Unlike entities and
 --   robots, these are hard-coded into the game.
