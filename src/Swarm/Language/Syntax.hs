@@ -555,9 +555,12 @@ constInfo c = case c of
     command 0 long . doc "Deconstruct an old robot." $
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
-    command 1 short . doc "Emit a message." $ -- TODO: #513
-      [ "The message will be in a global log, which you can not currently view."
-      , "https://github.com/swarm-game/swarm/issues/513"
+    command 1 short . doc "Emit a message." $
+      [ "The messages can be viewed in the message window."
+      , "However, there is a limit to how distant messages you can hear."
+      , "In creative mode this limit is of course lifted."
+      , "Note that the messages are not stored in robot log"
+          <> " and saying something does not require any special device."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
   View -> command 1 short "View the given robot."
