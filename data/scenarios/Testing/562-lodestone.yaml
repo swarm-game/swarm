@@ -41,7 +41,7 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
-    'A': [stone, magnetic mountain]
+    'A': [stone, magnetic vein]
     'o': [stone, lodestone]
     '0': [grass, bit (0)]
     'B': [grass, null, base]
@@ -75,7 +75,7 @@ entities:
     yields: water
   
   ## MOUNTAIN MINES (for guaranteed profit)
-  - name: magnetic mountain
+  - name: magnetic vein
     display:
       attr: iron'
       char: 'A'
@@ -85,7 +85,7 @@ entities:
       first drilled through, so that the vein becomes accessible.
     properties: [unwalkable]
 
-  - name: megnetic vein
+  - name: magnetic mine
     display:
       attr: iron'
       char: 'Å'
@@ -96,7 +96,7 @@ entities:
 recipes:
   ## TOY DRILL
   - in:
-    - [1, megnetic vein]
+    - [1, magnetic vein]
     out:
     - [1, magnetic mine]
     - [1, lodestone]
@@ -105,7 +105,7 @@ recipes:
     time: 42
 
   - in:
-    - [1, megnetic mine]
+    - [1, magnetic mine]
     out:
     - [1, magnetic mine]
     - [1, iron ore]
