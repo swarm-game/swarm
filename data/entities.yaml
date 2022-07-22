@@ -74,6 +74,16 @@
     Can be used to build a simple furnace, among other things.
   properties: [portable]
 
+- name: lodestone
+  display:
+    attr: iron
+    char: 'o'
+  description:
+  - A medium-sized rock... that looks a little different. 
+    It seems to react to iron and surprisingly also to naturally growing bits.
+  properties: [portable]
+  capabilities: [negation]
+
 - name: boulder
   display:
     attr: rock
