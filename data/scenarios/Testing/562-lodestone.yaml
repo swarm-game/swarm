@@ -1,0 +1,115 @@
+name: Test lodestone
+description: Pick or drill lodestone and use it to flip bits.
+goal:
+    - To create a drill bit, you will need to flip the available bit.
+win: |
+  try {
+    as base {has "drill bit"};
+  } { return false }
+robots:
+  - name: base
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - grabber
+      - toolkit
+      - 3D printer
+    inventory:
+      - [1, drill]
+      - [3, logger]
+      - [3, compass]
+      - [5, 3D printer]
+      - [100, treads]
+      - [70, grabber]
+      - [100, solar panel]
+      - [50, scanner]
+      - [5, toolkit]
+world:
+  default: [ice, knownwater]
+  palette:
+    '.': [grass]
+    ' ': [ice, knownwater]
+    '~': [ice, knownwavywater]
+    'L': [grass, Linux]
+    'T': [grass, tree]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    'A': [stone, magnetic mountain]
+    'o': [stone, lodestone]
+    '0': [grass, bit (0)]
+    'B': [grass, null, base]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────┐                                                                ~~
+    │AAAT~                                                                ~L~
+    │..AAA│                                                                ~~
+    │B.0.A│                                                                 ~
+    └─────┘                                                                 ~
+entities:  
+  ## KNOWN ENTITIES
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water
+
+  - name: knownwavywater
+    display:
+      attr: water
+      char: '~'
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water
+  
+  ## MOUNTAIN MINES (for guaranteed profit)
+  - name: magnetic mountain
+    display:
+      attr: iron'
+      char: 'A'
+    description:
+    - A place in the mountains where raw iron ore can be mined.
+      As it is hidden inside a mountain, a tunnel needs to be
+      first drilled through, so that the vein becomes accessible.
+    properties: [unwalkable]
+
+  - name: megnetic vein
+    display:
+      attr: iron'
+      char: 'Å'
+    description:
+    - A place in the mountains where raw iron ore can be mined.
+    properties: [unwalkable]
+
+recipes:
+  ## TOY DRILL
+  - in:
+    - [1, megnetic vein]
+    out:
+    - [1, magnetic mine]
+    - [1, lodestone]
+    required:
+    - [1, drill]
+    time: 42
+
+  - in:
+    - [1, megnetic mine]
+    out:
+    - [1, magnetic mine]
+    - [1, iron ore]
+    - [1, lodestone]
+    required:
+    - [1, drill]
+    time: 42
