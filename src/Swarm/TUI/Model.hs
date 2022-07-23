@@ -868,11 +868,11 @@ scenarioToAppState scene userSeed toRun (AppState g u) = do
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState :: Scenario -> UIState -> IO UIState
-scenarioToUIState scene u =
+scenarioToUIState _scene u =
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ maybe NoGoal UnreadGoal (scene ^? scenarioObjectives . _head . objectiveGoal)
+      & uiGoal .~ NoGoal
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiShowFPS .~ False

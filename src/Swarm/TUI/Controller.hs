@@ -200,8 +200,6 @@ pressAnyKey _ s _ = continueWithoutRedraw s
 handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleMainEvent s = \case
   AppEvent Frame
-    | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay ->
-      toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
     | s ^. gameState . paused -> continueWithoutRedraw s
     | otherwise -> runFrameUI s
   -- ctrl-q works everywhere
@@ -556,8 +554,14 @@ updateUI = do
     preuse (gameState . winCondition . _WinConditions . _NonEmpty . _1 . objectiveGoal)
 
   let goalUpdated = curGoal /= newGoal
-  when goalUpdated $
+  when goalUpdated $ do
     uiState . uiGoal .= maybe NoGoal UnreadGoal newGoal
+    case newGoal of
+      Just goal -> do
+        s <- get
+        s' <- lift $ toggleModal s (GoalModal goal)
+        put s'
+      _ -> return ()
 
   -- Decide whether to show a pop-up modal congratulating the user on
   -- successfully completing the current challenge.
