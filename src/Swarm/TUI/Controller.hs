@@ -200,9 +200,9 @@ pressAnyKey _ s _ = continueWithoutRedraw s
 handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
 handleMainEvent s = \case
   AppEvent Frame
-    | s ^. gameState . paused -> continueWithoutRedraw s
     | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay ->
       toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
+    | s ^. gameState . paused -> continueWithoutRedraw s
     | otherwise -> runFrameUI s
   -- ctrl-q works everywhere
   ControlKey 'q' ->
