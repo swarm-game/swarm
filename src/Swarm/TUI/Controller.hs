@@ -567,7 +567,8 @@ updateUI = do
       Won False -> do
         gameState . winCondition .= Won True
         s <- get
-        uiState . uiModal .= Just (generateModal s WinModal)
+        s' <- lift $ toggleModal s WinModal
+        put s'
         uiState . uiMenu %= advanceMenu
         return True
       _ -> return False
