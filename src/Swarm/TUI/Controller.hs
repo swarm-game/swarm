@@ -222,9 +222,8 @@ handleMainEvent s = \case
     s' <- toggleModal s CommandsModal
     continue (s' & gameState . availableCommands . notificationsCount .~ 0)
   ControlKey 'g' -> case s ^. uiState . uiGoal of
-    NoGoal -> continueWithoutRedraw s
-    UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
-    ReadGoal g -> toggleModal s (GoalModal g) >>= continue
+    Nothing -> continueWithoutRedraw s
+    Just g -> toggleModal s (GoalModal g) >>= continue
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   -- special keys that work on all panels
@@ -544,18 +543,15 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
-  -- Decide whether we need to update the current goal text.
-  curGoalStatus <- use (uiState . uiGoal)
-  let curGoal = case curGoalStatus of
-        NoGoal -> Nothing
-        UnreadGoal goal -> Just goal
-        ReadGoal goal -> Just goal
+  -- Decide whether we need to update the current goal text, and pop
+  -- up a modal dialog.
+  curGoal <- use (uiState . uiGoal)
   newGoal <-
     preuse (gameState . winCondition . _WinConditions . _NonEmpty . _1 . objectiveGoal)
 
   let goalUpdated = curGoal /= newGoal
   when goalUpdated $ do
-    uiState . uiGoal .= maybe NoGoal UnreadGoal newGoal
+    uiState . uiGoal .= newGoal
     case newGoal of
       Just goal -> do
         s <- get
