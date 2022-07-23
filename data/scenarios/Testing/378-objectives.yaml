@@ -14,14 +14,11 @@ objectives:
     condition: |
       try { as base {has "harvester"} } {return false}
 solution: |
-  build {move; move; grab; move; grab; move; grab; turn back; move; move; move; move};
+  build {turn right; move; move; grab; move; grab; move; grab; turn back; move; move; move; move};
   wait 16;
   salvage;
   make "log"; make "log"; make "log";
-  make "board"; make "board"; make "board";
-  make "box";
-  make "wooden gear"; make "wooden gear";
-  make "harvester"
+  make "board"; make "board"; make "board"; make "box"; make "wooden gear"; make "wooden gear"; make "harvester"
 robots:
   - name: base
     display:
