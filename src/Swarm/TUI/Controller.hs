@@ -107,15 +107,16 @@ handleEvent e = do
   s <- get
   if s ^. uiState . uiPlaying
     then handleMainEvent e
-    else e & case s ^. uiState . uiMenu of
-    -- If we reach the NoMenu case when uiPlaying is False, just
-    -- quit the app.  We should actually never reach this code (the
-    -- quitGame function would have already halted the app).
-    NoMenu -> const halt
-    MainMenu l -> handleMainMenuEvent l
-    NewGameMenu l -> handleNewGameMenuEvent l
-    TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial))
-    AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
+    else
+      e & case s ^. uiState . uiMenu of
+        -- If we reach the NoMenu case when uiPlaying is False, just
+        -- quit the app.  We should actually never reach this code (the
+        -- quitGame function would have already halted the app).
+        NoMenu -> const halt
+        MainMenu l -> handleMainMenuEvent l
+        NewGameMenu l -> handleNewGameMenuEvent l
+        TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial))
+        AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::

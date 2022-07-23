@@ -15,8 +15,8 @@ import Data.List (find)
 
 import Brick (EventM)
 import Brick.Widgets.List qualified as BL
-import Graphics.Vty qualified as V
 import Control.Monad.State.Strict (modify)
+import Graphics.Vty qualified as V
 
 -- | Handle a list event, taking an extra predicate to identify which
 --   list elements are separators; separators will be skipped if
