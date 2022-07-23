@@ -18,7 +18,10 @@ solution: |
   wait 16;
   salvage;
   make "log"; make "log"; make "log";
-  make "board"; make "board"; make "board"; make "box"; make "wooden gear"; make "wooden gear"; make "harvester"
+  make "board"; make "board"; make "board";
+  make "box";
+  make "wooden gear"; make "wooden gear";
+  make "harvester"
 robots:
   - name: base
     display:
