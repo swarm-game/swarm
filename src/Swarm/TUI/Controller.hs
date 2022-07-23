@@ -102,14 +102,16 @@ pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
-handleEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
-handleEvent s
-  | s ^. uiState . uiPlaying = handleMainEvent s
-  | otherwise = case s ^. uiState . uiMenu of
+handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleEvent e = do
+  s <- get
+  if s ^. uiState . uiPlaying
+    then handleMainEvent s
+    else e & case s ^. uiState . uiMenu of
     -- If we reach the NoMenu case when uiPlaying is False, just
     -- quit the app.  We should actually never reach this code (the
     -- quitGame function would have already halted the app).
-    NoMenu -> \_ -> halt s
+    NoMenu -> const halt
     MainMenu l -> handleMainMenuEvent l s
     NewGameMenu l -> handleNewGameMenuEvent l s
     TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial)) s
@@ -117,7 +119,7 @@ handleEvent s
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
-  BL.List Name MainMenuEntry -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+  BL.List Name MainMenuEntry -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMenuEvent menu s = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement menu of
@@ -138,7 +140,7 @@ handleMainMenuEvent menu s = \case
   _ -> continueWithoutRedraw s
 
 -- | Load a 'Scenario' and start playing the game.
-startGame :: Scenario -> AppState -> EventM Name (Next AppState)
+startGame :: Scenario -> EventM Name AppState ()
 startGame scene s = do
   continue
     =<< liftIO
@@ -162,7 +164,7 @@ startGame scene s = do
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown
 
-handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) s = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
@@ -184,7 +186,7 @@ mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest .
  where
   filterTest = if cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
 
-exitNewGameMenu :: AppState -> NonEmpty (BL.List Name ScenarioItem) -> EventM Name (Next AppState)
+exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu s stk =
   continue $
     s & uiState . uiMenu
@@ -192,12 +194,12 @@ exitNewGameMenu s stk =
         Nothing -> MainMenu (mainMenu NewGame)
         Just stk' -> NewGameMenu stk'
 
-pressAnyKey :: Menu -> AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+pressAnyKey :: Menu -> BrickEvent Name AppEvent -> EventM Name AppState ()
 pressAnyKey m s (VtyEvent (V.EvKey _ _)) = continue $ s & uiState . uiMenu .~ m
 pressAnyKey _ s _ = continueWithoutRedraw s
 
 -- | The top-level event handler while we are running the game itself.
-handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainEvent s = \case
   AppEvent Frame
     | s ^. gameState . paused -> continueWithoutRedraw s
@@ -269,7 +271,7 @@ handleMainEvent s = \case
       Just InfoPanel -> handleInfoPanelEvent s infoScroll ev
       _ -> continueWithoutRedraw s
 
-mouseLocToWorldCoords :: GameState -> Brick.Location -> EventM Name (Maybe W.Coords)
+mouseLocToWorldCoords :: GameState -> Brick.Location -> EventM Name s (Maybe W.Coords)
 mouseLocToWorldCoords gs (Brick.Location mouseLoc) = do
   mext <- lookupExtent WorldExtent
   pure $ case mext of
@@ -282,11 +284,11 @@ mouseLocToWorldCoords gs (Brick.Location mouseLoc) = do
           my = fst mouseLoc' + snd regionStart
        in Just $ W.Coords (mx, my)
 
-setFocus :: AppState -> Name -> EventM Name (Next AppState)
+setFocus :: Name -> EventM Name AppState ()
 setFocus s name = continue $ s & uiState . uiFocusRing %~ focusSetCurrent name
 
 -- | Set the game to Running if it was auto paused
-maybeUnpause :: AppState -> EventM Name AppState
+maybeUnpause :: EventM Name AppState ()
 maybeUnpause s
   | s ^. gameState . runStatus == AutoPause = do
     curTime <- liftIO $ getTime Monotonic
@@ -299,7 +301,7 @@ maybeUnpause s
   -- the world event handler for the KChar 'p'.
   resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
 
-toggleModal :: AppState -> ModalType -> EventM Name AppState
+toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal s mt = case s ^. uiState . uiModal of
   Nothing -> pure $ s & (uiState . uiModal ?~ generateModal s mt) . ensurePause
   Just _ -> maybeUnpause s <&> uiState . uiModal .~ Nothing
@@ -311,7 +313,7 @@ toggleModal s mt = case s ^. uiState . uiModal of
     | s ^. gameState . paused || mt `elem` runningModals = id
     | otherwise = gameState . runStatus .~ AutoPause
 
-handleModalEvent :: AppState -> V.Event -> EventM Name (Next AppState)
+handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent s = \case
   V.EvKey V.KEnter [] -> do
     s' <- toggleModal s QuitModal
@@ -329,7 +331,7 @@ handleModalEvent s = \case
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
 --   history to a @.swarm_history@ file, and return to the previous menu.
-quitGame :: AppState -> EventM Name (Next AppState)
+quitGame :: EventM Name AppState ()
 quitGame s = do
   let history = s ^. uiState . uiReplHistory
       hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
@@ -347,13 +349,13 @@ quitGame s = do
 --   frame, and how many ticks per second we are trying to achieve,
 --   this may involve stepping the game any number of ticks (including
 --   zero).
-runFrameUI :: AppState -> EventM Name (Next AppState)
+runFrameUI :: EventM Name AppState ()
 runFrameUI s = do
   (redraw, newState) <- runStateT (runFrame >> updateUI) s
   (if redraw then continue else continueWithoutRedraw) newState
 
 -- | Run the game for a single frame, without updating the UI.
-runFrame :: StateT AppState (EventM Name) ()
+runFrame :: EventM Name AppState ()
 runFrame = do
   -- Reset the needsRedraw flag.  While procssing the frame and stepping the robots,
   -- the flag will get set to true if anything changes that requires redrawing the
@@ -424,7 +426,7 @@ ticksPerFrameCap = 30
 --   timestep, until we have used up all available accumulated time,
 --   OR until we have hit the cap on ticks per frame, whichever comes
 --   first.
-runFrameTicks :: TimeSpec -> StateT AppState (EventM Name) ()
+runFrameTicks :: TimeSpec -> EventM Name AppState ()
 runFrameTicks dt = do
   a <- use (uiState . accumulatedTime)
   t <- use (uiState . frameTickCount)
@@ -440,7 +442,7 @@ runFrameTicks dt = do
     runFrameTicks dt
 
 -- | Run the game for a single tick, and update the UI.
-runGameTickUI :: AppState -> EventM Name (Next AppState)
+runGameTickUI :: EventM Name AppState ()
 runGameTickUI s = execStateT (runGameTick >> updateUI) s >>= continue
 
 -- | Modifies the game state using a fused-effect state action.
@@ -454,12 +456,12 @@ zoomGameState f = do
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
-runGameTick :: StateT AppState (EventM Name) ()
+runGameTick :: EventM Name AppState ()
 runGameTick = zoomGameState gameTick
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
-updateUI :: StateT AppState (EventM Name) Bool
+updateUI :: EventM Name AppState Bool
 updateUI = do
   loadVisibleRegion
 
@@ -564,7 +566,7 @@ updateUI = do
 
 -- | Make sure all tiles covering the visible part of the world are
 --   loaded.
-loadVisibleRegion :: StateT AppState (EventM Name) ()
+loadVisibleRegion :: EventM Name AppState ()
 loadVisibleRegion = do
   mext <- lift $ lookupExtent WorldExtent
   case mext of
@@ -582,7 +584,7 @@ stripCmd pty = pty
 ------------------------------------------------------------
 
 -- | Handle a user input event for the REPL.
-handleREPLEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent s = \case
   ControlKey 'c' ->
     continue $
@@ -719,7 +721,7 @@ worldScrollDist :: Int64
 worldScrollDist = 8
 
 -- | Handle a user input event in the world view panel.
-handleWorldEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 -- scrolling the world view in Creative mode
 handleWorldEvent s = \case
   Key k
@@ -764,7 +766,7 @@ handleWorldEvent s = \case
   _ -> continueWithoutRedraw s
 
 -- | Manually scroll the world view.
-scrollView :: AppState -> (V2 Int64 -> V2 Int64) -> EventM Name AppState
+scrollView :: (V2 Int64 -> V2 Int64) -> EventM Name AppState ()
 scrollView s update = do
   -- Manually invalidate the 'WorldCache' instead of just setting
   -- 'needsRedraw'.  I don't quite understand why the latter doesn't
@@ -794,7 +796,7 @@ adjustTPS (+/-) = uiState . lgTicksPerSecond %~ (+/- 1)
 ------------------------------------------------------------
 
 -- | Handle user input events in the robot panel.
-handleRobotPanelEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleRobotPanelEvent s (Key V.KEnter) =
   maybe (continueWithoutRedraw s) (descriptionModal s) (focusedEntity s)
 handleRobotPanelEvent s (CharKey 'm') =
@@ -813,7 +815,7 @@ handleRobotPanelEvent s _ = continueWithoutRedraw s
 
 -- | Attempt to make an entity selected from the inventory, if the
 --   base is not currently busy.
-makeEntity :: AppState -> Entity -> EventM Name (Next AppState)
+makeEntity :: Entity -> EventM Name AppState ()
 makeEntity s e = do
   let mkTy = Forall [] $ TyCmd TyUnit
       mkProg = TApp (TConst Make) (TString (e ^. entityName))
@@ -832,7 +834,7 @@ makeEntity s e = do
     _ -> continueWithoutRedraw s
 
 -- | Display a modal window with the description of an entity.
-descriptionModal :: AppState -> Entity -> EventM Name (Next AppState)
+descriptionModal :: Entity -> EventM Name AppState ()
 descriptionModal s e =
   continue $ s & uiState . uiModal ?~ generateModal s (DescriptionModal e)
 
@@ -841,7 +843,7 @@ descriptionModal s e =
 ------------------------------------------------------------
 
 -- | Handle user events in the info panel (just scrolling).
-handleInfoPanelEvent :: AppState -> ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name (Next AppState)
+handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleInfoPanelEvent s vs = \case
   Key V.KDown -> vScrollBy vs 1 >> continue s
   Key V.KUp -> vScrollBy vs (-1) >> continue s
