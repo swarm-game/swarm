@@ -200,9 +200,9 @@ handleMainEvent e =
     AppEvent Frame
       | s ^. gameState . paused -> continueWithoutRedraw
       | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay -> do
-          uiState . uiGoal %= markGoalRead
-          toggleModal (GoalModal g)
-          runFrameUI
+        uiState . uiGoal %= markGoalRead
+        toggleModal (GoalModal g)
+        runFrameUI
       | otherwise -> runFrameUI
     -- ctrl-q works everywhere
     ControlKey 'q' ->
@@ -213,8 +213,8 @@ handleMainEvent e =
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | isJust (s ^. uiState . uiModal) -> do
-          maybeUnpause
-          uiState . uiModal .= Nothing
+        maybeUnpause
+        uiState . uiModal .= Nothing
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -629,8 +629,8 @@ handleREPLEvent = \case
             Just found
               | T.null t -> uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
               | otherwise -> do
-                  uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
-                  modify validateREPLForm
+                uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
+                modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
@@ -676,9 +676,9 @@ tabComplete s (CmdPrompt t mms)
   | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
   | T.null lastWord = CmdPrompt t []
   | otherwise = case matches of
-      [] -> CmdPrompt t []
-      [m] -> CmdPrompt (completeWith m) []
-      (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+    [] -> CmdPrompt t []
+    [m] -> CmdPrompt (completeWith m) []
+    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
   completeWith m = T.append t (T.drop (T.length lastWord) m)
   lastWord = T.takeWhileEnd isIdentChar t
