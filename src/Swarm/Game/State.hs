@@ -470,7 +470,7 @@ viewingRegion :: GameState -> (Int64, Int64) -> (W.Coords, W.Coords)
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   V2 cx cy = g ^. viewCenter
-  (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
+  (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
 -- | Find out which robot is currently specified by the
