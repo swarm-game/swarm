@@ -621,7 +621,7 @@
     of the original entity.
   - For entities which do not grow, 'harvest' behaves exactly the same
     as 'grab'.
-  capabilities: [grab, harvest, give, place, install]
+  capabilities: [grab, harvest, place]
   properties: [portable]
 
 - name: toolkit
