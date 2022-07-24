@@ -402,6 +402,8 @@
   - [1, box]
   out:
   - [1, compass]
+  required:
+  - [1, lodestone]
 
 - in:
   - [32, wooden gear]
