@@ -172,8 +172,8 @@ data REPLStatus
 data WinCondition
   = -- | There is no winning condition.
     NoWinCondition
-  | -- | The player has not won yet; this 'ProcessedTerm' of type @cmd
-    --   bool@ is run every tick to determine whether they have won.
+  | -- | There are one or more objectives remaining that the player
+    --   has not yet accomplished.
     WinConditions (NonEmpty Objective)
   | -- | The player has won. The boolean indicates whether they have
     --   already been congratulated.
