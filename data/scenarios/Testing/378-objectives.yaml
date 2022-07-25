@@ -39,12 +39,10 @@ robots:
       - workbench
       - clock
     inventory:
-      - [5, 3D printer]
-      - [100, treads]
-      - [70, grabber]
-      - [100, solar panel]
-      - [50, scanner]
-      - [5, toolkit]
+      - [10, treads]
+      - [10, grabber]
+      - [10, solar panel]
+      - [0, harvester]
 world:
   default: [blank]
   palette:

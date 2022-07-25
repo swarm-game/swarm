@@ -2,14 +2,15 @@ name: Install one device
 description: |
   Install least amount of devices that provide needed capabilities
   https://github.com/swarm-game/swarm/issues/508
-win: |
-  try {
-    r <- robotNumbered 1;
-    p <- as r {whereami};
-    g <- as base {count "GPS"};
-    t <- as base {count "Tardis"};
-    return (p == (5,0) && g == 1 && t == 0);
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        r <- robotNumbered 1;
+        p <- as r {whereami};
+        g <- as base {count "GPS"};
+        t <- as base {count "Tardis"};
+        return (p == (5,0) && g == 1 && t == 0);
+      } { return false }
 solution: |
   log "Hi, I can build teleporting robots!";
   build {log "Hi, I can teleport!"; teleport self (5,0); p <- whereami; log $ "I am at " ++ format p}

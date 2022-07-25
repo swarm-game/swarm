@@ -102,6 +102,20 @@
   - [1, drill bit]
 
 - in:
+  - [1, bit (0)]
+  out:
+  - [1, bit (1)]
+  required:
+  - [1, lodestone]
+
+- in:
+  - [1, bit (1)]
+  out:
+  - [1, bit (0)]
+  required:
+  - [1, lodestone]
+
+- in:
   - [8, bit (0)]
   - [8, bit (1)]
   out:
@@ -166,12 +180,34 @@
 - in:
   - [1, mountain]
   out:
+  - [8, lodestone]
+  - [4, iron ore]
+  - [1, mountain tunnel]
+  required:
+  - [1, drill]
+  time: 90
+  weight: 1
+
+- in:
+  - [1, mountain]
+  out:
   - [16, rock]
   - [1, mountain tunnel]
   required:
   - [1, metal drill]
   time: 9
   weight: 160
+
+- in:
+  - [1, mountain]
+  out:
+  - [16, lodestone]
+  - [8, iron ore]
+  - [1, mountain tunnel]
+  required:
+  - [1, metal drill]
+  time: 9
+  weight: 10
 
 - in:
   - [5, rock]
@@ -366,6 +402,8 @@
   - [1, box]
   out:
   - [1, compass]
+  required:
+  - [1, lodestone]
 
 - in:
   - [32, wooden gear]

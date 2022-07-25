@@ -1,11 +1,12 @@
 name: Test challenge
 description: A very difficult challenge that will test the utmost limits of your ability to 'move' and 'grab'. This is actually a placeholder challenge and will be replaced with more suitable challenges soon.
-goal:
-  - Use your grabber to harvest a lambda.
-win: |
-  try {
-    as base {has "lambda"}
-  } { return false }
+objectives:
+  - goal:
+      - Use your grabber to harvest a lambda.
+    condition: |
+      try {
+        as base {has "lambda"}
+      } { return false }
 solution: |
   move; move; grab
 robots:

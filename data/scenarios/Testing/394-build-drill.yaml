@@ -3,10 +3,11 @@ description: |
   Inner build does not correctly require Drill.
   https://github.com/swarm-game/swarm/issues/394
 creative: True
-win: |
-  try {
-    as base {l <- has "detonator"; return (not l)}
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        as base {l <- has "detonator"; return (not l)}
+      } { return false }
 # When testing, add `s <- build {...}; n <- as s {whoami}; log n` 
 solution: |
   def forever = \c. c ; forever c end;

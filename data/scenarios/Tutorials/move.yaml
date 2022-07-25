@@ -4,19 +4,20 @@ description: |
 #
 # The players might not use ';' here, so it should be brought up again when building robots.
 #
-goal:
-  - Robots can use the 'move' command to move forward one unit
-    in the direction they are currently facing.
-  - To complete this challenge, move your robot two spaces to the right,
-    to the coordinates (2,0).
-  - Note that you can chain commands with ';'.
-  - You can open this popup window at any time to remind yourself of the goal
-    using Ctrl-G.
-win: |
-  try {
-    loc <- as base {whereami};
-    return (loc == (2,0))
-  } { return false }
+objectives:
+  - goal:
+      - Robots can use the 'move' command to move forward one unit
+        in the direction they are currently facing.
+      - To complete this challenge, move your robot two spaces to the right,
+        to the coordinates (2,0).
+      - Note that you can chain commands with ';'.
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      try {
+        loc <- as base {whereami};
+        return (loc == (2,0))
+      } { return false }
 solution: |
   move; move
 robots:

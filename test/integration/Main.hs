@@ -183,6 +183,8 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
         , testSolution Default "Testing/555-teleport-location"
+        , expectFailBecause "Awaiting fix (#540)" $
+            testSolution (Sec 10) "Testing/562-lodestone"
         , testSolution Default "Testing/378-objectives"
         ]
     ]

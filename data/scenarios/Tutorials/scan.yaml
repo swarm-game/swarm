@@ -1,22 +1,23 @@
 name: Scan
 description: |
   Learn how to send robots to safely scan your surroundings.
-goal:
-  - When you land on an alien planet, all the entities in the
-    world will be unfamiliar to you.
-  - But you can learn what they are using the scanner device.
-  - Send robots to move to the unknown entities (marked as '?'),
-    'scan forward' and after that come back and 'upload base'.
-  - |
-    TIP: You can also 'scan left' or 'scan north', to save on a few
-    'turn' commands.
-win: |
-  try {
-    bm <- as base {knows "mountain"};
-    bt <- as base {knows "tree"};
-    bw <- as base {knows "wavy water"};
-    return (bm || bt || bw)
-  } { return false }
+objectives:
+  - goal:
+      - When you land on an alien planet, all the entities in the
+        world will be unfamiliar to you.
+      - But you can learn what they are using the scanner device.
+      - Send robots to move to the unknown entities (marked as '?'),
+        'scan forward' and after that come back and 'upload base'.
+      - |
+        TIP: You can also 'scan left' or 'scan north', to save on a few
+        'turn' commands.
+    condition: |
+      try {
+        bm <- as base {knows "mountain"};
+        bt <- as base {knows "tree"};
+        bw <- as base {knows "wavy water"};
+        return (bm || bt || bw)
+      } { return false }
 solution: |
   build {
     turn east; move; move; move;

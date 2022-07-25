@@ -4,19 +4,25 @@ description: |
 #
 # Has to be easy, so that you do not have to debug it too much yet.
 #
-goal:
-  - Now that you know basic commands, it is time to
-    build robots to do the work for you.
-  - You start in a base ('Ω') that does not move (at least not yet).
-  - Let's start by building a gardener robot to perform a simple task.
-  - You can build a robot with 'build {COMMANDS}',
-    where instead of 'COMMANDS' you write the sequence
-    of commands for the robot to execute (separated by ';').
-  - Build a robot to grab the flower and place it next
-    to the water.
-  - |
-    TIP: You can use the name of the flower ("pickerelweed")
-    or the bind notation: 'f <- grab; ... ; place t;'.
+objectives:
+  - goal:
+      - Now that you know basic commands, it is time to
+        build robots to do the work for you.
+      - You start in a base ('Ω') that does not move (at least not yet).
+      - Let's start by building a gardener robot to perform a simple task.
+      - You can build a robot with 'build {COMMANDS}',
+        where instead of 'COMMANDS' you write the sequence
+        of commands for the robot to execute (separated by ';').
+      - Build a robot to grab the flower and place it next
+        to the water.
+      - |
+        TIP: You can use the name of the flower ("pickerelweed")
+        or the bind notation: 'f <- grab; ... ; place t;'.
+    condition: |
+      try {
+        teleport self (2,-1);
+        ishere "pickerelweed";
+      } { return false }
 entities:
   - name: pickerelweed
     display:
@@ -36,11 +42,6 @@ entities:
     - An running stream of of water.
     properties: [known, portable, growable, liquid]
     growth: [0,0]
-win: |
-  try {
-    teleport self (2,-1);
-    ishere "pickerelweed";
-  } { return false }
 solution: |
   build {move; move; t <- grab; turn right; move; place t}
 robots:

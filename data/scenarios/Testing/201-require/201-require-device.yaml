@@ -2,15 +2,16 @@ name: Require device
 description: |
   Require a device using the 'require' command.
   https://github.com/swarm-game/swarm/issues/201
-win: |
-  try {
-    r <- robotNumbered 1;
-    p <- as r {whereami};
-    boatInstalled <- as r {installed "boat"};
-    b1 <- as r {count "boat"};
-    b0 <- as base {count "boat"};
-    return (p == (2,0) && b0 == 0 && boatInstalled && b1 == 0);
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        r <- robotNumbered 1;
+        p <- as r {whereami};
+        boatInstalled <- as r {installed "boat"};
+        b1 <- as r {count "boat"};
+        b0 <- as base {count "boat"};
+        return (p == (2,0) && b0 == 0 && boatInstalled && b1 == 0);
+      } { return false }
 solution: |
   build {require "boat"; move; require "boat"; move}
 robots:

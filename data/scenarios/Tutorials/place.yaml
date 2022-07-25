@@ -6,22 +6,28 @@ description: |
 # is really slow. It can be cheesed by speeding up the game, but there is no need
 # to tell the players. :)
 #
-goal:
-  - Previously you learned how to plunder a plentiful forest for wood.
-    Now you will learn how to plant trees to obtain as much wood as you need.
-  - There is a fast-growing tree (called "spruce") ahead of you.  You could 'grab'
-    it as before, but you now have a new device called a 'harvester'.
-    If you 'harvest' a tree rather than 'grab' it, a new tree will grow in its
-    place.
-  - You can plant a tree seed by 'place "spruce"; harvest' - that way you can
-    immediately place the next seed.
-  - You can speed this up by placing the tree in all available cells.
-    That way you can have eight times as many trees growing at once.
-  - Your goal is to collect 6 trees.
-  - |
-    TIP: You can get a sneak peak at a feature we will explain later and type
-    'def t = move; place "spruce"; harvest; end' after which you only need to type 't'
-    instead of retyping the whole command or searching in your command history.
+objectives:
+  - goal:
+      - Previously you learned how to plunder a plentiful forest for wood.
+        Now you will learn how to plant trees to obtain as much wood as you need.
+      - There is a fast-growing tree (called "spruce") ahead of you.  You could 'grab'
+        it as before, but you now have a new device called a 'harvester'.
+        If you 'harvest' a tree rather than 'grab' it, a new tree will grow in its
+        place.
+      - You can plant a tree seed by 'place "spruce"; harvest' - that way you can
+        immediately place the next seed.
+      - You can speed this up by placing the tree in all available cells.
+        That way you can have eight times as many trees growing at once.
+      - Your goal is to collect 6 trees.
+      - |
+        TIP: You can get a sneak peak at a feature we will explain later and type
+        'def t = move; place "spruce"; harvest; end' after which you only need to type 't'
+        instead of retyping the whole command or searching in your command history.
+    condition: |
+      try {
+        t <- as base {count "spruce"};
+        return (t >= 6);
+      } { return false }
 entities:
   # faster tree (the normal one grows 500-600 ticks)
   - name: spruce
@@ -37,11 +43,6 @@ entities:
       This one seems to grow a little faster.
     properties: [portable, growable]
     growth: [100, 120]
-win: |
-  try {
-    t <- as base {count "spruce"};
-    return (t >= 6);
-  } { return false }
 solution: |
   def t = move; place "spruce"; harvest; end;
   def h = harvest; move end;

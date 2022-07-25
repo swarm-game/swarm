@@ -1,35 +1,41 @@
 name: Types
 description: |
   Learn about the Swarm type system.
-goal:
-    - The Swarm programming language has a strong static type system.  That is,
-      every expression in the language has a type, and all the types must match up
-      properly before a program can be executed.
-    - 
-    - Previously, you have used the 'turn' command,
-      which takes one parameter, which must be a direction.
-    - What happens if you do not pass it a direction?
-    - 'Try these commands:'
-    - |
-      'turn 1'
-    - |
-      'turn move'
-    - |
-      'turn north move'
-    - |
-      'move move'
-    - The last two commands might give the most confusing error,
-      when they are obviously missing a ';' separating the commands.
-      The error comes from the fact that a command such as 'move' is
-      being used as if it is a function, by applying it to an argument.
-    - |
-      Finally try these expressions, which will just show 
-      and its type:
-    - |
-      'turn'
-    - |
-      'north'
-    - Once you are done, do 'place "Win"' to finish this challenge.
+objectives:
+  - goal:
+      - The Swarm programming language has a strong static type system.  That is,
+        every expression in the language has a type, and all the types must match up
+        properly before a program can be executed.
+      - 
+      - Previously, you have used the 'turn' command,
+        which takes one parameter, which must be a direction.
+      - What happens if you do not pass it a direction?
+      - 'Try these commands:'
+      - |
+        'turn 1'
+      - |
+        'turn move'
+      - |
+        'turn north move'
+      - |
+        'move move'
+      - The last two commands might give the most confusing error,
+        when they are obviously missing a ';' separating the commands.
+        The error comes from the fact that a command such as 'move' is
+        being used as if it is a function, by applying it to an argument.
+      - |
+        Finally try these expressions, which will just show 
+        and its type:
+      - |
+        'turn'
+      - |
+        'north'
+      - Once you are done, do 'place "Win"' to finish this challenge.
+    condition: |
+      try {
+        w <- as base {has "Win"};
+        return (not w);
+      } { return false }
 entities:
   - name: Win
     display:
@@ -38,11 +44,6 @@ entities:
     description:
       - Do 'place "Win"' once you are done with this challenge.
     properties: [known, portable]
-win: |
-  try {
-    w <- as base {has "Win"};
-    return (not w);
-  } { return false }
 solution: |
   place "Win"
 

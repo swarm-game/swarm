@@ -1,32 +1,42 @@
-name: Test drill
-description: This is a developer playground and will be replaced with more suitable challenges soon.
-objectives:
-  - goal:
-      - Send robots to mine rock, iron and copper.
-    condition: |
-      try {
-        i <- as base {has "iron ore"};
-        c <- as base {has "copper ore"};
-        s <- as base {has "rock"};
-        return (i && c && s)
-      } { return false }
+name: Test lodestone
+description: Pick or drill lodestone and use it to flip bits.
+goal:
+    - To create a drill bit, you will need to flip the available bit.
+win: |
+  try {
+    as base {has "drill bit"};
+  } { return false }
+solution: |
+  run "562-lodestone.sw"
 robots:
   - name: base
-    loc: [0,-2]
     dir: [1,0]
     display:
       char: Ω
       attr: robot
     devices:
+      - dictionary
       - logger
       - grabber
+      - scanner
       - toolkit
+      - workbench
       - 3D printer
+      - branch predictor
     inventory:
-      - [2, metal drill]
-      - [1, drill]
-      - [3, logger]
-      - [3, compass]
+      - [10, drill]
+      - [10, logger]
+      - [10, compass]
+      - [10, treads]
+      - [10, harvester]
+      - [10, solar panel]
+      - [10, scanner]
+      - [10, strange loop]
+      - [10, branch predictor]
+      - [10, toolkit]
+      - [0, drill bit]
+      - [0, bit (0)]
+      - [0, bit (1)]
 world:
   default: [ice, knownwater]
   palette:
@@ -41,15 +51,16 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
-    'A': [stone, mountain]
-    'C': [stone, copper vein]
-    'I': [stone, iron vein]
+    'A': [stone, magnetic vein]
+    'o': [stone, lodestone]
+    '0': [grass, bit (0)]
+    'B': [grass, null, base]
   upperleft: [-1, 1]
   map: |
     ┌─────┐                                                                ~~
-    │IAAT~                                                                ~L~
+    │o.AT~                                                                ~L~
     │..AAA│                                                                ~~
-    │....C│                                                                 ~
+    │B.0.A│                                                                 ~
     └─────┘                                                                 ~
 entities:  
   ## KNOWN ENTITIES
@@ -74,17 +85,7 @@ entities:
     yields: water
   
   ## MOUNTAIN MINES (for guaranteed profit)
-  - name: copper vein
-    display:
-      attr: copper'
-      char: 'A'
-    description:
-    - A place in the mountains where raw copper ore can be mined.
-      As it is hidden inside a mountain, a tunnel needs to be
-      first drilled through, so that the vein becomes accessible.
-    properties: [unwalkable]
-
-  - name: iron vein
+  - name: magnetic vein
     display:
       attr: iron'
       char: 'A'
@@ -94,41 +95,31 @@ entities:
       first drilled through, so that the vein becomes accessible.
     properties: [unwalkable]
 
+  - name: magnetic mine
+    display:
+      attr: iron'
+      char: 'Å'
+    description:
+    - A place in the mountains where raw iron ore can be mined.
+    properties: [unwalkable]
+
 recipes:
   ## TOY DRILL
   - in:
-    - [1, copper vein]
+    - [1, magnetic vein]
     out:
-    - [1, copper mine]
-    - [1, copper ore]
+    - [1, magnetic mine]
+    - [1, lodestone]
     required:
     - [1, drill]
     time: 42
 
   - in:
-    - [1, iron vein]
+    - [1, magnetic mine]
     out:
-    - [1, iron mine]
+    - [1, magnetic mine]
     - [1, iron ore]
+    - [1, lodestone]
     required:
     - [1, drill]
-    time: 64
-
-  ## METAL DRILL
-  - in:
-    - [1, copper vein]
-    out:
-    - [1, copper mine]
-    - [1, copper ore]
-    required:
-    - [1, metal drill]
-    time: 6
-
-  - in:
-    - [1, iron vein]
-    out:
-    - [1, iron mine]
-    - [1, iron ore]
-    required:
-    - [1, metal drill]
-    time: 7
+    time: 42

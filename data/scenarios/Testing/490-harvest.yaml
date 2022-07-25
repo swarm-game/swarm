@@ -3,15 +3,16 @@ description: |
   Test the difference between the grab and harvest commands,
   and test that grab doesn't drain water.
   https://github.com/swarm-game/swarm/issues/490
-win: |
-  try {
-    turn east; move;
-    t1 <- ishere "tree";
-    move;
-    t2 <- ishere "tree";
-    t3 <- as base {n <- count "water"; return (n == 4)};
-    return (t1 && not t2 && t3)
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        turn east; move;
+        t1 <- ishere "tree";
+        move;
+        t2 <- ishere "tree";
+        t3 <- as base {n <- count "water"; return (n == 4)};
+        return (t1 && not t2 && t3)
+      } { return false }
 solution: |
   move; harvest; move; grab; turn right; move; grab; grab; harvest; grab
 robots:
