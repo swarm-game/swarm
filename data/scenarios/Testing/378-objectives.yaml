@@ -30,8 +30,6 @@ robots:
     dir: [0,1]
     devices:
       - 3D printer
-      - dictionary
-      - grabber
       - life support system
       - logger
       - toolkit
