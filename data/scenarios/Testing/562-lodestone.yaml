@@ -6,6 +6,8 @@ win: |
   try {
     as base {has "drill bit"};
   } { return false }
+solution: |
+  run "562-lodestone.sw"
 robots:
   - name: base
     dir: [1,0]
@@ -13,10 +15,14 @@ robots:
       char: Ω
       attr: robot
     devices:
+      - dictionary
       - logger
-      - harvester
+      - grabber
+      - scanner
       - toolkit
+      - workbench
       - 3D printer
+      - branch predictor
     inventory:
       - [10, drill]
       - [10, logger]
@@ -25,6 +31,8 @@ robots:
       - [10, harvester]
       - [10, solar panel]
       - [10, scanner]
+      - [10, strange loop]
+      - [10, branch predictor]
       - [10, toolkit]
       - [0, drill bit]
       - [0, bit (0)]
