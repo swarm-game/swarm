@@ -293,14 +293,14 @@ maybeUnpause = do
   run <- use $ gameState . runStatus
   when (run == AutoPause) $ do
     curTime <- liftIO $ getTime Monotonic
-    modify $ resetLastFrameTime curTime
+    resetLastFrameTime curTime
     gameState . runStatus .= Running
  where
   -- When unpausing, it is critical to ensure the next frame doesn't
   -- catch up from the time spent in pause.
   -- TODO: manage unpause more safely to also cover
   -- the world event handler for the KChar 'p'.
-  resetLastFrameTime curTime = uiState . lastFrameTime .~ curTime
+  resetLastFrameTime curTime = uiState . lastFrameTime .= curTime
 
 toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
@@ -330,7 +330,7 @@ handleModalEvent = \case
       Just (Just (NextButton scene)) -> startGame scene
       _ -> return ()
   ev -> do
-    mutateFirst (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
+    withFirst (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
       Just RecipesModal -> handleInfoPanelEvent recipesScroll (VtyEvent ev)
@@ -871,15 +871,3 @@ handleInfoPanelEvent vs = \case
   Key V.KHome -> vScrollToBeginning vs
   Key V.KEnd -> vScrollToEnd vs
   _ -> continueWithoutRedraw
-
-nestEventM' :: a -> EventM n a b -> EventM n s a
-nestEventM' a em = fst <$> nestEventM a em
-
-mutateFirst :: Traversal' s a -> EventM n a () -> EventM n s ()
-mutateFirst t em = do
-  ma <- preuse t
-  case ma of
-    Nothing -> return ()
-    Just a -> do
-      newA <- nestEventM' a em
-      t .= newA
