@@ -83,6 +83,8 @@ data Capability
     CFloat
   | -- | Evaluate conditional expressions
     CCond
+  | -- | Negate boolean value
+    CNegation
   | -- | Evaluate comparison operations
     CCompare
   | -- | Use cardinal direction constants.
@@ -131,6 +133,7 @@ instance FromJSON Capability where
 -- | Capabilities needed to evaluate or execute a constant.
 constCaps :: Const -> Maybe Capability
 constCaps = \case
+  -- ----------------------------------------------------------------
   -- Some built-in constants that don't require any special capability.
   Noop -> Nothing
   AppF -> Nothing
@@ -143,6 +146,13 @@ constCaps = \case
   Fail -> Nothing
   Has -> Nothing
   Installed -> Nothing
+  -- speaking is natural to robots (unlike listening)
+  Say -> Nothing
+  -- TODO: #495
+  --   the require command will be inlined once the Issue is fixed
+  --   so the capabilities of the run commands will be checked instead
+  Run -> Nothing
+  -- ----------------------------------------------------------------
   -- Some straightforward ones.
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
@@ -175,38 +185,41 @@ constCaps = \case
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  -- ----------------------------------------------------------------
+  -- String operations
+  Format -> Just CLog
+  Concat -> Just CLog
+  -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
   RobotNamed -> Just CGod
   RobotNumbered -> Just CGod
   Create -> Just CGod
-  -- String operations, which for now are enabled by CLog
-  Format -> Just CLog
-  Concat -> Just CLog
-  -- Some additional straightforward ones, which however currently
-  -- cannot be used in classic mode since there is no craftable item
-  -- which conveys their capability.
-  Teleport -> Just CTeleport -- Some space-time machine like Tardis?
-  Appear -> Just CAppear -- paint?
-  Whereami -> Just CSenseloc -- GPS?
-  Random -> Just CRandom -- randomness device (with bitcoins)?
-
-  -- comparator?
+  -- ----------------------------------------------------------------
+  -- arithmetic
   Eq -> Just CCompare
   Neq -> Just CCompare
   Lt -> Just CCompare
   Gt -> Just CCompare
   Leq -> Just CCompare
   Geq -> Just CCompare
-  And -> Nothing
-  Or -> Nothing
+  -- ----------------------------------------------------------------
+  -- boolean logic
+  And -> Just CCond
+  Or -> Just CCond
+  Not -> Just CNegation
+  -- ----------------------------------------------------------------
+  -- Some additional straightforward ones, which however currently
+  -- cannot be used in classic mode since there is no craftable item
+  -- which conveys their capability. TODO: #26
+  Teleport -> Just CTeleport -- Some space-time machine like Tardis?
+  Appear -> Just CAppear -- paint?
+  Whereami -> Just CSenseloc -- GPS?
+  Random -> Just CRandom -- randomness device (with bitcoins)?
+  -- ----------------------------------------------------------------
   -- Some more constants which *ought* to have their own capability but
-  -- currently don't.
-  Say -> Nothing
+  -- currently don't. TODO: #26
   View -> Nothing -- XXX this should also require something.
-  Run -> Nothing -- XXX this should also require a capability
-  -- which the base starts out with.
-  Not -> Nothing -- XXX some kind of boolean logic cap?
   Inl -> Nothing -- XXX should require cap for sums
   Inr -> Nothing
   Case -> Nothing

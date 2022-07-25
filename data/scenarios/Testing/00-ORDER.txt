@@ -8,3 +8,4 @@
 479-atomic-race.yaml
 479-atomic.yaml
 555-teleport-location.yaml
+562-lodestone.yaml

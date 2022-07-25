@@ -56,6 +56,7 @@ testWorld2Entites =
     , "LaTeX"
     , "tree"
     , "rock"
+    , "lodestone"
     , "sand"
     , "wavy water"
     , "water"
@@ -103,6 +104,7 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
           _ -> (DirtT, Just "tree")
       | otherwise = (GrassT, Nothing)
     genBiome Small Hard Natural
+      | h `mod` 100 == 0 = (StoneT, Just "lodestone")
       | h `mod` 10 == 0 = (StoneT, Just "rock")
       | otherwise = (StoneT, Nothing)
     genBiome Big Soft Natural
