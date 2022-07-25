@@ -27,7 +27,7 @@
       (let* (
              ;; Generate the current keywords with:
              ;; cabal run swarm:swarm -- generate editors --emacs
-             (x-keywords '("def" "end"))
+             (x-keywords '("def" "end" "let" "in" "require"))
              (x-builtins '(
                "self"
                "parent"
