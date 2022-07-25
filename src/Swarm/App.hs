@@ -28,7 +28,7 @@ app =
     { appDraw = drawUI
     , appChooseCursor = chooseCursor
     , appHandleEvent = handleEvent
-    , appStartEvent = (<$ enablePasteMode)
+    , appStartEvent = enablePasteMode
     , appAttrMap = const swarmAttrMap
     }
 
@@ -68,7 +68,7 @@ appMain seed scenario toRun cheat = do
       void $ customMain initialVty buildVty (Just chan) app s
 
 -- | If available for the terminal emulator, enable bracketed paste mode.
-enablePasteMode :: EventM s ()
+enablePasteMode :: EventM n s ()
 enablePasteMode = do
   vty <- getVtyHandle
   let output = V.outputIface vty
