@@ -15,6 +15,12 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
+import Control.Carrier.Error.Either (runError)
+import Control.Carrier.State.Lazy
+import Control.Carrier.Throw.Either (ThrowC, runThrow)
+import Control.Effect.Error
+import Control.Effect.Lens
+import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
@@ -29,6 +35,8 @@ import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find)
 import Data.List qualified as L
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isNothing, listToMaybe)
 import Data.Sequence qualified as Seq
@@ -38,12 +46,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), zero, (^+^))
-import System.Clock (TimeSpec)
-import System.Clock qualified
-import System.Random (UniformRange, uniformR)
-import Witch (From (from), into)
-import Prelude hiding (lookup)
-
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -51,6 +53,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (objectiveCondition)
 import Swarm.Game.State
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -61,13 +64,11 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Util
-
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.State.Lazy
-import Control.Carrier.Throw.Either (ThrowC, runThrow)
-import Control.Effect.Error
-import Control.Effect.Lens
-import Control.Effect.Lift
+import System.Clock (TimeSpec)
+import System.Clock qualified
+import System.Random (UniformRange, uniformR)
+import Witch (From (from), into)
+import Prelude hiding (lookup)
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
@@ -118,18 +119,19 @@ gameTick = do
   -- Possibly update the view center.
   modify recalcViewCenter
 
-  -- Possibly see if the winning condition for challenge mode is met.
+  -- Possibly see if the winning condition for the current objective is met.
   wc <- use winCondition
   case wc of
-    WinCondition t -> do
+    WinConditions (obj :| objs) -> do
       g <- get @GameState
 
       -- Execute the win condition check *hypothetically*: i.e. in a
       -- fresh CESK machine, using a copy of the current game state.
-      v <- runThrow @Exn . evalState @GameState g $ evalPT t
+      v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
       case v of
         Left _exn -> return () -- XXX
-        Right (VBool True) -> winCondition .= Won False
+        Right (VBool True) -> do
+          winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
         _ -> return ()
     _ -> return ()
 

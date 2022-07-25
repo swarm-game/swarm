@@ -2,17 +2,18 @@ name: Drowning results in destruction
 description: |
   Destroying robots doesn't work.
   https://github.com/swarm-game/swarm/issues/428
-win: |
-  def isAlive = \n. try {
-    _ <- robotNamed n;
-    log ("Is alive: " ++ n);
-    return true
-  } { return false } end;
-  try {
-    baseAlive <- isAlive "base";
-    botAlive <- isAlive "bot";
-    return (baseAlive && not botAlive);
-  } { return false; }
+objectives:
+  - condition: |
+      def isAlive = \n. try {
+        _ <- robotNamed n;
+        log ("Is alive: " ++ n);
+        return true
+      } { return false } end;
+      try {
+        baseAlive <- isAlive "base";
+        botAlive <- isAlive "bot";
+        return (baseAlive && not botAlive);
+      } { return false; }
 
 solution: |
   log "start";

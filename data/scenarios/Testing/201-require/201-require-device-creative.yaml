@@ -2,15 +2,16 @@ name: Require device in creative mode
 description: |
   Require a device using the 'require' command in creative mode.
   https://github.com/swarm-game/swarm/issues/201
-win: |
-  try {
-    r <- robotNumbered 1;
-    p <- as r {whereami};
-    boatInstalled <- as r {installed "boat"};
-    b1 <- as r {count "boat"};
-    b0 <- as base {count "boat"};
-    return (p == (2,0) && b0 == 0 && boatInstalled && b1 == 0);
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        r <- robotNumbered 1;
+        p <- as r {whereami};
+        boatInstalled <- as r {installed "boat"};
+        b1 <- as r {count "boat"};
+        b0 <- as base {count "boat"};
+        return (p == (2,0) && b0 == 0 && boatInstalled && b1 == 0);
+      } { return false }
 creative: true
 solution: |
   build {require "boat"; move; move}

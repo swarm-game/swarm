@@ -49,12 +49,13 @@ module Swarm.Util (
   -- * Template Haskell utilities
   liftText,
 
-  -- * Fused-Effects Lens utilities
+  -- * Lens utilities
   (%%=),
   (<%=),
   (<+=),
   (<<.=),
   (<>=),
+  _NonEmpty,
 
   -- * Utilities for NP-hard approximation
   smallHittingSet,
@@ -65,7 +66,7 @@ import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
-import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
+import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
 import Control.Monad (forM, unless, when)
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Bifunctor (first)
@@ -73,6 +74,7 @@ import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
 import Data.List (maximumBy, partition)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -335,6 +337,12 @@ l <<.= b = l %%= (,b)
 (<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
 l <>= a = modify (l <>~ a)
 {-# INLINE (<>=) #-}
+
+------------------------------------------------------------
+-- Other lens utilities
+
+_NonEmpty :: Lens' (NonEmpty a) (a, [a])
+_NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 
 ------------------------------------------------------------
 -- Some utilities for NP-hard approximation

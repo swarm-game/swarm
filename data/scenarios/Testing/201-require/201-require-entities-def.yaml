@@ -2,14 +2,15 @@ name: Require entities with definition
 description: |
   Require some entities using the 'require' command, and a definition.
   https://github.com/swarm-game/swarm/issues/201
-win: |
-  try {
-    r <- robotNumbered 1;
-    p <- as r {whereami};
-    r1 <- as r {count "rock"};
-    r0 <- as base {count "rock"};
-    return (p == (4,0) && r0 == 5 && r1 == 1);
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        r <- robotNumbered 1;
+        p <- as r {whereami};
+        r1 <- as r {count "rock"};
+        r0 <- as base {count "rock"};
+        return (p == (4,0) && r0 == 5 && r1 == 1);
+      } { return false }
 solution: |
   def mp = move; place "rock" end;
   build { log "hi"; require 5 "rock"; mp; mp; mp; mp }

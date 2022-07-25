@@ -64,11 +64,6 @@ module Swarm.TUI.Model (
   _InventoryEntry,
   _InstalledEntry,
 
-  -- ** Goal status
-  GoalStatus (..),
-  goalNeedsDisplay,
-  markGoalRead,
-
   -- ** UI Model
   UIState,
   uiMenu,
@@ -159,7 +154,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative (Applicative (liftA2))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario, scenarioGoal)
+import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario)
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
@@ -464,32 +459,6 @@ data InventoryListEntry
 makePrisms ''InventoryListEntry
 
 ------------------------------------------------------------
--- Goal status
-------------------------------------------------------------
-
--- | Status of the scenario goal: whether there is one, and whether it has been
---   displayed to the user initially.
-data GoalStatus
-  = -- | There is no goal.
-    NoGoal
-  | -- | There is a goal, and we should display it to the user initially.
-    UnreadGoal [Text]
-  | -- | There is a goal, and we have already displayed it to the user.
-    --   It can be displayed again if the user chooses.
-    ReadGoal [Text]
-  deriving (Eq, Show)
-
--- | Do we need to display the goal initially to the user?
-goalNeedsDisplay :: GoalStatus -> Maybe [Text]
-goalNeedsDisplay (UnreadGoal g) = Just g
-goalNeedsDisplay _ = Nothing
-
--- | Mark the goal as having been read.
-markGoalRead :: GoalStatus -> GoalStatus
-markGoalRead (UnreadGoal g) = ReadGoal g
-markGoalRead gs = gs
-
-------------------------------------------------------------
 -- UI state + AppState
 ------------------------------------------------------------
 
@@ -512,7 +481,7 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
-  , _uiGoal :: GoalStatus
+  , _uiGoal :: Maybe [Text]
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
   , _uiInventoryShouldUpdate :: Bool
@@ -607,7 +576,7 @@ uiModal :: Lens' UIState (Maybe Modal)
 
 -- | Status of the scenario goal: whether there is one, and whether it
 --   has been displayed to the user initially.
-uiGoal :: Lens' UIState GoalStatus
+uiGoal :: Lens' UIState (Maybe [Text])
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -765,7 +734,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiScrollToEnd = False
       , _uiError = Nothing
       , _uiModal = Nothing
-      , _uiGoal = NoGoal
+      , _uiGoal = Nothing
       , _uiShowFPS = False
       , _uiShowZero = True
       , _uiInventoryShouldUpdate = False
@@ -868,11 +837,11 @@ scenarioToAppState scene userSeed toRun (AppState g u) = do
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState :: Scenario -> UIState -> IO UIState
-scenarioToUIState scene u =
+scenarioToUIState _scene u =
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ maybe NoGoal UnreadGoal (scene ^. scenarioGoal)
+      & uiGoal .~ Nothing
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiShowFPS .~ False

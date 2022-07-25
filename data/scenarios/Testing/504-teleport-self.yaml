@@ -2,12 +2,13 @@ name: Teleport self in win condition check
 description: |
   `teleport self` did not work in the win condition check.
   https://github.com/swarm-game/swarm/issues/504
-win: |
-  try {
-    create "tree"; place "tree";
-    teleport self (5,0);
-    ishere "tree"
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        create "tree"; place "tree";
+        teleport self (5,0);
+        ishere "tree"
+      } { return false }
 solution: |
   place "tree"
 robots:

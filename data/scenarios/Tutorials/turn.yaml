@@ -4,13 +4,19 @@ description: |
 # 
 # Note that parameters are not in parentheses like in e.g. Python.
 #
-goal:
-  - In addition to 'move', you can use the 'turn' command
-    to turn your robot. For example 'turn right' or 'turn east'.
-  - Move over to the inventory view with Alt+E and select the treads
-    device to read about the details. You can come back with Alt+R.
-  - Afterwards move your robot to the flower in the northeast corner.
-  - Remember, you can chain commands with ';',  for example 'move; move; move;'.
+objectives:
+  - goal:
+      - In addition to 'move', you can use the 'turn' command
+        to turn your robot. For example 'turn right' or 'turn east'.
+      - Move over to the inventory view with Alt+E and select the treads
+        device to read about the details. You can come back with Alt+R.
+      - Afterwards move your robot to the flower in the northeast corner.
+      - Remember, you can chain commands with ';',  for example 'move; move; move;'.
+    condition: |
+      try {
+        loc <- as base {whereami};
+        return (loc == (3,4))
+      } { return false }
 entities:
   - name: knownflower
     display:
@@ -33,12 +39,6 @@ entities:
     description:
       - How did you get out of the maze? You should never see me.
     properties: [unwalkable, known]
-
-win: |
-  try {
-    loc <- as base {whereami};
-    return (loc == (3,4))
-  } { return false }
 solution: |
   move; move; move;
   turn north; move; move; turn west;

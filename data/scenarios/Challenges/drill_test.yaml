@@ -1,14 +1,15 @@
 name: Test drill
 description: This is a developer playground and will be replaced with more suitable challenges soon.
-goal:
-    - Send robots to mine rock, iron and copper.
-win: |
-  try {
-    i <- as base {has "iron ore"};
-    c <- as base {has "copper ore"};
-    s <- as base {has "rock"};
-    return (i && c && s)
-  } { return false }
+objectives:
+  - goal:
+      - Send robots to mine rock, iron and copper.
+    condition: |
+      try {
+        i <- as base {has "iron ore"};
+        c <- as base {has "copper ore"};
+        s <- as base {has "rock"};
+        return (i && c && s)
+      } { return false }
 robots:
   - name: base
     loc: [0,-2]

@@ -6,11 +6,12 @@ description: |
   https://github.com/swarm-game/swarm/issues/479
 stepsPerTick: 1
 creative: true
-win: |
-  try {
-    p <- robotNamed "planter";
-    as p {n <- count "weed"; return (n == 0)}
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        p <- robotNamed "planter";
+        as p {n <- count "weed"; return (n == 0)}
+      } { return false }
 solution: |
   def forever = \c. force c ; forever c end
   def tryharvest =

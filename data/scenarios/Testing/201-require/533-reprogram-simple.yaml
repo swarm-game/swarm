@@ -3,26 +3,27 @@ description: |
   While executing 'reprogram', we should install any required devices which
   the target robot doesn't have.
   https://github.com/swarm-game/swarm/pulls/533
-win: |
-  try {
-    base_boats <- as base {count "boat"};
-    base_solar <- as base {count "solar panel"};
-    base_treads <- as base {count "treads"};
-    base_drills <- as base {count "metal drill"};
+objectives:
+  - condition: |
+      try {
+        base_boats <- as base {count "boat"};
+        base_solar <- as base {count "solar panel"};
+        base_treads <- as base {count "treads"};
+        base_drills <- as base {count "metal drill"};
 
-    fred <- robotNamed "fred";
-    p <- as fred {whereami};
-    boatInstalled <- as fred {installed "boat"};
-    drillInstalled <- as fred {installed "metal drill"};
-    solarInstalled <- as fred {installed "solar panel"};
-    treadsInstalled <- as fred {installed "treads"};
+        fred <- robotNamed "fred";
+        p <- as fred {whereami};
+        boatInstalled <- as fred {installed "boat"};
+        drillInstalled <- as fred {installed "metal drill"};
+        solarInstalled <- as fred {installed "solar panel"};
+        treadsInstalled <- as fred {installed "treads"};
 
-    return (p == (2,0)
-            && boatInstalled && drillInstalled && solarInstalled && treadsInstalled
-            && base_boats == 1 && base_solar == 1
-            && base_treads == 1 && base_drills == 1
-           );
-  } { return false }
+        return (p == (2,0)
+                && boatInstalled && drillInstalled && solarInstalled && treadsInstalled
+                && base_boats == 1 && base_solar == 1
+                && base_treads == 1 && base_drills == 1
+               );
+      } { return false }
 solution: |
   fred <- build {require "boat"; setname "fred"};
   wait 5;

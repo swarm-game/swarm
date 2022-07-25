@@ -5,11 +5,12 @@ description: |
 # The game state validation is performed in integration test,
 # here we just set a robot to wait for one tick, during which
 # the base wins.
-win: |
-  try {
-    teleport self (0,0);
-    ishere "lambda"
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        teleport self (0,0);
+        ishere "lambda"
+      } { return false }
 solution: |
   log "I will win next tick!"; place "lambda";
 robots:

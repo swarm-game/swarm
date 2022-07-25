@@ -1,36 +1,36 @@
 name: Require inventory
 description: |
   Learn how to require inventory when building robots.
-goal:
-
-    - In the previous tutorial challenge, you learned how to use
-      'require' to require specific devices to be installed.
-      Sometimes, instead of requiring installed devices, you require
-      supplies in your inventory.  In this case, you can write
-      'require <int> <name>' to require a certain number of copies of
-      a certain entity to be placed in your inventory.
-    - For example, 'build {require 10 "flower"; move; move}' would
-      build a robot with 10 flowers in its inventory.
-    - Your goal in this challenge is to cover the entire 4x4 gray area
-      with rocks!
-    - Remember that you can define commands to simplify your task.
-    - 'For example:'
-    - 'def PR = move; place "rock" end'
-win: |
-  def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
-  def ifC = \test. \then. \else. b <- test; if b then else end;
-  try {
-    teleport self (0,0); turn south;
-    repeat 4 (
-      move; turn east;
-      repeat 4 (
-        move;
-        ifC (ishere "rock") {} {create "tree"};
-      );
-      turn back; move; move; move; move; turn left
-    );
-    ifC (has "tree") {return false} {return true}
-  } { return false }
+objectives:
+  - goal:
+      - In the previous tutorial challenge, you learned how to use
+        'require' to require specific devices to be installed.
+        Sometimes, instead of requiring installed devices, you require
+        supplies in your inventory.  In this case, you can write
+        'require <int> <name>' to require a certain number of copies of
+        a certain entity to be placed in your inventory.
+      - For example, 'build {require 10 "flower"; move; move}' would
+        build a robot with 10 flowers in its inventory.
+      - Your goal in this challenge is to cover the entire 4x4 gray area
+        with rocks!
+      - Remember that you can define commands to simplify your task.
+      - 'For example:'
+      - 'def PR = move; place "rock" end'
+    condition: |
+      def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
+      def ifC = \test. \then. \else. b <- test; if b then else end;
+      try {
+        teleport self (0,0); turn south;
+        repeat 4 (
+          move; turn east;
+          repeat 4 (
+            move;
+            ifC (ishere "rock") {} {create "tree"};
+          );
+          turn back; move; move; move; move; turn left
+        );
+        ifC (has "tree") {return false} {return true}
+      } { return false }
 solution: |
   // TODO: #540 simplify this solution once we can use `def`.
 

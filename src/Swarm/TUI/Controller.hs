@@ -68,7 +68,7 @@ import Control.Carrier.State.Lazy qualified as Fused
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), scenarioCollectionToList, _SISingle)
+import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scenarioCollectionToList, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -201,8 +201,6 @@ handleMainEvent :: AppState -> BrickEvent Name AppEvent -> EventM Name (Next App
 handleMainEvent s = \case
   AppEvent Frame
     | s ^. gameState . paused -> continueWithoutRedraw s
-    | Just g <- s ^. uiState . uiGoal . to goalNeedsDisplay ->
-      toggleModal s (GoalModal g) <&> (uiState . uiGoal %~ markGoalRead) >>= runFrameUI
     | otherwise -> runFrameUI s
   -- ctrl-q works everywhere
   ControlKey 'q' ->
@@ -224,9 +222,8 @@ handleMainEvent s = \case
     s' <- toggleModal s CommandsModal
     continue (s' & gameState . availableCommands . notificationsCount .~ 0)
   ControlKey 'g' -> case s ^. uiState . uiGoal of
-    NoGoal -> continueWithoutRedraw s
-    UnreadGoal g -> toggleModal s (GoalModal g) >>= continue
-    ReadGoal g -> toggleModal s (GoalModal g) >>= continue
+    Nothing -> continueWithoutRedraw s
+    Just g -> toggleModal s (GoalModal g) >>= continue
   VtyEvent vev
     | isJust (s ^. uiState . uiModal) -> handleModalEvent s vev
   -- special keys that work on all panels
@@ -546,6 +543,22 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
+  -- Decide whether we need to update the current goal text, and pop
+  -- up a modal dialog.
+  curGoal <- use (uiState . uiGoal)
+  newGoal <-
+    preuse (gameState . winCondition . _WinConditions . _NonEmpty . _1 . objectiveGoal)
+
+  let goalUpdated = curGoal /= newGoal
+  when goalUpdated $ do
+    uiState . uiGoal .= newGoal
+    case newGoal of
+      Just goal -> do
+        s <- get
+        s' <- lift $ toggleModal s (GoalModal goal)
+        put s'
+      _ -> return ()
+
   -- Decide whether to show a pop-up modal congratulating the user on
   -- successfully completing the current challenge.
   winModalUpdated <- do
@@ -554,12 +567,13 @@ updateUI = do
       Won False -> do
         gameState . winCondition .= Won True
         s <- get
-        uiState . uiModal .= Just (generateModal s WinModal)
+        s' <- lift $ toggleModal s WinModal
+        put s'
         uiState . uiMenu %= advanceMenu
         return True
       _ -> return False
 
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || winModalUpdated
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || goalUpdated || winModalUpdated
   pure redraw
 
 -- | Make sure all tiles covering the visible part of the world are

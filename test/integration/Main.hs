@@ -185,6 +185,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/555-teleport-location"
         , expectFailBecause "Awaiting fix (#540)" $
             testSolution (Sec 10) "Testing/562-lodestone"
+        , testSolution Default "Testing/378-objectives"
         ]
     ]
  where

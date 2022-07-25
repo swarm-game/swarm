@@ -47,7 +47,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -565,7 +565,7 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = (s ^. uiState . uiGoal) /= NoGoal
+  goal = isJust (s ^. uiState . uiGoal)
 
   notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> [(KeyHighlight, Text, Text)]
   notificationKey notifLens key name
