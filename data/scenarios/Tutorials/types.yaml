@@ -1,32 +1,38 @@
 name: Typing
 description: |
   Learn about the types of commands and values.
-goal:
-    - Before we get to solving more complex challenges,
-      it would be good to get used to how the commands
-      in Swarm language work and how they don't.
-    - Previously, you have used the 'turn' command,
-      which takes one parameter, which must be a direction.
-    - What happens if you do not pass it a direction?
-    - 'Try these commands:'
-    - |
-      'turn 1'
-    - |
-      'turn move'
-    - |
-      'turn north move'
-    - |
-      'move move'
-    - The last two commands might give the most confusing error,
-      when they are obviously missing a ';' separating the commands.
-    - |
-      Finally try these commands, which will just show the value
-      (passing values will be useful later) and its type:
-    - |
-      'turn'
-    - |
-      'north'
-    - Once you are done, do 'place "Win"' to finish this challenge.
+objectives:
+  - goal:
+      - Before we get to solving more complex challenges,
+        it would be good to get used to how the commands
+        in Swarm language work and how they don't.
+      - Previously, you have used the 'turn' command,
+        which takes one parameter, which must be a direction.
+      - What happens if you do not pass it a direction?
+      - 'Try these commands:'
+      - |
+        'turn 1'
+      - |
+        'turn move'
+      - |
+        'turn north move'
+      - |
+        'move move'
+      - The last two commands might give the most confusing error,
+        when they are obviously missing a ';' separating the commands.
+      - |
+        Finally try these commands, which will just show the value
+        (passing values will be useful later) and its type:
+      - |
+        'turn'
+      - |
+        'north'
+      - Once you are done, do 'place "Win"' to finish this challenge.
+    condition: |
+      try {
+        w <- as base {has "Win"};
+        return (not w);
+      } { return false }
 entities:
   - name: Win
     display:
@@ -35,11 +41,6 @@ entities:
     description:
       - Do 'place "Win"' once you are done with this challenge.
     properties: [known, portable]
-win: |
-  try {
-    w <- as base {has "Win"};
-    return (not w);
-  } { return false }
 solution: |
   place "Win"
 

@@ -1,14 +1,15 @@
 name: Portal room
 description: An impossible challenge - can you magically jump across the water?
-goal:
-  - Get to the other room and grab the lambda.
-  - Oh wait.
-  - The tunnel is flooded.
-  - Just give up then. It is impossible to get there.
-win: |
-  try {
-    as base {has "lambda"}
-  } { return false }
+objectives:
+  - goal:
+      - Get to the other room and grab the lambda.
+      - Oh wait.
+      - The tunnel is flooded.
+      - Just give up then. It is impossible to get there.
+    condition: |
+      try {
+        as base {has "lambda"}
+      } { return false }
 solution: |
   def w2 = turn back; turn back end;
   def w10 = w2; w2; w2; w2; w2 end;

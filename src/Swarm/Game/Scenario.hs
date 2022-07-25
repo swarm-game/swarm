@@ -53,7 +53,6 @@ module Swarm.Game.Scenario (
 ) where
 
 import Control.Algebra (Has)
-import Control.Applicative (liftA2, (<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
@@ -66,7 +65,7 @@ import Data.Char (isSpace)
 import Data.List ((\\))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -111,7 +110,7 @@ objectiveCondition :: Lens' Objective ProcessedTerm
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->
     Objective
-      <$> (fmap . map) reflow (v .: "goal")
+      <$> (fmap . map) reflow (v .:? "goal" .!= [])
       <*> (v .: "condition")
 
 ------------------------------------------------------------
@@ -263,22 +262,9 @@ instance FromJSONE EntityMap Scenario where
       <*> withE em (v ..:? "recipes" ..!= [])
       <*> withE em (localE (,rsMap) (v ..: "world"))
       <*> pure rs
-      <*> liftE (parseObjectives v)
+      <*> liftE (v .:? "objectives" .!= [])
       <*> liftE (v .:? "solution")
       <*> liftE (v .:? "stepsPerTick")
-   where
-    -- Parse either a list of objectives, or a single objective via
-    -- old-style 'win'/'goal' fields.
-    parseObjectives :: Object -> Parser [Objective]
-    parseObjectives v =
-      fromMaybe []
-        <$> liftA2
-          (<|>)
-          (v .:? "objectives")
-          ( do
-              g <- v .:? "goal" .!= []
-              (fmap . fmap) ((: []) . Objective g) (v .:? "win")
-          )
 
 --------------------------------------------------
 -- Lenses

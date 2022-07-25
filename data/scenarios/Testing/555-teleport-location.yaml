@@ -3,10 +3,11 @@ description: |
   Teleporting another robot should correctly update the robotsByLocation map.
   https://github.com/swarm-game/swarm/issues/555
 creative: True
-win: |
-  try {
-    as base {has "rock"}
-  } { return false }
+objectives:
+  - condition: |
+      try {
+        as base {has "rock"}
+      } { return false }
 solution: |
   fred <- robotNamed "fred";
   myLoc <- whereami;

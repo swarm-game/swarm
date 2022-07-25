@@ -5,16 +5,17 @@ description: |
 # The players should read the recipes and acquaint themselves with the UI.
 # This also motivates the next tutorial about obtaining entities.
 #
-goal:
-  - Robots can use the 'make' command to make things.
-  - Your base has a few trees in its inventory. Select them to see the
-    available recipes.
-  - Your goal is to make a "branch predictor", so you will have to make
-    some "branches" first.
-win: |
-  try {
-    as base {has "branch predictor"}
-  } { return false }
+objectives:
+  - goal:
+      - Robots can use the 'make' command to make things.
+      - Your base has a few trees in its inventory. Select them to see the
+        available recipes.
+      - Your goal is to make a "branch predictor", so you will have to make
+        some "branches" first.
+    condition: |
+      try {
+        as base {has "branch predictor"}
+      } { return false }
 solution: |
   make "branch"; make "branch predictor"
 robots:
