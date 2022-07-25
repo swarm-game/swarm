@@ -6,7 +6,6 @@ objectives:
       - The Swarm programming language has a strong static type system.  That is,
         every expression in the language has a type, and all the types must match up
         properly before a program can be executed.
-      - 
       - Previously, you have used the 'turn' command,
         which takes one parameter, which must be a direction.
       - What happens if you do not pass it a direction?

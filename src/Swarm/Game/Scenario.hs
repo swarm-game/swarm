@@ -53,7 +53,6 @@ module Swarm.Game.Scenario (
 ) where
 
 import Control.Algebra (Has)
-import Control.Applicative (liftA2, (<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
@@ -66,7 +65,7 @@ import Data.Char (isSpace)
 import Data.List ((\\))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
