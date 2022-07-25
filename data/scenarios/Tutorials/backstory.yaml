@@ -1,0 +1,32 @@
+name: Backstory
+description: |
+  Introduction to the backstory of Swarm.
+objectives:
+  - goal:
+      - You have crash landed on a strange planet!
+        Sensors indicate the atmosphere is highly toxic, so you
+        will need to stay inside your robotic base with its life support system.
+        Instead, you can build robots and send them out to explore.
+      - To prepare you, this simulator will walk you through a series of hands-on
+        exercises that introduce you to the way robots work and the programming
+        language you will use to control them.
+      - When you're ready for your first challenge, close this dialog with Esc or Ctrl-G.
+    condition: |
+      t <- time;
+      return (t >= 48)
+solution: |
+  noop
+robots:
+  - name: base
+    system: true
+    display:
+      char: 'Ω'
+      attr: robot
+    dir: [1,0]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    Ω

@@ -1,3 +1,4 @@
+backstory.yaml
 move.yaml
 turn.yaml
 types.yaml
