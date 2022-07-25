@@ -20,6 +20,7 @@ data CLI
       (Maybe FilePath) -- scenario
       (Maybe FilePath) -- file to run
       Bool -- cheat mode
+      (Maybe Int) -- web port
   | Format Input
   | DocGen GenerateDocs
   | LSP
@@ -33,7 +34,7 @@ cliParser =
         , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
         ]
     )
-    <|> Run <$> seed <*> scenario <*> run <*> cheat
+    <|> Run <$> seed <*> scenario <*> run <*> cheat <*> webPort
  where
   format :: Parser CLI
   format =
@@ -55,6 +56,8 @@ cliParser =
       ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
+  webPort :: Parser (Maybe Int)
+  webPort = optional $ option auto (long "web" <> metavar "INT" <> help "Start the web interface")
   scenario :: Parser (Maybe String)
   scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)
@@ -102,7 +105,7 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run seed scenario toRun cheat -> appMain seed scenario toRun cheat
+    Run seed scenario toRun cheat webPort -> appMain webPort seed scenario toRun cheat
     Format fo -> formatFile fo
     DocGen g -> generateDocs g
     LSP -> lspMain
