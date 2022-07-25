@@ -97,7 +97,6 @@ drawUI s
     NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
     MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
     NewGameMenu stk -> [drawNewGameMenuUI stk]
-    TutorialMenu -> [drawTutorialMenuUI]
     AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
@@ -160,20 +159,6 @@ drawMainMenuEntry NewGame = txt "New game"
 drawMainMenuEntry Tutorial = txt "Tutorial"
 drawMainMenuEntry About = txt "About"
 drawMainMenuEntry Quit = txt "Quit"
-
-drawTutorialMenuUI :: Widget Name
-drawTutorialMenuUI =
-  centerLayer $
-    vBox . map hCenter $
-      [ txt "Coming soon! In the meantime, check out the tutorial at"
-      , txt "https://github.com/swarm-game/swarm/blob/main/TUTORIAL.md ."
-      , txt " "
-      , txt "You can also play through a few in-progress"
-      , txt "tutorial challenges over in the New Game menu."
-      , txt " "
-      , txt "https://github.com/swarm-game/swarm/issues/25"
-      , txt "https://github.com/swarm-game/swarm/issues/296"
-      ]
 
 drawAboutMenuUI :: Maybe Text -> Widget Name
 drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"

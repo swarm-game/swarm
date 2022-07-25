@@ -433,7 +433,6 @@ data Menu
   = NoMenu -- We started playing directly from command line, no menu to show
   | MainMenu (BL.List Name MainMenuEntry)
   | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
-  | TutorialMenu
   | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
