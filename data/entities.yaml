@@ -553,12 +553,12 @@
     char: '%'
   description:
   - Installing treads on a robot allows it to move and turn.
-  - The 'move' command simply moves the robot one space in its direction.
+  - The 'move' command moves the robot forward one unit.
   - 'Example:'
-  - '  move; move; // moves two spaces'
+  - '  move; move; // move two units'
   - The 'turn' command takes a direction as an argument, which
     can be either absolute (north, west, east, south) or relative
-    (left, right, forward, back).
+    (left, right, forward, back, down).
   - 'Example:'
   - '  move; turn left; move; turn right'
   capabilities: [move, turn]
