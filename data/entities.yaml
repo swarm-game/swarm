@@ -388,7 +388,7 @@
 
 - name: rubber
   display:
-    attr: stone
+    attr: rubber
     char: '%'
   description:
   - A flexible, durable material made from LaTeX.

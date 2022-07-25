@@ -46,7 +46,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 
 import Swarm.Language.Syntax (Direction (..))
-import Swarm.TUI.Attr (entityAttr, robotAttr)
+import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
 import Swarm.Util (maxOn, (?))
 
 -- | Display priority.  Entities with higher priority will be drawn on
@@ -105,7 +105,7 @@ instance FromJSON Display where
       <$> v .:? "char" .!= ' '
       <*> v .:? "orientationMap" .!= M.empty
       <*> v .:? "curOrientation"
-      <*> v .:? "attr" .!= entityAttr
+      <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= entityAttr
       <*> v .:? "priority" .!= 1
       <*> v .:? "invisible" .!= False
 

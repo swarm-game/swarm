@@ -37,6 +37,14 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
+import Brick hiding (Direction)
+import Brick.Focus
+import Brick.Forms
+import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Center (center, centerLayer, hCenter)
+import Brick.Widgets.Dialog
+import Brick.Widgets.List qualified as BL
+import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
@@ -47,26 +55,12 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
+import Data.Semigroup (sconcat)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Linear
-import System.Clock (TimeSpec (..))
-import Text.Printf
-import Text.Wrap
-import Witch (from)
-
-import Brick hiding (Direction)
-import Brick.Focus
-import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
-import Brick.Widgets.Center (center, centerLayer, hCenter)
-import Brick.Widgets.Dialog
-import Brick.Widgets.List qualified as BL
-import Brick.Widgets.Table qualified as BT
-
-import Data.Semigroup (sconcat)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
@@ -85,6 +79,10 @@ import Swarm.TUI.Border
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
+import System.Clock (TimeSpec (..))
+import Text.Printf
+import Text.Wrap
+import Witch (from)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -335,6 +333,7 @@ drawModal s = \case
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
+  MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
@@ -361,6 +360,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
+      MessagesModal -> ("Messages", Just (0, [("Toggle pause", PauseButton)]), descriptionWidth)
       WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
@@ -475,6 +475,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("F2", "Robots list")
     , ("F3", "Available recipes")
     , ("F4", "Available commands")
+    , ("F5", "Messages")
     , ("Ctrl-q", "quit the game")
     , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
@@ -497,14 +498,15 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
-data NotificationList = RecipeList | CommandList
+data NotificationList = RecipeList | CommandList | MessageList
 
 availableListWidget :: GameState -> NotificationList -> Widget Name
-availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox $ addHeader widgetList)
+availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox widgetList)
  where
-  (vp, widgetList, addHeader) = case nl of
-    RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe, id)
-    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand, (<> constWiki) . (padLeftRight 18 constHeader :))
+  (vp, widgetList) = case nl of
+    RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe)
+    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand & (<> constWiki) . (padLeftRight 18 constHeader :))
+    MessageList -> (MessageViewport, messagesWidget gs)
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
   renderCommand = padLeftRight 18 . drawConst
@@ -544,6 +546,23 @@ descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 descriptionWidget :: AppState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry s e)
 
+-- | Draw a widget with messages to the current robot.
+messagesWidget :: GameState -> [Widget Name]
+messagesWidget gs = widgetList
+ where
+  widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
+  focusNewest = if gs ^. paused then id else over _last visible
+  drawLogEntry' (e, isLog) =
+    withAttr (if isLog then notifAttr else robotColor (e ^. leRobotID)) $
+      hBox
+        [ txt $ "[" <> view leRobotName e <> "] "
+        , txtWrapWith indent2 (e ^. leText)
+        ]
+  -- color each robot message with different color of the world
+  robotColor rid = fgCols !! (rid `mod` fgColLen)
+  fgCols = map fst worldAttributes
+  fgColLen = length fgCols
+
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
@@ -567,14 +586,14 @@ drawKeyMenu s =
   cheat = s ^. uiState . uiCheatMode
   goal = (s ^. uiState . uiGoal) /= NoGoal
 
-  notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> [(KeyHighlight, Text, Text)]
+  notificationKey :: Getter GameState (Notifications a) -> Text -> Text -> Maybe (KeyHighlight, Text, Text)
   notificationKey notifLens key name
-    | null (s ^. gameState . notifLens . notificationsContent) = []
+    | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
       let highlight
             | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
             | otherwise = NoHighlight
-       in [(highlight, key, name)]
+       in Just (highlight, key, name)
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -584,11 +603,16 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [(NoHighlight, "F1", "help"), (NoHighlight, "F2", "robots")]
-      <> notificationKey availableRecipes "F3" "Recipes"
-      <> notificationKey availableCommands "F4" "Commands"
-      <> [(NoHighlight, "^v", "creative") | cheat]
-      <> [(NoHighlight, "^g", "goal") | goal]
+    catMaybes
+      [ Just (NoHighlight, "F1", "help")
+      , Just (NoHighlight, "F2", "robots")
+      , notificationKey availableRecipes "F3" "Recipes"
+      , notificationKey availableCommands "F4" "Commands"
+      , notificationKey messageNotifications "F5" "Messages"
+      , may cheat (NoHighlight, "^v", "creative")
+      , may goal (NoHighlight, "^g", "goal")
+      ]
+  may b = if b then Just else const Nothing
 
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
@@ -875,8 +899,8 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
   -- If it's the focused entity, draw it highlighted.
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
-    | Just ingr == me = withAttr deviceAttr $ txtLines nm
-    | ingr == timeE = withAttr sandAttr $ txtLines nm
+    | Just ingr == me = withAttr highlightAttr $ txtLines nm
+    | ingr == timeE = withAttr yellowAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm
    where
@@ -911,9 +935,14 @@ drawRobotLog s =
   allMe = all ((== rn) . Just . view leRobotName) logEntries
 
   drawEntry i e =
-    (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id)
-      . txtWrapWith indent2
-      $ (if allMe then e ^. leText else T.concat ["[", e ^. leRobotName, "] ", e ^. leText])
+    (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
+      drawLogEntry (not allMe) e
+
+-- | Draw one log entry with an optional robot name first.
+drawLogEntry :: Bool -> LogEntry -> Widget a
+drawLogEntry addName e = txtWrapWith indent2 . (if addName then (name <>) else id) $ e ^. leText
+ where
+  name = "[" <> view leRobotName e <> "] "
 
 ------------------------------------------------------------
 -- REPL panel
