@@ -724,7 +724,7 @@ drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (st
 drawLabelledEntityName :: Entity -> Widget Name
 drawLabelledEntityName e =
   hBox
-    [ padRight (Pad 2) (displayEntity e)
+    [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
     , txt (e ^. entityName)
     ]
 
