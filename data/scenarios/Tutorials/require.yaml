@@ -42,6 +42,7 @@ solution: |
   build {require "boat"; move; move; move; move; move; f <- grab; turn back; move; move; move; move; move; give base f}
 robots:
   - name: base
+    heavy: true
     dir: [1,0]
     display:
       char: Ω

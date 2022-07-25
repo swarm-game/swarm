@@ -154,7 +154,7 @@ evaluateCESK ::
 evaluateCESK cesk = do
   createdAt <- getNow
   -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
-  let r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True createdAt
+  let r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True False createdAt
   addRobot r -- Add the robot to the robot map, so it can look itself up if needed
   evalState r . runCESK $ cesk
 
@@ -665,6 +665,7 @@ addSeedBot e (minT, maxT) loc ts =
         []
         [(1, e)]
         True
+        False
         ts
 
 -- | Interpret the execution (or evaluation) of a constant application
@@ -696,6 +697,11 @@ execConst c vs s k = do
       flagRedraw
       return $ Out VUnit s k
     Move -> do
+      -- Any heavy robot needs tank treads to move
+      heavy <- use robotHeavy
+      when heavy $ hasCapabilityFor CMoveheavy (TConst Move)
+
+      -- Figure out where we're going
       loc <- use robotLocation
       orient <- use robotOrientation
       let nextLoc = loc ^+^ (orient ? zero)
@@ -1295,6 +1301,7 @@ execConst c vs s k = do
               (In cmd e s [FExec])
               []
               []
+              False
               False
               createdAt
 

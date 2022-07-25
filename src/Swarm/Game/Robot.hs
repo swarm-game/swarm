@@ -57,6 +57,7 @@ module Swarm.Game.Robot (
   robotContext,
   robotID,
   robotParentID,
+  robotHeavy,
   machine,
   systemRobot,
   selfDestruct,
@@ -171,6 +172,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotContext :: RobotContext
   , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
+  , _robotHeavy :: Bool
   , _machine :: CESK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
@@ -297,6 +299,9 @@ instantiateRobot i r =
 --   built (or most recently reprogrammed) this robot, if there is
 --   one.
 robotParentID :: Lens' Robot (Maybe RID)
+
+-- | Is this robot extra heavy (thus requiring tank treads to move)?
+robotHeavy :: Lens' Robot Bool
 
 -- | A separate inventory for "installed devices", which provide the
 --   robot with certain capabilities.
@@ -437,10 +442,12 @@ mkRobot ::
   [(Count, Entity)] ->
   -- | Should this be a system robot?
   Bool ->
+  -- | Is this robot heavy?
+  Bool ->
   -- | Creation date
   TimeSpec ->
   RobotR phase
-mkRobot rid pid name descr loc dir disp m devs inv sys ts =
+mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -454,6 +461,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys ts =
     , _robotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
     , _robotID = rid
     , _robotParentID = pid
+    , _robotHeavy = heavy
     , _robotCreatedAt = ts
     , _machine = m
     , _systemRobot = sys
@@ -481,6 +489,7 @@ instance FromJSONE EntityMap TRobot where
       <*> v ..:? "devices" ..!= []
       <*> v ..:? "inventory" ..!= []
       <*> liftE (v .:? "system" .!= False)
+      <*> liftE (v .:? "heavy" .!= False)
       <*> pure 0
    where
     mkMachine Nothing = Out VUnit emptyStore []
