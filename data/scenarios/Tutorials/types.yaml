@@ -1,10 +1,11 @@
-name: Typing
+name: Types
 description: |
-  Learn about the types of commands and values.
+  Learn about the Swarm type system.
 goal:
-    - Before we get to solving more complex challenges,
-      it would be good to get used to how the commands
-      in Swarm language work and how they don't.
+    - The Swarm programming language has a strong static type system.  That is,
+      every expression in the language has a type, and all the types must match up
+      properly before a program can be executed.
+    - 
     - Previously, you have used the 'turn' command,
       which takes one parameter, which must be a direction.
     - What happens if you do not pass it a direction?
@@ -19,9 +20,11 @@ goal:
       'move move'
     - The last two commands might give the most confusing error,
       when they are obviously missing a ';' separating the commands.
+      The error comes from the fact that a command such as 'move' is
+      being used as if it is a function, by applying it to an argument.
     - |
-      Finally try these commands, which will just show the value
-      (passing values will be useful later) and its type:
+      Finally try these expressions, which will just show 
+      and its type:
     - |
       'turn'
     - |
