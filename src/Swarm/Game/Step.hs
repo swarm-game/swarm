@@ -268,18 +268,17 @@ traceLogShow = traceLog . from . show
 --   constant.  Right now, the only difference is whether the robot is
 --   heavy or not when executing the 'Move' command, but there might
 --   be other exceptions added in the future.
-constCapsFor :: Robot -> Const -> Maybe Capability
-constCapsFor r Move
+constCapsFor :: Const -> Robot -> Maybe Capability
+constCapsFor Move r
   | r ^. robotHeavy = Just CMoveheavy
-constCapsFor _ c = constCaps c
+constCapsFor c _ = constCaps c
 
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
-ensureCanExecute c = do
-  r <- get @Robot
-  case constCapsFor r c of
+ensureCanExecute c =
+  gets @Robot (constCapsFor c) >>= \case
     Nothing -> pure ()
     Just cap -> do
       creative <- use creativeMode
