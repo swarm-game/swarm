@@ -54,6 +54,7 @@ robots:
     devices:
       - logger
       - 3D printer
+      - dictionary
     inventory:
       - [10, solar panel]
       - [10, logger]

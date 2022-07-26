@@ -53,6 +53,7 @@ robots:
       - [10, treads]
       - [10, solar panel]
       - [10, harvester]
+      - [10, grabber]
       - [0, boulder]
       - [0, flower]
 world:
