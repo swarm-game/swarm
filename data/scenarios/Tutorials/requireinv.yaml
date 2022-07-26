@@ -13,8 +13,8 @@ objectives:
         build a robot with 10 flowers in its inventory.
       - Your goal in this challenge is to cover the entire 4x4 gray area
         with rocks!
-      - Remember that you can define commands to simplify your task.
-      - 'For example:'
+      - |
+        Remember that you can define commands to simplify your task, for example:
       - 'def PR = move; place "rock" end'
     condition: |
       def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
@@ -32,12 +32,15 @@ objectives:
         ifC (has "tree") {return false} {return true}
       } { return false }
 solution: |
-  // TODO: #540 simplify this solution once we can use `def`.
-
-  build {require 4 "rock"; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
-  build {require 4 "rock"; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
-  build {require 4 "rock"; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"};
-  build {require 4 "rock"; move; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"}
+  def m4 = move; move; move; move end;
+  def mp = move; place "rock" end;
+  def mp4 = mp; mp; mp; mp end;
+  def rr = move; turn right; mp4; turn back; m4; turn right end;
+  build {
+    require "treads"; require "grabber"; // #540
+    require 16 "rock";
+    rr; rr; rr; rr
+  };
 robots:
   - name: base
     dir: [1,0]
