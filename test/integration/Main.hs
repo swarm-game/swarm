@@ -149,6 +149,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/lambda"
         , testSolution Default "Tutorials/require"
         , testSolution Default "Tutorials/requireinv"
+        , testSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
         "Challenges"
