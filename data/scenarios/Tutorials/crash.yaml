@@ -5,15 +5,17 @@ objectives:
   - goal:
       - Before you send your robots far away you need to learn how
         to figure out what went wrong with them if they crash.
-      - Send a robot to walk four steps straight east into the mountain,
-        but use the bind syntax 'r <- build {COMMANDS}'.
       - |
+        Send a robot to walk four steps straight east into the mountain,
+        but use the bind syntax 'r <- build {COMMANDS}'.  The 'build' command returns
+        a reference to the newly built robot, and we want to be able to refer
+        to the robot again later.
         Since you expect the robot will crash into the mountain,
-        add a 'log' command so that we will see what command failed:
+        add some 'log' commands so that we will see what command failed, for example:
       - |
         'r <- build {log "Hi!"; move;move;move; log "3"; move; log "OK"}'
-      - After that you can 'view r', to see how far it got.
-      - The instructions on how to win will appear in the crashed robots log.
+      - After that, execute 'view r' to see how far it got.
+      - Further instructions will appear in the crashed robot's log.
     condition: |
       try {
         as base {has "Win"}
