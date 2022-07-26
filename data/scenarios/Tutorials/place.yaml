@@ -13,12 +13,14 @@ objectives:
       - There is a fast-growing tree (called "spruce") ahead of you.  You could 'grab'
         it as before, but you now have a new device called a 'harvester'.
         If you 'harvest' a tree rather than 'grab' it, a new tree will grow in its
-        place.
-      - You can plant a tree seed by 'place "spruce"; harvest' - that way you can
-        immediately place the next seed.
-      - You can speed this up by placing the tree in all available cells.
-        That way you can have eight times as many trees growing at once.
-      - Your goal is to collect 6 trees.
+        place after some time.
+      - You can also place items from your inventory on the ground
+        below you using the 'place' command.
+      - Using these commands in conjunction, you can plant new growable entities by
+        placing and then harvesting them.  For example, 'place "spruce"; harvest' will
+        plant a new spruce seed.
+      - Your goal is to collect 6 spruce trees.  You can speed this up
+        by planting more trees.
       - |
         TIP: You can get a sneak peak at a feature we will explain later and type
         'def t = move; place "spruce"; harvest; end' after which you only need to type 't'
