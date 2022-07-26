@@ -1,5 +1,6 @@
 // Solution to 'farming.yaml' tutorial challenge
 
+// Part 1: farm 256 lambdas
 def tR = turn right end;
 def tL = turn left end;
 def tB = turn back end;
