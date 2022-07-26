@@ -40,6 +40,7 @@ solution: |
   build {require 4 "rock"; move; move; move; move; turn right; move; place "rock"; move; place "rock"; move; place "rock"; move; place "rock"}
 robots:
   - name: base
+    heavy: true
     dir: [1,0]
     display:
       char: Ω
