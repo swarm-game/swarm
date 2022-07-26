@@ -6,30 +6,30 @@ objectives:
       - The Swarm programming language has a strong static type system.  That is,
         every expression in the language has a type, and all the types must match up
         properly before a program can be executed.
-      - Previously, you have used the 'turn' command,
-        which takes one parameter, which must be a direction.
-      - What happens if you do not pass it a direction?
-      - 'Try these commands:'
-      - |
-        'turn 1'
-      - |
-        'turn move'
-      - |
-        'turn north move'
-      - |
-        'move move'
-      - The last two commands might give the most confusing error,
-        when they are obviously missing a ';' separating the commands.
-        The error comes from the fact that a command such as 'move' is
-        being used as if it is a function, by applying it to an argument.
-      - |
-        Finally try these expressions, which will just show 
-        and its type:
-      - |
-        'turn'
+      - To see the type of an expression, enter the expression at the REPL without
+        hitting Return.  If the expression type checks, its type will be displayed
+        in gray text at the top right of the REPL window.
+      - For example, if you try typing 'move', you can see that it has
+        type 'cmd ()', which means that 'move' is a command which
+        returns a value of the unit type (also written () ).
+      - As another example, you can see that 'turn' has type 'dir -> cmd ()',
+        meaning that 'turn' is a function which takes a direction as input
+        and results in a command.
+      - "Here are a few more expressions for you to try (feel free to try others as well):"
       - |
         'north'
-      - Once you are done, do 'place "Win"' to finish this challenge.
+      - |
+        'move; move'
+      - |
+        'grab'
+      - |
+        'make'
+      - |
+        3
+      - |
+        "tree"
+      - Once you are done experimenting, execute 'place "Win"' to finish this challenge and
+        move on to the next.
     condition: |
       try {
         w <- as base {has "Win"};

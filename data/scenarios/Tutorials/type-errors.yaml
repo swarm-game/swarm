@@ -1,0 +1,66 @@
+name: Type errors
+description: |
+  Learn how to discover type errors.
+objectives:
+  - goal:
+      - |
+        Let's see what happens when you enter something that does not type check.
+        Try typing 'turn 1' at the REPL prompt.  Clearly this is nonsense, and
+        the expression will be highlighted in red.  To see what the error is, hit Enter.
+        A box will pop up with a type (or parser) error.
+      - "Some other type errors for you to try:"
+      - |
+        'turn move'
+      - |
+        'place tree' (without double quotes around tree)
+      - |
+        'move move'
+      - The last expression might give the most confusing error.
+        Obviously we are just missing a ';' separating the two 'move'
+        commands.  However, without the semicolon, it looks like
+        'move' is a function being applied to an argument, but of course
+        'move' is not a function.
+      - Once you are done experimenting, execute 'place "Win"' to finish this challenge and
+        move on to the next.
+    condition: |
+      try {
+        w <- as base {has "Win"};
+        return (not w);
+      } { return false }
+entities:
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - Do 'place "Win"' once you are done with this challenge.
+    properties: [known, portable]
+solution: |
+  place "Win"
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - treads
+      - compass
+      - logger
+      - grabber
+    inventory:
+      - [1, Win]
+world:
+  default: [blank]
+  palette:
+    '>': [grass, null, base]
+    '.': [grass]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │>..│
+    │...│
+    └───┘
