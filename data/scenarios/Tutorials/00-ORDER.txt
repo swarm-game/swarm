@@ -11,6 +11,7 @@ install.yaml
 build.yaml
 crash.yaml
 scan.yaml
+def.yaml
 require.yaml
 requireinv.yaml
 world101.yaml

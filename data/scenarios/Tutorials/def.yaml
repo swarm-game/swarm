@@ -1,0 +1,79 @@
+name: Define
+description: |
+  Learn how to define new commands.
+objectives:
+  - goal:
+      - Your goal is to build a robot to fetch the flower growing in the
+        upper right and bring it back to you; you win the challenge when the base
+        has a flower in its inventory.
+      - |
+        However, it would be extremely tedious to simply type out all the individual
+        'move' and 'turn' commands required.  Your base has a 'dictionary' device
+        that can be used to define new commands.  For example:
+      - |
+        def m4 = move; move; move; move end
+      - defines a new command 'm4' as four consecutive 'move' commands.  With judicious
+        use of new definitions, it should be possible to complete this challenge
+        in just a few lines of code.
+      - |
+        TIP: your base is at coordinates (0,0), and the flower is at (16,4), which
+        you can confirm by clicking in the world map panel. When you click on a cell,
+        its contents and coordinates are shown in the lower left.
+    condition: |
+      try {
+        as base {has "flower"}
+      } { return false }
+solution: |
+  def m2 = move; move end;
+  def m4 = m2; m2 end;
+  def m8 = m4; m4 end;
+  def m16 = m8; m8 end;
+  def tL = turn left end;
+  def tR = turn right end;
+  def tB = turn back end;
+  def S = m16; tL; m2; tL; m16; tR; m2; tR; m16 end;
+  build {
+    require "treads";  // #540
+    S; f <- harvest; tB; S; give base f
+  }
+robots:
+  - name: base
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+      - dictionary
+    inventory:
+      - [10, logger]
+      - [10, compass]
+      - [10, scanner]
+      - [10, treads]
+      - [10, solar panel]
+      - [10, harvester]
+      - [0, boulder]
+      - [0, flower]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '*': [grass, flower]
+    '@': [grass, boulder]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 5]
+  map: |
+    ┌─────────────────┐
+    │................*│
+    │.@@@@@@@@@@@@@@@@│
+    │.................│
+    │@@@@@@@@@@@@@@@@.│
+    │Ω................│
+    └─────────────────┘
