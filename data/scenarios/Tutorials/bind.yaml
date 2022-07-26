@@ -4,12 +4,12 @@ description: |
 objectives:
   - goal:
       - |
-        Some commands are simple, like 'move: cmd ()', because
-        they do not have anything meaningful to return.
+        Some simple commands, like 'move: cmd ()', do not have any meaningful value to return.
       - |
-        But there are commands that do, like 'grab' that has type
-        'cmd string' which means that it returns the name of the
-        grabbed entity. Try it:
+        Other commands do return a nontrivial value after executing.
+        For example, 'grab' has type
+        'cmd string', and returns the name of the
+        grabbed entity as a string. Try it:
       - |
         'move; grab'
       - |
@@ -17,12 +17,13 @@ objectives:
       - |
         'move; t <- grab; place t'
       - |
-        This can be useful if you for example do not care what you
-        grabbed and just want to move it to another cell.
+        This can be useful, for example, if you do not care what you
+        grabbed and just want to move it to another cell; or if you
+        are not sure of the name of the thing being grabbed.
       - Once you are done, do 'place "Win"' to finish this challenge.
-      - You might need to 'grab' the entity you are standing on
+        (Note, you might need to 'grab' the entity you are standing on
         or move to an empty cell first, since each cell can only
-        contain at most one entity.
+        contain at most one entity.)
     condition: |
       try {
         w <- as base {has "Win"};
