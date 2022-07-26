@@ -264,19 +264,30 @@ traceLogShow = traceLog . from . show
 -- Exceptions and validation
 ------------------------------------------------------------
 
+-- | Capabilities needed for a specific robot to evaluate or execute a
+--   constant.  Right now, the only difference is whether the robot is
+--   heavy or not when executing the 'Move' command, but there might
+--   be other exceptions added in the future.
+constCapsFor :: Robot -> Const -> Maybe Capability
+constCapsFor r Move
+  | r ^. robotHeavy = Just CMoveheavy
+constCapsFor _ c = constCaps c
+
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
 ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
-ensureCanExecute c = case constCaps c of
-  Nothing -> pure ()
-  Just cap -> do
-    creative <- use creativeMode
-    sys <- use systemRobot
-    robotCaps <- use robotCapabilities
-    let hasCaps = cap `S.member` robotCaps
-    (sys || creative || hasCaps)
-      `holdsOr` Incapable FixByInstall (R.singletonCap cap) (TConst c)
+ensureCanExecute c = do
+  r <- get @Robot
+  case constCapsFor r c of
+    Nothing -> pure ()
+    Just cap -> do
+      creative <- use creativeMode
+      sys <- use systemRobot
+      robotCaps <- use robotCapabilities
+      let hasCaps = cap `S.member` robotCaps
+      (sys || creative || hasCaps)
+        `holdsOr` Incapable FixByInstall (R.singletonCap cap) (TConst c)
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
@@ -697,10 +708,6 @@ execConst c vs s k = do
       flagRedraw
       return $ Out VUnit s k
     Move -> do
-      -- Any heavy robot needs tank treads to move
-      heavy <- use robotHeavy
-      when heavy $ hasCapabilityFor CMoveheavy (TConst Move)
-
       -- Figure out where we're going
       loc <- use robotLocation
       orient <- use robotOrientation
