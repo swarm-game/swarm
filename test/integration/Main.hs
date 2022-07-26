@@ -146,6 +146,7 @@ testScenarioSolution _ci _em =
             assertBool "Could not find a robot with winning instructions!" win
         , testSolution Default "Tutorials/scan"
         , testSolution Default "Tutorials/def"
+        , testSolution Default "Tutorials/lambda"
         , testSolution Default "Tutorials/require"
         , testSolution Default "Tutorials/requireinv"
         ]

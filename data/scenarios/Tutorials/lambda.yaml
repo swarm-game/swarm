@@ -1,0 +1,84 @@
+name: Lambda
+description: |
+  Learn how to define functions.
+objectives:
+  - goal:
+      - XXX explain lambda.  Suggest
+      - |
+        def x4 : cmd () -> cmd () = \c. c; c; c; c end
+      - Type annotation is optional.
+      - Win the challenge by sending a robot to grab the flower
+        (you don't need to bring it back).
+    condition: |
+      try {
+        teleport self (32,-16);
+        b <- ishere "flower";
+        return (not b)
+      } { return false }
+solution: |
+  def x4 = \c. c; c; c; c end;
+  def m2 = move; move end;
+  def m4 = x4 move end;
+  def tR = turn right end;
+  def tL = turn left end;
+  def s = m4; tL; m2; tL; m4; tR; m2; tR end;
+  build {
+    require "treads"; require "lambda";  // #540
+    x4 (x4 s; m4; m2; tR; x4 (x4 move); tL; m2);
+    grab
+  }
+robots:
+  - name: base
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+      - dictionary
+    inventory:
+      - [10, logger]
+      - [10, compass]
+      - [10, treads]
+      - [10, solar panel]
+      - [10, grabber]
+      - [10, lambda]
+      - [0, boulder]
+      - [0, flower]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '*': [grass, flower]
+    '@': [grass, boulder]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1,1]
+  map: |
+    ┌─────────────────────────────────┐
+    │.......@.......@.......@.......@@│
+    │.@@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@@│
+    │.....@.@.....@.@.....@.@.....@.@@│
+    │@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@.@@│
+    │.....@.@.....@.@.....@.@.....@.@@│
+    │.@@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@@│
+    │.....@.@.....@.@.....@.@.....@.@@│
+    │@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@.@@│
+    │.....@.@.....@.@.....@.@.....@.@@│
+    │.@@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@@│
+    │.....@.@.....@.@.....@.@.....@.@@│
+    │@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@.@@│
+    │.....@.@.....@.@.....@.@.....@.@@│
+    │.@@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@@│
+    │.....@.@.....@.@.....@.@.....@.@@│
+    │@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@.@@│
+    │Ω....@.......@.......@.......@..*│
+    └─────────────────────────────────┘
+
+
