@@ -1,6 +1,6 @@
-name: Foo bar
+name: First steps
 description: |
-  Blah blah
+  Learn some of the first steps you might take on the new planet.
 objectives:
   - goal:
       - You're ready to graduate to something a bit more complex! This
@@ -13,6 +13,11 @@ objectives:
         build more advanced devices and produce more robots,
         you'll need to explore, gather resources, and set up some
         automated production pipelines.
+      - At this point you may want to create an external `.sw` file
+        with useful definitions you create.  You can then load it
+        via the `run` command.  See
+        https://github.com/swarm-game/swarm/tree/main/editors
+        for help configuring your editor with support for swarm-lang.
       - Your first task is to collect three or more trees. You can
         remind yourself of the available commands using F4.
     condition: |
@@ -36,9 +41,12 @@ objectives:
         send out a robot to harvest something, try programming it to come back
         to the base when it is done.  Then, execute `salvage` to get the harvester
         back, so you can reuse it in another robot later."
-      - Now see if you can find a 'lambda'. Scan some things and use
+      - One of the next things you will probably want is a 'lambda', so you can
+        define and use parameterized commands.  Scan some things and use
         the process of elimination to find one.  Since lambdas regrow,
         once you find one, try getting it with `harvest`.
+      - "TIP: remember that you can click on a cells in the world to see their
+        coordinates."
     condition: |
       try { as base {has "lambda"} } {return false}
 robots:
