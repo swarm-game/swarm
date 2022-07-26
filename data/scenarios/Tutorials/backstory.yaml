@@ -23,13 +23,27 @@ objectives:
       - To prepare you, this simulator will walk you through a series of hands-on
         exercises that introduce you to the way robots work and the programming
         language you will use to control them.
-      - When you're ready for your first challenge, close this dialog with Esc or Ctrl-G;
-        after a few seconds you will progress to the first challenge.
+      - When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
+        and type 'place "Ready!"' (without the single quotes) at the prompt.
     condition: |
-      t <- time;
-      return (t >= 48)
+      try {
+        as base {
+          b <- has "Ready!";
+          return (not b)
+        }
+      } { return false }
 solution: |
-  noop
+  place "Ready!"
+entities:
+  - name: Ready!
+    display:
+      attr: device
+      char: 'R'
+    description:
+      - Type 'place "Ready!"' (without the single quotes) at the prompt
+        once you are ready for the first tutorial challenge!
+      - To open the full goal text again, you can hit Ctrl-G.
+    properties: [known, portable]
 robots:
   - name: base
     system: true
@@ -37,6 +51,8 @@ robots:
       char: 'Ω'
       attr: robot
     dir: [1,0]
+    inventory:
+      - [1, Ready!]
 world:
   default: [blank]
   palette:
