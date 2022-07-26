@@ -857,7 +857,11 @@
     attr: device
     char: '0'
   description:
-  - A clock is a device for keeping track of time.
+  - A clock is a device for keeping track of time.  It enables the 'wait' and 'time' commands.
+  - |
+    'time : cmd int' returns the current time, measured in game ticks since the beginning of the game.
+  - |
+    'wait : int -> cmd ()' causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
   capabilities: [time]
 
