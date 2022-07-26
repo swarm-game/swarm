@@ -5,16 +5,16 @@ objectives:
   - goal:
       - You're ready to graduate to something a bit more complex! This
         multi-step tutorial will walk you through a few of the first
-        steps you might like to take when starting a new classic mode
-        game, using many of the commands and techniques you have learned in the
+        steps you might take in exploring the new planet, using many
+        of the commands and techniques you have learned in the
         previous tutorial challenges.
       - You can see that your base starts out with some key devices
         installed and some basic supplies for building robots.  To
-        build more advanced devices and mass-produce more robots,
+        build more advanced devices and produce more robots,
         you'll need to explore, gather resources, and set up some
         automated production pipelines.
       - Your first task is to collect three or more trees. You can
-        remind yourself of available commands using F4.
+        remind yourself of the available commands using F4.
     condition: |
       try {
         n <- as base {count "tree"};
@@ -32,11 +32,11 @@ objectives:
       - Now that you have a harvester, you can use `harvest` instead of `grab`
         whenever you pick up a growing item (check for the word "growing" at the
         top of the item description), to leave behind a seed that will regrow.
-      - "Pro tip: since you only have a single harvester device for now, whenever you
+      - "TIP: since you only have a single harvester device for now, whenever you
         send out a robot to harvest something, try programming it to come back
         to the base when it is done.  Then, execute `salvage` to get the harvester
         back, so you can reuse it in another robot later."
-      - Next, see if you can find a 'lambda'. Scan some things and use
+      - Now see if you can find a 'lambda'. Scan some things and use
         the process of elimination to find one.  Since lambdas regrow,
         once you find one, try getting it with `harvest`.
     condition: |
