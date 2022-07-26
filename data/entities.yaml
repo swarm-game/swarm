@@ -581,7 +581,7 @@
     char: '%'
   description:
   - Tank treads work like treads, but are large enough to move even heavy robots around.
-  capabilities: [move, turn]
+  capabilities: [move, turn, moveheavy]
   properties: [portable]
 
 - name: grabber

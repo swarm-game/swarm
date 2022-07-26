@@ -399,7 +399,7 @@ robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
     , txt rLog
     ]
    where
-    nameWidget = hBox [displayEntity (robot ^. robotEntity), higlightSystem . txt $ " " <> robot ^. robotName]
+    nameWidget = hBox [renderDisplay (robot ^. robotDisplay), higlightSystem . txt $ " " <> robot ^. robotName]
     higlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
 
     ageStr
@@ -673,7 +673,7 @@ drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInve
                 hBox
                   [ txt (r ^. robotName)
                   , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
-                  , padLeft (Pad 2) $ displayEntity (r ^. robotEntity)
+                  , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
                   ]
             , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
             ]
@@ -709,7 +709,7 @@ drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (st
 drawLabelledEntityName :: Entity -> Widget Name
 drawLabelledEntityName e =
   hBox
-    [ padRight (Pad 2) (displayEntity e)
+    [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
     , txt (e ^. entityName)
     ]
 

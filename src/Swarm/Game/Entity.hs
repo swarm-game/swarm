@@ -25,7 +25,6 @@ module Swarm.Game.Entity (
   -- * Entities
   Entity,
   mkEntity,
-  displayEntity,
 
   -- ** Lenses
   -- $lenses
@@ -80,7 +79,6 @@ module Swarm.Game.Entity (
   difference,
 ) where
 
-import Brick (Widget)
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
@@ -445,10 +443,6 @@ entityCapabilities = hashedLens _entityCapabilities (\e x -> e {_entityCapabilit
 -- | The inventory of other entities carried by this entity.
 entityInventory :: Lens' Entity Inventory
 entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
-
--- | Display an entity as a single character.
-displayEntity :: Entity -> Widget n
-displayEntity e = renderDisplay (e ^. entityDisplay)
 
 ------------------------------------------------------------
 -- Inventory

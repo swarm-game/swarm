@@ -37,6 +37,8 @@ data Capability
     CPower
   | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Move' command for a heavy robot
+    CMoveheavy
   | -- | Execute the 'Turn' command
     --
     -- NOTE: using cardinal directions is separate 'COrient' capability
