@@ -827,6 +827,8 @@ handleRobotPanelEvent (CharKey '0') = do
   uiState . uiInventoryShouldUpdate .= True
   uiState . uiShowZero %= not
 handleRobotPanelEvent (VtyEvent ev) = do
+  -- This does not work we want to skip redrawing in the no-list case
+  -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
   mList <- preuse $ uiState . uiInventory . _Just . _2
   case mList of
     Nothing -> continueWithoutRedraw
