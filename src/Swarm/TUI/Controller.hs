@@ -817,25 +817,24 @@ adjustTPS (+/-) = uiState . lgTicksPerSecond %~ (+/- 1)
 
 -- | Handle user input events in the robot panel.
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleRobotPanelEvent (Key V.KEnter) = do
-  focused <- gets focusedEntity
-  maybe continueWithoutRedraw descriptionModal focused
-handleRobotPanelEvent (CharKey 'm') = do
-  focused <- gets focusedEntity
-  maybe continueWithoutRedraw makeEntity focused
-handleRobotPanelEvent (CharKey '0') = do
-  uiState . uiInventoryShouldUpdate .= True
-  uiState . uiShowZero %= not
-handleRobotPanelEvent (VtyEvent ev) = do
-  -- This does not work we want to skip redrawing in the no-list case
-  -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
-  mList <- preuse $ uiState . uiInventory . _Just . _2
-  case mList of
-    Nothing -> continueWithoutRedraw
-    Just l -> do
-      l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
-      uiState . uiInventory . _Just . _2 .= l'
-handleRobotPanelEvent _ = continueWithoutRedraw
+handleRobotPanelEvent = \case
+  (Key V.KEnter) ->
+    gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
+  (CharKey 'm') ->
+    gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
+  (CharKey '0') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiShowZero %= not
+  (VtyEvent ev) -> do
+    -- This does not work we want to skip redrawing in the no-list case
+    -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
+    mList <- preuse $ uiState . uiInventory . _Just . _2
+    case mList of
+      Nothing -> continueWithoutRedraw
+      Just l -> do
+        l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
+        uiState . uiInventory . _Just . _2 .= l'
+  _ -> continueWithoutRedraw
 
 -- | Attempt to make an entity selected from the inventory, if the
 --   base is not currently busy.
