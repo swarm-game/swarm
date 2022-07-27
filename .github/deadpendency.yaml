@@ -1,7 +1,7 @@
 ignore-failures:
     haskell:
       # there is no new alternative 
-      - noise
+      - hsnoise
       # does not need any new updates
       - fused-effects-lens
       - dotgen
