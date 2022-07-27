@@ -3,4 +3,9 @@ source-repository-package
   location: https://github.com/colinhect/hsnoise
   tag: 4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d
 
+source-repository-package
+  type: git
+  location: https://github.com/jtdaugherty/brick
+  tag: 34f77c4bb7a370769bf6f641b5acf7c15fb519b5
+
 packages: .

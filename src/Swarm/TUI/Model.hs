@@ -823,17 +823,21 @@ initAppState userSeed scenarioName toRun cheatMode = do
     False -> return $ AppState gs ui
     True -> do
       scenario <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
-      liftIO $ scenarioToAppState scenario userSeed toRun $ AppState gs ui
+      liftIO $ execStateT (scenarioToAppState scenario userSeed toRun) (AppState gs ui)
 
 -- XXX do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
-scenarioToAppState :: Scenario -> Maybe Seed -> Maybe String -> AppState -> IO AppState
-scenarioToAppState scene userSeed toRun (AppState g u) = do
-  g' <- scenarioToGameState scene userSeed toRun g
-  u' <- scenarioToUIState scene u
-
-  return $ AppState g' u'
+scenarioToAppState :: (MonadIO m, MonadState AppState m) => Scenario -> Maybe Seed -> Maybe String -> m ()
+scenarioToAppState scene userSeed toRun = do
+  withLensIO gameState $ scenarioToGameState scene userSeed toRun
+  withLensIO uiState $ scenarioToUIState scene
+ where
+  withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m ()
+  withLensIO l a = do
+    x <- use l
+    x' <- liftIO $ a x
+    l .= x'
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState :: Scenario -> UIState -> IO UIState

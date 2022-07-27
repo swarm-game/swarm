@@ -15,6 +15,7 @@ import Data.List (find)
 
 import Brick (EventM)
 import Brick.Widgets.List qualified as BL
+import Control.Monad.State.Strict (modify)
 import Graphics.Vty qualified as V
 
 -- | Handle a list event, taking an extra predicate to identify which
@@ -25,31 +26,28 @@ handleListEventWithSeparators ::
   V.Event ->
   -- | Is this element a separator?
   (e -> Bool) ->
-  BL.GenericList n t e ->
-  EventM n (BL.GenericList n t e)
-handleListEventWithSeparators e isSep theList =
+  EventM n (BL.GenericList n t e) ()
+handleListEventWithSeparators e isSep =
   case e of
-    V.EvKey V.KUp [] -> return backward
-    V.EvKey (V.KChar 'k') [] -> return backward
-    V.EvKey V.KDown [] -> return forward
-    V.EvKey (V.KChar 'j') [] -> return forward
+    V.EvKey V.KUp [] -> modify backward
+    V.EvKey (V.KChar 'k') [] -> modify backward
+    V.EvKey V.KDown [] -> modify forward
+    V.EvKey (V.KChar 'j') [] -> modify forward
     V.EvKey V.KHome [] ->
-      return $
-        listFindByStrategy fwdInclusive isItem $
-          BL.listMoveToBeginning theList
+      modify $ listFindByStrategy fwdInclusive isItem . BL.listMoveToBeginning
     V.EvKey V.KEnd [] ->
-      return $
-        listFindByStrategy bwdInclusive isItem $
-          BL.listMoveToEnd theList
-    V.EvKey V.KPageDown [] ->
-      listFindByStrategy bwdInclusive isItem <$> BL.listMovePageDown theList
-    V.EvKey V.KPageUp [] ->
-      listFindByStrategy fwdInclusive isItem <$> BL.listMovePageUp theList
-    _ -> return theList
+      modify $ listFindByStrategy bwdInclusive isItem . BL.listMoveToEnd
+    V.EvKey V.KPageDown [] -> do
+      BL.listMovePageDown
+      modify $ listFindByStrategy bwdInclusive isItem
+    V.EvKey V.KPageUp [] -> do
+      BL.listMovePageUp
+      modify $ listFindByStrategy fwdInclusive isItem
+    _ -> return ()
  where
   isItem = not . isSep
-  backward = listFindByStrategy bwdExclusive isItem theList
-  forward = listFindByStrategy fwdExclusive isItem theList
+  backward = listFindByStrategy bwdExclusive isItem
+  forward = listFindByStrategy fwdExclusive isItem
 
 -- | Which direction to search: forward or backward from the current location.
 data FindDir = FindFwd | FindBwd deriving (Eq, Ord, Show, Enum)
