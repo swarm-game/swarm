@@ -3,6 +3,7 @@ ignore-failures:
       # there is no new alternative 
       - hsnoise
       # does not need any new updates
+      - tasty-expected-failure
       - fused-effects-lens
       - dotgen
       # exports GHC capabilities and does not need updates
