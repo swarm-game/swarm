@@ -1,0 +1,32 @@
+ignore-failures:
+    haskell:
+      # there is no new alternative 
+      - noise
+      # does not need any new updates
+      - fused-effects-lens
+      - dotgen
+      # exports GHC capabilities and does not need updates
+      - array
+      - syb
+      # pretty feature complete, but also beyorgey's libraries :)
+      - simple-enumeration
+      - split
+
+rules-config:
+  no-recent-package-release:
+    warn-at-months: 24
+    fail-at-months: disabled
+  no-recent-commit:
+    warn-at-months: 12
+    fail-at-months: 18
+  few-yearly-commits:
+    warn-at-count: 2
+    fail-at-count: disabled # does not fail by default
+
+  # these can be 'disabled', 'warn' or 'fail'
+  repository-archived: fail
+  repository-is-fork: warn
+  package-deprecated: fail
+  single-recent-author: disabled
+  repository-not-identified: warn
+  repository-not-found: warn
