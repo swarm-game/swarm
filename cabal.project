@@ -6,6 +6,6 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/jtdaugherty/brick
-  tag: 34f77c4bb7a370769bf6f641b5acf7c15fb519b5
+  tag: dee90efa8cde1755f435c1f7dd9b6828b1bd0089
 
 packages: .

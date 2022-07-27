@@ -234,7 +234,7 @@ handleMainEvent ev = do
     MouseDown n _ _ mouseLoc ->
       case n of
         WorldPanel -> do
-          mouseCoordsM <- Brick.withLens gameState (mouseLocToWorldCoords mouseLoc)
+          mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
           uiState . uiWorldCursor .= mouseCoordsM
         REPLPanel ->
           -- Do not clear the world cursor when going back to the REPL
@@ -322,7 +322,7 @@ handleModalEvent = \case
       Just (Just (NextButton scene)) -> startGame scene
       _ -> return ()
   ev -> do
-    withFirst (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
+    Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
       Just RecipesModal -> handleInfoPanelEvent recipesScroll (VtyEvent ev)
@@ -488,7 +488,7 @@ updateUI = do
   inventoryUpdated <-
     if listRobotHash /= focusedRobotHash || shouldUpdate
       then do
-        Brick.withLens uiState $ populateInventoryList fr
+        Brick.zoom uiState $ populateInventoryList fr
         (uiState . uiInventoryShouldUpdate) .= False
         pure True
       else pure False
