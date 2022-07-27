@@ -108,9 +108,7 @@ module Swarm.TUI.Model (
   -- ** Updating
   populateInventoryList,
   infoScroll,
-  recipesScroll,
-  commandsScroll,
-  robotsScroll,
+  modalScroll,
 
   -- * App state
   AppState,
@@ -202,25 +200,15 @@ data Name
     ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
-  | -- | The scrollable viewport for the recipe list.
-    RecipesViewport
-  | -- | The scrollable viewport for the commands list.
-    CommandsViewport
-  | -- | The scrollable viewport for the robots list.
-    RobotsViewport
+  | -- | The scrollable viewport for any modal dialog.
+    ModalViewport
   deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
 infoScroll = viewportScroll InfoViewport
 
-recipesScroll :: ViewportScroll Name
-recipesScroll = viewportScroll RecipesViewport
-
-commandsScroll :: ViewportScroll Name
-commandsScroll = viewportScroll CommandsViewport
-
-robotsScroll :: ViewportScroll Name
-robotsScroll = viewportScroll RobotsViewport
+modalScroll :: ViewportScroll Name
+modalScroll = viewportScroll ModalViewport
 
 ------------------------------------------------------------
 -- REPL History
