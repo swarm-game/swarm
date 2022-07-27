@@ -242,8 +242,8 @@ handleMainEvent ev = do
         _ -> uiState . uiWorldCursor .= Nothing >> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
-              InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
-              _ -> return ()
+        InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
+        _ -> return ()
       setFocus $ case n of
         -- Adapt click event origin to their right panel.
         -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
