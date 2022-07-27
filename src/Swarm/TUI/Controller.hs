@@ -315,9 +315,9 @@ toggleModal mt = do
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
+    mdialog <- preuse $ uiState . uiModal . _Just . modalDialog
     toggleModal QuitModal
-    modal <- use $ uiState . uiModal
-    case modal ^? _Just . modalDialog . to dialogSelection of
+    case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
       Just (Just (NextButton scene)) -> startGame scene
       _ -> return ()
