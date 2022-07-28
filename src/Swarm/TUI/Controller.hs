@@ -69,7 +69,7 @@ import Data.Map qualified as M
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scMap, scOrder, scenarioCollectionToList, _SISingle)
+import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scMap, scOrder, scenarioCollectionToList, scenarioItemName, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -131,15 +131,24 @@ handleMainMenuEvent menu = \case
           ss <- use $ gameState . scenarios
           uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss])
         Tutorial -> do
+          -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
           cheat <- use $ uiState . uiCheatMode
-          tutorialCollection <- use $ gameState . scenarios . to getTutorials
-          let tutorialList = NE.fromList [mkScenarioList cheat tutorialCollection]
-              firstTutorial = case scOrder tutorialCollection of
+          ss <- use $ gameState . scenarios
+          let tutorialCollection = getTutorials ss
+              topMenu =
+                BL.listFindBy
+                  ((== "Tutorials") . scenarioItemName)
+                  (mkScenarioList cheat ss)
+              tutorialMenu = mkScenarioList cheat tutorialCollection
+              menuStack = NE.fromList [tutorialMenu, topMenu]
+          uiState . uiMenu .= NewGameMenu menuStack
+
+          -- Extract the first tutorial challenge and run it
+          let firstTutorial = case scOrder tutorialCollection of
                 Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
                   Just (SISingle scene) -> scene
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
-          uiState . uiMenu .= NewGameMenu tutorialList
           startGame firstTutorial
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
