@@ -3,20 +3,20 @@ description: |
   Learn how to require additional devices that would otherwise not be installed.
 objectives:
   - goal:
-      - The 'build' command automatically installs devices that it knows
-        will be required.  For example, if you 'build {move}', some 'treads'
+      - The `build` command automatically installs devices that it knows
+        will be required.  For example, if you `build {move}`, some `treads`
         will automatically be installed on the new robot since it needs
-        them to 'move'.
-      - However, sometimes you need a device but 'build' can't tell that
-        you need it. In this case, you can use the special 'require'
+        them to `move`.
+      - However, sometimes you need a device but `build` can't tell that
+        you need it. In this case, you can use the special `require`
         command to require a particular device.  For example, if you
-        'build {require "3D printer"; move}', a 3D printer will be
+        `build {require "3D printer"; move}`, a 3D printer will be
         installed on the new robot even though it does not execute any
         commands that use a 3D printer.
       - Your goal is to pick a flower on the other side of the river and
         bring it back to your base.  You win when the base has a flower
         in its inventory.
-      - "Hint: robots will drown in the water unless they have a 'boat' device
+      - "Hint: robots will drown in the water unless they have a `boat` device
         installed!"
     condition: |
       try {
@@ -39,17 +39,24 @@ entities:
     properties: [known, portable, growable, liquid]
     growth: [0,0]
 solution: |
-  build {require "boat"; move; move; move; move; move; f <- grab; turn back; move; move; move; move; move; give base f}
+  def m5 = move; move; move; move; move end;
+  build {
+    require "treads";  // #540
+
+    require "boat"; turn right;
+    m5; f <- grab; turn back; m5; give base f
+  }
 robots:
   - name: base
     heavy: true
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot
     devices:
       - logger
       - 3D printer
+      - dictionary
     inventory:
       - [10, solar panel]
       - [10, logger]

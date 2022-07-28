@@ -1,19 +1,24 @@
-name: Debug robots
+name: Debug
 description: |
   Learn how to view built robots and debug them.
 objectives:
   - goal:
       - Before you send your robots far away you need to learn how
         to figure out what went wrong with them if they crash.
-      - Send a robot to walk four steps straight east into the mountain,
-        but use the bind syntax 'r <- build {COMMANDS}'.
       - |
-        Since you expect the robot will crash into the mountain,
-        add a 'log' command so that we will see what command failed:
+        In this challenge, you should start by
+        sending a robot to walk four steps straight east into the mountain,
+        crashing deliberately.  However, you must (1) make sure it has a `logger`,
+        so we can see what command failed,
+        and (2) use the bind syntax `r <- build {COMMANDS}` so you can refer to
+        the newly built robot later.  All together, it might look something like
+        this:
       - |
-        'r <- build {log "Hi!"; move;move;move; log "3"; move; log "OK"}'
-      - After that you can 'view r', to see how far it got.
-      - The instructions on how to win will appear in the crashed robots log.
+        r <- build {log "Hi!"; turn east; move; move; move; log "3"; move; log "OK"}
+      - (`build` will make sure the robot has a `logger` since its program includes
+        calls to the `log` command.)
+      - After the robot crashes, execute `view r` to see how far it got.
+        Further instructions should appear in the crashed robot's log.
     condition: |
       try {
         as base {has "Win"}
@@ -24,9 +29,7 @@ entities:
       attr: device
       char: 'W'
     description:
-      - Do 'place "Win"' once you are done with this challenge.
-      - You might need to 'grab' the entity you are standing on
-        or move to an empty cell.
+      - If you have this, you win!
     properties: [known, portable]
   - name: knownwater
     display:
@@ -53,15 +56,10 @@ entities:
     properties: [known, unwalkable]
     growth: [0,0]
 solution: |
-  crasher <- build {move; move; move; log "bye"; move};
-  wait 32;
-  salvager <- build {
-    log "I will bring home the Win!";
-    move; move; move; salvage; turn back; move; move; give base "Win"
-  };
+  run "data/scenarios/Tutorials/crash-solution.sw"
 robots:
   - name: base
-    dir: [1,0]
+    dir: [0,1]
     heavy: true
     display:
       char: Ω
@@ -91,7 +89,7 @@ robots:
       invisible: true
     system: true
     program: |
-      run "data/scenarios/Tutorials/secret.sw"
+      run "data/scenarios/Tutorials/crash-secret.sw"
 world:
   default: [blank]
   palette:

@@ -6,12 +6,13 @@ description: |
 #
 objectives:
   - goal:
-      - In addition to 'move', you can use the 'turn' command
-        to turn your robot. For example 'turn right' or 'turn east'.
-      - Move over to the inventory view with Alt+E and select the treads
-        device to read about the details. You can come back with Alt+R.
-      - Afterwards move your robot to the flower in the northeast corner.
-      - Remember, you can chain commands with ';',  for example 'move; move; move;'.
+      - In addition to `move`, you can use the `turn` command
+        to turn your robot, for example, `turn right` or `turn east`.
+      - Switch to the inventory view (by clicking or hitting Alt+E) and select the treads
+        device to read about the details. You can come back to the
+        REPL panel by clicking or hitting Alt+R.
+      - Afterwards, move your robot to the flower in the northeast corner.
+      - Remember, you can chain commands with `;`, for example `move; move; move;`.
     condition: |
       try {
         loc <- as base {whereami};

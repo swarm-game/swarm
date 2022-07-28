@@ -68,6 +68,7 @@ module Swarm.Game.Entity (
   elems,
   isSubsetOf,
   isEmpty,
+  inventoryCapabilities,
 
   -- ** Modification
   insert,
@@ -80,7 +81,7 @@ module Swarm.Game.Entity (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens (Getter, Lens', lens, to, view, (^.))
+import Control.Lens (Getter, Lens', lens, to, view, (^.), _2)
 import Control.Monad.IO.Class
 import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
@@ -110,6 +111,8 @@ import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Util (plural, reflow, (?))
 
+import Data.Set (Set)
+import Data.Set.Lens (setOf)
 import Paths_swarm
 
 ------------------------------------------------------------
@@ -561,6 +564,10 @@ isSubsetOf inv1 inv2 = all (\(n, e) -> lookup e inv2 >= n) (elems inv1)
 --   is, have them as keys with a count of 0).
 isEmpty :: Inventory -> Bool
 isEmpty = all ((== 0) . fst) . elems
+
+-- | Compute the set of capabilities provided by the devices in an inventory.
+inventoryCapabilities :: Inventory -> Set Capability
+inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory

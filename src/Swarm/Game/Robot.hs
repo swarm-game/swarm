@@ -83,7 +83,6 @@ import Data.Maybe (fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
-import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
@@ -349,11 +348,6 @@ robotLogUpdated :: Lens' Robot Bool
 --   info panel.
 inventoryHash :: Getter Robot Int
 inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `hashWithSalt` (r ^. installedDevices))
-
--- | Recompute the set of capabilities provided by the inventory of
---   installed devices.
-inventoryCapabilities :: Inventory -> Set Capability
-inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
 
 -- | Does a robot know of an entity's existence?
 robotKnows :: Robot -> Entity -> Bool

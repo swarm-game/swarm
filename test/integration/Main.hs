@@ -128,12 +128,14 @@ testScenarioSolution _ci _em =
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution Default "Tutorials/move"
+        [ testSolution Default "Tutorials/backstory"
+        , testSolution Default "Tutorials/move"
         , testSolution Default "Tutorials/turn"
-        , testSolution Default "Tutorials/types"
         , testSolution Default "Tutorials/craft"
         , testSolution Default "Tutorials/grab"
         , testSolution Default "Tutorials/place"
+        , testSolution Default "Tutorials/types"
+        , testSolution Default "Tutorials/type-errors"
         , testSolution Default "Tutorials/bind"
         , testSolution Default "Tutorials/install"
         , testSolution Default "Tutorials/build"
@@ -143,8 +145,12 @@ testScenarioSolution _ci _em =
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
         , testSolution Default "Tutorials/scan"
+        , testSolution Default "Tutorials/def"
+        , testSolution Default "Tutorials/lambda"
         , testSolution Default "Tutorials/require"
         , testSolution Default "Tutorials/requireinv"
+        , testSolution Default "Tutorials/conditionals"
+        , testSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
         "Challenges"
