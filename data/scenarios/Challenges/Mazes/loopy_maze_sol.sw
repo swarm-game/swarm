@@ -13,10 +13,6 @@ def DFS =
   };
   tB; move; tB
 end;
-def DFSclear =
-  b <- blocked;
-  if b {} {move; DFS}
-end;
 build {
   require "treads"; require "scanner"; require "lambda";
   require "strange loop"; require "branch predictor";
