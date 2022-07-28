@@ -574,6 +574,9 @@ drawKeyMenu s =
       <> notificationKey availableCommands "F4" "Commands"
       <> [(NoHighlight, "^v", "creative") | cheat]
       <> [(NoHighlight, "^g", "goal") | goal]
+      <> [(NoHighlight, "^p", if isPaused then "unpause" else "pause")]
+      <> [(NoHighlight, "^o", "step")]
+      <> [(NoHighlight, "^zx", "speed")]
 
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
@@ -583,10 +586,6 @@ drawKeyMenu s =
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
-      ++ [ ("<>", "slower/faster")
-         , ("p", if isPaused then "unpause" else "pause")
-         ]
-      ++ [("s", "step") | isPaused]
       ++ [("c", "recenter") | not viewingBase]
   keyCmdsFor (Just RobotPanel) =
     [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
