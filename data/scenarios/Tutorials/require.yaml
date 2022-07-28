@@ -42,13 +42,14 @@ solution: |
   def m5 = move; move; move; move; move end;
   build {
     require "treads";  // #540
-    require "boat";
+
+    require "boat"; turn right;
     m5; f <- grab; turn back; m5; give base f
   }
 robots:
   - name: base
     heavy: true
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot

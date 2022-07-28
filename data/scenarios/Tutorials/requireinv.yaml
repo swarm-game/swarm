@@ -40,12 +40,13 @@ solution: |
   build {
     require "treads"; require "grabber"; // #540
     require 16 "rock";
+    turn right;
     rr; rr; rr; rr
   };
 robots:
   - name: base
     heavy: true
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot

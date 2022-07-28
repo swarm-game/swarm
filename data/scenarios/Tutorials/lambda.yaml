@@ -34,12 +34,13 @@ solution: |
   def s = m4; tL; m2; tL; m4; tR; m2; tR end;
   build {
     require "treads"; require "lambda";  // #540
+    turn right;
     x4 (x4 s; m4; m2; tR; x4 (x4 move); tL; m2);
     grab
   }
 robots:
   - name: base
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot

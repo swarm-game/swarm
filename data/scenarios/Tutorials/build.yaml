@@ -18,6 +18,8 @@ objectives:
       - |
         TIP: You can use the name of the flower directly ("pickerelweed"),
         or you can use bind notation: `f <- harvest; ... ; place f;`.
+      - |
+        TIP: Newly built robots always start out facing north.
     condition: |
       try {
         teleport self (0,-1);
@@ -49,10 +51,10 @@ entities:
     properties: [known, portable, growable, liquid]
     growth: [0,0]
 solution: |
-  build {move; move; t <- harvest; turn right; move; place t}
+  build {turn right; move; move; t <- harvest; turn right; move; place t}
 robots:
   - name: base
-    dir: [1,0]
+    dir: [0,1]
     heavy: true
     display:
       char: Ω

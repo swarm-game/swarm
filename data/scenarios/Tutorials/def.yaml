@@ -38,11 +38,11 @@ solution: |
   def S = m16; tL; m2; tL; m16; tR; m2; tR; m16 end;
   build {
     require "treads";  // #540
-    S; f <- harvest; tB; S; give base f
+    turn right; S; f <- harvest; tB; S; give base f
   }
 robots:
   - name: base
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot

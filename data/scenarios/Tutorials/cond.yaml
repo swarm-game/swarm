@@ -59,7 +59,7 @@ solution: |
 robots:
   - name: base
     heavy: true
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot
