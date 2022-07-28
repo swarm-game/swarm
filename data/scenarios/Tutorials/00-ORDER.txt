@@ -15,6 +15,6 @@ def.yaml
 lambda.yaml
 require.yaml
 requireinv.yaml
-cond.yaml
+conditionals.yaml
 world101.yaml
 farming.yaml
