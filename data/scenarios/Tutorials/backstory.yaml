@@ -40,7 +40,7 @@ entities:
       attr: device
       char: 'R'
     description:
-      - Type 'place "Ready!"' (without the single quotes) at the prompt
+      - Type `place "Ready!"` (without the backticks) at the prompt
         once you are ready for the first tutorial challenge!
       - To open the full goal text again, you can hit Ctrl-G.
     properties: [known, portable]
