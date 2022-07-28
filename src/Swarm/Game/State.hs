@@ -687,10 +687,16 @@ scenarioToGameState scenario userSeed toRun g = do
           False -> id
           True -> const (fromList devices)
 
-  initialCaps = mconcat $ map (^. robotCapabilities) robotList
+  -- Initial list of available commands = all commands enabled by
+  -- devices in inventory or installed; and commands that require no
+  -- capability.
+  allCapabilities r =
+    inventoryCapabilities (r ^. installedDevices)
+      <> inventoryCapabilities (r ^. robotInventory)
+  initialCaps = mconcat $ map allCapabilities robotList
   initialCommands =
     filter
-      (maybe False (`S.member` initialCaps) . constCaps)
+      (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
   (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
