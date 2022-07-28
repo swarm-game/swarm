@@ -37,7 +37,16 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
+import Brick hiding (Direction)
+import Brick.Focus
+import Brick.Forms
+import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Center (center, centerLayer, hCenter)
+import Brick.Widgets.Dialog
+import Brick.Widgets.List qualified as BL
+import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
+import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
@@ -48,25 +57,12 @@ import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe, maybeToList)
+import Data.Semigroup (sconcat)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Graphics.Vty qualified as V
 import Linear
-import System.Clock (TimeSpec (..))
-import Text.Printf
-import Text.Wrap
-import Witch (from)
-
-import Brick hiding (Direction)
-import Brick.Focus
-import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
-import Brick.Widgets.Center (center, centerLayer, hCenter)
-import Brick.Widgets.Dialog
-import Brick.Widgets.List qualified as BL
-import Brick.Widgets.Table qualified as BT
-
-import Data.Semigroup (sconcat)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
@@ -85,6 +81,10 @@ import Swarm.TUI.Border
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
+import System.Clock (TimeSpec (..))
+import Text.Printf
+import Text.Wrap
+import Witch (from)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -311,9 +311,26 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
 -- | Draw the error dialog window, if it should be displayed right now.
 drawDialog :: AppState -> Widget Name
 drawDialog s = case s ^. uiState . uiModal of
-  Just (Modal mt d) -> renderDialog d (withVScrollBars OnRight $ drawModal s mt)
+  Just (Modal mt d) -> renderDialog d (maybeScroll ModalViewport $ drawModal s mt)
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiState . uiError)
 
+-- | Make a widget scrolling if it is bigger than the available
+--   vertical space.  Thanks to jtdaugherty for this code.
+maybeScroll :: (Ord n, Show n) => n -> Widget n -> Widget n
+maybeScroll vpName contents =
+  Widget Greedy Greedy $ do
+    ctx <- getContext
+    result <- withReaderT (availHeightL .~ 1000000) (render contents)
+    if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
+      then return result
+      else
+        render $
+          withVScrollBars OnRight $
+            viewport vpName Vertical $
+              Widget Fixed Fixed $
+                return result
+
+-- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
   HelpModal -> helpWidget
@@ -370,7 +387,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       GoalModal _ -> (" Goal ", Nothing, 80)
 
 robotsListWidget :: AppState -> Widget Name
-robotsListWidget s = viewport RobotsViewport Vertical (hCenter table)
+robotsListWidget s = hCenter table
  where
   table =
     BT.renderTable
@@ -485,11 +502,11 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
 data NotificationList = RecipeList | CommandList
 
 availableListWidget :: GameState -> NotificationList -> Widget Name
-availableListWidget gs nl = viewport vp Vertical (padTop (Pad 1) $ vBox $ addHeader widgetList)
+availableListWidget gs nl = padTop (Pad 1) $ vBox $ addHeader widgetList
  where
-  (vp, widgetList, addHeader) = case nl of
-    RecipeList -> (RecipesViewport, mkAvailableList gs availableRecipes renderRecipe, id)
-    CommandList -> (CommandsViewport, mkAvailableList gs availableCommands renderCommand, (<> constWiki) . (padLeftRight 18 constHeader :))
+  (widgetList, addHeader) = case nl of
+    RecipeList -> (mkAvailableList gs availableRecipes renderRecipe, id)
+    CommandList -> (mkAvailableList gs availableCommands renderCommand, (<> constWiki) . (padLeftRight 18 constHeader :))
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
   renderCommand = padLeftRight 18 . drawConst

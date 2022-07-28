@@ -364,9 +364,7 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
-      Just RecipesModal -> handleInfoPanelEvent recipesScroll (VtyEvent ev)
-      Just CommandsModal -> handleInfoPanelEvent commandsScroll (VtyEvent ev)
-      Just RobotsModal -> handleInfoPanelEvent robotsScroll (VtyEvent ev)
+      Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
