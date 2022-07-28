@@ -56,12 +56,7 @@ entities:
     properties: [known, unwalkable]
     growth: [0,0]
 solution: |
-  crasher <- build {turn east; move; move; move; log "bye"; move};
-  wait 32;
-  salvager <- build {
-    log "I will bring home the Win!";
-    turn east; move; move; move; salvage; turn back; move; move; give base "Win"
-  };
+  run "data/scenarios/Tutorials/crash-solution.sw"
 robots:
   - name: base
     dir: [0,1]
@@ -94,7 +89,7 @@ robots:
       invisible: true
     system: true
     program: |
-      run "data/scenarios/Tutorials/secret.sw"
+      run "data/scenarios/Tutorials/crash-secret.sw"
 world:
   default: [blank]
   palette:
