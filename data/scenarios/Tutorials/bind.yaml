@@ -4,7 +4,11 @@ description: |
 objectives:
   - goal:
       - |
-        Some simple commands, like `move: cmd ()`, do not have any meaningful value to return.
+        Every command returns a value.  However, some simple commands, like
+        `move`, do not have any meaningful
+        value to return.  Since the unit type `()` has only one value, also
+        written `()`, returning this value does not convey any information.
+        Thus, the type of `move` is `cmd ()`.
       - |
         Other commands do return a nontrivial value after executing.
         For example, `grab` has type
@@ -13,7 +17,7 @@ objectives:
       - |
         move; grab
       - |
-        To use the result later you need to use the bind notation:
+        To use the result of a command later, you need the bind notation:
       - |
         move; t <- grab; place t
       - |
