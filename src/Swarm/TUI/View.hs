@@ -551,6 +551,7 @@ drawKeyMenu s =
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
   goal = isJust (s ^. uiState . uiGoal)
+  showZero = s ^. uiState . uiShowZero
 
   notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> [(KeyHighlight, Text, Text)]
   notificationKey notifLens key name
@@ -588,14 +589,11 @@ drawKeyMenu s =
     ]
       ++ [("c", "recenter") | not viewingBase]
   keyCmdsFor (Just RobotPanel) =
-    [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
-    , ("Ret", "focus")
+    [ ("Ret", "focus")
     , ("m", "make")
-    , ("0", "hide/show 0")
+    , ("0", (if showZero then "hide" else "show") <> " 0")
     ]
-  keyCmdsFor (Just InfoPanel) =
-    [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "scroll")
-    ]
+  keyCmdsFor (Just InfoPanel) = []
   keyCmdsFor _ = []
 
 data KeyHighlight = NoHighlight | Highlighted
