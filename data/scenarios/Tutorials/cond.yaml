@@ -1,0 +1,112 @@
+name: Conditionals
+description: |
+  Learn how to write conditional expressions.
+objectives:
+  - goal:
+      - |
+        The `if` command can be used to write conditional expressions.  `if` is
+        not actually special syntax; it is simply a built-in function of type
+      - |
+        if : bool -> {a} -> {a} -> a.
+      - |
+        It takes a boolean expression and then returns either the first or second subsequent
+        argument, depending on whether the boolean expression is true or false, respectively.
+      - |
+        The `a` can stand for any type; `{a}` indicates a *delayed* expression of type
+        `a`.  Normally, function arguments are evaluated strictly before the function is
+        called. Delayed expressions, on the other hand, are not evaluated until needed.
+        In this case, we want to make sure that only the correct branch is evaluated.
+        To write a value of type, say, `{int}`, we just surround a value of type `int`
+        in curly braces, like `{3}`.  This is why arguments to `build` must also be in
+        curly braces: the type of `build` is `{cmd a} -> cmd robot`.
+      - |
+        The 8x8 gray square contains 8 `very small rock`s --- so small they cannot be seen!
+        Your goal is to collect all of them and bring them back to your base; you win
+        when you have all 8.  They are not located in any particular pattern, so your best
+        bet is to sweep over the entire 8x8 square and pick up a `very small rock` any time
+        you detect one.
+      - |
+        TIP: You may find `ishere : string -> cmd bool` helpful for detecting rocks.
+      - |
+        TIP: Note that `if` requires a `bool`, not a `cmd bool`!  So you cannot directly say
+        `if (ishere "very small rock") {...} {...}`.  Instead you can write `b <- ishere "very small rock"; if b {...} {...}`.  You might enjoy writing your own function of
+        type `cmd bool -> {cmd a} -> {cmd a} -> cmd a` to encapsulate this pattern.
+      - |
+        TIP: the two branches of an `if` must have the same type. In particular,
+        `if ... {grab} {}` is not
+        allowed, because `{grab}` has type `{cmd string}` whereas `{}` has type `{cmd ()}`.
+        In this case `{grab; return ()}` has the right type.
+    condition: |
+      try {
+        n <- as base {count "very small rock"};
+        return (n == 8)
+      } { return false}
+solution: |
+  def tL = turn left end;
+  def tB = turn back end;
+  def x4 = \c. c;c;c;c end;
+  def x8 = \c. x4 c; x4 c end;
+  def VSR = "very small rock" end;
+  def ifC = \c.\t.\e. b <- c; if b t e end;
+  def pick = move; ifC (ishere VSR) {grab; return ()} {} end;
+  def pickrow = x8 pick; turn back; x8 move end;
+  build {
+    require "treads"; require "branch predictor"; require "grabber";
+    require "lambda"; require "scanner";  // #540
+
+    turn south; x8 (move; tL; pickrow; tL); tB; x8 move; x8 (give base VSR)
+  }
+robots:
+  - name: base
+    heavy: true
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+      - dictionary
+    inventory:
+      - [16, compass]
+      - [16, solar panel]
+      - [16, logger]
+      - [16, treads]
+      - [16, grabber]
+      - [16, scanner]
+      - [16, lambda]
+      - [16, branch predictor]
+      - [0, very small rock]
+entities:
+  - name: very small rock
+    display:
+      invisible: true
+    description:
+      - A small rock.  It is so small, it is practically invisible.
+    properties: [portable]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '_': [stone]
+    'o': [stone, very small rock]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────────┐
+    │Ω........│
+    │._o______│
+    │._____o__│
+    │.________│
+    │.__o_____│
+    │.o__o___o│
+    │.________│
+    │.________│
+    │._o____o_│
+    └─────────┘
