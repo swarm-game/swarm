@@ -51,12 +51,9 @@ robots:
       char: 'Ω'
       attr: robot
     dir: [1,0]
+    loc: [0,0]
     inventory:
       - [1, Ready!]
+seed: 0
 world:
-  default: [blank]
-  palette:
-    'Ω': [grass, null, base]
-  upperleft: [0, 0]
-  map: |
-    Ω
+  offset: true
