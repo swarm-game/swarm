@@ -159,6 +159,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Challenges/teleport"
         , testGroup "Mazes"
           [ testSolution Default "Challenges/Mazes/invisible_maze"
+          , testSolution Default "Challenges/Mazes/loopy_maze"
           ]
         ]
     , testGroup
