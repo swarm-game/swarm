@@ -72,9 +72,7 @@ The recommended way to install Swarm at the moment is as follows:
 
 1. Go get a snack while `stack` downloads a Haskell compiler and
    all of Swarm's dependencies.
-1. Have fun! At the moment, you probably want to [take a look at the
-   tutorial](TUTORIAL.md) to help get you started.  Eventually there
-   will be an in-game tutorial.
+1. Have fun!
 
 
 Programming swarm

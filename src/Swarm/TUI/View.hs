@@ -97,7 +97,6 @@ drawUI s
     NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
     MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
     NewGameMenu stk -> [drawNewGameMenuUI stk]
-    TutorialMenu -> [drawTutorialMenuUI]
     AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
@@ -160,20 +159,6 @@ drawMainMenuEntry NewGame = txt "New game"
 drawMainMenuEntry Tutorial = txt "Tutorial"
 drawMainMenuEntry About = txt "About"
 drawMainMenuEntry Quit = txt "Quit"
-
-drawTutorialMenuUI :: Widget Name
-drawTutorialMenuUI =
-  centerLayer $
-    vBox . map hCenter $
-      [ txt "Coming soon! In the meantime, check out the tutorial at"
-      , txt "https://github.com/swarm-game/swarm/blob/main/TUTORIAL.md ."
-      , txt " "
-      , txt "You can also play through a few in-progress"
-      , txt "tutorial challenges over in the New Game menu."
-      , txt " "
-      , txt "https://github.com/swarm-game/swarm/issues/25"
-      , txt "https://github.com/swarm-game/swarm/issues/296"
-      ]
 
 drawAboutMenuUI :: Maybe Text -> Widget Name
 drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
@@ -475,8 +460,8 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("F2", "Robots list")
     , ("F3", "Available recipes")
     , ("F4", "Available commands")
+    , ("Ctrl-g", "show goal")
     , ("Ctrl-q", "quit the game")
-    , ("Tab", "cycle panel focus")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
     , ("Meta-r", "focus on the REPL")
@@ -566,6 +551,7 @@ drawKeyMenu s =
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
   goal = isJust (s ^. uiState . uiGoal)
+  showZero = s ^. uiState . uiShowZero
 
   notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> [(KeyHighlight, Text, Text)]
   notificationKey notifLens key name
@@ -589,6 +575,9 @@ drawKeyMenu s =
       <> notificationKey availableCommands "F4" "Commands"
       <> [(NoHighlight, "^v", "creative") | cheat]
       <> [(NoHighlight, "^g", "goal") | goal]
+      <> [(NoHighlight, "^p", if isPaused then "unpause" else "pause")]
+      <> [(NoHighlight, "^o", "step")]
+      <> [(NoHighlight, "^zx", "speed")]
 
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
@@ -598,20 +587,13 @@ drawKeyMenu s =
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
-      ++ [ ("<>", "slower/faster")
-         , ("p", if isPaused then "unpause" else "pause")
-         ]
-      ++ [("s", "step") | isPaused]
       ++ [("c", "recenter") | not viewingBase]
   keyCmdsFor (Just RobotPanel) =
-    [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "navigate")
-    , ("Ret", "focus")
+    [ ("Ret", "focus")
     , ("m", "make")
-    , ("0", "hide/show 0")
+    , ("0", (if showZero then "hide" else "show") <> " 0")
     ]
-  keyCmdsFor (Just InfoPanel) =
-    [ ("↓↑/Pg{Up,Dn}/Home/End/jk", "scroll")
-    ]
+  keyCmdsFor (Just InfoPanel) = []
   keyCmdsFor _ = []
 
 data KeyHighlight = NoHighlight | Highlighted
