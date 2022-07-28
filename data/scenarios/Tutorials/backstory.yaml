@@ -1,0 +1,59 @@
+name: Backstory
+description: |
+  Introduction to the backstory of Swarm.
+objectives:
+  - goal:
+      - In a shockingly original turn of events, you have crash landed
+        on an alien planet!  It's not clear how you'll ever get home,
+        but since you're here, you might as well explore a bit. Your
+        sensors indicate that the atmosphere is highly toxic, so
+        you'll have to stay inside your robotic base, with its
+        built-in life support system. However, you are stocked with
+        all the materials you need to build robots to explore
+        for you!
+      - To start, you only have some very basic
+        devices which can give your robots abilities like moving, turning,
+        grabbing things, and interpreting very simple imperative
+        programs. As you use your robots to gather resources, you will
+        be able to construct better devices, which in turn allow you to
+        construct robots with upgraded abilities and programming
+        language features, which in turn allow you to program more
+        sophisticated robots which in turn will... you get the
+        idea.
+      - To prepare you, this simulator will walk you through a series of hands-on
+        exercises that introduce you to the way robots work and the programming
+        language you will use to control them.
+      - When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
+        and type `place "Ready!"` (without the backticks) at the prompt.
+    condition: |
+      try {
+        as base {
+          b <- has "Ready!";
+          return (not b)
+        }
+      } { return false }
+solution: |
+  place "Ready!"
+entities:
+  - name: Ready!
+    display:
+      attr: device
+      char: 'R'
+    description:
+      - Type `place "Ready!"` (without the backticks) at the prompt
+        once you are ready for the first tutorial challenge!
+      - To open the full goal text again, you can hit Ctrl-G.
+    properties: [known, portable]
+robots:
+  - name: base
+    system: true
+    display:
+      char: 'Ω'
+      attr: robot
+    dir: [1,0]
+    loc: [0,0]
+    inventory:
+      - [1, Ready!]
+seed: 0
+world:
+  offset: true

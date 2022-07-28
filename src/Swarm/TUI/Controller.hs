@@ -65,10 +65,11 @@ import Graphics.Vty qualified as V
 import Brick.Widgets.List (handleListEvent)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
+import Data.Map qualified as M
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scenarioCollectionToList, _SISingle)
+import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scMap, scOrder, scenarioCollectionToList, scenarioItemName, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -115,7 +116,6 @@ handleEvent e = do
         NoMenu -> const halt
         MainMenu l -> handleMainMenuEvent l
         NewGameMenu l -> handleNewGameMenuEvent l
-        TutorialMenu -> pressAnyKey (MainMenu (mainMenu Tutorial))
         AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
@@ -130,7 +130,26 @@ handleMainMenuEvent menu = \case
           cheat <- use $ uiState . uiCheatMode
           ss <- use $ gameState . scenarios
           uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss])
-        Tutorial -> uiState . uiMenu .= TutorialMenu
+        Tutorial -> do
+          -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
+          cheat <- use $ uiState . uiCheatMode
+          ss <- use $ gameState . scenarios
+          let tutorialCollection = getTutorials ss
+              topMenu =
+                BL.listFindBy
+                  ((== "Tutorials") . scenarioItemName)
+                  (mkScenarioList cheat ss)
+              tutorialMenu = mkScenarioList cheat tutorialCollection
+              menuStack = NE.fromList [tutorialMenu, topMenu]
+          uiState . uiMenu .= NewGameMenu menuStack
+
+          -- Extract the first tutorial challenge and run it
+          let firstTutorial = case scOrder tutorialCollection of
+                Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
+                  Just (SISingle scene) -> scene
+                  _ -> error "No first tutorial found!"
+                _ -> error "No first tutorial found!"
+          startGame firstTutorial
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt
@@ -139,6 +158,11 @@ handleMainMenuEvent menu = \case
     menu' <- nestEventM' menu (handleListEvent ev)
     uiState . uiMenu .= MainMenu menu'
   _ -> continueWithoutRedraw
+
+getTutorials :: ScenarioCollection -> ScenarioCollection
+getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
+  Just (SICollection _ c) -> c
+  _ -> error "No tutorials exist!"
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: Scenario -> EventM Name AppState ()

@@ -1,0 +1,78 @@
+name: First steps
+description: |
+  Learn some of the first steps you might take on the new planet.
+objectives:
+  - goal:
+      - You're ready to graduate to something a bit more complex! This
+        multi-step tutorial will walk you through a few of the first
+        steps you might take in exploring the new planet, using many
+        of the commands and techniques you have learned in the
+        previous tutorial challenges.
+      - You can see that your base starts out with some key devices
+        installed and some basic supplies for building robots.  To
+        build more advanced devices and produce more robots,
+        you'll need to explore, gather resources, and set up some
+        automated production pipelines.
+      - At this point you may want to create an external `.sw` file
+        with useful definitions you create.  You can then load it
+        via the `run` command.  See
+        https://github.com/swarm-game/swarm/tree/main/editors
+        for help configuring your editor with support for swarm-lang.
+      - Your first task is to collect three or more trees. You can
+        remind yourself of the available commands using F4.
+    condition: |
+      try {
+        n <- as base {count "tree"};
+        return (n >= 3)
+      } { return false }
+  - goal:
+      - Nice work!  Now, use the trees to make a harvester device.
+        This will require several intermediate products; try making
+        various things, and take a look at your available recipes (F3)
+        and at the recipes listed for items in your inventory.  Of course,
+        you may end up needing some additional trees.
+    condition: |
+      try { as base {has "harvester"} } {return false}
+  - goal:
+      - Now that you have a harvester, you can use `harvest` instead of `grab`
+        whenever you pick up a growing item (check for the word "growing" at the
+        top of the item description), to leave behind a seed that will regrow.
+      - "TIP: since you only have a single harvester device for now, whenever you
+        send out a robot to harvest something, try programming it to come back
+        to the base when it is done.  Then, execute `salvage` to get the harvester
+        back, so you can reuse it in another robot later."
+      - One of the next things you will probably want is a `lambda`, so you can
+        define and use parameterized commands.  Scan some things and use
+        the process of elimination to find one.  Since lambdas regrow,
+        once you find one, try getting it with `harvest`.
+      - "TIP: remember that you can click on a cells in the world to see their
+        coordinates."
+    condition: |
+      try { as base {has "lambda"} } {return false}
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    loc: [0,0]
+    dir: [0,1]
+    devices:
+      - 3D printer
+      - dictionary
+      - grabber
+      - life support system
+      - logger
+      - toolkit
+      - solar panel
+      - workbench
+      - clock
+    inventory:
+      - [5, 3D printer]
+      - [100, treads]
+      - [70, grabber]
+      - [100, solar panel]
+      - [50, scanner]
+      - [5, toolkit]
+seed: 0
+world:
+  offset: true

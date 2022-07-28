@@ -1,33 +1,35 @@
-name: Typing
+name: Types
 description: |
-  Learn about the types of commands and values.
+  Learn about the Swarm type system.
 objectives:
   - goal:
-      - Before we get to solving more complex challenges,
-        it would be good to get used to how the commands
-        in Swarm language work and how they don't.
-      - Previously, you have used the 'turn' command,
-        which takes one parameter, which must be a direction.
-      - What happens if you do not pass it a direction?
-      - 'Try these commands:'
+      - The Swarm programming language has a strong static type system.  That is,
+        every expression in the language has a type, and all the types must match up
+        properly before a program can be executed.
+      - To see the type of an expression, enter the expression at the REPL without
+        hitting Return.  If the expression type checks, its type will be displayed
+        in gray text at the top right of the REPL window.
+      - For example, if you try typing `move`, you can see that it has
+        type `cmd ()`, which means that `move` is a command which
+        returns a value of the unit type (also written `()`).
+      - As another example, you can see that `turn` has type `dir -> cmd ()`,
+        meaning that `turn` is a function which takes a direction as input
+        and results in a command.
+      - "Here are a few more expressions for you to try (feel free to try others as well):"
       - |
-        'turn 1'
+        north
       - |
-        'turn move'
+        move; move
       - |
-        'turn north move'
+        grab
       - |
-        'move move'
-      - The last two commands might give the most confusing error,
-        when they are obviously missing a ';' separating the commands.
+        make
       - |
-        Finally try these commands, which will just show the value
-        (passing values will be useful later) and its type:
+        3
       - |
-        'turn'
-      - |
-        'north'
-      - Once you are done, do 'place "Win"' to finish this challenge.
+        "tree"
+      - Once you are done experimenting, execute `place "Win"` to finish this challenge and
+        move on to the next.
     condition: |
       try {
         w <- as base {has "Win"};
@@ -39,7 +41,7 @@ entities:
       attr: device
       char: 'W'
     description:
-      - Do 'place "Win"' once you are done with this challenge.
+      - Do `place "Win"` once you are done with this challenge.
     properties: [known, portable]
 solution: |
   place "Win"

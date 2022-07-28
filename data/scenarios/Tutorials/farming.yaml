@@ -1,0 +1,84 @@
+name: Farming
+description: |
+  Learn how to build a farm to grow and harvest items.
+objectives:
+  - goal:
+      - Lambdas are an essential item for building robots, but they
+        are somewhat rare in the wild.  Therefore, it makes sense to farm
+        them in order to create a reliable supply.
+      - |
+        In this scenario, you are a bit farther along: in particular,
+        you now have a few `harvester`s, a few `lambda`s, a few `logger`s,
+        some `branch predictor`s which
+        allow robots to evaluate conditional expressions, and some
+        `strange loops` which enable recursive functions.  For example,
+        one simple, useful recursive function is
+      - |
+        def forever = \c. c ; forever c end
+      - Your goal is to acquire 256 lambdas.  Of course, in order to
+        accomplish this in a reasonable amount of time, it makes sense to plant
+        a field of lambdas and then program one or more robots to
+        harvest them in an automated way.
+      - "TIP: the `ishere` command can be used to test for the presence of a
+        (fully-grown) lambda, and the `has` command can be used to test whether
+        a robot has a lambda in its inventory."
+    condition: |
+      try {
+        as base {
+          n <- count "lambda";
+          return (n >= 256)
+        }
+      } { return false }
+  - goal:
+      - Congratulations!  You have completed the most difficult simulated exercise and
+        are ready to begin exploring the new planet in earnest.  Of course there
+        is much more remaining to explore in the world, and many additional programming
+        language features to unlock.
+      - |
+        To finally complete this tutorial, there is only one thing left for you to do:
+        use one of your lambdas to make some delicious `curry`.
+      - Afterwards, you will return to the menu where you can select
+        "Classic game" for the complete game experience.  Or, play a
+        "Creative game" if you just want to play around with
+        programming robots, without any constraints or need to collect
+        resources.  You could also choose to redo some tutorial scenarios, or
+        explore the other challenge scenarios listed in the menu.
+      - Now go forth and build your swarm!
+    condition: |
+      try {as base {has "curry"}} {return false}
+solution: |
+  run "data/scenarios/Tutorials/farming.sw";
+  run "data/scenarios/Tutorials/make_curry.sw";
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    loc: [0,0]
+    dir: [0,1]
+    devices:
+      - 3D printer
+      - dictionary
+      - grabber
+      - life support system
+      - logger
+      - toolkit
+      - solar panel
+      - workbench
+      - clock
+    inventory:
+      - [5, 3D printer]
+      - [100, treads]
+      - [70, grabber]
+      - [100, solar panel]
+      - [50, scanner]
+      - [5, toolkit]
+      - [10, strange loop]
+      - [10, branch predictor]
+      - [10, lambda]
+      - [10, tree]
+      - [10, harvester]
+      - [10, logger]
+seed: 0
+world:
+  offset: true
