@@ -30,8 +30,10 @@ solution: |
   }
 robots:
   - name: base
-    loc: [0,0]
     dir: [0,1]
+    display:
+      char: 'Ω'
+      attr: robot
     devices:
       - dictionary
       - 3D printer
@@ -66,6 +68,7 @@ entities:
 world:
   default: [grass]
   palette:
+    'Ω': [grass, null, base]
     '.': [grass, null]
     'x': [grass, wall]
     '@': [grass, boulder]
@@ -73,7 +76,7 @@ world:
   upperleft: [-1,1]
   map: |
     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    @.........x...x..............@
+    @Ω........x...x..............@
     @xx.xxxxx.x.x.xxx....xxxxxxx.@
     @.x.x...x.x.x...xxxx.......x.@
     @.....x.x.x.x.x....xxxxxxxxx.@
