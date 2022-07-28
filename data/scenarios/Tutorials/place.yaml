@@ -10,20 +10,20 @@ objectives:
   - goal:
       - Previously you learned how to plunder a plentiful forest for wood.
         Now you will learn how to plant trees to obtain as much wood as you need.
-      - There is a fast-growing tree (called "spruce") ahead of you.  You could 'grab'
-        it as before, but you now have a new device called a 'harvester'.
-        If you 'harvest' a tree rather than 'grab' it, a new tree will grow in its
+      - There is a fast-growing tree (called "spruce") ahead of you.  You could `grab`
+        it as before, but you now have a new device called a `harvester`.
+        If you `harvest` a tree rather than `grab` it, a new tree will grow in its
         place after some time.
       - You can also place items from your inventory on the ground
-        below you using the 'place' command.
+        below you using the `place` command.
       - Using these commands in conjunction, you can plant new growable entities by
-        placing and then harvesting them.  For example, 'place "spruce"; harvest' will
+        placing and then harvesting them.  For example, `place "spruce"; harvest` will
         plant a new spruce seed.
       - Your goal is to collect 6 spruce trees.  You can speed this up
         by planting more trees.
       - |
         TIP: You can get a sneak peak at a feature we will explain later and type
-        'def t = move; place "spruce"; harvest; end' after which you only need to type 't'
+        `def t = move; place "spruce"; harvest; end` after which you only need to type `t`
         instead of retyping the whole command or searching in your command history.
     condition: |
       try {

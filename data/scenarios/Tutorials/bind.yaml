@@ -4,24 +4,24 @@ description: |
 objectives:
   - goal:
       - |
-        Some simple commands, like 'move: cmd ()', do not have any meaningful value to return.
+        Some simple commands, like `move: cmd ()`, do not have any meaningful value to return.
       - |
         Other commands do return a nontrivial value after executing.
-        For example, 'grab' has type
-        'cmd string', and returns the name of the
+        For example, `grab` has type
+        `cmd string`, and returns the name of the
         grabbed entity as a string. Try it:
       - |
-        'move; grab'
+        move; grab
       - |
         To use the result later you need to use the bind notation:
       - |
-        'move; t <- grab; place t'
+        move; t <- grab; place t
       - |
         This can be useful, for example, if you do not care what you
         grabbed and just want to move it to another cell; or if you
         are not sure of the name of the thing being grabbed.
-      - Once you are done, do 'place "Win"' to finish this challenge.
-        (Note, you might need to 'grab' the entity you are standing on
+      - Once you are done, do `place "Win"` to finish this challenge.
+        (Note, you might need to `grab` the entity you are standing on
         or move to an empty cell first, since each cell can only
         contain at most one entity.)
     condition: |
@@ -37,8 +37,8 @@ entities:
       attr: device
       char: 'W'
     description:
-      - Do 'place "Win"' once you are done with this challenge.
-      - You might need to 'grab' the entity you are standing on
+      - Do `place "Win"` once you are done with this challenge.
+      - You might need to `grab` the entity you are standing on
         or move to an empty cell first.
     properties: [known, portable]
 robots:

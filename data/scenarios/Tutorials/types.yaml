@@ -9,26 +9,26 @@ objectives:
       - To see the type of an expression, enter the expression at the REPL without
         hitting Return.  If the expression type checks, its type will be displayed
         in gray text at the top right of the REPL window.
-      - For example, if you try typing 'move', you can see that it has
-        type 'cmd ()', which means that 'move' is a command which
+      - For example, if you try typing `move`, you can see that it has
+        type `cmd ()`, which means that `move` is a command which
         returns a value of the unit type (also written () ).
-      - As another example, you can see that 'turn' has type 'dir -> cmd ()',
-        meaning that 'turn' is a function which takes a direction as input
+      - As another example, you can see that `turn` has type `dir -> cmd ()`,
+        meaning that `turn` is a function which takes a direction as input
         and results in a command.
       - "Here are a few more expressions for you to try (feel free to try others as well):"
       - |
-        'north'
+        north
       - |
-        'move; move'
+        move; move
       - |
-        'grab'
+        grab
       - |
-        'make'
+        make
       - |
         3
       - |
         "tree"
-      - Once you are done experimenting, execute 'place "Win"' to finish this challenge and
+      - Once you are done experimenting, execute `place "Win"` to finish this challenge and
         move on to the next.
     condition: |
       try {
@@ -41,7 +41,7 @@ entities:
       attr: device
       char: 'W'
     description:
-      - Do 'place "Win"' once you are done with this challenge.
+      - Do `place "Win"` once you are done with this challenge.
     properties: [known, portable]
 solution: |
   place "Win"

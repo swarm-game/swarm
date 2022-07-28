@@ -24,7 +24,7 @@ objectives:
         exercises that introduce you to the way robots work and the programming
         language you will use to control them.
       - When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
-        and type 'place "Ready!"' (without the single quotes) at the prompt.
+        and type `place "Ready!"` (without the backticks) at the prompt.
     condition: |
       try {
         as base {

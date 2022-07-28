@@ -7,14 +7,14 @@ objectives:
         to figure out what went wrong with them if they crash.
       - |
         Send a robot to walk four steps straight east into the mountain,
-        but use the bind syntax 'r <- build {COMMANDS}'.  The 'build' command returns
+        but use the bind syntax `r <- build {COMMANDS}`.  The `build` command returns
         a reference to the newly built robot, and we want to be able to refer
         to the robot again later.
         Since you expect the robot will crash into the mountain,
-        add some 'log' commands so that we will see what command failed, for example:
+        add some `log` commands so that we will see what command failed, for example:
       - |
-        'r <- build {log "Hi!"; move;move;move; log "3"; move; log "OK"}'
-      - After that, execute 'view r' to see how far it got.
+        `r <- build {log "Hi!"; move;move;move; log "3"; move; log "OK"}`
+      - After that, execute `view r` to see how far it got.
       - Further instructions will appear in the crashed robot's log.
     condition: |
       try {
@@ -26,8 +26,8 @@ entities:
       attr: device
       char: 'W'
     description:
-      - Do 'place "Win"' once you are done with this challenge.
-      - You might need to 'grab' the entity you are standing on
+      - Do `place "Win"` once you are done with this challenge.
+      - You might need to `grab` the entity you are standing on
         or move to an empty cell.
     properties: [known, portable]
   - name: knownwater
