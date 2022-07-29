@@ -49,6 +49,9 @@ described by the following table.  Note that a blank Default? column
 means the key is required; other keys are optional and take on the
 indicated default value when they are not present.
 
+As with all YAML, note that the order of keys in a key-value mapping
+does not matter.
+
 | Key            | Default? | Type    | Description                                                                                                                                                                                                                                                                                                     |
 |----------------|----------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `name`         |          | string  | The name of the scenario.  Blah blah blah.                                                                                                                                                                                                                                                                      |
@@ -59,16 +62,33 @@ indicated default value when they are not present.
 | `recipes`      | `[]`     | list    | A list of custom recipes.  See [Recipes](#recipes).                                                                                                                                                                                                                                                             |
 | `world`        |          | map     | A description of the world.  See [World](#world).                                                                                                                                                                                                                                                               |
 | `robots`       |          | list    | A list of robots that will inhabit the world.  See [Robots](#robots).                                                                                                                                                                                                                                           |
-| `objectives`   |          | list    | A list of objectives.  See [Objectives](#objectives).                                                                                                                                                                                                                                                           |
+| `objectives`   | `[]`     | list    | A list of objectives.  See [Objectives](#objectives).                                                                                                                                                                                                                                                           |
 | `solution`     | `null`   | string  | The (optional) text of a Swarm program that, when run on the base robot, completes all the objectives.  For scenarios which are officially part of the Swarm repository, such a solution will be tested as part of our CI.  For scenarios loaded directly from a file, any provided solution is simply ignored. |
 | `stepsPerTick` | `null`   | int     | When present, this specifies the maximum number of CESK machine steps each robot is allowed to take per game tick.  It is rather technical and only used in a few automated tests; most scenario authors should not need this.                                                                                  |
-|                |          |         |                                                                                                                                                                                                                                                                                                                 |
 
 ### Entities
 
-Foo bar, all about entities!
+The top-level `entities` field contains a list of entity
+descriptions.  Each entity description is a key-value map described by
+the following table.
 
-### Recipies
+| Key            | Default? | Type   | Description                                                                                                                                                                                                                                                                      |
+|----------------|----------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`         |          | string | The name of the entity.  This is what will show up in the inventory and how the entity can be referred to.                                                                                                                                                                       |
+| `display`      |          | map    | [Display](#display) information for the entity.                                                                                                                                                                                                                                  |
+| `plural`       | `null`   | string | An explicit plural form of the name of the entity.  If omitted, standard heuristics will be used for forming the English plural of its name.                                                                                                                                     |
+| `description`  |          | list   | A description of the entity, as a list of paragraphs.                                                                                                                                                                                                                            |
+| `orientation`  | `null`   | list   | A 2-tuple of integers specifying an orientation vector for the entity. Currently unused.                                                                                                                                                                                         |
+| `growth`       | `null`   | list   | For growable entities, a 2-tuple of integers specifying the minimum and maximum amount of time taken for one growth stage.  The actual time for one growth stage will be chosen uniformly at random from this range; it takes two growth stages for an entity to be fully grown. |
+| `yields`       | `null`   | string | The name of the entity which will be added to a robot's inventory when it executes `grab` or `harvest` on this entity.  If omitted, the entity will simply yield itself.                                                                                                         |
+| `properties`   | `[]`     | list   | A list of properties of this entity.  See                                                                                                                                                                                                                                                                                  |
+| `capabilities` | `[]`     | list   |                                                                                                                                                                                                                                                                                  |
+
+#### Entity properties
+
+Foo bar
+
+### Recipes
 
 All about recipes.
 
@@ -83,3 +103,7 @@ Robots.
 ### Objectives
 
 Objectives.
+
+## Example
+
+XXX example here
