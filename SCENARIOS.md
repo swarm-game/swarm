@@ -42,11 +42,24 @@ uses the Haskell [yaml
 library](https://hackage.haskell.org/package/yaml) for parsing `.yaml`
 files, and hence we use YAML 1.1.
 
+### Top level
+
 At the top level, a scenario file contains a key-value mapping.
 
-| Key           | Required?       | Type    | Description                                            |
-|---------------|-----------------|---------|--------------------------------------------------------|
-| `name`        | **required**    | string  | The name of the scenario.  Blah blah blah.             |
-| `description` | default = ""    | string  | A short description of the scenario.                   |
-| `creative`    | default = False | boolean | Whether the scenario should start out in creative mode. |
-|               |                 |         |                                                        |
+| Key           | Required?         | Type    | Description                                                                                                                                                                               |
+|---------------|-------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`        | **required**      | string  | The name of the scenario.  Blah blah blah.                                                                                                                                                |
+| `description` | default = `""`    | string  | A short description of the scenario.                                                                                                                                                      |
+| `creative`    | default = `False` | boolean | Whether the scenario should start out in creative mode.                                                                                                                                   |
+| `seed`        | default = `null`  | int     | The seed that will be used to seed the random number generator.  If a procedurally generated world is used, the seed hence determines the world.  If omitted, a random seed will be used. |
+| `entities`    | default = `[]`    | list    | A list of custom entities.  See [Entities](#entities).                                                                                                                                    |
+| `recipes`     | default = `[]`    | list    | A list of custom recipes.  See [Recipes](#recipes).                                                                                                                                       |
+|               |                   |         |                                                                                                                                                                                           |
+
+### Entities
+
+Foo bar, all about entities!
+
+### Recipies
+
+All about recipes.
