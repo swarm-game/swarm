@@ -894,4 +894,4 @@ handleInfoPanelEvent vs = \case
   Key V.KPageUp -> vScrollPage vs Brick.Up
   Key V.KHome -> vScrollToBeginning vs
   Key V.KEnd -> vScrollToEnd vs
-  _ -> continueWithoutRedraw
+  _ -> return ()
