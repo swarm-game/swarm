@@ -1,2 +1,3 @@
 invisible_maze.yaml
 loopy_maze.yaml
+shortest_path.yaml

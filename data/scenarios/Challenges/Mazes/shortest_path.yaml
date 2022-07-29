@@ -1,0 +1,89 @@
+name: Shortest path
+description: There is a maze, but it can't be seen, only sensed... can you
+  program a robot to navigate it successfully, via the shortest possible path?
+objectives:
+- goal:
+  - There is a maze, but it can't be seen, only sensed... can you
+    program a robot to navigate it successfully, via the shortest path?
+    You win by marking any shortest path from the base to the goal with `path`
+    markers.
+  condition: |
+    return false
+solution: |
+  run "data/scenarios/Challenges/Mazes/shortest_path_sol.sw"
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: 'Ω'
+      attr: robot
+    devices:
+      - dictionary
+      - 3D printer
+      - logger
+      - grabber
+    inventory:
+      - [50, solar panel]
+      - [50, treads]
+      - [50, compass]
+      - [50, scanner]
+      - [50, lambda]
+      - [50, branch predictor]
+      - [50, strange loop]
+      - [50, logger]
+      - [50, grabber]
+      - [1000, rock]
+      - [1000, path]
+      - [0, boulder]
+      - [0, goal]
+entities:
+  - name: wall
+    display:
+      invisible: true
+    description:
+    - An invisible wall.
+    properties: [unwalkable, known]
+  - name: goal
+    display:
+      char: '!'
+      attr: device
+    description:
+    - The place you're trying to reach!  You win by executing `grab` on this item.
+    properties: [known, portable]
+  - name: path
+    display:
+      char: '.'
+      attr: device
+    description:
+    - A marker that should be used to mark each cell in a shortest path from the start
+      to the goal.  Just `place "path"` on each cell that is part of a shortest path.
+world:
+  default: [grass]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass, null]
+    'x': [grass, wall]
+    '@': [grass, boulder]
+    '!': [grass, goal]
+  upperleft: [-1,1]
+  map: |
+    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    @Ω........x...x..............@
+    @xx.xxxxx.x.x.xxx....xxxxxxx.@
+    @.x.x...x.x.x...xxxx.......x.@
+    @.....x.x.x.x.x....xxxxxxxxx.@
+    @xx.xxxxx.x.x.xxxx...........@
+    @.......x...x....xxxxxxx.xxxx@
+    @.xxxxx.xxx.xxxx.x...........@
+    @.x.x.x..x.......x.xxx.xxxxx.@
+    @.x.x.xx.x.x.xxx.x.x.....x...@
+    @.x.x.xx.x.x...x...x.x.x.x.xx@
+    @......x...x.x...x.x.x.x.x...@
+    @xxxxxxx.xxx.xxxxx.x.x.x.xxx.@
+    @....................x.x.x.x.@
+    @xxxxxxxxxx.xxxxxxxxxx.x.x.x.@
+    @..x...x.......x.....x.x.....@
+    @x.......x...x...x.x.x.x.x.x.@
+    @xxxxxxxxxx.xxxxxx.x.x.x.x.x.@
+    @..................x...x...x!@
+    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
