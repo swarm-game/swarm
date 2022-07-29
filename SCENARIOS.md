@@ -44,17 +44,25 @@ files, and hence we use YAML 1.1.
 
 ### Top level
 
-At the top level, a scenario file contains a key-value mapping.
+At the top level, a scenario file contains a key-value mapping,
+described by the following table.  Note that a blank Default? column
+means the key is required; other keys are optional and take on the
+indicated default value when they are not present.
 
-| Key           | Required?         | Type    | Description                                                                                                                                                                               |
-|---------------|-------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `name`        | **required**      | string  | The name of the scenario.  Blah blah blah.                                                                                                                                                |
-| `description` | default = `""`    | string  | A short description of the scenario.                                                                                                                                                      |
-| `creative`    | default = `False` | boolean | Whether the scenario should start out in creative mode.                                                                                                                                   |
-| `seed`        | default = `null`  | int     | The seed that will be used to seed the random number generator.  If a procedurally generated world is used, the seed hence determines the world.  If omitted, a random seed will be used. |
-| `entities`    | default = `[]`    | list    | A list of custom entities.  See [Entities](#entities).                                                                                                                                    |
-| `recipes`     | default = `[]`    | list    | A list of custom recipes.  See [Recipes](#recipes).                                                                                                                                       |
-|               |                   |         |                                                                                                                                                                                           |
+| Key            | Default? | Type    | Description                                                                                                                                                                                                                                                                                                     |
+|----------------|----------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`         |          | string  | The name of the scenario.  Blah blah blah.                                                                                                                                                                                                                                                                      |
+| `description`  | `""`     | string  | A short description of the scenario.                                                                                                                                                                                                                                                                            |
+| `creative`     | `False`  | boolean | Whether the scenario should start out in creative mode.                                                                                                                                                                                                                                                         |
+| `seed`         | `null`   | int     | The seed that will be used to seed the random number generator.  If a procedurally generated world is used, the seed hence determines the world.  If omitted, a random seed will be used.                                                                                                                       |
+| `entities`     | `[]`     | list    | A list of custom entities.  See [Entities](#entities).                                                                                                                                                                                                                                                          |
+| `recipes`      | `[]`     | list    | A list of custom recipes.  See [Recipes](#recipes).                                                                                                                                                                                                                                                             |
+| `world`        |          | map     | A description of the world.  See [World](#world).                                                                                                                                                                                                                                                               |
+| `robots`       |          | list    | A list of robots that will inhabit the world.  See [Robots](#robots).                                                                                                                                                                                                                                           |
+| `objectives`   |          | list    | A list of objectives.  See [Objectives](#objectives).                                                                                                                                                                                                                                                           |
+| `solution`     | `null`   | string  | The (optional) text of a Swarm program that, when run on the base robot, completes all the objectives.  For scenarios which are officially part of the Swarm repository, such a solution will be tested as part of our CI.  For scenarios loaded directly from a file, any provided solution is simply ignored. |
+| `stepsPerTick` | `null`   | int     | When present, this specifies the maximum number of CESK machine steps each robot is allowed to take per game tick.  It is rather technical and only used in a few automated tests; most scenario authors should not need this.                                                                                  |
+|                |          |         |                                                                                                                                                                                                                                                                                                                 |
 
 ### Entities
 
@@ -63,3 +71,15 @@ Foo bar, all about entities!
 ### Recipies
 
 All about recipes.
+
+### World
+
+The world.
+
+### Robots
+
+Robots.
+
+### Objectives
+
+Objectives.
