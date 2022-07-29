@@ -247,6 +247,21 @@ handleMainEvent ev = do
       Just g -> toggleModal (GoalModal g)
     VtyEvent vev
       | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
+    -- pausing and stepping
+    ControlKey 'p' -> do
+      curTime <- liftIO $ getTime Monotonic
+      gameState . runStatus %= (\status -> if status == Running then ManualPause else Running)
+      -- Also reset the last frame time to now. If we are pausing, it
+      -- doesn't matter; if we are unpausing, this is critical to
+      -- ensure the next frame doesn't think it has to catch up from
+      -- whenever the game was paused!
+      uiState . lastFrameTime .= curTime
+    ControlKey 'o' -> do
+      gameState . runStatus .= ManualPause
+      runGameTickUI
+    -- speed controls
+    ControlKey 'x' -> modify $ adjustTPS (+)
+    ControlKey 'z' -> modify $ adjustTPS (-)
     -- special keys that work on all panels
     MetaKey 'w' -> setFocus WorldPanel
     MetaKey 'e' -> setFocus RobotPanel
@@ -349,9 +364,7 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
-      Just RecipesModal -> handleInfoPanelEvent recipesScroll (VtyEvent ev)
-      Just CommandsModal -> handleInfoPanelEvent commandsScroll (VtyEvent ev)
-      Just RobotsModal -> handleInfoPanelEvent robotsScroll (VtyEvent ev)
+      Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
@@ -771,25 +784,6 @@ handleWorldEvent = \case
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
     gameState . viewCenterRule .= VCRobot 0
-  -- pausing and stepping
-  CharKey 'p' -> do
-    curTime <- liftIO $ getTime Monotonic
-    gameState . runStatus %= (\status -> if status == Running then ManualPause else Running)
-    -- Also reset the last frame time to now. If we are pausing, it
-    -- doesn't matter; if we are unpausing, this is critical to
-    -- ensure the next frame doesn't think it has to catch up from
-    -- whenever the game was paused!
-    uiState . lastFrameTime .= curTime
-  CharKey 's' -> do
-    p <- use $ gameState . paused
-    if p
-      then runGameTickUI
-      else continueWithoutRedraw
-  -- speed controls
-  CharKey '<' -> modify $ adjustTPS (-)
-  CharKey '>' -> modify $ adjustTPS (+)
-  CharKey ',' -> modify $ adjustTPS (-)
-  CharKey '.' -> modify $ adjustTPS (+)
   -- show fps
   CharKey 'f' -> uiState . uiShowFPS %= not
   -- Fall-through case: don't do anything.
