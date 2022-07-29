@@ -2,3 +2,4 @@ test.yaml
 chess_horse.yaml
 drill_test.yaml
 teleport.yaml
+Mazes

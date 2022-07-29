@@ -1,0 +1,97 @@
+name: Invisible maze
+description: There is a maze, but it can't be seen, only sensed... can you
+  program a robot to navigate it successfully?
+objectives:
+- goal:
+  - There is a maze, but it can't be seen, only sensed... can you
+    program a robot to navigate it successfully?  You need to get a robot
+    to the goal square, labelled with an exclamation mark; you win by `grab`bing
+    the `goal`.
+  - In this challenge, it is guaranteed that the maze is a tree, that is,
+    there are no loops within the maze.
+  condition: |
+    try {
+      teleport self (27, -17);
+      b <- ishere "goal";
+      return (not b)
+    } { return false }
+solution: |
+  def tL = turn left end;
+  def tR = turn right end;
+  def ifC = \test. \then. \else. b <- test; if b then else end;
+  def forever = \c. c ; forever c end;
+  def rightBlocked = tR; b <- blocked; tL; return b end;
+  def mazeStep = ifC rightBlocked {ifC blocked {tL} {move}} {tR; move} end;
+  build {
+    require "treads"; require "branch predictor"; require "lambda";
+    require "strange loop"; require "scanner"; require "grabber";   // #540
+
+    forever (mazeStep; ifC (ishere "goal") {grab; return ()} {})
+  }
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: 'Ω'
+      attr: robot
+    devices:
+      - dictionary
+      - 3D printer
+      - logger
+      - grabber
+    inventory:
+      - [50, solar panel]
+      - [50, treads]
+      - [50, compass]
+      - [50, scanner]
+      - [50, lambda]
+      - [50, branch predictor]
+      - [50, strange loop]
+      - [50, logger]
+      - [50, grabber]
+      - [0, boulder]
+      - [0, goal]
+entities:
+  - name: wall
+    display:
+      invisible: true
+    description:
+    - An invisible wall.
+    properties: [unwalkable, known]
+  - name: goal
+    display:
+      char: '!'
+      attr: device
+    description:
+    - The place you're trying to reach!  You win by executing `grab` on this item.
+    properties: [known, portable]
+world:
+  default: [grass]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass, null]
+    'x': [grass, wall]
+    '@': [grass, boulder]
+    '!': [grass, goal]
+  upperleft: [-1,1]
+  map: |
+    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    @Ω........x...x..............@
+    @xx.xxxxx.x.x.xxx....xxxxxxx.@
+    @.x.x...x.x.x...xxxx.......x.@
+    @.....x.x.x.x.x....xxxxxxxxx.@
+    @xxxxxxxx.x.x.xxxx...........@
+    @.......x...x....xxxxxxxxxxxx@
+    @.xxxxx.xxxxxxxx.x...........@
+    @.x.x.x..x.....x.x.xxxxxxxxx.@
+    @.x.x.xx.x.xxxxx.x.x.....x...@
+    @.x.x.xx.x.x...x.x.x.x.x.x.xx@
+    @......x...x.x...x.x.x.x.x...@
+    @xxxxxxx.xxx.xxxxx.x.x.x.xxx.@
+    @....................x.x.x.x.@
+    @xxxxxxxxxxxxxxxxxxxxx.x.x.x.@
+    @..x...x...x...x.....x.x.x.x.@
+    @x...x...x...x...x.x.x.x.x.x.@
+    @xxxxxxxxxxxxxxxxx.x.x.x.x.x.@
+    @..................x...x...x!@
+    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
