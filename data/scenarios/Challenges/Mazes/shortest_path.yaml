@@ -8,7 +8,28 @@ objectives:
     You win by marking any shortest path from the base to the goal with `path`
     markers.
   condition: |
-    return false
+    def tL = turn left end;
+    def tR = turn right end;
+    def tB = turn back end;
+    def ifM = \p.\t.\e. b <- p; if b t e end;
+    def countpath = \d.
+      turn d;
+      n <- ifM blocked {return 0} {move; ifM (ishere "path") {return 1} {return 0}};
+      turn d; turn d; turn d;
+      return n
+    end;
+    def follow : int -> cmd (() + int) = \n.
+      ifM (ishere "goal") {return (inr n)}
+      {
+        a <- countpath left;
+        b <- countpath forward;
+        c <- countpath right;
+        if (a + b + c != 1) {return (inl ())}
+        {
+          return (inl ())
+        }
+      }
+    end
 solution: |
   run "data/scenarios/Challenges/Mazes/shortest_path_sol.sw"
 robots:
@@ -30,6 +51,8 @@ robots:
       - [50, lambda]
       - [50, branch predictor]
       - [50, strange loop]
+      - [50, calculator]
+      - [50, comparator]
       - [50, logger]
       - [50, grabber]
       - [1000, rock]
