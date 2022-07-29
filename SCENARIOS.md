@@ -81,12 +81,37 @@ the following table.
 | `orientation`  | `null`   | list   | A 2-tuple of integers specifying an orientation vector for the entity. Currently unused.                                                                                                                                                                                         |
 | `growth`       | `null`   | list   | For growable entities, a 2-tuple of integers specifying the minimum and maximum amount of time taken for one growth stage.  The actual time for one growth stage will be chosen uniformly at random from this range; it takes two growth stages for an entity to be fully grown. |
 | `yields`       | `null`   | string | The name of the entity which will be added to a robot's inventory when it executes `grab` or `harvest` on this entity.  If omitted, the entity will simply yield itself.                                                                                                         |
-| `properties`   | `[]`     | list   | A list of properties of this entity.  See                                                                                                                                                                                                                                                                                  |
-| `capabilities` | `[]`     | list   |                                                                                                                                                                                                                                                                                  |
+| `properties`   | `[]`     | list   | A list of properties of this entity.  See [Entity properties](#entity-properties).                                                                                                                                                                                               |
+| `capabilities` | `[]`     | list   | A list of capabilities provided by entity, when it is installed as a device.  See [Capabilities](#capabilities).                                                                                                                                                                 |
 
 #### Entity properties
 
-Foo bar
+The properties an entity may possess are listed below.  Each entity
+may possess any number of properties.
+
+- `unwalkable`: robots cannot `move` into a cell containing this
+  entity.  If they try, the `move` command will throw an exception.
+
+- `portable`: robots can pick this up using `grab` or `harvest`.
+  Trying to execute `grab` or `harvest` on an entity that is not
+  `portable` will throw an exception.
+
+- `growable`: when `harvest`ed, the entity will regrow from a seed.
+
+- `infinite`: when `grab`bed or `harvest`ed, the entity will
+  immediately respawn.
+
+- `known`: robots know what this is without having to `scan` it first,
+  hence it does not show up as a question mark.
+
+#### Capabilities
+
+Each capability enables the evaluation of execution of one or more
+commands or language constructs. Rather than listing all possible
+capabilities here, which would be annoying to keep up-to-date, see the
+(automatically generated) [Commands cheat
+sheet](https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet)
+on the Swarm wiki.
 
 ### Recipes
 
