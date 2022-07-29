@@ -115,7 +115,19 @@ on the Swarm wiki.
 
 ### Recipes
 
-All about recipes.
+The top-level `recipes` field contains a list of recipe descriptions.
+Each recipe is a key-value map describing a process that takes some
+inputs and produces some outputs, which robots can access using `make`
+and `drill`.
+
+| Key        | Default? | Type | Description                                                                                                                                                                                                                                                                                                                                                                                                             |
+|------------|----------|------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `in`       |          | list | A list of ingredients consumed by the recipe.  Each ingredient is a tuple consisting of an integer and an entity name, indicating the number of copies of the given entity that are needed.                                                                                                                                                                                                                             |
+| `out`      |          | list | A list of outputs produced by the recipe.  It is a list of [integer, entity name] tuples just like `in`.                                                                                                                                                                                                                                                                                                                |
+| `required` | `[]`     | list | A list of catalysts required by the recipe.  They are neither consumed nor produced, but must be present in order for the recipe to be carried out.  IT is a list of [integer, entity name] tuples just like `in` and `out`.                                                                                                                                                                                            |
+| `time`     | 1        | int  | The number of ticks the recipe takes to perform. For recipes which take more than 1 tick, the robot will `wait` for a number of ticks until the recipe is complete.  For example, this is used for many drilling recipes.                                                                                                                                                                                               |
+| `weight`   | 1        | int  | Whenever there are multiple recipes that match the relevant criteria, one of them will be chosen at random, with probability proportional to their weights.  For example, suppose there are two recipes that both output a `widget`, one with weight `1` and the other with weight `9`.  When a robot executes `make "widget"`, the first recipe will be chosen 10% of the time, and the second recipe 90% of the time. |
+
 
 ### World
 
