@@ -150,7 +150,7 @@ at various locations.
 #### Cells
 
 Each cell of the world is specified by a 1-, 2-, or 3-tuple, for
-example, `[grass]` or `[grass, tree, base]`.
+example, `[grass]`, `[grass, tree]`, or `[grass, null, base]`.
 
 - The first (required) item specifies the terrain.  Currently, valid
   terrain values are `stone`, `dirt`, `grass`, `ice`, or `blank`.
@@ -163,9 +163,9 @@ example, `[grass]` or `[grass, tree, base]`.
   specified in the `robots` section.  A copy of the robot will be
   created at each location in the `map` where it is drawn.
 
-  In general, multiple robots may be in a single location, but there
-  is currently no way to specify more than one robot for a cell in the
-  world description.
+  Although multiple robots may be in a single location in general,
+  there is currently no way to specify more than one robot for a
+  cell in the world description.
 
 If a 1-tuple is used, it specifies a terrain value with no entity or
 robot.  A 2-tuple specifies a terrain value and entity, but no robot.
