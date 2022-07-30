@@ -16,6 +16,11 @@ to look at the scenario files stored in
 one, and make whatever changes you want, using the other files as
 examples.
 
+If you notice any errors or have any questions or suggestions, feel
+free to join the `#swarm` channel on
+[Libera.Chat](https://libera.chat/), or [open a pull
+request](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md)!
+
 ## Loading scenarios
 
 The "blessed" scenarios that come with Swarm are stored in
