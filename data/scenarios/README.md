@@ -201,11 +201,13 @@ table.
 | `system`      | `False`  | `boolean`             | Whether the robot is a "system" robot.  System robots can do anything, without regard for devices and capabilities.                                                                                                                                                                                                                                                                                                            |
 | `heavy`       | `False`  | `boolean`             | Whether the robot is heavy.  Heavy robots require `tank treads` to `move` (rather than just `treads` for other robots).                                                                                                                                                                                                                                                                                                        |
 
-
 ### Objectives
 
-Objectives.
+The top-level `objectives` field contains a list of objectives that
+must be completed in sequence.  Each objective is a key-value map
+described by the following table.
 
-## Example
-
-XXX example here
+| Key         | Default? | Type          | Description                                                                                                                                                                                                                                                                                                                                       |
+|-------------|----------|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `goal`      | `[]`     | `string list` | A list of paragraphs describing the objective.  This text is shown to the player in a popup dialog box as soon as the scenario starts, or the previous objective is completed, and the player can recall the popup at any time with `Ctrl-G`.                                                                                                     |
+| `condition` |          | `string`      | The condition is the text of a Swarm program of type `cmd bool`, which will be run once per game tick on a freshly generated system robot.  It is run hypothetically, that is, it is run in a copy of the current game state which is thrown away once the program has run to completion.  The condition is met when this program returns `true`. |
