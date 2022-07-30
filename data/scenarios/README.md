@@ -120,15 +120,15 @@ A *display* specifies how an entity or a robot (robots are essentially
 special kinds of entities) is displayed in the world.  It consists of
 a key-value mapping described by the following table.
 
-| Key              | Default? | Type      | Description                                                                                                                                                                 |
-|------------------|----------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `char`           | `' '`    | `string`  | The default character that should be used to draw the robot or entity.                                                                                                      |
-| `orientationMap` | `{}`     |           | TODO currently unused                                                                                                                                                      |
-| `curOrientation` | `null`   |           | TODO currently unused                                                                                                                                                       |
-| `attr`           | entity   | `string`  | The name of the attribute that should be used to style the robot or entity.  A list of currently valid attributes can be found at https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/Attr.hs.                                      |
-| `priority`       | `1`      | `int`     | When multiple entities and robots occupy the same cell, the one with the highest priority is drawn.  By default, entities have priority `1`, and robots have priority `10`. |
-| `invisible`      | `False`  | `boolean` | Whether the entity or robot should be invisible.  Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways.                   |
-|                  |          |           |                                                                                                                                                                             |
+| Key              | Default? | Type      | Description                                                                                                                                                                                            |
+|------------------|----------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `char`           | `' '`    | `string`  | The default character that should be used to draw the robot or entity.                                                                                                                                 |
+| `orientationMap` | `{}`     |           | TODO currently unused                                                                                                                                                                                  |
+| `curOrientation` | `null`   |           | TODO currently unused                                                                                                                                                                                  |
+| `attr`           | `entity` | `string`  | The name of the attribute that should be used to style the robot or entity.  A list of currently valid attributes can be found at https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/Attr.hs. |
+| `priority`       | `1`      | `int`     | When multiple entities and robots occupy the same cell, the one with the highest priority is drawn.  By default, entities have priority `1`, and robots have priority `10`.                            |
+| `invisible`      | `False`  | `boolean` | Whether the entity or robot should be invisible.  Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways.                                              |
+
 
 ### Recipes
 
