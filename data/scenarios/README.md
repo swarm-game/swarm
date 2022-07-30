@@ -16,10 +16,6 @@ https://github.com/swarm-game/swarm/tree/main/data/scenarios , copy
 one, and make whatever changes you want, using the other files as
 examples.
 
-XXX Things to add to scenarios:
-  - Version field
-  - Author field
-
 ## Loading scenarios
 
 The "blessed" scenarios that come with Swarm are stored in
