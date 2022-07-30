@@ -32,6 +32,11 @@ a specific `.yaml` file containing a scenario.  For example:
 swarm --scenario myscenarios/fun.yaml
 ```
 
+## Examples
+
+Many examples can be found in
+https://github.com/swarm-game/swarm/tree/main/data/scenarios .
+
 ## The scenario file format
 
 Scenarios are stored in [YAML files](https://yaml.org/). If you want
