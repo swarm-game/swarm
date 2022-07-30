@@ -12,7 +12,7 @@ tips for authoring your own scenarios.
 
 If you're impatient to get started, note that a much quicker route is
 to look at the scenario files stored in
-https://github.com/swarm-game/swarm/tree/main/data/scenarios , copy
+ [`data/scenarios`](https://github.com/swarm-game/swarm/tree/main/data/scenarios) of the swarm repository, copy
 one, and make whatever changes you want, using the other files as
 examples.
 
