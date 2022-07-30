@@ -43,15 +43,29 @@ uses the Haskell [yaml
 library](https://hackage.haskell.org/package/yaml) for parsing `.yaml`
 files.
 
+### YAML conventions
+
+Objects (key-value mappings) are described below using tables.  Note
+that a blank "Default?" column means the key is required; other keys
+are optional and take on the indicated default value when they are not
+present. The order of keys in a key-value mapping does not matter.
+
+YAML is untyped, but we try to give a more precise idea of the
+expected types in the tables below.
+- `foo list` means a list where all the elements are of type `foo`.
+- A type like `int × int` means a pair of int values.  YAML does not actually have
+  tuples, only lists, so in practice, an `int × int` value is written
+  as a list with exactly two elements.  Likewise, `int × string`
+  denotes a list with exactly two elements, the first being an `int`
+  and the second being a `string`.
+- `object` denotes a generic key-value mapping.  Whenever `object` is
+  used, you will find a link to a more specific description of the
+  keys and values expected.
+
 ### Top level
 
 At the top level, a scenario file contains a key-value mapping,
-described by the following table.  Note that a blank Default? column
-means the key is required; other keys are optional and take on the
-indicated default value when they are not present.
-
-As with all YAML, note that the order of keys in a key-value mapping
-does not matter.
+described by the following table.
 
 | Key            | Default? | Type                            | Description                                                                                                                                                                                                                                                                                                                                                   |
 |----------------|----------|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
