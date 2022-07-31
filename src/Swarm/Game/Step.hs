@@ -1126,7 +1126,7 @@ execConst c vs s k = do
           mm = limitLast $ Seq.takeWhileR recentAndClose mq
       return $
         maybe
-          (In (TConst Listen) mempty s k) -- continue listening
+          (In (TConst Listen) mempty s (FExec : k)) -- continue listening
           (\m -> Out (VString m) s k) -- return found message
           mm
     Log -> case vs of
