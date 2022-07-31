@@ -406,7 +406,7 @@ data ModalType
   | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = PauseButton | CancelButton | QuitButton | NextButton Scenario
+data ButtonSelection = CancelButton | QuitButton | NextButton Scenario
 
 data Modal = Modal
   { _modalType :: ModalType

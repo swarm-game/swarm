@@ -86,6 +86,7 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
+import Data.List (intersperse)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -226,7 +227,7 @@ drawGameUI s =
     Nothing -> id
   -- Add clock display in top right of the world view if focused robot
   -- has a clock installed
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay s)
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
@@ -235,25 +236,14 @@ drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g i@(W.Coords (y, x)) =
   hBox [drawLoc g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
 
-drawClockDisplay :: AppState -> Widget n
-drawClockDisplay s
-  | clockInstalled && gamePaused = clockWidget <+> txt " " <+> pauseWidget
-  | clockInstalled = clockWidget
-  | gamePaused = pauseWidget
-  | otherwise = txt ""
+drawClockDisplay :: GameState -> Widget n
+drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockInstalled = case s ^. gameState . to focusedRobot of
-    Nothing -> False
-    Just r
-      | countByName "clock" (r ^. installedDevices) > 0 -> True
-      | otherwise -> False
-  gamePaused = s ^. gameState . paused
-  clockWidget = drawClock (s ^. gameState . ticks) gamePaused
-  pauseWidget = txt "(PAUSED)"
+  clockWidget = drawTime (gs ^. ticks) (gs ^. paused) gs
+  pauseWidget = if gs ^. paused then Just $ txt "(PAUSED)" else Nothing
 
-drawClock :: Integer -> Bool -> Widget n
-drawClock t showTicks =
-  str . mconcat $
+drawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
+drawTime t showTicks gs = justClock . str . mconcat $
     [ printf "%x" (t `shiftR` 20)
     , ":"
     , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
@@ -261,6 +251,13 @@ drawClock t showTicks =
     , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
     ]
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
+ where
+  justClock = if clockInstalled then Just else const Nothing
+  clockInstalled = case focusedRobot gs of
+    Nothing -> False
+    Just r
+      | countByName "clock" (r ^. installedDevices) > 0 -> True
+      | otherwise -> False
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -365,7 +362,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
-      MessagesModal -> ("Messages", Just (0, [("Toggle pause", PauseButton)]), descriptionWidth)
+      MessagesModal -> ("Messages", Nothing, descriptionWidth)
       WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
@@ -560,9 +557,11 @@ messagesWidget gs = widgetList
   drawLogEntry' e =
     withAttr (if not $ e ^. leSaid then notifAttr else robotColor (e ^. leRobotID)) $
       hBox
-        [ txt $ view leRobotName e <> (if e ^. leRobotID /= gs ^. focusedRobotID then " said" else "")
-        , txtWrapWith indent2 (e ^. leText)
+        [ fromMaybe (txt "") $ drawTime (e ^. leTime) True gs
+        , padLeft (Pad 2) . txt $ "[" <> e ^. leRobotName <> "]"
+        , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
+  txt2 = txtWrapWith indent2
   -- color each robot message with different color of the world
   robotColor rid = fgCols !! (rid `mod` fgColLen)
   fgCols = map fst worldAttributes
@@ -952,7 +951,7 @@ drawRobotLog s =
 drawLogEntry :: Bool -> LogEntry -> Widget a
 drawLogEntry addName e = txtWrapWith indent2 . (if addName then name else id) $ e ^. leText
  where
-  name t = view leRobotName e <> (if e ^. leSaid then " said " <> quote t else " " <> t)
+  name t = "[" <> view leRobotName e <> "] " <> (if e ^. leSaid then "said " <> quote t else t)
 
 ------------------------------------------------------------
 -- REPL panel

@@ -350,16 +350,21 @@ toggleModal mt = do
       uiState . uiModal ?= newModal
     Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
  where
-  -- these modals do not pause the game
-  runningModals = [RobotsModal, MessagesModal]
   -- Set the game to AutoPause if needed
   ensurePause = do
     pause <- use $ gameState . paused
-    unless (pause || mt `elem` runningModals) $ do
+    unless (pause || isRunningModal mt) $ do
       gameState . runStatus .= AutoPause
 
+-- | The running modals do not autopause the game.
+isRunningModal :: ModalType -> Bool
+isRunningModal mt = mt `elem` [RobotsModal, MessagesModal]
+
 handleModalEvent :: V.Event -> EventM Name AppState ()
-handleModalEvent = \case
+handleModalEvent ev = do
+ mt <- preuse $ uiState . uiModal . _Just . modalType
+ let isRunning = maybe False isRunningModal mt
+ case ev of
   V.EvKey V.KEnter [] -> do
     mdialog <- preuse $ uiState . uiModal . _Just . modalDialog
     toggleModal QuitModal
@@ -367,7 +372,16 @@ handleModalEvent = \case
       Just (Just QuitButton) -> quitGame
       Just (Just (NextButton scene)) -> startGame scene
       _ -> return ()
-  ev -> do
+  -- TODO: copy pasted here from 'handleMainEvent'
+  -- pausing and stepping
+  V.EvKey (V.KChar 'p') [V.MCtrl] | isRunning -> safeTogglePause
+  V.EvKey (V.KChar 'o') [V.MCtrl] | isRunning -> do
+    gameState . runStatus .= ManualPause
+    runGameTickUI
+  -- speed controls
+  V.EvKey (V.KChar 'x') [V.MCtrl] | isRunning -> modify $ adjustTPS (+)
+  V.EvKey (V.KChar 'z') [V.MCtrl] | isRunning -> modify $ adjustTPS (-)
+  _ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
