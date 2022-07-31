@@ -2,6 +2,9 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## WIP
+- [Highlighter] added `listen` command
+
 ## version 0.0.5
 - [Highlighter] added the `atomic`, `installed` and `time` constants
 - [Highlighter] added `require` syntax (checking what follows it is left to typechecker)

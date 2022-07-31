@@ -64,6 +64,7 @@
                "salvage"
                "reprogram"
                "say"
+               "listen"
                "log"
                "view"
                "appear"
