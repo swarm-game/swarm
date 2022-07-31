@@ -1093,13 +1093,18 @@ execConst c vs s k = do
         loc <- use robotLocation
         m <- createLogEntry True msg
         emitMessage m
+        let addLatestClosest rl = \case
+             Seq.Empty -> Seq.Empty
+             es Seq.:|> e | e ^. leTime < m ^. leTime -> es |> e |> m
+                          | manhattan rl (e ^. leLocation) > manhattan rl (m ^. leLocation) -> es |> m
+                          | otherwise -> es |> e
         let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
             addToRobotLog r = do
               r' <- execState r $ do
                 hasLog <- hasCapability CLog
                 hasListen <- hasCapability CListen
-                -- TODO: only add latest message
-                when (hasLog && hasListen) (robotLog %= (Seq.|> m))
+                loc' <- use robotLocation
+                when (hasLog && hasListen) (robotLog %= addLatestClosest loc')
               addRobot r'
         robotsAround <-
           if creative
