@@ -560,16 +560,16 @@ constInfo c = case c of
     command 1 short . doc "Emit a message." $
       [ "The message will be in the robots log (if it has one) and the global log."
       , "You can view the message that would be picked by `listen` from the global log "
-      <> "in the messages panel, along with your own messages and logs."
+          <> "in the messages panel, along with your own messages and logs."
       , "This means that to see messages from other robots you have to be able to listen for them, "
-      <> "so once you have a listening device installed messages will be added to your log."
+          <> "so once you have a listening device installed messages will be added to your log."
       , "In creative mode, there is of course no such limitation."
       ]
   Listen ->
     command 1 long . doc "Listen for a message from other robots." $
       [ "It will take the first message said by the closest robot."
       , "You do not need to actively listen for the message to be logged though, "
-      <> "that is done automatically once you have a listening device installed."
+          <> "that is done automatically once you have a listening device installed."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."

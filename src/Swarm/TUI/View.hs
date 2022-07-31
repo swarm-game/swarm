@@ -58,6 +58,7 @@ import Data.List.Split (chunksOf)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
+import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -85,7 +86,6 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
-import qualified Data.Sequence as Seq
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.

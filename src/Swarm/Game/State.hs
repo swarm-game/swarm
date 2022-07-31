@@ -359,33 +359,34 @@ manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 -- https://oeis.org/A001844
 getElemsInArea :: V2 Int64 -> Int64 -> Map (V2 Int64) e -> [e]
 getElemsInArea o@(V2 x y) d m = M.elems sm'
-  where
-    -- to be more efficient we basically split on first coordinate
-    -- (which is logarithmic) and then we have to linearly filter
-    -- the second coordinate to get a square - this is how it looks:
-    --         ▲▲▲▲  
-    --         ││││    the arrows mark points that are greater then A
-    --         ││s│                                 and lesser then B
-    --         │sssB (2,1)
-    --         ssoss   <-- o=(x=0,y=0) with d=2 
-    -- (-2,-1) Asss│ 
-    --          │s││   the point o and all s are in manhattan
-    --          ││││                  distance 2 from point o
-    --          ▼▼▼▼ 
-    sm = m
-      & M.split (V2 (x - d) (y-1)) -- A
+ where
+  -- to be more efficient we basically split on first coordinate
+  -- (which is logarithmic) and then we have to linearly filter
+  -- the second coordinate to get a square - this is how it looks:
+  --         ▲▲▲▲
+  --         ││││    the arrows mark points that are greater then A
+  --         ││s│                                 and lesser then B
+  --         │sssB (2,1)
+  --         ssoss   <-- o=(x=0,y=0) with d=2
+  -- (-2,-1) Asss│
+  --          │s││   the point o and all s are in manhattan
+  --          ││││                  distance 2 from point o
+  --          ▼▼▼▼
+  sm =
+    m
+      & M.split (V2 (x - d) (y -1)) -- A
       & snd -- A<
-      & M.split (V2 (x + d) (y+1)) -- B
+      & M.split (V2 (x + d) (y + 1)) -- B
       & fst -- B>
-    sm' = M.filterWithKey (const . (<=d) . manhattan o) sm
+  sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
 
 -- | Get robots in manhattan distastance from location.
 robotsInArea :: V2 Int64 -> Int64 -> GameState -> [Robot]
 robotsInArea o d gs = map (rm IM.!) rids
-  where
-    rm = gs ^. robotMap
-    rl = gs ^. robotsByLocation
-    rids = concatMap IS.elems $ getElemsInArea o d rl
+ where
+  rm = gs ^. robotMap
+  rl = gs ^. robotsByLocation
+  rids = concatMap IS.elems $ getElemsInArea o d rl
 
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
