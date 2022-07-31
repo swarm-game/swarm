@@ -830,10 +830,6 @@ testNotification gs =
         assertNew gs' 1 "message" messageNotifications
     , testCase "new message after build say" $ do
         gs' <- goodPlay "build {say \"Hello world!\"}; turn back; turn back;"
-        putStrLn ""
-        print $ focusedRobot gs'
-        print $ gs' ^. messageQueue
-        print $ gs' ^. messageNotifications
         assertBool "There should be one message in queue" (length (gs' ^. messageQueue) == 1)
         assertNew gs' 1 "message" messageNotifications
     , testCase "no new message after build log" $ do
