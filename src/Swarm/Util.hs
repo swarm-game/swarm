@@ -147,8 +147,8 @@ cycleEnum e
 -- "abcd"
 uniq :: Eq a => [a] -> [a]
 uniq = \case
- [] -> []
- (x:xs) -> x : uniq (dropWhile (== x) xs)
+  [] -> []
+  (x : xs) -> x : uniq (dropWhile (== x) xs)
 
 ------------------------------------------------------------
 -- Directory stuff
