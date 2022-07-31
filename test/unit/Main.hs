@@ -5,7 +5,7 @@
 -- | Swarm unit tests
 module Main where
 
-import Control.Lens (Getter, Ixed (ix), to, use, view, (&), (.~), (^.), (^?), (^?!), _1, _3)
+import Control.Lens (Getter, Ixed (ix), to, use, view, (&), (.~), (^.), (^?), (^?!), _3)
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Aeson (eitherDecode, encode)
@@ -819,14 +819,14 @@ testNotification gs =
         assertNew gs' 2 "messages" messageNotifications
     , testCase "one new message and one old message" $ do
         gs' <- goodPlay "say \"Hello!\"; say \"Goodbye!\""
-        assertEqual "There should be two messages in queue" [0, 1] (view (_1 . leTime) <$> gs' ^. messageNotifications . notificationsContent)
+        assertEqual "There should be two messages in queue" [0, 1] (view leTime <$> gs' ^. messageNotifications . notificationsContent)
         assertNew (gs' & lastSeenMessageTime .~ 0) 1 "message" messageNotifications
     , testCase "new message after log" $ do
         gs' <- goodPlay "create \"logger\"; install self \"logger\"; log \"Hello world!\""
         let r = gs' ^?! robotMap . ix (-1)
         assertBool "There should be one log entry in robots log" (length (r ^. robotLog) == 1)
         assertEqual "The hypothetical robot should be in focus" (Just (r ^. robotID)) (view robotID <$> focusedRobot gs')
-        assertEqual "There should be one log notification" [2] (view (_1 . leTime) <$> gs' ^. messageNotifications . notificationsContent)
+        assertEqual "There should be one log notification" [2] (view leTime <$> gs' ^. messageNotifications . notificationsContent)
         assertNew gs' 1 "message" messageNotifications
     , testCase "new message after build say" $ do
         gs' <- goodPlay "build {say \"Hello world!\"}; turn back; turn back;"

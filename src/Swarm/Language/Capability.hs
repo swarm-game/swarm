@@ -79,6 +79,8 @@ data Capability
     CAppear
   | -- | Execute the 'Create' command
     CCreate
+  | -- | Execute the 'Listen' command and passively log messages if also has 'CLog'
+    CListen
   | -- | Execute the 'Log' command
     CLog
   | -- | Don't drown in liquid
@@ -156,6 +158,7 @@ constCaps = \case
   Run -> Nothing
   -- ----------------------------------------------------------------
   -- Some straightforward ones.
+  Listen -> Just CListen
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
