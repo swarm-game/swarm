@@ -51,6 +51,7 @@ import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
 import Data.IntMap qualified as IM
+import Data.List (intersperse)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -86,7 +87,6 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
-import Data.List (intersperse)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -243,7 +243,8 @@ drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pau
   pauseWidget = if gs ^. paused then Just $ txt "(PAUSED)" else Nothing
 
 drawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
-drawTime t showTicks gs = justClock . str . mconcat $
+drawTime t showTicks gs =
+  justClock . str . mconcat $
     [ printf "%x" (t `shiftR` 20)
     , ":"
     , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
