@@ -1121,8 +1121,8 @@ execConst c vs s k = do
       mq <- use messageQueue
       let recentAndClose e = creative || e ^. leTime == t && manhattan loc (e ^. leLocation) <= hearingDistance
           limitLast = \case
-            (_s Seq.:|> l) -> Just $ l ^. leText
-            _empty -> Nothing
+            _s Seq.:|> l | l ^. leTime == t - 1 -> Just $ l ^. leText
+            _ -> Nothing
           mm = limitLast $ Seq.takeWhileR recentAndClose mq
       return $
         maybe
