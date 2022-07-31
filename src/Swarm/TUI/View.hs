@@ -92,12 +92,12 @@ drawUI :: AppState -> [Widget Name]
 drawUI s
   | s ^. uiState . uiPlaying = drawGameUI s
   | otherwise = case s ^. uiState . uiMenu of
-      -- We should never reach the NoMenu case if uiPlaying is false; we would have
-      -- quit the app instead.  But just in case, we display the main menu anyway.
-      NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
-      MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
-      NewGameMenu stk -> [drawNewGameMenuUI stk]
-      AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+    -- We should never reach the NoMenu case if uiPlaying is false; we would have
+    -- quit the app instead.  But just in case, we display the main menu anyway.
+    NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
+    MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+    NewGameMenu stk -> [drawNewGameMenuUI stk]
+    AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI logo l =
@@ -275,12 +275,12 @@ drawTPS s = hBox (tpsInfo : rateInfo)
 
   rateInfo
     | s ^. uiState . uiShowFPS =
-        [ txt " ("
-        , str (printf "%0.1f" (s ^. uiState . uiTPF))
-        , txt " tpf, "
-        , str (printf "%0.1f" (s ^. uiState . uiFPS))
-        , txt " fps)"
-        ]
+      [ txt " ("
+      , str (printf "%0.1f" (s ^. uiState . uiTPF))
+      , txt " tpf, "
+      , str (printf "%0.1f" (s ^. uiState . uiFPS))
+      , txt " fps)"
+      ]
     | otherwise = []
 
   l = s ^. uiState . lgTicksPerSecond
@@ -373,9 +373,9 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             , Just
                 ( 0
                 , [(nextMsg, NextButton scene) | Just scene <- [s ^. uiState . uiNextScenario]]
-                    ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, CancelButton)
-                       ]
+                  ++ [ (stopMsg, QuitButton)
+                     , (continueMsg, CancelButton)
+                     ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
@@ -523,8 +523,8 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
   (news, knowns) = splitAt count (gs ^. notifLens . notificationsContent)
   notifSep
     | count > 0 && not (null knowns) =
-        [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
-        ]
+      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+      ]
     | otherwise = []
 
 constHeader :: Widget Name
@@ -595,10 +595,10 @@ drawKeyMenu s =
   notificationKey notifLens key name
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
-        let highlight
-              | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
-              | otherwise = NoHighlight
-         in Just (highlight, key, name)
+      let highlight
+            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
+            | otherwise = NoHighlight
+       in Just (highlight, key, name)
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -809,13 +809,13 @@ explainRecipes :: AppState -> Entity -> Widget Name
 explainRecipes s e
   | null recipes = emptyWidget
   | otherwise =
-      vBox
-        [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
-        , padLeftRight 2 $
-            hCenter $
-              vBox $
-                map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
-        ]
+    vBox
+      [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
+      , padLeftRight 2 $
+          hCenter $
+            vBox $
+              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
+      ]
  where
   recipes = recipesWith s e
 
@@ -858,11 +858,11 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
   connector
     | null reqs = hLimit 5 hBorder
     | otherwise =
-        hBox
-          [ hLimit 2 hBorder
-          , joinableBorder (Edges True False True True)
-          , hLimit 2 hBorder
-          ]
+      hBox
+        [ hLimit 2 hBorder
+        , joinableBorder (Edges True False True True)
+        , hLimit 2 hBorder
+        ]
   inLen = length ins + length times
   outLen = length outs
   times = [(fromIntegral time, timeE) | time /= 1]
