@@ -567,7 +567,9 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = isJust (s ^. uiState . uiGoal)
+  goal = case s ^. uiState . uiGoal of
+    Just g | g /= [] -> True
+    _ -> False
   showZero = s ^. uiState . uiShowZero
 
   notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> [(KeyHighlight, Text, Text)]

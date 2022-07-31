@@ -243,8 +243,8 @@ handleMainEvent ev = do
       toggleModal CommandsModal
       gameState . availableCommands . notificationsCount .= 0
     ControlKey 'g' -> case s ^. uiState . uiGoal of
-      Nothing -> continueWithoutRedraw
-      Just g -> toggleModal (GoalModal g)
+      Just g | g /= [] -> toggleModal (GoalModal g)
+      _ -> continueWithoutRedraw
     VtyEvent vev
       | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- pausing and stepping
@@ -598,7 +598,7 @@ updateUI = do
   when goalUpdated $ do
     uiState . uiGoal .= newGoal
     case newGoal of
-      Just goal -> do
+      Just goal | goal /= [] -> do
         toggleModal (GoalModal goal)
       _ -> return ()
 
