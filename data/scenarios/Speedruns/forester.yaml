@@ -1,0 +1,32 @@
+name: Forester
+description: Race to harvest 1024 trees as quickly as possible.
+objectives:
+  - condition: as base {n <- count "tree"; return (n >= 1024)}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,1]
+    heavy: true
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - 3D printer
+      - dictionary
+      - grabber
+      - life support system
+      - logger
+      - toolkit
+      - solar panel
+      - workbench
+      - clock
+    inventory:
+      - [5, 3D printer]
+      - [100, treads]
+      - [70, grabber]
+      - [100, solar panel]
+      - [50, scanner]
+      - [5, toolkit]
+world:
+  seed: null
+  offset: true

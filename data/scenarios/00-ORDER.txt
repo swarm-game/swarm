@@ -3,4 +3,5 @@ creative.yaml
 Tutorials
 Challenges
 Fun
+Speedruns
 Testing
