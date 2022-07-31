@@ -1094,10 +1094,11 @@ execConst c vs s k = do
         m <- createLogEntry True msg
         emitMessage m
         let addLatestClosest rl = \case
-             Seq.Empty -> Seq.Empty
-             es Seq.:|> e | e ^. leTime < m ^. leTime -> es |> e |> m
-                          | manhattan rl (e ^. leLocation) > manhattan rl (m ^. leLocation) -> es |> m
-                          | otherwise -> es |> e
+              Seq.Empty -> Seq.Empty
+              es Seq.:|> e
+                | e ^. leTime < m ^. leTime -> es |> e |> m
+                | manhattan rl (e ^. leLocation) > manhattan rl (m ^. leLocation) -> es |> m
+                | otherwise -> es |> e
         let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
             addToRobotLog r = do
               r' <- execState r $ do
