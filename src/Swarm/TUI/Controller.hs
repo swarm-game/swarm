@@ -362,31 +362,31 @@ isRunningModal mt = mt `elem` [RobotsModal, MessagesModal]
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent ev = do
- mt <- preuse $ uiState . uiModal . _Just . modalType
- let isRunning = maybe False isRunningModal mt
- case ev of
-  V.EvKey V.KEnter [] -> do
-    mdialog <- preuse $ uiState . uiModal . _Just . modalDialog
-    toggleModal QuitModal
-    case dialogSelection <$> mdialog of
-      Just (Just QuitButton) -> quitGame
-      Just (Just (NextButton scene)) -> startGame scene
-      _ -> return ()
-  -- TODO: copy pasted here from 'handleMainEvent'
-  -- pausing and stepping
-  V.EvKey (V.KChar 'p') [V.MCtrl] | isRunning -> safeTogglePause
-  V.EvKey (V.KChar 'o') [V.MCtrl] | isRunning -> do
-    gameState . runStatus .= ManualPause
-    runGameTickUI
-  -- speed controls
-  V.EvKey (V.KChar 'x') [V.MCtrl] | isRunning -> modify $ adjustTPS (+)
-  V.EvKey (V.KChar 'z') [V.MCtrl] | isRunning -> modify $ adjustTPS (-)
-  _ev -> do
-    Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
-    modal <- preuse $ uiState . uiModal . _Just . modalType
-    case modal of
-      Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      _ -> return ()
+  mt <- preuse $ uiState . uiModal . _Just . modalType
+  let isRunning = maybe False isRunningModal mt
+  case ev of
+    V.EvKey V.KEnter [] -> do
+      mdialog <- preuse $ uiState . uiModal . _Just . modalDialog
+      toggleModal QuitModal
+      case dialogSelection <$> mdialog of
+        Just (Just QuitButton) -> quitGame
+        Just (Just (NextButton scene)) -> startGame scene
+        _ -> return ()
+    -- TODO: copy pasted here from 'handleMainEvent'
+    -- pausing and stepping
+    V.EvKey (V.KChar 'p') [V.MCtrl] | isRunning -> safeTogglePause
+    V.EvKey (V.KChar 'o') [V.MCtrl] | isRunning -> do
+      gameState . runStatus .= ManualPause
+      runGameTickUI
+    -- speed controls
+    V.EvKey (V.KChar 'x') [V.MCtrl] | isRunning -> modify $ adjustTPS (+)
+    V.EvKey (V.KChar 'z') [V.MCtrl] | isRunning -> modify $ adjustTPS (-)
+    _ev -> do
+      Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
+      modal <- preuse $ uiState . uiModal . _Just . modalType
+      case modal of
+        Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+        _ -> return ()
 
 -- | Quit a game.  Currently all it does is write out the updated REPL
 --   history to a @.swarm_history@ file, and return to the previous menu.
