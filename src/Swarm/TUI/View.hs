@@ -85,6 +85,7 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
+import qualified Data.Sequence as Seq
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -556,10 +557,10 @@ messagesWidget gs = widgetList
  where
   widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
   focusNewest = if gs ^. paused then id else over _last visible
-  drawLogEntry' (e, isLog) =
-    withAttr (if isLog then notifAttr else robotColor (e ^. leRobotID)) $
+  drawLogEntry' e =
+    withAttr (if not $ e ^. leSaid then notifAttr else robotColor (e ^. leRobotID)) $
       hBox
-        [ txt $ "[" <> view leRobotName e <> "] "
+        [ txt $ view leRobotName e <> (if e ^. leRobotID /= gs ^. focusedRobotID then " said" else "")
         , txtWrapWith indent2 (e ^. leText)
         ]
   -- color each robot message with different color of the world
@@ -929,7 +930,13 @@ drawRobotLog s =
     , vBox . imap drawEntry $ logEntries
     ]
  where
-  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList
+  logEntries =
+    s
+      & view (gameState . to focusedRobot . _Just . robotLog)
+      & Seq.sort
+      & F.toList
+      & uniq
+
   rn = s ^? gameState . to focusedRobot . _Just . robotName
   n = length logEntries
 
@@ -941,9 +948,9 @@ drawRobotLog s =
 
 -- | Draw one log entry with an optional robot name first.
 drawLogEntry :: Bool -> LogEntry -> Widget a
-drawLogEntry addName e = txtWrapWith indent2 . (if addName then (name <>) else id) $ e ^. leText
+drawLogEntry addName e = txtWrapWith indent2 . (if addName then name else id) $ e ^. leText
  where
-  name = "[" <> view leRobotName e <> "] "
+  name t = view leRobotName e <> (if e ^. leSaid then " said " <> quote t else " " <> t)
 
 ------------------------------------------------------------
 -- REPL panel

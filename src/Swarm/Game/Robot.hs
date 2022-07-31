@@ -21,6 +21,7 @@ module Swarm.Game.Robot (
   -- * Robot log entries
   LogEntry (..),
   leText,
+  leSaid,
   leRobotName,
   leTime,
   leLocation,
@@ -75,6 +76,9 @@ module Swarm.Game.Robot (
   isActive,
   waitingUntil,
   getResult,
+
+  -- ** Constants
+  hearingDistance,
 ) where
 
 import Control.Lens hiding (contains)
@@ -127,6 +131,8 @@ data LogEntry = LogEntry
   { -- | The time at which the entry was created.
     --   Note that this is the first field we sort on.
     _leTime :: Integer
+  , -- | Whether this log records a said message.
+    _leSaid :: Bool
   , -- | The name of the robot that generated the entry.
     _leRobotName :: Text
   , -- | The ID of the robot that generated the entry.
@@ -512,3 +518,6 @@ waitingUntil robot =
 getResult :: Robot -> Maybe (Value, Store)
 {-# INLINE getResult #-}
 getResult = finalValue . view machine
+
+hearingDistance :: Num i => i
+hearingDistance = 32

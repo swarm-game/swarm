@@ -138,7 +138,7 @@ gameTick = do
               hid = view robotID h
               hn = view robotName h
               farAway = V2 maxBound maxBound
-          let m = LogEntry time hn hid farAway $ formatExn em exn
+          let m = LogEntry time False hn hid farAway $ formatExn em exn
           emitMessage m
         Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
         _ -> return ()
@@ -219,10 +219,6 @@ robotWithID rid = use (robotMap . at rid)
 robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
 robotWithName rname = use (robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))
 
--- | Manhattan distance between world locations.
-manhattan :: V2 Int64 -> V2 Int64 -> Int64
-manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
-
 -- | Generate a uniformly random number using the random generator in
 --   the game state.
 uniform :: (Has (State GameState) sig m, UniformRange a) => (a, a) -> m a
@@ -263,26 +259,28 @@ randomName = do
 -- Debugging
 ------------------------------------------------------------
 
--- | Create a log entry given current robot and game time in ticks.
-createLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m LogEntry
-createLog msg = do
+-- | Create a log entry given current robot and game time in ticks noting whether it has been said.
+--
+--   This is the more generic version used both for (recorded) said messages and normal logs.
+createLogEntry :: (Has (State GameState) sig m, Has (State Robot) sig m) => Bool -> Text -> m LogEntry
+createLogEntry isSaid msg = do
   rid <- use robotID
   rn <- use robotName
   time <- use ticks
   loc <- use robotLocation
-  pure $ LogEntry time rn rid loc msg
+  pure $ LogEntry time isSaid rn rid loc msg
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m ()
-traceLog msg = do
-  m <- createLog msg
+traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Bool -> Text -> m ()
+traceLog isSaid msg = do
+  m <- createLogEntry isSaid msg
   robotLog %= (Seq.|> m)
 
 -- | Print a showable value via the robot's log.
 --
 -- Useful for debugging.
 traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
-traceLogShow = traceLog . from . show
+traceLogShow = traceLog False . from . show
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -1091,13 +1089,42 @@ execConst c vs s k = do
       _ -> badConst
     Say -> case vs of
       [VString msg] -> do
-        m <- createLog msg
+        creative <- use creativeMode
+        loc <- use robotLocation
+        m <- createLogEntry True msg
         emitMessage m
+        let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
+            addToRobotLog r = do
+              r' <- execState r $ do
+                hasLog <- hasCapability CLog
+                hasListen <- hasCapability CListen
+                when (hasLog && hasListen) (robotLog %= (Seq.|> m))
+              addRobot r'
+        robotsAround <-
+          if creative
+            then use $ robotMap . to IM.elems
+            else gets $ robotsInArea loc hearingDistance
+        mapM_ addToRobotLog robotsAround
         return $ Out VUnit s k
       _ -> badConst
+    Listen -> do
+      t <- use ticks
+      loc <- use robotLocation
+      creative <- use creativeMode
+      mq <- use messageQueue
+      let recentAndClose e = creative || e ^. leTime == t && manhattan loc (e ^. leLocation) <= hearingDistance
+          limitLast = \case
+            (_s Seq.:|> l) -> Just $ l ^. leText
+            _empty -> Nothing
+          mm = limitLast $ Seq.takeWhileR recentAndClose mq
+      return $
+        maybe
+          (In (TConst Listen) mempty s k) -- continue listening
+          (\m -> Out (VString m) s k) -- return found message
+          mm
     Log -> case vs of
       [VString msg] -> do
-        traceLog msg
+        traceLog False msg
         return $ Out VUnit s k
       _ -> badConst
     View -> case vs of

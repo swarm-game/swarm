@@ -36,10 +36,12 @@ module Swarm.Game.State (
   robotMap,
   robotsByLocation,
   robotsAtLocation,
+  robotsInArea,
   activeRobots,
   waitingRobots,
   availableRecipes,
   availableCommands,
+  messageNotifications,
   allDiscoveredEntities,
   gensym,
   randGen,
@@ -73,6 +75,7 @@ module Swarm.Game.State (
   classicGame0,
 
   -- * Utilities
+  manhattan,
   applyViewCenterRule,
   recalcViewCenter,
   modifyViewCenter,
@@ -88,7 +91,7 @@ module Swarm.Game.State (
   deleteRobot,
   activateRobot,
   toggleRunStatus,
-  messageNotifications,
+  messageIsRecentAndClose,
 ) where
 
 import Control.Algebra (Has)
@@ -144,7 +147,7 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
-import Swarm.Util (isRightOr, (<+=), (<<.=), (?))
+import Swarm.Util (isRightOr, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
@@ -338,6 +341,52 @@ robotsAtLocation loc gs =
     . view robotsByLocation
     $ gs
 
+-- | Manhattan distance between world locations.
+manhattan :: V2 Int64 -> V2 Int64 -> Int64
+manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+
+-- | Get elements that are in manhattan distance from location.
+--
+-- >>> import qualified Data.Map as M
+-- >>> import Linear.V2
+-- >>> v2s i = [(v, manhattan (V2 0 0) v) | x <- [-i..i], y <- [-i..i], let v = V2 x y]
+-- >>> v2s 0
+-- [(V2 0 0,0)]
+-- >>> map (\i -> length (getElemsInArea (V2 0 0) i (M.fromList $ v2s i))) [0..8]
+-- [1,5,13,25,41,61,85,113,145]
+--
+-- The last test is the sequence "Centered square numbers":
+-- https://oeis.org/A001844
+getElemsInArea :: V2 Int64 -> Int64 -> Map (V2 Int64) e -> [e]
+getElemsInArea o@(V2 x y) d m = M.elems sm'
+  where
+    -- to be more efficient we basically split on first coordinate
+    -- (which is logarithmic) and then we have to linearly filter
+    -- the second coordinate to get a square - this is how it looks:
+    --         ▲▲▲▲  
+    --         ││││    the arrows mark points that are greater then A
+    --         ││s│                                 and lesser then B
+    --         │sssB (2,1)
+    --         ssoss   <-- o=(x=0,y=0) with d=2 
+    -- (-2,-1) Asss│ 
+    --          │s││   the point o and all s are in manhattan
+    --          ││││                  distance 2 from point o
+    --          ▼▼▼▼ 
+    sm = m
+      & M.split (V2 (x - d) (y-1)) -- A
+      & snd -- A<
+      & M.split (V2 (x + d) (y+1)) -- B
+      & fst -- B>
+    sm' = M.filterWithKey (const . (<=d) . manhattan o) sm
+
+-- | Get robots in manhattan distastance from location.
+robotsInArea :: V2 Int64 -> Int64 -> GameState -> [Robot]
+robotsInArea o d gs = map (rm IM.!) rids
+  where
+    rm = gs ^. robotMap
+    rl = gs ^. robotsByLocation
+    rids = concatMap IS.elems $ getElemsInArea o d rl
+
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
 
@@ -462,17 +511,26 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
   matchesWorking (REPLWorking _ _) = True
 
 -- | Get the notification list of messages from the point of view of focused robot.
-messageNotifications :: Getter GameState (Notifications (LogEntry, Bool))
+messageNotifications :: Getter GameState (Notifications LogEntry)
 messageNotifications = to getNotif
  where
-  getNotif gs = Notifications {_notificationsCount = newCount, _notificationsContent = toList allMessages}
+  getNotif gs = Notifications {_notificationsCount = newCount, _notificationsContent = uniq $ toList allMessages}
    where
-    allMessages = Seq.sort $ focusedLogs <> messages
-    focusedLogs = (,True) <$> maybe Empty (view robotLog) (focusedRobot gs)
-    messages = (,False) <$> (if gs ^. creativeMode then id else Seq.filter noOther) (gs ^. messageQueue)
-    noOther e = gs ^. focusedRobotID == e ^. leRobotID
     newCount = max 0 $ Seq.length allMessages - fromMaybe 0 oldestSeen
-    oldestSeen = succ <$> Seq.findIndexR (\(l, _) -> l ^. leTime <= gs ^. lastSeenMessageTime) allMessages
+    oldestSeen = succ <$> Seq.findIndexR (\l -> l ^. leTime <= gs ^. lastSeenMessageTime) allMessages
+    -- creative players and system robots just see all messages (and focused robots logs)
+    unchecked = gs ^. creativeMode || fromMaybe False (focusedRobot gs ^? _Just . systemRobot)
+    messages = (if unchecked then id else Seq.filter latestMsg) (gs ^. messageQueue)
+    allMessages = Seq.sort $ focusedLogs <> messages
+    focusedLogs = maybe Empty (view robotLog) (focusedRobot gs)
+    -- classic players only get to see messages that they said or heard and stored in their log
+    latestMsg e = maybe False (\r -> messageIsRecentAndClose (gs ^. ticks) r e) (focusedRobot gs)
+
+messageIsRecentAndClose :: Integer -> Robot -> LogEntry -> Bool
+messageIsRecentAndClose t r e = recent && close
+ where
+  recent = e ^. leTime == t
+  close = manhattan (r ^. robotLocation) (e ^. leLocation) <= hearingDistance
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result

@@ -480,6 +480,7 @@ inferConst c = case c of
   Drill -> [tyQ| dir -> cmd () |]
   Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
+  Listen -> [tyQ| cmd string |]
   Log -> [tyQ| string -> cmd () |]
   View -> [tyQ| robot -> cmd () |]
   Appear -> [tyQ| string -> cmd () |]

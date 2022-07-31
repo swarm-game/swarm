@@ -241,6 +241,8 @@ data Const
     Reprogram
   | -- | Emit a message.
     Say
+  | -- | Listen for a message from other robots.
+    Listen
   | -- | Emit a log message.
     Log
   | -- | View a certain robot.
@@ -555,9 +557,20 @@ constInfo c = case c of
     command 0 long . doc "Deconstruct an old robot." $
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
-    command 1 short . doc "Emit a message." $ -- TODO: #513
-      [ "The message will be in a global log, which you can not currently view."
-      , "https://github.com/swarm-game/swarm/issues/513"
+    command 1 short . doc "Emit a message." $
+      [ "The message will be in the robots log (if it has one) and the global log."
+      , "You can view the message that would be picked by `listen` from the global log "
+      <> "in the messages panel, along with your own messages and logs."
+      , "This means that to see messages from other robots you have to be able to listen for them, "
+      <> "so once you have a listening device installed messages will be added to your log."
+      , "In creative mode, there is of course no such limitation."
+      ]
+  Listen ->
+    command 1 long . doc "Listen for a message from other robots." $
+      [ "It will take the first message said by the closest robot."
+      , "You do not need to actively listen for the message to be logged though, "
+      <> "that is done automatically once you have a listening device installed."
+      , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
   View -> command 1 short "View the given robot."
