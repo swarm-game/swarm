@@ -1098,6 +1098,7 @@ execConst c vs s k = do
               r' <- execState r $ do
                 hasLog <- hasCapability CLog
                 hasListen <- hasCapability CListen
+                -- TODO: only add latest message
                 when (hasLog && hasListen) (robotLog %= (Seq.|> m))
               addRobot r'
         robotsAround <-

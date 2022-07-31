@@ -91,7 +91,8 @@ module Swarm.Game.State (
   deleteRobot,
   activateRobot,
   toggleRunStatus,
-  messageIsRecentAndClose,
+  messageIsRecent,
+  messageIsFromNearby,
 ) where
 
 import Control.Algebra (Has)
@@ -151,6 +152,10 @@ import Swarm.Util (isRightOr, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
+
+-- $setup
+-- >>> import qualified Data.Map as M
+-- >>> import Linear.V2
 
 ------------------------------------------------------------
 -- Subsidiary data types
@@ -347,8 +352,6 @@ manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 
 -- | Get elements that are in manhattan distance from location.
 --
--- >>> import qualified Data.Map as M
--- >>> import Linear.V2
 -- >>> v2s i = [(v, manhattan (V2 0 0) v) | x <- [-i..i], y <- [-i..i], let v = V2 x y]
 -- >>> v2s 0
 -- [(V2 0 0,0)]
@@ -374,7 +377,7 @@ getElemsInArea o@(V2 x y) d m = M.elems sm'
   --          ▼▼▼▼
   sm =
     m
-      & M.split (V2 (x - d) (y -1)) -- A
+      & M.split (V2 (x - d) (y - 1)) -- A
       & snd -- A<
       & M.split (V2 (x + d) (y + 1)) -- B
       & fst -- B>
@@ -515,23 +518,28 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
 messageNotifications :: Getter GameState (Notifications LogEntry)
 messageNotifications = to getNotif
  where
-  getNotif gs = Notifications {_notificationsCount = newCount, _notificationsContent = uniq $ toList allMessages}
+  getNotif gs = Notifications {_notificationsCount = length new, _notificationsContent = allUniq}
    where
-    newCount = max 0 $ Seq.length allMessages - fromMaybe 0 oldestSeen
-    oldestSeen = succ <$> Seq.findIndexR (\l -> l ^. leTime <= gs ^. lastSeenMessageTime) allMessages
+    allUniq = uniq $ toList allMessages
+    new = takeWhile (\l -> l ^. leTime > gs ^. lastSeenMessageTime) $ reverse allUniq
     -- creative players and system robots just see all messages (and focused robots logs)
     unchecked = gs ^. creativeMode || fromMaybe False (focusedRobot gs ^? _Just . systemRobot)
-    messages = (if unchecked then id else Seq.filter latestMsg) (gs ^. messageQueue)
+    messages = (if unchecked then id else focusedOrLatestClose) (gs ^. messageQueue)
     allMessages = Seq.sort $ focusedLogs <> messages
     focusedLogs = maybe Empty (view robotLog) (focusedRobot gs)
-    -- classic players only get to see messages that they said or heard and stored in their log
-    latestMsg e = maybe False (\r -> messageIsRecentAndClose (gs ^. ticks) r e) (focusedRobot gs)
+    -- classic players only get to see messages that they said and a one message that they just heard
+    -- other they have to get from log
+    latestMsg = messageIsRecent gs
+    closeMsg = messageIsFromNearby gs
+    focusedOrLatestClose mq =
+      (Seq.take 1 . Seq.reverse . Seq.filter closeMsg $ Seq.takeWhileR latestMsg mq)
+        <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
 
-messageIsRecentAndClose :: Integer -> Robot -> LogEntry -> Bool
-messageIsRecentAndClose t r e = recent && close
- where
-  recent = e ^. leTime == t
-  close = manhattan (r ^. robotLocation) (e ^. leLocation) <= hearingDistance
+messageIsRecent :: GameState -> LogEntry -> Bool
+messageIsRecent gs e = e ^. leTime == (gs ^. ticks)
+
+messageIsFromNearby :: GameState -> LogEntry -> Bool
+messageIsFromNearby gs e = maybe False (\r -> manhattan (r ^. robotLocation) (e ^. leLocation) <= hearingDistance) (focusedRobot gs)
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -573,7 +581,7 @@ viewingRegion :: GameState -> (Int64, Int64) -> (W.Coords, W.Coords)
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   V2 cx cy = g ^. viewCenter
-  (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
+  (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
 -- | Find out which robot has been last specified by the
