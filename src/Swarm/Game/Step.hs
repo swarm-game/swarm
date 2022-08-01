@@ -1090,6 +1090,7 @@ execConst c vs s k = do
     Say -> case vs of
       [VString msg] -> do
         creative <- use creativeMode
+        system <- use systemRobot
         loc <- use robotLocation
         m <- createLogEntry True msg
         emitMessage m
@@ -1108,7 +1109,7 @@ execConst c vs s k = do
                 when (hasLog && hasListen) (robotLog %= addLatestClosest loc')
               addRobot r'
         robotsAround <-
-          if creative
+          if creative || system
             then use $ robotMap . to IM.elems
             else gets $ robotsInArea loc hearingDistance
         mapM_ addToRobotLog robotsAround
@@ -1118,8 +1119,9 @@ execConst c vs s k = do
       t <- use ticks
       loc <- use robotLocation
       creative <- use creativeMode
+      system <- use systemRobot
       mq <- use messageQueue
-      let recentAndClose e = creative || e ^. leTime == t && manhattan loc (e ^. leLocation) <= hearingDistance
+      let recentAndClose e = system || creative || e ^. leTime == t && manhattan loc (e ^. leLocation) <= hearingDistance
           limitLast = \case
             _s Seq.:|> l | l ^. leTime == t - 1 -> Just $ l ^. leText
             _ -> Nothing

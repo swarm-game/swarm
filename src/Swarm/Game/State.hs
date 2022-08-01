@@ -75,7 +75,6 @@ module Swarm.Game.State (
   classicGame0,
 
   -- * Utilities
-  manhattan,
   applyViewCenterRule,
   recalcViewCenter,
   modifyViewCenter,
@@ -148,14 +147,10 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
-import Swarm.Util (isRightOr, uniq, (<+=), (<<.=), (?))
+import Swarm.Util (isRightOr, uniq, (<+=), (<<.=), (?), getElemsInArea, manhattan)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
-
--- $setup
--- >>> import qualified Data.Map as M
--- >>> import Linear.V2
 
 ------------------------------------------------------------
 -- Subsidiary data types
@@ -345,43 +340,6 @@ robotsAtLocation loc gs =
     . M.lookup loc
     . view robotsByLocation
     $ gs
-
--- | Manhattan distance between world locations.
-manhattan :: V2 Int64 -> V2 Int64 -> Int64
-manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
-
--- | Get elements that are in manhattan distance from location.
---
--- >>> v2s i = [(v, manhattan (V2 0 0) v) | x <- [-i..i], y <- [-i..i], let v = V2 x y]
--- >>> v2s 0
--- [(V2 0 0,0)]
--- >>> map (\i -> length (getElemsInArea (V2 0 0) i (M.fromList $ v2s i))) [0..8]
--- [1,5,13,25,41,61,85,113,145]
---
--- The last test is the sequence "Centered square numbers":
--- https://oeis.org/A001844
-getElemsInArea :: V2 Int64 -> Int64 -> Map (V2 Int64) e -> [e]
-getElemsInArea o@(V2 x y) d m = M.elems sm'
- where
-  -- to be more efficient we basically split on first coordinate
-  -- (which is logarithmic) and then we have to linearly filter
-  -- the second coordinate to get a square - this is how it looks:
-  --         ▲▲▲▲
-  --         ││││    the arrows mark points that are greater then A
-  --         ││s│                                 and lesser then B
-  --         │sssB (2,1)
-  --         ssoss   <-- o=(x=0,y=0) with d=2
-  -- (-2,-1) Asss│
-  --          │s││   the point o and all s are in manhattan
-  --          ││││                  distance 2 from point o
-  --          ▼▼▼▼
-  sm =
-    m
-      & M.split (V2 (x - d) (y - 1)) -- A
-      & snd -- A<
-      & M.split (V2 (x + d) (y + 1)) -- B
-      & fst -- B>
-  sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
 
 -- | Get robots in manhattan distastance from location.
 robotsInArea :: V2 Int64 -> Int64 -> GameState -> [Robot]
