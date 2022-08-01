@@ -70,6 +70,7 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
+import Control.Lens.Lens ((&))
 import Control.Monad (forM, unless, when)
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Bifunctor (first)
@@ -106,7 +107,6 @@ import System.FilePath
 import System.IO
 import System.IO.Error (catchIOError)
 import Witch
-import Control.Lens.Lens ((&))
 
 -- $setup
 -- >>> import qualified Data.Map as M
