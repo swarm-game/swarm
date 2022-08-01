@@ -488,16 +488,16 @@ messageNotifications = to getNotif
     -- classic players only get to see messages that they said and a one message that they just heard
     -- other they have to get from log
     latestMsg = messageIsRecent gs
-    closeMsg = messageIsFromNearby gs
+    closeMsg = messageIsFromNearby (gs ^. viewCenter)
     focusedOrLatestClose mq =
       (Seq.take 1 . Seq.reverse . Seq.filter closeMsg $ Seq.takeWhileR latestMsg mq)
         <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
-messageIsRecent gs e = e ^. leTime == (gs ^. ticks)
+messageIsRecent gs e = e ^. leTime >= gs ^. ticks - 1
 
-messageIsFromNearby :: GameState -> LogEntry -> Bool
-messageIsFromNearby gs e = maybe False (\r -> manhattan (r ^. robotLocation) (e ^. leLocation) <= hearingDistance) (focusedRobot gs)
+messageIsFromNearby :: V2 Int64 -> LogEntry -> Bool
+messageIsFromNearby l e = manhattan l (e ^. leLocation) <= hearingDistance
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result

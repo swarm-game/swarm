@@ -1116,14 +1116,14 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Listen -> do
-      t <- use ticks
+      gs <- get @GameState
       loc <- use robotLocation
       creative <- use creativeMode
       system <- use systemRobot
       mq <- use messageQueue
-      let recentAndClose e = system || creative || e ^. leTime == t && manhattan loc (e ^. leLocation) <= hearingDistance
+      let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
           limitLast = \case
-            _s Seq.:|> l | l ^. leTime == t - 1 -> Just $ l ^. leText
+            _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
           mm = limitLast $ Seq.takeWhileR recentAndClose mq
       return $
