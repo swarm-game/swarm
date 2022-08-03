@@ -19,6 +19,7 @@ module Swarm.TUI.View (
 
   -- * Key hint menu
   drawKeyMenu,
+  drawModalMenu,
   drawKeyCmd,
 
   -- * World
@@ -51,13 +52,15 @@ import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
 import Data.IntMap qualified as IM
+import Data.List (intersperse)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
+import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -198,6 +201,7 @@ drawGameUI s =
                 WorldPanel
                 ( plainBorder
                     & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+                    & topLabels . leftLabel ?~ drawModalMenu s
                     & addCursorPos
                     & addClock
                 )
@@ -225,7 +229,7 @@ drawGameUI s =
     Nothing -> id
   -- Add clock display in top right of the world view if focused robot
   -- has a clock installed
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay s)
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
@@ -234,25 +238,15 @@ drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g i@(W.Coords (y, x)) =
   hBox [drawLoc g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
 
-drawClockDisplay :: AppState -> Widget n
-drawClockDisplay s
-  | clockInstalled && gamePaused = clockWidget <+> txt " " <+> pauseWidget
-  | clockInstalled = clockWidget
-  | gamePaused = pauseWidget
-  | otherwise = txt ""
+drawClockDisplay :: GameState -> Widget n
+drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockInstalled = case s ^. gameState . to focusedRobot of
-    Nothing -> False
-    Just r
-      | countByName "clock" (r ^. installedDevices) > 0 -> True
-      | otherwise -> False
-  gamePaused = s ^. gameState . paused
-  clockWidget = drawClock (s ^. gameState . ticks) gamePaused
-  pauseWidget = txt "(PAUSED)"
+  clockWidget = drawTime (gs ^. ticks) (gs ^. paused) gs
+  pauseWidget = if gs ^. paused then Just $ txt "(PAUSED)" else Nothing
 
-drawClock :: Integer -> Bool -> Widget n
-drawClock t showTicks =
-  str . mconcat $
+drawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
+drawTime t showTicks gs =
+  justClock . str . mconcat $
     [ printf "%x" (t `shiftR` 20)
     , ":"
     , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
@@ -260,6 +254,13 @@ drawClock t showTicks =
     , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
     ]
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
+ where
+  justClock = if clockInstalled then Just else const Nothing
+  clockInstalled = case focusedRobot gs of
+    Nothing -> False
+    Just r
+      | countByName "clock" (r ^. installedDevices) > 0 -> True
+      | otherwise -> False
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -337,6 +338,7 @@ drawModal s = \case
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
+  MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
@@ -363,6 +365,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
+      MessagesModal -> ("Messages", Nothing, descriptionWidth)
       WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
@@ -477,6 +480,7 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("F2", "Robots list")
     , ("F3", "Available recipes")
     , ("F4", "Available commands")
+    , ("F5", "Messages")
     , ("Ctrl-g", "show goal")
     , ("Ctrl-q", "quit the game")
     , ("Meta-w", "focus on the world map")
@@ -499,14 +503,15 @@ helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
     , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
-data NotificationList = RecipeList | CommandList
+data NotificationList = RecipeList | CommandList | MessageList
 
 availableListWidget :: GameState -> NotificationList -> Widget Name
-availableListWidget gs nl = padTop (Pad 1) $ vBox $ addHeader widgetList
+availableListWidget gs nl = padTop (Pad 1) $ vBox widgetList
  where
-  (widgetList, addHeader) = case nl of
-    RecipeList -> (mkAvailableList gs availableRecipes renderRecipe, id)
-    CommandList -> (mkAvailableList gs availableCommands renderCommand, (<> constWiki) . (padLeftRight 18 constHeader :))
+  widgetList = case nl of
+    RecipeList -> mkAvailableList gs availableRecipes renderRecipe
+    CommandList -> mkAvailableList gs availableCommands renderCommand & (<> constWiki) . (padLeftRight 18 constHeader :)
+    MessageList -> messagesWidget gs
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
   renderCommand = padLeftRight 18 . drawConst
@@ -546,9 +551,59 @@ descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
 descriptionWidget :: AppState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry s e)
 
+-- | Draw a widget with messages to the current robot.
+messagesWidget :: GameState -> [Widget Name]
+messagesWidget gs = widgetList
+ where
+  widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
+  focusNewest = if gs ^. paused then id else over _last visible
+  drawLogEntry' e =
+    withAttr (colorLogs e) $
+      hBox
+        [ fromMaybe (txt "") $ drawTime (e ^. leTime) True gs
+        , padLeft (Pad 2) . txt $ "[" <> e ^. leRobotName <> "]"
+        , padLeft (Pad 1) . txt2 $ e ^. leText
+        ]
+  txt2 = txtWrapWith indent2
+
+colorLogs :: LogEntry -> AttrName
+colorLogs e = case e ^. leSaid of
+  Said -> robotColor (e ^. leRobotID)
+  Logged -> notifAttr
+  ErrorTrace -> redAttr
+ where
+  -- color each robot message with different color of the world
+  robotColor rid = fgCols !! (rid `mod` fgColLen)
+  fgCols = map fst worldAttributes
+  fgColLen = length fgCols
+
+-- | Draw the F-key modal menu. This is displayed in the top left world corner.
+drawModalMenu :: AppState -> Widget Name
+drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
+ where
+  notificationKey :: Getter GameState (Notifications a) -> Text -> Text -> Maybe (KeyHighlight, Text, Text)
+  notificationKey notifLens key name
+    | null (s ^. gameState . notifLens . notificationsContent) = Nothing
+    | otherwise =
+      let highlight
+            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
+            | otherwise = NoHighlight
+       in Just (highlight, key, name)
+
+  globalKeyCmds =
+    catMaybes
+      [ Just (NoHighlight, "F1", "help")
+      , Just (NoHighlight, "F2", "robots")
+      , notificationKey availableRecipes "F3" "Recipes"
+      , notificationKey availableCommands "F4" "Commands"
+      , notificationKey messageNotifications "F5" "Messages"
+      ]
+
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
+--
+-- This excludes the F-key modals that are shown elsewhere.
 drawKeyMenu :: AppState -> Widget Name
 drawKeyMenu s =
   vLimit 1
@@ -572,15 +627,6 @@ drawKeyMenu s =
     _ -> False
   showZero = s ^. uiState . uiShowZero
 
-  notificationKey :: Lens' GameState (Notifications a) -> Text -> Text -> [(KeyHighlight, Text, Text)]
-  notificationKey notifLens key name
-    | null (s ^. gameState . notifLens . notificationsContent) = []
-    | otherwise =
-      let highlight
-            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
-            | otherwise = NoHighlight
-       in [(highlight, key, name)]
-
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
@@ -589,14 +635,14 @@ drawKeyMenu s =
         False -> "Classic"
         True -> "Creative"
   globalKeyCmds =
-    [(NoHighlight, "F1", "help"), (NoHighlight, "F2", "robots")]
-      <> notificationKey availableRecipes "F3" "Recipes"
-      <> notificationKey availableCommands "F4" "Commands"
-      <> [(NoHighlight, "^v", "creative") | cheat]
-      <> [(NoHighlight, "^g", "goal") | goal]
-      <> [(NoHighlight, "^p", if isPaused then "unpause" else "pause")]
-      <> [(NoHighlight, "^o", "step")]
-      <> [(NoHighlight, "^zx", "speed")]
+    catMaybes
+      [ may goal (NoHighlight, "^g", "goal")
+      , may cheat (NoHighlight, "^v", "creative")
+      , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
+      , Just (NoHighlight, "^o", "step")
+      , Just (NoHighlight, "^zx", "speed")
+      ]
+  may b = if b then Just else const Nothing
 
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
@@ -876,8 +922,8 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
   -- If it's the focused entity, draw it highlighted.
   -- If the robot doesn't have any, draw it in red.
   fmtEntityName missing ingr
-    | Just ingr == me = withAttr deviceAttr $ txtLines nm
-    | ingr == timeE = withAttr sandAttr $ txtLines nm
+    | Just ingr == me = withAttr highlightAttr $ txtLines nm
+    | ingr == timeE = withAttr yellowAttr $ txtLines nm
     | missing = withAttr invalidFormInputAttr $ txtLines nm
     | otherwise = txtLines nm
    where
@@ -905,16 +951,28 @@ drawRobotLog s =
     , vBox . imap drawEntry $ logEntries
     ]
  where
-  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog . to F.toList
+  logEntries =
+    s
+      & view (gameState . to focusedRobot . _Just . robotLog)
+      & Seq.sort
+      & F.toList
+      & uniq
+
   rn = s ^? gameState . to focusedRobot . _Just . robotName
   n = length logEntries
 
   allMe = all ((== rn) . Just . view leRobotName) logEntries
 
   drawEntry i e =
-    (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id)
-      . txtWrapWith indent2
-      $ (if allMe then e ^. leText else T.concat ["[", e ^. leRobotName, "] ", e ^. leText])
+    (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
+      drawLogEntry (not allMe) e
+
+-- | Draw one log entry with an optional robot name first.
+drawLogEntry :: Bool -> LogEntry -> Widget a
+drawLogEntry addName e = withAttr (colorLogs e) . txtWrapWith indent2 $ if addName then name else t
+ where
+  t = e ^. leText
+  name = "[" <> view leRobotName e <> "] " <> (if e ^. leSaid == Said then "said " <> quote t else t)
 
 ------------------------------------------------------------
 -- REPL panel

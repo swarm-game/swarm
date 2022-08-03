@@ -129,9 +129,18 @@ gameTick = do
       -- fresh CESK machine, using a copy of the current game state.
       v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
       case v of
-        Left _exn -> return () -- XXX
-        Right (VBool True) -> do
-          winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
+        -- Log exceptions in the message queue so we can check for them in tests
+        Left exn -> do
+          em <- use entityMap
+          time <- use ticks
+          let unused = error "Unexpectedly used field"
+              h = hypotheticalRobot unused unused
+              hid = view robotID h
+              hn = view robotName h
+              farAway = V2 maxBound maxBound
+          let m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
+          emitMessage m
+        Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
         _ -> return ()
     _ -> return ()
 
@@ -147,15 +156,20 @@ evalPT t = evaluateCESK (initMachine t empty emptyStore)
 getNow :: Has (Lift IO) sig m => m TimeSpec
 getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
 
+-- | Create a special robot to check some hypothetical, for example the win condition.
+--
+-- Use ID (-1) so it won't conflict with any robots currently in the robot map.
+hypotheticalRobot :: CESK -> TimeSpec -> Robot
+hypotheticalRobot c = mkRobot (-1) Nothing "hypothesis" [] zero zero defaultRobotDisplay c [] [] True False
+
 evaluateCESK ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
   CESK ->
   m Value
 evaluateCESK cesk = do
   createdAt <- getNow
-  -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
-  let r = mkRobot (-1) Nothing "" [] zero zero defaultRobotDisplay cesk [] [] True False createdAt
-  addRobot r -- Add the robot to the robot map, so it can look itself up if needed
+  let r = hypotheticalRobot cesk createdAt
+  addRobot r -- Add the special robot to the robot map, so it can look itself up if needed
   evalState r . runCESK $ cesk
 
 runCESK ::
@@ -205,10 +219,6 @@ robotWithID rid = use (robotMap . at rid)
 robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
 robotWithName rname = use (robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))
 
--- | Manhattan distance between world locations.
-manhattan :: V2 Int64 -> V2 Int64 -> Int64
-manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
-
 -- | Generate a uniformly random number using the random generator in
 --   the game state.
 uniform :: (Has (State GameState) sig m, UniformRange a) => (a, a) -> m a
@@ -249,16 +259,29 @@ randomName = do
 -- Debugging
 ------------------------------------------------------------
 
--- | For debugging only. Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Text -> m ()
-traceLog msg = do
+-- | Create a log entry given current robot and game time in ticks noting whether it has been said.
+--
+--   This is the more generic version used both for (recorded) said messages and normal logs.
+createLogEntry :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
+createLogEntry source msg = do
+  rid <- use robotID
   rn <- use robotName
   time <- use ticks
-  robotLog %= (Seq.|> LogEntry msg rn time)
+  loc <- use robotLocation
+  pure $ LogEntry time source rn rid loc msg
 
--- | For debugging only. Print a showable value via the robot's log.
+-- | Print some text via the robot's log.
+traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
+traceLog source msg = do
+  m <- createLogEntry source msg
+  robotLog %= (Seq.|> m)
+  return m
+
+-- | Print a showable value via the robot's log.
+--
+-- Useful for debugging.
 traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
-traceLogShow = traceLog . from . show
+traceLogShow = void . traceLog Logged . from . show
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -569,13 +592,10 @@ stepCESK cesk = case cesk of
   -- just ignore the try block and continue.
   Out v s (FTry {} : k) -> return $ Out v s k
   -- If an exception rises all the way to the top level without being
-  -- handled, turn it into an error message via the 'log' command.
+  -- handled, turn it into an error message.
 
   -- HOWEVER, we have to make sure to check that the robot has the
-  -- 'log' capability, and silently discard the message otherwise.  If
-  -- we didn't, trying to exceute the Log command would generate
-  -- another exception, which will be logged, which would generate an
-  -- exception, ... etc.
+  -- 'log' capability which is required to collect and view logs.
   --
   -- Notice how we call resetBlackholes on the store, so that any
   -- cells which were in the middle of being evaluated will be reset.
@@ -583,9 +603,11 @@ stepCESK cesk = case cesk of
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use entityMap
-    case h of
-      True -> return $ In (TApp (TConst Log) (TString (formatExn em exn))) empty s' [FExec]
-      False -> return $ Out VUnit s' []
+    if h
+      then do
+        void $ traceLog ErrorTrace (formatExn em exn)
+        return $ Out VUnit s []
+      else return $ Out VUnit s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
   Up exn@Fatal {} s _ -> return $ Up exn s []
@@ -1067,15 +1089,51 @@ execConst c vs s k = do
       _ -> badConst
     Say -> case vs of
       [VString msg] -> do
-        rn <- use robotName -- XXX use robot name + ID
-        emitMessage (T.concat [rn, ": ", msg])
+        creative <- use creativeMode
+        system <- use systemRobot
+        loc <- use robotLocation
+        m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
+        emitMessage m
+        let addLatestClosest rl = \case
+              Seq.Empty -> Seq.Empty
+              es Seq.:|> e
+                | e ^. leTime < m ^. leTime -> es |> e |> m
+                | manhattan rl (e ^. leLocation) > manhattan rl (m ^. leLocation) -> es |> m
+                | otherwise -> es |> e
+        let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
+            addToRobotLog r = do
+              r' <- execState r $ do
+                hasLog <- hasCapability CLog
+                hasListen <- hasCapability CListen
+                loc' <- use robotLocation
+                when (hasLog && hasListen) (robotLog %= addLatestClosest loc')
+              addRobot r'
+        robotsAround <-
+          if creative || system
+            then use $ robotMap . to IM.elems
+            else gets $ robotsInArea loc hearingDistance
+        mapM_ addToRobotLog robotsAround
         return $ Out VUnit s k
       _ -> badConst
+    Listen -> do
+      gs <- get @GameState
+      loc <- use robotLocation
+      creative <- use creativeMode
+      system <- use systemRobot
+      mq <- use messageQueue
+      let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
+          limitLast = \case
+            _s Seq.:|> l -> Just $ l ^. leText
+            _ -> Nothing
+          mm = limitLast $ Seq.takeWhileR recentAndClose mq
+      return $
+        maybe
+          (In (TConst Listen) mempty s (FExec : k)) -- continue listening
+          (\m -> Out (VString m) s k) -- return found message
+          mm
     Log -> case vs of
       [VString msg] -> do
-        rn <- use robotName
-        time <- use ticks
-        robotLog %= (Seq.|> LogEntry msg rn time)
+        void $ traceLog Logged msg
         return $ Out VUnit s k
       _ -> badConst
     View -> case vs of

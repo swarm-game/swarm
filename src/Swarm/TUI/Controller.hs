@@ -221,6 +221,8 @@ pressAnyKey _ _ = continueWithoutRedraw
 handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainEvent ev = do
   s <- get
+  mt <- preuse $ uiState . uiModal . _Just . modalType
+  let isRunning = maybe True isRunningModal mt
   case ev of
     AppEvent Frame
       | s ^. gameState . paused -> continueWithoutRedraw
@@ -233,7 +235,12 @@ handleMainEvent ev = do
     VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
-      | isJust (s ^. uiState . uiModal) -> maybeUnpause >> uiState . uiModal .= Nothing
+      | Just m <- s ^. uiState . uiModal -> do
+        safeAutoUnpause
+        uiState . uiModal .= Nothing
+        -- message modal is not autopaused, so update notifications when leaving it
+        when (m ^. modalType == MessagesModal) $ do
+          gameState . lastSeenMessageTime .= s ^. gameState . ticks
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -242,26 +249,22 @@ handleMainEvent ev = do
     FKey 4 | not (null (s ^. gameState . availableCommands . notificationsContent)) -> do
       toggleModal CommandsModal
       gameState . availableCommands . notificationsCount .= 0
+    FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
+      toggleModal MessagesModal
+      gameState . lastSeenMessageTime .= s ^. gameState . ticks
     ControlKey 'g' -> case s ^. uiState . uiGoal of
       Just g | g /= [] -> toggleModal (GoalModal g)
       _ -> continueWithoutRedraw
-    VtyEvent vev
-      | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- pausing and stepping
-    ControlKey 'p' -> do
-      curTime <- liftIO $ getTime Monotonic
-      gameState . runStatus %= (\status -> if status == Running then ManualPause else Running)
-      -- Also reset the last frame time to now. If we are pausing, it
-      -- doesn't matter; if we are unpausing, this is critical to
-      -- ensure the next frame doesn't think it has to catch up from
-      -- whenever the game was paused!
-      uiState . lastFrameTime .= curTime
-    ControlKey 'o' -> do
+    ControlKey 'p' | isRunning -> safeTogglePause
+    ControlKey 'o' | isRunning -> do
       gameState . runStatus .= ManualPause
       runGameTickUI
     -- speed controls
-    ControlKey 'x' -> modify $ adjustTPS (+)
-    ControlKey 'z' -> modify $ adjustTPS (-)
+    ControlKey 'x' | isRunning -> modify $ adjustTPS (+)
+    ControlKey 'z' | isRunning -> modify $ adjustTPS (-)
+    VtyEvent vev
+      | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- special keys that work on all panels
     MetaKey 'w' -> setFocus WorldPanel
     MetaKey 'e' -> setFocus RobotPanel
@@ -318,20 +321,26 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
 setFocus :: Name -> EventM Name AppState ()
 setFocus name = uiState . uiFocusRing %= focusSetCurrent name
 
--- | Set the game to Running if it was auto paused
-maybeUnpause :: EventM Name AppState ()
-maybeUnpause = do
-  run <- use $ gameState . runStatus
-  when (run == AutoPause) $ do
-    curTime <- liftIO $ getTime Monotonic
-    resetLastFrameTime curTime
-    gameState . runStatus .= Running
- where
-  -- When unpausing, it is critical to ensure the next frame doesn't
-  -- catch up from the time spent in pause.
-  -- TODO: manage unpause more safely to also cover
-  -- the world event handler for the KChar 'p'.
-  resetLastFrameTime curTime = uiState . lastFrameTime .= curTime
+-- | Set the game to Running if it was (auto) paused otherwise to paused.
+--
+-- Also resets the last frame time to now. If we are pausing, it
+-- doesn't matter; if we are unpausing, this is critical to
+-- ensure the next frame doesn't think it has to catch up from
+-- whenever the game was paused!
+safeTogglePause :: EventM Name AppState ()
+safeTogglePause = do
+  curTime <- liftIO $ getTime Monotonic
+  uiState . lastFrameTime .= curTime
+  gameState . runStatus %= toggleRunStatus
+
+-- | Only unpause the game if leaving autopaused modal.
+--
+-- Note that the game could have been paused before opening
+-- the modal, in that case, leave the game paused.
+safeAutoUnpause :: EventM Name AppState ()
+safeAutoUnpause = do
+  runs <- use $ gameState . runStatus
+  when (runs == AutoPause) safeTogglePause
 
 toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
@@ -341,15 +350,17 @@ toggleModal mt = do
       newModal <- gets $ flip generateModal mt
       ensurePause
       uiState . uiModal ?= newModal
-    Just _ -> uiState . uiModal .= Nothing >> maybeUnpause
+    Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
  where
-  -- these modals do not pause the game
-  runningModals = [RobotsModal]
   -- Set the game to AutoPause if needed
   ensurePause = do
     pause <- use $ gameState . paused
-    unless (pause || mt `elem` runningModals) $ do
+    unless (pause || isRunningModal mt) $ do
       gameState . runStatus .= AutoPause
+
+-- | The running modals do not autopause the game.
+isRunningModal :: ModalType -> Bool
+isRunningModal mt = mt `elem` [RobotsModal, MessagesModal]
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case

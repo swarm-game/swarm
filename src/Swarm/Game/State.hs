@@ -36,10 +36,12 @@ module Swarm.Game.State (
   robotMap,
   robotsByLocation,
   robotsAtLocation,
+  robotsInArea,
   activeRobots,
   waitingRobots,
   availableRecipes,
   availableCommands,
+  messageNotifications,
   allDiscoveredEntities,
   gensym,
   randGen,
@@ -56,6 +58,7 @@ module Swarm.Game.State (
   replStatus,
   replWorking,
   messageQueue,
+  lastSeenMessageTime,
   focusedRobotID,
   ticks,
   robotStepsPerTick,
@@ -86,6 +89,9 @@ module Swarm.Game.State (
   wakeUpRobotsDoneSleeping,
   deleteRobot,
   activateRobot,
+  toggleRunStatus,
+  messageIsRecent,
+  messageIsFromNearby,
 ) where
 
 import Control.Algebra (Has)
@@ -98,6 +104,7 @@ import Control.Monad.Except
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
+import Data.Foldable (toList)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -110,12 +117,14 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Sequence (Seq ((:<|)))
+import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
 import GHC.Generics (Generic)
-import Linear (V2 (..))
+import Linear
 import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
@@ -138,7 +147,7 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TString), allConst)
 import Swarm.Language.Types
-import Swarm.Util (isRightOr, (<+=), (<<.=), (?))
+import Swarm.Util (getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
@@ -192,6 +201,13 @@ data RunStatus
     --   and it should unpause after returning back to the game.
     AutoPause
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+-- | Switch (auto or manually) paused game to running and running to manually paused.
+--
+--   Note that this function is not safe to use in the app directly, because the UI
+--   also tracks time between ticks - use 'Swarm.TUI.Controller.safeTogglePause' instead.
+toggleRunStatus :: RunStatus -> RunStatus
+toggleRunStatus s = if s == Running then ManualPause else Running
 
 -- | A data type to keep track of discovered recipes and commands
 data Notifications a = Notifications
@@ -257,7 +273,8 @@ data GameState = GameState
   , _viewCenter :: V2 Int64
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
-  , _messageQueue :: [Text]
+  , _messageQueue :: Seq LogEntry
+  , _lastSeenMessageTime :: Integer
   , _focusedRobotID :: RID
   , _ticks :: Integer
   , _robotStepsPerTick :: Int
@@ -324,6 +341,14 @@ robotsAtLocation loc gs =
     . view robotsByLocation
     $ gs
 
+-- | Get robots in manhattan distastance from location.
+robotsInArea :: V2 Int64 -> Int64 -> GameState -> [Robot]
+robotsInArea o d gs = map (rm IM.!) rids
+ where
+  rm = gs ^. robotMap
+  rl = gs ^. robotsByLocation
+  rids = concatMap IS.elems $ getElemsInArea o d rl
+
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
 
@@ -375,6 +400,44 @@ scenarios :: Lens' GameState ScenarioCollection
 --   unboxed tile arrays.
 world :: Lens' GameState (W.World Int Entity)
 
+-- | The current center of the world view. Note that this cannot be
+--   modified directly, since it is calculated automatically from the
+--   'viewCenterRule'.  To modify the view center, either set the
+--   'viewCenterRule', or use 'modifyViewCenter'.
+viewCenter :: Getter GameState (V2 Int64)
+viewCenter = to _viewCenter
+
+-- | Whether the world view needs to be redrawn.
+needsRedraw :: Lens' GameState Bool
+
+-- | The current status of the REPL.
+replStatus :: Lens' GameState REPLStatus
+
+-- | A queue of global messages.
+--
+-- Note that we put the newest entry to the right.
+messageQueue :: Lens' GameState (Seq LogEntry)
+
+-- | Last time message queue has been viewed (used for notification).
+lastSeenMessageTime :: Lens' GameState Integer
+
+-- | The current robot in focus.
+--
+-- It is only a 'Getter' because this value should be updated only when
+-- the 'viewCenterRule' is specified to be a robot.
+--
+-- Technically it's the last robot ID specified by 'viewCenterRule',
+-- but that robot may not be alive anymore - to be safe use 'focusedRobot'.
+focusedRobotID :: Getter GameState RID
+focusedRobotID = to _focusedRobotID
+
+-- | The number of ticks elapsed since the game started.
+ticks :: Lens' GameState Integer
+
+-- | The maximum number of CESK machine steps a robot may take during
+--   a single tick.
+robotStepsPerTick :: Lens' GameState Int
+
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
@@ -395,25 +458,12 @@ viewCenterRule = lens getter setter
     case rule of
       VCLocation v2 -> g {_viewCenterRule = rule, _viewCenter = v2}
       VCRobot rid ->
-        let robotcenter = g ^? robotMap . ix rid <&> view robotLocation
+        let robotcenter = g ^? robotMap . ix rid . robotLocation
          in -- retrieve the loc of the robot if it exists, Nothing otherwise.
             -- sometimes, lenses are amazing...
             case robotcenter of
               Nothing -> g
               Just v2 -> g {_viewCenterRule = rule, _viewCenter = v2, _focusedRobotID = rid}
-
--- | The current center of the world view. Note that this cannot be
---   modified directly, since it is calculated automatically from the
---   'viewCenterRule'.  To modify the view center, either set the
---   'viewCenterRule', or use 'modifyViewCenter'.
-viewCenter :: Getter GameState (V2 Int64)
-viewCenter = to _viewCenter
-
--- | Whether the world view needs to be redrawn.
-needsRedraw :: Lens' GameState Bool
-
--- | The current status of the REPL.
-replStatus :: Lens' GameState REPLStatus
 
 -- | Whether the repl is currently working.
 replWorking :: Getter GameState Bool
@@ -422,13 +472,32 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
   matchesWorking REPLDone = False
   matchesWorking (REPLWorking _ _) = True
 
--- | A queue of global messages.
-messageQueue :: Lens' GameState [Text]
+-- | Get the notification list of messages from the point of view of focused robot.
+messageNotifications :: Getter GameState (Notifications LogEntry)
+messageNotifications = to getNotif
+ where
+  getNotif gs = Notifications {_notificationsCount = length new, _notificationsContent = allUniq}
+   where
+    allUniq = uniq $ toList allMessages
+    new = takeWhile (\l -> l ^. leTime > gs ^. lastSeenMessageTime) $ reverse allUniq
+    -- creative players and system robots just see all messages (and focused robots logs)
+    unchecked = gs ^. creativeMode || fromMaybe False (focusedRobot gs ^? _Just . systemRobot)
+    messages = (if unchecked then id else focusedOrLatestClose) (gs ^. messageQueue)
+    allMessages = Seq.sort $ focusedLogs <> messages
+    focusedLogs = maybe Empty (view robotLog) (focusedRobot gs)
+    -- classic players only get to see messages that they said and a one message that they just heard
+    -- other they have to get from log
+    latestMsg = messageIsRecent gs
+    closeMsg = messageIsFromNearby (gs ^. viewCenter)
+    focusedOrLatestClose mq =
+      (Seq.take 1 . Seq.reverse . Seq.filter closeMsg $ Seq.takeWhileR latestMsg mq)
+        <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
 
--- | The current robot in focus. It is only a Getter because
---   this value should be updated only when viewCenterRule is.
-focusedRobotID :: Getter GameState RID
-focusedRobotID = to _focusedRobotID
+messageIsRecent :: GameState -> LogEntry -> Bool
+messageIsRecent gs e = e ^. leTime >= gs ^. ticks - 1
+
+messageIsFromNearby :: V2 Int64 -> LogEntry -> Bool
+messageIsFromNearby l e = manhattan l (e ^. leLocation) <= hearingDistance
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -473,10 +542,10 @@ viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
   (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
--- | Find out which robot is currently specified by the
+-- | Find out which robot has been last specified by the
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
-focusedRobot g = g ^? robotMap . ix (g ^. focusedRobotID)
+focusedRobot g = g ^. robotMap . at (g ^. focusedRobotID)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
 clearFocusedRobotLogUpdated :: Has (State GameState) sig m => m ()
@@ -511,17 +580,12 @@ maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
-emitMessage :: Has (State GameState) sig m => Text -> m ()
-emitMessage msg = do
-  q <- use messageQueue
-  messageQueue %= (msg :) . (if length q >= maxMessageQueueSize then init else id)
-
--- | The number of ticks elapsed since the game started.
-ticks :: Lens' GameState Integer
-
--- | The maximum number of CESK machine steps a robot may take during
---   a single tick.
-robotStepsPerTick :: Lens' GameState Int
+emitMessage :: Has (State GameState) sig m => LogEntry -> m ()
+emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
+ where
+  tooLong s = Seq.length s >= maxMessageQueueSize
+  dropLastIfLong whole@(_oldest :<| newer) = if tooLong whole then newer else whole
+  dropLastIfLong emptyQueue = emptyQueue
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
@@ -608,7 +672,8 @@ initGameState = do
       , _viewCenter = V2 0 0
       , _needsRedraw = False
       , _replStatus = REPLDone
-      , _messageQueue = []
+      , _messageQueue = Empty
+      , _lastSeenMessageTime = -1
       , _focusedRobotID = 0
       , _ticks = 0
       , _robotStepsPerTick = defaultRobotStepsPerTick
@@ -655,7 +720,7 @@ scenarioToGameState scenario userSeed toRun g = do
         _replStatus = case toRun of
           Nothing -> REPLDone
           Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
-      , _messageQueue = []
+      , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0
       , _robotStepsPerTick = (scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick

@@ -478,6 +478,15 @@
   out:
   - [1, strange loop]
 
+- in:
+  - [2, copper pipe]
+  - [4, copper wire]
+  - [1, paper]
+  - [1, lodestone]
+  out:
+  - [2, hearing aid]
+
+
 #########################################
 ##           QUARTZ + SILICON          ##
 #########################################

@@ -398,6 +398,7 @@ data ModalType
   = HelpModal
   | RecipesModal
   | CommandsModal
+  | MessagesModal
   | RobotsModal
   | WinModal
   | QuitModal
