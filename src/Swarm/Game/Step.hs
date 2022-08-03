@@ -138,7 +138,7 @@ gameTick = do
               hid = view robotID h
               hn = view robotName h
               farAway = V2 maxBound maxBound
-          let m = LogEntry time False hn hid farAway $ formatExn em exn
+          let m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
           emitMessage m
         Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
         _ -> return ()
@@ -262,25 +262,26 @@ randomName = do
 -- | Create a log entry given current robot and game time in ticks noting whether it has been said.
 --
 --   This is the more generic version used both for (recorded) said messages and normal logs.
-createLogEntry :: (Has (State GameState) sig m, Has (State Robot) sig m) => Bool -> Text -> m LogEntry
-createLogEntry isSaid msg = do
+createLogEntry :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
+createLogEntry source msg = do
   rid <- use robotID
   rn <- use robotName
   time <- use ticks
   loc <- use robotLocation
-  pure $ LogEntry time isSaid rn rid loc msg
+  pure $ LogEntry time source rn rid loc msg
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => Bool -> Text -> m ()
-traceLog isSaid msg = do
-  m <- createLogEntry isSaid msg
+traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
+traceLog source msg = do
+  m <- createLogEntry source msg
   robotLog %= (Seq.|> m)
+  return m
 
 -- | Print a showable value via the robot's log.
 --
 -- Useful for debugging.
 traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
-traceLogShow = traceLog False . from . show
+traceLogShow = void . traceLog Logged . from . show
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -591,13 +592,10 @@ stepCESK cesk = case cesk of
   -- just ignore the try block and continue.
   Out v s (FTry {} : k) -> return $ Out v s k
   -- If an exception rises all the way to the top level without being
-  -- handled, turn it into an error message via the 'log' command.
+  -- handled, turn it into an error message.
 
   -- HOWEVER, we have to make sure to check that the robot has the
-  -- 'log' capability, and silently discard the message otherwise.  If
-  -- we didn't, trying to exceute the Log command would generate
-  -- another exception, which will be logged, which would generate an
-  -- exception, ... etc.
+  -- 'log' capability which is required to collect and view logs.
   --
   -- Notice how we call resetBlackholes on the store, so that any
   -- cells which were in the middle of being evaluated will be reset.
@@ -605,9 +603,11 @@ stepCESK cesk = case cesk of
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use entityMap
-    case h of
-      True -> return $ In (TApp (TConst Log) (TString (formatExn em exn))) empty s' [FExec]
-      False -> return $ Out VUnit s' []
+    if h
+      then do
+        void $ traceLog ErrorTrace (formatExn em exn)
+        return $ Out VUnit s []
+      else return $ Out VUnit s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
   Up exn@Fatal {} s _ -> return $ Up exn s []
@@ -1092,7 +1092,7 @@ execConst c vs s k = do
         creative <- use creativeMode
         system <- use systemRobot
         loc <- use robotLocation
-        m <- createLogEntry True msg
+        m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
         emitMessage m
         let addLatestClosest rl = \case
               Seq.Empty -> Seq.Empty
@@ -1133,7 +1133,7 @@ execConst c vs s k = do
           mm
     Log -> case vs of
       [VString msg] -> do
-        traceLog False msg
+        void $ traceLog Logged msg
         return $ Out VUnit s k
       _ -> badConst
     View -> case vs of

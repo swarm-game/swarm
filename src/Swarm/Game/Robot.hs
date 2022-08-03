@@ -19,6 +19,7 @@ module Swarm.Game.Robot (
   -- * Robots data
 
   -- * Robot log entries
+  LogSource (..),
   LogEntry (..),
   leText,
   leSaid,
@@ -126,13 +127,16 @@ data RobotContext = RobotContext
 
 makeLenses ''RobotContext
 
+data LogSource = Said | Logged | ErrorTrace
+  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
   { -- | The time at which the entry was created.
     --   Note that this is the first field we sort on.
     _leTime :: Integer
   , -- | Whether this log records a said message.
-    _leSaid :: Bool
+    _leSaid :: LogSource
   , -- | The name of the robot that generated the entry.
     _leRobotName :: Text
   , -- | The ID of the robot that generated the entry.

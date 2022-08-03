@@ -556,13 +556,20 @@ messagesWidget gs = widgetList
   widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
   focusNewest = if gs ^. paused then id else over _last visible
   drawLogEntry' e =
-    withAttr (if not $ e ^. leSaid then notifAttr else robotColor (e ^. leRobotID)) $
+    withAttr (colorLogs e) $
       hBox
         [ fromMaybe (txt "") $ drawTime (e ^. leTime) True gs
         , padLeft (Pad 2) . txt $ "[" <> e ^. leRobotName <> "]"
         , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
   txt2 = txtWrapWith indent2
+
+colorLogs :: LogEntry -> AttrName
+colorLogs e = case e ^. leSaid of
+  Said -> robotColor (e ^. leRobotID)
+  Logged -> notifAttr
+  ErrorTrace -> redAttr
+ where
   -- color each robot message with different color of the world
   robotColor rid = fgCols !! (rid `mod` fgColLen)
   fgCols = map fst worldAttributes
@@ -950,9 +957,10 @@ drawRobotLog s =
 
 -- | Draw one log entry with an optional robot name first.
 drawLogEntry :: Bool -> LogEntry -> Widget a
-drawLogEntry addName e = txtWrapWith indent2 . (if addName then name else id) $ e ^. leText
+drawLogEntry addName e = withAttr (colorLogs e) . txtWrapWith indent2 $ if addName then name else t
  where
-  name t = "[" <> view leRobotName e <> "] " <> (if e ^. leSaid then "said " <> quote t else t)
+  t = e ^. leText
+  name = "[" <> view leRobotName e <> "] " <> (if e ^. leSaid == Said then "said " <> quote t else t)
 
 ------------------------------------------------------------
 -- REPL panel
