@@ -47,6 +47,9 @@ module Swarm.Language.Typecheck (
 import Control.Category ((>>>))
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Unification hiding (applyBindings, (=:=))
+import Control.Unification qualified as U
+import Control.Unification.IntVar
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Map (Map)
@@ -54,17 +57,12 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
-import Prelude hiding (lookup)
-
-import Control.Unification hiding (applyBindings, (=:=))
-import Control.Unification qualified as U
-import Control.Unification.IntVar
-
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- Inference monad

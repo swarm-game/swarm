@@ -17,17 +17,15 @@ import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
-import System.IO (stderr)
-import Witch
-
 import Language.LSP.Diagnostics
 import Language.LSP.Server
 import Language.LSP.Types qualified as J
 import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
-
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
+import System.IO (stderr)
+import Witch
 
 lspMain :: IO ()
 lspMain =

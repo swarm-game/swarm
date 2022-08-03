@@ -44,10 +44,9 @@ import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Yaml
 import GHC.Generics (Generic)
 import Witch
-
-import Data.Yaml
 
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)

@@ -26,8 +26,6 @@ import Data.Data (Data)
 import Data.Text (Text)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Witch
-
 import Swarm.Language.Context
 import Swarm.Language.Elaborate
 import Swarm.Language.Parse
@@ -36,6 +34,7 @@ import Swarm.Language.Requirement
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
+import Witch
 
 -- | A record containing the results of the language processing
 --   pipeline.  Put a 'Term' in, and get one of these out.
