@@ -38,6 +38,14 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
+import Brick hiding (Direction)
+import Brick.Focus
+import Brick.Forms
+import Brick.Widgets.Dialog
+import Brick.Widgets.List (handleListEvent)
+import Brick.Widgets.List qualified as BL
+import Control.Carrier.Lift qualified as Fused
+import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
 import Control.Lens.Extras (is)
 import Control.Monad.Except
@@ -47,25 +55,13 @@ import Data.Either (isRight)
 import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Vector qualified as V
-import Linear
-import System.Clock
-import Witch (into)
-
-import Brick hiding (Direction)
-import Brick.Focus
-import Brick.Forms
-import Brick.Widgets.Dialog
-import Brick.Widgets.List qualified as BL
 import Graphics.Vty qualified as V
-
-import Brick.Widgets.List (handleListEvent)
-import Control.Carrier.Lift qualified as Fused
-import Control.Carrier.State.Lazy qualified as Fused
-import Data.Map qualified as M
+import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
@@ -86,6 +82,8 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import System.Clock
+import Witch (into)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e

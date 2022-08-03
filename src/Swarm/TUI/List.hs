@@ -9,13 +9,12 @@
 -- to deal with skipping over separators.
 module Swarm.TUI.List (handleListEventWithSeparators) where
 
-import Control.Lens (set, (&), (^.))
-import Data.Foldable (toList)
-import Data.List (find)
-
 import Brick (EventM)
 import Brick.Widgets.List qualified as BL
+import Control.Lens (set, (&), (^.))
 import Control.Monad.State.Strict (modify)
+import Data.Foldable (toList)
+import Data.List (find)
 import Graphics.Vty qualified as V
 
 -- | Handle a list event, taking an extra predicate to identify which

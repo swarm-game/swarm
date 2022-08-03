@@ -127,6 +127,12 @@ module Swarm.TUI.Model (
   focusedEntity,
 ) where
 
+import Brick
+import Brick.Focus
+import Brick.Forms
+import Brick.Widgets.Dialog (Dialog)
+import Brick.Widgets.List qualified as BL
+import Control.Applicative (Applicative (liftA2))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
@@ -141,15 +147,6 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import System.Clock
-
-import Brick
-import Brick.Focus
-import Brick.Forms
-import Brick.Widgets.Dialog (Dialog)
-import Brick.Widgets.List qualified as BL
-
-import Control.Applicative (Applicative (liftA2))
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario)
@@ -157,6 +154,7 @@ import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
+import System.Clock
 
 ------------------------------------------------------------
 -- Custom UI label types

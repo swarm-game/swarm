@@ -87,9 +87,8 @@ import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
-import Witch
-
 import Swarm.Language.Context
+import Witch
 
 ------------------------------------------------------------
 -- Types

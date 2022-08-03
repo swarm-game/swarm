@@ -8,14 +8,12 @@
 -- Main entry point for the Swarm application.
 module Swarm.App where
 
-import Control.Concurrent (forkIO, threadDelay)
-
 import Brick
 import Brick.BChan
-import Graphics.Vty qualified as V
-
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad.Except
 import Data.Text.IO qualified as T
+import Graphics.Vty qualified as V
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
