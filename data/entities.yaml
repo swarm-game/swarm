@@ -830,7 +830,7 @@
   - "To wait for a message and get the string value, use:"
   - "`l <- listen; log $ \"I have waited for someone to say \" ++ l`"
   properties: [portable]
-  capabilities: [log]
+  capabilities: [listen]
 
 - name: counter
   display:
