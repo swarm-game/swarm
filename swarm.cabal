@@ -183,6 +183,13 @@ test-suite swarm-unit
     import:           stan-config, common, ghc2021-extensions
     main-is:          Main.hs
     type:             exitcode-stdio-1.0
+    other-modules:    TestEval
+                      TestInventory
+                      TestModel
+                      TestNotification
+                      TestLanguagePipeline
+                      TestPretty
+                      TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
                       tasty-hunit                   >= 0.10 && < 0.11,
