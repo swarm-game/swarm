@@ -19,6 +19,7 @@ module Swarm.TUI.View (
 
   -- * Key hint menu
   drawKeyMenu,
+  drawModalMenu,
   drawKeyCmd,
 
   -- * World
@@ -200,6 +201,7 @@ drawGameUI s =
                 WorldPanel
                 ( plainBorder
                     & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+                    & topLabels . leftLabel ?~ drawModalMenu s
                     & addCursorPos
                     & addClock
                 )
@@ -575,9 +577,33 @@ colorLogs e = case e ^. leSaid of
   fgCols = map fst worldAttributes
   fgColLen = length fgCols
 
+-- | Draw the F-key modal menu. This is displayed in the top left world corner.
+drawModalMenu :: AppState -> Widget Name
+drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
+ where
+  notificationKey :: Getter GameState (Notifications a) -> Text -> Text -> Maybe (KeyHighlight, Text, Text)
+  notificationKey notifLens key name
+    | null (s ^. gameState . notifLens . notificationsContent) = Nothing
+    | otherwise =
+      let highlight
+            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
+            | otherwise = NoHighlight
+       in Just (highlight, key, name)
+
+  globalKeyCmds =
+    catMaybes
+      [ Just (NoHighlight, "F1", "help")
+      , Just (NoHighlight, "F2", "robots")
+      , notificationKey availableRecipes "F3" "Recipes"
+      , notificationKey availableCommands "F4" "Commands"
+      , notificationKey messageNotifications "F5" "Messages"
+      ]
+
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as a single line in
 --   between the world panel and the REPL.
+--
+-- This excludes the F-key modals that are shown elsewhere.
 drawKeyMenu :: AppState -> Widget Name
 drawKeyMenu s =
   vLimit 1
@@ -601,15 +627,6 @@ drawKeyMenu s =
     _ -> False
   showZero = s ^. uiState . uiShowZero
 
-  notificationKey :: Getter GameState (Notifications a) -> Text -> Text -> Maybe (KeyHighlight, Text, Text)
-  notificationKey notifLens key name
-    | null (s ^. gameState . notifLens . notificationsContent) = Nothing
-    | otherwise =
-      let highlight
-            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
-            | otherwise = NoHighlight
-       in Just (highlight, key, name)
-
   gameModeWidget =
     padLeft Max . padLeftRight 1
       . txt
@@ -619,12 +636,7 @@ drawKeyMenu s =
         True -> "Creative"
   globalKeyCmds =
     catMaybes
-      [ Just (NoHighlight, "F1", "help")
-      , Just (NoHighlight, "F2", "robots")
-      , notificationKey availableRecipes "F3" "Recipes"
-      , notificationKey availableCommands "F4" "Commands"
-      , notificationKey messageNotifications "F5" "Messages"
-      , may goal (NoHighlight, "^g", "goal")
+      [ may goal (NoHighlight, "^g", "goal")
       , may cheat (NoHighlight, "^v", "creative")
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
       , Just (NoHighlight, "^o", "step")
