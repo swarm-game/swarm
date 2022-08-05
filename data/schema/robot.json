@@ -55,13 +55,23 @@
         },
         "devices": {
             "default": [],
-            "type": "string",
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
             "description": "A list of entity names which should be installed as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs."
         },
         "inventory": {
             "default": [],
             "type": "array",
-            "items": [{"type": "number"}, {"type": "string"}],
+            "items": [
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "string"
+                }
+            ],
             "description": "A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each."
         },
         "system": {
@@ -77,6 +87,6 @@
     },
     "required": [
         "name",
-        "direction"
+        "dir"
     ]
 }
