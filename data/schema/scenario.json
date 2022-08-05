@@ -28,7 +28,7 @@
             "default": [],
             "type": "array",
             "items": {
-                "$schema": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/entity.json"
+                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/entity.json"
             }
         },
         "recipes": {
