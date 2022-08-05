@@ -54,7 +54,27 @@
         "objectives": {
             "description": "An optional list of objectives, aka winning conditions. The player has to complete the objectives in sequence to win. See the description of Objectives.",
             "default": [],
-            "type": "array"
+            "type": "array",
+            "items": {
+                "name": "objective",
+                "description": "The top-level objectives field contains a list of objectives that must be completed in sequence. Each objective has a goal description and a condition.",
+                "type": "object",
+                "properties": {
+                    "goal": {
+                        "type": "array",
+                        "items": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "description": "The goal description as a list of paragraphs that the player can read."
+                    },
+                    "condition": {
+                        "description": "A swarm program that will be hypothetically run each tick to check if the condition is fulfilled.",
+                        "type": "string"
+                    }
+                }
+            }
         },
         "solution": {
             "description": "The (optional) text of a Swarm program that, when run on the base robot, completes all the objectives. For scenarios which are officially part of the Swarm repository, such a solution will be tested as part of CI testing. For scenarios loaded directly from a file, any provided solution is simply ignored.",
