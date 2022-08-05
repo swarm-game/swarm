@@ -1,17 +1,17 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/scenarios/swarm-scenario.schema.json",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/scenario.json",
     "title": "Swarm scenario",
     "description": "Scenario for the swarm game",
     "type": "object",
     "properties": {
         "name": {
-          "description": "The name of the scenario. For official scenarios, this is what shows up in the new game menu.",
-          "type": "string"
+            "description": "The name of the scenario. For official scenarios, this is what shows up in the new game menu.",
+            "type": "string"
         },
         "description": {
-          "description": "A short description of the scenario. This shows up next to the new game menu when the scenario is selected.",
-          "type": "string"
+            "description": "A short description of the scenario. This shows up next to the new game menu when the scenario is selected.",
+            "type": "string"
         },
         "creative": {
             "description": "Whether the scenario should start out in creative mode.",
@@ -28,8 +28,7 @@
             "default": [],
             "type": "array",
             "items": {
-                "description": "",
-                "type": "object"
+                "$schema": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/entity.json"
             }
         },
         "recipes": {
@@ -67,6 +66,10 @@
             "default": null,
             "type": "number"
         }
-      },
-      "required": [ "name", "world", "robots" ]
-  }
+    },
+    "required": [
+        "name",
+        "world",
+        "robots"
+    ]
+}

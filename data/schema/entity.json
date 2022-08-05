@@ -1,0 +1,85 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/entity.json",
+    "title": "Swarm entity",
+    "description": "Description of entity in the Swarm game",
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The name of the entity. This is what will show up in the inventory and how the entity can be referred to."
+        },
+        "display": {
+            "type": "object",
+            "description": "Display information for the entity."
+        },
+        "plural": {
+            "default": "null",
+            "type": "string",
+            "description": "An explicit plural form of the name of the entity. If omitted, standard heuristics will be used for forming the English plural of its name."
+        },
+        "description": {
+            "type": "array",
+            "items": [
+                {
+                    "type": "string"
+                }
+            ],
+            "description": "A description of the entity, as a list of paragraphs."
+        },
+        "orientation": {
+            "default": "null",
+            "type": "array",
+            "items": [
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "number"
+                }
+            ],
+            "description": "A 2-tuple of integers specifying an orientation vector for the entity. Currently unused."
+        },
+        "growth": {
+            "default": "null",
+            "type": "array",
+            "items": [
+                {
+                    "name": "minimum",
+                    "type": "number"
+                },
+                {
+                    "name": "maximum",
+                    "type": "number"
+                }
+            ],
+            "description": "For growable entities, a 2-tuple of integers specifying the minimum and maximum amount of time taken for one growth stage. The actual time for one growth stage will be chosen uniformly at random from this range; it takes two growth stages for an entity to be fully grown."
+        },
+        "yields": {
+            "default": "null",
+            "type": "string",
+            "description": "The name of the entity which will be added to a robot's inventory when it executes grab or harvest on this entity. If omitted, the entity will simply yield itself."
+        },
+        "properties": {
+            "default": "[]",
+            "type": "array",
+            "items": [
+                {
+                    "type": "string"
+                }
+            ],
+            "description": "A list of properties of this entity. See Entity properties."
+        },
+        "capabilities": {
+            "default": "[]",
+            "type": "array",
+            "items": [
+                {
+                    "type": "string"
+                }
+            ],
+            "description": "A list of capabilities provided by entity, when it is installed as a device. See Capabilities."
+        }
+    },
+    "required": ["name", "display", "description"]
+}
