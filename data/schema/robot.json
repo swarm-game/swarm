@@ -45,7 +45,7 @@
         },
         "display": {
             "default": "default",
-            "type": "string",
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/display.json",
             "description": "Display information for the robot. If this field is omitted, the default robot display will be used."
         },
         "program": {

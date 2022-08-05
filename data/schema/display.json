@@ -1,0 +1,62 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/display.json",
+    "title": "Swarm entity display",
+    "description": "How to display an entity or robot in the Swarm game",
+    "type": "object",
+    "properties": {
+        "char": {
+            "default": " ",
+            "type": "string",
+            "description": "The default character that should be used to draw the robot or entity."
+        },
+        "orientationMap": {
+            "default": {},
+            "type": "object",
+            "description": "Currently unused"
+        },
+        "curOrientation": {
+            "default": null,
+            "type": "array",
+            "description": "Currently unused"
+        },
+        "attr": {
+            "default": "entity",
+            "type": "string",
+            "examples": [
+                "entity",
+                "device",
+                "plant",
+                "rock",
+                "wood",
+                "flower",
+                "rubber",
+                "copper",
+                "copper'",
+                "iron",
+                "iron'",
+                "quartz",
+                "silver",
+                "gold",
+                "snow",
+                "sand",
+                "fire",
+                "red",
+                "green",
+                "blue",
+                "water"
+            ],
+            "description": "The name of the attribute that should be used to style the robot or entity. A list of currently valid attributes can be found at https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/Attr.hs."
+        },
+        "priority": {
+            "default": 1,
+            "type": "number",
+            "description": "When multiple entities and robots occupy the same cell, the one with the highest priority is drawn. By default, entities have priority 1, and robots have priority 10."
+        },
+        "invisible": {
+            "default": false,
+            "type": "boolean",
+            "description": "Whether the entity or robot should be invisible. Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways."
+        }
+    }
+}

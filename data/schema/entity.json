@@ -11,6 +11,7 @@
         },
         "display": {
             "type": "object",
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/display.json",
             "description": "Display information for the entity."
         },
         "plural": {
