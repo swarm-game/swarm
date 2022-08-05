@@ -1,0 +1,82 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/robot.json",
+    "title": "Swarm robot",
+    "description": "Description of a robot in the Swarm game",
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The name of the robot. This shows up in the list of robots in the game (F2), and is also how the robot will be referred to in the world palette."
+        },
+        "description": {
+            "default": [],
+            "type": "string",
+            "description": "A description of the robot, given as a list of paragraphs. This is currently not used for much (perhaps not at all?)."
+        },
+        "loc": {
+            "default": null,
+            "type": "array",
+            "items": [
+                {
+                    "name": "X coordinate",
+                    "type": "number"
+                },
+                {
+                    "name": "Y coordinate",
+                    "type": "number"
+                }
+            ],
+            "description": "An optional (x,y) starting location for the robot. If the loc field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map."
+        },
+        "dir": {
+            "type": "array",
+            "items": [
+                {
+                    "name": "X coordinate",
+                    "type": "number"
+                },
+                {
+                    "name": "Y coordinate",
+                    "type": "number"
+                }
+            ],
+            "description": "The starting orientation of the robot, expressed as a vector. Every time the robot executes a move command, this vector will be added to its position. Typically, this is a unit vector in one of the four cardinal directions, although there is no particular reason that it has to be."
+        },
+        "display": {
+            "default": "default",
+            "type": "string",
+            "description": "Display information for the robot. If this field is omitted, the default robot display will be used."
+        },
+        "program": {
+            "default": null,
+            "type": "string",
+            "description": "This is the text of a Swarm program which the robot should initially run, and must be syntax- and type-error-free. If omitted, the robot will simply be idle."
+        },
+        "devices": {
+            "default": [],
+            "type": "string",
+            "description": "A list of entity names which should be installed as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs."
+        },
+        "inventory": {
+            "default": [],
+            "type": "array",
+            "items": [{"type": "number"}, {"type": "string"}],
+            "description": "A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each."
+        },
+        "system": {
+            "default": false,
+            "type": "boolean",
+            "description": "Whether the robot is a \"system\" robot. System robots can do anything, without regard for devices and capabilities."
+        },
+        "heavy": {
+            "default": false,
+            "type": "boolean",
+            "description": "Whether the robot is heavy. Heavy robots require tank treads to move (rather than just treads for other robots)."
+        }
+    },
+    "required": [
+        "name",
+        "direction"
+    ]
+}

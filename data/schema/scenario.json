@@ -47,8 +47,7 @@
             "description": "A list of robots that will inhabit the world. See the description of Robots.",
             "type": "array",
             "items": {
-                "description": "",
-                "type": "object"
+                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/robot.json"
             }
         },
         "objectives": {

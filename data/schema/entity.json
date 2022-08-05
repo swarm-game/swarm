@@ -32,9 +32,11 @@
             "type": "array",
             "items": [
                 {
+                    "name": "X coordinate",
                     "type": "number"
                 },
                 {
+                    "name": "Y coordinate",
                     "type": "number"
                 }
             ],
