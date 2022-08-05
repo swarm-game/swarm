@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/world.json",
+    "title": "Swarm world",
+    "description": "Description of the world in the Swarm game",
+    "type": "object",
+    "properties": {
+        "default": {
+            "default": null,
+            "type": "array",
+            "description": "A tuple representing the contents of a default cell (see Cells, except that the default cell may not contain a robot). If this key is present, it means that the whole world besides the part specified with the map will be filled with this default cell. If omitted, the world besides the part specified with the map will be procedurally generated."
+        },
+        "offset": {
+            "default": false,
+            "type": "boolean",
+            "description": "Whether the base robot's position should be moved to the nearest \"good\" location, currently defined as a location near a tree, in a 16x16 patch which contains at least one each of tree, copper ore, bit (0), bit (1), rock, lambda, water, and sand. The classic scenario uses offset: True to make sure that the it is not unreasonably difficult to obtain necessary resources in the early game. See https://github.com/swarm-game/swarm/blob/main/src/Swarm/Game/WorldGen.hs#L204 ."
+        },
+        "palette": {
+            "default": {},
+            "type": "object",
+            "examples": [{"T": ["grass", "tree"]}],
+            "description": "The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See Cells for the contents of the tuples representing a cell."
+        },
+        "map": {
+            "default": "",
+            "type": "string",
+            "description": "A rectangular string, using characters from the palette, exactly specifying the contents of a rectangular portion of the world. Leading spaces are ignored. The rest of the world is either filled by the default cell, or by procedural generation otherwise. Note that this is optional; if omitted, the world will simply be filled with the default cell or procedurally generated."
+        },
+        "upperleft": {
+            "default": [
+                0,
+                0
+            ],
+            "type": "array",
+            "items": [
+                {
+                    "name": "X coordinate",
+                    "type": "number"
+                },
+                {
+                    "name": "Y coordinate",
+                    "type": "number"
+                }
+            ],
+            "description": "A 2-tuple of int values specifying the (x,y) coordinates of the upper left corner of the map."
+        }
+    }
+}
