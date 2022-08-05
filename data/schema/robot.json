@@ -64,14 +64,17 @@
         "inventory": {
             "default": [],
             "type": "array",
-            "items": [
-                {
-                    "type": "number"
-                },
-                {
-                    "type": "string"
-                }
-            ],
+            "items": {
+                "type": "array",
+                "items": [
+                    {
+                        "type": "number"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ]
+            },
             "description": "A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each."
         },
         "system": {
