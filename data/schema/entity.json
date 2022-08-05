@@ -68,7 +68,14 @@
             "type": "array",
             "items": [
                 {
-                    "type": "string"
+                    "type": "string",
+                    "examples": [
+                        "unwalkable",
+                        "portable",
+                        "infinite",
+                        "known",
+                        "growable"
+                    ]
                 }
             ],
             "description": "A list of properties of this entity. See Entity properties."
@@ -84,5 +91,9 @@
             "description": "A list of capabilities provided by entity, when it is installed as a device. See Capabilities."
         }
     },
-    "required": ["name", "display", "description"]
+    "required": [
+        "name",
+        "display",
+        "description"
+    ]
 }
