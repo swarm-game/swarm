@@ -63,18 +63,7 @@
         },
         "inventory": {
             "default": [],
-            "type": "array",
-            "items": {
-                "type": "array",
-                "items": [
-                    {
-                        "type": "number"
-                    },
-                    {
-                        "type": "string"
-                    }
-                ]
-            },
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/inventory.json",
             "description": "A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each."
         },
         "system": {
