@@ -2,6 +2,21 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
+-- |
+-- A web service for Swarm.
+--
+-- The service can be started using the `--port 8080` command line argument,
+-- or through the REPL by calling `Swarm.App.demoWeb`.
+--
+-- Once running, here are the available endpoints:
+--
+--   * /robots : return the list of robots
+--   * /robot/ID : return a single robot identified by its id
+--
+-- Missing endpoints:
+--
+--   * TODO: #625 run endpoint to load definitions
+--   * TODO: #493 export the whole game state
 module Swarm.Web where
 
 import Control.Lens ((^.))
