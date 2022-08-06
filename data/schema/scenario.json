@@ -1,0 +1,87 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/scenario.json",
+    "title": "Swarm scenario",
+    "description": "Scenario for the swarm game",
+    "type": "object",
+    "properties": {
+        "name": {
+            "description": "The name of the scenario. For official scenarios, this is what shows up in the new game menu.",
+            "type": "string"
+        },
+        "description": {
+            "description": "A short description of the scenario. This shows up next to the new game menu when the scenario is selected.",
+            "type": "string"
+        },
+        "creative": {
+            "description": "Whether the scenario should start out in creative mode.",
+            "default": false,
+            "type": "boolean"
+        },
+        "seed": {
+            "description": "An optional seed that will be used to seed the random number generator. If a procedurally generated world is used, the seed hence determines the world. Hence, if the seed is specified, the procedurally generated world will be exactly the same every time, for every player. If omitted, a random seed will be used every time the scenario is loaded.",
+            "default": null,
+            "type": "number"
+        },
+        "entities": {
+            "description": "An optional list of custom entities, to be used in addition to the built-in entities. See description of Entities.",
+            "default": [],
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/entities.json"
+        },
+        "recipes": {
+            "description": "An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities. See description of Recipes.",
+            "default": [],
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json"
+        },
+        "world": {
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json"
+        },
+        "robots": {
+            "description": "A list of robots that will inhabit the world. See the description of Robots.",
+            "type": "array",
+            "items": {
+                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/robot.json"
+            }
+        },
+        "objectives": {
+            "description": "An optional list of objectives, aka winning conditions. The player has to complete the objectives in sequence to win. See the description of Objectives.",
+            "default": [],
+            "type": "array",
+            "items": {
+                "name": "objective",
+                "description": "The top-level objectives field contains a list of objectives that must be completed in sequence. Each objective has a goal description and a condition.",
+                "type": "object",
+                "properties": {
+                    "goal": {
+                        "type": "array",
+                        "items": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "description": "The goal description as a list of paragraphs that the player can read."
+                    },
+                    "condition": {
+                        "description": "A swarm program that will be hypothetically run each tick to check if the condition is fulfilled.",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "solution": {
+            "description": "The (optional) text of a Swarm program that, when run on the base robot, completes all the objectives. For scenarios which are officially part of the Swarm repository, such a solution will be tested as part of CI testing. For scenarios loaded directly from a file, any provided solution is simply ignored.",
+            "default": null,
+            "type": "string"
+        },
+        "stepsPerTick": {
+            "description": "When present, this specifies the maximum number of CESK machine steps each robot is allowed to take per game tick. It is rather obscure and technical and only used in a few automated tests; most scenario authors should not need this.",
+            "default": null,
+            "type": "number"
+        }
+    },
+    "required": [
+        "name",
+        "world",
+        "robots"
+    ]
+}
