@@ -200,6 +200,8 @@ data RobotR (phase :: RobotPhase) = RobotR
 
 deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
 
+deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJSON (RobotR phase)
+
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
