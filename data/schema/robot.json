@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/robot.json",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/robot.json",
     "title": "Swarm robot",
     "description": "Description of a robot in the Swarm game",
     "type": "object",
@@ -45,7 +45,7 @@
         },
         "display": {
             "default": "default",
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/display.json",
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/display.json",
             "description": "Display information for the robot. If this field is omitted, the default robot display will be used."
         },
         "program": {
@@ -63,7 +63,7 @@
         },
         "inventory": {
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/inventory.json",
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
             "description": "A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each."
         },
         "system": {

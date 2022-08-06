@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/scenario.json",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/scenario.json",
     "title": "Swarm scenario",
     "description": "Scenario for the swarm game",
     "type": "object",
@@ -26,21 +26,21 @@
         "entities": {
             "description": "An optional list of custom entities, to be used in addition to the built-in entities. See description of Entities.",
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/entities.json"
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/entities.json"
         },
         "recipes": {
             "description": "An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities. See description of Recipes.",
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/recipes.json"
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json"
         },
         "world": {
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/world.json"
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json"
         },
         "robots": {
             "description": "A list of robots that will inhabit the world. See the description of Robots.",
             "type": "array",
             "items": {
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/robot.json"
+                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/robot.json"
             }
         },
         "objectives": {

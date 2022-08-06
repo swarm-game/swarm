@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/world.json",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json",
     "title": "Swarm world",
     "description": "Description of the world in the Swarm game",
     "type": "object",
