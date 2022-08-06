@@ -48,6 +48,46 @@ uses the Haskell [yaml
 library](https://hackage.haskell.org/package/yaml) for parsing `.yaml`
 files.
 
+### Scenario schema
+
+To ease writing Scenario YAML files, you can use a JSON schema that includes
+the information below in a machine readable format. This will allow
+your editor to highlight the errors as you are writing.
+
+#### VS Code
+
+If you are using Visual Studio Code or VSCodium, you need to have
+the [YAML extension](https://open-vsx.org/extension/redhat/vscode-yaml)
+installed.
+
+To point the editor to the right schema for scenarios in this repository,
+you can use this `setting.json`:
+```JSON
+{
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/swarm-game/swarm/main/scenario.json": [
+      "data/scenarios/*.yaml",
+      "data/scenarios/**/*.yaml"
+    ]
+  }
+}
+```
+
+#### CLI
+
+You can also check the files from the command line:
+```Bash
+# install latest jsonschema executable version (tested with 4.9.1)
+pip install jsonschema
+# try it on provided scenarios
+yq eval scenarios/creative.yaml -o json | jsonschema data/schema/scenario.json
+# try that it works on empty JSON
+echo {} | jsonschema data/schema/scenario.json
+# {}: 'name' is a required property
+# {}: 'world' is a required property
+# {}: 'robots' is a required property
+```
+
 ### YAML conventions
 
 Objects (key-value mappings) are described below using tables.  Note
