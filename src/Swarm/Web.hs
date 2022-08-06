@@ -24,18 +24,18 @@ mkApp :: IORef GameState -> Servant.Server SwarmApi
 mkApp gsRef =
   robotsHandler
     :<|> robotHandler
-  where
-    robotsHandler = do
-      g <- liftIO (readIORef gsRef)
-      pure $ IM.elems $ g ^. robotMap
-    robotHandler rid = do
-      g <- liftIO (readIORef gsRef)
-      pure $ fromMaybe (error "Unknown robot") (IM.lookup rid (g ^. robotMap))
+ where
+  robotsHandler = do
+    g <- liftIO (readIORef gsRef)
+    pure $ IM.elems $ g ^. robotMap
+  robotHandler rid = do
+    g <- liftIO (readIORef gsRef)
+    pure $ fromMaybe (error "Unknown robot") (IM.lookup rid (g ^. robotMap))
 
 webMain :: Port -> IORef GameState -> IO ()
 webMain port gsRef = do
   putStrLn $ "Web interface listening on :" <> show port
   Network.Wai.Handler.Warp.run port app
-  where
-    app :: Network.Wai.Application
-    app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
+ where
+  app :: Network.Wai.Application
+  app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
