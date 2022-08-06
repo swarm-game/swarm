@@ -26,19 +26,12 @@
         "entities": {
             "description": "An optional list of custom entities, to be used in addition to the built-in entities. See description of Entities.",
             "default": [],
-            "type": "array",
-            "items": {
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/entity.json"
-            }
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/entities.json"
         },
         "recipes": {
             "description": "An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities. See description of Recipes.",
             "default": [],
-            "type": "array",
-            "items": {
-                "description": "",
-                "type": "object"
-            }
+            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/recipes.json"
         },
         "world": {
             "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/scheme/data/schema/world.json"
