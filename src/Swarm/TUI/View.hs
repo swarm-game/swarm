@@ -321,7 +321,7 @@ maybeScroll :: (Ord n, Show n) => n -> Widget n -> Widget n
 maybeScroll vpName contents =
   Widget Greedy Greedy $ do
     ctx <- getContext
-    result <- withReaderT (availHeightL .~ 1000000) (render contents)
+    result <- withReaderT (availHeightL .~ 10000) (render contents)
     if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
       then return result
       else
