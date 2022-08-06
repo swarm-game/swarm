@@ -65,13 +65,12 @@ appMain port seed scenario toRun cheat = do
           threadDelay 33_333 -- cap maximum framerate at 30 FPS
           writeBChan chan Frame
 
-      eventHandler <- case port of
-        Nothing -> pure handleEvent
-        Just port' -> do
-          -- Share a reference to the state with the web ui
-          gsRef <- newIORef (s ^. gameState)
-          Swarm.Web.startWebThread port' gsRef
-          pure $ \e -> do
+      -- Start the web service with a reference to the game state
+      gsRef <- newIORef (s ^. gameState)
+      Swarm.Web.startWebThread port gsRef
+
+      -- Update the reference for every event
+      let eventHandler e = do
             s' <- get
             liftIO $ writeIORef gsRef (s' ^. gameState)
             handleEvent e

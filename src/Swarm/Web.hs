@@ -62,11 +62,24 @@ webMain baton port gsRef = do
   app :: Network.Wai.Application
   app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
 
-startWebThread :: Warp.Port -> IORef GameState -> IO ()
-startWebThread port gsRef = do
-  baton <- newEmptyMVar
-  void $ forkIO $ webMain (Just baton) port gsRef
-  res <- timeout 500_000 (takeMVar baton)
+defaultPort :: Warp.Port
+defaultPort = 5357
+
+startWebThread :: Maybe Warp.Port -> IORef GameState -> IO ()
+startWebThread portM gsRef = do
+  res <- go
   case res of
     Nothing -> fail "Fail to start the web api"
     Just _ -> pure ()
+ where
+  go = case portM of
+    Just 0 -> pure (Just ())
+    Just port -> do
+      -- The user provided a port, so we ensure the api does starts
+      baton <- newEmptyMVar
+      void $ forkIO $ webMain (Just baton) port gsRef
+      timeout 500_000 (takeMVar baton)
+    Nothing -> do
+      -- No port was given, the api may fail to start
+      void $ forkIO $ webMain Nothing defaultPort gsRef
+      pure (Just ())

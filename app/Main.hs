@@ -12,6 +12,7 @@ import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
+import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
 
 data CLI
@@ -57,7 +58,14 @@ cliParser =
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   webPort :: Parser (Maybe Int)
-  webPort = optional $ option auto (long "web" <> metavar "PORT" <> help "Start the web interface")
+  webPort =
+    optional $
+      option
+        auto
+        ( long "web"
+            <> metavar "PORT"
+            <> help ("Set the web service port (or disable it with 0). Default to " <> show defaultPort <> ".")
+        )
   scenario :: Parser (Maybe String)
   scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)
