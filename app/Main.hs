@@ -57,7 +57,7 @@ cliParser =
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   webPort :: Parser (Maybe Int)
-  webPort = optional $ option auto (long "web" <> metavar "INT" <> help "Start the web interface")
+  webPort = optional $ option auto (long "web" <> metavar "PORT" <> help "Start the web interface")
   scenario :: Parser (Maybe String)
   scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)
