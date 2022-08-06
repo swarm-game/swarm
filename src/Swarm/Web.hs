@@ -8,7 +8,6 @@ import Control.Lens ((^.))
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
-import Data.Maybe (fromMaybe)
 import Network.Wai qualified
 import Network.Wai.Handler.Warp (Port)
 import Network.Wai.Handler.Warp qualified
@@ -18,7 +17,7 @@ import Swarm.Game.State
 
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]
-    :<|> "robot" :> Capture "id" Int :> Get '[JSON] Robot
+    :<|> "robot" :> Capture "id" Int :> Get '[JSON] (Maybe Robot)
 
 mkApp :: IORef GameState -> Servant.Server SwarmApi
 mkApp gsRef =
@@ -30,7 +29,7 @@ mkApp gsRef =
     pure $ IM.elems $ g ^. robotMap
   robotHandler rid = do
     g <- liftIO (readIORef gsRef)
-    pure $ fromMaybe (error "Unknown robot") (IM.lookup rid (g ^. robotMap))
+    pure $ IM.lookup rid (g ^. robotMap)
 
 webMain :: Port -> IORef GameState -> IO ()
 webMain port gsRef = do
