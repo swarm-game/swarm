@@ -466,7 +466,7 @@ robotsListWidget s = hCenter table
   g = s ^. gameState
 
 helpWidget :: Widget Name
-helpWidget = (helpKeys <=> fill ' ') <+> (helpCommands <=> fill ' ')
+helpWidget = helpKeys <+> helpCommands
  where
   helpKeys =
     vBox
