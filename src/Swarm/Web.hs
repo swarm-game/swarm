@@ -5,7 +5,7 @@
 -- |
 -- A web service for Swarm.
 --
--- The service can be started using the `--port 8080` command line argument,
+-- The service can be started using the `--port 5357` command line argument,
 -- or through the REPL by calling `Swarm.App.demoWeb`.
 --
 -- Once running, here are the available endpoints:
@@ -19,16 +19,19 @@
 --   * TODO: #493 export the whole game state
 module Swarm.Web where
 
+import Control.Concurrent (forkIO)
+import Control.Concurrent.MVar
 import Control.Lens ((^.))
+import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
 import Network.Wai qualified
-import Network.Wai.Handler.Warp (Port)
-import Network.Wai.Handler.Warp qualified
+import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Swarm.Game.Robot
 import Swarm.Game.State
+import System.Timeout (timeout)
 
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]
@@ -46,10 +49,24 @@ mkApp gsRef =
     g <- liftIO (readIORef gsRef)
     pure $ IM.lookup rid (g ^. robotMap)
 
-webMain :: Port -> IORef GameState -> IO ()
-webMain port gsRef = do
-  putStrLn $ "Web interface listening on :" <> show port
-  Network.Wai.Handler.Warp.run port app
+webMain :: Maybe (MVar ()) -> Warp.Port -> IORef GameState -> IO ()
+webMain baton port gsRef = do
+  let settings = Warp.setPort port $ onReady Warp.defaultSettings
+  Warp.runSettings settings app
  where
+  onReady = case baton of
+    Just mv -> Warp.setBeforeMainLoop $ do
+      putStrLn $ "Web interface listening on :" <> show port
+      putMVar mv ()
+    Nothing -> id
   app :: Network.Wai.Application
   app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
+
+startWebThread :: Warp.Port -> IORef GameState -> IO ()
+startWebThread port gsRef = do
+  baton <- newEmptyMVar
+  void $ forkIO $ webMain (Just baton) port gsRef
+  res <- timeout 500_000 (takeMVar baton)
+  case res of
+    Nothing -> fail "Fail to start the web api"
+    Just _ -> pure ()

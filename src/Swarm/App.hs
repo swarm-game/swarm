@@ -70,7 +70,7 @@ appMain port seed scenario toRun cheat = do
         Just port' -> do
           -- Share a reference to the state with the web ui
           gsRef <- newIORef (s ^. gameState)
-          void $ forkIO $ webMain port' gsRef
+          Swarm.Web.startWebThread port' gsRef
           pure $ \e -> do
             s' <- get
             liftIO $ writeIORef gsRef (s' ^. gameState)
@@ -91,7 +91,7 @@ demoWeb = do
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
       gsRef <- newIORef (s ^. gameState)
-      webMain 8080 gsRef
+      webMain Nothing 8080 gsRef
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 
