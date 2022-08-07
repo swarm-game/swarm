@@ -151,7 +151,8 @@ data Cell = Cell
   { cellTerrain :: TerrainType
   , cellEntity :: Maybe Entity
   , cellRobot :: Maybe TRobot
-  } deriving (Eq, Show)
+  }
+  deriving (Eq, Show)
 
 -- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
 --   entity and robot, if present, are immediately looked up and
@@ -197,7 +198,8 @@ data WorldDescription = WorldDescription
   , palette :: WorldPalette
   , ul :: V2 Int64
   , area :: [[Cell]]
-  } deriving (Eq, Show)
+  }
+  deriving (Eq, Show)
 
 instance FromJSONE (EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
@@ -238,7 +240,8 @@ data Scenario = Scenario
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
-  } deriving (Eq, Show)
+  }
+  deriving (Eq, Show)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 

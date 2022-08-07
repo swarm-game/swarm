@@ -64,6 +64,7 @@ import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (CESK (..))
@@ -72,7 +73,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioDescription, scenarioName)
-import Swarm.Game.ScenarioStatus (ScenarioItem (..), scenarioItemName, ScenarioStatus (..), scenarioBest, scenarioStatus)
+import Swarm.Game.ScenarioStatus (ScenarioItem (..), ScenarioStatus (..), scenarioBest, scenarioItemName, scenarioStatus)
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
@@ -89,7 +90,6 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
-import Data.Time (formatTime, defaultTimeLocale, NominalDiffTime)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -148,12 +148,12 @@ drawNewGameMenuUI (l :| ls) =
     NotStarted -> txt " o "
     InProgress {} -> withAttr yellowAttr $ txt "..."
     Complete {} -> withAttr greenAttr $ txt " x "
-  
+
   describeStatus = \case
     NotStarted -> txt "none"
     InProgress {} -> withAttr yellowAttr $ txt "in progress"
     Complete _s e -> withAttr greenAttr . txt . T.pack $ "completed in " <> formatTimeDiff e
-  
+
   formatTimeDiff :: NominalDiffTime -> String
   formatTimeDiff = formatTime defaultTimeLocale "%hh %mmin %ssec"
 
@@ -166,11 +166,12 @@ drawNewGameMenuUI (l :| ls) =
 
   drawDescription :: ScenarioItem -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle s si) = vBox
-    [ txtWrap (nonBlank (s ^. scenarioDescription))
-    , padTop (Pad 3) $ padRight (Pad 1) (txt "best:") <+> describeStatus (si ^. scenarioBest)
-    , padRight (Pad 1) (txt "last:") <+> describeStatus (si ^. scenarioStatus)
-    ]
+  drawDescription (SISingle s si) =
+    vBox
+      [ txtWrap (nonBlank (s ^. scenarioDescription))
+      , padTop (Pad 3) $ padRight (Pad 1) (txt "best:") <+> describeStatus (si ^. scenarioBest)
+      , padRight (Pad 1) (txt "last:") <+> describeStatus (si ^. scenarioStatus)
+      ]
 
   nonBlank "" = " "
   nonBlank t = t
