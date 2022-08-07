@@ -149,7 +149,8 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario)
+import Swarm.Game.Scenario (Scenario, loadScenario)
+import Swarm.Game.ScenarioStatus (ScenarioItem)
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types

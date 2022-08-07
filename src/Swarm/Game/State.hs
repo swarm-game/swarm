@@ -151,6 +151,7 @@ import Swarm.Util (getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
+import Swarm.Game.ScenarioStatus (ScenarioCollection, loadScenarios)
 
 ------------------------------------------------------------
 -- Subsidiary data types

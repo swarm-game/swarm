@@ -155,6 +155,7 @@ library
                       syb                           >= 0.7 && < 0.8,
                       template-haskell              >= 2.16 && < 2.19,
                       text                          >= 1.2.4 && < 2.1,
+                      time                          >= 1.9 && < 1.14,
                       unification-fd                >= 0.11  && < 0.12,
                       unordered-containers          >= 0.2.14 && < 0.3,
                       vector                        >= 0.12 && < 0.13,

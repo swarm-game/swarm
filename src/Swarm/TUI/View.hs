@@ -71,7 +71,8 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItemName, scenarioName)
+import Swarm.Game.Scenario (scenarioDescription, scenarioName)
+import Swarm.Game.ScenarioStatus (ScenarioItem (..), scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
