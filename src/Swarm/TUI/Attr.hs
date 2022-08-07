@@ -40,6 +40,7 @@ module Swarm.TUI.Attr (
   highlightAttr,
   notifAttr,
   infoAttr,
+  boldAttr,
   yellowAttr,
   blueAttr,
   greenAttr,
@@ -74,6 +75,7 @@ swarmAttrMap =
          , (infoAttr, fg (V.rgbColor @Int 50 50 50))
          , (buttonSelectedAttr, bg V.blue)
          , (notifAttr, fg V.yellow `V.withStyle` V.bold)
+         , (boldAttr, V.defAttr `V.withStyle` V.bold)
          , -- Basic colors
            (redAttr, fg V.red)
          , (greenAttr, fg V.green)
@@ -145,11 +147,13 @@ plantAttr = worldPrefix <> "plant"
 highlightAttr
   , notifAttr
   , infoAttr
+  , boldAttr
   , defAttr ::
     AttrName
 highlightAttr = "highlight"
 notifAttr = "notif"
 infoAttr = "info"
+boldAttr = "bold"
 defAttr = "def"
 
 -- | Some basic colors used in TUI.

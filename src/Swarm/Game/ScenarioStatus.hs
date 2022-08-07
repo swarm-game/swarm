@@ -15,17 +15,28 @@
 -- started, which have been completed, etc.
 module Swarm.Game.ScenarioStatus (
   ScenarioStatus (..),
+  _NotStarted,
+  _InProgress,
+  _Complete,
   ScenarioInfo,
   scenarioPath,
   scenarioStatus,
+  scenarioBest,
+  updateScenarioInfoOnQuit,
 
-  -- * Loading from disk
+  -- * Scenario collection
   ScenarioCollection (..),
   scenarioCollectionToList,
+  scenarioItemByPath,
+  normalizeScenarioPath,
   ScenarioItem (..),
-  _SISingle,
   scenarioItemName,
+  _SISingle,
+
+  -- * Loading and saving scenarios
   loadScenarios,
+  loadScenarioInfo,
+  saveScenarioInfo,
 
   -- * Re-exports
   module Swarm.Game.Scenario,
@@ -33,7 +44,7 @@ module Swarm.Game.ScenarioStatus (
 
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (Throw, runThrow)
+import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (unless, when)
 import Data.Aeson (
@@ -41,21 +52,24 @@ import Data.Aeson (
   defaultOptions,
   genericParseJSON,
   genericToEncoding,
+  genericToJSON,
  )
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
-import Data.List ((\\))
+import Data.List (intercalate, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Text (Text)
-import Data.Time (NominalDiffTime, ZonedTime, zonedTimeToUTC)
+import Data.Maybe (isJust)
+import Data.Text (Text, pack)
+import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Paths_swarm (getDataDir)
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath (takeBaseName, takeExtensions, (</>))
+import Swarm.Util (getSwarmSavePath)
+import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
 
 instance Eq ZonedTime where
@@ -69,11 +83,13 @@ data ScenarioStatus
   | InProgress
       { -- | Time when the scenario was started including time zone.
         _scenarioStarted :: ZonedTime
+      , -- | Time elapsed until quitting the scenario.
+        _scenarioElapsed :: NominalDiffTime
       }
   | Complete
       { -- | Time when the scenario was started including time zone.
         _scenarioStarted :: ZonedTime
-      , -- | Time elapsed until scenario completion.
+      , -- | Time elapsed until quitting the scenario.
         _scenarioElapsed :: NominalDiffTime
       }
   deriving (Eq, Ord, Show, Read, Generic)
@@ -83,10 +99,12 @@ instance FromJSON ScenarioStatus where
 
 instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
+  toJSON = genericToJSON scenarioOptions
 
 data ScenarioInfo = ScenarioInfo
   { _scenarioPath :: FilePath
   , _scenarioStatus :: ScenarioStatus
+  , _scenarioBest :: ScenarioStatus
   }
   deriving (Eq, Ord, Show, Read, Generic)
 
@@ -95,6 +113,7 @@ instance FromJSON ScenarioInfo where
 
 instance ToJSON ScenarioInfo where
   toEncoding = genericToEncoding scenarioOptions
+  toJSON = genericToJSON scenarioOptions
 
 scenarioOptions :: Options
 scenarioOptions =
@@ -110,17 +129,32 @@ scenarioPath :: Lens' ScenarioInfo FilePath
 -- | The status of the scenario.
 scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 
+-- | The best status of the scenario.
+scenarioBest :: Lens' ScenarioInfo ScenarioStatus
+updateScenarioInfoOnQuit :: ZonedTime -> Bool -> ScenarioInfo -> ScenarioInfo
+updateScenarioInfoOnQuit z completed (ScenarioInfo p s b) = case s of
+  InProgress start _ ->
+    let el = (diffUTCTime `on` zonedTimeToUTC) z start
+        cur = (if completed then Complete else InProgress) start el
+        best = case b of
+          Complete _bs bel | not completed || bel <= el -> b -- keep faster completed
+          InProgress _is iel | not completed && iel > el -> b -- keep longer progress (fun!)
+          _ -> cur -- otherwise update with current
+     in ScenarioInfo p cur best
+  _ -> error "Logical error: trying to quit scenario which is not in progress!"
+
 -- ----------------------------------------------------------------------------
 -- Scenario Item
 -- ----------------------------------------------------------------------------
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
-data ScenarioItem = SISingle Scenario | SICollection Text ScenarioCollection
+data ScenarioItem = SISingle Scenario ScenarioInfo | SICollection Text ScenarioCollection
+  deriving (Eq, Show)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
-scenarioItemName (SISingle s) = s ^. scenarioName
+scenarioItemName (SISingle s _ss) = s ^. scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name,
@@ -130,6 +164,35 @@ data ScenarioCollection = SC
   { scOrder :: Maybe [FilePath]
   , scMap :: Map FilePath ScenarioItem
   }
+  deriving (Eq, Show)
+
+-- | Access and modify ScenarioItems in collection based on their path.
+scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
+scenarioItemByPath path = ixp ps
+ where
+  ps = splitDirectories path
+  ixp :: Applicative f => [String] -> (ScenarioItem -> f ScenarioItem) -> ScenarioCollection -> f ScenarioCollection
+  ixp [] _ col = pure col
+  ixp [s] f (SC n m) = SC n <$> ix s f m
+  ixp (d : xs) f (SC n m) = SC n <$> ix d inner m
+   where
+    inner si = case si of
+      SISingle {} -> pure si
+      SICollection n' col -> SICollection n' <$> ixp xs f col
+
+normalizeScenarioPath :: ScenarioCollection -> FilePath -> IO FilePath
+normalizeScenarioPath col p =
+  let path = p -<.> "yaml"
+   in if isJust $ col ^? scenarioItemByPath path
+        then return path
+        else do
+          canonPath <- canonicalizePath path
+          d <- getDataDir >>= canonicalizePath
+          let n =
+                stripPrefix (d </> "scenarios") canonPath
+                  & maybe canonPath (dropWhile (== pathSeparator))
+          appendFile "/tmp/debug" $ "TODO: Using normal path:" <> n <> "\n"
+          return n
 
 -- | Convert a scenario collection to a list of scenario items.
 scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
@@ -193,6 +256,44 @@ loadScenarioDir em dir = do
  where
   keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
 
+-- | How to transform scenario path to save path.
+scenarioPathToSavePath :: FilePath -> FilePath -> FilePath
+scenarioPathToSavePath path swarmData = swarmData </> Data.List.intercalate "_" (splitDirectories path)
+
+-- | Load saved info about played scenario from XDG data directory.
+loadScenarioInfo ::
+  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  FilePath ->
+  m ScenarioInfo
+loadScenarioInfo p = do
+  path <- sendIO $ normalizeScenarioPath (SC Nothing mempty) p
+  sendIO $ appendFile "/tmp/debug" $ "TODO: Load info for " <> path <> "\n"
+  infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
+  hasInfo <- sendIO $ doesFileExist infoPath
+  if not hasInfo
+    then do
+      sendIO $ appendFile "/tmp/debug" "TODO: Load NOTHING\n"
+      return $ ScenarioInfo path NotStarted NotStarted
+    else
+      sendIO (decodeFileEither infoPath) >>= \case
+        Left er -> do
+          sendIO $ appendFile "/tmp/debug" $ "TODO: Load ERROR " <> prettyPrintParseException er <> "\n"
+          throwError (pack $ prettyPrintParseException er)
+        Right ss -> do
+          sendIO $ appendFile "/tmp/debug" $ "TODO: Load SUCCESS " <> show (ss ^. scenarioStatus) <> "\n"
+          return ss
+
+-- | Save info about played scenario to XDG data directory.
+saveScenarioInfo ::
+  FilePath ->
+  ScenarioInfo ->
+  IO ()
+saveScenarioInfo path si = do
+  appendFile "/tmp/debug" $ "TODO: Saving the info for " <> path <> "\n"
+  infoPath <- scenarioPathToSavePath path <$> getSwarmSavePath True
+  encodeFile infoPath si
+  appendFile "/tmp/debug" "TODO: Saved the info\n"
+
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
 loadScenarioItem ::
@@ -205,10 +306,14 @@ loadScenarioItem em path = do
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
     True -> SICollection collectionName <$> loadScenarioDir em path
-    False -> SISingle <$> loadScenarioFile em path
+    False -> do
+      s <- loadScenarioFile em path
+      si <- loadScenarioInfo path
+      return $ SISingle s si
 
 ------------------------------------------------------------
 -- Some lenses + prisms
 ------------------------------------------------------------
 
 makePrisms ''ScenarioItem
+makePrisms ''ScenarioStatus

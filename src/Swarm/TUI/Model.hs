@@ -146,11 +146,19 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, loadScenario)
-import Swarm.Game.ScenarioStatus (ScenarioItem)
+import Swarm.Game.ScenarioStatus (
+  ScenarioInfo,
+  ScenarioItem,
+  ScenarioStatus (..),
+  scenarioItemByPath,
+  scenarioStatus,
+  _SISingle, normalizeScenarioPath
+ )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
@@ -405,7 +413,7 @@ data ModalType
   | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = CancelButton | QuitButton | NextButton Scenario
+data ButtonSelection = CancelButton | QuitButton | NextButton (Scenario, ScenarioInfo)
 
 data Modal = Modal
   { _modalType :: ModalType
@@ -454,7 +462,7 @@ makePrisms ''InventoryListEntry
 data UIState = UIState
   { _uiMenu :: Menu
   , _uiPlaying :: Bool
-  , _uiNextScenario :: Maybe Scenario
+  , _uiNextScenario :: Maybe (Scenario, ScenarioInfo)
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
@@ -511,7 +519,7 @@ uiMenu :: Lens' UIState Menu
 uiPlaying :: Lens' UIState Bool
 
 -- | The next scenario after the current one, if any.
-uiNextScenario :: Lens' UIState (Maybe Scenario)
+uiNextScenario :: Lens' UIState (Maybe (Scenario, ScenarioInfo))
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
@@ -809,8 +817,16 @@ initAppState userSeed scenarioName toRun cheatMode = do
   case skipMenu of
     False -> return $ AppState gs ui
     True -> do
-      scenario <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
-      liftIO $ execStateT (scenarioToAppState scenario userSeed toRun) (AppState gs ui)
+      (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
+      as <- liftIO $ execStateT (scenarioToAppState scenario userSeed toRun) (AppState gs ui)
+      normalPath <- liftIO $ normalizeScenarioPath (as ^. gameState . scenarios) path
+      liftIO . appendFile "/tmp/debug" $ "TODO: M - Scenario in progress " <> normalPath <> "\n"
+      liftIO . appendFile "/tmp/debug" $ "TODO: M - Originally " <> path <> "\n"
+      t <- liftIO getZonedTime
+      return $
+        as
+          & gameState . currentScenarioPath ?~ normalPath
+          & gameState . scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0
 
 -- XXX do we need to keep an old entity map around???
 

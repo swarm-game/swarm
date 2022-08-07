@@ -86,7 +86,7 @@ data Objective = Objective
   { _objectiveGoal :: [Text]
   , _objectiveCondition :: ProcessedTerm
   }
-  deriving (Show, Generic, ToJSON)
+  deriving (Eq, Show, Generic, ToJSON)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
 
@@ -151,7 +151,7 @@ data Cell = Cell
   { cellTerrain :: TerrainType
   , cellEntity :: Maybe Entity
   , cellRobot :: Maybe TRobot
-  }
+  } deriving (Eq, Show)
 
 -- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
 --   entity and robot, if present, are immediately looked up and
@@ -185,6 +185,7 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
 -- | A world palette maps characters to 'Cell' values.
 newtype WorldPalette = WorldPalette
   {unPalette :: KeyMap Cell}
+  deriving (Eq, Show)
 
 instance FromJSONE (EntityMap, RobotMap) WorldPalette where
   parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
@@ -196,7 +197,7 @@ data WorldDescription = WorldDescription
   , palette :: WorldPalette
   , ul :: V2 Int64
   , area :: [[Cell]]
-  }
+  } deriving (Eq, Show)
 
 instance FromJSONE (EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
@@ -237,7 +238,7 @@ data Scenario = Scenario
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
-  }
+  } deriving (Eq, Show)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 
@@ -312,7 +313,7 @@ loadScenario ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   String ->
   EntityMap ->
-  m Scenario
+  m (Scenario, FilePath)
 loadScenario scenario em = do
   libScenario <- sendIO $ getDataFileName $ "scenarios" </> scenario
   libScenarioExt <- sendIO $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
@@ -323,7 +324,7 @@ loadScenario scenario em = do
 
   case mfileName of
     Nothing -> throwError @Text $ "Scenario not found: " <> from @String scenario
-    Just fileName -> loadScenarioFile em fileName
+    Just fileName -> (,fileName) <$> loadScenarioFile em fileName
 
 -- | Load a scenario from a file.  The @Maybe Seed@ argument is a
 --   seed provided by the user (either on the command line, or

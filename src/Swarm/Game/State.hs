@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -51,6 +52,7 @@ module Swarm.Game.State (
   recipesOut,
   recipesIn,
   scenarios,
+  currentScenarioPath,
   world,
   viewCenterRule,
   viewCenter,
@@ -123,6 +125,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
+import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
 import Linear
 import Paths_swarm (getDataFileName)
@@ -135,7 +138,7 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
-import Swarm.Game.Scenario
+import Swarm.Game.ScenarioStatus
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Value (Value)
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -151,7 +154,6 @@ import Swarm.Util (getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
-import Swarm.Game.ScenarioStatus (ScenarioCollection, loadScenarios)
 
 ------------------------------------------------------------
 -- Subsidiary data types
@@ -269,6 +271,7 @@ data GameState = GameState
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
   , _scenarios :: ScenarioCollection
+  , _currentScenarioPath :: Maybe FilePath
   , _world :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: V2 Int64
@@ -394,6 +397,12 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' GameState ScenarioCollection
+
+-- | The filepath of the currently running scenario.
+--
+-- This is useful as an index to 'scenarios' collection,
+-- see 'Swarm.Game.ScenarioStatus.scenarioItemByPath'.
+currentScenarioPath :: Lens' GameState (Maybe FilePath)
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').  Int is used instead of
@@ -668,6 +677,7 @@ initGameState = do
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
       , _scenarios = loadedScenarios
+      , _currentScenarioPath = Nothing
       , _world = W.emptyWorld (fromEnum StoneT)
       , _viewCenterRule = VCRobot 0
       , _viewCenter = V2 0 0
@@ -795,7 +805,7 @@ buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
   robots :: [TRobot]
   robots =
     area
-      & traversed <.> traversed %@~ (,) -- add (r,c) indices
+      & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
       & concat
       & mapMaybe
         ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robot) ->
@@ -808,8 +818,16 @@ buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
 initGameStateForScenario :: String -> Maybe Seed -> Maybe String -> ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   g <- initGameState
-  scene <- loadScenario sceneName (g ^. entityMap)
-  liftIO $ scenarioToGameState scene userSeed toRun g
+  (scene, path) <- loadScenario sceneName (g ^. entityMap)
+  gs <- liftIO $ scenarioToGameState scene userSeed toRun g
+  normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
+  t <- liftIO getZonedTime
+  liftIO . appendFile "/tmp/debug" $ "TODO: S - Scenario in progress " <> normalPath <> "\n"
+  liftIO . appendFile "/tmp/debug" $ "TODO: S - Originally " <> path <> "\n"
+  return $
+    gs
+      & currentScenarioPath ?~ normalPath
+      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.

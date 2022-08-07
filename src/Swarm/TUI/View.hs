@@ -72,7 +72,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioDescription, scenarioName)
-import Swarm.Game.ScenarioStatus (ScenarioItem (..), scenarioItemName)
+import Swarm.Game.ScenarioStatus (ScenarioItem (..), scenarioItemName, ScenarioStatus (..), scenarioBest, scenarioStatus)
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
@@ -89,6 +89,7 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
+import Data.Time (formatTime, defaultTimeLocale, NominalDiffTime)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -132,17 +133,29 @@ drawNewGameMenuUI (l :| ls) =
     . centerLayer
     $ hBox
       [ vBox
-          [ withAttr robotAttr . txt $ breadcrumbs ls
+          [ withAttr boldAttr . txt $ breadcrumbs ls
           , txt " "
           , vLimit 20 . hLimit 35
-              . BL.renderList (const drawScenarioItem) True
+              . BL.renderList (const $ padRight Max . drawScenarioItem) True
               $ l
           ]
       , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
  where
-  drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName
-  drawScenarioItem (SICollection nm _) = padRight Max (txt nm) <+> withAttr robotAttr (txt ">")
+  drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo si) <+> txt (s ^. scenarioName)
+  drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
+  drawStatusInfo si = case si ^. scenarioBest of
+    NotStarted -> txt " o "
+    InProgress {} -> withAttr yellowAttr $ txt "..."
+    Complete {} -> withAttr greenAttr $ txt " x "
+  
+  describeStatus = \case
+    NotStarted -> txt "none"
+    InProgress {} -> withAttr yellowAttr $ txt "in progress"
+    Complete _s e -> withAttr greenAttr . txt . T.pack $ "completed in " <> formatTimeDiff e
+  
+  formatTimeDiff :: NominalDiffTime -> String
+  formatTimeDiff = formatTime defaultTimeLocale "%hh %mmin %ssec"
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
@@ -152,8 +165,12 @@ drawNewGameMenuUI (l :| ls) =
       . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
 
   drawDescription :: ScenarioItem -> Widget Name
-  drawDescription (SISingle s) = txtWrap (nonBlank (s ^. scenarioDescription))
   drawDescription (SICollection _ _) = txtWrap " "
+  drawDescription (SISingle s si) = vBox
+    [ txtWrap (nonBlank (s ^. scenarioDescription))
+    , padTop (Pad 3) $ padRight (Pad 1) (txt "best:") <+> describeStatus (si ^. scenarioBest)
+    , padRight (Pad 1) (txt "last:") <+> describeStatus (si ^. scenarioStatus)
+    ]
 
   nonBlank "" = " "
   nonBlank t = t
