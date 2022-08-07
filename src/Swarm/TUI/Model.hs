@@ -155,9 +155,10 @@ import Swarm.Game.ScenarioStatus (
   ScenarioInfo,
   ScenarioItem,
   ScenarioStatus (..),
+  normalizeScenarioPath,
   scenarioItemByPath,
   scenarioStatus,
-  _SISingle, normalizeScenarioPath
+  _SISingle,
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W

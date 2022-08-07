@@ -59,13 +59,14 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.ScenarioStatus (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scMap, scOrder, scenarioCollectionToList, scenarioItemName, _SISingle, ScenarioInfo, scenarioPath, scenarioStatus, ScenarioStatus (..), scenarioItemByPath, updateScenarioInfoOnQuit, saveScenarioInfo, normalizeScenarioPath)
+import Swarm.Game.ScenarioStatus (Scenario, ScenarioCollection, ScenarioInfo, ScenarioItem (..), ScenarioStatus (..), normalizeScenarioPath, objectiveGoal, saveScenarioInfo, scMap, scOrder, scenarioCollectionToList, scenarioItemByPath, scenarioItemName, scenarioPath, scenarioStatus, updateScenarioInfoOnQuit, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -84,7 +85,6 @@ import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import System.Clock
 import Witch (into)
-import Data.Time (getZonedTime)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
