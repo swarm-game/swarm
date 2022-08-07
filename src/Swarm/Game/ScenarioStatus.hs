@@ -16,7 +16,6 @@ module Swarm.Game.ScenarioStatus (
   ScenarioStatus (..),
   ScenarioInfo,
   ssPath,
-  ssBuiltin,
   ssStatus,
 ) where
 
@@ -37,31 +36,20 @@ deriving instance ToJSON TimeSpec
 
 data ScenarioStatus
   = NotStarted
-  | -- Use TimeSpec so we can reliably compute the elapsed time, ClockTime
-    -- for displaying to the user?
-    InProgress TimeSpec {- ClockTime -}
-  | Complete TimeSpec {- ClockTime -}
+  | InProgress ZonedTime -- Time started
+  | Complete ZonedTime NominalDiffTime -- Time ended and elapsed time
   deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
 
 data ScenarioInfo = ScenarioInfo
   { _ssPath :: FilePath
-  , _ssBuiltin :: Bool
   , _ssStatus :: ScenarioStatus
   }
   deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''ScenarioInfo
 
--- | The path of the scenario.  For builtin/"blessed" scenarios, this
---   is interpreted as being relative to data/scenarios.  For other
---   scenarios, it is simply interpreted relative to the current
---   working directory (but is most likely stored as an absolute
---   path).
+-- | The path of the scenario, relative to @data/scenarios@.
 ssPath :: Lens' ScenarioInfo FilePath
-
--- | Whether the scenario is one of the builtin, "blessed" scenarios
---   or not.
-ssBuiltin :: Lens' ScenarioInfo Bool
 
 -- | The status of the scenario.
 ssStatus :: Lens' ScenarioInfo ScenarioStatus
