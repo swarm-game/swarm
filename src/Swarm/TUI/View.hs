@@ -66,6 +66,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Linear
+import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
@@ -87,7 +88,7 @@ import Swarm.Util
 import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
-import Witch (from)
+import Witch (from, into)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -334,7 +335,7 @@ maybeScroll vpName contents =
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
-  HelpModal -> helpWidget
+  HelpModal -> helpWidget Nothing Nothing -- XXX save seed & port
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
@@ -465,16 +466,36 @@ robotsListWidget s = hCenter table
   debugging = creative && cheat
   g = s ^. gameState
 
-helpWidget :: Widget Name
-helpWidget = helpKeys <+> helpCommands
+helpWidget :: Maybe Seed -> Maybe Port -> Widget Name
+helpWidget mseed mport =
+  padTop (Pad 1) $
+    hBox . map (padLeftRight 2) $
+      [helpKeys, tips <=> padTop (Pad 1) info]
  where
+  tips =
+    vBox
+      [ txt "Have questions? Want some tips? Check out:"
+      , txt " "
+      , txt "  - The Swarm wiki, https://github.com/swarm-game/swarm/wiki"
+      , txt "  - The #swarm IRC channel on Libera.Chat"
+      ]
+  info =
+    vBox $
+      [txt $ "Current seed: " <> into @Text (show seed) | Just seed <- [mseed]]
+      ++ [txt $ "Web server running on port: " <> into @Text (show port) | Just port <- [mport]]
   helpKeys =
     vBox
-      [ hCenter $ txt "Global Keybindings"
-      , hCenter $ mkTable glKeyBindings
+      [ txt "Global Keybindings"
+      , txt " "
+      , mkTable glKeyBindings
       ]
-  mkTable = BT.renderTable . BT.table . map toWidgets
-  toWidgets (k, v) = [txt k, txt v]
+  mkTable =
+    BT.renderTable
+      . BT.surroundingBorder False
+      . BT.rowBorders False
+      . BT.table
+      . map toRow
+  toRow (k, v) = [padRight (Pad 1) $ txt k, padLeft (Pad 1) $ txt v]
   glKeyBindings =
     [ ("F1", "Help")
     , ("F2", "Robots list")
@@ -482,25 +503,15 @@ helpWidget = helpKeys <+> helpCommands
     , ("F4", "Available commands")
     , ("F5", "Messages")
     , ("Ctrl-g", "show goal")
+    , ("Ctrl-p", "pause")
+    , ("Ctrl-o", "single step")
+    , ("Ctrl-z", "decrease speed")
+    , ("Ctrl-w", "increase speed")
     , ("Ctrl-q", "quit the game")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
     , ("Meta-r", "focus on the REPL")
     , ("Meta-t", "focus on the info panel")
-    ]
-  helpCommands =
-    vBox
-      [ hCenter $ txt "Commands"
-      , hCenter $ mkTable baseCommands
-      ]
-  baseCommands =
-    [ ("build {<commands>}", "Create a robot")
-    , ("make \"<name>\"", "Craft an item")
-    , ("move", "Move one step in the current direction")
-    , ("turn <dir>", "Change the current direction")
-    , ("grab", "Grab whatver is available")
-    , ("give <robot> \"<item>\"", "Give an item to another robot")
-    , ("has \"<item>\"", "Check for an item in the inventory")
     ]
 
 data NotificationList = RecipeList | CommandList | MessageList
@@ -592,8 +603,8 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
 
   globalKeyCmds =
     catMaybes
-      [ Just (NoHighlight, "F1", "help")
-      , Just (NoHighlight, "F2", "robots")
+      [ Just (NoHighlight, "F1", "Help")
+      , Just (NoHighlight, "F2", "Robots")
       , notificationKey availableRecipes "F3" "Recipes"
       , notificationKey availableCommands "F4" "Commands"
       , notificationKey messageNotifications "F5" "Messages"
