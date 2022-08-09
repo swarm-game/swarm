@@ -56,9 +56,7 @@ webMain baton port gsRef = do
   Warp.runSettings settings app
  where
   onReady = case baton of
-    Just mv -> Warp.setBeforeMainLoop $ do
-      putStrLn $ "Web interface listening on :" <> show port
-      putMVar mv ()
+    Just mv -> Warp.setBeforeMainLoop $ putMVar mv ()
     Nothing -> id
   app :: Network.Wai.Application
   app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
