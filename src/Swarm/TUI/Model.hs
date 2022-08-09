@@ -702,15 +702,15 @@ initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Maybe Port -> Bool -> Bool -> ExceptT Text IO UIState
-initUIState port showMainMenu cheatMode = liftIO $ do
+initUIState :: Bool -> Bool -> ExceptT Text IO UIState
+initUIState showMainMenu cheatMode = liftIO $ do
   historyT <- readFileMayT =<< getSwarmHistoryPath False
   appDataMap <- readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiPort = port
+      { _uiPort = Nothing
       , _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiPlaying = not showMainMenu
       , _uiNextScenario = Nothing
@@ -807,11 +807,11 @@ resetWithREPLForm f =
 ------------------------------------------------------------
 
 -- | Initialize the 'AppState'.
-initAppState :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
-initAppState port userSeed scenarioName toRun cheatMode = do
+initAppState :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
+initAppState userSeed scenarioName toRun cheatMode = do
   let skipMenu = isJust scenarioName || isJust toRun || isJust userSeed
   gs <- initGameState
-  ui <- initUIState port (not skipMenu) cheatMode
+  ui <- initUIState (not skipMenu) cheatMode
   case skipMenu of
     False -> return $ AppState gs ui
     True -> do
