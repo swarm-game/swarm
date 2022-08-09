@@ -1,0 +1,114 @@
+name: Debug
+description: |
+  Learn how to view built robots and debug them.
+objectives:
+  - goal:
+      - Before you send your robots far away you need to learn how
+        to figure out what went wrong with them if they crash.
+      - |
+        In this challenge, you should start by
+        sending a robot to walk four steps straight east into the mountain,
+        crashing deliberately.  However, you must (1) make sure it has a `logger`,
+        so we can see what command failed,
+        and (2) use the bind syntax `r <- build {COMMANDS}` so you can refer to
+        the newly built robot later.  All together, it might look something like
+        this:
+      - |
+        r <- build {log "Hi!"; turn east; move; move; move; log "3"; move; log "OK"}
+      - (`build` will make sure the robot has a `logger` since its program includes
+        calls to the `log` command.)
+      - After the robot crashes, execute `view r` to see how far it got.
+        Further instructions should appear in the crashed robot's log.
+    condition: |
+      try {
+        as base {has "Win"}
+      } { return false }
+entities:
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - If you have this, you win!
+    properties: [known, portable]
+  - name: knownwater
+    display:
+      attr: water
+      char: '~'
+    description:
+    - A running stream of of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+  - name: knowntree
+    display:
+      attr: plant
+      char: 'T'
+    description:
+    - A tree.
+    properties: [known, portable, growable]
+    growth: [0,0]
+  - name: knownmountain
+    display:
+      attr: snow
+      char: 'A'
+    description:
+    - A mountain.
+    properties: [known, unwalkable]
+    growth: [0,0]
+solution: |
+  run "data/scenarios/Tutorials/crash-solution.sw"
+robots:
+  - name: base
+    dir: [0,1]
+    heavy: true
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+      - clock
+    inventory:
+      - [10, logger]
+      - [10, compass]
+      - [10, scanner]
+      - [10, toolkit]
+      - [10, solar panel]
+      - [10, treads]
+      - [10, grabber]
+  - name: secret
+    dir: [0, 0]
+    devices:
+      - logger
+      - flash memory
+      - dictionary
+      - 3D printer
+    inventory:
+      - [100000, Win]
+    display:
+      invisible: true
+    system: true
+    program: |
+      run "data/scenarios/Tutorials/crash-secret.sw"
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '!': [grass, null, secret]
+    '.': [grass]
+    '~': [ice, knownwater]
+    'T': [grass, knowntree]
+    'A': [stone, knownmountain]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 3]
+  map: |
+    ┌─────┐
+    │AAAT~│
+    │..A.~│
+    │Ω..!A│
+    └─────┘

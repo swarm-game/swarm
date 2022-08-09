@@ -1,7 +1,3 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
-
 -- |
 -- Module      :  Swarm.Game.Terrain
 -- Copyright   :  Brent Yorgey
@@ -13,20 +9,17 @@
 module Swarm.Game.Terrain (
   -- * Terrain
   TerrainType (..),
-  displayTerrain,
   terrainMap,
 ) where
 
-import Brick (Widget)
 import Data.Aeson (FromJSON (..), withText)
-import Data.Map (Map, (!))
-import qualified Data.Map as M
-import qualified Data.Text as T
-import Text.Read (readMaybe)
-import Witch (into)
-
+import Data.Map (Map)
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Swarm.Game.Display
 import Swarm.TUI.Attr
+import Text.Read (readMaybe)
+import Witch (into)
 
 -- | The different possible types of terrain. Unlike entities and
 --   robots, these are hard-coded into the game.
@@ -44,17 +37,13 @@ instance FromJSON TerrainType where
       Just ter -> return ter
       Nothing -> fail $ "Unknown terrain type: " ++ into @String t
 
--- | Display a terrain type as a single charcter widget.
-displayTerrain :: TerrainType -> Widget n
-displayTerrain t = displayWidget Nothing (terrainMap ! t)
-
 -- | A map containing a 'Display' record for each different 'TerrainType'.
 terrainMap :: Map TerrainType Display
 terrainMap =
   M.fromList
-    [ (StoneT, defaultTerrainDisplay '░' rockAttr)
-    , (DirtT, defaultTerrainDisplay '░' dirtAttr)
-    , (GrassT, defaultTerrainDisplay '░' grassAttr)
+    [ (StoneT, defaultTerrainDisplay '▒' rockAttr)
+    , (DirtT, defaultTerrainDisplay '▒' dirtAttr)
+    , (GrassT, defaultTerrainDisplay '▒' grassAttr)
     , (IceT, defaultTerrainDisplay ' ' iceAttr)
     , (BlankT, defaultTerrainDisplay ' ' defAttr)
     ]

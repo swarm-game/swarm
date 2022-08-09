@@ -25,18 +25,78 @@
 
 (setq swarm-font-lock-keywords
       (let* (
-             ;; We should figure out how to autogenerate these, so we don't have
-             ;; to edit the emacs mode every time we add new commands.
-             (x-keywords '("def" "end"))
-             (x-builtins '("if" "run" "return" "try" "raise" "force" "fst" "snd"))
-             (x-commands
-              '("noop" "wait" "selfdestruct" "move" "turn" "grab" "place" "give"
-                "install" "make" "build" "salvage" "reprogram"
-                "say" "log" "view" "appear" "create" "getx" "gety"
-                "blocked" "scan" "upload" "ishere" "whoami"
-                "random" "not"
-                "left" "right" "back" "forward" "north" "south" "east" "west" "down"
-                ))
+             ;; Generate the current keywords with:
+             ;; cabal run swarm:swarm -- generate editors --emacs
+             (x-keywords '("def" "end" "let" "in" "require"))
+             (x-builtins '(
+               "self"
+               "parent"
+               "base"
+               "if"
+               "inl"
+               "inr"
+               "case"
+               "fst"
+               "snd"
+               "force"
+               "undefined"
+               "fail"
+               "not"
+               "format"
+             ))
+             (x-commands '(
+               "noop"
+               "wait"
+               "selfdestruct"
+               "move"
+               "turn"
+               "grab"
+               "harvest"
+               "place"
+               "give"
+               "install"
+               "make"
+               "has"
+               "installed"
+               "count"
+               "drill"
+               "build"
+               "salvage"
+               "reprogram"
+               "say"
+               "listen"
+               "log"
+               "view"
+               "appear"
+               "create"
+               "time"
+               "whereami"
+               "blocked"
+               "scan"
+               "upload"
+               "ishere"
+               "whoami"
+               "setname"
+               "random"
+               "run"
+               "return"
+               "try"
+               "atomic"
+               "teleport"
+               "as"
+               "robotnamed"
+               "robotnumbered"
+               "knows"
+               "left"
+               "right"
+               "back"
+               "forward"
+               "north"
+               "south"
+               "east"
+               "west"
+               "down"
+             ))
              (x-types '("int" "string" "dir" "bool" "cmd"))
 
              (x-keywords-regexp (regexp-opt x-keywords 'words))

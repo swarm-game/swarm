@@ -1,5 +1,3 @@
-{-# LANGUAGE NumericUnderscores #-}
-
 -- |
 -- Module      :  Swarm.App
 -- Copyright   :  Brent Yorgey
@@ -10,35 +8,40 @@
 -- Main entry point for the Swarm application.
 module Swarm.App where
 
-import Control.Concurrent (forkIO, threadDelay)
-
 import Brick
 import Brick.BChan
-import qualified Graphics.Vty as V
-
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Lens ((^.))
 import Control.Monad.Except
-import qualified Data.Text.IO as T
+import Data.IORef (newIORef, writeIORef)
+import Data.Text.IO qualified as T
+import Graphics.Vty qualified as V
+import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.State
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.View
+import Swarm.Web
+
+type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
 -- | The definition of the app used by the @brick@ library.
-app :: App AppState AppEvent Name
-app =
+app :: EventHandler -> App AppState AppEvent Name
+app eventHandler =
   App
     { appDraw = drawUI
     , appChooseCursor = chooseCursor
-    , appHandleEvent = handleEvent
-    , appStartEvent = \s -> s <$ enablePasteMode
+    , appHandleEvent = eventHandler
+    , appStartEvent = enablePasteMode
     , appAttrMap = const swarmAttrMap
     }
 
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
-appMain :: Maybe Seed -> Maybe String -> Maybe String -> IO ()
-appMain seed scenario toRun = do
-  res <- runExceptT $ initAppState seed scenario toRun
+appMain :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
+appMain port seed scenario toRun cheat = do
+  res <- runExceptT $ initAppState seed scenario toRun cheat
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
@@ -62,16 +65,40 @@ appMain seed scenario toRun = do
           threadDelay 33_333 -- cap maximum framerate at 30 FPS
           writeBChan chan Frame
 
-      -- Run the app.
+      -- Start the web service with a reference to the game state
+      gsRef <- newIORef (s ^. gameState)
+      Swarm.Web.startWebThread port gsRef
 
+      -- Update the reference for every event
+      let eventHandler e = do
+            s' <- get
+            liftIO $ writeIORef gsRef (s' ^. gameState)
+            handleEvent e
+
+      -- Run the app.
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
-      void $ customMain initialVty buildVty (Just chan) app s
+      V.setMode (V.outputIface initialVty) V.Mouse True
+      void $ customMain initialVty buildVty (Just chan) (app eventHandler) s
+
+-- | A demo program to run the web service directly, without the terminal application.
+-- This is useful to live update the code using `ghcid -W --test "Swarm.App.demoWeb"`
+demoWeb :: IO ()
+demoWeb = do
+  res <- runExceptT $ initAppState Nothing demoScenario Nothing True
+  case res of
+    Left errMsg -> T.putStrLn errMsg
+    Right s -> do
+      gsRef <- newIORef (s ^. gameState)
+      webMain Nothing 8080 gsRef
+ where
+  demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 
 -- | If available for the terminal emulator, enable bracketed paste mode.
-enablePasteMode :: EventM s ()
+enablePasteMode :: EventM n s ()
 enablePasteMode = do
   vty <- getVtyHandle
   let output = V.outputIface vty
   when (V.supportsMode output V.BracketedPaste) $
-    liftIO $ V.setMode output V.BracketedPaste True
+    liftIO $
+      V.setMode output V.BracketedPaste True

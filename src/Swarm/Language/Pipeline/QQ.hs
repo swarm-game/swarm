@@ -1,7 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
-{-# LANGUAGE TemplateHaskell #-}
-
 -- |
 -- Module      :  Swarm.Language.Pipeline.QQ
 -- Copyright   :  Brent Yorgey
@@ -13,15 +9,14 @@
 module Swarm.Language.Pipeline.QQ (tmQ) where
 
 import Data.Generics
-import qualified Language.Haskell.TH as TH
+import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
-import Witch (from)
-
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Util (liftText)
+import Witch (from)
 
 -- | A quasiquoter for Swarm language terms, so we can conveniently
 --   write them down using concrete syntax and have them parsed into

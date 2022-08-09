@@ -1,7 +1,5 @@
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -23,9 +21,8 @@ module Swarm.TUI.Panel (
 import Brick
 import Brick.Focus
 import Brick.Widgets.Border
-import Swarm.TUI.Border
-
 import Control.Lens
+import Swarm.TUI.Border
 
 data Panel n = Panel
   {_panelName :: n, _panelLabels :: BorderLabels n, _panelContent :: Widget n}

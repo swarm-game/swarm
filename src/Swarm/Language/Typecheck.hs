@@ -1,13 +1,5 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -25,6 +17,7 @@
 module Swarm.Language.Typecheck (
   -- * Type errors
   TypeErr (..),
+  InvalidAtomicReason (..),
   getTypeErrLocation,
 
   -- * Inference monad
@@ -54,24 +47,22 @@ module Swarm.Language.Typecheck (
 import Control.Category ((>>>))
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Unification hiding (applyBindings, (=:=))
+import Control.Unification qualified as U
+import Control.Unification.IntVar
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
-import qualified Data.Set as S
-import Prelude hiding (lookup)
-
-import Control.Unification hiding (applyBindings, (=:=))
-import qualified Control.Unification as U
-import Control.Unification.IntVar
-
+import Data.Set qualified as S
 import Swarm.Language.Context hiding (lookup)
-import qualified Swarm.Language.Context as Ctx
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- Inference monad
@@ -239,6 +230,22 @@ data TypeErr
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
     CantInfer Location Term
+  | -- | An invalid argument was provided to @atomic@.
+    InvalidAtomic Location InvalidAtomicReason Term
+  deriving (Show)
+
+-- | Various reasons the body of an @atomic@ might be invalid.
+data InvalidAtomicReason
+  = -- | The arugment has too many tangible commands.
+    TooManyTicks Int
+  | -- | The argument uses some way to duplicate code: @def@, @let@, or lambda.
+    AtomicDupingThing
+  | -- | The argument referred to a variable with a non-simple type.
+    NonSimpleVarType Var UPolytype
+  | -- | The argument had a nested @atomic@
+    NestedAtomic
+  | -- | The argument contained a long command
+    LongConst
   deriving (Show)
 
 instance Fallible TypeF IntVar TypeErr where
@@ -253,6 +260,7 @@ getTypeErrLocation te = case te of
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
+  InvalidAtomic l _ _ -> Just l
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -328,7 +336,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
 infer :: Syntax -> Infer UType
 infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TUnit -> return UTyUnit
-  TConst c -> instantiate $ inferConst c
+  TConst c -> instantiate . toU $ inferConst c
   TDir _ -> return UTyDir
   TInt _ -> return UTyInt
   TAntiInt _ -> return UTyInt
@@ -340,6 +348,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwError $ CantInfer l t
+  TRequireDevice _ -> return $ UTyCmd UTyUnit
+  TRequire _ _ -> return $ UTyCmd UTyUnit
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
   -- if t : ty, then  {t} : {ty}.
@@ -352,6 +362,20 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- dynamically at runtime when evaluating recursive let or def expressions,
   -- so we don't have to worry about typechecking them here.
   SDelay _ dt -> UTyDelay <$> infer dt
+  -- We need a special case for checking the argument to 'atomic'.
+  -- 'atomic t' has the same type as 't', which must have a type of
+  -- the form 'cmd a'.  't' must also be syntactically free of
+  -- variables.
+  TConst Atomic :$: at -> do
+    argTy <- fresh
+    check at (UTyCmd argTy)
+    -- It's important that we typecheck the subterm @at@ *before* we
+    -- check that it is a valid argument to @atomic@: this way we can
+    -- ensure that we have already inferred the types of any variables
+    -- referenced.
+    validAtomic at
+    return $ UTyCmd argTy
+
   -- Just look up variables in the context.
   TVar x -> lookup l x
   -- To infer the type of a lambda if the type of the argument is
@@ -441,29 +465,33 @@ decomposeFunTy ty = do
   return (ty1, ty2)
 
 -- | Infer the type of a constant.
-inferConst :: Const -> UPolytype
-inferConst c = toU $ case c of
+inferConst :: Const -> Polytype
+inferConst c = case c of
   Wait -> [tyQ| int -> cmd () |]
   Noop -> [tyQ| cmd () |]
   Selfdestruct -> [tyQ| cmd () |]
   Move -> [tyQ| cmd () |]
   Turn -> [tyQ| dir -> cmd () |]
   Grab -> [tyQ| cmd string |]
+  Harvest -> [tyQ| cmd string |]
   Place -> [tyQ| string -> cmd () |]
   Give -> [tyQ| robot -> string -> cmd () |]
   Install -> [tyQ| robot -> string -> cmd () |]
   Make -> [tyQ| string -> cmd () |]
   Has -> [tyQ| string -> cmd bool |]
+  Installed -> [tyQ| string -> cmd bool |]
   Count -> [tyQ| string -> cmd int |]
   Reprogram -> [tyQ| robot -> {cmd a} -> cmd () |]
   Build -> [tyQ| {cmd a} -> cmd robot |]
   Drill -> [tyQ| dir -> cmd () |]
   Salvage -> [tyQ| cmd () |]
   Say -> [tyQ| string -> cmd () |]
+  Listen -> [tyQ| cmd string |]
   Log -> [tyQ| string -> cmd () |]
   View -> [tyQ| robot -> cmd () |]
   Appear -> [tyQ| string -> cmd () |]
   Create -> [tyQ| string -> cmd () |]
+  Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (() + string) |]
@@ -485,9 +513,8 @@ inferConst c = toU $ case c of
   Force -> [tyQ| {a} -> a |]
   Return -> [tyQ| a -> cmd a |]
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
-  Raise -> [tyQ| string -> cmd a |]
   Undefined -> [tyQ| a |]
-  ErrorStr -> [tyQ| string -> a |]
+  Fail -> [tyQ| string -> a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT
@@ -506,7 +533,12 @@ inferConst c = toU $ case c of
   Format -> [tyQ| a -> string |]
   Concat -> [tyQ| string -> string -> string |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
+  Atomic -> [tyQ| cmd a -> cmd a |]
+  Teleport -> [tyQ| robot -> (int * int) -> cmd () |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
+  RobotNamed -> [tyQ| string -> cmd robot |]
+  RobotNumbered -> [tyQ| int -> cmd robot |]
+  Knows -> [tyQ| string -> cmd bool |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]
@@ -517,3 +549,130 @@ check t ty = do
   ty' <- infer t
   _ <- ty =:= ty'
   return ()
+
+-- | Ensure a term is a valid argument to @atomic@.  Valid arguments
+--   may not contain @def@, @let@, or lambda. Any variables which are
+--   referenced must have a primitive, first-order type such as
+--   @string@ or @int@ (in particular, no functions, @cmd@, or
+--   @delay@).  We simply assume that any locally bound variables are
+--   OK without checking their type: the only way to bind a variable
+--   locally is with a binder of the form @x <- c1; c2@, where @c1@ is
+--   some primitive command (since we can't refer to external
+--   variables of type @cmd a@).  If we wanted to do something more
+--   sophisticated with locally bound variables we would have to
+--   inline this analysis into typechecking proper, instead of having
+--   it be a separate, out-of-band check.
+--
+--   The goal is to ensure that any argument to @atomic@ is guaranteed
+--   to evaluate and execute in some small, finite amount of time, so
+--   that it's impossible to write a term which runs atomically for an
+--   indefinite amount of time and freezes the rest of the game.  Of
+--   course, nothing prevents one from writing a large amount of code
+--   inside an @atomic@ block; but we want the execution time to be
+--   linear in the size of the code.
+--
+--   We also ensure that the atomic block takes at most one tick,
+--   i.e. contains at most one tangible command. For example, @atomic
+--   (move; move)@ is invalid, since that would allow robots to move
+--   twice as fast as usual by doing both actions in one tick.
+validAtomic :: Syntax -> Infer ()
+validAtomic s@(Syntax l t) = do
+  n <- analyzeAtomic S.empty s
+  when (n > 1) $ throwError (InvalidAtomic l (TooManyTicks n) t)
+
+-- | Analyze an argument to @atomic@: ensure it contains no nested
+--   atomic blocks and no references to external variables, and count
+--   how many tangible commands it will execute.
+analyzeAtomic :: Set Var -> Syntax -> Infer Int
+analyzeAtomic locals (Syntax l t) = case t of
+  -- Literals, primitives, etc. that are fine and don't require a tick
+  -- to evaluate
+  TUnit {} -> return 0
+  TDir {} -> return 0
+  TInt {} -> return 0
+  TAntiInt {} -> return 0
+  TString {} -> return 0
+  TAntiString {} -> return 0
+  TBool {} -> return 0
+  TRobot {} -> return 0
+  TRequireDevice {} -> return 0
+  TRequire {} -> return 0
+  -- Constants.
+  TConst c
+    -- Nested 'atomic' is not allowed.
+    | c == Atomic -> throwError $ InvalidAtomic l NestedAtomic t
+    -- We cannot allow long commands (commands that may require more
+    -- than one tick to execute) since that could freeze the game.
+    | isLong c -> throwError $ InvalidAtomic l LongConst t
+    -- Otherwise, return 1 or 0 depending on whether the command is
+    -- tangible.
+    | otherwise -> return $ if isTangible c then 1 else 0
+  -- Special case for if: number of tangible commands is the *max* of
+  -- the branches instead of the sum, since exactly one of them will be
+  -- executed.
+  TConst If :$: tst :$: thn :$: els ->
+    (+) <$> analyzeAtomic locals tst <*> (max <$> analyzeAtomic locals thn <*> analyzeAtomic locals els)
+  -- Pairs, application, and delay are simple: just recurse and sum the results.
+  SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
+  SApp s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
+  SDelay _ s1 -> analyzeAtomic locals s1
+  -- Bind is similarly simple except that we have to keep track of a local variable
+  -- bound in the RHS.
+  SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id S.insert mx locals) s2
+  -- Variables are allowed if bound locally, or if they have a simple type.
+  TVar x
+    | x `S.member` locals -> return 0
+    | otherwise -> do
+      mxTy <- asks $ Ctx.lookup x
+      case mxTy of
+        -- If the variable is undefined, return 0 to indicate the
+        -- atomic block is valid, because we'd rather have the error
+        -- caught by the real name+type checking.
+        Nothing -> return 0
+        Just xTy -> do
+          -- Use applyBindings to make sure that we apply as much
+          -- information as unification has learned at this point.  In
+          -- theory, continuing to typecheck other terms elsewhere in
+          -- the program could give us further information about xTy,
+          -- so we might have incomplete information at this point.
+          -- However, since variables referenced in an atomic block
+          -- must necessarily have simple types, it's unlikely this
+          -- will really make a difference.  The alternative, more
+          -- "correct" way to do this would be to simply emit some
+          -- constraints at this point saying that xTy must be a
+          -- simple type, and check later that the constraint holds,
+          -- after performing complete type inference.  However, since
+          -- the current approach is much simpler, we'll stick with
+          -- this until such time as we have concrete examples showing
+          -- that the more correct, complex way is necessary.
+          xTy' <- applyBindings xTy
+          if isSimpleUPolytype xTy'
+            then return 0
+            else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
+  -- No lambda, `let` or `def` allowed!
+  SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
+  SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)
+  SDef {} -> throwError (InvalidAtomic l AtomicDupingThing t)
+  -- We should never encounter a TRef since they do not show up in
+  -- surface syntax, only as values while evaluating (*after*
+  -- typechecking).
+  TRef {} -> throwError (CantInfer l t)
+
+-- | A simple polytype is a simple type with no quantifiers.
+isSimpleUPolytype :: UPolytype -> Bool
+isSimpleUPolytype (Forall [] ty) = isSimpleUType ty
+isSimpleUPolytype _ = False
+
+-- | A simple type is a sum or product of base types.
+isSimpleUType :: UType -> Bool
+isSimpleUType = \case
+  UTyBase {} -> True
+  UTyVar {} -> False
+  UTySum ty1 ty2 -> isSimpleUType ty1 && isSimpleUType ty2
+  UTyProd ty1 ty2 -> isSimpleUType ty1 && isSimpleUType ty2
+  UTyFun {} -> False
+  UTyCmd {} -> False
+  UTyDelay {} -> False
+  -- Make the pattern-match coverage checker happy
+  UVar {} -> False
+  UTerm {} -> False

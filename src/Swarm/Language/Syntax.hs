@@ -1,13 +1,7 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -26,6 +20,7 @@ module Swarm.Language.Syntax (
   toDirection,
   fromDirection,
   allDirs,
+  isCardinal,
   dirInfo,
   north,
   south,
@@ -36,6 +31,7 @@ module Swarm.Language.Syntax (
   Const (..),
   allConst,
   ConstInfo (..),
+  ConstDoc (..),
   ConstMeta (..),
   MBinAssoc (..),
   MUnAssoc (..),
@@ -43,6 +39,10 @@ module Swarm.Language.Syntax (
   arity,
   isCmd,
   isUserFunc,
+  isOperator,
+  isBuiltinFunction,
+  isTangible,
+  isLong,
 
   -- * Syntax
   Syntax (..),
@@ -52,6 +52,7 @@ module Swarm.Language.Syntax (
   pattern TPair,
   pattern TLam,
   pattern TApp,
+  pattern (:$:),
   pattern TLet,
   pattern TDef,
   pattern TBind,
@@ -71,22 +72,21 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Lens (Plated (..), Traversal', (%~))
-import Data.Data.Lens (uniplate)
-import Data.Int (Int64)
-import qualified Data.Map as M
-import qualified Data.Set as S
-import Data.Text hiding (filter, map)
-import qualified Data.Text as T
-import Linear
-
 import Data.Aeson.Types
 import Data.Data (Data)
+import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
+import Data.Int (Int64)
+import Data.Map qualified as M
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Set qualified as S
+import Data.String (IsString (fromString))
+import Data.Text hiding (filter, map)
+import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Witch.From (from)
-
-import Data.Maybe (fromMaybe, mapMaybe)
+import Linear
 import Swarm.Language.Types
+import Witch.From (from)
 
 ------------------------------------------------------------
 -- Constants
@@ -120,18 +120,22 @@ dirInfo d = case d of
   DLeft -> relative (\(V2 x y) -> V2 (- y) x)
   DRight -> relative (\(V2 x y) -> V2 y (- x))
   DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
+  DDown -> relative (const down)
   DForward -> relative id
   DNorth -> cardinal north
   DSouth -> cardinal south
   DEast -> cardinal east
   DWest -> cardinal west
-  DDown -> cardinal down
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
   directionSyntax = toLower . T.tail . from . show $ d
   cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative vf = DirInfo directionSyntax Nothing vf
+  relative = DirInfo directionSyntax Nothing
+
+-- | Check if the direction is absolute (e.g. 'north' or 'south').
+isCardinal :: Direction -> Bool
+isCardinal = isJust . dirAbs . dirInfo
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: V2 Int64
@@ -149,7 +153,7 @@ east = V2 1 0
 west :: V2 Int64
 west = V2 (-1) 0
 
--- | The direction for moving vertically down = @V2 0 0@.
+-- | The direction for viewing the current cell = @V2 0 0@.
 down :: V2 Int64
 down = V2 0 0
 
@@ -198,7 +202,7 @@ data Const
     -- | Do nothing.  This is different than 'Wait'
     --   in that it does not take up a time step.
     Noop
-  | -- | Wait for one time step without doing anything.
+  | -- | Wait for a number of time steps without doing anything.
     Wait
   | -- | Self-destruct.
     Selfdestruct
@@ -210,6 +214,8 @@ data Const
     Turn
   | -- | Grab an item from the current location.
     Grab
+  | -- | Harvest an item from the current location.
+    Harvest
   | -- | Try to place an item at the current location.
     Place
   | -- | Give an item to another robot at the current location.
@@ -220,6 +226,8 @@ data Const
     Make
   | -- | Sense whether we have a certain item.
     Has
+  | -- | Sense whether we have a certain device installed.
+    Installed
   | -- | Sense how many of a certain item we have.
     Count
   | -- | Drill through an entity.
@@ -233,6 +241,8 @@ data Const
     Reprogram
   | -- | Emit a message.
     Say
+  | -- | Listen for a message from other robots.
+    Listen
   | -- | Emit a log message.
     Log
   | -- | View a certain robot.
@@ -244,7 +254,9 @@ data Const
     Create
   | -- Sensing / generation
 
-    -- | Get the current x, y coordinates
+    -- | Get current time
+    Time
+  | -- | Get the current x, y coordinates
     Whereami
   | -- | See if we can move forward or not.
     Blocked
@@ -290,12 +302,10 @@ data Const
     Return
   | -- | Try/catch block
     Try
-  | -- | Raise an exception
-    Raise
   | -- | Undefined
     Undefined
-  | -- | Error
-    ErrorStr
+  | -- | User error
+    Fail
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -343,11 +353,25 @@ data Const
     -- | Application operator - helps to avoid parentheses:
     --   @f $ g $ h x  =  f (g (h x))@
     AppF
-  | -- God-like sensing operations
+  | -- Concurrency
 
-    -- | Run a command as if you were another robot.
+    -- | When executing @atomic c@, a robot will not be interrupted,
+    --   that is, no other robots will execute any commands while
+    --   the robot is executing @c@.
+    Atomic
+  | -- God-like commands that are omnipresent or omniscient.
+
+    -- | Teleport a robot to the given position.
+    Teleport
+  | -- | Run a command as if you were another robot.
     As
-  deriving (Eq, Ord, Enum, Bounded, Data, Show)
+  | -- | Find a robot by name.
+    RobotNamed
+  | -- | Find a robot by number.
+    RobotNumbered
+  | -- | Check if an entity is known.
+    Knows
+  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON)
 
 allConst :: [Const]
 allConst = [minBound .. maxBound]
@@ -356,8 +380,16 @@ data ConstInfo = ConstInfo
   { syntax :: Text
   , fixity :: Int
   , constMeta :: ConstMeta
+  , constDoc :: ConstDoc
+  , tangibility :: Tangibility
   }
   deriving (Eq, Ord, Show)
+
+data ConstDoc = ConstDoc {briefDoc :: Text, longDoc :: Text}
+  deriving (Eq, Ord, Show)
+
+instance IsString ConstDoc where
+  fromString = flip ConstDoc "" . T.pack
 
 data ConstMeta
   = -- | Function with arity of which some are commands
@@ -386,6 +418,31 @@ data MUnAssoc
     S
   deriving (Eq, Ord, Show)
 
+-- | Whether a command is tangible or not.  Tangible commands have
+--   some kind of effect on the external world; at most one tangible
+--   command can be executed per tick.  Intangible commands are things
+--   like sensing commands, or commands that solely modify a robot's
+--   internal state; multiple intangible commands may be executed per
+--   tick.  In addition, tangible commands can have a 'Length' (either
+--   'Short' or 'Long') indicating whether they require only one, or
+--   possibly more than one, tick to execute.  Long commands are
+--   excluded from @atomic@ blocks to avoid freezing the game.
+data Tangibility = Intangible | Tangible Length
+  deriving (Eq, Ord, Show, Read)
+
+-- | For convenience, @short = Tangible Short@.
+short :: Tangibility
+short = Tangible Short
+
+-- | For convenience, @long = Tangible Long@.
+long :: Tangibility
+long = Tangible Long
+
+-- | The length of a tangible command.  Short commands take exactly
+--   one tick to execute.  Long commands may require multiple ticks.
+data Length = Short | Long
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
 --   'Swarm.Game.Value.VCApp') until it has enough, then dispatch
@@ -413,6 +470,39 @@ isUserFunc c = case constMeta $ constInfo c of
   ConstMFunc {} -> True
   _ -> False
 
+-- | Whether the constant is an operator. Useful predicate for documentation.
+isOperator :: Const -> Bool
+isOperator c = case constMeta $ constInfo c of
+  ConstMUnOp {} -> True
+  ConstMBinOp {} -> True
+  ConstMFunc {} -> False
+
+-- | Whether the constant is a /function/ which is interpreted as soon
+--   as it is evaluated, but *not* including operators.
+--
+-- Note: This is used for documentation purposes and complements 'isCmd'
+-- and 'isOperator' in that exactly one will accept a given constant.
+isBuiltinFunction :: Const -> Bool
+isBuiltinFunction c = case constMeta $ constInfo c of
+  ConstMFunc _ cmd -> not cmd
+  _ -> False
+
+-- | Whether the constant is a /tangible/ command, that has an
+--   external effect on the world.  At most one tangible command may be
+--   executed per tick.
+isTangible :: Const -> Bool
+isTangible c = case tangibility (constInfo c) of
+  Tangible {} -> True
+  _ -> False
+
+-- | Whether the constant is a /long/ command, that is, a tangible
+--   command which could require multiple ticks to execute.  Such
+--   commands cannot be allowed in @atomic@ blocks.
+isLong :: Const -> Bool
+isLong c = case tangibility (constInfo c) of
+  Tangible Long -> True
+  _ -> False
+
 -- | Information about constants used in parsing and pretty printing.
 --
 -- It would be more compact to represent the information by testing
@@ -420,78 +510,176 @@ isUserFunc c = case constMeta $ constInfo c of
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> commandLow 0
-  Noop -> commandLow 0
-  Selfdestruct -> commandLow 0
-  Move -> commandLow 0
-  Turn -> commandLow 1
-  Grab -> commandLow 0
-  Place -> commandLow 1
-  Give -> commandLow 2
-  Install -> commandLow 2
-  Make -> commandLow 1
-  Has -> commandLow 1
-  Count -> commandLow 1
-  Reprogram -> commandLow 2
-  Drill -> commandLow 1
-  Build -> commandLow 2
-  Salvage -> commandLow 0
-  Say -> commandLow 1
-  Log -> commandLow 1
-  View -> commandLow 1
-  Appear -> commandLow 1
-  Create -> commandLow 1
-  Whereami -> commandLow 0
-  Blocked -> commandLow 0
-  Scan -> commandLow 0
-  Upload -> commandLow 1
-  Ishere -> commandLow 1
-  Self -> functionLow 0
-  Parent -> functionLow 0
-  Base -> functionLow 0
-  Whoami -> commandLow 0
-  Setname -> commandLow 1
-  Random -> commandLow 1
-  Run -> commandLow 1
-  Return -> commandLow 1
-  Try -> commandLow 2
-  Raise -> commandLow 1
-  Undefined -> functionLow 0
-  ErrorStr -> function "error" 1
-  If -> functionLow 3
-  Inl -> functionLow 1
-  Inr -> functionLow 1
-  Case -> functionLow 3
-  Fst -> functionLow 1
-  Snd -> functionLow 1
-  Force -> functionLow 1
-  Not -> functionLow 1
-  Neg -> unaryOp "-" 7 P
-  Add -> binaryOp "+" 6 L
-  And -> binaryOp "&&" 3 R
-  Or -> binaryOp "||" 2 R
-  Sub -> binaryOp "-" 6 L
-  Mul -> binaryOp "*" 7 L
-  Div -> binaryOp "/" 7 L
-  Exp -> binaryOp "^" 8 R
-  Eq -> binaryOp "==" 4 N
-  Neq -> binaryOp "!=" 4 N
-  Lt -> binaryOp "<" 4 N
-  Gt -> binaryOp ">" 4 N
-  Leq -> binaryOp "<=" 4 N
-  Geq -> binaryOp ">=" 4 N
-  Format -> functionLow 1
-  Concat -> binaryOp "++" 6 R
-  AppF -> binaryOp "$" 0 R
-  As -> commandLow 2
+  Wait -> command 0 long "Wait for a number of time steps."
+  Noop ->
+    command 0 Intangible . doc "Do nothing." $
+      [ "This is different than `Wait` in that it does not take up a time step."
+      , "It is useful for commands like if, which requires you to provide both branches."
+      , "Usually it is automatically inserted where needed, so you do not have to worry about it."
+      ]
+  Selfdestruct ->
+    command 0 short . doc "Self-destruct the robot." $
+      [ "Useful to not clutter the world."
+      , "This destroys the robot's inventory, so consider `salvage` as an alternative."
+      ]
+  Move -> command 0 short "Move forward one step."
+  Turn -> command 1 short "Turn in some direction."
+  Grab -> command 0 short "Grab an item from the current location."
+  Harvest ->
+    command 0 short . doc "Harvest an item from the current location." $
+      [ "Leaves behind a growing seed if the harvested item is growable."
+      , "Otherwise it works exactly like `grab`."
+      ]
+  Place ->
+    command 1 short . doc "Place an item at the current location." $
+      ["The current location has to be empty for this to work."]
+  Give -> command 2 short "Give an item to another robot nearby."
+  Install -> command 2 short "Install a device from inventory on a robot."
+  Make -> command 1 long "Make an item using a recipe."
+  Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
+  Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."
+  Count -> command 1 Intangible "Get the count of a given item in a robot's inventory."
+  Reprogram ->
+    command 2 long . doc "Reprogram another robot with a new command." $
+      ["The other robot has to be nearby and idle."]
+  Drill ->
+    command 1 long . doc "Drill through an entity." $
+      [ "Usually you want to `drill forward` when exploring to clear out obstacles."
+      , "When you have found a source to drill, you can stand on it and `drill down`."
+      , "See what recipes with drill you have available."
+      ]
+  Build ->
+    command 1 long . doc "Construct a new robot." $
+      [ "You can specify a command for the robot to execute."
+      , "If the command requires devices they will be installed from your inventory."
+      ]
+  Salvage ->
+    command 0 long . doc "Deconstruct an old robot." $
+      ["Salvaging a robot will give you its inventory, installed devices and log."]
+  Say ->
+    command 1 short . doc "Emit a message." $
+      [ "The message will be in the robots log (if it has one) and the global log."
+      , "You can view the message that would be picked by `listen` from the global log "
+          <> "in the messages panel, along with your own messages and logs."
+      , "This means that to see messages from other robots you have to be able to listen for them, "
+          <> "so once you have a listening device installed messages will be added to your log."
+      , "In creative mode, there is of course no such limitation."
+      ]
+  Listen ->
+    command 1 long . doc "Listen for a message from other robots." $
+      [ "It will take the first message said by the closest robot."
+      , "You do not need to actively listen for the message to be logged though, "
+          <> "that is done automatically once you have a listening device installed."
+      , "Note that you can see the messages either in your logger device or the message panel."
+      ]
+  Log -> command 1 Intangible "Log the string in the robot's logger."
+  View -> command 1 short "View the given robot."
+  Appear ->
+    command 1 short . doc "Set how the robot is displayed." $
+      [ "You can either specify one character or five (for each direction)."
+      , "The default is \"X^>v<\"."
+      ]
+  Create ->
+    command 1 short . doc "Create an item out of thin air." $
+      ["Only available in creative mode."]
+  Time -> command 0 Intangible "Get the current time."
+  Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Blocked -> command 0 Intangible "See if the robot can move forward."
+  Scan ->
+    command 0 Intangible . doc "Scan a nearby location for entities." $
+      [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
+      , "If you can use sum types, you can also inspect the result directly."
+      ]
+  Upload -> command 1 short "Upload a robot's known entities and log to another robot."
+  Ishere -> command 1 Intangible "See if a specific entity is in the current location."
+  Self -> function 0 "Get a reference to the current robot."
+  Parent -> function 0 "Get a reference to the robot's parent."
+  Base -> function 0 "Get a reference to the base."
+  Whoami -> command 0 Intangible "Get the robot's display name."
+  Setname -> command 1 short "Set the robot's display name."
+  Random ->
+    command 1 Intangible . doc "Get a uniformly random integer." $
+      ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
+  Run -> command 1 long "Run a program loaded from a file."
+  Return -> command 1 Intangible "Make the value a result in `cmd`."
+  Try -> command 2 Intangible "Execute a command, catching errors."
+  Undefined -> function 0 "A value of any type, that is evaluated as error."
+  Fail -> function 1 "A value of any type, that is evaluated as error with message."
+  If ->
+    function 3 . doc "If-Then-Else function." $
+      ["If the bool predicate is true then evaluate the first expression, otherwise the second."]
+  Inl -> function 1 "Put the value into the left component of a sum type."
+  Inr -> function 1 "Put the value into the right component of a sum type."
+  Case -> function 3 "Evaluate one of the given functions on a value of sum type."
+  Fst -> function 1 "Get the first value of a pair."
+  Snd -> function 1 "Get the second value of a pair."
+  Force -> function 1 "Force the evaluation of a delayed value."
+  Not -> function 1 "Negate the boolean value."
+  Neg -> unaryOp "-" 7 P "Negate the given integer value."
+  Add -> binaryOp "+" 6 L "Add the given integer values."
+  And -> binaryOp "&&" 3 R "Logical and (true if both values are true)."
+  Or -> binaryOp "||" 2 R "Logical or (true if either value is true)."
+  Sub -> binaryOp "-" 6 L "Subtract the given integer values."
+  Mul -> binaryOp "*" 7 L "Multiply the given integer values."
+  Div -> binaryOp "/" 7 L "Divide the left integer value by the right one, rounding down."
+  Exp -> binaryOp "^" 8 R "Raise the left integer value to the power of the right one."
+  Eq -> binaryOp "==" 4 N "Check that the left value is equal to the right one."
+  Neq -> binaryOp "!=" 4 N "Check that the left value is not equal to the right one."
+  Lt -> binaryOp "<" 4 N "Check that the left value is lesser than the right one."
+  Gt -> binaryOp ">" 4 N "Check that the left value is greater than the right one."
+  Leq -> binaryOp "<=" 4 N "Check that the left value is lesser or equal to the right one."
+  Geq -> binaryOp ">=" 4 N "Check that the left value is greater or equal to the right one."
+  Format -> function 1 "Turn an arbitrary value into a string."
+  Concat -> binaryOp "++" 6 R "Concatenate the given strings."
+  AppF ->
+    binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
+      [ "This operator is useful to avoid nesting parentheses."
+      , "For exaple:"
+      , "`f $ g $ h x = f (g (h x))`"
+      ]
+  Atomic ->
+    command 1 Intangible . doc "Execute a block of commands atomically." $
+      [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
+      ]
+  Teleport -> command 2 short "Teleport a robot to the given location."
+  As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
+  RobotNamed -> command 1 Intangible "Find a robot by name."
+  RobotNumbered -> command 1 Intangible "Find a robot by number."
+  Knows -> command 1 Intangible "Check if the robot knows about an entity."
  where
-  unaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMUnOp side}
-  binaryOp s p side = ConstInfo {syntax = s, fixity = p, constMeta = ConstMBinOp side}
-  command s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a True}
-  function s a = ConstInfo {syntax = s, fixity = 11, constMeta = ConstMFunc a False}
-  -- takes the number of arguments for a commmand
-  commandLow = command (lowShow c)
-  functionLow = function (lowShow c)
+  doc b ls = ConstDoc b (T.unlines ls)
+  unaryOp s p side d =
+    ConstInfo
+      { syntax = s
+      , fixity = p
+      , constMeta = ConstMUnOp side
+      , constDoc = d
+      , tangibility = Intangible
+      }
+  binaryOp s p side d =
+    ConstInfo
+      { syntax = s
+      , fixity = p
+      , constMeta = ConstMBinOp side
+      , constDoc = d
+      , tangibility = Intangible
+      }
+  command a f d =
+    ConstInfo
+      { syntax = lowShow c
+      , fixity = 11
+      , constMeta = ConstMFunc a True
+      , constDoc = d
+      , tangibility = f
+      }
+  function a d =
+    ConstInfo
+      { syntax = lowShow c
+      , fixity = 11
+      , constMeta = ConstMFunc a False
+      , constDoc = d
+      , tangibility = Intangible
+      }
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
@@ -511,10 +699,10 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 
 -- | The surface syntax for the language
 data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 data Location = NoLoc | Location Int Int
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup Location where
   NoLoc <> l = l
@@ -546,6 +734,12 @@ pattern TLam v ty t = SLam v ty (STerm t)
 pattern TApp :: Term -> Term -> Term
 pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
 
+infixl 0 :$:
+
+-- | Convenient infix pattern synonym for application.
+pattern (:$:) :: Term -> Syntax -> Term
+pattern (:$:) t1 s2 = SApp (STerm t1) s2
+
 -- | Match a TLet without syntax
 pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
 pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
@@ -563,7 +757,7 @@ pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
@@ -583,7 +777,7 @@ data DelayType
     --   @Just@ here is when we automatically generate a delayed
     --   expression while interpreting a recursive @let@ or @def@.
     MemoizedDelay (Maybe Var)
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | Terms of the Swarm language.
 data Term
@@ -610,6 +804,10 @@ data Term
   | -- | A memory reference.  These likewise never show up in surface syntax,
     --   but are here to facilitate pretty-printing.
     TRef Int
+  | -- | Require a specific device to be installed.
+    TRequireDevice Text
+  | -- | Require a certain number of an entity.
+    TRequire Int Text
   | -- | A variable.
     TVar Var
   | -- | A pair.
@@ -637,7 +835,7 @@ data Term
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType Syntax
-  deriving (Eq, Show, Data)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Plated Term where
   plate = uniplate
@@ -658,6 +856,8 @@ fvT f = go S.empty
     TBool {} -> pure t
     TRobot {} -> pure t
     TRef {} -> pure t
+    TRequireDevice {} -> pure t
+    TRequire {} -> pure t
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)

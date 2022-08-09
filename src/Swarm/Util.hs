@@ -1,11 +1,5 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -23,6 +17,9 @@ module Swarm.Util (
   maxOn,
   maximum0,
   cycleEnum,
+  uniq,
+  getElemsInArea,
+  manhattan,
 
   -- * Directory utilities
   readFileMay,
@@ -31,12 +28,18 @@ module Swarm.Util (
   getSwarmHistoryPath,
   readAppData,
 
+  -- * Text utilities
+  isIdentChar,
+  replaceLast,
+
   -- * English language utilities
+  reflow,
   quote,
   squote,
   commaList,
   indefinite,
   indefiniteQ,
+  singularSubjectVerb,
   plural,
   number,
 
@@ -49,12 +52,16 @@ module Swarm.Util (
   -- * Template Haskell utilities
   liftText,
 
-  -- * Fused-Effects Lens utilities
+  -- * Lens utilities
   (%%=),
   (<%=),
   (<+=),
   (<<.=),
   (<>=),
+  _NonEmpty,
+
+  -- * Utilities for NP-hard approximation
+  smallHittingSet,
 ) where
 
 import Control.Algebra (Has)
@@ -62,24 +69,34 @@ import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
-import Control.Lens (ASetter', LensLike, LensLike', Over, (<>~))
+import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
+import Control.Lens.Lens ((&))
 import Control.Monad (forM, unless, when)
+import Data.Aeson (FromJSONKey, ToJSONKey)
+import Data.Bifunctor (first)
+import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int64)
+import Data.List (maximumBy, partition)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Ord (comparing)
+import Data.Set (Set)
+import Data.Set qualified as S
+import Data.Text (Text, toUpper)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
-import Linear (V2)
-import qualified NLP.Minimorph.English as MM
+import Linear (V2 (V2))
+import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import Paths_swarm (getDataDir)
+import System.Clock (TimeSpec)
 import System.Directory (
   XdgDirectory (XdgData),
   createDirectoryIfMissing,
@@ -90,6 +107,10 @@ import System.FilePath
 import System.IO
 import System.IO.Error (catchIOError)
 import Witch
+
+-- $setup
+-- >>> import qualified Data.Map as M
+-- >>> import Linear.V2
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -120,6 +141,58 @@ cycleEnum :: (Eq e, Enum e, Bounded e) => e -> e
 cycleEnum e
   | e == maxBound = minBound
   | otherwise = succ e
+
+-- | Drop repeated elements that are adjacent to each other.
+--
+-- >>> uniq []
+-- []
+-- >>> uniq [1..5]
+-- [1,2,3,4,5]
+-- >>> uniq (replicate 10 'a')
+-- "a"
+-- >>> uniq "abbbccd"
+-- "abcd"
+uniq :: Eq a => [a] -> [a]
+uniq = \case
+  [] -> []
+  (x : xs) -> x : uniq (dropWhile (== x) xs)
+
+-- | Manhattan distance between world locations.
+manhattan :: V2 Int64 -> V2 Int64 -> Int64
+manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+
+-- | Get elements that are in manhattan distance from location.
+--
+-- >>> v2s i = [(v, manhattan (V2 0 0) v) | x <- [-i..i], y <- [-i..i], let v = V2 x y]
+-- >>> v2s 0
+-- [(V2 0 0,0)]
+-- >>> map (\i -> length (getElemsInArea (V2 0 0) i (M.fromList $ v2s i))) [0..8]
+-- [1,5,13,25,41,61,85,113,145]
+--
+-- The last test is the sequence "Centered square numbers":
+-- https://oeis.org/A001844
+getElemsInArea :: V2 Int64 -> Int64 -> Map (V2 Int64) e -> [e]
+getElemsInArea o@(V2 x y) d m = M.elems sm'
+ where
+  -- to be more efficient we basically split on first coordinate
+  -- (which is logarithmic) and then we have to linearly filter
+  -- the second coordinate to get a square - this is how it looks:
+  --         ▲▲▲▲
+  --         ││││    the arrows mark points that are greater then A
+  --         ││s│                                 and lesser then B
+  --         │sssB (2,1)
+  --         ssoss   <-- o=(x=0,y=0) with d=2
+  -- (-2,-1) Asss│
+  --          │s││   the point o and all s are in manhattan
+  --          ││││                  distance 2 from point o
+  --          ▼▼▼▼
+  sm =
+    m
+      & M.split (V2 (x - d) (y - 1)) -- A
+      & snd -- A<
+      & M.split (V2 (x + d) (y + 1)) -- B
+      & fst -- B>
+  sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
 
 ------------------------------------------------------------
 -- Directory stuff
@@ -164,7 +237,36 @@ readAppData = do
     <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
 
 ------------------------------------------------------------
+-- Some Text-y stuff
+
+-- | Predicate to test for characters which can be part of a valid
+--   identifier: alphanumeric, underscore, or single quote.
+--
+-- >>> isIdentChar 'A' && isIdentChar 'b' && isIdentChar '9'
+-- True
+-- >>> isIdentChar '_' && isIdentChar '\''
+-- True
+-- >>> isIdentChar '$' || isIdentChar '.' || isIdentChar ' '
+-- False
+isIdentChar :: Char -> Bool
+isIdentChar c = isAlphaNum c || c == '_' || c == '\''
+
+-- | @replaceLast r t@ replaces the last word of @t@ with @r@.
+--
+-- >>> :set -XOverloadedStrings
+-- >>> replaceLast "foo" "bar baz quux"
+-- "bar baz foo"
+-- >>> replaceLast "move" "(make"
+-- "(move"
+replaceLast :: Text -> Text -> Text
+replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
+
+------------------------------------------------------------
 -- Some language-y stuff
+
+-- | Reflow text by removing newlines and condensing whitespace.
+reflow :: Text -> Text
+reflow = T.unwords . T.words
 
 -- | Prepend a noun with the proper indefinite article (\"a\" or \"an\").
 indefinite :: Text -> Text
@@ -174,6 +276,32 @@ indefinite w = MM.indefiniteDet w <+> w
 --   the noun in single quotes.
 indefiniteQ :: Text -> Text
 indefiniteQ w = MM.indefiniteDet w <+> squote w
+
+-- | Combine the subject word with the simple present tense of the verb.
+--
+-- Only some irregular verbs are handled, but it should be enough
+-- to scrap some error message boilerplate and have fun!
+--
+-- >>> :set -XOverloadedStrings
+-- >>> singularSubjectVerb "I" "be"
+-- "I am"
+-- >>> singularSubjectVerb "he" "can"
+-- "he can"
+-- >>> singularSubjectVerb "The target robot" "do"
+-- "The target robot does"
+singularSubjectVerb :: Text -> Text -> Text
+singularSubjectVerb sub verb
+  | verb == "be" = case toUpper sub of
+    "I" -> "I am"
+    "YOU" -> sub <+> "are"
+    _ -> sub <+> "is"
+  | otherwise = sub <+> (if is3rdPerson then verb3rd else verb)
+ where
+  is3rdPerson = toUpper sub `notElem` ["I", "YOU"]
+  verb3rd
+    | verb == "have" = "has"
+    | verb == "can" = "can"
+    | otherwise = fst $ MM.defaultVerbStuff verb
 
 -- | Pluralize a noun.
 plural :: Text -> Text
@@ -209,6 +337,12 @@ commaList ts = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
 
 deriving instance ToJSON (V2 Int64)
 deriving instance FromJSON (V2 Int64)
+
+deriving instance FromJSONKey (V2 Int64)
+deriving instance ToJSONKey (V2 Int64)
+
+deriving instance FromJSON TimeSpec
+deriving instance ToJSON TimeSpec
 
 ------------------------------------------------------------
 -- Validation utilities
@@ -263,3 +397,68 @@ l <<.= b = l %%= (,b)
 (<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
 l <>= a = modify (l <>~ a)
 {-# INLINE (<>=) #-}
+
+------------------------------------------------------------
+-- Other lens utilities
+
+_NonEmpty :: Lens' (NonEmpty a) (a, [a])
+_NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
+
+------------------------------------------------------------
+-- Some utilities for NP-hard approximation
+
+-- | Given a list of /nonempty/ sets, find a hitting set, that is, a
+--   set which has at least one element in common with each set in the
+--   list.  It is not guaranteed to be the /smallest possible/ such
+--   set, because that is NP-hard.  Instead, we use a greedy algorithm
+--   that will give us a reasonably small hitting set: first, choose
+--   all elements in singleton sets, since those must necessarily be
+--   chosen.  Now take any sets which are still not hit, and find an
+--   element which occurs in the largest possible number of remaining
+--   sets. Add this element to the set of chosen elements, and filter
+--   out all the sets it hits.  Repeat, choosing a new element to hit
+--   the largest number of unhit sets at each step, until all sets are
+--   hit.  This algorithm produces a hitting set which might be larger
+--   than optimal by a factor of lg(m), where m is the number of sets
+--   in the input.
+--
+-- >>> import qualified Data.Set as S
+-- >>> shs = smallHittingSet . map S.fromList
+--
+-- >>> shs ["a"]
+-- fromList "a"
+--
+-- >>> shs ["ab", "b"]
+-- fromList "b"
+--
+-- >>> shs ["ab", "bc"]
+-- fromList "b"
+--
+-- >>> shs ["acd", "c", "aef", "a"]
+-- fromList "ac"
+--
+-- >>> shs ["abc", "abd", "acd", "bcd"]
+-- fromList "cd"
+--
+-- Here is an example of an input for which @smallHittingSet@ does
+-- /not/ produce a minimal hitting set. "bc" is also a hitting set and
+-- is smaller.  b, c, and d all occur in exactly two sets, but d is
+-- unluckily chosen first, leaving "be" and "ac" unhit and
+-- necessitating choosing one more element from each.
+--
+-- >>> shs ["bd", "be", "ac", "cd"]
+-- fromList "cde"
+smallHittingSet :: Ord a => [Set a] -> Set a
+smallHittingSet ss = go fixed (filter (S.null . S.intersection fixed) choices)
+ where
+  (fixed, choices) = first S.unions . partition ((== 1) . S.size) . filter (not . S.null) $ ss
+
+  go !soFar [] = soFar
+  go !soFar cs = go (S.insert best soFar) (filter (not . (best `S.member`)) cs)
+   where
+    best = mostCommon cs
+
+  -- Given a nonempty collection of sets, find an element which is shared among
+  -- as many of them as possible.
+  mostCommon :: Ord a => [Set a] -> a
+  mostCommon = fst . maximumBy (comparing snd) . M.assocs . M.fromListWith (+) . map (,1 :: Int) . concatMap S.toList

@@ -1,8 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -17,24 +14,22 @@
 module Swarm.Language.Pretty where
 
 import Control.Lens.Combinators (pattern Empty)
+import Control.Unification
+import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Prettyprinter
-import qualified Prettyprinter.Render.String as RS
-import qualified Prettyprinter.Render.Text as RT
-import Witch
-
-import Control.Unification
-import Control.Unification.IntVar
-
+import Prettyprinter.Render.String qualified as RS
+import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
+import Witch
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -96,6 +91,10 @@ instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
+instance PrettyPrec UPolytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+
 instance PrettyPrec t => PrettyPrec (Ctx t) where
   prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
@@ -122,6 +121,8 @@ instance PrettyPrec Term where
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
   prettyPrec _ (TRef r) = "@" <> pretty r
+  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TString d)
+  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TString e)
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
@@ -196,3 +197,12 @@ instance PrettyPrec TypeErr where
     "Definitions may only be at the top level:" <+> ppr t
   prettyPrec _ (CantInfer _ t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
+  prettyPrec _ (InvalidAtomic _ reason t) =
+    "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
+
+instance PrettyPrec InvalidAtomicReason where
+  prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"
+  prettyPrec _ AtomicDupingThing = "def, let, and lambda are not allowed"
+  prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr ty
+  prettyPrec _ NestedAtomic = "nested atomic block"
+  prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"

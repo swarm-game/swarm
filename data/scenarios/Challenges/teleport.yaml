@@ -1,0 +1,120 @@
+name: Portal room
+description: An impossible challenge - can you magically jump across the water?
+objectives:
+  - goal:
+      - Get to the other room and grab the lambda.
+      - Oh wait.
+      - The tunnel is flooded.
+      - Just give up then. It is impossible to get there.
+    condition: |
+      try {
+        as base {has "lambda"}
+      } { return false }
+solution: |
+  def w2 = turn back; turn back end;
+  def w10 = w2; w2; w2; w2; w2 end;
+  turn back; move;move;move; w10; move;move;move; grab
+robots:
+  - name: base
+    loc: [3,0]
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - grabber
+      - dictionary
+    inventory:
+      - [0, lambda]
+  - name: portkey1
+    system: true
+    display:
+      invisible: true
+    loc: [0,0]
+    dir: [0,0]
+    program: |
+      def forever = \prog. wait 10; prog; forever prog; end;
+      destRob <- robotNamed "portkey2";
+      destPos <- as destRob {whereami};
+      myPos <- whereami;
+      forever (
+        basePos <- as base {whereami};
+        if (myPos == basePos) {teleport base destPos} {};
+      );
+  - name: portkey2
+    system: true
+    display:
+      invisible: true
+    loc: [16,0]
+    dir: [0,0]
+    program: |
+      def forever = \prog. wait 10; prog; forever prog; end;
+      wait 5;
+      destRob <- robotNamed "portkey1";
+      destPos <- as destRob {whereami};
+      myPos <- whereami;
+      forever (
+        basePos <- as base {whereami};
+        if (myPos == basePos) {teleport base destPos} {};
+      );
+world:
+  default: [ice, knownwater]
+  palette:
+    ' ': [ice, knownwater]
+    '~': [ice, knownwavywater]
+    '*': [grass, knownflower]
+    'T': [grass, knowntree]
+    '.': [grass]
+    '_': [stone]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    'λ': [grass, lambda]
+  upperleft: [-1, 3]
+  map: |
+    ~~   ~         ~    ~
+    ~┌─────┐~  ┌─────┐~  
+    ┌┘.....└───┘T...*└┐ ~
+    │_....._   _..λ.._│  
+    └┐.....┌───┐*...T┌┘ ~
+    ~└─────┘ ~~└─────┘~  
+    ~~~   ~        ~    ~
+entities:
+  ## KNOWN ENTITIES
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water
+  - name: knownwavywater
+    display:
+      attr: water
+      char: '~'
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water
+  - name: knowntree
+    display:
+      attr: plant
+      char: 'T'
+    description:
+    - A tree.
+    properties: [portable, growable, known]
+    yields: tree
+    growth: [500, 600]
+  - name: knownflower
+    display:
+      attr: flower
+      char: '*'
+    description:
+    - A flower.
+    yields: flower
+    properties: [known]

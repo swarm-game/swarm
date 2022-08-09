@@ -1,0 +1,66 @@
+# See also 479-atomic-race.
+
+name: Atomic grab/harvest/place
+description: |
+  'atomic' blocks should be able to prevent crashes due to race conditions
+  https://github.com/swarm-game/swarm/issues/479
+stepsPerTick: 1
+creative: true
+objectives:
+  - condition: |
+      try {
+        p <- robotNamed "planter";
+        as p {n <- count "weed"; return (n == 0)}
+      } { return false }
+solution: |
+  def forever = \c. force c ; forever c end
+  def tryharvest =
+    atomic (
+      b <- ishere "weed";
+      if b {harvest; return ()} {}
+    );
+    n <- random 4; wait n
+  end;
+  forever {tryharvest}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - harvester
+    inventory:
+      - [1, lambda]
+  - name: planter
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - grabber
+    inventory:
+      - [25, weed]
+    program: |
+      def forever = \c. force c ; forever c end
+      def tryplant =
+        atomic (
+          b <- ishere "weed";
+          if b {} {place "weed"}
+        )
+      end;
+      forever {tryplant}
+entities:
+  - name: weed
+    display:
+      attr: plant
+      char: 'W'
+    description:
+    - A fast-growing weed.
+    properties: [known, portable, growable]
+    growth: [1,2]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+  upperleft: [0,0]
+  map: |
+    .

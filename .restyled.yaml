@@ -1,3 +1,17 @@
 restylers_version: dev
 restylers:
-  - fourmolu
+  - fourmolu:
+      arguments:
+        [ '--ghc-opt=-XBangPatterns'
+        , '--ghc-opt=-XFlexibleContexts'
+        , '--ghc-opt=-XFlexibleInstances'
+        , '--ghc-opt=-XGADTSyntax'
+        , '--ghc-opt=-XMultiParamTypeClasses'
+        , '--ghc-opt=-XNumericUnderscores'
+        , '--ghc-opt=-XRankNTypes'
+        , '--ghc-opt=-XTupleSections'
+        , '--ghc-opt=-XTypeApplications'
+        , '--ghc-opt=-XTypeOperators'
+        , '--ghc-opt=-XImportQualifiedPost'
+        , '--ghc-opt=-XLambdaCase'
+        ]

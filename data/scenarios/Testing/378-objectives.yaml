@@ -1,0 +1,60 @@
+name: Complete two objectives in succession.
+description: |
+  First, get some trees; then, use them to build a harvester.
+objectives:
+  - goal:
+      - Your first goal is to get three trees.
+    condition: |
+      try {
+        n <- as base {count "tree"};
+        return (n >= 3)
+      } { return false }
+  - goal:
+      - Nice job.  Now, build a harvester.
+    condition: |
+      try { as base {has "harvester"} } {return false}
+solution: |
+  build {turn right; move; move; grab; move; grab; move; grab; turn back; move; move; move; move};
+  wait 16;
+  salvage;
+  make "log"; make "log"; make "log";
+  make "board"; make "board"; make "board";
+  make "box";
+  make "wooden gear"; make "wooden gear";
+  make "harvester"
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    dir: [0,1]
+    devices:
+      - 3D printer
+      - life support system
+      - logger
+      - toolkit
+      - solar panel
+      - workbench
+      - clock
+    inventory:
+      - [10, treads]
+      - [10, grabber]
+      - [10, solar panel]
+      - [0, harvester]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    'T': [grass, tree]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌────────┐
+    │Ω.TTTTTT│
+    └────────┘

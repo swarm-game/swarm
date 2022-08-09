@@ -1,10 +1,5 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 -- |
 -- Module      :  Swarm.Language.Context
@@ -20,10 +15,12 @@ module Swarm.Language.Context where
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
 import Control.Monad.Reader (MonadReader, local)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Text (Text)
+import GHC.Generics (Generic)
 import Prelude hiding (lookup)
 
 -- | We use 'Text' values to represent variables.
@@ -31,7 +28,7 @@ type Var = Text
 
 -- | A context is a mapping from variable names to things.
 newtype Ctx t = Ctx {unCtx :: Map Var t}
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- | The semigroup operation for contexts is /right/-biased union.
 instance Semigroup (Ctx t) where
@@ -59,6 +56,10 @@ singleton x t = Ctx (M.singleton x t)
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
 lookup x (Ctx c) = M.lookup x c
+
+-- | Delete a variable from a context.
+delete :: Var -> Ctx t -> Ctx t
+delete x (Ctx c) = Ctx (M.delete x c)
 
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var, t)]

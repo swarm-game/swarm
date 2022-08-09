@@ -32,7 +32,7 @@
     attr: wood
     char: 'w'
   description:
-  - A wooden board.
+  - A wooden board, made by cutting a log into pieces.
   properties: [portable]
 
 - name: workbench
@@ -40,20 +40,49 @@
     attr: wood
     char: 'π'
   description:
-  - A plain wooden workbench, providing space for you to make other
+  - A plain wooden workbench, providing space to make other
     things using the 'make' command.
   - 'Example:'
   - 'make "log"'
   properties: [portable]
   capabilities: [make]
 
+- name: paper
+  display:
+    attr: snow
+    char: '■'
+  description:
+  - A flat material made of pressed and dried wood fibers,
+    used as a surface on which to inscribe symbols.
+  properties: [portable]
+
+- name: PhD thesis
+  display:
+    attr: snow
+    char: 'P'
+  description:
+  - Perhaps writing one of these will help gain the trust and respect of
+    the native inhabitants.
+  properties: [portable]
+
 - name: rock
   display:
     attr: rock
     char: 'o'
   description:
-  - A small rock.
+  - A medium-sized rock, picked up from the ground or created by drilling.
+    Can be used to build a simple furnace, among other things.
   properties: [portable]
+
+- name: lodestone
+  display:
+    attr: iron
+    char: 'o'
+  description:
+  - A medium-sized rock... that looks a little different. 
+    It seems to react to iron and surprisingly also to naturally growing bits.
+  properties: [portable]
+  capabilities: [negation]
 
 - name: boulder
   display:
@@ -85,26 +114,17 @@
     attr: copper
     char: 'C'
   description:
-  - Raw copper ore.  It is extremely useful for making wires, pipes, and other metal things.
+  - Raw copper ore, useful for making wires, pipes, and other metal things.
     Patches of copper ore can be found on the surface, but are quickly exhausted.
   - Scanners seem to indicate larger quantities of copper could be found beneath some of the
     mountains, but those would require a drill to access and mine.
   properties: [portable]
 
-- name: copper vein
-  display:
-    attr: copper'
-    char: 'A'
-  description:
-  - A place in the mountains where raw copper ore can be mined.
-    As it is hidden inside a mountain, a tunnel needs to be
-    first drilled through, so that the vein becomes accessible.
-  properties: [unwalkable]
-
 - name: copper mine
   display:
     attr: copper'
     char: 'Å'
+    priority: 11
   description:
   - A copper vein that can be actively mined to produce copper ore.
   properties: []
@@ -137,6 +157,108 @@
     water or steam.
   properties: [portable]
 
+- name: iron plate
+  display:
+    attr: iron
+    char: '■'
+  description:
+  - Worked iron suitable for crafting resilient tools.
+  - It also possess some electro-magnetic properties.
+  properties: [portable]
+
+- name: iron gear
+  display:
+    attr: iron
+    char: '*'
+  description:
+  - An iron gear, suitable for constructing larger, more powerful
+    machinery than a wooden gear.
+  properties: [portable]
+
+- name: iron ore
+  display:
+    attr: iron
+    char: 'F'
+  description:
+  - Raw iron ore. Used to create more resilient tools than copper.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: iron mine
+  display:
+    attr: iron'
+    char: 'Å'
+    priority: 11
+  description:
+  - An iron vein that can be actively mined to produce iron ore.
+  properties: []
+
+- name: quartz
+  display:
+    attr: quartz
+    char: 'Q'
+  description:
+  - Raw quartz crystals.  Useful for creating devices like clocks, and
+    can be processed to extract silicon.
+  - It can only be mined by drilling in the mountains.
+  properties: [portable]
+
+- name: quartz mine
+  display:
+    attr: quartz
+    char: 'Å'
+    priority: 11
+  description:
+  - A quartz vein that can be actively mined to produce quartz.
+  properties: []
+
+- name: silicon
+  display:
+    attr: quartz
+    char: 'S'
+  description:
+  - Extracted by processing quartz at high temperatures, silicon can
+    be used to construct integrated circuits.
+  properties: [portable]
+
+- name: deep mine
+  display:
+    attr: rock
+    char: 'Å'
+    priority: 11
+  description:
+  - A deep mine that yields rare and wonderful treasures to those who are patient.
+  - But be careful lest you delve too greedily and too deep.
+  properties: []
+
+- name: silver
+  display:
+    attr: silver
+    char: '•'
+  description:
+  - A shiny, metallic substance, noted for its high reflectivity when polished.
+  properties: [portable]
+
+- name: gold
+  display:
+    attr: gold
+    char: '•'
+  description:
+  - A shiny, metallic substance, with applications in specialized electronics.
+  - It also seems to be highly valued by local aliens.
+  properties: [portable]
+
+- name: mithril
+  display:
+    attr: silver
+    char: 'M'
+  description:
+  - Mithril can be beaten like copper, and polished like glass.  One
+    can also make of it a metal, light and yet harder than tempered
+    steel. Its beauty is like to that of common silver, but the beauty
+    of mithril does not tarnish or grow dim.
+  properties: [portable]
+
 - name: furnace
   display:
     attr: fire
@@ -145,13 +267,33 @@
   - A furnace can be used to turn metal ore into various useful products.
   properties: [portable]
 
-- name: motor
+- name: big furnace
+  display:
+    attr: fire
+    char: '#'
+  description:
+  - A big furnace can get even hotter than a normal furnace, and can be used
+    to process quartz into silicon.
+  properties: [portable]
+
+- name: small motor
+  display:
+    attr: entity
+    char: 'm'
+  description:
+  - A motor is useful for making devices that can turn when electric
+    current is applied.
+  - This one is rather small, but surprisingly efficient.
+  properties: [portable]
+
+- name: big motor
   display:
     attr: entity
     char: 'M'
   description:
   - A motor is useful for making devices that can turn when electric
     current is applied.
+  - This one is huge and could be used to construct powerful machinery.
   properties: [portable]
 
 - name: flower
@@ -159,7 +301,8 @@
     attr: flower
     char: '*'
   description:
-  - A flower.
+  - A beautiful flower that grows wild in local meadows.  It is not clear
+    what it might be useful for, but it looks nice.
   properties: [portable, growable]
   growth: [30, 50]
 
@@ -190,18 +333,16 @@
     attr: water
     char: ' '
   description:
-  - Water.
-  properties: [portable, growable, liquid]
-  growth: [0,0]
+  - Liquid dihydrogen monoxide, which seems to be plentiful on this planet.
+  properties: [portable, infinite, liquid]
 
 - name: wavy water
   display:
     attr: water
     char: '~'
   description:
-  - A wavy section of water.
-  properties: [portable, growable, liquid]
-  growth: [0,0]
+  - A wavy section of water.  The same as normal water, but with more waves.
+  properties: [portable, infinite, liquid]
   yields: water
 
 - name: boat
@@ -209,37 +350,121 @@
     attr: wood
     char: 'B'
   description:
-  - A robot with a boat installed can float on top of water without drowning!
-  - "Note: most devices are automatically installed on robots
-    that will require them; but since floating is not associated with any particular
-    command, a boat must be manually installed on any robot that will need it."
+  - A robot with a boat installed can float on top of water without drowning.
+  - |
+    Note: most devices are automatically installed on robots that
+    will require them; but this doesn't work in the case of boats since floating is not
+    associated with any particular command.  To manually ensure a boat is installed on
+    a robot, just add the special command 'require "boat"' to the robot's program.
   properties: [portable]
   capabilities: [float]
+
+- name: sand
+  display:
+    attr: sand
+    char: '█'
+  description:
+  - A substance composed mostly of tiny rocks and mineral particles.  It
+    tends to be found near water, and can be used in a furnace to make glass.
+  properties: [portable, infinite]
+
+- name: glass
+  display:
+    attr: entity
+    char: '□'
+  description:
+  - A pane of a brittle, clear substance, made from melting sand in a furnace.
+  properties: [portable]
+
+- name: LaTeX
+  display:
+    attr: flower
+    char: '$'
+  description:
+  - A naturally occurring substance derived from trees, useful for producing
+    rubber and for typesetting mathematical documents.
+  properties: [portable, growable]
+  growth: [2000, 3000]
+
+- name: rubber
+  display:
+    attr: rubber
+    char: '%'
+  description:
+  - A flexible, durable material made from LaTeX.
+  properties: [portable]
 
 - name: bit (0)
   display:
     attr: entity
     char: '0'
   description:
-  - A bit.
+  - A bit is used to represent the smallest possible amount of information.
+    Useful for constructing various information-processing devices, as well as drills.
   properties: [portable, growable]
-  growth: [1000, 1500]
+  growth: [200, 400]
 
 - name: bit (1)
   display:
     attr: entity
     char: '1'
   description:
-  - A bit.
+  - A bit is used to represent the smallest possible amount of information.
+    Useful for constructing various information-processing devices, as well as drills.
+  properties: [portable, growable]
+  growth: [200, 400]
+
+- name: pixel (R)
+  display:
+    attr: red
+    char: '.'
+  description:
+  - A tiny picture element, used either to emit or detect red light.
   properties: [portable, growable]
   growth: [1000, 1500]
+
+- name: pixel (G)
+  display:
+    attr: green
+    char: '.'
+  description:
+  - A tiny picture element, used either to emit or detect green light.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: pixel (B)
+  display:
+    attr: blue
+    char: '.'
+  description:
+  - A tiny picture element, used either to emit or detect blue light.
+  properties: [portable, growable]
+  growth: [1000, 1500]
+
+- name: camera
+  display:
+    attr: device
+    char: '@'
+  description:
+  - A camera is a device for capturing images.
+  properties: [portable]
+
+- name: circuit
+  display:
+    attr: plant
+    char: '#'
+  description:
+  - |
+    A circuit is needed for constructing various "smart" devices.
+  properties: [portable]
 
 - name: drill bit
   display:
     attr: entity
     char: '!'
   description:
-  - A drill bit is an important component of a drill.
+  - A drill bit is the most important component of a drill, and must be made
+    out of two bits of opposite parity, for strength.
   properties: [portable]
 
 - name: box
@@ -247,31 +472,25 @@
     attr: wood
     char: '□'
   description:
-  - A wooden box.  It can hold things.
+  - A wooden box.  It can hold things or be used as housing for other devices.
   properties: [portable]
 
-- name: gear
+- name: wooden gear
   display:
     attr: wood
     char: '*'
   description:
-  - A wooden gear.
+  - A wooden gear.  Not quite as strong or versatile as an iron gear, but easy to produce.
   properties: [portable]
 
-- name: counter
+- name: teeter-totter
   display:
-    attr: device
-    char: 'C'
+    attr: wood
+    char: '/'
   description:
-  - "Increment and reset, what more could you want?"
-  - |
-    A counter enables the command 'count : string -> cmd int',
-    which counts how many occurrences of an entity are currently
-    in the inventory.  This is an upgraded version of the 'has'
-    command, which returns a bool instead of an int and does
-    not require any special device.
+  - A rotating board apparently popular with young aliens.  Perhaps it
+    could also be used as a primitive balance scale.
   properties: [portable]
-  capabilities: [count]
 
 - name: Linux
   display:
@@ -343,11 +562,26 @@
     attr: device
     char: '%'
   description:
-  - Installing treads on a robot allows it to move (via the 'move' command) and turn
-    (via the 'turn' command).
+  - Installing treads on a robot allows it to move and turn.
+  - The 'move' command moves the robot forward one unit.
   - 'Example:'
-  - '  move; turn left; move; turn north'
+  - '  move; move; // move two units'
+  - The 'turn' command takes a direction as an argument, which
+    can be either absolute (north, west, east, south) or relative
+    (left, right, forward, back, down).
+  - 'Example:'
+  - '  move; turn left; move; turn right'
   capabilities: [move, turn]
+  properties: [portable]
+
+- name: tank treads
+  plural: tank treads
+  display:
+    attr: device
+    char: '%'
+  description:
+  - Tank treads work like treads, but are large enough to move even heavy robots around.
+  capabilities: [move, turn, moveheavy]
   properties: [portable]
 
 - name: grabber
@@ -355,7 +589,7 @@
     attr: device
     char: '<'
   description:
-  - A grabber arm is an all-purpose device allowing a robot to
+  - A grabber arm is an all-purpose, hydraulically controlled device that can
     manipulate other items and robots via the 'grab', 'place', 'give',
     and 'install' commands.
   - The 'grab' command takes no arguments; it simply grabs whatever is
@@ -375,17 +609,31 @@
   capabilities: [grab, give, place, install]
   properties: [portable]
 
-- name: plasma cutter
+- name: harvester
   display:
     attr: device
-    char: '+'
+    char: '≤'
   description:
-  - "A plasma cutter uses a jet of hot plasma to cut through metal like
-    butter.  Used via the 'salvage' command to cut apart old robots."
+  - A harvester can be used via the 'harvest' command, which is
+    almost identical to the 'grab' command.  The big difference
+    is that some entities, when harvested instead of grabbed,
+    leave behind a seed which will eventually grow into another copy
+    of the original entity.
+  - For entities which do not grow, 'harvest' behaves exactly the same
+    as 'grab'.
+  capabilities: [grab, harvest, place]
+  properties: [portable]
+
+- name: toolkit
+  display:
+    attr: device
+    char: 'Ѣ'
+  description:
+  - "A toolkit can be used, via the 'salvage' command, to take apart old robots."
   - "'salvage' takes no arguments. It looks for an inactive
     robot (one which is not currently running a program) in the
     current cell. If an inactive robot is found, its log (if any) is
-    downloaded and it is dismantled, transferring its devices and inventory to the
+    downloaded and it is dismantled, transferring its knowledge, devices, and inventory to the
     robot running 'salvage'.  If no inactive robots are found in the
     current cell, 'salvage' does nothing."
   capabilities: [salvage]
@@ -399,6 +647,7 @@
   - An extremely efficient solar panel, capable of generating sufficient power
     from ambient starlight alone. A robot powered by one of these can operate any time,
     including on cloudy days and at night.
+  capabilities: [power]
   properties: [portable]
 
 - name: drill
@@ -406,8 +655,29 @@
     attr: device
     char: '!'
   description:
-  - A drill allows robots to drill through rocks and mountains.
+  - A drill allows robots to drill through rocks and mountains, and extract resources from mines.
   capabilities: [drill]
+  properties: [portable]
+
+- name: metal drill
+  display:
+    attr: iron
+    char: '!'
+  description:
+  - A metal drill allows robots to drill through rocks and mountains,
+     and extract resources from mines, faster than a regular drill.
+  - A metal drill is also able to drill deeper than a regular drill.  Thus, some resources
+    are only reachable using a metal drill.
+  capabilities: [drill]
+  properties: [portable]
+
+- name: printer
+  display:
+    attr: device
+    char: 'Д'
+  description:
+  - A printer is used to inscribe symbols on paper, thus reifying pure, platonic
+    information into a physical form.
   properties: [portable]
 
 - name: 3D printer
@@ -458,9 +728,9 @@
     A branch predictor is a device which allows a robot to interpret
     conditional expressions.  The syntax for a conditional expression
     is 'if' followed by three arguments: a boolean test and then
-    two delayed expressions of the same type.
+    two delayed expressions (i.e. expressions in curly braces) of the same type.
   - 'Example:'
-  - 'if (x > 3) {move} {turn west; move}'
+  - 'if (x > 3) {move} {turn right; move}'
   properties: [portable]
   capabilities: [cond]
 
@@ -480,7 +750,7 @@
 - name: life support system
   display:
     attr: device
-    char: 'O'
+    char: 'Ж'
   description:
   - A state-of-the-art life support system which maintains the
     particular temperature and mixture of gases you need to survive.
@@ -512,11 +782,12 @@
     attr: device
     char: '§'
   description:
-  - "Using a flash memory device, a robot can reprogram other robots using the
+  - "A compact, non-volatile memory device, capable of storing
+    up to 8 pZ of data."
+  - "Flash memory can be used as a component of other devices.  In addition,
+     a flash memory device can be used to reprogram other robots using the
      'reprogram' command."
-  - "Only robots that have completed executing their previous command
-     can be reprogrammed."
-  - "The robot being reprogrammed must possess enough capabilities to run the new command;
+  - "The robot being reprogrammed must be idle, and must possess enough capabilities to run the new command;
      otherwise reprogramming will fail."
   properties: [portable]
   capabilities: [reprogram]
@@ -529,7 +800,9 @@
   - "With a mirror, robots can reflect on themselves and see their own name."
   - "A mirror enables the 'whoami' command, which returns the robot's
      name as a string."
-  properities: [portable]
+  - "It also enables the special 'self' variable, which gives a robot
+    a reference to itself."
+  properties: [portable]
   capabilities: [whoami]
 
 - name: logger
@@ -539,10 +812,113 @@
   description:
   - "Allows a robot to generate and store messages for later viewing,
     using the 'log' command, which takes a string.  Log messages are
-    also automatically generated by uncaught exceptions. If you want
-    to be able to see why a robot crashed, install a logger (see the
-    'grabber' device for help on manually installing devices; or a
-    'logger' device will be automatically installed on any robot that
-    uses the 'log' command)."
+    also automatically generated by uncaught exceptions."
   properties: [portable]
   capabilities: [log]
+
+- name: hearing aid
+  display:
+    attr: device
+    char: '@'
+  description:
+  - "Allows a robot to hear what nearby robots are saying."
+  - "Simply having this device installed will automatically
+     add messages said by nearby robots to this robot's log,
+     assuming it has a logger installed."
+  - "That way you can view any heard message later either in
+     the logger or the message window."
+  - "To wait for a message and get the string value, use:"
+  - "`l <- listen; log $ \"I have waited for someone to say \" ++ l`"
+  properties: [portable]
+  capabilities: [listen]
+
+- name: counter
+  display:
+    attr: device
+    char: 'C'
+  description:
+  - |
+    A counter enables the command 'count : string -> cmd int',
+    which counts how many occurrences of an entity are currently
+    in the inventory.  This is an upgraded version of the 'has'
+    command, which returns a bool instead of an int and does
+    not require any special device.
+  properties: [portable]
+  capabilities: [count]
+
+- name: calculator
+  display:
+    attr: device
+    char: '+'
+  description:
+  - "A calculator allows a robot to do basic arithmetic calculations:
+    addition, subtraction, multiplication, division, and
+    exponentiation."
+  properties: [portable]
+  capabilities: [arith]
+
+- name: compass
+  display:
+    attr: device
+    char: 'N'
+  description:
+  - "A compass gives a robot the ability to orient using cardinal directions: north, south, west, and east."
+  - "Example:"
+  - "turn west; move; turn north"
+  properties: [portable]
+  capabilities: [orient]
+
+- name: clock
+  display:
+    attr: device
+    char: '0'
+  description:
+  - A clock is a device for keeping track of time.  It enables the 'wait' and 'time' commands.
+  - |
+    'time : cmd int' returns the current time, measured in game ticks since the beginning of the game.
+  - |
+    'wait : int -> cmd ()' causes a robot to sleep for a specified amount of time (measured in game ticks).
+  properties: [portable]
+  capabilities: [time]
+
+- name: comparator
+  display:
+    attr: device
+    char: '>'
+  description:
+  - "A comparator allows comparing two values to see whether the first
+    is less, equal, or greater than the second."
+  - "Valid comparison operators are <, <=, >, >=, ==, and !=."
+  properties: [portable]
+  capabilities: [compare]
+
+- name: I/O cable
+  display:
+    attr: device
+    char: 'Ю'
+  description:
+  - An I/O cable can be used to communicate with an adjacent robot.
+  properties: [portable]
+
+- name: rubber band
+  display:
+    attr: device
+    char: 'O'
+  description:
+  - "A rubber band can tie multiple commands together so that other robots can't execute
+    commands in between them.  It can be used via the 'atomic' command. For example, suppose
+    robot A executes the following code:"
+  - |
+    b <- ishere "rock"; if b {grab} {}
+
+  - "This seems like a safe way to execute 'grab' only when there is a
+    rock to grab.  However, it is actually possible for the 'grab' to
+    fail, if some other robot B snatches the rock right after robot A sensed
+    it and before robot A got around to grab it on the next game tick."
+  - This will make robot A very sad and it will crash.
+  - "To prevent this situation, robot A can wrap the commands in 'atomic', like so:"
+  - |
+    atomic (b <- ishere "rock"; if b {grab} {})
+
+  properties: [portable]
+  capabilities: [atomic]

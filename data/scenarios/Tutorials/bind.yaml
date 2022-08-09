@@ -1,0 +1,75 @@
+name: Bind notation
+description: |
+  Learn about command return types and how to bind the results.
+objectives:
+  - goal:
+      - |
+        Every command returns a value.  However, some simple commands, like
+        `move`, do not have any meaningful
+        value to return.  Since the unit type `()` has only one value, also
+        written `()`, returning this value does not convey any information.
+        Thus, the type of `move` is `cmd ()`.
+      - |
+        Other commands do return a nontrivial value after executing.
+        For example, `grab` has type
+        `cmd string`, and returns the name of the
+        grabbed entity as a string. Try it:
+      - |
+        move; grab
+      - |
+        To use the result of a command later, you need the bind notation:
+      - |
+        move; t <- grab; place t
+      - |
+        This can be useful, for example, if you do not care what you
+        grabbed and just want to move it to another cell; or if you
+        are not sure of the name of the thing being grabbed.
+      - Once you are done, do `place "Win"` to finish this challenge.
+        (Note, you might need to `grab` the entity you are standing on
+        or move to an empty cell first, since each cell can only
+        contain at most one entity.)
+    condition: |
+      try {
+        w <- as base {has "Win"};
+        return (not w);
+      } { return false }
+solution: |
+  place "Win"
+entities:
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - Do `place "Win"` once you are done with this challenge.
+      - You might need to `grab` the entity you are standing on
+        or move to an empty cell first.
+    properties: [known, portable]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - treads
+      - grabber
+      - logger
+      - compass
+      - dictionary
+    inventory:
+      - [1, Win]
+      - [0, tree]
+world:
+  default: [blank]
+  palette:
+    '>': [grass, null, base]
+    'T': [grass, tree]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │>TT│
+    └───┘

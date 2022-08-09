@@ -3,42 +3,75 @@
 
 module Main where
 
-import Data.Text (
-  Text,
-  pack,
- )
-import qualified Data.Text.IO as Text
-import GitHash
+import Data.Foldable qualified
+import Data.Text (Text, pack)
+import Data.Text.IO qualified as Text
+import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
-import System.Exit
+import Swarm.Web (defaultPort)
+import System.Exit (exitFailure, exitSuccess)
 
 data CLI
-  = -- seed, challenge file, run file
-    Run (Maybe Int) (Maybe FilePath) (Maybe FilePath)
+  = Run
+      (Maybe Int) -- seed
+      (Maybe FilePath) -- scenario
+      (Maybe FilePath) -- file to run
+      Bool -- cheat mode
+      (Maybe Int) -- web port
   | Format Input
+  | DocGen GenerateDocs
   | LSP
 
 cliParser :: Parser CLI
 cliParser =
   subparser
-    ( command "format" (info (format <**> helper) (progDesc "Format a file"))
-        <> command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+    ( mconcat
+        [ command "format" (info (format <**> helper) (progDesc "Format a file"))
+        , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+        , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
+        ]
     )
-    <|> Run <$> seed <*> challenge <*> run
+    <|> Run <$> seed <*> scenario <*> run <*> cheat <*> webPort
  where
   format :: Parser CLI
   format =
     (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
       <|> (Format . File <$> strArgument (metavar "FILE"))
+  docgen :: Parser GenerateDocs
+  docgen =
+    subparser . mconcat $
+      [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
+      , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
+      , command "cheatsheet" (info (pure $ CheatSheet $ Just Commands) $ progDesc "Output nice Wiki tables")
+      ]
+  editor :: Parser (Maybe EditorType)
+  editor =
+    Data.Foldable.asum
+      [ pure Nothing
+      , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
+      , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
+      ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
-  challenge :: Parser (Maybe String)
-  challenge = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
+  webPort :: Parser (Maybe Int)
+  webPort =
+    optional $
+      option
+        auto
+        ( long "web"
+            <> metavar "PORT"
+            <> help ("Set the web service port (or disable it with 0). Default to " <> show defaultPort <> ".")
+        )
+  scenario :: Parser (Maybe String)
+  scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  cheat :: Parser Bool
+  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode")
 
 cliInfo :: ParserInfo CLI
 cliInfo =
@@ -80,6 +113,7 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run seed challenge toRun -> appMain seed challenge toRun
+    Run seed scenario toRun cheat webPort -> appMain webPort seed scenario toRun cheat
     Format fo -> formatFile fo
+    DocGen g -> generateDocs g
     LSP -> lspMain

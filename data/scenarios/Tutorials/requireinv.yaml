@@ -1,0 +1,85 @@
+name: Require inventory
+description: |
+  Learn how to require inventory when building robots.
+objectives:
+  - goal:
+      - In the previous tutorial challenge, you learned how to use
+        `require` to require specific devices to be installed.
+        Sometimes, instead of requiring installed devices, you require
+        supplies in your inventory.  In this case, you can write
+        `require <int> <name>` to require a certain number of copies of
+        a certain entity to be placed in your inventory.
+      - For example, `build {require 10 "flower"; move; move}` would
+        build a robot with 10 flowers in its inventory.
+      - Your goal in this challenge is to cover the entire 4x4 gray area
+        with rocks!
+      - |
+        Remember that you can define commands to simplify your task, for example:
+      - |
+        `def PR = move; place "rock" end`
+    condition: |
+      def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
+      def ifC = \test. \then. \else. b <- test; if b then else end;
+      try {
+        teleport self (0,0); turn south;
+        repeat 4 (
+          move; turn east;
+          repeat 4 (
+            move;
+            ifC (ishere "rock") {} {create "tree"};
+          );
+          turn back; move; move; move; move; turn left
+        );
+        ifC (has "tree") {return false} {return true}
+      } { return false }
+solution: |
+  def m4 = move; move; move; move end;
+  def mp = move; place "rock" end;
+  def mp4 = mp; mp; mp; mp end;
+  def rr = move; turn right; mp4; turn back; m4; turn right end;
+  build {
+    require "treads"; require "grabber"; // #540
+    require 16 "rock";
+    turn right;
+    rr; rr; rr; rr
+  };
+robots:
+  - name: base
+    heavy: true
+    dir: [0,1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+      - dictionary
+    inventory:
+      - [16, compass]
+      - [16, solar panel]
+      - [16, logger]
+      - [16, treads]
+      - [16, grabber]
+      - [16, scanner]
+      - [100, rock]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '_': [stone]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────┐
+    │Ω....│
+    │.____│
+    │.____│
+    │.____│
+    │.____│
+    └─────┘

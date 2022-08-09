@@ -1,10 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
 -- Module      :  Swarm.Language.Parse
@@ -19,6 +14,9 @@
 -- 'Swarm.Language.Pipeline.processTerm' instead, which parses,
 -- typechecks, elaborates, and capability checks a term all at once.
 module Swarm.Language.Parse (
+  -- * Reserved words
+  reservedWords,
+
   -- * Parsers
   Parser,
   parsePolytype,
@@ -37,28 +35,26 @@ module Swarm.Language.Parse (
   getLocRange,
 ) where
 
+import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
-import Data.List (nub)
-import qualified Data.List.NonEmpty (head)
-import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Text (Text, index, toLower)
-import qualified Data.Text as T
-import Data.Void
-import Witch
-
-import Control.Monad.Combinators.Expr
-import qualified Data.Map.Strict as Map
-import Text.Megaparsec hiding (runParser)
-import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
-import qualified Text.Megaparsec.Pos as Pos
-
 import Data.Foldable (asum)
-import qualified Data.Set as S
+import Data.List (nub)
+import Data.List.NonEmpty qualified (head)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set qualified as S
 import Data.Set.Lens (setOf)
+import Data.Text (Text, index, toLower)
+import Data.Text qualified as T
+import Data.Void
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Text.Megaparsec hiding (runParser)
+import Text.Megaparsec.Char
+import Text.Megaparsec.Char.Lexer qualified as L
+import Text.Megaparsec.Pos qualified as Pos
+import Witch
 
 -- Imports for doctests (cabal-docspec needs this)
 
@@ -99,6 +95,7 @@ reservedWords =
        , "true"
        , "false"
        , "forall"
+       , "require"
        ]
 
 -- | Skip spaces and comments.
@@ -144,16 +141,23 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
 stringLiteral :: Parser Text
 stringLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
 
--- | Parse a positive integer literal token.  Note that negation is
---   handled as a separate operator.
+-- | Parse a positive integer literal token, in decimal, binary,
+--   octal, or hexadecimal notation.  Note that negation is handled as
+--   a separate operator.
 integer :: Parser Integer
-integer = lexeme L.decimal
+integer =
+  label "integer literal" $
+    lexeme $ do
+      n <-
+        string "0b" *> L.binary
+          <|> string "0o" *> L.octal
+          <|> string "0x" *> L.hexadecimal
+          <|> L.decimal
+      notFollowedBy alphaNumChar
+      return n
 
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
-
--- dbraces :: Parser a -> Parser a
--- dbraces = between (symbol "{{") (symbol "}}")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -215,7 +219,7 @@ parseDirection = asum (map alternative allDirs) <?> "direction constant"
  where
   alternative d = d <$ (reserved . dirSyntax . dirInfo) d
 
--- | Parse Const as reserved words (e.g. @Raise <$ reserved "raise"@)
+-- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
 parseConst = asum (map alternative consts) <?> "built-in user function"
  where
@@ -244,6 +248,14 @@ parseTermAtom =
         <|> TInt <$> integer
         <|> TString <$> stringLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
+        <|> reserved "require"
+          *> ( ( TRequireDevice
+                  <$> (stringLiteral <?> "device name in double quotes")
+               )
+                <|> ( TRequire <$> (fromIntegral <$> integer)
+                        <*> (stringLiteral <?> "entity name in double quotes")
+                    )
+             )
         <|> SLam <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)

@@ -1,13 +1,4 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -34,7 +25,6 @@ module Swarm.Game.Entity (
   -- * Entities
   Entity,
   mkEntity,
-  displayEntity,
 
   -- ** Lenses
   -- $lenses
@@ -76,6 +66,9 @@ module Swarm.Game.Entity (
   contains,
   contains0plus,
   elems,
+  isSubsetOf,
+  isEmpty,
+  inventoryCapabilities,
 
   -- ** Modification
   insert,
@@ -84,11 +77,11 @@ module Swarm.Game.Entity (
   deleteCount,
   deleteAll,
   union,
+  difference,
 ) where
 
-import Brick (Widget)
 import Control.Arrow ((&&&))
-import Control.Lens (Getter, Lens', lens, to, view, (^.))
+import Control.Lens (Getter, Lens', lens, to, view, (^.), _2)
 import Control.Monad.IO.Class
 import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
@@ -96,30 +89,28 @@ import Data.Function (on)
 import Data.Hashable
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
-import qualified Data.IntMap as IM
+import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
-import qualified Data.IntSet as IS
+import Data.IntSet qualified as IS
 import Data.List (foldl')
 import Data.Map (Map)
-import qualified Data.Map as M
-import Data.Maybe (isJust, listToMaybe)
+import Data.Map qualified as M
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
+import Data.Set (Set)
+import Data.Set.Lens (setOf)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
+import Data.Yaml
 import GHC.Generics (Generic)
 import Linear (V2)
+import Paths_swarm
+import Swarm.Game.Display
+import Swarm.Language.Capability
+import Swarm.Util (plural, reflow, (?))
+import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
-
-import Data.Yaml
-import Swarm.Util.Yaml
-
-import Swarm.Game.Display
-import Swarm.Language.Capability
-import Swarm.Language.Syntax (toDirection)
-import Swarm.Util (plural, (?))
-
-import Paths_swarm
 
 ------------------------------------------------------------
 -- Properties
@@ -130,11 +121,13 @@ import Paths_swarm
 data EntityProperty
   = -- | Robots can't move onto a cell containing this entity.
     Unwalkable
-  | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab').
+  | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab' or 'Swarm.Language.Syntax.Harvest').
     Portable
-  | -- | Regrows from a seed after it is grabbed.
+  | -- | Regrows from a seed after it is harvested.
     Growable
-  | -- | Robots drown if they walk on this.
+  | -- | Regenerates infinitely when grabbed or harvested.
+    Infinite
+  | -- | Robots drown if they walk on this without a boat.
     Liquid
   | -- | Robots automatically know what this is without having to scan it.
     Known
@@ -278,9 +271,11 @@ mkEntity ::
   [Text] ->
   -- | Properties
   [EntityProperty] ->
+  -- | Capabilities
+  [Capability] ->
   Entity
-mkEntity disp nm descr props =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props [] empty
+mkEntity disp nm descr props caps =
+  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props caps empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -291,8 +286,9 @@ mkEntity disp nm descr props =
 --   capabilities they provide (if any).
 data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
-  , entitiesByCap :: Map Capability Entity
+  , entitiesByCap :: Map Capability [Entity]
   }
+  deriving (Generic, FromJSON, ToJSON)
 
 instance Semigroup EntityMap where
   EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)
@@ -305,10 +301,10 @@ instance Monoid EntityMap where
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
 lookupEntityName nm = M.lookup nm . entitiesByName
 
--- | Find an entity which is a device that provides the given
+-- | Find all entities which are devices that provide the given
 --   capability.
-deviceForCap :: Capability -> EntityMap -> Maybe Entity
-deviceForCap cap = M.lookup cap . entitiesByCap
+deviceForCap :: Capability -> EntityMap -> [Entity]
+deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
@@ -317,7 +313,7 @@ buildEntityMap :: [Entity] -> EntityMap
 buildEntityMap es =
   EntityMap
     { entitiesByName = M.fromList . map (view entityName &&& id) $ es
-    , entitiesByCap = M.fromList . concatMap (\e -> map (,e) (e ^. entityCapabilities)) $ es
+    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (e ^. entityCapabilities)) $ es
     }
 
 ------------------------------------------------------------
@@ -327,9 +323,8 @@ buildEntityMap es =
 instance FromJSON Entity where
   parseJSON = withObject "Entity" $ \v ->
     rehashEntity
-      <$> ( Entity
-              <$> pure 0
-              <*> v .: "display"
+      <$> ( Entity 0
+              <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
               <*> (map reflow <$> (v .: "description"))
@@ -340,8 +335,6 @@ instance FromJSON Entity where
               <*> v .:? "capabilities" .!= []
               <*> pure empty
           )
-   where
-    reflow = T.unwords . T.words
 
 -- | If we have access to an 'EntityMap', we can parse the name of an
 --   'Entity' as a string and look it up in the map.
@@ -451,10 +444,6 @@ entityCapabilities = hashedLens _entityCapabilities (\e x -> e {_entityCapabilit
 entityInventory :: Lens' Entity Inventory
 entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 
--- | Display an entity as a single character.
-displayEntity :: Entity -> Widget n
-displayEntity e = displayWidget ((e ^. entityOrientation) >>= toDirection) (e ^. entityDisplay)
-
 ------------------------------------------------------------
 -- Inventory
 ------------------------------------------------------------
@@ -480,12 +469,16 @@ data Inventory = Inventory
     -- and not having it as a key in the map at all.
     inventoryHash :: Int
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 instance Hashable Inventory where
   -- Just return cached hash value.
   hash = inventoryHash
   hashWithSalt s = hashWithSalt s . inventoryHash
+
+-- | Inventories are compared by hash for efficiency.
+instance Eq Inventory where
+  (==) = (==) `on` hash
 
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
@@ -558,6 +551,21 @@ contains inv e = lookup e inv > 0
 contains0plus :: Entity -> Inventory -> Bool
 contains0plus e = isJust . IM.lookup (e ^. entityHash) . counts
 
+-- | Check if the first inventory is a subset of the second.
+--   Note that entities with a count of 0 are ignored.
+isSubsetOf :: Inventory -> Inventory -> Bool
+isSubsetOf inv1 inv2 = all (\(n, e) -> lookup e inv2 >= n) (elems inv1)
+
+-- | Check whether an inventory is empty, meaning that it contains 0
+--   total entities (although it may still /know about/ some entities, that
+--   is, have them as keys with a count of 0).
+isEmpty :: Inventory -> Bool
+isEmpty = all ((== 0) . fst) . elems
+
+-- | Compute the set of capabilities provided by the devices in an inventory.
+inventoryCapabilities :: Inventory -> Set Capability
+inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
+
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory
 delete = deleteCount 1
@@ -599,4 +607,8 @@ union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   -- of the way each entity with count k contributes (k+1) times its
   -- hash.  So if the two inventories share an entity e, just adding their
   -- hashes would mean e now contributes (k+2) times its hash.
-  common = IS.foldl' (+) 0 $ (IM.keysSet cs1) `IS.intersection` (IM.keysSet cs2)
+  common = IS.foldl' (+) 0 $ IM.keysSet cs1 `IS.intersection` IM.keysSet cs2
+
+-- | Subtract the second inventory from the first.
+difference :: Inventory -> Inventory -> Inventory
+difference inv1 = foldl' (flip (uncurry deleteCount)) inv1 . elems

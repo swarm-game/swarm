@@ -1,9 +1,7 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Language.Parse
+-- Module      :  Swarm.Language.LSP
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -18,18 +16,16 @@ import Control.Monad (void)
 import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text.IO as Text
-import System.IO (stderr)
-import Witch
-
+import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
 import Language.LSP.Server
-import qualified Language.LSP.Types as J
-import qualified Language.LSP.Types.Lens as J
+import Language.LSP.Types qualified as J
+import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
-
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
+import System.IO (stderr)
+import Witch
 
 lspMain :: IO ()
 lspMain =
@@ -84,8 +80,8 @@ validateSwarmCode doc version content = do
     let diags =
           [ J.Diagnostic
               ( J.Range
-                  (J.Position startLine startCol)
-                  (J.Position endLine endCol)
+                  (J.Position (fromIntegral startLine) (fromIntegral startCol))
+                  (J.Position (fromIntegral endLine) (fromIntegral endCol))
               )
               (Just J.DsWarning) -- severity
               Nothing -- code
@@ -114,6 +110,6 @@ handlers =
         mdoc <- getVirtualFile doc
         case mdoc of
           Just vf@(VirtualFile _ version _rope) -> do
-            validateSwarmCode doc (Just version) (virtualFileText vf)
-          _ -> debug $ "No virtual file found for: " <> (from (show msg))
+            validateSwarmCode doc (Just $ fromIntegral version) (virtualFileText vf)
+          _ -> debug $ "No virtual file found for: " <> from (show msg)
     ]

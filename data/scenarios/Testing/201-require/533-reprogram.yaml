@@ -1,0 +1,71 @@
+name: Install devices + entities while reprogramming
+description: |
+  While executing 'reprogram', we should install any required devices and
+  give required entities which the target robot doesn't have.
+  https://github.com/swarm-game/swarm/pulls/533
+objectives:
+  - condition: |
+      try {
+        base_boats <- as base {count "boat"};
+        base_solar <- as base {count "solar panel"};
+        base_treads <- as base {count "treads"};
+        base_drills <- as base {count "metal drill"};
+        base_rocks <- as base {count "rock"};
+
+        fred <- robotNamed "fred";
+        p <- as fred {whereami};
+        boatInstalled <- as fred {installed "boat"};
+        drillInstalled <- as fred {installed "metal drill"};
+        fred_rocks <- as fred {count "rock"};
+
+        return (p == (2,0) && boatInstalled && drillInstalled
+                && base_boats == 1 && base_solar == 1
+                && base_treads == 1 && base_drills == 1
+                && base_rocks == 42 && fred_rocks == 8
+               );
+      } { return false }
+solution: |
+  fred <- build {require "boat"; require 5 "rock"; setname "fred"};
+  wait 5;
+  reprogram fred {require "boat"; require "metal drill"; move; require 3 "rock"; move; require 5 "rock"}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - 3D printer
+      - logger
+      - flash memory
+      - clock
+    inventory:
+      - [2, boat]
+      - [2, solar panel]
+      - [2, treads]
+      - [2, metal drill]
+      - [50, rock]
+world:
+  default: [blank, null]
+  palette:
+    '.': [grass]
+    '~': [dirt, knownwater]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │.~.│
+    └───┘
+entities:
+  - name: knownwater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - An infinite ocean of water.
+    properties: [known, portable, growable, liquid]
+    growth: [0,0]
+    yields: water

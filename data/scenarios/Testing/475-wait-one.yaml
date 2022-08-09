@@ -1,0 +1,50 @@
+name: Wait for one tick
+description: |
+  Robots waiting for one tick should not be put into inactive robot queue.
+  https://github.com/swarm-game/swarm/issues/475
+# The game state validation is performed in integration test,
+# here we just set a robot to wait for one tick, during which
+# the base wins.
+objectives:
+  - condition: |
+      try {
+        teleport self (0,0);
+        ishere "lambda"
+      } { return false }
+solution: |
+  log "I will win next tick!"; place "lambda";
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - grabber
+    inventory:
+      - [1, lambda]
+  - name: sleeper
+    loc: [0,-1]
+    dir: [1,0]
+    devices:
+      - logger
+      - clock
+    program: |
+      log "I shall sleep"; wait 1; log "I have awoken"
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    'λ': [grass, lambda]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────┐
+    │..λ..│
+    │....λ│
+    │...λ.│
+    └─────┘

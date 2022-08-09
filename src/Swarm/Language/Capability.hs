@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-
 -- |
 -- Module      :  Swarm.Language.Capability
 -- Copyright   :  Brent Yorgey
@@ -10,45 +5,48 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Capabilities needed to evaluate and execute programs.  If you're
--- curious about how this works and/or thinking about creating some
--- additional capabilities, you're encouraged to read the extensive
--- comments in the source code.
+-- Capabilities needed to evaluate and execute programs.  Language
+-- constructs or commands require certain capabilities, and in turn
+-- capabilities are provided by various devices.  A robot must have an
+-- appropriate device installed in order to make use of each language
+-- construct or command.
 module Swarm.Language.Capability (
   Capability (..),
-  CapCtx,
-  requiredCaps,
+  capabilityName,
   constCaps,
 ) where
 
+import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Char (toLower)
+import Data.Data (Data)
 import Data.Hashable (Hashable)
-import Data.Maybe (fromMaybe)
-import Data.Set (Set)
-import qualified Data.Set as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
+import Data.Yaml
+import GHC.Generics (Generic)
+import Swarm.Language.Syntax
 import Text.Read (readMaybe)
 import Witch (from)
 import Prelude hiding (lookup)
 
-import Data.Data (Data)
-import Data.Yaml
-import GHC.Generics (Generic)
-
-import Swarm.Language.Context
-import Swarm.Language.Syntax
-
 -- | Various capabilities which robots can have.
 data Capability
-  = -- | Execute the 'Move' command
+  = -- | Be powered, i.e. execute anything at all
+    CPower
+  | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Move' command for a heavy robot
+    CMoveheavy
   | -- | Execute the 'Turn' command
+    --
+    -- NOTE: using cardinal directions is separate 'COrient' capability
     CTurn
   | -- | Execute the 'Selfdestruct' command
     CSelfdestruct
   | -- | Execute the 'Grab' command
     CGrab
+  | -- | Execute the 'Harvest' command
+    CHarvest
   | -- | Execute the 'Place' command
     CPlace
   | -- | Execute the 'Give' command
@@ -79,14 +77,20 @@ data Capability
     CAppear
   | -- | Execute the 'Create' command
     CCreate
+  | -- | Execute the 'Listen' command and passively log messages if also has 'CLog'
+    CListen
   | -- | Execute the 'Log' command
     CLog
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
     CCond
+  | -- | Negate boolean value
+    CNegation
   | -- | Evaluate comparison operations
     CCompare
+  | -- | Use cardinal direction constants.
+    COrient
   | -- | Evaluate arithmetic operations
     CArith
   | -- | Store and look up definitions in an environment
@@ -101,14 +105,24 @@ data Capability
     CWhoami
   | -- | Capability to set its own name
     CSetname
+  | -- | Capability to move unrestricted to any place
+    CTeleport
+  | -- | Capability to run commands atomically
+    CAtomic
+  | -- | Capabiltiy to do time-related things, like `wait` and get the
+    --   current time.
+    CTime
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
     CGod
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data, FromJSONKey, ToJSONKey)
+
+capabilityName :: Capability -> Text
+capabilityName = from @String . map toLower . drop 1 . show
 
 instance ToJSON Capability where
-  toJSON = String . from . map toLower . drop 1 . show
+  toJSON = String . capabilityName
 
 instance FromJSON Capability where
   parseJSON = withText "Capability" tryRead
@@ -118,193 +132,101 @@ instance FromJSON Capability where
       Just c -> return c
       Nothing -> fail $ "Unknown capability " ++ from t
 
--- | A capability context records the capabilities required by the
---   definitions bound to variables.
-type CapCtx = Ctx (Set Capability)
-
--- | Analyze a program to see what capabilities may be needed to
---   execute it. Also return a capability context mapping from any
---   variables declared via 'TDef' to the capabilities needed by
---   their definitions.
---
---   Note that this is necessarily a conservative analysis, especially
---   if the program contains conditional expressions.  Some
---   capabilities may end up not being actually needed if certain
---   commands end up not being executed.  However, the analysis should
---   be safe in the sense that a robot with the indicated capabilities
---   will always be able to run the given program.
-requiredCaps :: CapCtx -> Term -> (Set Capability, CapCtx)
-requiredCaps ctx tm = case tm of
-  -- First, at the top level, we have to keep track of the
-  -- capabilities needed by variables bound with the 'TDef' command.
-
-  -- To make a definition requires the env capability.  Note that the
-  -- act of MAKING the definition does not require the capabilities of
-  -- the body of the definition (including the possibility of the
-  -- recursion capability, if the definition is recursive).  However,
-  -- we also return a map which associates the defined name to the
-  -- capabilities it requires.
-  TDef r x _ t ->
-    let bodyCaps = (if r then S.insert CRecursion else id) (requiredCaps' ctx t)
-     in (S.singleton CEnv, singleton x bodyCaps)
-  TBind _ t1 t2 ->
-    -- First, see what capabilities are required to execute the
-    -- first command.  It may also define some names, so we get a
-    -- map of those names to their required capabilities.
-    let (caps1, ctx1) = requiredCaps ctx t1
-
-        -- Now see what capabilities are required for the second
-        -- command; use an extended context since it may refer to
-        -- things defined in the first command.
-        ctx' = ctx `union` ctx1
-        (caps2, ctx2) = requiredCaps ctx' t2
-     in -- Finally return the union of everything.
-        (caps1 `S.union` caps2, ctx' `union` ctx2)
-  -- Any other term can't bind variables with 'TDef', so we no longer
-  -- need to worry about tracking a returned context.
-  _ -> (requiredCaps' ctx tm, empty)
-
--- | Infer the capabilities required to execute/evaluate a term in a
---   given context, where the term is guaranteed not to contain any
---   'TDef'.
---
---   For function application and let-expressions, we assume that the
---   argument (respectively let-bound expression) is used at least
---   once in the body.  Doing otherwise would require a much more
---   fine-grained analysis where we differentiate between the
---   capabilities needed to *evaluate* versus *execute* any expression
---   (since e.g. an unused let-binding would still incur the
---   capabilities to *evaluate* it), which does not seem worth it at
---   all.
-requiredCaps' :: CapCtx -> Term -> Set Capability
-requiredCaps' ctx = go
- where
-  go tm = case tm of
-    -- Some primitive literals that don't require any special
-    -- capability.
-    TUnit -> S.empty
-    TDir _ -> S.empty
-    TInt _ -> S.empty
-    TAntiInt _ -> S.empty
-    TString _ -> S.empty
-    TAntiString _ -> S.empty
-    TBool _ -> S.empty
-    -- Look up the capabilities required by a function/command
-    -- constants using 'constCaps'.
-    TConst c -> constCaps c
-    -- Note that a variable might not show up in the context, and
-    -- that's OK.  In particular, only variables bound by 'TDef' go
-    -- in the context; variables bound by a lambda or let will not
-    -- be there.
-    TVar x -> fromMaybe S.empty (lookup x ctx)
-    -- A lambda expression requires the 'CLambda' capability, and
-    -- also all the capabilities of the body.  We assume that the
-    -- lambda will eventually get applied, at which point it will
-    -- indeed require the body's capabilities (this is unnecessarily
-    -- conservative if the lambda is never applied, but such a
-    -- program could easily be rewritten without the unused
-    -- lambda). We also don't do anything with the argument: we
-    -- assume that it is used at least once within the body, and the
-    -- capabilities required by any argument will be picked up at
-    -- the application site.  Again, this is overly conservative in
-    -- the case that the argument is unused, but in that case the
-    -- unused argument could be removed.
-    TLam _ _ t -> S.insert CLambda $ go t
-    -- An application simply requires the union of the capabilities
-    -- from the left- and right-hand sides.  This assumes that the
-    -- argument will be used at least once by the function.
-    TApp t1 t2 -> go t1 `S.union` go t2
-    -- Similarly, for a let, we assume that the let-bound expression
-    -- will be used at least once in the body.
-    TLet r _ _ t1 t2 ->
-      (if r then S.insert CRecursion else id) $
-        S.insert CEnv $ go t1 `S.union` go t2
-    -- Everything else is straightforward.
-    TPair t1 t2 -> go t1 `S.union` go t2
-    TBind _ t1 t2 -> go t1 `S.union` go t2
-    TDelay _ t -> go t
-    -- This case should never happen if the term has been
-    -- typechecked; Def commands are only allowed at the top level,
-    -- so simply returning S.empty is safe.
-    TDef {} -> S.empty
-
 -- | Capabilities needed to evaluate or execute a constant.
-constCaps :: Const -> Set Capability
-constCaps =
-  S.fromList . \case
-    -- Some built-in constants that don't require any special capability.
-    Wait -> []
-    Noop -> []
-    AppF -> []
-    Force -> []
-    Return -> []
-    Self -> []
-    Parent -> []
-    Base -> []
-    Setname -> []
-    Undefined -> []
-    ErrorStr -> []
-    -- Some straightforward ones.
-    Log -> [CLog]
-    Selfdestruct -> [CSelfdestruct]
-    Move -> [CMove]
-    Turn -> [CTurn]
-    Grab -> [CGrab]
-    Place -> [CPlace]
-    Give -> [CGive]
-    Install -> [CInstall]
-    Make -> [CMake]
-    Has -> []
-    Count -> [CCount]
-    If -> [CCond]
-    Create -> [CCreate]
-    Blocked -> [CSensefront]
-    Scan -> [CScan]
-    Ishere -> [CSensehere]
-    Upload -> [CScan]
-    Build -> [CBuild]
-    Salvage -> [CSalvage]
-    Reprogram -> [CReprogram]
-    Drill -> [CDrill]
-    -- Some God-like sensing abilities.
-    As -> [CGod]
-    -- String operations, which for now are enabled by CLog
-    Format -> [CLog]
-    Concat -> [CLog]
-    -- Some additional straightforward ones, which however currently
-    -- cannot be used in classic mode since there is no craftable item
-    -- which conveys their capability.
-    Appear -> [CAppear] -- paint?
-    Whereami -> [CSenseloc] -- GPS?
-    Random -> [CRandom] -- randomness device (with bitcoins)?
-    Neg -> [CArith] -- ALU? pocket calculator?
-    Whoami -> [CWhoami] -- mirror, needs a recipe
-
-    -- comparator?
-    Eq -> [CCompare]
-    Neq -> [CCompare]
-    Lt -> [CCompare]
-    Gt -> [CCompare]
-    Leq -> [CCompare]
-    Geq -> [CCompare]
-    And -> []
-    Or -> []
-    Add -> [CArith]
-    Sub -> [CArith]
-    Mul -> [CArith]
-    Div -> [CArith]
-    Exp -> [CArith]
-    -- Some more constants which *ought* to have their own capability but
-    -- currently don't.
-    Say -> []
-    View -> [] -- XXX this should also require something.
-    Run -> [] -- XXX this should also require a capability
-    -- which the base starts out with.
-    Not -> [] -- XXX some kind of boolean logic cap?
-    Inl -> [] -- XXX should require cap for sums
-    Inr -> []
-    Case -> []
-    Fst -> [] -- XXX should require cap for pairs
-    Snd -> []
-    Try -> [] -- XXX these definitely need to require
-    Raise -> [] -- something.
+constCaps :: Const -> Maybe Capability
+constCaps = \case
+  -- ----------------------------------------------------------------
+  -- Some built-in constants that don't require any special capability.
+  Noop -> Nothing
+  AppF -> Nothing
+  Force -> Nothing
+  Return -> Nothing
+  Parent -> Nothing
+  Base -> Nothing
+  Setname -> Nothing
+  Undefined -> Nothing
+  Fail -> Nothing
+  Has -> Nothing
+  Installed -> Nothing
+  -- speaking is natural to robots (unlike listening)
+  Say -> Nothing
+  -- TODO: #495
+  --   the require command will be inlined once the Issue is fixed
+  --   so the capabilities of the run commands will be checked instead
+  Run -> Nothing
+  -- ----------------------------------------------------------------
+  -- Some straightforward ones.
+  Listen -> Just CListen
+  Log -> Just CLog
+  Selfdestruct -> Just CSelfdestruct
+  Move -> Just CMove
+  Turn -> Just CTurn
+  Grab -> Just CGrab
+  Harvest -> Just CHarvest
+  Place -> Just CPlace
+  Give -> Just CGive
+  Install -> Just CInstall
+  Make -> Just CMake
+  Count -> Just CCount
+  If -> Just CCond
+  Blocked -> Just CSensefront
+  Scan -> Just CScan
+  Ishere -> Just CSensehere
+  Upload -> Just CScan
+  Build -> Just CBuild
+  Salvage -> Just CSalvage
+  Reprogram -> Just CReprogram
+  Drill -> Just CDrill
+  Neg -> Just CArith
+  Add -> Just CArith
+  Sub -> Just CArith
+  Mul -> Just CArith
+  Div -> Just CArith
+  Exp -> Just CArith
+  Whoami -> Just CWhoami
+  Self -> Just CWhoami
+  Atomic -> Just CAtomic
+  Time -> Just CTime
+  Wait -> Just CTime
+  -- ----------------------------------------------------------------
+  -- String operations
+  Format -> Just CLog
+  Concat -> Just CLog
+  -- ----------------------------------------------------------------
+  -- Some God-like abilities.
+  As -> Just CGod
+  RobotNamed -> Just CGod
+  RobotNumbered -> Just CGod
+  Create -> Just CGod
+  -- ----------------------------------------------------------------
+  -- arithmetic
+  Eq -> Just CCompare
+  Neq -> Just CCompare
+  Lt -> Just CCompare
+  Gt -> Just CCompare
+  Leq -> Just CCompare
+  Geq -> Just CCompare
+  -- ----------------------------------------------------------------
+  -- boolean logic
+  And -> Just CCond
+  Or -> Just CCond
+  Not -> Just CNegation
+  -- ----------------------------------------------------------------
+  -- Some additional straightforward ones, which however currently
+  -- cannot be used in classic mode since there is no craftable item
+  -- which conveys their capability. TODO: #26
+  Teleport -> Just CTeleport -- Some space-time machine like Tardis?
+  Appear -> Just CAppear -- paint?
+  Whereami -> Just CSenseloc -- GPS?
+  Random -> Just CRandom -- randomness device (with bitcoins)?
+  -- ----------------------------------------------------------------
+  -- Some more constants which *ought* to have their own capability but
+  -- currently don't. TODO: #26
+  View -> Nothing -- XXX this should also require something.
+  Inl -> Nothing -- XXX should require cap for sums
+  Inr -> Nothing
+  Case -> Nothing
+  Fst -> Nothing -- XXX should require cap for pairs
+  Snd -> Nothing
+  Try -> Nothing -- XXX these definitely need to require something.
+  Knows -> Nothing

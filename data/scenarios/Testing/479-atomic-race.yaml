@@ -1,0 +1,84 @@
+# This scenario is specially engineered to almost guarantee a crash
+# due to a race condition in short order.
+#
+#   - The steps per tick is set to 1, so robots are interrupted after
+#     every single step, making bugs due to bad interleaving much more
+#     probable.
+#   - A `weed` entity is used which grows very quickly
+#   - `harvest` is used, which causes more weeds to grow in the same spot
+#   - A crash happens when the planter robot tests for the presence of a weed
+#     and doesn't find one, but then is interrupted and a new weed grows;
+#     then the planter robot crashes when it tries to place a weed.
+#   - The harvesting robot waits a random number of ticks between 1-4 each
+#     time, to give the planting robot time to run into the race condition.
+#
+# This may work slightly less well once we implement #502, but I think it should
+# still work.
+
+name: Grab/harvest/place (with race)
+description: |
+  Make sure we can cause a robot to crash due to a race condition, in order to
+  know that atomic blocks are doing their job.
+  https://github.com/swarm-game/swarm/issues/479
+stepsPerTick: 1
+creative: true
+objectives:
+  - condition: |
+      try {
+        p <- robotNamed "planter";
+        as p {has "Win"}
+      } { return false }
+solution: |
+  def forever = \c. force c ; forever c end
+  def tryharvest =
+    b <- ishere "weed";
+    if b {harvest; n <- random 4; wait n} {}
+  end;
+  forever {tryharvest}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - harvester
+    inventory:
+      - [1, lambda]
+  - name: planter
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - grabber
+    inventory:
+      - [25, weed]
+    program: |
+      def forever = \c. force c ; forever c end
+      def tryplant =
+        b <- ishere "weed";
+        if b {} {place "weed"}
+      end;
+      forever {try {tryplant} {create "Win"}}
+entities:
+  - name: weed
+    display:
+      attr: plant
+      char: 'W'
+    description:
+    - A fast-growing weed.
+    properties: [known, portable, growable]
+    growth: [1,2]
+  - name: Win
+    display:
+      attr: device
+      char: 'W'
+    description:
+      - You win!
+    properties: [known, portable]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+  upperleft: [0,0]
+  map: |
+    .

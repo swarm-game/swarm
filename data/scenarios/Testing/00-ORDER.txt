@@ -1,0 +1,12 @@
+394-build-drill.yaml
+428-drowning-destroy.yaml
+475-wait-one.yaml
+490-harvest.yaml
+504-teleport-self.yaml
+508-capability-subset.yaml
+201-require
+479-atomic-race.yaml
+479-atomic.yaml
+555-teleport-location.yaml
+562-lodestone.yaml
+378-objectives.yaml

@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 
 -- |
@@ -18,17 +20,18 @@ module Swarm.Game.Value (
   Env,
 ) where
 
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Bool (bool)
 import Data.List (foldl')
-import qualified Data.Map as M
-import qualified Data.Set as S
+import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
-import Prelude
-
+import GHC.Generics (Generic)
 import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
+import Prelude
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -82,7 +85,7 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Pretty-print a value.
 prettyValue :: Value -> Text
