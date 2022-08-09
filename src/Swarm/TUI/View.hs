@@ -480,7 +480,7 @@ helpWidget theSeed mport =
       , txt "  - The #swarm IRC channel on Libera.Chat"
       ]
   info =
-    vBox $
+    vBox
       [ txt ("Current seed: " <> into @Text (show theSeed))
       , txt $ case mport of
           Nothing -> "The web server is not running."
