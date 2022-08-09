@@ -40,8 +40,8 @@ app eventHandler =
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
 appMain :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
-appMain port seed scenario toRun cheat = do
-  res <- runExceptT $ initAppState seed scenario toRun cheat
+appMain port mseed scenario toRun cheat = do
+  res <- runExceptT $ initAppState mseed scenario toRun cheat
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
