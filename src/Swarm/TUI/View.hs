@@ -360,9 +360,10 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
     NoMenu -> Just "Quit"
     _ -> Nothing
   descriptionWidth = 100
+  helpWidth = 80
   (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", Nothing, maxModalWindowWidth)
+      HelpModal -> (" Help ", Nothing, helpWidth)
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
@@ -469,8 +470,8 @@ robotsListWidget s = hCenter table
 helpWidget :: Seed -> Maybe Port -> Widget Name
 helpWidget theSeed mport =
   padTop (Pad 1) $
-    hBox . map (padLeftRight 2) $
-      [helpKeys, tips <=> padTop (Pad 1) info]
+    (hBox . map (padLeftRight 2) $ [helpKeys, info])
+      <=> padTop (Pad 1) (hCenter tips)
  where
   tips =
     vBox
@@ -481,14 +482,14 @@ helpWidget theSeed mport =
       ]
   info =
     vBox
-      [ txt ("Current seed: " <> into @Text (show theSeed))
-      , txt $ case mport of
-          Nothing -> "The web server is not running."
-          Just port -> "Web server running on port " <> into @Text (show port)
+      [ txt "Configuration"
+      , txt " "
+      , txt ("Seed: " <> into @Text (show theSeed))
+      , txt ("Web server port: " <> maybe "none" (into @Text . show) mport)
       ]
   helpKeys =
     vBox
-      [ txt "Global Keybindings"
+      [ txt "Keybindings"
       , txt " "
       , mkTable glKeyBindings
       ]
