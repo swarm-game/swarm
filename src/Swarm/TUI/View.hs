@@ -335,7 +335,7 @@ maybeScroll vpName contents =
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
-  HelpModal -> helpWidget (s ^. gameState . seed) Nothing -- XXX save port
+  HelpModal -> helpWidget (s ^. gameState . seed) (s ^. uiState . uiPort)
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList
@@ -481,8 +481,11 @@ helpWidget theSeed mport =
       ]
   info =
     vBox $
-      txt ("Current seed: " <> into @Text (show theSeed)) :
-        [txt $ "Web server running on port: " <> into @Text (show port) | Just port <- [mport]]
+      [ txt ("Current seed: " <> into @Text (show theSeed))
+      , txt $ case mport of
+          Nothing -> "The web server is not running."
+          Just port -> "Web server running on port " <> into @Text (show port)
+      ]
   helpKeys =
     vBox
       [ txt "Global Keybindings"

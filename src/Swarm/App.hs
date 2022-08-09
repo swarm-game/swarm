@@ -41,7 +41,7 @@ app eventHandler =
 --   some communication channels, and runs the UI.
 appMain :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
 appMain port mseed scenario toRun cheat = do
-  res <- runExceptT $ initAppState mseed scenario toRun cheat
+  res <- runExceptT $ initAppState port mseed scenario toRun cheat
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
@@ -85,12 +85,13 @@ appMain port mseed scenario toRun cheat = do
 -- This is useful to live update the code using `ghcid -W --test "Swarm.App.demoWeb"`
 demoWeb :: IO ()
 demoWeb = do
-  res <- runExceptT $ initAppState Nothing demoScenario Nothing True
+  let demoPort = 8080
+  res <- runExceptT $ initAppState (Just demoPort) Nothing demoScenario Nothing True
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
       gsRef <- newIORef (s ^. gameState)
-      webMain Nothing 8080 gsRef
+      webMain Nothing demoPort gsRef
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 
