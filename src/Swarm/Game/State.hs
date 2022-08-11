@@ -44,6 +44,7 @@ module Swarm.Game.State (
   messageNotifications,
   allDiscoveredEntities,
   gensym,
+  seed,
   randGen,
   adjList,
   nameList,
@@ -261,6 +262,7 @@ data GameState = GameState
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
   , _gensym :: Int
+  , _seed :: Seed
   , _randGen :: StdGen
   , _adjList :: Array Int Text
   , _nameList :: Array Int Text
@@ -370,6 +372,10 @@ waitingRobots = internalWaitingRobots
 
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
+
+-- | The initial seed that was used for the random number generator,
+--   and world generation.
+seed :: Lens' GameState Seed
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
@@ -660,6 +666,7 @@ initGameState = do
       , _activeRobots = IS.empty
       , _waitingRobots = M.empty
       , _gensym = 0
+      , _seed = 0
       , _randGen = mkStdGen 0
       , _adjList = listArray (0, length adjs - 1) adjs
       , _nameList = listArray (0, length names - 1) names
@@ -686,7 +693,7 @@ scenarioToGameState scenario userSeed toRun g = do
   --   1. seed value provided by the user
   --   2. seed value specified in the scenario description
   --   3. randomly chosen seed value
-  seed <- case userSeed <|> scenario ^. scenarioSeed of
+  theSeed <- case userSeed <|> scenario ^. scenarioSeed of
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)
 
@@ -707,11 +714,12 @@ scenarioToGameState scenario userSeed toRun g = do
       , _availableCommands = Notifications 0 initialCommands
       , _waitingRobots = M.empty
       , _gensym = initGensym
-      , _randGen = mkStdGen seed
+      , _seed = theSeed
+      , _randGen = mkStdGen theSeed
       , _entityMap = em
       , _recipesOut = addRecipesWith outRecipeMap recipesOut
       , _recipesIn = addRecipesWith inRecipeMap recipesIn
-      , _world = theWorld seed
+      , _world = theWorld theSeed
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
       , _needsRedraw = False

@@ -11,7 +11,7 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens ((^.))
+import Control.Lens ((&), (.~), (^.))
 import Control.Monad.Except
 import Data.IORef (newIORef, writeIORef)
 import Data.Text.IO qualified as T
@@ -40,8 +40,8 @@ app eventHandler =
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
 appMain :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
-appMain port seed scenario toRun cheat = do
-  res <- runExceptT $ initAppState seed scenario toRun cheat
+appMain port mseed scenario toRun cheat = do
+  res <- runExceptT $ initAppState mseed scenario toRun cheat
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
@@ -67,30 +67,33 @@ appMain port seed scenario toRun cheat = do
 
       -- Start the web service with a reference to the game state
       gsRef <- newIORef (s ^. gameState)
-      Swarm.Web.startWebThread port gsRef
+      mport <- Swarm.Web.startWebThread port gsRef
+
+      let s' = s & uiState . uiPort .~ mport
 
       -- Update the reference for every event
       let eventHandler e = do
-            s' <- get
-            liftIO $ writeIORef gsRef (s' ^. gameState)
+            curSt <- get
+            liftIO $ writeIORef gsRef (curSt ^. gameState)
             handleEvent e
 
       -- Run the app.
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
       V.setMode (V.outputIface initialVty) V.Mouse True
-      void $ customMain initialVty buildVty (Just chan) (app eventHandler) s
+      void $ customMain initialVty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
 -- This is useful to live update the code using `ghcid -W --test "Swarm.App.demoWeb"`
 demoWeb :: IO ()
 demoWeb = do
+  let demoPort = 8080
   res <- runExceptT $ initAppState Nothing demoScenario Nothing True
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
       gsRef <- newIORef (s ^. gameState)
-      webMain Nothing 8080 gsRef
+      webMain Nothing demoPort gsRef
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 

@@ -66,6 +66,7 @@ module Swarm.TUI.Model (
 
   -- ** UI Model
   UIState,
+  uiPort,
   uiMenu,
   uiPlaying,
   uiNextScenario,
@@ -147,6 +148,7 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario)
@@ -451,7 +453,8 @@ makePrisms ''InventoryListEntry
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
 data UIState = UIState
-  { _uiMenu :: Menu
+  { _uiPort :: Maybe Port
+  , _uiMenu :: Menu
   , _uiPlaying :: Bool
   , _uiNextScenario :: Maybe Scenario
   , _uiCheatMode :: Bool
@@ -500,6 +503,9 @@ let exclude = ['_lgTicksPerSecond]
             if n `elem` exclude then [] else fn n
       )
       ''UIState
+
+-- | The port on which the HTTP debug service is running.
+uiPort :: Lens' UIState (Maybe Port)
 
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
@@ -704,7 +710,8 @@ initUIState showMainMenu cheatMode = liftIO $ do
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      { _uiPort = Nothing
+      , _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiPlaying = not showMainMenu
       , _uiNextScenario = Nothing
       , _uiCheatMode = cheatMode
