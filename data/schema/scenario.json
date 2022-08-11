@@ -33,6 +33,16 @@
             "default": [],
             "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json"
         },
+        "known": {
+            "description": "A list of names of standard or custom entities which should have the Known property added to them; that is, robots should know what they are without having to scan them.",
+            "default": [],
+            "type": "array",
+            "items": [
+                {
+                    "type": "string"
+                }
+            ]
+        },
         "world": {
             "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json"
         },
