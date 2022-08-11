@@ -65,7 +65,8 @@ import Data.Char (isSpace)
 import Data.List ((\\))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (listToMaybe)
+import Data.Maybe (isNothing, listToMaybe)
+import Data.Semigroup (Endo (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -250,21 +251,34 @@ makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 
 instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
+    -- parse custom entities
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
-    rs <- withE em (v ..: "robots")
-    let rsMap = buildRobotMap rs
-    Scenario
-      <$> liftE (v .: "name")
-      <*> liftE (v .:? "description" .!= "")
-      <*> liftE (v .:? "creative" .!= False)
-      <*> liftE (v .:? "seed")
-      <*> pure em
-      <*> withE em (v ..:? "recipes" ..!= [])
-      <*> withE em (localE (,rsMap) (v ..: "world"))
-      <*> pure rs
-      <*> liftE (v .:? "objectives" .!= [])
-      <*> liftE (v .:? "solution")
-      <*> liftE (v .:? "stepsPerTick")
+    -- extend ambient EntityMap with custom entities
+    withE em $ do
+      known <- liftE (v .:? "known" .!= [])
+      em' <- getE
+      case filter (isNothing . (`lookupEntityName` em')) known of
+        [] -> return ()
+        unk -> fail . into @String $ "Unknown entities in 'known' list: " <> T.intercalate ", " unk
+      let reveal name = filtered ((== name) . view entityName) . entityProperties %~ (Known :)
+          revealEM name (EntityMap byN byC) =
+            EntityMap (byN & traverse %~ reveal name) (byC & traverse . traverse %~ reveal name)
+          revealKnown = appEndo . mconcat . map (Endo . revealEM) $ known
+      localE revealKnown $ do
+        rs <- v ..: "robots"
+        let rsMap = buildRobotMap rs
+        Scenario
+          <$> liftE (v .: "name")
+          <*> liftE (v .:? "description" .!= "")
+          <*> liftE (v .:? "creative" .!= False)
+          <*> liftE (v .:? "seed")
+          <*> pure em
+          <*> v ..:? "recipes" ..!= []
+          <*> localE (,rsMap) (v ..: "world")
+          <*> pure rs
+          <*> liftE (v .:? "objectives" .!= [])
+          <*> liftE (v .:? "solution")
+          <*> liftE (v .:? "stepsPerTick")
 
 --------------------------------------------------
 -- Lenses
