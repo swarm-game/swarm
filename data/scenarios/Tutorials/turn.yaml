@@ -19,13 +19,6 @@ objectives:
         return (loc == (3,4))
       } { return false }
 entities:
-  - name: knownflower
-    display:
-      attr: flower
-      char: '*'
-    description:
-    - A flower.
-    properties: [known]
   - name: left T
     display:
       attr: entity
@@ -54,6 +47,7 @@ robots:
       - treads
       - compass
       - logger
+known: [flower]
 world:
   default: [blank]
   palette:
@@ -67,7 +61,7 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
-    '*': [grass, knownflower]
+    '*': [grass, flower]
   upperleft: [-1, 5]
   map: |
     ┌────┐

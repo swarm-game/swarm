@@ -31,30 +31,6 @@ entities:
     description:
       - If you have this, you win!
     properties: [known, portable]
-  - name: knownwater
-    display:
-      attr: water
-      char: '~'
-    description:
-    - A running stream of of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-  - name: knowntree
-    display:
-      attr: plant
-      char: 'T'
-    description:
-    - A tree.
-    properties: [known, portable, growable]
-    growth: [0,0]
-  - name: knownmountain
-    display:
-      attr: snow
-      char: 'A'
-    description:
-    - A mountain.
-    properties: [known, unwalkable]
-    growth: [0,0]
 solution: |
   run "data/scenarios/Tutorials/crash-solution.sw"
 robots:
@@ -90,15 +66,16 @@ robots:
     system: true
     program: |
       run "data/scenarios/Tutorials/crash-secret.sw"
+known: [water, tree, mountain]
 world:
   default: [blank]
   palette:
     'Ω': [grass, null, base]
     '!': [grass, null, secret]
     '.': [grass]
-    '~': [ice, knownwater]
-    'T': [grass, knowntree]
-    'A': [stone, knownmountain]
+    '~': [ice, water]
+    'T': [grass, tree]
+    'A': [stone, mountain]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]

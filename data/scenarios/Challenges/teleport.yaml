@@ -56,13 +56,14 @@ robots:
         basePos <- as base {whereami};
         if (myPos == basePos) {teleport base destPos} {};
       );
+known: [water, wavy water, flower, tree]
 world:
-  default: [ice, knownwater]
+  default: [ice, water]
   palette:
-    ' ': [ice, knownwater]
-    '~': [ice, knownwavywater]
-    '*': [grass, knownflower]
-    'T': [grass, knowntree]
+    ' ': [ice, water]
+    '~': [ice, wavy water]
+    '*': [grass, flower]
+    'T': [grass, tree]
     '.': [grass]
     '_': [stone]
     '┌': [stone, upper left corner]
@@ -81,40 +82,3 @@ world:
     └┐.....┌───┐*...T┌┘ ~
     ~└─────┘ ~~└─────┘~  
     ~~~   ~        ~    ~
-entities:
-  ## KNOWN ENTITIES
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-  - name: knownwavywater
-    display:
-      attr: water
-      char: '~'
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-  - name: knowntree
-    display:
-      attr: plant
-      char: 'T'
-    description:
-    - A tree.
-    properties: [portable, growable, known]
-    yields: tree
-    growth: [500, 600]
-  - name: knownflower
-    display:
-      attr: flower
-      char: '*'
-    description:
-    - A flower.
-    yields: flower
-    properties: [known]
