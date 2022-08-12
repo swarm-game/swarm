@@ -272,7 +272,7 @@ instance FromJSONE EntityMap Scenario where
           <*> liftE (v .:? "description" .!= "")
           <*> liftE (v .:? "creative" .!= False)
           <*> liftE (v .:? "seed")
-          <*> pure em
+          <*> pure (revealKnown em)
           <*> v ..:? "recipes" ..!= []
           <*> localE (,rsMap) (v ..: "world")
           <*> pure rs
