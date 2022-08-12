@@ -721,6 +721,7 @@ displayLoc g coords =
 
   known e =
     e `hasProperty` Known
+      || (e ^. entityName) `elem` (g ^. knownEntities)
       || case hidingMode g of
         HideAllEntities -> False
         HideNoEntity -> True

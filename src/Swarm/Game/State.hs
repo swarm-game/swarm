@@ -52,6 +52,7 @@ module Swarm.Game.State (
   recipesOut,
   recipesIn,
   scenarios,
+  knownEntities,
   world,
   viewCenterRule,
   viewCenter,
@@ -270,6 +271,7 @@ data GameState = GameState
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
   , _scenarios :: ScenarioCollection
+  , _knownEntities :: [Text]
   , _world :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: V2 Int64
@@ -399,6 +401,10 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' GameState ScenarioCollection
+
+-- | The names of entities that should be considered "known", that is,
+--   robots know what they are without having to scan them.
+knownEntities :: Lens' GameState [Text]
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').  Int is used instead of
@@ -674,6 +680,7 @@ initGameState = do
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
       , _scenarios = loadedScenarios
+      , _knownEntities = []
       , _world = W.emptyWorld (fromEnum StoneT)
       , _viewCenterRule = VCRobot 0
       , _viewCenter = V2 0 0
@@ -719,6 +726,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _entityMap = em
       , _recipesOut = addRecipesWith outRecipeMap recipesOut
       , _recipesIn = addRecipesWith inRecipeMap recipesIn
+      , _knownEntities = scenario ^. scenarioKnown
       , _world = theWorld theSeed
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
