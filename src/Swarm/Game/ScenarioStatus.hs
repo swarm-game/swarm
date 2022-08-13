@@ -131,6 +131,8 @@ scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 
 -- | The best status of the scenario.
 scenarioBest :: Lens' ScenarioInfo ScenarioStatus
+
+-- | Update the current @ScenarioInfo@ record when quitting a game.
 updateScenarioInfoOnQuit :: ZonedTime -> Bool -> ScenarioInfo -> ScenarioInfo
 updateScenarioInfoOnQuit z completed (ScenarioInfo p s b) = case s of
   InProgress start _ ->
