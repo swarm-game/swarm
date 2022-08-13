@@ -163,29 +163,6 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
   Just (SICollection _ c) -> c
   _ -> error "No tutorials exist!"
 
--- | Load a 'Scenario' and start playing the game.
-startGame :: Scenario -> ScenarioInfo -> EventM Name AppState ()
-startGame scene si = do
-  menu <- use $ uiState . uiMenu
-  t <- liftIO getZonedTime
-  ss <- use $ gameState . scenarios
-  p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
-  liftIO . appendFile "/tmp/debug" $ "TODO: C - Scenario in progress " <> p <> "\n"
-  liftIO . appendFile "/tmp/debug" $ "TODO: C - Originally " <> si ^. scenarioPath <> "\n"
-  gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0
-  case menu of
-    NewGameMenu (curMenu :| _) ->
-      let nextMenuList = BL.listMoveDown curMenu
-          isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
-          nextScenario =
-            if isLastScenario
-              then Nothing
-              else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
-       in uiState . uiNextScenario .= nextScenario
-    _ -> uiState . uiNextScenario .= Nothing
-  scenarioToAppState scene Nothing Nothing
-
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown

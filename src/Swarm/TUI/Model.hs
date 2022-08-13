@@ -119,6 +119,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
+  startGame,
   scenarioToAppState,
   Seed,
 
@@ -158,6 +159,7 @@ import Swarm.Game.ScenarioStatus (
   normalizeScenarioPath,
   scenarioItemByPath,
   scenarioStatus,
+  scenarioPath,
   _SISingle,
  )
 import Swarm.Game.State
@@ -817,7 +819,9 @@ initAppState userSeed scenarioName toRun cheatMode = do
   ui <- initUIState (not skipMenu) cheatMode
   case skipMenu of
     False -> return $ AppState gs ui
-    True -> do
+    True ->
+
+      do
       (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
       as <- liftIO $ execStateT (scenarioToAppState scenario userSeed toRun) (AppState gs ui)
       normalPath <- liftIO $ normalizeScenarioPath (as ^. gameState . scenarios) path
@@ -828,6 +832,29 @@ initAppState userSeed scenarioName toRun cheatMode = do
         as
           & gameState . currentScenarioPath ?~ normalPath
           & gameState . scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0
+
+-- | Load a 'Scenario' and start playing the game.
+startGame :: Scenario -> ScenarioInfo -> EventM Name AppState ()
+startGame scene si = do
+  menu <- use $ uiState . uiMenu
+  t <- liftIO getZonedTime
+  ss <- use $ gameState . scenarios
+  p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
+  liftIO . appendFile "/tmp/debug" $ "TODO: C - Scenario in progress " <> p <> "\n"
+  liftIO . appendFile "/tmp/debug" $ "TODO: C - Originally " <> si ^. scenarioPath <> "\n"
+  gameState . currentScenarioPath .= Just p
+  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0
+  case menu of
+    NewGameMenu (curMenu :| _) ->
+      let nextMenuList = BL.listMoveDown curMenu
+          isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
+          nextScenario =
+            if isLastScenario
+              then Nothing
+              else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
+       in uiState . uiNextScenario .= nextScenario
+    _ -> uiState . uiNextScenario .= Nothing
+  scenarioToAppState scene Nothing Nothing
 
 -- XXX do we need to keep an old entity map around???
 
