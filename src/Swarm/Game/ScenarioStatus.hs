@@ -18,7 +18,7 @@ module Swarm.Game.ScenarioStatus (
   _NotStarted,
   _InProgress,
   _Complete,
-  ScenarioInfo(..),
+  ScenarioInfo (..),
   scenarioPath,
   scenarioStatus,
   scenarioBest,
