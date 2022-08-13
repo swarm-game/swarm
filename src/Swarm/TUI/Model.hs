@@ -153,7 +153,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, loadScenario)
 import Swarm.Game.ScenarioStatus (
-  ScenarioInfo,
+  ScenarioInfo (..),
   ScenarioItem,
   ScenarioStatus (..),
   normalizeScenarioPath,
@@ -819,22 +819,14 @@ initAppState userSeed scenarioName toRun cheatMode = do
   ui <- initUIState (not skipMenu) cheatMode
   case skipMenu of
     False -> return $ AppState gs ui
-    True ->
-
-      do
+    True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
-      as <- liftIO $ execStateT (scenarioToAppState scenario userSeed toRun) (AppState gs ui)
-      normalPath <- liftIO $ normalizeScenarioPath (as ^. gameState . scenarios) path
-      liftIO . appendFile "/tmp/debug" $ "TODO: M - Scenario in progress " <> normalPath <> "\n"
-      liftIO . appendFile "/tmp/debug" $ "TODO: M - Originally " <> path <> "\n"
-      t <- liftIO getZonedTime
-      return $
-        as
-          & gameState . currentScenarioPath ?~ normalPath
-          & gameState . scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0
+      execStateT
+        (startGame scenario (ScenarioInfo path NotStarted NotStarted))
+        (AppState gs ui)
 
 -- | Load a 'Scenario' and start playing the game.
-startGame :: Scenario -> ScenarioInfo -> EventM Name AppState ()
+startGame :: (MonadIO m, MonadState AppState m) => Scenario -> ScenarioInfo -> m ()
 startGame scene si = do
   menu <- use $ uiState . uiMenu
   t <- liftIO getZonedTime
