@@ -329,9 +329,7 @@ loadScenario scenario em = do
     Nothing -> throwError @Text $ "Scenario not found: " <> from @String scenario
     Just fileName -> (,fileName) <$> loadScenarioFile em fileName
 
--- | Load a scenario from a file.  The @Maybe Seed@ argument is a
---   seed provided by the user (either on the command line, or
---   specified through the UI), if any.
+-- | Load a scenario from a file.
 loadScenarioFile ::
   (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
   EntityMap ->
