@@ -361,26 +361,29 @@ handleModalEvent = \case
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 
-saveScenarioInfoOnQuit :: EventM Name AppState ()
+saveScenarioInfoOnQuit :: (MonadIO m, MonadFail m, MonadState AppState m) => m ()
 saveScenarioInfoOnQuit = do
-  -- the path should be normalized and good to search in scenario collection
-  Just p' <- use $ gameState . currentScenarioPath
-  gs <- use $ gameState . scenarios
-  p <- liftIO $ normalizeScenarioPath gs p'
-  liftIO . appendFile "/tmp/debug" $ "TODO: C - Saving the scenario info of " <> p <> "\n"
-  liftIO . appendFile "/tmp/debug" $ "TODO: C- Originally " <> p' <> "\n"
-  sc <- use $ gameState . scenarios
-  mapM_ (\k -> liftIO . appendFile "/tmp/debug" $ "TODO: C - Map key: " <> k <> "\n") (M.keys $ scMap sc)
-  t <- liftIO getZonedTime
-  won <- isJust <$> preuse (gameState . winCondition . _Won)
-  let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
-  currentScenarioInfo %= updateScenarioInfoOnQuit t won
-  status <- preuse currentScenarioInfo
-  liftIO . appendFile "/tmp/debug" $ "TODO: new status: " <> show status <> "\n"
-  case status of
-    Nothing -> liftIO . appendFile "/tmp/debug" $ "TODO: Could not update the scenario info of " <> p <> "\n"
-    Just si -> liftIO $ saveScenarioInfo p si
+  -- Don't save progress if we are in cheat mode
+  cheat <- use $ uiState . uiCheatMode
+  unless cheat $ do
+    -- the path should be normalized and good to search in scenario collection
+    Just p' <- use $ gameState . currentScenarioPath
+    gs <- use $ gameState . scenarios
+    p <- liftIO $ normalizeScenarioPath gs p'
+    liftIO . appendFile "/tmp/debug" $ "TODO: C - Saving the scenario info of " <> p <> "\n"
+    liftIO . appendFile "/tmp/debug" $ "TODO: C- Originally " <> p' <> "\n"
+    sc <- use $ gameState . scenarios
+    mapM_ (\k -> liftIO . appendFile "/tmp/debug" $ "TODO: C - Map key: " <> k <> "\n") (M.keys $ scMap sc)
+    t <- liftIO getZonedTime
+    won <- isJust <$> preuse (gameState . winCondition . _Won)
+    let currentScenarioInfo :: Traversal' AppState ScenarioInfo
+        currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
+    currentScenarioInfo %= updateScenarioInfoOnQuit t won
+    status <- preuse currentScenarioInfo
+    liftIO . appendFile "/tmp/debug" $ "TODO: new status: " <> show status <> "\n"
+    case status of
+      Nothing -> liftIO . appendFile "/tmp/debug" $ "TODO: Could not update the scenario info of " <> p <> "\n"
+      Just si -> liftIO $ saveScenarioInfo p si
 
 -- | Quit a game.
 --
