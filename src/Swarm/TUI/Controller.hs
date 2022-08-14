@@ -361,6 +361,7 @@ handleModalEvent = \case
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 
+-- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadFail m, MonadState AppState m) => m ()
 saveScenarioInfoOnQuit = do
   -- Don't save progress if we are in cheat mode
