@@ -45,6 +45,7 @@ module Swarm.Game.State (
   messageNotifications,
   allDiscoveredEntities,
   gensym,
+  seed,
   randGen,
   adjList,
   nameList,
@@ -53,6 +54,7 @@ module Swarm.Game.State (
   recipesIn,
   scenarios,
   currentScenarioPath,
+  knownEntities,
   world,
   viewCenterRule,
   viewCenter,
@@ -264,6 +266,7 @@ data GameState = GameState
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
   , _gensym :: Int
+  , _seed :: Seed
   , _randGen :: StdGen
   , _adjList :: Array Int Text
   , _nameList :: Array Int Text
@@ -272,6 +275,7 @@ data GameState = GameState
   , _recipesIn :: IntMap [Recipe Entity]
   , _scenarios :: ScenarioCollection
   , _currentScenarioPath :: Maybe FilePath
+  , _knownEntities :: [Text]
   , _world :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: V2 Int64
@@ -375,6 +379,10 @@ waitingRobots = internalWaitingRobots
 -- | A counter used to generate globally unique IDs.
 gensym :: Lens' GameState Int
 
+-- | The initial seed that was used for the random number generator,
+--   and world generation.
+seed :: Lens' GameState Seed
+
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
 
@@ -403,6 +411,10 @@ scenarios :: Lens' GameState ScenarioCollection
 -- This is useful as an index to 'scenarios' collection,
 -- see 'Swarm.Game.ScenarioStatus.scenarioItemByPath'.
 currentScenarioPath :: Lens' GameState (Maybe FilePath)
+
+-- | The names of entities that should be considered "known", that is,
+--   robots know what they are without having to scan them.
+knownEntities :: Lens' GameState [Text]
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').  Int is used instead of
@@ -549,7 +561,7 @@ viewingRegion :: GameState -> (Int64, Int64) -> (W.Coords, W.Coords)
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   V2 cx cy = g ^. viewCenter
-  (rmin, rmax) = over both (+ (- cy - h `div` 2)) (0, h - 1)
+  (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
 -- | Find out which robot has been last specified by the
@@ -670,6 +682,7 @@ initGameState = do
       , _activeRobots = IS.empty
       , _waitingRobots = M.empty
       , _gensym = 0
+      , _seed = 0
       , _randGen = mkStdGen 0
       , _adjList = listArray (0, length adjs - 1) adjs
       , _nameList = listArray (0, length names - 1) names
@@ -678,6 +691,7 @@ initGameState = do
       , _recipesIn = inRecipeMap recipes
       , _scenarios = loadedScenarios
       , _currentScenarioPath = Nothing
+      , _knownEntities = []
       , _world = W.emptyWorld (fromEnum StoneT)
       , _viewCenterRule = VCRobot 0
       , _viewCenter = V2 0 0
@@ -697,7 +711,7 @@ scenarioToGameState scenario userSeed toRun g = do
   --   1. seed value provided by the user
   --   2. seed value specified in the scenario description
   --   3. randomly chosen seed value
-  seed <- case userSeed <|> scenario ^. scenarioSeed of
+  theSeed <- case userSeed <|> scenario ^. scenarioSeed of
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)
 
@@ -718,11 +732,13 @@ scenarioToGameState scenario userSeed toRun g = do
       , _availableCommands = Notifications 0 initialCommands
       , _waitingRobots = M.empty
       , _gensym = initGensym
-      , _randGen = mkStdGen seed
+      , _seed = theSeed
+      , _randGen = mkStdGen theSeed
       , _entityMap = em
       , _recipesOut = addRecipesWith outRecipeMap recipesOut
       , _recipesIn = addRecipesWith inRecipeMap recipesIn
-      , _world = theWorld seed
+      , _knownEntities = scenario ^. scenarioKnown
+      , _world = theWorld theSeed
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
       , _needsRedraw = False

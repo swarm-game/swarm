@@ -26,6 +26,7 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
+import Data.Maybe (fromMaybe)
 import Network.Wai qualified
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
@@ -55,9 +56,7 @@ webMain baton port gsRef = do
   Warp.runSettings settings app
  where
   onReady = case baton of
-    Just mv -> Warp.setBeforeMainLoop $ do
-      putStrLn $ "Web interface listening on :" <> show port
-      putMVar mv ()
+    Just mv -> Warp.setBeforeMainLoop $ putMVar mv ()
     Nothing -> id
   app :: Network.Wai.Application
   app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
@@ -65,21 +64,22 @@ webMain baton port gsRef = do
 defaultPort :: Warp.Port
 defaultPort = 5357
 
-startWebThread :: Maybe Warp.Port -> IORef GameState -> IO ()
+-- | Attempt to start a web thread on the requested port, or a default
+--   one if none is requested (or don't start a web thread if the
+--   requested port is 0).  If an explicit port was requested, fail if
+--   startup doesn't work.  Otherwise, ignore the failure.  In any
+--   case, return a @Maybe Port@ value representing whether a web
+--   server is actually running, and if so, what port it is on.
+startWebThread :: Maybe Warp.Port -> IORef GameState -> IO (Maybe Warp.Port)
+-- User explicitly provided port '0': don't run the web server
+startWebThread (Just 0) _ = pure Nothing
 startWebThread portM gsRef = do
-  res <- go
-  case res of
-    Nothing -> fail "Fail to start the web api"
-    Just _ -> pure ()
- where
-  go = case portM of
-    Just 0 -> pure (Just ())
-    Just port -> do
-      -- The user provided a port, so we ensure the api does starts
-      baton <- newEmptyMVar
-      void $ forkIO $ webMain (Just baton) port gsRef
-      timeout 500_000 (takeMVar baton)
-    Nothing -> do
-      -- No port was given, the api may fail to start
-      void $ forkIO $ webMain Nothing defaultPort gsRef
-      pure (Just ())
+  baton <- newEmptyMVar
+  let port = fromMaybe defaultPort portM
+  void $ forkIO $ webMain (Just baton) port gsRef
+  res <- timeout 500_000 (takeMVar baton)
+  case (portM, res) of
+    -- User requested explicit port but server didn't start: fail
+    (Just _, Nothing) -> fail $ "Failed to start the web API  on :" <> show port
+    -- Otherwise, just report whether the server is running, and if so, on what port
+    _ -> return (port <$ res)
