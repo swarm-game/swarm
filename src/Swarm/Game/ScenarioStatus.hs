@@ -85,12 +85,16 @@ data ScenarioStatus
         _scenarioStarted :: ZonedTime
       , -- | Time elapsed until quitting the scenario.
         _scenarioElapsed :: NominalDiffTime
+      , -- | Ticks elapsed until quitting the scenario.
+        _scenarioElapsedTicks :: Integer
       }
   | Complete
       { -- | Time when the scenario was started including time zone.
         _scenarioStarted :: ZonedTime
       , -- | Time elapsed until quitting the scenario.
         _scenarioElapsed :: NominalDiffTime
+      , -- | Ticks elapsed until quitting the scenario.
+        _scenarioElapsedTicks :: Integer
       }
   deriving (Eq, Ord, Show, Read, Generic)
 
@@ -133,14 +137,14 @@ scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 scenarioBest :: Lens' ScenarioInfo ScenarioStatus
 
 -- | Update the current @ScenarioInfo@ record when quitting a game.
-updateScenarioInfoOnQuit :: ZonedTime -> Bool -> ScenarioInfo -> ScenarioInfo
-updateScenarioInfoOnQuit z completed (ScenarioInfo p s b) = case s of
-  InProgress start _ ->
+updateScenarioInfoOnQuit :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
+updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s b) = case s of
+  InProgress start _ _ ->
     let el = (diffUTCTime `on` zonedTimeToUTC) z start
-        cur = (if completed then Complete else InProgress) start el
+        cur = (if completed then Complete else InProgress) start el ticks
         best = case b of
-          Complete _bs bel | not completed || bel <= el -> b -- keep faster completed
-          InProgress _is iel | not completed && iel > el -> b -- keep longer progress (fun!)
+          Complete _bs bel _ | not completed || bel <= el -> b -- keep faster completed
+          InProgress _is iel _ | not completed && iel > el -> b -- keep longer progress (fun!)
           _ -> cur -- otherwise update with current
      in ScenarioInfo p cur best
   _ -> error "Logical error: trying to quit scenario which is not in progress!"

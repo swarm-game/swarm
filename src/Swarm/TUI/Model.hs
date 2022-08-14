@@ -835,7 +835,7 @@ startGame scene si = do
   liftIO . appendFile "/tmp/debug" $ "TODO: C - Scenario in progress " <> p <> "\n"
   liftIO . appendFile "/tmp/debug" $ "TODO: C - Originally " <> si ^. scenarioPath <> "\n"
   gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0
+  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
   case menu of
     NewGameMenu (curMenu :| _) ->
       let nextMenuList = BL.listMoveDown curMenu

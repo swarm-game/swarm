@@ -152,7 +152,8 @@ drawNewGameMenuUI (l :| ls) =
   describeStatus = \case
     NotStarted -> txt "none"
     InProgress {} -> withAttr yellowAttr $ txt "in progress"
-    Complete _s e -> withAttr greenAttr . txt . T.pack $ "completed in " <> formatTimeDiff e
+    Complete _s e _t -> withAttr greenAttr . txt . T.pack $ "completed in " <> formatTimeDiff e
+    -- XXX show ticks?
 
   formatTimeDiff :: NominalDiffTime -> String
   formatTimeDiff = formatTime defaultTimeLocale "%hh %mmin %ssec"

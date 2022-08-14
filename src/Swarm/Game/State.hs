@@ -827,7 +827,7 @@ initGameStateForScenario sceneName userSeed toRun = do
   return $
     gs
       & currentScenarioPath ?~ normalPath
-      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0
+      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0 0
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.
