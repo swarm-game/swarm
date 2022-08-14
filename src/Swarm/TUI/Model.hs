@@ -158,8 +158,8 @@ import Swarm.Game.ScenarioStatus (
   ScenarioStatus (..),
   normalizeScenarioPath,
   scenarioItemByPath,
-  scenarioStatus,
   scenarioPath,
+  scenarioStatus,
   _SISingle,
  )
 import Swarm.Game.State
