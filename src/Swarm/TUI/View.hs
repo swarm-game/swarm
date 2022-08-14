@@ -47,10 +47,12 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
+import Control.Monad (guard)
 import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
+import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
 import Data.List qualified as L
@@ -90,8 +92,6 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
-import Control.Monad (guard)
-import Data.Functor (($>))
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -148,25 +148,27 @@ drawNewGameMenuUI (l :| ls) =
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case s ^. scenarioObjectives of
     [] -> txt "   "
-    _  -> case si ^. scenarioBest of
+    _ -> case si ^. scenarioBest of
       NotStarted -> txt " o "
       InProgress {} -> withAttr yellowAttr $ txt "..."
       Complete {} -> withAttr greenAttr $ txt " ✓ "
 
   describeStatus = \case
     NotStarted -> txt "none"
-    InProgress _s e _t -> withAttr yellowAttr . vBox $
-      [ txt "in progress"
-      , txt $ "(played for " <> formatTimeDiff e <> ")"
-      ]
-    Complete _s e t -> withAttr greenAttr . vBox $
-      [ txt $ "completed in " <> formatTimeDiff e
-      , hBox
-        [ txt "("
-        , drawTime t True
-        , txt " ticks)"
+    InProgress _s e _t ->
+      withAttr yellowAttr . vBox $
+        [ txt "in progress"
+        , txt $ "(played for " <> formatTimeDiff e <> ")"
         ]
-      ]
+    Complete _s e t ->
+      withAttr greenAttr . vBox $
+        [ txt $ "completed in " <> formatTimeDiff e
+        , hBox
+            [ txt "("
+            , drawTime t True
+            , txt " ticks)"
+            ]
+        ]
 
   formatTimeDiff :: NominalDiffTime -> Text
   formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %mm %ss"
