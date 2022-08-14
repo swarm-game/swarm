@@ -149,16 +149,22 @@ drawNewGameMenuUI (l :| ls) =
   drawStatusInfo si = case si ^. scenarioBest of
     NotStarted -> txt " o "
     InProgress {} -> withAttr yellowAttr $ txt "..."
-    Complete {} -> withAttr greenAttr $ txt " x "
+    Complete {} -> withAttr greenAttr $ txt " ✓ "
 
   describeStatus = \case
     NotStarted -> txt "none"
     InProgress {} -> withAttr yellowAttr $ txt "in progress"
-    Complete _s e _t -> withAttr greenAttr . txt . T.pack $ "completed in " <> formatTimeDiff e
-    -- XXX show ticks?
+    Complete _s e t -> withAttr greenAttr . vBox $
+      [ txt . T.pack $ "completed in " <> formatTimeDiff e
+      , hBox
+        [ txt "("
+        , drawTime t True
+        , txt " ticks)"
+        ]
+      ]
 
   formatTimeDiff :: NominalDiffTime -> String
-  formatTimeDiff = formatTime defaultTimeLocale "%hh %mmin %ssec"
+  formatTimeDiff = formatTime defaultTimeLocale "%hh %mm %ss"
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
