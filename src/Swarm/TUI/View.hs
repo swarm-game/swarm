@@ -155,9 +155,12 @@ drawNewGameMenuUI (l :| ls) =
 
   describeStatus = \case
     NotStarted -> txt "none"
-    InProgress {} -> withAttr yellowAttr $ txt "in progress"
+    InProgress _s e _t -> withAttr yellowAttr . vBox $
+      [ txt "in progress"
+      , txt $ "(played for " <> formatTimeDiff e <> ")"
+      ]
     Complete _s e t -> withAttr greenAttr . vBox $
-      [ txt . T.pack $ "completed in " <> formatTimeDiff e
+      [ txt $ "completed in " <> formatTimeDiff e
       , hBox
         [ txt "("
         , drawTime t True
@@ -165,8 +168,8 @@ drawNewGameMenuUI (l :| ls) =
         ]
       ]
 
-  formatTimeDiff :: NominalDiffTime -> String
-  formatTimeDiff = formatTime defaultTimeLocale "%hh %mm %ss"
+  formatTimeDiff :: NominalDiffTime -> Text
+  formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %mm %ss"
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
