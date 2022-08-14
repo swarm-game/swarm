@@ -72,7 +72,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (scenarioDescription, scenarioName)
+import Swarm.Game.Scenario (scenarioDescription, scenarioName, scenarioObjectives)
 import Swarm.Game.ScenarioStatus (ScenarioItem (..), ScenarioStatus (..), scenarioBest, scenarioItemName, scenarioStatus)
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
@@ -144,12 +144,14 @@ drawNewGameMenuUI (l :| ls) =
       , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
  where
-  drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo si) <+> txt (s ^. scenarioName)
+  drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
-  drawStatusInfo si = case si ^. scenarioBest of
-    NotStarted -> txt " o "
-    InProgress {} -> withAttr yellowAttr $ txt "..."
-    Complete {} -> withAttr greenAttr $ txt " ✓ "
+  drawStatusInfo s si = case s ^. scenarioObjectives of
+    [] -> txt "   "
+    _  -> case si ^. scenarioBest of
+      NotStarted -> txt " o "
+      InProgress {} -> withAttr yellowAttr $ txt "..."
+      Complete {} -> withAttr greenAttr $ txt " ✓ "
 
   describeStatus = \case
     NotStarted -> txt "none"
