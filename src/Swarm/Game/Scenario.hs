@@ -36,6 +36,7 @@ module Swarm.Game.Scenario (
   scenarioSeed,
   scenarioEntities,
   scenarioRecipes,
+  scenarioKnown,
   scenarioWorld,
   scenarioRobots,
   scenarioObjectives,
@@ -65,7 +66,7 @@ import Data.Char (isSpace)
 import Data.List ((\\))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (listToMaybe)
+import Data.Maybe (isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -239,6 +240,7 @@ data Scenario = Scenario
   , _scenarioSeed :: Maybe Int
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
+  , _scenarioKnown :: [Text]
   , _scenarioWorld :: WorldDescription
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
@@ -250,21 +252,36 @@ makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 
 instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
+    -- parse custom entities
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
-    rs <- withE em (v ..: "robots")
-    let rsMap = buildRobotMap rs
-    Scenario
-      <$> liftE (v .: "name")
-      <*> liftE (v .:? "description" .!= "")
-      <*> liftE (v .:? "creative" .!= False)
-      <*> liftE (v .:? "seed")
-      <*> pure em
-      <*> withE em (v ..:? "recipes" ..!= [])
-      <*> withE em (localE (,rsMap) (v ..: "world"))
-      <*> pure rs
-      <*> liftE (v .:? "objectives" .!= [])
-      <*> liftE (v .:? "solution")
-      <*> liftE (v .:? "stepsPerTick")
+    -- extend ambient EntityMap with custom entities
+    withE em $ do
+      -- parse 'known' entity names and make sure they exist
+      known <- liftE (v .:? "known" .!= [])
+      em' <- getE
+      case filter (isNothing . (`lookupEntityName` em')) known of
+        [] -> return ()
+        unk ->
+          fail . into @String $
+            "Unknown entities in 'known' list: " <> T.intercalate ", " unk
+
+      -- parse robots and build RobotMap
+      rs <- v ..: "robots"
+      let rsMap = buildRobotMap rs
+
+      Scenario
+        <$> liftE (v .: "name")
+        <*> liftE (v .:? "description" .!= "")
+        <*> liftE (v .:? "creative" .!= False)
+        <*> liftE (v .:? "seed")
+        <*> pure em
+        <*> v ..:? "recipes" ..!= []
+        <*> pure known
+        <*> localE (,rsMap) (v ..: "world")
+        <*> pure rs
+        <*> liftE (v .:? "objectives" .!= [])
+        <*> liftE (v .:? "solution")
+        <*> liftE (v .:? "stepsPerTick")
 
 --------------------------------------------------
 -- Lenses
@@ -288,6 +305,10 @@ scenarioEntities :: Lens' Scenario EntityMap
 
 -- | Any custom recipes used in this scenario.
 scenarioRecipes :: Lens' Scenario [Recipe Entity]
+
+-- | List of entities that should be considered "known", so robots do
+--   not have to scan them.
+scenarioKnown :: Lens' Scenario [Text]
 
 -- | The starting world for the scenario.
 scenarioWorld :: Lens' Scenario WorldDescription

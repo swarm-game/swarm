@@ -27,12 +27,13 @@ robots:
       - [1, drill]
       - [3, logger]
       - [3, compass]
+known: [water, wavy water]
 world:
-  default: [ice, knownwater]
+  default: [ice, water]
   palette:
     '.': [grass]
-    ' ': [ice, knownwater]
-    '~': [ice, knownwavywater]
+    ' ': [ice, water]
+    '~': [ice, wavy water]
     'L': [grass, Linux]
     'T': [grass, tree]
     '┌': [stone, upper left corner]
@@ -51,29 +52,7 @@ world:
     │..AAA│                                                                ~~
     │....C│                                                                 ~
     └─────┘                                                                 ~
-entities:  
-  ## KNOWN ENTITIES
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-
-  - name: knownwavywater
-    display:
-      attr: water
-      char: '~'
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-  
-  ## MOUNTAIN MINES (for guaranteed profit)
+entities:
   - name: copper vein
     display:
       attr: copper'
