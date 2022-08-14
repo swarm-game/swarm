@@ -90,6 +90,8 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from)
+import Control.Monad (guard)
+import Data.Functor (($>))
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -258,15 +260,27 @@ drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g i@(W.Coords (y, x)) =
   hBox [drawLoc g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
 
+-- | Format the clock display to be shown in the upper right of the
+--   world panel.
 drawClockDisplay :: GameState -> Widget n
 drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockWidget = drawTime (gs ^. ticks) (gs ^. paused) gs
-  pauseWidget = if gs ^. paused then Just $ txt "(PAUSED)" else Nothing
+  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused) gs
+  pauseWidget = guard (gs ^. paused) $> txt "(PAUSED)"
 
-drawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
-drawTime t showTicks gs =
-  justClock . str . mconcat $
+-- | Check whether the currently focused robot (if any) has a clock
+--   device installed.
+clockInstalled :: GameState -> Bool
+clockInstalled gs = case focusedRobot gs of
+  Nothing -> False
+  Just r
+    | countByName "clock" (r ^. installedDevices) > 0 -> True
+    | otherwise -> False
+
+-- | Format a ticks count as a hexadecimal clock.
+drawTime :: Integer -> Bool -> Widget n
+drawTime t showTicks =
+  str . mconcat $
     [ printf "%x" (t `shiftR` 20)
     , ":"
     , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
@@ -274,13 +288,14 @@ drawTime t showTicks gs =
     , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
     ]
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
- where
-  justClock = if clockInstalled then Just else const Nothing
-  clockInstalled = case focusedRobot gs of
-    Nothing -> False
-    Just r
-      | countByName "clock" (r ^. installedDevices) > 0 -> True
-      | otherwise -> False
+
+-- | Return a possible time display, if the currently focused robot
+--   has a clock device installed.  The first argument is the number
+--   of ticks (e.g. 943 = 0x3af), and the second argument indicates
+--   whether the time should be shown down to single-tick resolution
+--   (e.g. 0:00:3a.f) or not (e.g. 0:00:3a).
+maybeDrawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
+maybeDrawTime t showTicks gs = guard (clockInstalled gs) $> drawTime t showTicks
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -580,7 +595,7 @@ messagesWidget gs = widgetList
   drawLogEntry' e =
     withAttr (colorLogs e) $
       hBox
-        [ fromMaybe (txt "") $ drawTime (e ^. leTime) True gs
+        [ fromMaybe (txt "") $ maybeDrawTime (e ^. leTime) True gs
         , padLeft (Pad 2) . txt $ "[" <> e ^. leRobotName <> "]"
         , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
