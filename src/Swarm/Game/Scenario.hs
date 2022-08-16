@@ -83,6 +83,8 @@ import Witch (from, into)
 -- Scenario objectives
 ------------------------------------------------------------
 
+-- | An objective is a condition to be achieved by a player in a
+--   scenario.
 data Objective = Objective
   { _objectiveGoal :: [Text]
   , _objectiveCondition :: ProcessedTerm
@@ -91,8 +93,8 @@ data Objective = Objective
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
 
--- | An explanation of the goal of the objective, shown to the
---   player during play.
+-- | An explanation of the goal of the objective, shown to the player
+--   during play.  It is represented as a list of paragraphs.
 objectiveGoal :: Lens' Objective [Text]
 
 -- | A winning condition for the objective, expressed as a

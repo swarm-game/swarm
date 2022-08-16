@@ -154,7 +154,7 @@ import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, loadScenario)
-import Swarm.Game.ScenarioStatus (
+import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioItem,
   ScenarioStatus (..),

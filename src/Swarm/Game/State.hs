@@ -140,7 +140,7 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
-import Swarm.Game.ScenarioStatus
+import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Value (Value)
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -409,7 +409,7 @@ scenarios :: Lens' GameState ScenarioCollection
 -- | The filepath of the currently running scenario.
 --
 -- This is useful as an index to 'scenarios' collection,
--- see 'Swarm.Game.ScenarioStatus.scenarioItemByPath'.
+-- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
 currentScenarioPath :: Lens' GameState (Maybe FilePath)
 
 -- | The names of entities that should be considered "known", that is,

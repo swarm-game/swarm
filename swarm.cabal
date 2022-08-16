@@ -96,7 +96,7 @@ library
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
                       Swarm.Game.Scenario
-                      Swarm.Game.ScenarioStatus
+                      Swarm.Game.ScenarioInfo
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception

@@ -11,9 +11,10 @@
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Code to save and restore the status of scenarios, i.e. which have been
--- started, which have been completed, etc.
-module Swarm.Game.ScenarioStatus (
+-- Saving and loading info about scenarios (status, path, etc.) as
+-- well as loading recursive scenario collections.
+module Swarm.Game.ScenarioInfo (
+  -- * Scenario info
   ScenarioStatus (..),
   _NotStarted,
   _InProgress,
