@@ -28,7 +28,7 @@ import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
-import Data.Foldable (traverse_, asum)
+import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Int (Int64)
 import Data.IntMap qualified as IM
@@ -1496,8 +1496,6 @@ execConst c vs s k = do
     when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
     let nextLoc = loc ^+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
-
-  -- | Ensure we know about and have a particular item in the inventory.
   ensureItem ::
     (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) =>
     Text ->
@@ -1509,7 +1507,7 @@ execConst c vs s k = do
     inst <- use installedDevices
     item <-
       asum (map (listToMaybe . lookupByName itemName) [inv, inst])
-      `isJustOrFail` ["What is", indefinite itemName <> "?"]
+        `isJustOrFail` ["What is", indefinite itemName <> "?"]
 
     -- Next, check whether we have one.  If we don't, add a hint about
     -- 'create' in creative mode.
