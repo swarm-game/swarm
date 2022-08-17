@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -87,14 +85,14 @@ entityAttr :: AttrName
 entityAttr = fst $ head worldAttributes
 
 worldPrefix :: AttrName
-worldPrefix = "world"
+worldPrefix = attrName "world"
 
 -- | Colors of entities in the world.
 --
 -- Also used to color messages, so water is special and excluded.
 worldAttributes :: [(AttrName, V.Attr)]
 worldAttributes =
-  bimap (worldPrefix <>) fg
+  bimap ((worldPrefix <>) . attrName) fg
     <$> [ ("entity", V.white)
         , ("device", V.brightYellow)
         , ("plant", V.green)
@@ -118,7 +116,7 @@ worldAttributes =
         ]
 
 terrainPrefix :: AttrName
-terrainPrefix = "terrain"
+terrainPrefix = attrName "terrain"
 
 terrainAttr :: [(AttrName, V.Attr)]
 terrainAttr =
@@ -130,16 +128,16 @@ terrainAttr =
 
 -- | The default robot attribute.
 robotAttr :: AttrName
-robotAttr = "robot"
+robotAttr = attrName "robot"
 
 dirtAttr, grassAttr, stoneAttr, iceAttr, waterAttr, rockAttr, plantAttr :: AttrName
-dirtAttr = terrainPrefix <> "dirt"
-grassAttr = terrainPrefix <> "grass"
-stoneAttr = terrainPrefix <> "stone"
-iceAttr = terrainPrefix <> "ice"
-waterAttr = worldPrefix <> "water"
-rockAttr = worldPrefix <> "rock"
-plantAttr = worldPrefix <> "plant"
+dirtAttr = terrainPrefix <> attrName "dirt"
+grassAttr = terrainPrefix <> attrName "grass"
+stoneAttr = terrainPrefix <> attrName "stone"
+iceAttr = terrainPrefix <> attrName "ice"
+waterAttr = worldPrefix <> attrName "water"
+rockAttr = worldPrefix <> attrName "rock"
+plantAttr = worldPrefix <> attrName "plant"
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr
@@ -147,17 +145,17 @@ highlightAttr
   , infoAttr
   , defAttr ::
     AttrName
-highlightAttr = "highlight"
-notifAttr = "notif"
-infoAttr = "info"
-defAttr = "def"
+highlightAttr = attrName "highlight"
+notifAttr = attrName "notif"
+infoAttr = attrName "info"
+defAttr = attrName "def"
 
 -- | Some basic colors used in TUI.
 redAttr, greenAttr, blueAttr, yellowAttr :: AttrName
-redAttr = "red"
-greenAttr = "green"
-blueAttr = "blue"
-yellowAttr = "yellow"
+redAttr = attrName "red"
+greenAttr = attrName "green"
+blueAttr = attrName "blue"
+yellowAttr = attrName "yellow"
 
 instance ToJSON AttrName where
   toJSON = toJSON . head . attrNameComponents
