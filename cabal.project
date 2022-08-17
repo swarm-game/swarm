@@ -1,3 +1,6 @@
+-- If you edit this file, be sure to regenerate the CI configuration
+-- by running 'haskell-ci regenerate'.
+
 source-repository-package
   type: git
   location: https://github.com/colinhect/hsnoise
