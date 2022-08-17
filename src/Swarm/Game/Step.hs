@@ -28,7 +28,7 @@ import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
-import Data.Foldable (traverse_)
+import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Int (Int64)
 import Data.IntMap qualified as IM
@@ -813,14 +813,7 @@ execConst c vs s k = do
         -- Make sure the other robot exists and is close
         _other <- getRobotWithinTouch otherID
 
-        -- Make sure we have the required item
-        inv <- use robotInventory
-        item <-
-          (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName <> "?"]
-
-        (E.lookup item inv > 0)
-          `holdsOrFail` ["You don't have", indefinite itemName, "to give."]
+        item <- ensureItem itemName "give"
 
         -- Giving something to ourself should be a no-op.  We need
         -- this as a special case since it will not work to modify
@@ -845,14 +838,7 @@ execConst c vs s k = do
         -- Make sure the other robot exists and is close
         _other <- getRobotWithinTouch otherID
 
-        -- Make sure we have the required item
-        inv <- use robotInventory
-        item <-
-          (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName <> "?"]
-
-        (E.lookup item inv > 0)
-          `holdsOrFail` ["You don't have", indefinite itemName, "to install."]
+        item <- ensureItem itemName "install"
 
         myID <- use robotID
         focusedID <- use focusedRobotID
@@ -1510,6 +1496,28 @@ execConst c vs s k = do
     when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
     let nextLoc = loc ^+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
+  ensureItem ::
+    (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) =>
+    Text ->
+    Text ->
+    m Entity
+  ensureItem itemName action = do
+    -- First, make sure we know about the entity.
+    inv <- use robotInventory
+    inst <- use installedDevices
+    item <-
+      asum (map (listToMaybe . lookupByName itemName) [inv, inst])
+        `isJustOrFail` ["What is", indefinite itemName <> "?"]
+
+    -- Next, check whether we have one.  If we don't, add a hint about
+    -- 'create' in creative mode.
+    creative <- use creativeMode
+    let create l = l <> ["You can make one first with 'create \"" <> itemName <> "\"'." | creative]
+
+    (E.lookup item inv > 0)
+      `holdsOrFail` create ["You don't have", indefinite itemName, "to", action <> "."]
+
+    return item
 
   -- Check the required devices and inventory for running the given
   -- command on a target robot.  This function is used in common by
