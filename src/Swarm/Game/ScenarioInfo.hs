@@ -73,12 +73,19 @@ import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, li
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
 
+-- Some orphan ZonedTime instances
+
 instance Eq ZonedTime where
   (==) = (==) `on` zonedTimeToUTC
 
 instance Ord ZonedTime where
   (<=) = (<=) `on` zonedTimeToUTC
 
+-- | A @ScenarioStatus@ stores the status of a scenario along with
+--   appropriate metadata: not started, in progress, or complete.
+--   Note that "in progress" is currently a bit of a misnomer since
+--   games cannot be saved; at the moment it really means more like
+--   "you played this scenario before but didn't win".
 data ScenarioStatus
   = NotStarted
   | InProgress
@@ -106,6 +113,8 @@ instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
+-- | A @ScenarioInfo@ record stores metadata about a scenario: its
+--   canonical path, most recent status, and best-ever status.
 data ScenarioInfo = ScenarioInfo
   { _scenarioPath :: FilePath
   , _scenarioStatus :: ScenarioStatus
@@ -187,6 +196,7 @@ scenarioItemByPath path = ixp ps
       SISingle {} -> pure si
       SICollection n' col -> SICollection n' <$> ixp xs f col
 
+-- | Canonicalize a scenario path, making it usable as a unique key.
 normalizeScenarioPath :: ScenarioCollection -> FilePath -> IO FilePath
 normalizeScenarioPath col p =
   let path = p -<.> "yaml"
@@ -212,6 +222,8 @@ loadScenarios em = runThrow $ do
   dataDir <- sendIO getDataDir
   loadScenarioDir em (dataDir </> "scenarios")
 
+-- | The name of the special file which indicates the order of
+--   scenarios in a folder.
 orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
 
