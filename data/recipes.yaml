@@ -132,6 +132,14 @@
 #########################################
 
 - in:
+  - [1, rock]
+  out:
+  - [1, lodestone]
+  required:
+  - [1, lodestone]
+  time: 64
+
+- in:
   - [1, boulder]
   out:
   - [3, rock]
