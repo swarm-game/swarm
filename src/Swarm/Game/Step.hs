@@ -1698,13 +1698,22 @@ execConst c vs s k = do
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
   doGrab shouldHarvest = do
+    let verb
+          | shouldHarvest = "harvest"
+          | otherwise = "grab"
+        verbed
+          | shouldHarvest = "harvested"
+          | otherwise = "grabbed"
+
     -- Ensure there is an entity here.
     loc <- use robotLocation
-    e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
+    e <-
+      entityAt loc
+        >>= (`isJustOrFail` ["There is nothing here to", verb <> "."])
 
     -- Ensure it can be picked up.
     (e `hasProperty` Portable)
-      `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
+      `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
     -- Remove the entity from the world.
     updateEntityAt loc (const Nothing)
