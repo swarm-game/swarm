@@ -389,6 +389,14 @@
   required:
   - [1, big furnace]
 
+- in:
+  - [1, iron plate]
+  out:
+  - [1, lodestone]
+  required:
+  - [2, lodestone]
+  time: 64
+
 ## TOOLS
 
 - in:
