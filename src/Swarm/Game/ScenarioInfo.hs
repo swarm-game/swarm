@@ -208,7 +208,6 @@ normalizeScenarioPath col p =
           let n =
                 stripPrefix (d </> "scenarios") canonPath
                   & maybe canonPath (dropWhile (== pathSeparator))
-          appendFile "/tmp/debug" $ "TODO: Using normal path:" <> n <> "\n"
           return n
 
 -- | Convert a scenario collection to a list of scenario items.
@@ -286,21 +285,14 @@ loadScenarioInfo ::
   m ScenarioInfo
 loadScenarioInfo p = do
   path <- sendIO $ normalizeScenarioPath (SC Nothing mempty) p
-  sendIO $ appendFile "/tmp/debug" $ "TODO: Load info for " <> path <> "\n"
   infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
   hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
     then do
-      sendIO $ appendFile "/tmp/debug" "TODO: Load NOTHING\n"
       return $ ScenarioInfo path NotStarted NotStarted
     else
-      sendIO (decodeFileEither infoPath) >>= \case
-        Left er -> do
-          sendIO $ appendFile "/tmp/debug" $ "TODO: Load ERROR " <> prettyPrintParseException er <> "\n"
-          throwError (pack $ prettyPrintParseException er)
-        Right ss -> do
-          sendIO $ appendFile "/tmp/debug" $ "TODO: Load SUCCESS " <> show (ss ^. scenarioStatus) <> "\n"
-          return ss
+      sendIO (decodeFileEither infoPath)
+        >>= either (throwError . pack . prettyPrintParseException) return
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
@@ -308,10 +300,8 @@ saveScenarioInfo ::
   ScenarioInfo ->
   IO ()
 saveScenarioInfo path si = do
-  appendFile "/tmp/debug" $ "TODO: Saving the info for " <> path <> "\n"
   infoPath <- scenarioPathToSavePath path <$> getSwarmSavePath True
   encodeFile infoPath si
-  appendFile "/tmp/debug" "TODO: Saved the info\n"
 
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.

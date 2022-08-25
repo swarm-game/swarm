@@ -369,10 +369,6 @@ saveScenarioInfoOnQuit = do
       Just p' -> do
         gs <- use $ gameState . scenarios
         p <- liftIO $ normalizeScenarioPath gs p'
-        liftIO . appendFile "/tmp/debug" $ "TODO: C - Saving the scenario info of " <> p <> "\n"
-        liftIO . appendFile "/tmp/debug" $ "TODO: C- Originally " <> p' <> "\n"
-        sc <- use $ gameState . scenarios
-        mapM_ (\k -> liftIO . appendFile "/tmp/debug" $ "TODO: C - Map key: " <> k <> "\n") (M.keys $ scMap sc)
         t <- liftIO getZonedTime
         won <- isJust <$> preuse (gameState . winCondition . _Won)
         ts <- use $ gameState . ticks
@@ -380,14 +376,13 @@ saveScenarioInfoOnQuit = do
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
         currentScenarioInfo %= updateScenarioInfoOnQuit t ts won
         status <- preuse currentScenarioInfo
-        liftIO . appendFile "/tmp/debug" $ "TODO: new status: " <> show status <> "\n"
         case status of
-          Nothing -> liftIO . appendFile "/tmp/debug" $ "TODO: Could not update the scenario info of " <> p <> "\n"
+          Nothing -> return ()
           Just si -> liftIO $ saveScenarioInfo p si
 
         -- rebuild the NewGameMenu so it gets the updated ScenarioInfo
-        sc' <- use $ gameState . scenarios
-        forM_ (mkNewGameMenu cheat sc' p) (uiState . uiMenu .=)
+        sc <- use $ gameState . scenarios
+        forM_ (mkNewGameMenu cheat sc p) (uiState . uiMenu .=)
 
 -- | Quit a game.
 --

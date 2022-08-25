@@ -838,8 +838,6 @@ initGameStateForScenario sceneName userSeed toRun = do
   gs <- liftIO $ scenarioToGameState scene userSeed toRun g
   normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
   t <- liftIO getZonedTime
-  liftIO . appendFile "/tmp/debug" $ "TODO: S - Scenario in progress " <> normalPath <> "\n"
-  liftIO . appendFile "/tmp/debug" $ "TODO: S - Originally " <> path <> "\n"
   return $
     gs
       & currentScenarioPath ?~ normalPath

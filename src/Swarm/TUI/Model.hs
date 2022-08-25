@@ -869,8 +869,6 @@ startGame scene si = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
-  liftIO . appendFile "/tmp/debug" $ "TODO: C - Scenario in progress " <> p <> "\n"
-  liftIO . appendFile "/tmp/debug" $ "TODO: C - Originally " <> si ^. scenarioPath <> "\n"
   gameState . currentScenarioPath .= Just p
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
   scenarioToAppState scene Nothing Nothing
