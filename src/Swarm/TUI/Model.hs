@@ -69,7 +69,6 @@ module Swarm.TUI.Model (
   uiPort,
   uiMenu,
   uiPlaying,
-  uiNextScenario,
   uiCheatMode,
   uiFocusRing,
   uiWorldCursor,
@@ -127,6 +126,7 @@ module Swarm.TUI.Model (
   -- ** Utility
   focusedItem,
   focusedEntity,
+  nextScenario,
 ) where
 
 import Brick
@@ -468,7 +468,6 @@ data UIState = UIState
   { _uiPort :: Maybe Port
   , _uiMenu :: Menu
   , _uiPlaying :: Bool
-  , _uiNextScenario :: Maybe (Scenario, ScenarioInfo)
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
@@ -526,9 +525,6 @@ uiMenu :: Lens' UIState Menu
 --   should thus display a world, REPL, etc.; False = we should
 --   display the current menu.
 uiPlaying :: Lens' UIState Bool
-
--- | The next scenario after the current one, if any.
-uiNextScenario :: Lens' UIState (Maybe (Scenario, ScenarioInfo))
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
@@ -725,7 +721,6 @@ initUIState showMainMenu cheatMode = liftIO $ do
       { _uiPort = Nothing
       , _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiPlaying = not showMainMenu
-      , _uiNextScenario = Nothing
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiWorldCursor = Nothing
@@ -835,7 +830,6 @@ initAppState userSeed scenarioName toRun cheatMode = do
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => Scenario -> ScenarioInfo -> m ()
 startGame scene si = do
-  menu <- use $ uiState . uiMenu
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
@@ -843,17 +837,21 @@ startGame scene si = do
   liftIO . appendFile "/tmp/debug" $ "TODO: C - Originally " <> si ^. scenarioPath <> "\n"
   gameState . currentScenarioPath .= Just p
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
-  case menu of
-    NewGameMenu (curMenu :| _) ->
-      let nextMenuList = BL.listMoveDown curMenu
-          isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
-          nextScenario =
-            if isLastScenario
-              then Nothing
-              else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
-       in uiState . uiNextScenario .= nextScenario
-    _ -> uiState . uiNextScenario .= Nothing
   scenarioToAppState scene Nothing Nothing
+
+-- | Extract the scenario which would come next in the menu from the
+--   currently selected scenario (if any).  Can return @Nothing@ if
+--   either we are not in the @NewGameMenu@, or the current scenario
+--   is the last among its siblings.
+nextScenario :: Menu -> Maybe (Scenario, ScenarioInfo)
+nextScenario = \case
+  NewGameMenu (curMenu :| _) ->
+    let nextMenuList = BL.listMoveDown curMenu
+        isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
+     in if isLastScenario
+          then Nothing
+          else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
+  _ -> Nothing
 
 -- XXX do we need to keep an old entity map around???
 

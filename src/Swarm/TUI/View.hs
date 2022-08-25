@@ -423,10 +423,12 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
          in ( ""
             , Just
                 ( 0
-                , [(nextMsg, NextButton scene) | Just scene <- [s ^. uiState . uiNextScenario]]
-                  ++ [ (stopMsg, QuitButton)
-                     , (continueMsg, CancelButton)
-                     ]
+                , [ (nextMsg, NextButton scene)
+                  | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
+                  ]
+                    ++ [ (stopMsg, QuitButton)
+                       , (continueMsg, CancelButton)
+                       ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
