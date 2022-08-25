@@ -27,6 +27,8 @@ module Swarm.TUI.Model (
   mainMenu,
   Menu (..),
   _NewGameMenu,
+  mkScenarioList,
+  mkNewGameMenu,
 
   -- * UI state
 
@@ -142,7 +144,9 @@ import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -155,10 +159,13 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, loadScenario)
 import Swarm.Game.ScenarioInfo (
+  ScenarioCollection,
   ScenarioInfo (..),
-  ScenarioItem,
+  ScenarioItem (..),
   ScenarioStatus (..),
   normalizeScenarioPath,
+  scMap,
+  scenarioCollectionToList,
   scenarioItemByPath,
   scenarioPath,
   scenarioStatus,
@@ -169,6 +176,8 @@ import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
 import System.Clock
+import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
+import Witch (into)
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -440,6 +449,33 @@ mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
 mainMenu e = BL.list MenuList (V.fromList [minBound .. maxBound]) 1 & BL.listMoveToElement e
 
 makePrisms ''Menu
+
+-- | Create a brick 'BL.List' of scenario items from a 'ScenarioCollection'.
+mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
+mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
+ where
+  filterTest = if cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
+
+-- | Given a 'ScenarioCollection' and a 'FilePath' which is the canonical
+--   path to some folder or scenario, construct a 'NewGameMenu' stack
+--   focused on the given item, if possible.
+mkNewGameMenu :: Bool -> ScenarioCollection -> FilePath -> Maybe Menu
+mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitPath path) []
+ where
+  go :: Maybe ScenarioCollection -> [FilePath] -> [BL.List Name ScenarioItem] -> Maybe [BL.List Name ScenarioItem]
+  go _ [] stk = Just stk
+  go Nothing _ _ = Nothing
+  go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
+   where
+    hasName :: ScenarioItem -> Bool
+    hasName (SISingle _ (ScenarioInfo pth _ _)) = takeFileName pth == thing
+    hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
+
+    lst = BL.listFindBy hasName (mkScenarioList cheat curSC)
+
+    nextSC = case M.lookup (dropTrailingPathSeparator thing) (scMap curSC) of
+      Just (SICollection _ c) -> Just c
+      _ -> Nothing
 
 ------------------------------------------------------------
 -- Inventory list entries
