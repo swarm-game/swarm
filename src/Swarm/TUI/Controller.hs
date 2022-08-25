@@ -60,7 +60,6 @@ import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
-import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
