@@ -385,6 +385,10 @@ saveScenarioInfoOnQuit = do
           Nothing -> liftIO . appendFile "/tmp/debug" $ "TODO: Could not update the scenario info of " <> p <> "\n"
           Just si -> liftIO $ saveScenarioInfo p si
 
+        -- rebuild the NewGameMenu so it gets the updated ScenarioInfo
+        sc' <- use $ gameState . scenarios
+        forM_ (mkNewGameMenu cheat sc' p) (uiState . uiMenu .=)
+
 -- | Quit a game.
 --
 -- * writes out the updated REPL history to a @.swarm_history@ file
