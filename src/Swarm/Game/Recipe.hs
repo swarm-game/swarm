@@ -25,6 +25,7 @@ module Swarm.Game.Recipe (
   loadRecipes,
   outRecipeMap,
   inRecipeMap,
+  reqRecipeMap,
 
   -- * Looking up recipes
   MissingIngredient (..),
@@ -164,16 +165,20 @@ buildRecipeMap select recipeList =
 outRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 outRecipeMap = buildRecipeMap recipeOutputs
 
+-- | Build a map of recipes indexed by input ingredients.
+inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
+inRecipeMap = buildRecipeMap recipeInputs
+
+-- | Build a map of recipes indexed by requirements.
+reqRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
+reqRecipeMap = buildRecipeMap recipeRequirements
+
 -- | Get a list of all the recipes for the given entity.  Look up an
 --   entity in either an 'inRecipeMap' or 'outRecipeMap' depending on
 --   whether you want to know recipes that consume or produce the
 --   given entity, respectively.
 recipesFor :: IntMap [Recipe Entity] -> Entity -> [Recipe Entity]
 recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
-
--- | Build a map of recipes indexed by input ingredients.
-inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
-inRecipeMap = buildRecipeMap recipeInputs
 
 data MissingIngredient = MissingIngredient MissingType Count Entity
   deriving (Show, Eq)

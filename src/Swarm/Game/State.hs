@@ -51,6 +51,7 @@ module Swarm.Game.State (
   entityMap,
   recipesOut,
   recipesIn,
+  recipesReq,
   scenarios,
   knownEntities,
   world,
@@ -135,6 +136,7 @@ import Swarm.Game.Recipe (
   inRecipeMap,
   loadRecipes,
   outRecipeMap,
+  reqRecipeMap,
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario
@@ -270,6 +272,7 @@ data GameState = GameState
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
+  , _recipesReq :: IntMap [Recipe Entity]
   , _scenarios :: ScenarioCollection
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
@@ -398,6 +401,9 @@ recipesOut :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | All recipes the game knows about, indexed by inputs.
 recipesIn :: Lens' GameState (IntMap [Recipe Entity])
+
+-- | All recipes the game knows about, indexed by requirement/catalyst.
+recipesReq :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' GameState ScenarioCollection
@@ -679,6 +685,7 @@ initGameState = do
       , _entityMap = entities
       , _recipesOut = outRecipeMap recipes
       , _recipesIn = inRecipeMap recipes
+      , _recipesReq = reqRecipeMap recipes
       , _scenarios = loadedScenarios
       , _knownEntities = []
       , _world = W.emptyWorld (fromEnum StoneT)
@@ -726,6 +733,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _entityMap = em
       , _recipesOut = addRecipesWith outRecipeMap recipesOut
       , _recipesIn = addRecipesWith inRecipeMap recipesIn
+      , _recipesReq = addRecipesWith reqRecipeMap recipesReq
       , _knownEntities = scenario ^. scenarioKnown
       , _world = theWorld theSeed
       , _viewCenterRule = VCRobot baseID
