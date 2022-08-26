@@ -24,6 +24,7 @@ robots:
       - [70, grabber]
       - [100, solar panel]
       - [50, scanner]
+      - [50, clock]
       - [5, toolkit]
 world:
   seed: null
