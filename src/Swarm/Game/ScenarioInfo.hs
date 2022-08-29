@@ -152,6 +152,10 @@ scenarioBestTime :: Lens' ScenarioInfo ScenarioStatus
 scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
 
 -- | Update the current @ScenarioInfo@ record when quitting a game.
+--
+-- Note that when comparing "best" times, shorter is not always better!
+-- As long as the scenario is not completed (e.g. some do not have win condition)
+-- we consider having fun _longer_ to be better.
 updateScenarioInfoOnQuit :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
 updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
   InProgress start _ _ ->
