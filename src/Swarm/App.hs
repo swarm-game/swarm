@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 -- |
 -- Module      :  Swarm.App
 -- Copyright   :  Brent Yorgey
@@ -23,6 +26,17 @@ import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.View
 import Swarm.Web
+import Network.HTTP.Client
+import Network.HTTP.Types.Status (statusCode)
+import Data.ByteString.Lazy.Char8 qualified as BSL8
+import Data.ByteString.Lazy qualified as BSL
+import Data.ByteString qualified as BS
+import Data.Aeson (Object, decode, (.:))
+import Data.Aeson.Types (parseMaybe)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Data.Yaml (decodeEither', ParseException)
+import Network.HTTP.Types (hUserAgent)
+import GitHash (giTag, tGitInfoCwdTry)
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
@@ -105,3 +119,29 @@ enablePasteMode = do
   when (V.supportsMode output V.BracketedPaste) $
     liftIO $
       V.setMode output V.BracketedPaste True
+
+version :: String
+version = let egi = $$tGitInfoCwdTry
+  in case egi of
+    Left _ -> ""
+    Right gi -> giTag gi
+
+
+upstreamVersion :: IO (Maybe String)
+upstreamVersion = do
+  manager <- newManager tlsManagerSettings
+
+  request <- parseRequest "https://api.github.com/repos/haskell/haskell-language-server/releases/latest"
+  -- request <- parseRequest "https://api.github.com/repos/swarm-game/swarm/releases/latest"
+  response <- httpLbs
+    request {requestHeaders = [(hUserAgent, "swarm-game/swarm-swarmversion")]}
+    manager
+
+  putStrLn $ "The status code was: " ++ show (statusCode $ responseStatus response)
+  let result = decodeEither' (BS.pack . BSL.unpack $ responseBody response) :: Either ParseException Object
+  case result of
+    Left e -> print e >> pure Nothing
+    Right r -> do
+      return . flip parseMaybe r $ \o -> do
+        c <- o .: "tag_name"
+        return (c :: String)
