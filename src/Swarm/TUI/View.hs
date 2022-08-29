@@ -147,12 +147,12 @@ drawNewGameMenuUI (l :| ls) =
  where
   drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
-  drawStatusInfo s si = case s ^. scenarioObjectives of
-    [] -> txt "   "
-    _ -> case si ^. scenarioBest of
-      NotStarted -> txt " o "
-      InProgress {} -> withAttr yellowAttr $ txt "..."
-      Complete {} -> withAttr greenAttr $ txt " ✓ "
+  drawStatusInfo s si = case si ^. scenarioBest of
+    NotStarted -> txt " ○ "
+    InProgress {} -> case s ^. scenarioObjectives of
+      [] -> withAttr cyanAttr $ txt " ◉ "
+      _ -> withAttr yellowAttr $ txt " ◎ "
+    Complete {} -> withAttr greenAttr $ txt " ● "
 
   describeStatus = \case
     NotStarted -> txt "none"
