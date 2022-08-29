@@ -147,7 +147,7 @@ handleMainMenuEvent menu = \case
                   Just (SISingle scene si) -> (scene, si)
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
-          uncurry startGame firstTutorial
+          uncurry startGame firstTutorial Nothing
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt
@@ -171,7 +171,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle scene si) -> startGame scene si
+      Just (SISingle scene si) -> startGame scene si Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
@@ -346,7 +346,7 @@ handleModalEvent = \case
     toggleModal QuitModal
     case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
-      Just (Just (NextButton scene)) -> saveScenarioInfoOnQuit >> uncurry startGame scene
+      Just (Just (NextButton scene)) -> saveScenarioInfoOnQuit >> uncurry startGame scene Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)

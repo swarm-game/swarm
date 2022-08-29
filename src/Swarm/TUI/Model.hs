@@ -860,18 +860,18 @@ initAppState userSeed scenarioName toRun cheatMode = do
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
       execStateT
-        (startGame scenario (ScenarioInfo path NotStarted NotStarted))
+        (startGame scenario (ScenarioInfo path NotStarted NotStarted) toRun)
         (AppState gs ui)
 
 -- | Load a 'Scenario' and start playing the game.
-startGame :: (MonadIO m, MonadState AppState m) => Scenario -> ScenarioInfo -> m ()
-startGame scene si = do
+startGame :: (MonadIO m, MonadState AppState m) => Scenario -> ScenarioInfo -> Maybe FilePath -> m ()
+startGame scene si toRun = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
-  scenarioToAppState scene Nothing Nothing
+  scenarioToAppState scene Nothing toRun
 
 -- | Extract the scenario which would come next in the menu from the
 --   currently selected scenario (if any).  Can return @Nothing@ if
