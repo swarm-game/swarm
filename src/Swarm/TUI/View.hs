@@ -76,7 +76,14 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.Game.ScenarioInfo (ScenarioItem (..), ScenarioStatus (..), scenarioBest, scenarioItemName, scenarioStatus)
+import Swarm.Game.ScenarioInfo (
+  ScenarioItem (..),
+  ScenarioStatus (..),
+  scenarioBestTicks,
+  scenarioBestTime,
+  scenarioItemName,
+  scenarioStatus,
+ )
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
@@ -147,7 +154,7 @@ drawNewGameMenuUI (l :| ls) =
  where
   drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
-  drawStatusInfo s si = case si ^. scenarioBest of
+  drawStatusInfo s si = case si ^. scenarioBestTime of
     NotStarted -> txt " ○ "
     InProgress {} -> case s ^. scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
@@ -183,11 +190,22 @@ drawNewGameMenuUI (l :| ls) =
 
   drawDescription :: ScenarioItem -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle s si) =
-    vBox
-      [ txtWrap (nonBlank (s ^. scenarioDescription))
-      , padTop (Pad 3) $ padRight (Pad 1) (txt "best:") <+> describeStatus (si ^. scenarioBest)
-      , padRight (Pad 1) (txt "last:") <+> describeStatus (si ^. scenarioStatus)
+  drawDescription (SISingle s si) = do
+    let oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
+    let bestRealTime = if oneBest then "best:" else "best real time:"
+    let noSame = if oneBest then const Nothing else Just
+    let lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
+    vBox . catMaybes $
+      [ Just $ txtWrap (nonBlank (s ^. scenarioDescription))
+      , Just $
+          padTop (Pad 3) $
+            padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestTime)
+      , noSame $ -- hide best game time if it is same as best real time
+          padTop (Pad 1) $
+            padRight (Pad 1) (txt "best game time:") <+> describeStatus (si ^. scenarioBestTicks)
+      , Just $
+          padTop (Pad 1) $
+            padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
       ]
 
   nonBlank "" = " "

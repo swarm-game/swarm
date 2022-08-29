@@ -22,7 +22,8 @@ module Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   scenarioPath,
   scenarioStatus,
-  scenarioBest,
+  scenarioBestTime,
+  scenarioBestTicks,
   updateScenarioInfoOnQuit,
 
   -- * Scenario collection
@@ -118,7 +119,8 @@ instance ToJSON ScenarioStatus where
 data ScenarioInfo = ScenarioInfo
   { _scenarioPath :: FilePath
   , _scenarioStatus :: ScenarioStatus
-  , _scenarioBest :: ScenarioStatus
+  , _scenarioBestTime :: ScenarioStatus
+  , _scenarioBestTicks :: ScenarioStatus
   }
   deriving (Eq, Ord, Show, Read, Generic)
 
@@ -143,20 +145,23 @@ scenarioPath :: Lens' ScenarioInfo FilePath
 -- | The status of the scenario.
 scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 
--- | The best status of the scenario.
-scenarioBest :: Lens' ScenarioInfo ScenarioStatus
+-- | The best status of the scenario, measured in real world time.
+scenarioBestTime :: Lens' ScenarioInfo ScenarioStatus
+
+-- | The best status of the scenario, measured in game ticks.
+scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
 
 -- | Update the current @ScenarioInfo@ record when quitting a game.
 updateScenarioInfoOnQuit :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
-updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s b) = case s of
+updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
   InProgress start _ _ ->
     let el = (diffUTCTime `on` zonedTimeToUTC) z start
         cur = (if completed then Complete else InProgress) start el ticks
-        best = case b of
-          Complete _bs bel _ | not completed || bel <= el -> b -- keep faster completed
-          InProgress _is iel _ | not completed && iel > el -> b -- keep longer progress (fun!)
+        best f b = case b of
+          Complete {} | not completed || f b <= f cur -> b -- keep faster completed
+          InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
           _ -> cur -- otherwise update with current
-     in ScenarioInfo p cur best
+     in ScenarioInfo p cur (best _scenarioElapsed bTime) (best _scenarioElapsedTicks bTicks)
   _ -> error "Logical error: trying to quit scenario which is not in progress!"
 
 -- ----------------------------------------------------------------------------
@@ -289,7 +294,7 @@ loadScenarioInfo p = do
   hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
     then do
-      return $ ScenarioInfo path NotStarted NotStarted
+      return $ ScenarioInfo path NotStarted NotStarted NotStarted
     else
       sendIO (decodeFileEither infoPath)
         >>= either (throwError . pack . prettyPrintParseException) return

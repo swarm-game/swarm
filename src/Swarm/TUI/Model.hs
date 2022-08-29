@@ -468,7 +468,7 @@ mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitP
   go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
    where
     hasName :: ScenarioItem -> Bool
-    hasName (SISingle _ (ScenarioInfo pth _ _)) = takeFileName pth == thing
+    hasName (SISingle _ (ScenarioInfo pth _ _ _)) = takeFileName pth == thing
     hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
 
     lst = BL.listFindBy hasName (mkScenarioList cheat curSC)
@@ -860,7 +860,7 @@ initAppState userSeed scenarioName toRun cheatMode = do
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
       execStateT
-        (startGame scenario (ScenarioInfo path NotStarted NotStarted) toRun)
+        (startGame scenario (ScenarioInfo path NotStarted NotStarted NotStarted) toRun)
         (AppState gs ui)
 
 -- | Load a 'Scenario' and start playing the game.
