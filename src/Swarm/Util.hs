@@ -25,6 +25,7 @@ module Swarm.Util (
   readFileMay,
   readFileMayT,
   getSwarmDataPath,
+  getSwarmSavePath,
   getSwarmHistoryPath,
   readAppData,
 
@@ -216,6 +217,14 @@ getSwarmDataPath createDirs = do
   swarmData <- getXdgDirectory XdgData "swarm"
   when createDirs (createDirectoryIfMissing True swarmData)
   pure swarmData
+
+-- | Get path to swarm saves, optionally creating necessary
+--   directories.
+getSwarmSavePath :: Bool -> IO FilePath
+getSwarmSavePath createDirs = do
+  swarmSave <- getXdgDirectory XdgData ("swarm" </> "saves")
+  when createDirs (createDirectoryIfMissing True swarmSave)
+  pure swarmSave
 
 -- | Get path to swarm history, optionally creating necessary
 --   directories. This could fail if user has bad permissions

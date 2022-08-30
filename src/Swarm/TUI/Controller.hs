@@ -59,13 +59,13 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Vector qualified as V
+import Data.Time (getZonedTime)
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scMap, scOrder, scenarioCollectionToList, scenarioItemName, _SISingle)
+import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -144,10 +144,10 @@ handleMainMenuEvent menu = \case
           -- Extract the first tutorial challenge and run it
           let firstTutorial = case scOrder tutorialCollection of
                 Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
-                  Just (SISingle scene) -> scene
+                  Just (SISingle scene si) -> (scene, si)
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
-          startGame firstTutorial
+          uncurry startGame firstTutorial Nothing
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt
@@ -162,22 +162,6 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
   Just (SICollection _ c) -> c
   _ -> error "No tutorials exist!"
 
--- | Load a 'Scenario' and start playing the game.
-startGame :: Scenario -> EventM Name AppState ()
-startGame scene = do
-  menu <- use $ uiState . uiMenu
-  case menu of
-    NewGameMenu (curMenu :| _) ->
-      let nextMenuList = BL.listMoveDown curMenu
-          isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
-          nextScenario =
-            if isLastScenario
-              then Nothing
-              else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
-       in uiState . uiNextScenario .= nextScenario
-    _ -> uiState . uiNextScenario .= Nothing
-  scenarioToAppState scene Nothing Nothing
-
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown
@@ -187,7 +171,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle scene) -> startGame scene
+      Just (SISingle scene si) -> startGame scene si Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
@@ -198,11 +182,6 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
     menu' <- nestEventM' curMenu (handleListEvent ev)
     uiState . uiMenu .= NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw
-
-mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
-mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
- where
-  filterTest = if cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
@@ -367,7 +346,7 @@ handleModalEvent = \case
     toggleModal QuitModal
     case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
-      Just (Just (NextButton scene)) -> startGame scene
+      Just (Just (NextButton scene)) -> saveScenarioInfoOnQuit >> uncurry startGame scene Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
@@ -376,13 +355,45 @@ handleModalEvent = \case
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 
--- | Quit a game.  Currently all it does is write out the updated REPL
---   history to a @.swarm_history@ file, and return to the previous menu.
+-- | Write the @ScenarioInfo@ out to disk when exiting a game.
+saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnQuit = do
+  -- Don't save progress if we are in cheat mode
+  cheat <- use $ uiState . uiCheatMode
+  unless cheat $ do
+    -- the path should be normalized and good to search in scenario collection
+    mp' <- use $ gameState . currentScenarioPath
+    case mp' of
+      Nothing -> return ()
+      Just p' -> do
+        gs <- use $ gameState . scenarios
+        p <- liftIO $ normalizeScenarioPath gs p'
+        t <- liftIO getZonedTime
+        won <- isJust <$> preuse (gameState . winCondition . _Won)
+        ts <- use $ gameState . ticks
+        let currentScenarioInfo :: Traversal' AppState ScenarioInfo
+            currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
+        currentScenarioInfo %= updateScenarioInfoOnQuit t ts won
+        status <- preuse currentScenarioInfo
+        case status of
+          Nothing -> return ()
+          Just si -> liftIO $ saveScenarioInfo p si
+
+        -- rebuild the NewGameMenu so it gets the updated ScenarioInfo
+        sc <- use $ gameState . scenarios
+        forM_ (mkNewGameMenu cheat sc p) (uiState . uiMenu .=)
+
+-- | Quit a game.
+--
+-- * writes out the updated REPL history to a @.swarm_history@ file
+-- * saves current scenario status (InProgress/Completed)
+-- * returns to the previous menu
 quitGame :: EventM Name AppState ()
 quitGame = do
   history <- use $ uiState . uiReplHistory
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
+  saveScenarioInfoOnQuit
   menu <- use $ uiState . uiMenu
   case menu of
     NoMenu -> halt

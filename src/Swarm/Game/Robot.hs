@@ -123,7 +123,7 @@ data RobotContext = RobotContext
     --   definitions.
     _defStore :: Store
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 makeLenses ''RobotContext
 
@@ -199,6 +199,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   deriving (Generic)
 
 deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase)) => Eq (RobotR phase)
 
 deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJSON (RobotR phase)
 

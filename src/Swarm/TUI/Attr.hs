@@ -38,6 +38,8 @@ module Swarm.TUI.Attr (
   highlightAttr,
   notifAttr,
   infoAttr,
+  boldAttr,
+  cyanAttr,
   yellowAttr,
   blueAttr,
   greenAttr,
@@ -72,11 +74,13 @@ swarmAttrMap =
          , (infoAttr, fg (V.rgbColor @Int 50 50 50))
          , (buttonSelectedAttr, bg V.blue)
          , (notifAttr, fg V.yellow `V.withStyle` V.bold)
+         , (boldAttr, V.defAttr `V.withStyle` V.bold)
          , -- Basic colors
            (redAttr, fg V.red)
          , (greenAttr, fg V.green)
          , (blueAttr, fg V.blue)
          , (yellowAttr, fg V.yellow)
+         , (cyanAttr, fg V.cyan)
          , -- Default attribute
            (defAttr, V.defAttr)
          ]
@@ -143,19 +147,22 @@ plantAttr = worldPrefix <> attrName "plant"
 highlightAttr
   , notifAttr
   , infoAttr
+  , boldAttr
   , defAttr ::
     AttrName
 highlightAttr = attrName "highlight"
 notifAttr = attrName "notif"
 infoAttr = attrName "info"
+boldAttr = attrName "bold"
 defAttr = attrName "def"
 
 -- | Some basic colors used in TUI.
-redAttr, greenAttr, blueAttr, yellowAttr :: AttrName
+redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr :: AttrName
 redAttr = attrName "red"
 greenAttr = attrName "green"
 blueAttr = attrName "blue"
 yellowAttr = attrName "yellow"
+cyanAttr = attrName "cyan"
 
 instance ToJSON AttrName where
   toJSON = toJSON . head . attrNameComponents

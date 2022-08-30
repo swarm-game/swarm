@@ -27,6 +27,8 @@ module Swarm.TUI.Model (
   mainMenu,
   Menu (..),
   _NewGameMenu,
+  mkScenarioList,
+  mkNewGameMenu,
 
   -- * UI state
 
@@ -69,7 +71,6 @@ module Swarm.TUI.Model (
   uiPort,
   uiMenu,
   uiPlaying,
-  uiNextScenario,
   uiCheatMode,
   uiFocusRing,
   uiWorldCursor,
@@ -120,12 +121,14 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   initAppState,
+  startGame,
   scenarioToAppState,
   Seed,
 
   -- ** Utility
   focusedItem,
   focusedEntity,
+  nextScenario,
 ) where
 
 import Brick
@@ -141,22 +144,40 @@ import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
 import Data.List (findIndex, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioItem, loadScenario)
+import Swarm.Game.Scenario (Scenario, loadScenario)
+import Swarm.Game.ScenarioInfo (
+  ScenarioCollection,
+  ScenarioInfo (..),
+  ScenarioItem (..),
+  ScenarioStatus (..),
+  normalizeScenarioPath,
+  scMap,
+  scenarioCollectionToList,
+  scenarioItemByPath,
+  scenarioPath,
+  scenarioStatus,
+  _SISingle,
+ )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
 import System.Clock
+import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
+import Witch (into)
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -406,7 +427,7 @@ data ModalType
   | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = CancelButton | QuitButton | NextButton Scenario
+data ButtonSelection = CancelButton | QuitButton | NextButton (Scenario, ScenarioInfo)
 
 data Modal = Modal
   { _modalType :: ModalType
@@ -428,6 +449,33 @@ mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
 mainMenu e = BL.list MenuList (V.fromList [minBound .. maxBound]) 1 & BL.listMoveToElement e
 
 makePrisms ''Menu
+
+-- | Create a brick 'BL.List' of scenario items from a 'ScenarioCollection'.
+mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
+mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
+ where
+  filterTest = if cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
+
+-- | Given a 'ScenarioCollection' and a 'FilePath' which is the canonical
+--   path to some folder or scenario, construct a 'NewGameMenu' stack
+--   focused on the given item, if possible.
+mkNewGameMenu :: Bool -> ScenarioCollection -> FilePath -> Maybe Menu
+mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitPath path) []
+ where
+  go :: Maybe ScenarioCollection -> [FilePath] -> [BL.List Name ScenarioItem] -> Maybe [BL.List Name ScenarioItem]
+  go _ [] stk = Just stk
+  go Nothing _ _ = Nothing
+  go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
+   where
+    hasName :: ScenarioItem -> Bool
+    hasName (SISingle _ (ScenarioInfo pth _ _ _)) = takeFileName pth == thing
+    hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
+
+    lst = BL.listFindBy hasName (mkScenarioList cheat curSC)
+
+    nextSC = case M.lookup (dropTrailingPathSeparator thing) (scMap curSC) of
+      Just (SICollection _ c) -> Just c
+      _ -> Nothing
 
 ------------------------------------------------------------
 -- Inventory list entries
@@ -456,7 +504,6 @@ data UIState = UIState
   { _uiPort :: Maybe Port
   , _uiMenu :: Menu
   , _uiPlaying :: Bool
-  , _uiNextScenario :: Maybe Scenario
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
@@ -514,9 +561,6 @@ uiMenu :: Lens' UIState Menu
 --   should thus display a world, REPL, etc.; False = we should
 --   display the current menu.
 uiPlaying :: Lens' UIState Bool
-
--- | The next scenario after the current one, if any.
-uiNextScenario :: Lens' UIState (Maybe Scenario)
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
@@ -713,7 +757,6 @@ initUIState showMainMenu cheatMode = liftIO $ do
       { _uiPort = Nothing
       , _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiPlaying = not showMainMenu
-      , _uiNextScenario = Nothing
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiWorldCursor = Nothing
@@ -815,8 +858,34 @@ initAppState userSeed scenarioName toRun cheatMode = do
   case skipMenu of
     False -> return $ AppState gs ui
     True -> do
-      scenario <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
-      liftIO $ execStateT (scenarioToAppState scenario userSeed toRun) (AppState gs ui)
+      (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
+      execStateT
+        (startGame scenario (ScenarioInfo path NotStarted NotStarted NotStarted) toRun)
+        (AppState gs ui)
+
+-- | Load a 'Scenario' and start playing the game.
+startGame :: (MonadIO m, MonadState AppState m) => Scenario -> ScenarioInfo -> Maybe FilePath -> m ()
+startGame scene si toRun = do
+  t <- liftIO getZonedTime
+  ss <- use $ gameState . scenarios
+  p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
+  gameState . currentScenarioPath .= Just p
+  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
+  scenarioToAppState scene Nothing toRun
+
+-- | Extract the scenario which would come next in the menu from the
+--   currently selected scenario (if any).  Can return @Nothing@ if
+--   either we are not in the @NewGameMenu@, or the current scenario
+--   is the last among its siblings.
+nextScenario :: Menu -> Maybe (Scenario, ScenarioInfo)
+nextScenario = \case
+  NewGameMenu (curMenu :| _) ->
+    let nextMenuList = BL.listMoveDown curMenu
+        isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
+     in if isLastScenario
+          then Nothing
+          else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
+  _ -> Nothing
 
 -- XXX do we need to keep an old entity map around???
 

@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -53,6 +54,7 @@ module Swarm.Game.State (
   recipesIn,
   recipesReq,
   scenarios,
+  currentScenarioPath,
   knownEntities,
   world,
   viewCenterRule,
@@ -126,6 +128,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
+import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
 import Linear
 import Paths_swarm (getDataFileName)
@@ -139,7 +142,7 @@ import Swarm.Game.Recipe (
   reqRecipeMap,
  )
 import Swarm.Game.Robot
-import Swarm.Game.Scenario
+import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Value (Value)
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -274,6 +277,7 @@ data GameState = GameState
   , _recipesIn :: IntMap [Recipe Entity]
   , _recipesReq :: IntMap [Recipe Entity]
   , _scenarios :: ScenarioCollection
+  , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
@@ -407,6 +411,12 @@ recipesReq :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' GameState ScenarioCollection
+
+-- | The filepath of the currently running scenario.
+--
+-- This is useful as an index to 'scenarios' collection,
+-- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
+currentScenarioPath :: Lens' GameState (Maybe FilePath)
 
 -- | The names of entities that should be considered "known", that is,
 --   robots know what they are without having to scan them.
@@ -687,6 +697,7 @@ initGameState = do
       , _recipesIn = inRecipeMap recipes
       , _recipesReq = reqRecipeMap recipes
       , _scenarios = loadedScenarios
+      , _currentScenarioPath = Nothing
       , _knownEntities = []
       , _world = W.emptyWorld (fromEnum StoneT)
       , _viewCenterRule = VCRobot 0
@@ -818,7 +829,7 @@ buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
   robots :: [TRobot]
   robots =
     area
-      & traversed <.> traversed %@~ (,) -- add (r,c) indices
+      & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
       & concat
       & mapMaybe
         ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robot) ->
@@ -831,8 +842,14 @@ buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
 initGameStateForScenario :: String -> Maybe Seed -> Maybe String -> ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   g <- initGameState
-  scene <- loadScenario sceneName (g ^. entityMap)
-  liftIO $ scenarioToGameState scene userSeed toRun g
+  (scene, path) <- loadScenario sceneName (g ^. entityMap)
+  gs <- liftIO $ scenarioToGameState scene userSeed toRun g
+  normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
+  t <- liftIO getZonedTime
+  return $
+    gs
+      & currentScenarioPath ?~ normalPath
+      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0 0
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.

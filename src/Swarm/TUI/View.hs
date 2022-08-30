@@ -47,10 +47,12 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
+import Control.Monad (guard)
 import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
+import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
 import Data.List qualified as L
@@ -64,6 +66,7 @@ import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Graphics.Vty qualified as V
 import Linear
 import Network.Wai.Handler.Warp (Port)
@@ -72,7 +75,15 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (ScenarioItem (..), scenarioDescription, scenarioItemName, scenarioName)
+import Swarm.Game.Scenario (scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.ScenarioInfo (
+  ScenarioItem (..),
+  ScenarioStatus (..),
+  scenarioBestTicks,
+  scenarioBestTime,
+  scenarioItemName,
+  scenarioStatus,
+ )
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
@@ -132,17 +143,43 @@ drawNewGameMenuUI (l :| ls) =
     . centerLayer
     $ hBox
       [ vBox
-          [ withAttr robotAttr . txt $ breadcrumbs ls
+          [ withAttr boldAttr . txt $ breadcrumbs ls
           , txt " "
           , vLimit 20 . hLimit 35
-              . BL.renderList (const drawScenarioItem) True
+              . BL.renderList (const $ padRight Max . drawScenarioItem) True
               $ l
           ]
       , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
  where
-  drawScenarioItem (SISingle s) = padRight Max . txt $ s ^. scenarioName
-  drawScenarioItem (SICollection nm _) = padRight Max (txt nm) <+> withAttr robotAttr (txt ">")
+  drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
+  drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
+  drawStatusInfo s si = case si ^. scenarioBestTime of
+    NotStarted -> txt " ○ "
+    InProgress {} -> case s ^. scenarioObjectives of
+      [] -> withAttr cyanAttr $ txt " ◉ "
+      _ -> withAttr yellowAttr $ txt " ◎ "
+    Complete {} -> withAttr greenAttr $ txt " ● "
+
+  describeStatus = \case
+    NotStarted -> txt "none"
+    InProgress _s e _t ->
+      withAttr yellowAttr . vBox $
+        [ txt "in progress"
+        , txt $ "(played for " <> formatTimeDiff e <> ")"
+        ]
+    Complete _s e t ->
+      withAttr greenAttr . vBox $
+        [ txt $ "completed in " <> formatTimeDiff e
+        , hBox
+            [ txt "("
+            , drawTime t True
+            , txt " ticks)"
+            ]
+        ]
+
+  formatTimeDiff :: NominalDiffTime -> Text
+  formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %mm %ss"
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
@@ -152,8 +189,24 @@ drawNewGameMenuUI (l :| ls) =
       . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
 
   drawDescription :: ScenarioItem -> Widget Name
-  drawDescription (SISingle s) = txtWrap (nonBlank (s ^. scenarioDescription))
   drawDescription (SICollection _ _) = txtWrap " "
+  drawDescription (SISingle s si) = do
+    let oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
+    let bestRealTime = if oneBest then "best:" else "best real time:"
+    let noSame = if oneBest then const Nothing else Just
+    let lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
+    vBox . catMaybes $
+      [ Just $ txtWrap (nonBlank (s ^. scenarioDescription))
+      , Just $
+          padTop (Pad 3) $
+            padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestTime)
+      , noSame $ -- hide best game time if it is same as best real time
+          padTop (Pad 1) $
+            padRight (Pad 1) (txt "best game time:") <+> describeStatus (si ^. scenarioBestTicks)
+      , Just $
+          padTop (Pad 1) $
+            padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
+      ]
 
   nonBlank "" = " "
   nonBlank t = t
@@ -239,15 +292,27 @@ drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g i@(W.Coords (y, x)) =
   hBox [drawLoc g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
 
+-- | Format the clock display to be shown in the upper right of the
+--   world panel.
 drawClockDisplay :: GameState -> Widget n
 drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockWidget = drawTime (gs ^. ticks) (gs ^. paused) gs
-  pauseWidget = if gs ^. paused then Just $ txt "(PAUSED)" else Nothing
+  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused) gs
+  pauseWidget = guard (gs ^. paused) $> txt "(PAUSED)"
 
-drawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
-drawTime t showTicks gs =
-  justClock . str . mconcat $
+-- | Check whether the currently focused robot (if any) has a clock
+--   device installed.
+clockInstalled :: GameState -> Bool
+clockInstalled gs = case focusedRobot gs of
+  Nothing -> False
+  Just r
+    | countByName "clock" (r ^. installedDevices) > 0 -> True
+    | otherwise -> False
+
+-- | Format a ticks count as a hexadecimal clock.
+drawTime :: Integer -> Bool -> Widget n
+drawTime t showTicks =
+  str . mconcat $
     [ printf "%x" (t `shiftR` 20)
     , ":"
     , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
@@ -255,13 +320,14 @@ drawTime t showTicks gs =
     , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
     ]
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
- where
-  justClock = if clockInstalled then Just else const Nothing
-  clockInstalled = case focusedRobot gs of
-    Nothing -> False
-    Just r
-      | countByName "clock" (r ^. installedDevices) > 0 -> True
-      | otherwise -> False
+
+-- | Return a possible time display, if the currently focused robot
+--   has a clock device installed.  The first argument is the number
+--   of ticks (e.g. 943 = 0x3af), and the second argument indicates
+--   whether the time should be shown down to single-tick resolution
+--   (e.g. 0:00:3a.f) or not (e.g. 0:00:3a).
+maybeDrawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
+maybeDrawTime t showTicks gs = guard (clockInstalled gs) $> drawTime t showTicks
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -375,10 +441,12 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
          in ( ""
             , Just
                 ( 0
-                , [(nextMsg, NextButton scene) | Just scene <- [s ^. uiState . uiNextScenario]]
-                  ++ [ (stopMsg, QuitButton)
-                     , (continueMsg, CancelButton)
-                     ]
+                , [ (nextMsg, NextButton scene)
+                  | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
+                  ]
+                    ++ [ (stopMsg, QuitButton)
+                       , (continueMsg, CancelButton)
+                       ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
@@ -575,7 +643,7 @@ messagesWidget gs = widgetList
   drawLogEntry' e =
     withAttr (colorLogs e) $
       hBox
-        [ fromMaybe (txt "") $ drawTime (e ^. leTime) True gs
+        [ fromMaybe (txt "") $ maybeDrawTime (e ^. leTime) True gs
         , padLeft (Pad 2) . txt $ "[" <> e ^. leRobotName <> "]"
         , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
