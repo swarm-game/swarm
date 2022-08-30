@@ -938,10 +938,22 @@ explainRecipes s e
       maximumOf (traverse . recipeOutputs . traverse . to width) recipes
   widthLimit = 2 * max maxInputWidth maxOutputWidth + 11
 
+-- | Return all recipes that involve a given entity.
 recipesWith :: AppState -> Entity -> [Recipe Entity]
 recipesWith s e =
   let getRecipes select = recipesFor (s ^. gameState . select) e
-   in L.nub $ getRecipes recipesOut ++ getRecipes recipesIn
+   in -- The order here is chosen intentionally.  See https://github.com/swarm-game/swarm/issues/418.
+      --
+      --   1. Recipes where the entity is an input --- these should go
+      --     first since the first thing you will want to know when you
+      --     obtain a new entity is what you can do with it.
+      --
+      --   2. Recipes where it serves as a catalyst --- for the same reason.
+      --
+      --   3. Recipes where it is an output --- these should go last,
+      --      since if you have it, you probably already figured out how
+      --      to make it.
+      L.nub $ getRecipes recipesIn ++ getRecipes recipesReq ++ getRecipes recipesOut
 
 -- | Draw an ASCII art representation of a recipe.  For now, the
 --   weight is not shown.
