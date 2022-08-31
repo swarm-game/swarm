@@ -40,7 +40,8 @@ import GHC.Generics (Generic)
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax hiding (Count)
+import Swarm.Game.Entity (Count(..))
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:
@@ -84,7 +85,7 @@ data Requirement
 data Requirements = Requirements
   { capReqs :: Set Capability
   , devReqs :: Set Text
-  , invReqs :: Map Text Int
+  , invReqs :: Map Text Count
   }
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
@@ -99,7 +100,7 @@ instance Monoid Requirements where
 singleton :: Requirement -> Requirements
 singleton (ReqCap c) = Requirements (S.singleton c) S.empty M.empty
 singleton (ReqDev d) = Requirements S.empty (S.singleton d) M.empty
-singleton (ReqInv n e) = Requirements S.empty S.empty (M.singleton e n)
+singleton (ReqInv n e) = Requirements S.empty S.empty (M.singleton e (Count $ fromIntegral n))
 
 -- | For convenience, create a 'Requirements' set with a single
 --   'Capability' requirement.

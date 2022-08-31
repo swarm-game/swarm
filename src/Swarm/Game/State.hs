@@ -116,7 +116,6 @@ import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
-import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -764,7 +763,8 @@ scenarioToGameState scenario userSeed toRun g = do
   em = g ^. entityMap <> scenario ^. scenarioEntities
 
   baseID = 0
-  (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
+  entities = M.elems (entitiesByName em)
+  devices = filter (not . null . view entityCapabilities) entities
   -- Keep only robots from the robot list with a concrete location;
   -- the others existed only to serve as a template for robots drawn
   -- in the world map
@@ -781,7 +781,7 @@ scenarioToGameState scenario userSeed toRun g = do
       & ix baseID . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
-          True -> union (fromElems (map (0,) things))
+          True -> union (fromElems (map (Infinity,) entities))
       & ix baseID . installedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id

@@ -51,7 +51,7 @@ module Swarm.Game.Entity (
 
   -- * Inventories
   Inventory,
-  Count,
+  Count(..),
 
   -- ** Construction
   empty,
@@ -111,6 +111,8 @@ import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
+import Numeric.Natural (Natural)
+import Data.Data (Data)
 
 ------------------------------------------------------------
 -- Properties
@@ -448,9 +450,48 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 -- Inventory
 ------------------------------------------------------------
 
--- | A convenient synonym to remind us when an 'Int' is supposed to
---   represent /how many/ of something we have.
-type Count = Int
+-- | A type that represent /how many/ of something we have.
+--
+-- In some challenges it is useful to have _an infinite_ amount
+-- of supplies in robots inventory as that is more visible
+-- than hidden default devices.
+data Count = Count Natural | Infinity
+  deriving (Eq, Ord, Show, Read, Generic, Data)
+
+instance ToJSON Count where
+  toJSON (Count a) = toJSON a
+  toJSON Infinity = Null
+
+instance FromJSON Count where
+  parseJSON = \case
+    Number s ->
+      if s - fromInteger (truncate s) == 0
+        then pure $ Count (truncate s)
+        else fail "Count is not a whole number!"
+    Null -> pure Infinity
+    e -> fail $
+      "Expected number or null for count, but got '" <> show e <> "'!"
+
+instance FromJSONE e Count
+
+instance Num Count where
+  Count a + Count b = Count $ a + b
+  _ + _ = Infinity
+  Count a * Count b = Count $ a * b
+  _ * _ = Infinity
+  abs = id
+  signum (Count 0) = 0
+  signum _ = 1
+  fromInteger = Count . fromInteger
+  Count a - Count b = Count $ a - b
+  Infinity - Count _ = Infinity
+  _ - _ = 0
+
+-- | Internal way to shift count to positive integers when hashing.
+hashCount :: Num p => Count -> p
+hashCount c = case c of
+  Infinity -> 1
+  Count a -> 2 + fromIntegral a
 
 -- | An inventory is really just a bag/multiset of entities.  That is,
 --   it contains some entities, along with the number of times each
@@ -531,7 +572,7 @@ insertCount k e (Inventory cs byN h) =
   Inventory
     (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (k, e) cs)
     (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
-    (h + (k + extra) * (e ^. entityHash)) -- homomorphic hashing
+    (h + (hashCount k + extra) * (e ^. entityHash)) -- homomorphic hashing
  where
   -- Include the hash of an entity once just for "knowing about" it;
   -- then include the hash once per actual copy of the entity.  In
@@ -576,8 +617,7 @@ deleteCount k e (Inventory cs byN h) = Inventory cs' byN h'
  where
   m = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
   cs' = IM.adjust removeCount (e ^. entityHash) cs
-  h' = h - min k m * (e ^. entityHash)
-
+  h' = h - min (hashCount k) (hashCount m) * (e ^. entityHash)
   removeCount :: (Count, a) -> (Count, a)
   removeCount (n, a) = (max 0 (n - k), a)
 
@@ -587,9 +627,10 @@ deleteAll e (Inventory cs byN h) =
   Inventory
     (IM.adjust (first (const 0)) (e ^. entityHash) cs)
     byN
-    (h - n * (e ^. entityHash))
+    (h - hashCount n * (e ^. entityHash))
  where
   n = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
+
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]

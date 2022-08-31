@@ -847,7 +847,10 @@ drawItem sel i _ (Separator l) =
   (if sel == Just (i + 1) then visible else id) $ hBorderWithLabel (txt l)
 drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
  where
-  showCount = padLeft Max . str . show
+  showCount = padLeft Max . str . prettyCount
+  prettyCount = \case
+    E.Count a -> show a
+    E.Infinity -> "∞"
 drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
 
 -- | Draw the name of an entity, labelled with its visual
