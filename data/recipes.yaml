@@ -479,6 +479,20 @@
   out:
   - [1, 3D printer]
 
+- in:
+  - [1, gold]
+  out:
+  - [8, gold coin]
+  required:
+  - [1, furnace]
+
+- in:
+  - [1, gold coin]
+  - [1, bit (1)]
+  - [1, bit (0)]
+  out:
+  - [1, bitcoin]
+
 ## MAGIC
 
 - in:
