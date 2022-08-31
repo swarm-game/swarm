@@ -37,11 +37,11 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Game.Entity (Count (..))
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax hiding (Count)
-import Swarm.Game.Entity (Count(..))
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:

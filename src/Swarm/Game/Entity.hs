@@ -51,7 +51,7 @@ module Swarm.Game.Entity (
 
   -- * Inventories
   Inventory,
-  Count(..),
+  Count (..),
 
   -- ** Construction
   empty,
@@ -85,6 +85,7 @@ import Control.Lens (Getter, Lens', lens, to, view, (^.), _2)
 import Control.Monad.IO.Class
 import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
+import Data.Data (Data)
 import Data.Function (on)
 import Data.Hashable
 import Data.Int (Int64)
@@ -103,6 +104,7 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Linear (V2)
+import Numeric.Natural (Natural)
 import Paths_swarm
 import Swarm.Game.Display
 import Swarm.Language.Capability
@@ -111,8 +113,6 @@ import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
-import Numeric.Natural (Natural)
-import Data.Data (Data)
 
 ------------------------------------------------------------
 -- Properties
@@ -469,8 +469,9 @@ instance FromJSON Count where
         then pure $ Count (truncate s)
         else fail "Count is not a whole number!"
     Null -> pure Infinity
-    e -> fail $
-      "Expected number or null for count, but got '" <> show e <> "'!"
+    e ->
+      fail $
+        "Expected number or null for count, but got '" <> show e <> "'!"
 
 instance FromJSONE e Count
 
@@ -630,7 +631,6 @@ deleteAll e (Inventory cs byN h) =
     (h - hashCount n * (e ^. entityHash))
  where
   n = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
-
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]

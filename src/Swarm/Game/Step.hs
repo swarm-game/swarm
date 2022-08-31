@@ -48,8 +48,8 @@ import Data.Tuple (swap)
 import Linear (V2 (..), zero, (^+^))
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton, union, Count)
-import Swarm.Game.Entity qualified as E 
+import Swarm.Game.Entity hiding (Count, empty, lookup, singleton, union)
+import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -1378,7 +1378,6 @@ execConst c vs s k = do
             let salvageInventory = E.union (target ^. robotInventory) (target ^. installedDevices)
             robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
 
-
             -- Copy over the salvaged robot's log, if we have one
             inst <- use installedDevices
             em <- use entityMap
@@ -1402,13 +1401,15 @@ execConst c vs s k = do
             robotMap . at (target ^. robotID) . traverse . systemRobot .= True
 
             ourID <- use @Robot robotID
-            let salvageItems = if system || creative
-                  then []
-                  else concatMap (uncurry replicateCount) (E.elems salvageInventory)
+            let salvageItems =
+                  if system || creative
+                    then []
+                    else concatMap (uncurry replicateCount) (E.elems salvageInventory)
                 numItems = length salvageItems
-                replicateCount n e = e ^. entityName & case n of
-                  E.Count x -> replicate (fromIntegral x)
-                  E.Infinity -> replicate 42
+                replicateCount n e =
+                  e ^. entityName & case n of
+                    E.Count x -> replicate (fromIntegral x)
+                    E.Infinity -> replicate 42
 
             -- The program for the salvaged robot to run
             let giveInventory =
