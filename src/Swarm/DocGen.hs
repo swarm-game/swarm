@@ -33,7 +33,7 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities)
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities, Count)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
 import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
@@ -365,7 +365,7 @@ classicScenario = do
 startingDevices :: Scenario -> Set Entity
 startingDevices = Set.fromList . map snd . E.elems . view installedDevices . instantiateRobot 0 . head . view scenarioRobots
 
-startingInventory :: Scenario -> Map Entity Int
+startingInventory :: Scenario -> Map Entity Count
 startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots
 
 -- | Ignore utility entites that are just used for tutorials and challenges.

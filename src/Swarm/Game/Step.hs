@@ -50,8 +50,8 @@ import Data.Tuple (swap)
 import Linear (V2 (..), zero, (^+^))
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
-import Swarm.Game.Entity qualified as E
+import Swarm.Game.Entity hiding (empty, lookup, singleton, union, Count)
+import Swarm.Game.Entity qualified as E 
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -927,7 +927,10 @@ execConst c vs s k = do
     Count -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        return $ Out (VInt (fromIntegral $ countByName name inv)) s k
+        let n = case countByName name inv of
+              E.Count x -> x
+              E.Infinity -> 42
+        return $ Out (VInt $ fromIntegral n) s k
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
@@ -1375,22 +1378,22 @@ execConst c vs s k = do
             let salvageInventory = E.union (target ^. robotInventory) (target ^. installedDevices)
             robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
 
-            let salvageItems = concatMap (\(n, e) -> replicate n (e ^. entityName)) (E.elems salvageInventory)
-                numItems = length salvageItems
 
             -- Copy over the salvaged robot's log, if we have one
             inst <- use installedDevices
             em <- use entityMap
             creative <- use creativeMode
+            system <- use systemRobot
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
             when (creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Immediately copy over any items the robot knows about
-            -- but has 0 of
-            let knownItems = map snd . filter ((== 0) . fst) . elems $ salvageInventory
-            robotInventory %= \i -> foldr (insertCount 0) i knownItems
+            -- but has 0 of and in creative mode just get everything now.
+            let immediate = if system || creative then id else filter ((== 0) . fst)
+            let immediateItems = map snd . immediate . elems $ salvageInventory
+            robotInventory %= \i -> foldr (insertCount 0) i immediateItems
 
             -- Now reprogram the robot being salvaged to 'give' each
             -- item in its inventory to us, one at a time, then
@@ -1399,6 +1402,13 @@ execConst c vs s k = do
             robotMap . at (target ^. robotID) . traverse . systemRobot .= True
 
             ourID <- use @Robot robotID
+            let salvageItems = if system || creative
+                  then []
+                  else concatMap (uncurry replicateCount) (E.elems salvageInventory)
+                numItems = length salvageItems
+                replicateCount n e = e ^. entityName & case n of
+                  E.Count x -> replicate (fromIntegral x)
+                  E.Infinity -> replicate 42
 
             -- The program for the salvaged robot to run
             let giveInventory =
