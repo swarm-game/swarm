@@ -112,6 +112,8 @@ data Capability
   | -- | Capabiltiy to do time-related things, like `wait` and get the
     --   current time.
     CTime
+  | -- | Capability to execute `try`.
+    CTry
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -212,6 +214,9 @@ constCaps = \case
   Or -> Just CCond
   Not -> Just CNegation
   -- ----------------------------------------------------------------
+  -- exceptions
+  Try -> Just CTry
+  -- ----------------------------------------------------------------
   -- Some additional straightforward ones, which however currently
   -- cannot be used in classic mode since there is no craftable item
   -- which conveys their capability. TODO: #26
@@ -228,5 +233,4 @@ constCaps = \case
   Case -> Nothing
   Fst -> Nothing -- XXX should require cap for pairs
   Snd -> Nothing
-  Try -> Nothing -- XXX these definitely need to require something.
   Knows -> Nothing

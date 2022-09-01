@@ -667,3 +667,19 @@
   - [1, strange loop]
   out:
   - [1, rubber band]
+
+#########################################
+##                COTTON               ##
+#########################################
+
+- in:
+  - [4, cotton]
+  out:
+  - [1, string]
+  required:
+  - [1, small motor]
+
+- in:
+  - [256, string]
+  out:
+  - [1, net]

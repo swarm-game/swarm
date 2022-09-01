@@ -317,6 +317,15 @@
   properties: [portable, growable]
   growth: [100, 800]
 
+- name: string
+  display:
+    attr: silver
+    char: '~'
+  description:
+  - A long, flexible device for transferring either force or
+    information, made of twisted cotton fibers.
+  properties: [portable]
+
 - name: lambda
   display:
     attr: flower
@@ -933,3 +942,17 @@
 
   properties: [portable]
   capabilities: [atomic]
+
+- name: net
+  display:
+    attr: silver
+    char: '#'
+  description:
+  - A net is a device woven out of many strings.  With a net
+    installed, you can use the `try` command to catch errors. For example,
+  - |
+    `try {move} {turn left}`
+  - will attempt to move, but if that fails, turn left instead.
+  properties: [portable]
+  capabilities: [try]
+
