@@ -306,6 +306,17 @@
   properties: [portable, growable]
   growth: [30, 50]
 
+- name: cotton
+  display:
+    attr: silver
+    char: 'i'
+  description:
+  - A plant with tufts of soft fibers that can be harvested and used
+    to make things, including sheets of material that the local
+    aliens like to drape over their bodies.
+  properties: [portable, growable]
+  growth: [100, 800]
+
 - name: lambda
   display:
     attr: flower
