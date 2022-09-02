@@ -159,10 +159,10 @@ testLanguagePipeline =
             )
         , testCase
             "grabif"
-            (valid "def grabif : string -> cmd () = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
+            (valid "def grabif : text -> cmd () = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
         , testCase
             "placeif"
-            (valid "def placeif : string -> cmd bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; return true} {return false}) end")
+            (valid "def placeif : text -> cmd bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; return true} {return false}) end")
         , testCase
             "atomic move+move"
             ( process
