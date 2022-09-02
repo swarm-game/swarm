@@ -346,7 +346,7 @@ recipesToDot classic emap recipes = do
 -- As a small nitpick, this is not actually true because we did not consider
 -- devices required for installing itself! (Also moving, making, building...)
 -- But hopefully the game developers are aware of those crucial devices and
--- would not make the game impossible to play. ;) 
+-- would not make the game impossible to play. ;)
 --
 -- TODO: maybe there is a bug, some entities are not shown in any level
 --       but there are recipes that link them
@@ -354,7 +354,7 @@ recipeLevels :: [Recipe Entity] -> Set Entity -> Set Entity -> [Set Entity]
 recipeLevels recipes start installed = levels
  where
   recipeParts r = (r ^. recipeInputs, r ^. recipeRequirements, r ^. recipeOutputs)
-  all3 f (a,b,c) = (f a, f b, f c)
+  all3 f (a, b, c) = (f a, f b, f c)
   m :: [(Set Entity, Set Entity, Set Entity)]
   m = map (all3 (Set.fromList . map snd) . recipeParts) recipes
   levels :: [Set Entity]
@@ -362,7 +362,7 @@ recipeLevels recipes start installed = levels
    where
     go known install =
       let n = nextLevel Set.\\ known
-          isKnown (i, r, _o) = null (i Set.\\ known) && null (r Set.\\ install)  
+          isKnown (i, r, _o) = null (i Set.\\ known) && null (r Set.\\ install)
           nextLevel = Set.unions . map (view _3) $ filter isKnown m
        in if null n
             then []
