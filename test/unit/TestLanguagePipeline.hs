@@ -81,7 +81,7 @@ testLanguagePipeline =
             "located type error"
             ( process
                 "def a =\n 42 + \"oops\"\nend"
-                "2: Can't unify int and string"
+                "2: Can't unify int and text"
             )
         , testCase
             "failure inside bind chain"
