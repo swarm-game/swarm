@@ -13,16 +13,22 @@ objectives:
       } { return false }
 solution: |
   log "Hi, I can build teleporting robots!";
-  build {log "Hi, I can teleport!"; teleport self (5,0); p <- whereami; log $ "I am at " ++ format p}
+  try {
+    build {log "Hi, I can teleport!"; teleport self (5,0); p <- whereami; log $ "I am at " ++ format p}
+  } {
+    fail "Fatal error: BASE: I could not build my robot! What happened?!"
+  }
 robots:
   - name: base
     loc: [0,0]
     dir: [1,0]
     devices:
       - logger
+      - net
       - 3D printer
     inventory:
       - [1, mirror]
+      - [1, string]
       - [1, GPS]
       - [1, Tardis]
       - [1, logger]
