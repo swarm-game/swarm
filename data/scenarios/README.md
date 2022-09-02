@@ -61,13 +61,19 @@ the [YAML extension](https://open-vsx.org/extension/redhat/vscode-yaml)
 installed.
 
 To point the editor to the right schema for scenarios in this repository,
-you can use this `setting.json`:
+you can use this `settings.json`:
 ```JSON
 {
   "yaml.schemas": {
-    "https://raw.githubusercontent.com/swarm-game/swarm/main/scenario.json": [
+    "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/scenario.json": [
       "data/scenarios/*.yaml",
       "data/scenarios/**/*.yaml"
+    ],
+    "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/entities.json": [
+      "data/entities.yaml"
+    ],
+    "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json": [
+      "data/recipes.yaml"
     ]
   }
 }
