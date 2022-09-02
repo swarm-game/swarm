@@ -17,7 +17,7 @@ module Swarm.DocGen (
   commandsPage,
 ) where
 
-import Control.Lens (view, (^.))
+import Control.Lens (view, (^.), _3)
 import Control.Monad (zipWithM, zipWithM_, (<=<))
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
@@ -259,17 +259,10 @@ recipesToDot classic emap recipes = do
   -- --------------------------------------------------------------------------
   -- Get the starting inventories, entites present in the world and compute
   -- how hard each entity is to get - see 'recipeLevels'.
-  let devs = startingDevices classic
-      inv = startingInventory classic
+  let inv = startingInventory classic
+      devs = startingDevices classic
       worldEntites = Set.map (safeGetEntity $ entitiesByName emap) testWorld2Entites
-      levels = recipeLevels recipes (Set.unions [worldEntites, devs])
-  -- --------------------------------------------------------------------------
-  -- Base inventory
-  (_bc, ()) <- Dot.cluster $ do
-    Dot.attribute ("style", "filled")
-    Dot.attribute ("color", "lightgrey")
-    mapM_ ((base ---<>) . nid) devs
-    mapM_ ((base .->.) . nid . fst) $ Map.toList inv
+      levels = recipeLevels recipes worldEntites devs
   -- --------------------------------------------------------------------------
   -- World entites
   (_wc, ()) <- Dot.cluster $ do
@@ -316,12 +309,20 @@ recipesToDot classic emap recipes = do
   zipWithM_ sameBelowAbove (bottom : ls) (zip bls tls)
   -- --------------------------------------------------------------------------
   -- add node for the world and draw a line to each entity found in the wild
-  -- finally draw recipes
+  -- then draw recipes
   let recipeInOut r = [(snd i, snd o) | i <- r ^. recipeInputs, o <- r ^. recipeOutputs]
       recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeRequirements, o <- r ^. recipeOutputs]
       recipesToPairs f rs = both nid <$> nubOrd (concatMap f rs)
   mapM_ (uncurry (.->.)) (recipesToPairs recipeInOut recipes)
-  mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
+  mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes) -- TODO: command line flag
+  -- --------------------------------------------------------------------------
+  -- Base inventory
+  -- TODO: add a command line flag for this
+  let e1 --< e2 = Dot.edge e1 e2 [("style", "dashed")]
+  mapM_ ((base --<) . nid . fst) $ Map.toList inv
+  -- mark devices you only have installed
+  let e1 --<> e2 = Dot.edge e1 e2 [("arrowhead", "diamond"), ("style", "dotted")]
+  mapM_ ((base --<>) . nid) (devs Set.\\ Map.keysSet inv)
 
 -- ----------------------------------------------------------------------------
 -- RECIPE LEVELS
@@ -333,28 +334,39 @@ recipesToDot classic emap recipes = do
 --  * Level 0 - starting entites (for example those obtainable in the world)
 --  * Level N+1 - everything possible to make (or drill) from Level N
 --
--- This is almost a BFS, but the requirement is that the set of entites
--- required for recipe is subset of the entites known in Level N.
+-- You can think about this as BFS on a graph of sets, where from each set node
+-- there is an edge for all recipes that have inputs in the set to the set
+-- extended by the recipe outputs.
 --
--- If we ever depend on some graph library, this could be rewritten
--- as some BFS-like algorithm with added recipe nodes, but you would
--- need to enforce the condition that recipes need ALL incoming edges.
-recipeLevels :: [Recipe Entity] -> Set Entity -> [Set Entity]
-recipeLevels recipes start = levels
+-- Once you factor in required devices you need to think about pairs of sets,
+-- where the first part is the set of obtained devices and the second part is
+-- the set of devices that can be installed. So the second set is a superset
+-- of the first one.
+--
+-- As a small nitpick, this is not actually true because we did not consider
+-- devices required for installing itself! (Also moving, making, building...)
+-- But hopefully the game developers are aware of those crucial devices and
+-- would not make the game impossible to play. ;) 
+--
+-- TODO: maybe there is a bug, some entities are not shown in any level
+--       but there are recipes that link them
+recipeLevels :: [Recipe Entity] -> Set Entity -> Set Entity -> [Set Entity]
+recipeLevels recipes start installed = levels
  where
-  recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeRequirements), r ^. recipeOutputs)
-  m :: [(Set Entity, Set Entity)]
-  m = map (both (Set.fromList . map snd) . recipeParts) recipes
+  recipeParts r = (r ^. recipeInputs, r ^. recipeRequirements, r ^. recipeOutputs)
+  all3 f (a,b,c) = (f a, f b, f c)
+  m :: [(Set Entity, Set Entity, Set Entity)]
+  m = map (all3 (Set.fromList . map snd) . recipeParts) recipes
   levels :: [Set Entity]
-  levels = reverse $ go [start] start
+  levels = go start installed
    where
-    isKnown known (i, _o) = null $ i Set.\\ known
-    nextLevel known = Set.unions . map snd $ filter (isKnown known) m
-    go ls known =
-      let n = nextLevel known Set.\\ known
+    go known install =
+      let n = nextLevel Set.\\ known
+          isKnown (i, r, _o) = null (i Set.\\ known) && null (r Set.\\ install)  
+          nextLevel = Set.unions . map (view _3) $ filter isKnown m
        in if null n
-            then ls
-            else go (n : ls) (Set.union n known)
+            then []
+            else n : go (Set.union n known) (Set.union n install)
 
 -- | Get classic scenario to figure out starting entites.
 classicScenario :: ExceptT Text IO Scenario
