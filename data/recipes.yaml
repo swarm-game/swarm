@@ -487,9 +487,18 @@
   - [1, furnace]
 
 - in:
+  - [1, gold]
+  out:
+  - [8, gold coin]
+  required:
+  - [1, big furnace]
+
+- in:
   - [1, gold coin]
   - [1, bit (1)]
   - [1, bit (0)]
+  required:
+  - [1, metal drill]
   out:
   - [1, bitcoin]
 
