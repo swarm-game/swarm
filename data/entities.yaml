@@ -500,6 +500,16 @@
   - A copy of the Linux operating system.
   properties: [portable]
 
+- name: gold coin
+  display:
+    char: '©'
+    attr: gold
+  description:
+    - A small round shaped piece of gold metal that the aliens pass between
+      each other occasionaly.
+    - Besides staying shiny it does not appear to have practical use.
+  properties: [portable]
+
 ############################################################
 ### Utility ################################################
 ############################################################
@@ -555,6 +565,18 @@
 ############################################################
 ### Devices ################################################
 ############################################################
+
+- name: bitcoin
+  display:
+    char: '₿'
+    attr: gold
+  description:
+    - A beautiful round shaped piece of metal that seems to be of great value
+      to the aliens on this planet.
+    - Just like the bit it has two sides and when you flip it, it lands perfectly
+      randomly on one of the sides.
+  properties: [portable]
+  capabilities: [random]
 
 - name: treads
   plural: treads
