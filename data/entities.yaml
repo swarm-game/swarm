@@ -323,8 +323,17 @@
     char: '~'
   description:
   - A long, flexible device for transferring either force or
-    information, made of twisted cotton fibers.
+    information, made of twisted cotton fibers.  Multiple strings can
+    also be woven into larger configurations such as cloth or nets.
+  - |
+    A string device enables two commands: the first, `format : a ->
+    text`, can turn any value into a suitable text representation.
+    The second is the infix operator `++ : text -> text -> text`
+    which can be used to concatenate two text values.  For example,
+  - |
+    "Number of widgets: " ++ format numWidgets
   properties: [portable]
+  capabilities: [text]
 
 - name: lambda
   display:

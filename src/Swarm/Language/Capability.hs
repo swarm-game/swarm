@@ -81,6 +81,8 @@ data Capability
     CListen
   | -- | Execute the 'Log' command
     CLog
+  | -- | Manipulate text values
+    CText
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
@@ -191,9 +193,9 @@ constCaps = \case
   Time -> Just CTime
   Wait -> Just CTime
   -- ----------------------------------------------------------------
-  -- String operations
-  Format -> Just CLog
-  Concat -> Just CLog
+  -- Text operations
+  Format -> Just CText
+  Concat -> Just CText
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
