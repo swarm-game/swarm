@@ -757,7 +757,7 @@ pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
@@ -791,10 +791,10 @@ data Term
     TInt Integer
   | -- | An antiquoted Haskell variable name of type Integer.
     TAntiInt Text
-  | -- | A string literal.
-    TString Text
+  | -- | A text literal.
+    TText Text
   | -- | An antiquoted Haskell variable name of type Text.
-    TAntiString Text
+    TAntiText Text
   | -- | A Boolean literal.
     TBool Bool
   | -- | A robot value.  These never show up in surface syntax, but are
@@ -851,8 +851,8 @@ fvT f = go S.empty
     TDir {} -> pure t
     TInt {} -> pure t
     TAntiInt {} -> pure t
-    TString {} -> pure t
-    TAntiString {} -> pure t
+    TText {} -> pure t
+    TAntiText {} -> pure t
     TBool {} -> pure t
     TRobot {} -> pure t
     TRef {} -> pure t

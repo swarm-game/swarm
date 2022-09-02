@@ -187,8 +187,8 @@ requirements' = go
     TDir d -> if isCardinal d then singletonCap COrient else mempty
     TInt _ -> mempty
     TAntiInt _ -> mempty
-    TString _ -> mempty
-    TAntiString _ -> mempty
+    TText _ -> mempty
+    TAntiText _ -> mempty
     TBool _ -> mempty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
