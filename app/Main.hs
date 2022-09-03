@@ -6,14 +6,15 @@ module Main where
 import Data.Foldable qualified
 import Data.Text (Text, pack)
 import Data.Text.IO qualified as Text
-import GitHash (giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
+import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
+import System.IO (hPutStrLn, stderr)
 
 data CLI
   = Run
@@ -25,14 +26,16 @@ data CLI
   | Format Input
   | DocGen GenerateDocs
   | LSP
+  | Version
 
 cliParser :: Parser CLI
 cliParser =
   subparser
     ( mconcat
         [ command "format" (info (format <**> helper) (progDesc "Format a file"))
-        , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
+        , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
+        , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
     )
     <|> Run <$> seed <*> scenario <*> run <*> cheat <*> webPort
@@ -77,15 +80,10 @@ cliInfo :: ParserInfo CLI
 cliInfo =
   info
     (cliParser <**> helper)
-    ( header ("Swarm game - pre-alpha version" <> commitInfo)
+    ( header ("Swarm game - " <> version <> commitInfo)
         <> progDesc "To play the game simply run without any command."
         <> fullDesc
     )
- where
-  mgit = $$tGitInfoCwdTry
-  commitInfo = case mgit of
-    Left _ -> ""
-    Right git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
 data Input = Stdin | File FilePath
 
@@ -109,11 +107,18 @@ formatFile input = do
       Text.putStrLn $ showInput input <> ":" <> e
       exitFailure
 
+showVersion :: IO ()
+showVersion = do
+  putStrLn $ "Swarm game - " <> version <> commitInfo
+  up <- getNewerReleaseVersion
+  either (hPutStrLn stderr) putStrLn up
+
 main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
     Run seed scenario toRun cheat webPort -> appMain webPort seed scenario toRun cheat
-    Format fo -> formatFile fo
     DocGen g -> generateDocs g
+    Format fo -> formatFile fo
     LSP -> lspMain
+    Version -> showVersion
