@@ -260,7 +260,7 @@ benchmark benchmark
   main-is:        Benchmark.hs
   hs-source-dirs: bench
   type:           exitcode-stdio-1.0
-  build-depends:  criterion                         >= 1.5.10.0 && < 1.6,
+  build-depends:  criterion                         >= 1.6.0.0 && < 1.7,
                   -- Import shared with the library don't need bounds
                   base,
                   lens,
