@@ -110,7 +110,7 @@ showVersion :: IO ()
 showVersion = do
   putStrLn $ "Swarm game - " <> version <> commitInfo
   up <- getNewerReleaseVersion
-  either (hPutStrLn stderr) putStrLn up
+  either (hPutStrLn stderr) (putStrLn . ("New upstream release: " <>)) up
 
 main :: IO ()
 main = do

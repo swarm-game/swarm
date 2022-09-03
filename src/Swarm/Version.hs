@@ -87,7 +87,7 @@ getNewerReleaseVersion =
     Left e -> return . Left $ show e
     Right gi ->
       if giBranch gi /= "main"
-        then return $ Left $ "Currently on developement branch '" <> giBranch gi <> "', skipping check."
+        then return $ Left $ "Currently on development branch '" <> giBranch gi <> "', skipping check."
         else do
           mUpTag <- upstreamReleaseVersion
           return $ case mUpTag of
