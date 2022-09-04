@@ -51,7 +51,7 @@ import Control.Lens.Extras (is)
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits
-import Data.Either (isLeft, isRight)
+import Data.Either (isRight)
 import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
