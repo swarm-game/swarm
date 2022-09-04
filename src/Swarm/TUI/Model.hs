@@ -68,7 +68,6 @@ module Swarm.TUI.Model (
 
   -- ** UI Model
   UIState,
-  uiPort,
   uiMenu,
   uiPlaying,
   uiCheatMode,
@@ -112,12 +111,16 @@ module Swarm.TUI.Model (
   infoScroll,
   modalScroll,
 
+  -- * Runtime state
+  RuntimeState,
+  webPort,
+  upstreamRelease,
+
   -- * App state
   AppState,
-
-  -- ** Fields
   gameState,
   uiState,
+  runtimeState,
 
   -- ** Initialization
   initAppState,
@@ -129,6 +132,7 @@ module Swarm.TUI.Model (
   focusedItem,
   focusedEntity,
   nextScenario,
+  initRuntimeState,
 ) where
 
 import Brick
@@ -190,7 +194,9 @@ import Witch (into)
 --   receive.  At the moment, we only have one custom event, but it's
 --   very important: a separate thread sends 'Frame' events as fast as
 --   it can, telling the TUI to render a new frame.
-data AppEvent = Frame
+data AppEvent
+  = Frame
+  | UpstreamVersion (Either String String)
   deriving (Show)
 
 -- | 'Name' represents names to uniquely identify various components
@@ -495,14 +501,13 @@ data InventoryListEntry
 makePrisms ''InventoryListEntry
 
 ------------------------------------------------------------
--- UI state + AppState
+-- UI state
 ------------------------------------------------------------
 
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
 data UIState = UIState
-  { _uiPort :: Maybe Port
-  , _uiMenu :: Menu
+  { _uiMenu :: Menu
   , _uiPlaying :: Bool
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
@@ -533,12 +538,6 @@ data UIState = UIState
   , _appData :: Map Text Text
   }
 
--- | The 'AppState' just stores together the game state and UI state.
-data AppState = AppState
-  { _gameState :: GameState
-  , _uiState :: UIState
-  }
-
 --------------------------------------------------
 -- Lenses for UIState
 
@@ -550,9 +549,6 @@ let exclude = ['_lgTicksPerSecond]
             if n `elem` exclude then [] else fn n
       )
       ''UIState
-
--- | The port on which the HTTP debug service is running.
-uiPort :: Lens' UIState (Maybe Port)
 
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
@@ -691,6 +687,41 @@ promptUpdateL = lens g s
     CmdPrompt _ _ -> mkReplForm $ mkCmdPrompt inputText
     SearchPrompt _ _ -> mkReplForm $ SearchPrompt inputText (ui ^. uiReplHistory)
 
+-- ----------------------------------------------------------------------------
+--                                Runtime state                              --
+-- ----------------------------------------------------------------------------
+
+data RuntimeState = RuntimeState
+  { _webPort :: Maybe Port
+  , _upstreamRelease :: Maybe String
+  }
+
+initRuntimeState :: RuntimeState
+initRuntimeState =
+  RuntimeState
+    { _webPort = Nothing
+    , _upstreamRelease = Nothing
+    }
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
+
+-- | The port on which the HTTP debug service is running.
+webPort :: Lens' RuntimeState (Maybe Port)
+
+-- | The upstream release version.
+upstreamRelease :: Lens' RuntimeState (Maybe String)
+
+-- ----------------------------------------------------------------------------
+--                                   APPSTATE                                --
+-- ----------------------------------------------------------------------------
+
+-- | The 'AppState' just stores together the game state and UI state.
+data AppState = AppState
+  { _gameState :: GameState
+  , _uiState :: UIState
+  , _runtimeState :: RuntimeState
+  }
+
 --------------------------------------------------
 -- Lenses for AppState
 
@@ -701,6 +732,9 @@ gameState :: Lens' AppState GameState
 
 -- | The 'UIState' record.
 uiState :: Lens' AppState UIState
+
+-- | The 'RuntimeState' record
+runtimeState :: Lens' AppState RuntimeState
 
 --------------------------------------------------
 -- Utility functions
@@ -754,8 +788,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
   startTime <- getTime Monotonic
   return $
     UIState
-      { _uiPort = Nothing
-      , _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiPlaying = not showMainMenu
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
@@ -855,13 +888,14 @@ initAppState userSeed scenarioName toRun cheatMode = do
   let skipMenu = isJust scenarioName || isJust toRun || isJust userSeed
   gs <- initGameState
   ui <- initUIState (not skipMenu) cheatMode
+  let rs = initRuntimeState
   case skipMenu of
-    False -> return $ AppState gs ui
+    False -> return $ AppState gs ui rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
       execStateT
         (startGame scenario (ScenarioInfo path NotStarted NotStarted NotStarted) toRun)
-        (AppState gs ui)
+        (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => Scenario -> ScenarioInfo -> Maybe FilePath -> m ()

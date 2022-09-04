@@ -17,9 +17,11 @@ import Data.Aeson.Types (parseMaybe)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
+import Data.Char (isDigit)
 import Data.Foldable (find, toList)
 import Data.List.Extra (breakOnEnd)
 import Data.Maybe (catMaybes)
+import Data.Version (showVersion)
 import Data.Yaml (ParseException, decodeEither')
 import GitHash (GitInfo, giBranch, giHash, giTag, tGitInfoCwdTry)
 import Network.HTTP.Client (
@@ -32,8 +34,6 @@ import Network.HTTP.Client (
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types (hUserAgent)
 import Paths_swarm qualified
-import Data.Version (showVersion)
-import Data.Char (isDigit)
 
 gitInfo :: Either String GitInfo
 gitInfo = $$tGitInfoCwdTry
@@ -59,9 +59,9 @@ tagVersion = case gitInfo of
           else Nothing
 
 version :: String
-version = 
+version =
   let v = showVersion Paths_swarm.version
-  in if v == "0.0.0.1" then "pre-alpha version" else v
+   in if v == "0.0.0.1" then "pre-alpha version" else v
 
 upstreamReleaseVersion :: IO (Maybe String)
 upstreamReleaseVersion = do

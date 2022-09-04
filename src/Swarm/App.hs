@@ -24,6 +24,7 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.View
+import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -67,11 +68,15 @@ appMain port mseed scenario toRun cheat = do
           threadDelay 33_333 -- cap maximum framerate at 30 FPS
           writeBChan chan Frame
 
+      _ <- forkIO $ do
+        upRel <- getNewerReleaseVersion
+        writeBChan chan (UpstreamVersion upRel)
+
       -- Start the web service with a reference to the game state
       gsRef <- newIORef (s ^. gameState)
       mport <- Swarm.Web.startWebThread port gsRef
 
-      let s' = s & uiState . uiPort .~ mport
+      let s' = s & runtimeState . webPort .~ mport
 
       -- Update the reference for every event
       let eventHandler e = do

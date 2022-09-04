@@ -109,18 +109,30 @@ drawUI s
   | otherwise = case s ^. uiState . uiMenu of
     -- We should never reach the NoMenu case if uiPlaying is false; we would have
     -- quit the app instead.  But just in case, we display the main menu anyway.
-    NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
-    MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+    NoMenu -> [drawnMainMenu (mainMenu NewGame)]
+    MainMenu l -> [drawnMainMenu l]
     NewGameMenu stk -> [drawNewGameMenuUI stk]
     AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+ where
+  drawnMainMenu l =
+    drawMainMenuUI
+      (s ^. uiState . appData . at "logo")
+      (s ^. runtimeState . upstreamRelease)
+      l
 
-drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
-drawMainMenuUI logo l =
+drawMainMenuUI :: Maybe Text -> Maybe String -> BL.List Name MainMenuEntry -> Widget Name
+drawMainMenuUI logo version l =
   vBox
     [ maybe emptyWidget drawLogo logo
+    , hCenter . padTopBottom 2 $ newVersioWidget version
     , centerLayer . vLimit 5 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry)) True l
     ]
+
+newVersioWidget :: Maybe String -> Widget n
+newVersioWidget = \case
+  Nothing -> txt "The game is up-to-date!"
+  Just ver -> txt $ "New version " <> T.pack ver <> " is available!"
 
 drawLogo :: Text -> Widget Name
 drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) []) . T.lines
@@ -401,7 +413,7 @@ maybeScroll vpName contents =
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
-  HelpModal -> helpWidget (s ^. gameState . seed) (s ^. uiState . uiPort)
+  HelpModal -> helpWidget (s ^. gameState . seed) (s ^. runtimeState . webPort)
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList

@@ -102,19 +102,22 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleEvent e = do
-  s <- get
-  if s ^. uiState . uiPlaying
-    then handleMainEvent e
-    else
-      e & case s ^. uiState . uiMenu of
-        -- If we reach the NoMenu case when uiPlaying is False, just
-        -- quit the app.  We should actually never reach this code (the
-        -- quitGame function would have already halted the app).
-        NoMenu -> const halt
-        MainMenu l -> handleMainMenuEvent l
-        NewGameMenu l -> handleNewGameMenuEvent l
-        AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
+handleEvent = \case
+  -- the query for upstream version could finish at any time, so we have to handle it here
+  AppEvent (UpstreamVersion e) -> runtimeState . upstreamRelease .= either (const Nothing) Just e
+  e -> do
+    s <- get
+    if s ^. uiState . uiPlaying
+      then handleMainEvent e
+      else
+        e & case s ^. uiState . uiMenu of
+          -- If we reach the NoMenu case when uiPlaying is False, just
+          -- quit the app.  We should actually never reach this code (the
+          -- quitGame function would have already halted the app).
+          NoMenu -> const halt
+          MainMenu l -> handleMainMenuEvent l
+          NewGameMenu l -> handleNewGameMenuEvent l
+          AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
