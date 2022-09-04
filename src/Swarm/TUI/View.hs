@@ -114,11 +114,10 @@ drawUI s
     NewGameMenu stk -> [drawNewGameMenuUI stk]
     AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
  where
-  drawnMainMenu l =
+  drawnMainMenu =
     drawMainMenuUI
       (s ^. uiState . appData . at "logo")
       (s ^. runtimeState . upstreamRelease)
-      l
 
 drawMainMenuUI :: Maybe Text -> Maybe String -> BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI logo version l =
