@@ -88,21 +88,32 @@ upstreamReleaseVersion = do
           _ -> fail "The JSON list does not contain structures!"
       return $ find isSwarmReleaseTag . catMaybes $ ts
 
-getNewerReleaseVersion :: IO (Either String String)
+data NewReleaseFailure where
+  NoUpstreamRelease :: NewReleaseFailure
+  OnDevelopmentBranch :: String -> NewReleaseFailure
+  OldUpstreamRelease :: String -> String -> NewReleaseFailure
+
+instance Show NewReleaseFailure where
+  show = \case
+    NoUpstreamRelease -> "No upstream releases found."
+    OnDevelopmentBranch br -> "Currently on development branch '" <> br <> "', skipping release query."
+    OldUpstreamRelease upTag myTag -> "Upstream release '" <> upTag <> "' is not newer than mine ('" <> myTag <> "')."
+
+getNewerReleaseVersion :: IO (Either NewReleaseFailure String)
 getNewerReleaseVersion =
   case gitInfo of
     -- when using cabal install, the git info is unavailable, which is of no interest to players
-    Left _e -> maybe (Left "No upstream releases found.") Right <$> upstreamReleaseVersion
+    Left _e -> maybe (Left NoUpstreamRelease) Right <$> upstreamReleaseVersion
     Right gi ->
       if giBranch gi /= "main"
-        then return $ Left $ "Currently on development branch '" <> giBranch gi <> "', skipping release query."
+        then return . Left . OnDevelopmentBranch $ giBranch gi
         else do
           mUpTag <- upstreamReleaseVersion
           return $ case mUpTag of
-            Nothing -> Left "No upstream releases found."
+            Nothing -> Left NoUpstreamRelease
             Just upTag -> case snd <$> tagVersion of
               Nothing -> Right upTag
               Just myTag ->
                 if myTag >= upTag
-                  then Left $ "Upstream release '" <> upTag <> "' is not newer than mine ('" <> myTag <> "')."
+                  then Left $ OldUpstreamRelease upTag myTag
                   else Right upTag

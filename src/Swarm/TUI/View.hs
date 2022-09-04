@@ -97,6 +97,7 @@ import Swarm.TUI.Border
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
+import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
@@ -135,10 +136,11 @@ drawMainMenuUI s l =
   logo = s ^. uiState . appData . at "logo"
   version = s ^. runtimeState . upstreamRelease
 
-newVersioWidget :: Maybe String -> Widget n
+newVersioWidget :: Either NewReleaseFailure String -> Widget n
 newVersioWidget = \case
-  Nothing -> txt "The game is up-to-date!"
-  Just ver -> txt $ "New version " <> T.pack ver <> " is available!"
+  Right ver -> txt $ "New version " <> T.pack ver <> " is available!"
+  Left (OnDevelopmentBranch _b) -> txt "Good luck developing!"
+  Left _ -> txt "The game is up-to-date!"
 
 drawLogo :: Text -> Widget Name
 drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) []) . T.lines

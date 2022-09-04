@@ -51,7 +51,7 @@ import Control.Lens.Extras (is)
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits
-import Data.Either (isRight)
+import Data.Either (isLeft, isRight)
 import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -104,7 +104,11 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent = \case
   -- the query for upstream version could finish at any time, so we have to handle it here
-  AppEvent (UpstreamVersion e) -> runtimeState . upstreamRelease .= either (const Nothing) Just e
+  AppEvent (UpstreamVersion ev) -> do
+    case ev of
+      Left e -> runtimeState . eventLog %= (|> LogEntry 0 Said "Release" (-7) zero (T.pack $ show e))
+      Right _ -> pure ()
+    runtimeState . upstreamRelease .= ev
   e -> do
     s <- get
     if s ^. uiState . uiPlaying

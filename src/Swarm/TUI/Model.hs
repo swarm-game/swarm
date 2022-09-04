@@ -180,6 +180,7 @@ import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
+import Swarm.Version (NewReleaseFailure (NoUpstreamRelease))
 import System.Clock
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
 import Witch (into)
@@ -197,7 +198,7 @@ import Witch (into)
 --   it can, telling the TUI to render a new frame.
 data AppEvent
   = Frame
-  | UpstreamVersion (Either String String)
+  | UpstreamVersion (Either NewReleaseFailure String)
   deriving (Show)
 
 -- | 'Name' represents names to uniquely identify various components
@@ -695,7 +696,7 @@ promptUpdateL = lens g s
 
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
-  , _upstreamRelease :: Maybe String
+  , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Seq LogEntry
   }
 
@@ -703,7 +704,7 @@ initRuntimeState :: RuntimeState
 initRuntimeState =
   RuntimeState
     { _webPort = Nothing
-    , _upstreamRelease = Nothing
+    , _upstreamRelease = Left NoUpstreamRelease
     , _eventLog = mempty
     }
 
@@ -713,7 +714,7 @@ makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
 webPort :: Lens' RuntimeState (Maybe Port)
 
 -- | The upstream release version.
-upstreamRelease :: Lens' RuntimeState (Maybe String)
+upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 
 -- | A log of runtime events.
 --

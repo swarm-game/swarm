@@ -13,7 +13,7 @@ import Swarm.Language.Pipeline (processTerm)
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPrint, stderr)
 
 data CLI
   = Run
@@ -110,7 +110,7 @@ showVersion :: IO ()
 showVersion = do
   putStrLn $ "Swarm game - " <> version <> commitInfo
   up <- getNewerReleaseVersion
-  either (hPutStrLn stderr) (putStrLn . ("New upstream release: " <>)) up
+  either (hPrint stderr) (putStrLn . ("New upstream release: " <>)) up
 
 main :: IO ()
 main = do
