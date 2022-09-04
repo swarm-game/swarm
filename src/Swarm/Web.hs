@@ -70,9 +70,9 @@ defaultPort = 5357
 --   startup doesn't work.  Otherwise, ignore the failure.  In any
 --   case, return a @Maybe Port@ value representing whether a web
 --   server is actually running, and if so, what port it is on.
-startWebThread :: Maybe Warp.Port -> IORef GameState -> IO (Maybe Warp.Port)
+startWebThread :: Maybe Warp.Port -> IORef GameState -> IO (Either String Warp.Port)
 -- User explicitly provided port '0': don't run the web server
-startWebThread (Just 0) _ = pure Nothing
+startWebThread (Just 0) _ = pure $ Left "The web port has been turned off."
 startWebThread portM gsRef = do
   baton <- newEmptyMVar
   let port = fromMaybe defaultPort portM
@@ -80,6 +80,9 @@ startWebThread portM gsRef = do
   res <- timeout 500_000 (takeMVar baton)
   case (portM, res) of
     -- User requested explicit port but server didn't start: fail
-    (Just _, Nothing) -> fail $ "Failed to start the web API  on :" <> show port
+    (Just _, Nothing) -> fail $ failMsg port
     -- Otherwise, just report whether the server is running, and if so, on what port
-    _ -> return (port <$ res)
+    (Just _, Just ()) -> return (Right port)
+    _ -> return . Left $ failMsg port
+ where
+  failMsg p = "Failed to start the web API on :" <> show p

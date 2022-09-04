@@ -52,6 +52,7 @@ import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
+import Data.Foldable.Extra (toList)
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
@@ -109,24 +110,30 @@ drawUI s
   | otherwise = case s ^. uiState . uiMenu of
     -- We should never reach the NoMenu case if uiPlaying is false; we would have
     -- quit the app instead.  But just in case, we display the main menu anyway.
-    NoMenu -> [drawnMainMenu (mainMenu NewGame)]
-    MainMenu l -> [drawnMainMenu l]
+    NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
+    MainMenu l -> [drawMainMenuUI s l]
     NewGameMenu stk -> [drawNewGameMenuUI stk]
+    MessagesMenu -> [drawMainMessages s]
     AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
- where
-  drawnMainMenu =
-    drawMainMenuUI
-      (s ^. uiState . appData . at "logo")
-      (s ^. runtimeState . upstreamRelease)
 
-drawMainMenuUI :: Maybe Text -> Maybe String -> BL.List Name MainMenuEntry -> Widget Name
-drawMainMenuUI logo version l =
+drawMainMessages :: AppState -> Widget Name
+drawMainMessages s = renderDialog dial . padBottom Max . scrollList . drawLogs $ s ^. runtimeState . eventLog
+ where
+  dial = dialog (Just "Messages") Nothing maxModalWindowWidth
+  scrollList = withVScrollBars OnRight . vBox
+  drawLogs = map (drawLogEntry True) . toList
+
+drawMainMenuUI :: AppState -> BL.List Name MainMenuEntry -> Widget Name
+drawMainMenuUI s l =
   vBox
     [ maybe emptyWidget drawLogo logo
     , hCenter . padTopBottom 2 $ newVersioWidget version
     , centerLayer . vLimit 5 . hLimit 20 $
-        BL.renderList (const (hCenter . drawMainMenuEntry)) True l
+        BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
+ where
+  logo = s ^. uiState . appData . at "logo"
+  version = s ^. runtimeState . upstreamRelease
 
 newVersioWidget :: Maybe String -> Widget n
 newVersioWidget = \case
@@ -222,11 +229,16 @@ drawNewGameMenuUI (l :| ls) =
   nonBlank "" = " "
   nonBlank t = t
 
-drawMainMenuEntry :: MainMenuEntry -> Widget Name
-drawMainMenuEntry NewGame = txt "New game"
-drawMainMenuEntry Tutorial = txt "Tutorial"
-drawMainMenuEntry About = txt "About"
-drawMainMenuEntry Quit = txt "Quit"
+drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
+drawMainMenuEntry s = \case
+  NewGame -> txt "New game"
+  Tutorial -> txt "Tutorial"
+  About -> txt "About"
+  Messages -> highlightMessages $ txt "Messages"
+  Quit -> txt "Quit"
+ where
+  allErrors = Seq.filter (\l -> l ^. leSaid == ErrorTrace) (s ^. runtimeState . eventLog)
+  highlightMessages = if null allErrors then id else withAttr notifAttr
 
 drawAboutMenuUI :: Maybe Text -> Widget Name
 drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"

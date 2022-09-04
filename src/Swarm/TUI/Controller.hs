@@ -117,6 +117,7 @@ handleEvent = \case
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
           NewGameMenu l -> handleNewGameMenuEvent l
+          MessagesMenu -> handleMainMessagesEvent
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
@@ -151,6 +152,7 @@ handleMainMenuEvent menu = \case
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
           uncurry startGame firstTutorial Nothing
+        Messages -> uiState . uiMenu .= MessagesMenu
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt
@@ -168,6 +170,13 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown
+
+handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMainMessagesEvent = \case
+  Key V.KEsc -> uiState . uiMenu .= MainMenu (mainMenu Messages)
+  CharKey 'q' -> halt
+  ControlKey 'q' -> halt
+  _ -> return ()
 
 handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case

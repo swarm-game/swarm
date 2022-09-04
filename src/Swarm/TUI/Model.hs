@@ -115,6 +115,7 @@ module Swarm.TUI.Model (
   RuntimeState,
   webPort,
   upstreamRelease,
+  eventLog,
 
   -- * App state
   AppState,
@@ -442,13 +443,14 @@ data Modal = Modal
 
 makeLenses ''Modal
 
-data MainMenuEntry = NewGame | Tutorial | About | Quit
+data MainMenuEntry = NewGame | Tutorial | Messages | About | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
   = NoMenu -- We started playing directly from command line, no menu to show
   | MainMenu (BL.List Name MainMenuEntry)
   | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
+  | MessagesMenu
   | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
@@ -694,6 +696,7 @@ promptUpdateL = lens g s
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Maybe String
+  , _eventLog :: Seq LogEntry
   }
 
 initRuntimeState :: RuntimeState
@@ -701,6 +704,7 @@ initRuntimeState =
   RuntimeState
     { _webPort = Nothing
     , _upstreamRelease = Nothing
+    , _eventLog = mempty
     }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
@@ -710,6 +714,13 @@ webPort :: Lens' RuntimeState (Maybe Port)
 
 -- | The upstream release version.
 upstreamRelease :: Lens' RuntimeState (Maybe String)
+
+-- | A log of runtime events.
+--
+-- This logging is separate from the logging done during game-play.
+-- If some error happens before a game is even selected, this is the
+-- place to log it.
+eventLog :: Lens' RuntimeState (Seq LogEntry)
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --

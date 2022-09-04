@@ -13,12 +13,15 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens ((&), (.~), (^.))
+import Control.Lens ((%~), (&), (?~), (^.), (|>))
 import Control.Monad.Except
 import Data.IORef (newIORef, writeIORef)
+import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
+import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.Robot (LogEntry (LogEntry), LogSource (ErrorTrace))
 import Swarm.Game.State
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
@@ -74,9 +77,11 @@ appMain port mseed scenario toRun cheat = do
 
       -- Start the web service with a reference to the game state
       gsRef <- newIORef (s ^. gameState)
-      mport <- Swarm.Web.startWebThread port gsRef
+      eport <- Swarm.Web.startWebThread port gsRef
 
-      let s' = s & runtimeState . webPort .~ mport
+      let s' = case eport of
+            Left e -> s & runtimeState . eventLog %~ (|> LogEntry 0 ErrorTrace "Web API" (-2) zero (T.pack e))
+            Right p -> s & runtimeState . webPort ?~ p
 
       -- Update the reference for every event
       let eventHandler e = do
