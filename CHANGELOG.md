@@ -1,5 +1,7 @@
 # Revision history for swarm
 
-## 0.1.0.0 -- YYYY-mm-dd
+## 0.0.0.1 -- YYYY-mm-dd
 
-* First version. Released on an unsuspecting world.
+* Pre-alpha version.
+* This is a __placeholder__ until swarm is released.
+* Please replace this with an actual release.

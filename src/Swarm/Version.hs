@@ -31,6 +31,9 @@ import Network.HTTP.Client (
  )
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types (hUserAgent)
+import Paths_swarm qualified
+import Data.Version (showVersion)
+import Data.Char (isDigit)
 
 gitInfo :: Either String GitInfo
 gitInfo = $$tGitInfoCwdTry
@@ -43,7 +46,7 @@ commitInfo = case gitInfo of
 type Hash = String
 
 isSwarmReleaseTag :: String -> Bool
-isSwarmReleaseTag = ("v" ==) . take 1
+isSwarmReleaseTag = all (\c -> isDigit c || c == '.')
 
 tagVersion :: Maybe (Hash, String)
 tagVersion = case gitInfo of
@@ -56,18 +59,22 @@ tagVersion = case gitInfo of
           else Nothing
 
 version :: String
-version = maybe "pre-alpha version" snd tagVersion
+version = 
+  let v = showVersion Paths_swarm.version
+  in if v == "0.0.0.1" then "pre-alpha version" else v
 
 upstreamReleaseVersion :: IO (Maybe String)
 upstreamReleaseVersion = do
   manager <- newManager tlsManagerSettings
-
+  -- -------------------------------------------------------------------------------
+  -- SEND REQUEST
   request <- parseRequest "https://api.github.com/repos/swarm-game/swarm/releases"
   response <-
     httpLbs
       request {requestHeaders = [(hUserAgent, "swarm-game/swarm-swarmversion")]}
       manager
-
+  -- -------------------------------------------------------------------------------
+  -- PARSE RESPONSE
   -- putStrLn $ "The status code was: " ++ show (statusCode $ responseStatus response)
   let result = decodeEither' (BS.pack . BSL.unpack $ responseBody response) :: Either ParseException Array
   case result of
@@ -84,10 +91,11 @@ upstreamReleaseVersion = do
 getNewerReleaseVersion :: IO (Either String String)
 getNewerReleaseVersion =
   case gitInfo of
-    Left e -> return . Left $ show e
+    -- when using cabal install, the git info is unavailable, which is of no interest to players
+    Left _e -> maybe (Left "No upstream releases found.") Right <$> upstreamReleaseVersion
     Right gi ->
       if giBranch gi /= "main"
-        then return $ Left $ "Currently on development branch '" <> giBranch gi <> "', skipping check."
+        then return $ Left $ "Currently on development branch '" <> giBranch gi <> "', skipping release query."
         else do
           mUpTag <- upstreamReleaseVersion
           return $ case mUpTag of
