@@ -82,7 +82,7 @@ reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
     ++ map (dirSyntax . dirInfo) allDirs
     ++ [ "int"
-       , "string"
+       , "text"
        , "dir"
        , "bool"
        , "robot"
@@ -137,9 +137,9 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
    where
     t = into @Text s
 
--- | Parse a string literal (including escape sequences) in double quotes.
-stringLiteral :: Parser Text
-stringLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
+-- | Parse a text literal (including escape sequences) in double quotes.
+textLiteral :: Parser Text
+textLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
 
 -- | Parse a positive integer literal token, in decimal, binary,
 --   octal, or hexadecimal notation.  Note that negation is handled as
@@ -206,7 +206,7 @@ parseTypeAtom =
   TyUnit <$ symbol "()"
     <|> TyVar <$> identifier
     <|> TyInt <$ reserved "int"
-    <|> TyString <$ reserved "string"
+    <|> TyText <$ reserved "text"
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
     <|> TyRobot <$ reserved "robot"
@@ -246,14 +246,14 @@ parseTermAtom =
         <|> TVar <$> identifier
         <|> TDir <$> parseDirection
         <|> TInt <$> integer
-        <|> TString <$> stringLiteral
+        <|> TText <$> textLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
         <|> reserved "require"
           *> ( ( TRequireDevice
-                  <$> (stringLiteral <?> "device name in double quotes")
+                  <$> (textLiteral <?> "device name in double quotes")
                )
                 <|> ( TRequire <$> (fromIntegral <$> integer)
-                        <*> (stringLiteral <?> "entity name in double quotes")
+                        <*> (textLiteral <?> "entity name in double quotes")
                     )
              )
         <|> SLam <$> (symbol "\\" *> identifier)
@@ -295,7 +295,7 @@ sDef x ty t = SDef (x `S.member` setOf fv (sTerm t)) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiString <$> (lexeme . try) (symbol "$str:" *> identifier)
+  TAntiText <$> (lexeme . try) (symbol "$str:" *> identifier)
     <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
 
 -- | Parse a Swarm language term.

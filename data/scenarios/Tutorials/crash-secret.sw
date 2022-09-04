@@ -21,7 +21,7 @@ end;
 
 // Try to give a robot a Win, filtering out those that were already given a Win.
 // The robot will also receive instructions, so it **must have a logger!**
-def tryGive: string -> (robot -> bool) -> int -> cmd (robot -> bool) = \msg.\f.\i.
+def tryGive: text -> (robot -> bool) -> int -> cmd (robot -> bool) = \msg.\f.\i.
   r <- try {
     robotNumbered i;
   } {

@@ -25,7 +25,7 @@ module Swarm.Language.Types (
   pattern TyVar,
   pattern TyUnit,
   pattern TyInt,
-  pattern TyString,
+  pattern TyText,
   pattern TyDir,
   pattern TyBool,
   pattern TyRobot,
@@ -41,7 +41,7 @@ module Swarm.Language.Types (
   pattern UTyVar,
   pattern UTyUnit,
   pattern UTyInt,
-  pattern UTyString,
+  pattern UTyText,
   pattern UTyDir,
   pattern UTyBool,
   pattern UTyRobot,
@@ -101,7 +101,7 @@ data BaseTy
   | -- | Signed, arbitrary-size integers.
     BInt
   | -- | Unicode strings.
-    BString
+    BText
   | -- | Directions.
     BDir
   | -- | Booleans.
@@ -295,8 +295,8 @@ pattern TyUnit = Fix (TyBaseF BUnit)
 pattern TyInt :: Type
 pattern TyInt = Fix (TyBaseF BInt)
 
-pattern TyString :: Type
-pattern TyString = Fix (TyBaseF BString)
+pattern TyText :: Type
+pattern TyText = Fix (TyBaseF BText)
 
 pattern TyDir :: Type
 pattern TyDir = Fix (TyBaseF BDir)
@@ -340,8 +340,8 @@ pattern UTyUnit = UTerm (TyBaseF BUnit)
 pattern UTyInt :: UType
 pattern UTyInt = UTerm (TyBaseF BInt)
 
-pattern UTyString :: UType
-pattern UTyString = UTerm (TyBaseF BString)
+pattern UTyText :: UType
+pattern UTyText = UTerm (TyBaseF BText)
 
 pattern UTyDir :: UType
 pattern UTyDir = UTerm (TyBaseF BDir)

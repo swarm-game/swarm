@@ -306,6 +306,35 @@
   properties: [portable, growable]
   growth: [30, 50]
 
+- name: cotton
+  display:
+    attr: silver
+    char: 'i'
+  description:
+  - A plant with tufts of soft fibers that can be harvested and used
+    to make things, including sheets of material that the local
+    aliens like to drape over their bodies.
+  properties: [portable, growable]
+  growth: [100, 800]
+
+- name: string
+  display:
+    attr: silver
+    char: '~'
+  description:
+  - A long, flexible device for transferring either force or
+    information, made of twisted cotton fibers.  Multiple strings can
+    also be woven into larger configurations such as cloth or nets.
+  - |
+    A string device enables two commands: the first, `format : a ->
+    text`, can turn any value into a suitable text representation.
+    The second is the infix operator `++ : text -> text -> text`
+    which can be used to concatenate two text values.  For example,
+  - |
+    "Number of widgets: " ++ format numWidgets
+  properties: [portable]
+  capabilities: [text]
+
 - name: lambda
   display:
     attr: flower
@@ -944,3 +973,17 @@
 
   properties: [portable]
   capabilities: [atomic]
+
+- name: net
+  display:
+    attr: silver
+    char: '#'
+  description:
+  - A net is a device woven out of many strings.  With a net
+    installed, you can use the `try` command to catch errors. For example,
+  - |
+    `try {move} {turn left}`
+  - will attempt to move, but if that fails, turn left instead.
+  properties: [portable]
+  capabilities: [try]
+

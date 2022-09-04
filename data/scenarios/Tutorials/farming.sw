@@ -11,7 +11,7 @@ end;
 def while : cmd bool -> {cmd a} -> cmd () = \test. \body.
   ifC test {force body ; while test body} {}
 end;
-def giveall : robot -> string -> cmd () = \r. \thing.
+def giveall : robot -> text -> cmd () = \r. \thing.
   while (has thing) {give r thing}
 end;
 def x4 = \c. c; c; c; c end;
@@ -19,14 +19,14 @@ def m4 = x4 move end;
 def x12 = \c. x4 (c;c;c) end;
 def m12 = x12 move end;
 def next_row = tB; m12; tL; move; tL end;
-def plant_field : string -> cmd () = \thing.
+def plant_field : text -> cmd () = \thing.
   log "planting";
   x4 (
     x12 (move; place thing; harvest);
     next_row
   )
 end;
-def harvest_field : string -> cmd () = \thing.
+def harvest_field : text -> cmd () = \thing.
   x4 (
     x12 (move; ifC (ishere thing) {harvest; return ()} {});
     next_row

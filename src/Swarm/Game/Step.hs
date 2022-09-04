@@ -407,10 +407,10 @@ stepCESK cesk = case cesk of
   In TUnit _ s k -> return $ Out VUnit s k
   In (TDir d) _ s k -> return $ Out (VDir d) s k
   In (TInt n) _ s k -> return $ Out (VInt n) s k
-  In (TString str) _ s k -> return $ Out (VString str) s k
+  In (TText str) _ s k -> return $ Out (VText str) s k
   In (TBool b) _ s k -> return $ Out (VBool b) s k
   -- There should not be any antiquoted variables left at this point.
-  In (TAntiString v) _ s k ->
+  In (TAntiText v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
@@ -785,7 +785,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Place -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         loc <- use robotLocation
 
@@ -809,7 +809,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Give -> case vs of
-      [VRobot otherID, VString itemName] -> do
+      [VRobot otherID, VText itemName] -> do
         -- Make sure the other robot exists and is close
         _other <- getRobotWithinTouch otherID
 
@@ -834,7 +834,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Install -> case vs of
-      [VRobot otherID, VString itemName] -> do
+      [VRobot otherID, VText itemName] -> do
         -- Make sure the other robot exists and is close
         _other <- getRobotWithinTouch otherID
 
@@ -868,7 +868,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Make -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         ins <- use installedDevices
         em <- use entityMap
@@ -915,17 +915,17 @@ execConst c vs s k = do
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Has -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         return $ Out (VBool ((> 0) $ countByName name inv)) s k
       _ -> badConst
     Installed -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use installedDevices
         return $ Out (VBool ((> 0) $ countByName name inv)) s k
       _ -> badConst
     Count -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
@@ -996,12 +996,12 @@ execConst c vs s k = do
           Just e -> do
             robotInventory %= insertCount 0 e
             updateDiscoveredEntities e
-            return $ VInj True (VString (e ^. entityName))
+            return $ VInj True (VText (e ^. entityName))
 
         return $ Out res s k
       _ -> badConst
     Knows -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         ins <- use installedDevices
         let allKnown = inv `E.union` ins
@@ -1060,7 +1060,7 @@ execConst c vs s k = do
         return $ Out v s k
       _ -> badConst
     RobotNamed -> case vs of
-      [VString rname] -> do
+      [VText rname] -> do
         r <- robotWithName rname >>= (`isJustOrFail` ["There is no robot named", rname])
         let robotValue = VRobot (r ^. robotID)
         return $ Out robotValue s k
@@ -1074,7 +1074,7 @@ execConst c vs s k = do
         return $ Out robotValue s k
       _ -> badConst
     Say -> case vs of
-      [VString msg] -> do
+      [VText msg] -> do
         creative <- use creativeMode
         system <- use systemRobot
         loc <- use robotLocation
@@ -1115,10 +1115,10 @@ execConst c vs s k = do
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
-          (\m -> Out (VString m) s k) -- return found message
+          (\m -> Out (VText m) s k) -- return found message
           mm
     Log -> case vs of
-      [VString msg] -> do
+      [VText msg] -> do
         void $ traceLog Logged msg
         return $ Out VUnit s k
       _ -> badConst
@@ -1137,7 +1137,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Appear -> case vs of
-      [VString app] -> do
+      [VText app] -> do
         flagRedraw
         case into @String app of
           [dc] -> do
@@ -1154,7 +1154,7 @@ execConst c vs s k = do
           _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
       _ -> badConst
     Create -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         em <- use entityMap
         e <-
           lookupEntityName name em
@@ -1166,7 +1166,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Ishere -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         loc <- use robotLocation
         me <- entityAt loc
         case me of
@@ -1184,10 +1184,10 @@ execConst c vs s k = do
     Whoami -> case vs of
       [] -> do
         name <- use robotName
-        return $ Out (VString name) s k
+        return $ Out (VText name) s k
       _ -> badConst
     Setname -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         robotName .= name
         return $ Out VUnit s k
       _ -> badConst
@@ -1245,7 +1245,7 @@ execConst c vs s k = do
       _ -> badConst
     Undefined -> return $ Up (User "undefined") s k
     Fail -> case vs of
-      [VString msg] -> return $ Up (User msg) s k
+      [VText msg] -> return $ Up (User msg) s k
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
@@ -1403,7 +1403,7 @@ execConst c vs s k = do
             -- The program for the salvaged robot to run
             let giveInventory =
                   foldr (TBind Nothing . giveItem) (TConst Selfdestruct) salvageItems
-                giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TString item)
+                giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
             robotMap . at (target ^. robotID) . traverse . machine
@@ -1418,7 +1418,7 @@ execConst c vs s k = do
     -- with and without file extension as in
     -- "./path/to/file.sw" and "./path/to/file"
     Run -> case vs of
-      [VString fileName] -> do
+      [VText fileName] -> do
         mf <- sendIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
@@ -1435,7 +1435,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1455,10 +1455,10 @@ execConst c vs s k = do
     Div -> returnEvalArith
     Exp -> returnEvalArith
     Format -> case vs of
-      [v] -> return $ Out (VString (prettyValue v)) s k
+      [v] -> return $ Out (VText (prettyValue v)) s k
       _ -> badConst
     Concat -> case vs of
-      [VString v1, VString v2] -> return $ Out (VString (v1 <> v2)) s k
+      [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
@@ -1744,7 +1744,7 @@ execConst c vs s k = do
     updateDiscoveredEntities e'
 
     -- Return the name of the item obtained.
-    return $ Out (VString (e' ^. entityName)) s k
+    return $ Out (VText (e' ^. entityName)) s k
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -1847,7 +1847,7 @@ compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
 compareValues v1 = case v1 of
   VUnit -> \case VUnit -> return EQ; v2 -> incompatCmp VUnit v2
   VInt n1 -> \case VInt n2 -> return (compare n1 n2); v2 -> incompatCmp v1 v2
-  VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
+  VText t1 -> \case VText t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
   VDir d1 -> \case VDir d2 -> return (compare d1 d2); v2 -> incompatCmp v1 v2
   VBool b1 -> \case VBool b2 -> return (compare b1 b2); v2 -> incompatCmp v1 v2
   VRobot r1 -> \case VRobot r2 -> return (compare r1 r2); v2 -> incompatCmp v1 v2

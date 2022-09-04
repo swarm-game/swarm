@@ -111,7 +111,8 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
       | even (r + c) = (DirtT, Just "wavy water")
       | otherwise = (DirtT, Just "water")
     genBiome Small Soft Natural
-      | h `mod` 10 == 0 = (GrassT, Just "flower")
+      | h `mod` 20 == 0 = (GrassT, Just "flower")
+      | h `mod` 20 == 10 = (GrassT, Just "cotton")
       | otherwise = (GrassT, Nothing)
     genBiome Small Soft Artificial
       | h `mod` 10 == 0 = (GrassT, Just (T.concat ["bit (", from (show ((r + c) `mod` 2)), ")"]))
