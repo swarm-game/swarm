@@ -727,7 +727,11 @@ eventLog :: Lens' RuntimeState (Seq LogEntry)
 --                                   APPSTATE                                --
 -- ----------------------------------------------------------------------------
 
--- | The 'AppState' just stores together the game state and UI state.
+-- | The 'AppState' just stores together the other states.
+--
+-- This is so you can use a smaller state when e.g. writing some game logic
+-- or updating the UI. Also consider that GameState can change when loading
+-- a new scenario - if the state should persist games, use RuntimeState.
 data AppState = AppState
   { _gameState :: GameState
   , _uiState :: UIState
