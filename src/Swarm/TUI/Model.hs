@@ -116,6 +116,7 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  logEvent,
 
   -- * App state
   AppState,
@@ -159,6 +160,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
+import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
@@ -697,7 +699,7 @@ promptUpdateL = lens g s
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
-  , _eventLog :: Seq LogEntry
+  , _eventLog :: Notifications LogEntry
   }
 
 initRuntimeState :: RuntimeState
@@ -721,7 +723,16 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- This logging is separate from the logging done during game-play.
 -- If some error happens before a game is even selected, this is the
 -- place to log it.
-eventLog :: Lens' RuntimeState (Seq LogEntry)
+eventLog :: Lens' RuntimeState (Notifications LogEntry)
+
+-- | Simply log to the runtime event log.
+logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
+logEvent src (who, rid) msg el =
+  el
+    & notificationsCount %~ succ
+    & notificationsContent %~ (l :)
+ where
+  l = LogEntry 0 src who rid zero msg
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --

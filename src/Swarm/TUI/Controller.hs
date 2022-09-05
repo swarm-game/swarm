@@ -106,7 +106,7 @@ handleEvent = \case
   -- the query for upstream version could finish at any time, so we have to handle it here
   AppEvent (UpstreamVersion ev) -> do
     case ev of
-      Left e -> runtimeState . eventLog %= (|> LogEntry 0 Said "Release" (-7) zero (T.pack $ show e))
+      Left e -> runtimeState . eventLog %= logEvent Said ("Release", -7) (T.pack $ show e)
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do
@@ -156,7 +156,9 @@ handleMainMenuEvent menu = \case
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
           uncurry startGame firstTutorial Nothing
-        Messages -> uiState . uiMenu .= MessagesMenu
+        Messages -> do
+          runtimeState . eventLog . notificationsCount .= 0
+          uiState . uiMenu .= MessagesMenu
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt

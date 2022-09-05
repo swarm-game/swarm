@@ -52,7 +52,6 @@ import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
-import Data.Foldable.Extra (toList)
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
@@ -118,11 +117,12 @@ drawUI s
     AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
-drawMainMessages s = renderDialog dial . padBottom Max . scrollList . drawLogs $ s ^. runtimeState . eventLog
+drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
  where
+  ls = reverse $ s ^. runtimeState . eventLog . notificationsContent
   dial = dialog (Just "Messages") Nothing maxModalWindowWidth
   scrollList = withVScrollBars OnRight . vBox
-  drawLogs = map (drawLogEntry True) . toList
+  drawLogs = map (drawLogEntry True)
 
 drawMainMenuUI :: AppState -> BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI s l =
@@ -240,8 +240,10 @@ drawMainMenuEntry s = \case
   Messages -> highlightMessages $ txt "Messages"
   Quit -> txt "Quit"
  where
-  allErrors = Seq.filter (\l -> l ^. leSaid == ErrorTrace) (s ^. runtimeState . eventLog)
-  highlightMessages = if null allErrors then id else withAttr notifAttr
+  highlightMessages =
+    if s ^. runtimeState . eventLog . notificationsCount > 0
+      then id
+      else withAttr notifAttr
 
 drawAboutMenuUI :: Maybe Text -> Widget Name
 drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
