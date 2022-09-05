@@ -67,6 +67,9 @@ commitInfo = case gitInfo of
 
 type CommitHash = String
 
+-- | Check that the tag follows the PVP versioning policy.
+--
+-- Note that this filters out VS Code plugin releases.
 isSwarmReleaseTag :: String -> Bool
 isSwarmReleaseTag = all (\c -> isDigit c || c == '.')
 
@@ -85,6 +88,7 @@ version =
   let v = showVersion Paths_swarm.version
    in if v == "0.0.0.1" then "pre-alpha version" else v
 
+-- | Get the current upstream release version if any.
 upstreamReleaseVersion :: IO (Maybe String)
 upstreamReleaseVersion = do
   manager <- newManager tlsManagerSettings
@@ -126,7 +130,9 @@ instance Show NewReleaseFailure where
         <> showVersion my
         <> "')."
 
--- | Swarm tags follow the PVP versioning scheme, so comparing them makes sense.
+-- | Read Swarm tag as Version.
+--
+-- Swarm tags follow the PVP versioning scheme, so comparing them makes sense.
 --
 -- >>> map (first versionBranch) $ readP_to_S parseVersion "0.1.0.0"
 -- [([0],".1.0.0"),([0,1],".0.0"),([0,1,0],".0"),([0,1,0,0],"")]
@@ -135,6 +141,10 @@ instance Show NewReleaseFailure where
 tagToVersion :: String -> Version
 tagToVersion = fst . last . readP_to_S parseVersion
 
+-- | Get a newer upstream release version.
+--
+-- This function can fail if the current branch is not main,
+-- if there is no Internet connection or no newer release.
 getNewerReleaseVersion :: IO (Either NewReleaseFailure String)
 getNewerReleaseVersion =
   case gitInfo of
