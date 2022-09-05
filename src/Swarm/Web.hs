@@ -33,6 +33,7 @@ import Servant
 import Swarm.Game.Robot
 import Swarm.Game.State
 import System.Timeout (timeout)
+import Control.Exception (catch, throwIO, IOException, Exception (displayException))
 
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]
@@ -50,16 +51,19 @@ mkApp gsRef =
     g <- liftIO (readIORef gsRef)
     pure $ IM.lookup rid (g ^. robotMap)
 
-webMain :: Maybe (MVar ()) -> Warp.Port -> IORef GameState -> IO ()
-webMain baton port gsRef = do
-  let settings = Warp.setPort port $ onReady Warp.defaultSettings
-  Warp.runSettings settings app
+webMain :: Maybe (MVar (Either String ())) -> Warp.Port -> IORef GameState -> IO ()
+webMain baton port gsRef = catch (Warp.runSettings settings app) handleErr
  where
+  settings = Warp.setPort port $ onReady Warp.defaultSettings
   onReady = case baton of
-    Just mv -> Warp.setBeforeMainLoop $ putMVar mv ()
+    Just mv -> Warp.setBeforeMainLoop $ putMVar mv (Right ())
     Nothing -> id
   app :: Network.Wai.Application
   app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
+  handleErr :: IOException -> IO ()
+  handleErr e = case baton of
+    Just mv -> putMVar mv (Left $ displayException e)
+    Nothing -> throwIO e
 
 defaultPort :: Warp.Port
 defaultPort = 5357
@@ -81,8 +85,10 @@ startWebThread portM gsRef = do
   case (portM, res) of
     -- User requested explicit port but server didn't start: fail
     (Just _, Nothing) -> fail $ failMsg port
-    -- Otherwise, just report whether the server is running, and if so, on what port
-    (Just _, Just ()) -> return (Right port)
-    _ -> return . Left $ failMsg port
+    -- If we are using the default port, we just report the timeout
+    (Nothing, Nothing) -> return . Left $ failMsg port <> " (timeout)"
+    (_, Just (Left e)) -> return . Left $ failMsg port <> " - " <> e
+    -- If all works, we report on what port the web server is running
+    (_, Just _) -> return (Right port)
  where
   failMsg p = "Failed to start the web API on :" <> show p
