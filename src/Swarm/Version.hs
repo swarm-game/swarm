@@ -110,7 +110,11 @@ upstreamReleaseVersion = do
     Right rs -> do
       ts <- forM (toList rs) $ \r -> do
         return . flip parseMaybe r $ \case
-          Object o -> o .: "tag_name"
+          Object o -> do
+            pre <- o .: "prerelease"
+            if pre
+              then fail "Not a real release!"
+              else o .: "tag_name"
           _ -> fail "The JSON list does not contain structures!"
       return $ find isSwarmReleaseTag . catMaybes $ ts
 
