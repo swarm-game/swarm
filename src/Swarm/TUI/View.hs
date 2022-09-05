@@ -242,8 +242,8 @@ drawMainMenuEntry s = \case
  where
   highlightMessages =
     if s ^. runtimeState . eventLog . notificationsCount > 0
-      then id
-      else withAttr notifAttr
+      then withAttr notifAttr
+      else id
 
 drawAboutMenuUI :: Maybe Text -> Widget Name
 drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
