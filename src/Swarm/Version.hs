@@ -9,7 +9,23 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Query current and upstream Swarm version.
-module Swarm.Version where
+module Swarm.Version (
+  -- * Git info
+  gitInfo,
+  commitInfo,
+  CommitHash,
+  tagVersion,
+
+  -- * PVP version
+  isSwarmReleaseTag,
+  version,
+
+  -- ** Upstream release
+  tagToVersion,
+  upstreamReleaseVersion,
+  getNewerReleaseVersion,
+  NewReleaseFailure (..),
+) where
 
 import Control.Monad (forM)
 import Data.Aeson (Array, Value (..), (.:))
@@ -21,7 +37,7 @@ import Data.Char (isDigit)
 import Data.Foldable (find, toList)
 import Data.List.Extra (breakOnEnd)
 import Data.Maybe (catMaybes)
-import Data.Version (showVersion)
+import Data.Version (Version (..), parseVersion, showVersion)
 import Data.Yaml (ParseException, decodeEither')
 import GitHash (GitInfo, giBranch, giHash, giTag, tGitInfoCwdTry)
 import Network.HTTP.Client (
@@ -34,6 +50,12 @@ import Network.HTTP.Client (
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types (hUserAgent)
 import Paths_swarm qualified
+import Text.ParserCombinators.ReadP (readP_to_S)
+
+-- $setup
+-- >>> import Data.Bifunctor (first)
+-- >>> import Data.Version (Version (..), parseVersion)
+-- >>> import Text.ParserCombinators.ReadP (readP_to_S)
 
 gitInfo :: Either String GitInfo
 gitInfo = $$tGitInfoCwdTry
@@ -43,12 +65,12 @@ commitInfo = case gitInfo of
   Left _ -> ""
   Right git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
-type Hash = String
+type CommitHash = String
 
 isSwarmReleaseTag :: String -> Bool
 isSwarmReleaseTag = all (\c -> isDigit c || c == '.')
 
-tagVersion :: Maybe (Hash, String)
+tagVersion :: Maybe (CommitHash, String)
 tagVersion = case gitInfo of
   Left _ -> Nothing
   Right gi ->
@@ -91,13 +113,27 @@ upstreamReleaseVersion = do
 data NewReleaseFailure where
   NoUpstreamRelease :: NewReleaseFailure
   OnDevelopmentBranch :: String -> NewReleaseFailure
-  OldUpstreamRelease :: String -> String -> NewReleaseFailure
+  OldUpstreamRelease :: Version -> Version -> NewReleaseFailure
 
 instance Show NewReleaseFailure where
   show = \case
     NoUpstreamRelease -> "No upstream releases found."
     OnDevelopmentBranch br -> "Currently on development branch '" <> br <> "', skipping release query."
-    OldUpstreamRelease upTag myTag -> "Upstream release '" <> upTag <> "' is not newer than mine ('" <> myTag <> "')."
+    OldUpstreamRelease up my ->
+      "Upstream release '"
+        <> showVersion up
+        <> "' is not newer than mine ('"
+        <> showVersion my
+        <> "')."
+
+-- | Swarm tags follow the PVP versioning scheme, so comparing them makes sense.
+--
+-- >>> map (first versionBranch) $ readP_to_S parseVersion "0.1.0.0"
+-- [([0],".1.0.0"),([0,1],".0.0"),([0,1,0],".0"),([0,1,0,0],"")]
+-- >>> Version [0,0,0,1] [] < tagToVersion "0.1.0.0"
+-- True
+tagToVersion :: String -> Version
+tagToVersion = fst . last . readP_to_S parseVersion
 
 getNewerReleaseVersion :: IO (Either NewReleaseFailure String)
 getNewerReleaseVersion =
@@ -107,13 +143,15 @@ getNewerReleaseVersion =
     Right gi ->
       if giBranch gi /= "main"
         then return . Left . OnDevelopmentBranch $ giBranch gi
-        else do
-          mUpTag <- upstreamReleaseVersion
-          return $ case mUpTag of
-            Nothing -> Left NoUpstreamRelease
-            Just upTag -> case snd <$> tagVersion of
-              Nothing -> Right upTag
-              Just myTag ->
-                if myTag >= upTag
-                  then Left $ OldUpstreamRelease upTag myTag
-                  else Right upTag
+        else getUpVer <$> upstreamReleaseVersion
+ where
+  myVer :: Version
+  myVer = Paths_swarm.version
+  getUpVer :: Maybe String -> Either NewReleaseFailure String
+  getUpVer = \case
+    Nothing -> Left NoUpstreamRelease
+    Just upTag ->
+      let upVer = tagToVersion upTag
+       in if myVer >= upVer
+            then Left $ OldUpstreamRelease upVer myVer
+            else Right upTag
