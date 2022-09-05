@@ -128,7 +128,7 @@ drawMainMenuUI :: AppState -> BL.List Name MainMenuEntry -> Widget Name
 drawMainMenuUI s l =
   vBox
     [ maybe emptyWidget drawLogo logo
-    , hCenter . padTopBottom 2 $ newVersioWidget version
+    , hCenter . padTopBottom 2 $ newVersionWidget version
     , centerLayer . vLimit 5 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
@@ -136,8 +136,8 @@ drawMainMenuUI s l =
   logo = s ^. uiState . appData . at "logo"
   version = s ^. runtimeState . upstreamRelease
 
-newVersioWidget :: Either NewReleaseFailure String -> Widget n
-newVersioWidget = \case
+newVersionWidget :: Either NewReleaseFailure String -> Widget n
+newVersionWidget = \case
   Right ver -> txt $ "New version " <> T.pack ver <> " is available!"
   Left (OnDevelopmentBranch _b) -> txt "Good luck developing!"
   Left _ -> txt "The game is up-to-date!"
