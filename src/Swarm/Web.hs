@@ -21,6 +21,7 @@ module Swarm.Web where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
+import Control.Exception (Exception (displayException), IOException, catch, throwIO)
 import Control.Lens ((^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
@@ -33,7 +34,6 @@ import Servant
 import Swarm.Game.Robot
 import Swarm.Game.State
 import System.Timeout (timeout)
-import Control.Exception (catch, throwIO, IOException, Exception (displayException))
 
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]
