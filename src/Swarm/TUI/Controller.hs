@@ -177,10 +177,12 @@ advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMove
 
 handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMessagesEvent = \case
-  Key V.KEsc -> uiState . uiMenu .= MainMenu (mainMenu Messages)
-  CharKey 'q' -> halt
-  ControlKey 'q' -> halt
+  Key V.KEsc -> returnToMainMenu
+  CharKey 'q' -> returnToMainMenu
+  ControlKey 'q' -> returnToMainMenu
   _ -> return ()
+ where
+  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
