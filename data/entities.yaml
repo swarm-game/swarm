@@ -923,13 +923,9 @@
     the injection functions `inl : a -> a + b` and `inr : b -> a + b`, as
     well as the case analysis function `case : a + b -> (a -> c) -> (b -> c) -> c`.
   - |
-    For example, XXX
-  - |
     For working with products of types, the ADT calculator enables
     pair syntax `(a, b)` as well as the projection functions
     `fst : (a,b) -> a` and `snd : (a,b) -> b`.
-  - |
-    For example, XYZ
 
   properties: [portable]
   capabilities: [arith, sum, prod]
