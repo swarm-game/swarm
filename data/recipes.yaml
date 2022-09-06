@@ -652,6 +652,13 @@
   - [1, calculator]
 
 - in:
+  - [1, calculator]
+  - [1, typewriter]
+  - [1, I/O cable]
+  out:
+  - [1, ADT calculator]
+
+- in:
   - [1, glass]
   - [1, silver]
   out:
