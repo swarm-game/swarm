@@ -116,6 +116,10 @@ data Capability
     CTime
   | -- | Capability to execute `try`.
     CTry
+  | -- | Capability for working with sum types.
+    CSum
+  | -- | Capability for working with product types.
+    CProd
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -219,6 +223,15 @@ constCaps = \case
   -- exceptions
   Try -> Just CTry
   -- ----------------------------------------------------------------
+  -- type-level arithmetic
+  Inl -> Just CSum
+  Inr -> Just CSum
+  Case -> Just CSum
+  Fst -> Just CProd
+  Snd -> Just CProd
+  -- XXX pair syntax should require CProd too
+
+  -- ----------------------------------------------------------------
   -- Some additional straightforward ones, which however currently
   -- cannot be used in classic mode since there is no craftable item
   -- which conveys their capability. TODO: #26
@@ -230,9 +243,4 @@ constCaps = \case
   -- Some more constants which *ought* to have their own capability but
   -- currently don't. TODO: #26
   View -> Nothing -- XXX this should also require something.
-  Inl -> Nothing -- XXX should require cap for sums
-  Inr -> Nothing
-  Case -> Nothing
-  Fst -> Nothing -- XXX should require cap for pairs
-  Snd -> Nothing
   Knows -> Nothing
