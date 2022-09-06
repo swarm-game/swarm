@@ -96,6 +96,7 @@ import Swarm.TUI.Border
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
+import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
@@ -109,18 +110,38 @@ drawUI s
   | otherwise = case s ^. uiState . uiMenu of
     -- We should never reach the NoMenu case if uiPlaying is false; we would have
     -- quit the app instead.  But just in case, we display the main menu anyway.
-    NoMenu -> [drawMainMenuUI (s ^. uiState . appData . at "logo") (mainMenu NewGame)]
-    MainMenu l -> [drawMainMenuUI (s ^. uiState . appData . at "logo") l]
+    NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
+    MainMenu l -> [drawMainMenuUI s l]
     NewGameMenu stk -> [drawNewGameMenuUI stk]
+    MessagesMenu -> [drawMainMessages s]
     AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
-drawMainMenuUI :: Maybe Text -> BL.List Name MainMenuEntry -> Widget Name
-drawMainMenuUI logo l =
-  vBox
-    [ maybe emptyWidget drawLogo logo
-    , centerLayer . vLimit 5 . hLimit 20 $
-        BL.renderList (const (hCenter . drawMainMenuEntry)) True l
+drawMainMessages :: AppState -> Widget Name
+drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
+ where
+  ls = reverse $ s ^. runtimeState . eventLog . notificationsContent
+  dial = dialog (Just "Messages") Nothing maxModalWindowWidth
+  scrollList = withVScrollBars OnRight . vBox
+  drawLogs = map (drawLogEntry True)
+
+drawMainMenuUI :: AppState -> BL.List Name MainMenuEntry -> Widget Name
+drawMainMenuUI s l =
+  vBox . catMaybes $
+    [ drawLogo <$> logo
+    , hCenter . padTopBottom 2 <$> newVersionWidget version
+    , Just . centerLayer . vLimit 5 . hLimit 20 $
+        BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
+ where
+  logo = s ^. uiState . appData . at "logo"
+  version = s ^. runtimeState . upstreamRelease
+
+newVersionWidget :: Either NewReleaseFailure String -> Maybe (Widget n)
+newVersionWidget = \case
+  Right ver -> Just . txt $ "New version " <> T.pack ver <> " is available!"
+  Left (OnDevelopmentBranch _b) -> Just . txt $ "Good luck developing!"
+  Left NoUpstreamRelease -> Nothing
+  Left (OldUpstreamRelease _up _my) -> Nothing
 
 drawLogo :: Text -> Widget Name
 drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) []) . T.lines
@@ -211,11 +232,18 @@ drawNewGameMenuUI (l :| ls) =
   nonBlank "" = " "
   nonBlank t = t
 
-drawMainMenuEntry :: MainMenuEntry -> Widget Name
-drawMainMenuEntry NewGame = txt "New game"
-drawMainMenuEntry Tutorial = txt "Tutorial"
-drawMainMenuEntry About = txt "About"
-drawMainMenuEntry Quit = txt "Quit"
+drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
+drawMainMenuEntry s = \case
+  NewGame -> txt "New game"
+  Tutorial -> txt "Tutorial"
+  About -> txt "About"
+  Messages -> highlightMessages $ txt "Messages"
+  Quit -> txt "Quit"
+ where
+  highlightMessages =
+    if s ^. runtimeState . eventLog . notificationsCount > 0
+      then withAttr notifAttr
+      else id
 
 drawAboutMenuUI :: Maybe Text -> Widget Name
 drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
@@ -401,7 +429,7 @@ maybeScroll vpName contents =
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
-  HelpModal -> helpWidget (s ^. gameState . seed) (s ^. uiState . uiPort)
+  HelpModal -> helpWidget (s ^. gameState . seed) (s ^. runtimeState . webPort)
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> availableListWidget (s ^. gameState) CommandList

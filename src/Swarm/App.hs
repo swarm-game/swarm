@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- Module      :  Swarm.App
 -- Copyright   :  Brent Yorgey
@@ -11,17 +13,20 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens ((&), (.~), (^.))
+import Control.Lens ((%~), (&), (?~), (^.))
 import Control.Monad.Except
 import Data.IORef (newIORef, writeIORef)
+import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
 import Swarm.Game.State
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.View
+import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -65,11 +70,21 @@ appMain port mseed scenario toRun cheat = do
           threadDelay 33_333 -- cap maximum framerate at 30 FPS
           writeBChan chan Frame
 
+      _ <- forkIO $ do
+        upRel <- getNewerReleaseVersion
+        writeBChan chan (UpstreamVersion upRel)
+
       -- Start the web service with a reference to the game state
       gsRef <- newIORef (s ^. gameState)
-      mport <- Swarm.Web.startWebThread port gsRef
+      eport <- Swarm.Web.startWebThread port gsRef
 
-      let s' = s & uiState . uiPort .~ mport
+      let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
+      let logE e = logEvent ErrorTrace ("Web API", -2) (T.pack e)
+      let s' =
+            s & runtimeState
+              %~ case eport of
+                Right p -> (webPort ?~ p) . (eventLog %~ logP p)
+                Left e -> eventLog %~ logE e
 
       -- Update the reference for every event
       let eventHandler e = do

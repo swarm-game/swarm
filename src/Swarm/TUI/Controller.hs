@@ -102,19 +102,27 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleEvent e = do
-  s <- get
-  if s ^. uiState . uiPlaying
-    then handleMainEvent e
-    else
-      e & case s ^. uiState . uiMenu of
-        -- If we reach the NoMenu case when uiPlaying is False, just
-        -- quit the app.  We should actually never reach this code (the
-        -- quitGame function would have already halted the app).
-        NoMenu -> const halt
-        MainMenu l -> handleMainMenuEvent l
-        NewGameMenu l -> handleNewGameMenuEvent l
-        AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
+handleEvent = \case
+  -- the query for upstream version could finish at any time, so we have to handle it here
+  AppEvent (UpstreamVersion ev) -> do
+    case ev of
+      Left e -> runtimeState . eventLog %= logEvent Said ("Release", -7) (T.pack $ show e)
+      Right _ -> pure ()
+    runtimeState . upstreamRelease .= ev
+  e -> do
+    s <- get
+    if s ^. uiState . uiPlaying
+      then handleMainEvent e
+      else
+        e & case s ^. uiState . uiMenu of
+          -- If we reach the NoMenu case when uiPlaying is False, just
+          -- quit the app.  We should actually never reach this code (the
+          -- quitGame function would have already halted the app).
+          NoMenu -> const halt
+          MainMenu l -> handleMainMenuEvent l
+          NewGameMenu l -> handleNewGameMenuEvent l
+          MessagesMenu -> handleMainMessagesEvent
+          AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
@@ -148,6 +156,9 @@ handleMainMenuEvent menu = \case
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
           uncurry startGame firstTutorial Nothing
+        Messages -> do
+          runtimeState . eventLog . notificationsCount .= 0
+          uiState . uiMenu .= MessagesMenu
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt
@@ -165,6 +176,15 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown
+
+handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMainMessagesEvent = \case
+  Key V.KEsc -> returnToMainMenu
+  CharKey 'q' -> returnToMainMenu
+  ControlKey 'q' -> returnToMainMenu
+  _ -> return ()
+ where
+  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
