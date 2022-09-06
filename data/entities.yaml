@@ -722,12 +722,12 @@
   capabilities: [drill]
   properties: [portable]
 
-- name: printer
+- name: typewriter
   display:
     attr: device
     char: 'Д'
   description:
-  - A printer is used to inscribe symbols on paper, thus reifying pure, platonic
+  - A typewriter is used to inscribe symbols on paper, thus reifying pure, platonic
     information into a physical form.
   properties: [portable]
 
