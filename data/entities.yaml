@@ -925,7 +925,7 @@
   - |
     For working with products of types, the ADT calculator enables
     pair syntax `(a, b)` as well as the projection functions
-    `fst : (a,b) -> a` and `snd : (a,b) -> b`.
+    `fst : a * b -> a` and `snd : a * b -> b`.
 
   properties: [portable]
   capabilities: [arith, sum, prod]
