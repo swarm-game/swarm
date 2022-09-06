@@ -33,6 +33,7 @@ robots:
       - [1, Tardis]
       - [1, logger]
       - [1, solar panel]
+      - [1, ADT calculator]
 known: [water]
 world:
   default: [ice, water]
