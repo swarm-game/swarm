@@ -332,8 +332,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TDir _ -> return UTyDir
   TInt _ -> return UTyInt
   TAntiInt _ -> return UTyInt
-  TString _ -> return UTyString
-  TAntiString _ -> return UTyString
+  TText _ -> return UTyText
+  TAntiText _ -> return UTyText
   TBool _ -> return UTyBool
   TRobot _ -> return UTyRobot
   -- We should never encounter a TRef since they do not show up in
@@ -464,38 +464,38 @@ inferConst c = case c of
   Selfdestruct -> [tyQ| cmd () |]
   Move -> [tyQ| cmd () |]
   Turn -> [tyQ| dir -> cmd () |]
-  Grab -> [tyQ| cmd string |]
-  Harvest -> [tyQ| cmd string |]
-  Place -> [tyQ| string -> cmd () |]
-  Give -> [tyQ| robot -> string -> cmd () |]
-  Install -> [tyQ| robot -> string -> cmd () |]
-  Make -> [tyQ| string -> cmd () |]
-  Has -> [tyQ| string -> cmd bool |]
-  Installed -> [tyQ| string -> cmd bool |]
-  Count -> [tyQ| string -> cmd int |]
+  Grab -> [tyQ| cmd text |]
+  Harvest -> [tyQ| cmd text |]
+  Place -> [tyQ| text -> cmd () |]
+  Give -> [tyQ| robot -> text -> cmd () |]
+  Install -> [tyQ| robot -> text -> cmd () |]
+  Make -> [tyQ| text -> cmd () |]
+  Has -> [tyQ| text -> cmd bool |]
+  Installed -> [tyQ| text -> cmd bool |]
+  Count -> [tyQ| text -> cmd int |]
   Reprogram -> [tyQ| robot -> {cmd a} -> cmd () |]
   Build -> [tyQ| {cmd a} -> cmd robot |]
   Drill -> [tyQ| dir -> cmd () |]
   Salvage -> [tyQ| cmd () |]
-  Say -> [tyQ| string -> cmd () |]
-  Listen -> [tyQ| cmd string |]
-  Log -> [tyQ| string -> cmd () |]
+  Say -> [tyQ| text -> cmd () |]
+  Listen -> [tyQ| cmd text |]
+  Log -> [tyQ| text -> cmd () |]
   View -> [tyQ| robot -> cmd () |]
-  Appear -> [tyQ| string -> cmd () |]
-  Create -> [tyQ| string -> cmd () |]
+  Appear -> [tyQ| text -> cmd () |]
+  Create -> [tyQ| text -> cmd () |]
   Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
   Blocked -> [tyQ| cmd bool |]
-  Scan -> [tyQ| dir -> cmd (() + string) |]
+  Scan -> [tyQ| dir -> cmd (() + text) |]
   Upload -> [tyQ| robot -> cmd () |]
-  Ishere -> [tyQ| string -> cmd bool |]
+  Ishere -> [tyQ| text -> cmd bool |]
   Self -> [tyQ| robot |]
   Parent -> [tyQ| robot |]
   Base -> [tyQ| robot |]
-  Whoami -> [tyQ| cmd string |]
-  Setname -> [tyQ| string -> cmd () |]
+  Whoami -> [tyQ| cmd text |]
+  Setname -> [tyQ| text -> cmd () |]
   Random -> [tyQ| int -> cmd int |]
-  Run -> [tyQ| string -> cmd () |]
+  Run -> [tyQ| text -> cmd () |]
   If -> [tyQ| bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]
   Inr -> [tyQ| b -> a + b |]
@@ -506,7 +506,7 @@ inferConst c = case c of
   Return -> [tyQ| a -> cmd a |]
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
   Undefined -> [tyQ| a |]
-  Fail -> [tyQ| string -> a |]
+  Fail -> [tyQ| text -> a |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT
@@ -522,15 +522,15 @@ inferConst c = case c of
   Mul -> arithBinT
   Div -> arithBinT
   Exp -> arithBinT
-  Format -> [tyQ| a -> string |]
-  Concat -> [tyQ| string -> string -> string |]
+  Format -> [tyQ| a -> text |]
+  Concat -> [tyQ| text -> text -> text |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Atomic -> [tyQ| cmd a -> cmd a |]
   Teleport -> [tyQ| robot -> (int * int) -> cmd () |]
   As -> [tyQ| robot -> {cmd a} -> cmd a |]
-  RobotNamed -> [tyQ| string -> cmd robot |]
+  RobotNamed -> [tyQ| text -> cmd robot |]
   RobotNumbered -> [tyQ| int -> cmd robot |]
-  Knows -> [tyQ| string -> cmd bool |]
+  Knows -> [tyQ| text -> cmd bool |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]
@@ -545,7 +545,7 @@ check t ty = do
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
 --   referenced must have a primitive, first-order type such as
---   @string@ or @int@ (in particular, no functions, @cmd@, or
+--   @text@ or @int@ (in particular, no functions, @cmd@, or
 --   @delay@).  We simply assume that any locally bound variables are
 --   OK without checking their type: the only way to bind a variable
 --   locally is with a binder of the form @x <- c1; c2@, where @c1@ is
@@ -583,8 +583,8 @@ analyzeAtomic locals (Syntax l t) = case t of
   TDir {} -> return 0
   TInt {} -> return 0
   TAntiInt {} -> return 0
-  TString {} -> return 0
-  TAntiString {} -> return 0
+  TText {} -> return 0
+  TAntiText {} -> return 0
   TBool {} -> return 0
   TRobot {} -> return 0
   TRequireDevice {} -> return 0

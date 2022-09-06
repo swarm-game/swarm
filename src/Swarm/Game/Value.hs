@@ -40,8 +40,8 @@ data Value where
   VUnit :: Value
   -- | An integer.
   VInt :: Integer -> Value
-  -- | A literal string.
-  VString :: Text -> Value
+  -- | Literal text.
+  VText :: Text -> Value
   -- | A direction.
   VDir :: Direction -> Value
   -- | A boolean.
@@ -95,7 +95,7 @@ prettyValue = prettyText . valueToTerm
 valueToTerm :: Value -> Term
 valueToTerm VUnit = TUnit
 valueToTerm (VInt n) = TInt n
-valueToTerm (VString s) = TString s
+valueToTerm (VText s) = TText s
 valueToTerm (VDir d) = TDir d
 valueToTerm (VBool b) = TBool b
 valueToTerm (VRobot r) = TRobot r

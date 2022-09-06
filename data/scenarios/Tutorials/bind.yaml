@@ -12,8 +12,8 @@ objectives:
       - |
         Other commands do return a nontrivial value after executing.
         For example, `grab` has type
-        `cmd string`, and returns the name of the
-        grabbed entity as a string. Try it:
+        `cmd text`, and returns the name of the
+        grabbed entity as a text value. Try it:
       - |
         move; grab
       - |

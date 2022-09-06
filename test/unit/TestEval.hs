@@ -95,7 +95,7 @@ testEval g =
             ("inl 3" `evaluatesTo` VInj False (VInt 3))
         , testCase
             "inr"
-            ("inr \"hi\"" `evaluatesTo` VInj True (VString "hi"))
+            ("inr \"hi\"" `evaluatesTo` VInj True (VText "hi"))
         , testCase
             "inl a < inl b"
             ("inl 3 < inl 4" `evaluatesTo` VBool True)
@@ -128,13 +128,13 @@ testEval g =
             ("case (inr 2) (\\x. x + 1) (\\y. y * 17)" `evaluatesTo` VInt 34)
         , testCase
             "nested 1"
-            ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inl 3)" `evaluatesTo` VInt 1)
+            ("(\\x : int + bool + text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inl 3)" `evaluatesTo` VInt 1)
         , testCase
             "nested 2"
-            ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inl false))" `evaluatesTo` VInt 2)
+            ("(\\x : int + bool + text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inl false))" `evaluatesTo` VInt 2)
         , testCase
             "nested 2"
-            ("(\\x : int + bool + string. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inr \"hi\"))" `evaluatesTo` VInt 3)
+            ("(\\x : int + bool + text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inr \"hi\"))" `evaluatesTo` VInt 3)
         ]
     , testGroup
         "operator evaluation"
@@ -212,19 +212,19 @@ testEval g =
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
         ]
     , testGroup
-        "strings"
+        "text"
         [ testCase
             "format int"
-            ("format 1" `evaluatesTo` VString "1")
+            ("format 1" `evaluatesTo` VText "1")
         , testCase
             "format sum"
-            ("format (inl 1)" `evaluatesTo` VString "inl 1")
+            ("format (inl 1)" `evaluatesTo` VText "inl 1")
         , testCase
             "format function"
-            ("format (\\x. x + 1)" `evaluatesTo` VString "\\x. x + 1")
+            ("format (\\x. x + 1)" `evaluatesTo` VText "\\x. x + 1")
         , testCase
             "concat"
-            ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VString "x = 5!")
+            ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VText "x = 5!")
         ]
     ]
  where

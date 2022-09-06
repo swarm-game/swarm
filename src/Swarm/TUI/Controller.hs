@@ -900,7 +900,7 @@ makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
   let mkTy = Forall [] $ TyCmd TyUnit
-      mkProg = TApp (TConst Make) (TString (e ^. entityName))
+      mkProg = TApp (TConst Make) (TText (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
       topStore =
         fromMaybe emptyStore $
