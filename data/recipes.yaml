@@ -89,7 +89,7 @@
   - [1, board]
   - [8, wooden gear]
   out:
-  - [1, printer]
+  - [1, typewriter]
 
 #########################################
 ##                BITS                 ##
@@ -650,6 +650,13 @@
   - [1, solar panel]
   out:
   - [1, calculator]
+
+- in:
+  - [1, calculator]
+  - [1, typewriter]
+  - [1, I/O cable]
+  out:
+  - [1, ADT calculator]
 
 - in:
   - [1, glass]
