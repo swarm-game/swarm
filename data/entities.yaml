@@ -923,19 +923,21 @@
     just a fancy version of the number 2, where the two things happen to be
     labelled `false` and `true`.
   - |
-    The product of two types is a type of pairs, since, for example, if `t` is a type with three elements, then there are 2 * 3 = 6 different pairs containing a `bool` and a `t`, that is, 6 elements
-    of type `bool * t`.
-    For working with products of types, the ADT
-    calculator enables
-    pair syntax `(a, b)` as well as the projection functions
-    `fst : a * b -> a` and `snd : a * b -> b`.
+    The product of two types is a type of pairs, since, for example,
+    if `t` is a type with three elements, then there are 2 * 3 = 6
+    different pairs containing a `bool` and a `t`, that is, 6 elements
+    of type `bool * t`.  For working with products of types, the ADT
+    calculator enables pair syntax `(a, b)` as well as the projection
+    functions `fst : a * b -> a` and `snd : a * b -> b`.
   - |
-    The sum of two types is a type with two options; for example, a value of type `bool + t` is either a `bool` value or a `t` value, and there are 2 + 3 = 5 such values.
-    For working with sums of types, the ADT calculator provides
-    the injection functions `inl : a -> a + b` and `inr : b -> a + b`, as
-    well as the case analysis function `case : (a + b) -> (a -> c) -> (b -> c) -> c`.
-    For example, `case (inl 3) (\x. 2*x) (\y. 3*y) == 6`, and
-    `case (inr 3) (\x. 2*x) (\y. 3*y) == 9`.
+    The sum of two types is a type with two options; for example, a
+    value of type `bool + t` is either a `bool` value or a `t` value,
+    and there are 2 + 3 = 5 such values.  For working with sums of
+    types, the ADT calculator provides the injection functions `inl :
+    a -> a + b` and `inr : b -> a + b`, as well as the case analysis
+    function `case : (a + b) -> (a -> c) -> (b -> c) -> c`.  For
+    example, `case (inl 3) (\x. 2*x) (\y. 3*y) == 6`, and `case (inr
+    3) (\x. 2*x) (\y. 3*y) == 9`.
 
   properties: [portable]
   capabilities: [arith, sum, prod]
