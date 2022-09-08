@@ -7,10 +7,12 @@ on:
   push:
     paths:
       - 'editors/vscode/**'
+      - .github/workflows/vscode*
     branches:
       - '*'
   pull_request:
     paths:
+      - .github/workflows/vscode*
       - 'editors/vscode/**'
     branches:
       - '*'
