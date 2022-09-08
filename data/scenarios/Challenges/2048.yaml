@@ -1,0 +1,187 @@
+name: "2048"
+description: Make 2048!
+objectives:
+  - goal:
+    - OK, it's not really the same as the classic "2048" game.
+      However, your goal is still to make 2048.
+    condition: |
+      try {
+        as base {has "2048"}
+      } { return false }
+solution: |
+  def makeN : int -> cmd () = \n.
+    if (n == 1)
+      {harvest; return ()}
+      {makeN (n/2); makeN (n/2); make (format n)}
+  end;
+  place "1";
+  makeN 2048
+entities:
+  - name: "1"
+    display:
+      attr: gold
+      char: "1"
+    description:
+    - This is a one.  Maybe you can combine it with other ones
+      somehow.
+    properties: [growable, portable, infinite]
+  - name: "2"
+    display:
+      attr: gold
+      char: "2"
+    description:
+    - This is a two.  Maybe you can combine it with other twos
+      somehow.
+    properties: [portable]
+  - name: "4"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - This is a four.  You get the idea.
+    properties: [portable]
+  - name: "8"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - An eight.
+    properties: [portable]
+  - name: "16"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 16.
+    properties: [portable]
+  - name: "32"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 32.
+    properties: [portable]
+  - name: "64"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 64.
+    properties: [portable]
+  - name: "128"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 128.
+    properties: [portable]
+  - name: "256"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 256.
+    properties: [portable]
+  - name: "512"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 512.
+    properties: [portable]
+  - name: "1024"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 1024.
+    properties: [portable]
+  - name: "2048"
+    display:
+      attr: gold
+      char: "4"
+    description:
+    - A 2048.
+    properties: [portable]
+recipes:
+  - in:
+    - [2, "1"]
+    out:
+    - [1, "2"]
+  - in:
+    - [2, "2"]
+    out:
+    - [1, "4"]
+  - in:
+    - [2, "4"]
+    out:
+    - [1, "8"]
+  - in:
+    - [2, "8"]
+    out:
+    - [1, "16"]
+  - in:
+    - [2, "16"]
+    out:
+    - [1, "32"]
+  - in:
+    - [2, "32"]
+    out:
+    - [1, "64"]
+  - in:
+    - [2, "64"]
+    out:
+    - [1, "128"]
+  - in:
+    - [2, "128"]
+    out:
+    - [1, "256"]
+  - in:
+    - [2, "256"]
+    out:
+    - [1, "512"]
+  - in:
+    - [2, "512"]
+    out:
+    - [1, "1024"]
+  - in:
+    - [2, "1024"]
+    out:
+    - [1, "2048"]
+robots:
+  - name: base
+    dir: [1,0]
+    display:
+      attr: robot
+      char: "Ω"
+    devices:
+      - logger
+      - harvester
+      - dictionary
+      - clock
+      - workbench
+      - solar panel
+      - comparator
+      - calculator
+      - string
+      - life support system
+      - branch predictor
+      - strange loop
+    inventory:
+      - [1, "1"]
+known: [water, wavy water, flower, tree]
+world:
+  default: [stone]
+  palette:
+    "Ω": [grass, null, base]
+    "┌": [stone, upper left corner]
+    "┐": [stone, upper right corner]
+    "└": [stone, lower left corner]
+    "┘": [stone, lower right corner]
+    "─": [stone, horizontal wall]
+    "│": [stone, vertical wall]
+  upperleft: [-1, 3]
+  map: |
+    ┌─┐
+    │Ω│
+    └─┘
