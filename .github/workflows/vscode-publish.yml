@@ -13,7 +13,11 @@ jobs:
         with:
           node-version: 16
       - run: |
-          cd editors/vscode/client    && \
+          cd editors/vscode           && \
+          npm update                  && \
+          npm clean-install           && \
+          cd client                   && \
+          npm update                  && \
           npm clean-install           && \
           tsc --build .               && \
           cd ..                       && \
