@@ -3,7 +3,7 @@
 All notable changes to the "swarm-language" extension will be documented in this file.
 
 ## version 0.0.6
-- [Highlighter] **FIX:** the number pattern now matches properly, previosly it broke everything!
+- [Highlighter] **FIX:** the number pattern now matches properly, previously it broke everything!
 - [Highlighter] added `listen` command
 - added a snapshot test
 
