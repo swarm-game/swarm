@@ -5,6 +5,7 @@ All notable changes to the "swarm-language" extension will be documented in this
 ## version 0.0.6
 - [Highlighter] **FIX:** the number pattern now matches properly, previosly it broke everything!
 - [Highlighter] added `listen` command
+- added a snapshot test
 
 ## version 0.0.5
 - [Highlighter] added the `atomic`, `installed` and `time` constants
