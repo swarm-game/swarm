@@ -13,8 +13,10 @@ jobs:
         with:
           node-version: 16
       - run: |
-          cd editors/vscode
-          npm ci
+          cd editors/vscode/client  && \
+          npm clean-install         && \
+          cd ..                     && \
+          npm clean-install
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@v1
         with:
