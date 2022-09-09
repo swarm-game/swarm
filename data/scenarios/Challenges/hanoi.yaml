@@ -1,0 +1,91 @@
+name: Towers of Hanoi
+description: XXX
+objectives:
+  - goal:
+      - Move all the disks from blah to blah blah
+    condition: |
+      try {
+        teleport self (2,-1);
+        x <- ishere "one";
+        teleport self (2,-2);
+        y <- ishere "blocked two";
+        teleport self (2,-3);
+        z <- ishere "blocked three";
+        return (x && y && z)
+      } { return false }
+robots:
+  - name: base
+    dir: [0,-1]
+    devices:
+      - treads
+      - logger
+      - grabber
+      - dictionary
+    inventory:
+      - [0, lambda]
+entities:
+  - name: bottom tee
+    display:
+      char: '┴'
+      attr: entity
+    description:
+    - A bottom tee wall.
+    proprties: [unwalkable]
+  - name: three
+    display:
+      char: '3'
+      attr: gold
+    description:
+    - A disk of radius 3.
+    properties: [portable]
+  - name: two
+    display:
+      char: '2'
+      attr: gold
+    description:
+    - A disk of radius 2.
+    properties: [portable]
+  - name: one
+    display:
+      char: '1'
+      attr: gold
+    description:
+    - A disk of radius 1.
+    properties: [portable]
+  - name: blocked three
+    display:
+      char: '3'
+      attr: entity
+    description:
+    - A disk of radius 3.
+  - name: blocked two
+    display:
+      char: '2'
+      attr: entity
+    description:
+    - A disk of radius 2.
+known: [bottom tee, one, two, three, blocked two, blocked three]
+world:
+  default: [grass, null]
+  palette:
+    ' ': [stone]
+    'v': [stone, null, base]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    '┴': [stone, bottom tee]
+    '1': [stone, one]
+    '2': [stone, blocked two]
+    '3': [stone, blocked three]
+  upperleft: [-3, 1]
+  map: |
+    ┌─────┐
+    │  v  │
+    │1│ │ │
+    │2│ │ │
+    │3│ │ │
+    └─┴─┴─┘
+
