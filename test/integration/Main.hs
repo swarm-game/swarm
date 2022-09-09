@@ -168,6 +168,7 @@ testScenarioSolution _ci _em =
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
             testSolution Default "Testing/394-build-drill"
+        , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" $ \g -> do
             let t = g ^. ticks

@@ -1,0 +1,124 @@
+name: Drill test
+description: A developer playground for drilling.
+objectives:
+  - goal:
+      - Send robots to mine rock, iron and copper.
+    condition: |
+      try {
+        i <- as base {has "iron ore"};
+        c <- as base {has "copper ore"};
+        s <- as base {has "rock"};
+        return (i && c && s)
+      } { return false }
+solution: |
+  build {
+    move; drill forward; turn back; move; turn left;
+    move; move; drill left;
+    move; drill forward;
+    turn back; move; move; move;
+    give base "iron ore"; give base "copper ore"; give base "rock"
+  }
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - grabber
+      - toolkit
+      - 3D printer
+    inventory:
+      - [2, metal drill]
+      - [1, drill]
+      - [3, logger]
+      - [3, compass]
+      - [5, solar panel]
+      - [5, treads]
+      - [5, grabber]
+known: [water, wavy water]
+world:
+  default: [ice, water]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    ' ': [ice, water]
+    '~': [ice, wavy water]
+    'L': [grass, Linux]
+    'T': [grass, tree]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    'A': [stone, mountain]
+    'C': [stone, copper vein]
+    'I': [stone, iron vein]
+  upperleft: [-1, 1]
+  map: |
+    ┌─────┐                                                                ~~
+    │IAAT~                                                                ~L~
+    │..AAA│                                                                ~~
+    │Ω...C│                                                                 ~
+    └─────┘                                                                 ~
+entities:
+  - name: copper vein
+    display:
+      attr: copper'
+      char: 'A'
+    description:
+    - A place in the mountains where raw copper ore can be mined.
+      As it is hidden inside a mountain, a tunnel needs to be
+      first drilled through, so that the vein becomes accessible.
+    properties: [unwalkable]
+
+  - name: iron vein
+    display:
+      attr: iron'
+      char: 'A'
+    description:
+    - A place in the mountains where raw iron ore can be mined.
+      As it is hidden inside a mountain, a tunnel needs to be
+      first drilled through, so that the vein becomes accessible.
+    properties: [unwalkable]
+
+recipes:
+  ## TOY DRILL
+  - in:
+    - [1, copper vein]
+    out:
+    - [1, copper mine]
+    - [1, copper ore]
+    required:
+    - [1, drill]
+    time: 42
+
+  - in:
+    - [1, iron vein]
+    out:
+    - [1, iron mine]
+    - [1, iron ore]
+    required:
+    - [1, drill]
+    time: 64
+
+  ## METAL DRILL
+  - in:
+    - [1, copper vein]
+    out:
+    - [1, copper mine]
+    - [1, copper ore]
+    required:
+    - [1, metal drill]
+    time: 6
+
+  - in:
+    - [1, iron vein]
+    out:
+    - [1, iron mine]
+    - [1, iron ore]
+    required:
+    - [1, metal drill]
+    time: 7
