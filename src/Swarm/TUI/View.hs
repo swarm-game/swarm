@@ -200,7 +200,7 @@ drawNewGameMenuUI (l :| ls) =
         ]
 
   formatTimeDiff :: NominalDiffTime -> Text
-  formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %mm %ss"
+  formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %Mm %Ss"
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
