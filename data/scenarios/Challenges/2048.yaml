@@ -43,63 +43,63 @@ entities:
   - name: "8"
     display:
       attr: gold
-      char: "4"
+      char: "8"
     description:
     - An eight.
     properties: [portable]
   - name: "16"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 16.
     properties: [portable]
   - name: "32"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 32.
     properties: [portable]
   - name: "64"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 64.
     properties: [portable]
   - name: "128"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 128.
     properties: [portable]
   - name: "256"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 256.
     properties: [portable]
   - name: "512"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 512.
     properties: [portable]
   - name: "1024"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 1024.
     properties: [portable]
   - name: "2048"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - A 2048.
     properties: [portable]
