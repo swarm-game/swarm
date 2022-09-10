@@ -167,6 +167,7 @@ robots:
       - life support system
       - branch predictor
       - strange loop
+      - lambda
     inventory:
       - [1, "1"]
 known: [water, wavy water, flower, tree]
