@@ -1,10 +1,10 @@
 name: Towers of Hanoi
-description: XXX
+description: The classic Towers of Hanoi puzzle with three disks.
 objectives:
   - goal:
-      - Move all the disks from left column to the right column.
-      - There is one rule that must hold for you to move the top disk.
-      # TODO: describe the rule
+      - Move all the numbers (traditionally, "disks") from left column to the right column.
+      - You may only pick up one disk at a time, and you may never
+        place a larger disk on top of a smaller one.
     condition: |
       teleport self (2,-1);
       x <- ishere "one";
