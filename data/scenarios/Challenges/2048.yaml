@@ -20,7 +20,7 @@ entities:
   - name: "1"
     display:
       attr: gold
-      char: "1"
+      char: "#"
     description:
     - This is a one.  Maybe you can combine it with other ones
       somehow.
@@ -28,7 +28,7 @@ entities:
   - name: "2"
     display:
       attr: gold
-      char: "2"
+      char: "#"
     description:
     - This is a two.  Maybe you can combine it with other twos
       somehow.
@@ -36,14 +36,14 @@ entities:
   - name: "4"
     display:
       attr: gold
-      char: "4"
+      char: "#"
     description:
     - This is a four.  You get the idea.
     properties: [portable]
   - name: "8"
     display:
       attr: gold
-      char: "8"
+      char: "#"
     description:
     - An eight.
     properties: [portable]
