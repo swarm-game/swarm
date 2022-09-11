@@ -34,8 +34,13 @@ robots:
       - logger
       - grabber
       - dictionary
-    inventory:
-      - [0, lambda]
+      - branch predictor
+      - comparator
+      - strange loop
+      - compass
+      - clock
+      - scanner
+      - ADT calculator
   - name: invariant
     dir: [0,0]
     system: true
