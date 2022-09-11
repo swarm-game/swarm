@@ -63,7 +63,7 @@ module Swarm.Util (
 
   -- * Utilities for NP-hard approximation
   smallHittingSet,
-) where
+getDataDirSafe, getDataFileNameSafe, dataFileNotFound) where
 
 import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
@@ -102,7 +102,7 @@ import System.Directory (
   XdgDirectory (XdgData),
   createDirectoryIfMissing,
   getXdgDirectory,
-  listDirectory,
+  listDirectory, doesDirectoryExist, doesFileExist
  )
 import System.FilePath
 import System.IO
@@ -209,6 +209,30 @@ readFileMayT = catchIO . T.readFile
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)
 catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
+
+getDataDirSafe :: IO (Maybe FilePath)
+getDataDirSafe = do
+  d <- getDataDir
+  de <- doesDirectoryExist d
+  if de
+    then return $ Just d
+    else do
+      xd <- (</> "data") <$> getSwarmDataPath False
+      xde <- doesDirectoryExist xd 
+      return $ if xde then Just xd else Nothing
+
+getDataFileNameSafe :: FilePath -> IO (Maybe FilePath)
+getDataFileNameSafe name = do
+  dir <- getDataDirSafe
+  case dir of
+    Nothing -> return Nothing
+    Just d -> do 
+      let fp = d </> name
+      fe <- doesFileExist fp
+      return $ if fe then Just fp else Nothing      
+
+dataFileNotFound :: Text
+dataFileNotFound = T.pack ""
 
 -- | Get path to swarm data, optionally creating necessary
 --   directories.

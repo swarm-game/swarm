@@ -131,7 +131,6 @@ import Data.Text.IO qualified as T (readFile)
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
 import Linear
-import Paths_swarm (getDataFileName)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe (
@@ -154,7 +153,7 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TText), allConst)
 import Swarm.Language.Types
-import Swarm.Util (getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
+import Swarm.Util (getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?), getDataFileNameSafe)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
@@ -668,9 +667,10 @@ initGameState = do
   let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
 
   (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    adjsFile <- getDataFileName "adjectives.txt"
+    -- if data directory did not exist we would have failed loading scenarios
+    Just adjsFile <- getDataFileNameSafe "adjectives.txt"
     as <- tail . T.lines <$> T.readFile adjsFile
-    namesFile <- getDataFileName "names.txt"
+    Just namesFile <- getDataFileNameSafe "names.txt"
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 

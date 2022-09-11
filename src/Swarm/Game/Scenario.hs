@@ -46,7 +46,7 @@ module Swarm.Game.Scenario (
   -- * Loading from disk
   loadScenario,
   loadScenarioFile,
-) where
+getScenarioPath) where
 
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
@@ -59,7 +59,7 @@ import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (isNothing, listToMaybe)
+import Data.Maybe (isNothing, listToMaybe, catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -67,13 +67,12 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import GHC.Int (Int64)
 import Linear.V2
-import Paths_swarm (getDataFileName)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot, trobotName)
 import Swarm.Game.Terrain
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (reflow)
+import Swarm.Util (reflow, getDataFileNameSafe)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -332,6 +331,14 @@ scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 -- Loading scenarios
 ------------------------------------------------------------
 
+getScenarioPath :: FilePath -> IO (Maybe FilePath)
+getScenarioPath scenario = do
+  libScenario <- getDataFileNameSafe $ "scenarios" </> scenario
+  libScenarioExt <- getDataFileNameSafe $ "scenarios" </> scenario <.> "yaml"
+
+  let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
+  listToMaybe <$> filterM doesFileExist candidates
+
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
@@ -341,13 +348,7 @@ loadScenario ::
   EntityMap ->
   m (Scenario, FilePath)
 loadScenario scenario em = do
-  libScenario <- sendIO $ getDataFileName $ "scenarios" </> scenario
-  libScenarioExt <- sendIO $ getDataFileName $ "scenarios" </> scenario <.> "yaml"
-
-  mfileName <-
-    sendIO $
-      listToMaybe <$> filterM doesFileExist [scenario, libScenarioExt, libScenario]
-
+  mfileName <- sendIO $ getScenarioPath scenario
   case mfileName of
     Nothing -> throwError @Text $ "Scenario not found: " <> from @String scenario
     Just fileName -> (,fileName) <$> loadScenarioFile em fileName
