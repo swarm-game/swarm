@@ -133,8 +133,7 @@ gameTick = do
         Left exn -> do
           em <- use entityMap
           time <- use ticks
-          let unused = error "Unexpectedly used field"
-              h = hypotheticalRobot unused unused
+          let h = hypotheticalRobot (Out VUnit emptyStore []) 0
               hid = view robotID h
               hn = view robotName h
               farAway = V2 maxBound maxBound
@@ -1435,7 +1434,7 @@ execConst c vs s k = do
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (-n)) s k
+      [VInt n] -> return $ Out (VInt (- n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1671,13 +1670,17 @@ execConst c vs s k = do
     RID ->
     m Robot
   getRobotWithinTouch rid = do
-    mother <- robotWithID rid
-    other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
-    -- Make sure it is in the same location
-    loc <- use robotLocation
-    ((other ^. robotLocation) `manhattan` loc <= 1)
-      `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
-    return other
+    cid <- use robotID
+    if cid == rid
+      then get @Robot
+      else do
+        mother <- robotWithID rid
+        other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
+        -- Make sure it is in the same location
+        loc <- use robotLocation
+        ((other ^. robotLocation) `manhattan` loc <= 1)
+          `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
+        return other
 
   -- update some tile in the world setting it to entity or making it empty
   updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
@@ -1712,7 +1715,8 @@ execConst c vs s k = do
         >>= (`isJustOrFail` ["There is nothing here to", verb <> "."])
 
     -- Ensure it can be picked up.
-    (e `hasProperty` Portable)
+    omni <- (||) <$> use systemRobot <*> use creativeMode
+    (omni || e `hasProperty` Portable)
       `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
     -- Remove the entity from the world.
