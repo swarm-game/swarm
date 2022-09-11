@@ -5,17 +5,28 @@ objectives:
       - Move all the disks from blah to blah blah
     condition: |
       try {
-        teleport self (2,-1);
-        x <- ishere "one";
-        teleport self (2,-2);
-        y <- ishere "blocked two";
-        teleport self (2,-3);
-        z <- ishere "blocked three";
-        return (x && y && z)
-      } { return false }
+        c <- robotNamed "checker";
+        as c {has "Win"}
+      } {
+        say "Fatal error: failed to check win condition!";
+        return false
+      }
+solution: |
+  teleport self (2,-1);
+  create "one";
+  x <- place "one";
+  // ----------------------
+  teleport self (2,-2);
+  create "blocked two";
+  y <- place "blocked two";
+  // ----------------------
+  teleport self (2,-3);
+  create "blocked three";
+  z <- place "blocked three";
 robots:
   - name: base
     dir: [0,-1]
+    system: true
     devices:
       - treads
       - logger
@@ -23,6 +34,27 @@ robots:
       - dictionary
     inventory:
       - [0, lambda]
+  - name: checker
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory:
+      - [0, Win]
+    program: |
+      def repeat = \c.
+        b <- c;
+        if b {say "done"; create "Win"} {repeat c}
+      end;
+      repeat (
+        teleport self (2,-1);
+        x <- ishere "one";
+        teleport self (2,-2);
+        y <- ishere "blocked two";
+        teleport self (2,-3);
+        z <- ishere "blocked three";
+        return (x && y && z)
+      )
 entities:
   - name: bottom tee
     display:
@@ -64,12 +96,19 @@ entities:
       attr: entity
     description:
     - A disk of radius 2.
+  - name: Win
+    display:
+      char: 'W'
+      attr: gold
+    description:
+    - A magical device that wins the challenge.
 known: [bottom tee, one, two, three, blocked two, blocked three]
 world:
   default: [grass, null]
   palette:
     ' ': [stone]
     'v': [stone, null, base]
+    'c': [stone, null, checker]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
@@ -83,7 +122,7 @@ world:
   upperleft: [-3, 1]
   map: |
     ┌─────┐
-    │  v  │
+    │  v c│
     │1│ │ │
     │2│ │ │
     │3│ │ │
