@@ -4,18 +4,29 @@ objectives:
   - goal:
       - Move all the disks from blah to blah blah
     condition: |
-      try {
-        teleport self (2,-1);
-        x <- ishere "one";
-        teleport self (2,-2);
-        y <- ishere "blocked two";
-        teleport self (2,-3);
-        z <- ishere "blocked three";
-        return (x && y && z)
-      } { return false }
+      teleport self (2,-1);
+      x <- ishere "one";
+      teleport self (2,-2);
+      y <- ishere "blocked two";
+      teleport self (2,-3);
+      z <- ishere "blocked three";
+      return (x && y && z)
+solution: |
+  teleport self (2,-1);
+  create "one";
+  x <- place "one";
+  // ----------------------
+  teleport self (2,-2);
+  create "blocked two";
+  y <- place "blocked two";
+  // ----------------------
+  teleport self (2,-3);
+  create "blocked three";
+  z <- place "blocked three";
 robots:
   - name: base
     dir: [0,-1]
+    system: true
     devices:
       - treads
       - logger
