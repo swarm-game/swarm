@@ -4,6 +4,7 @@
 //  - place "OK"
 // else
 //  - try to grab "OK"
+def null = inl () end;
 def repeat = \c. c; repeat c end;
 def toI = \e.
   if (e == "one"   || e == "blocked one")   {1} {
@@ -31,7 +32,15 @@ repeat (
         x <- scan south;
         y <- scan down;
         z <- scan north;
-        return (f x y && f y z)
+        if (z == null) {
+          if (y == null) {
+            return true
+          } {
+            return $ f x y
+          }
+        } {
+          return $ f x y && f y z
+        }
     };
     try {
         if o {place "OK"} {grab; return ()}

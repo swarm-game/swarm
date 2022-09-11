@@ -1672,7 +1672,7 @@ execConst c vs s k = do
   isDestroyable r = do
     if r ^. robotID == 0
       then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
-      else return True
+      else return . not $ r ^. systemRobot
 
   getRobotWithinTouch ::
     (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) =>

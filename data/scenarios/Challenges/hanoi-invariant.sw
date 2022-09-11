@@ -31,17 +31,21 @@ if (isUnlocked e)
 {
     mn <- scan north;
     case mn (\_.
-      // TODO: check all disks are placed
+      wait 32;
+      allPlaced <- as self {
+        teleport self (0,-6);
+        ishere "three"
+      };
       allSorted <- as self {
-        teleport self (undefined);
+        teleport self (-2,-5);
         o1 <- ishere "OK";
-        teleport self (undefined);
+        teleport self (0,-5);
         o2 <- ishere "OK";
-        teleport self (undefined);
+        teleport self (2,-5);
         o3 <- ishere "OK";
         return (o1 && o2 && o3)
       };
-      if allSorted {grab; place (unlock e)} {}
+      if (allPlaced && allSorted) {grab; place (unlock e)} {}
     ) (\_. return ())
 }
 ))

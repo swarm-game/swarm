@@ -41,6 +41,8 @@ robots:
     system: true
     display:
       invisible: true
+    devices:
+    - logger
     inventory:
     - [1, "one"]
     - [1, "two"]
@@ -61,7 +63,7 @@ robots:
       //  1. place noth of me is NOT empty
       // then
       //  - lock X
-      run "hanoi-invariant.sw"
+      run "scenarios/Challenges/hanoi-invariant.sw"
   - name: increasing
     dir: [0,0]
     system: true
@@ -69,6 +71,8 @@ robots:
       invisible: true
     inventory:
     - [1, OK]
+    devices:
+    - logger
     program: |
       // if
       //  0. all (but max 3) disks in my column are sorted
@@ -76,7 +80,22 @@ robots:
       //  - place "OK"
       // else
       //  - try to grab "OK"
-      run "hanoi-increasing.sw"
+      run "scenarios/Challenges/hanoi-increasing.sw"
+  - name: count
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory:
+    - [1, two]
+    - [0, three]
+    devices:
+    - logger
+    program: |
+      // count all entities placed in columns
+      // the final count should be either 2 or 3
+      // place "two" or "three" at x=0 y=-6
+      run "scenarios/Challenges/hanoi-count.sw"
 entities:
   - name: bottom tee
     display:
@@ -133,7 +152,7 @@ entities:
       attr: gold
     description:
       - This entity signals that the column is sorted.
-known: [bottom tee, one, two, three, blocked two, blocked three]
+known: [bottom tee, one, two, three, blocked two, blocked three, OK]
 world:
   default: [grass, null]
   palette:
@@ -152,6 +171,7 @@ world:
     '3': [stone, blocked three, invariant]
     '.': [stone, null, invariant]
     '^': [grass, null, increasing]
+    'X': [grass, three, count]
 
   upperleft: [-3, 1]
   map: |
@@ -162,4 +182,4 @@ world:
     │3│.│.│
     └─┴─┴─┘
      ^ ^ ^ 
-
+       X   
