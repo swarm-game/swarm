@@ -63,7 +63,7 @@ entities:
   - name: wall
     display:
       char: █
-      attr: stone
+      attr: rock
     description:
     - An impassable stone wall.
     properties: [unwalkable, known]
