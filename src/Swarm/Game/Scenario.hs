@@ -46,7 +46,8 @@ module Swarm.Game.Scenario (
   -- * Loading from disk
   loadScenario,
   loadScenarioFile,
-getScenarioPath) where
+  getScenarioPath,
+) where
 
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
@@ -60,7 +61,7 @@ import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (isNothing, listToMaybe, catMaybes)
+import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -73,7 +74,7 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot, trobotName)
 import Swarm.Game.Terrain
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (reflow, getDataFileNameSafe)
+import Swarm.Util (getDataFileNameSafe, reflow)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -327,7 +328,6 @@ scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
 scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
-
 ------------------------------------------------------------
 -- Loading scenarios
 ------------------------------------------------------------

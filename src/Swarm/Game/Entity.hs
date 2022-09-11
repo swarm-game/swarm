@@ -105,7 +105,7 @@ import GHC.Generics (Generic)
 import Linear (V2)
 import Swarm.Game.Display
 import Swarm.Language.Capability
-import Swarm.Util (plural, reflow, (?), dataFileNotFound, getDataFileNameSafe)
+import Swarm.Util (dataFileNotFound, getDataFileNameSafe, plural, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
