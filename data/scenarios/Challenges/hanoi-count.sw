@@ -29,7 +29,7 @@ end;
 
 
 repeat {
-    // sum <- as self {
+    sum <- as self {
         // left column
         teleport self (-2,-2);
         x <- count_column;
@@ -47,9 +47,9 @@ repeat {
         // log (format y);
         // wait 8;
         // log (format z);
-        // return $ i2e (z + y + z)
-    // };
-    let sum = i2e (x + y + z) in
+        return $ i2e (x + y + z)
+    };
+    //let sum = i2e (x + y + z) in
     teleport self (0,-6);
     counted <- scan down;
     wait 8;

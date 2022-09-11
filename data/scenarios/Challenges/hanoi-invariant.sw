@@ -31,7 +31,7 @@ if (isUnlocked e)
 {
     mn <- scan north;
     case mn (\_.
-      wait 32;
+      wait 16;
       allPlaced <- as self {
         teleport self (0,-6);
         ishere "three"
