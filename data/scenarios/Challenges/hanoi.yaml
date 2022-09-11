@@ -39,6 +39,8 @@ robots:
   - name: invariant
     dir: [0,0]
     system: true
+    display:
+      invisible: true
     inventory:
     - [1, "one"]
     - [1, "two"]
@@ -63,6 +65,8 @@ robots:
   - name: increasing
     dir: [0,0]
     system: true
+    display:
+      invisible: true
     inventory:
     - [1, OK]
     program: |
@@ -133,7 +137,8 @@ known: [bottom tee, one, two, three, blocked two, blocked three]
 world:
   default: [grass, null]
   palette:
-    ' ': [stone]
+    ' ': [grass]
+    '_': [stone]
     'v': [stone, null, base]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
@@ -145,12 +150,13 @@ world:
     '1': [stone, one, invariant]
     '2': [stone, blocked two, invariant]
     '3': [stone, blocked three, invariant]
-    '.': [stone, invariant]
-    '^': [grass, increasing]
+    '.': [stone, null, invariant]
+    '^': [grass, null, increasing]
+
   upperleft: [-3, 1]
   map: |
     ┌─────┐
-    │  v  │
+    │__v__│
     │1│.│.│
     │2│.│.│
     │3│.│.│
