@@ -55,12 +55,13 @@ world:
     '│': [stone, vertical wall]
     'A': [stone, mountain]
     'C': [stone, copper vein]
+    '@': [stone, boulder]
     'I': [stone, iron vein]
   upperleft: [-1, 1]
   map: |
     ┌─────┐                                                                ~~
     │IAAT~                                                                ~L~
-    │..AAA│                                                                ~~
+    │..@AA│                                                                ~~
     │Ω...C│                                                                 ~
     └─────┘                                                                 ~
 entities:
