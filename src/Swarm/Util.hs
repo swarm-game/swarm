@@ -63,7 +63,10 @@ module Swarm.Util (
 
   -- * Utilities for NP-hard approximation
   smallHittingSet,
-getDataDirSafe, getDataFileNameSafe, dataFileNotFound) where
+  getDataDirSafe,
+  getDataFileNameSafe,
+  dataFileNotFound,
+) where
 
 import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
@@ -101,8 +104,10 @@ import System.Clock (TimeSpec)
 import System.Directory (
   XdgDirectory (XdgData),
   createDirectoryIfMissing,
+  doesDirectoryExist,
+  doesFileExist,
   getXdgDirectory,
-  listDirectory, doesDirectoryExist, doesFileExist
+  listDirectory,
  )
 import System.FilePath
 import System.IO
@@ -218,7 +223,7 @@ getDataDirSafe = do
     then return $ Just d
     else do
       xd <- (</> "data") <$> getSwarmDataPath False
-      xde <- doesDirectoryExist xd 
+      xde <- doesDirectoryExist xd
       return $ if xde then Just xd else Nothing
 
 getDataFileNameSafe :: FilePath -> IO (Maybe FilePath)
@@ -226,10 +231,10 @@ getDataFileNameSafe name = do
   dir <- getDataDirSafe
   case dir of
     Nothing -> return Nothing
-    Just d -> do 
+    Just d -> do
       let fp = d </> name
       fe <- doesFileExist fp
-      return $ if fe then Just fp else Nothing      
+      return $ if fe then Just fp else Nothing
 
 dataFileNotFound :: Text
 dataFileNotFound = T.pack ""

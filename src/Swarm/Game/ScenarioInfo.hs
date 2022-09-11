@@ -68,7 +68,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
-import Swarm.Util (getSwarmSavePath, getDataDirSafe, dataFileNotFound)
+import Swarm.Util (dataFileNotFound, getDataDirSafe, getSwarmSavePath)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
