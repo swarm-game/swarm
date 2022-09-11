@@ -75,12 +75,12 @@ entities:
     - The place you're trying to reach!  You win by executing `grab` on this item.
     properties: [known, portable]
 world:
-  default: [grass]
+  default: [ice]
   palette:
-    'Ω': [grass, null, base]
-    ' ': [grass, null]
-    '█': [grass, wall]
-    '!': [grass, goal, judge]
+    'Ω': [stone, null, base]
+    ' ': [stone, null]
+    '█': [stone, wall]
+    '!': [stone, goal, judge]
   upperleft: [0,0]
   map: |
     ████████████████████████████████████
