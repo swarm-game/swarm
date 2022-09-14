@@ -193,6 +193,7 @@ constCaps = \case
   Exp -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
+  Swap -> Just CAtomic
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
