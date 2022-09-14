@@ -198,6 +198,7 @@ testScenarioSolution _ci _em =
         , expectFailBecause "Awaiting fix (#540)" $
             testSolution (Sec 10) "Testing/562-lodestone"
         , testSolution Default "Testing/378-objectives"
+        , testSolution Default "Testing/684-swap"
         ]
     ]
  where

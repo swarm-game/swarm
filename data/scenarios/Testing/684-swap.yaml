@@ -1,0 +1,59 @@
+name: Swap in one tick
+description: |
+  Swapping an entity should be done in one tick.
+  https://github.com/swarm-game/swarm/issues/684
+objectives:
+  - condition: |
+      try {
+        as base {
+          l <- has "lambda";
+          b <- has "bitcoin";
+          return $ l && b
+        }
+      } {
+        return false
+      }
+solution: |
+  swap "bitcoin"; swap "gold coin";
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - grabber
+      - rubber band
+    inventory:
+      - [1, gold coin]
+      - [1, bitcoin]
+  - name: watcher
+    loc: [0,0]
+    dir: [1,0]
+    system: true
+    devices:
+      - logger
+    program: |
+      def repeat = \c. c; repeat c end;
+      repeat (
+        d <- scan down;
+        case d (\_.
+          say "Fatal error: swap does not work atomically!"
+        ) (\_.
+          return ()
+        )
+      )
+world:
+  default: [blank]
+  palette:
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    'λ': [grass, lambda]
+  upperleft: [-1, 1]
+  map: |
+    ┌─┐
+    │λ│
+    └─┘
