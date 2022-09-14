@@ -11,20 +11,12 @@ objectives:
     j <- robotNamed "judge";
     as j {has "goal"}
 solution: |
-  def until = \c. b <- c; if b {} {until c} end;
+  def until = \p. \c. b <- p; if b {} {c; until p c} end;
+  def fwd = until blocked move end;
   build {
-    log "I am on my way!";
+    require "branch predictor"; // #540
     turn west;
-    until (
-      b <- blocked;
-      b <- if b { turn right; blocked } { return false };
-      if b {
-        return true; 
-      } {
-        move;
-        return false;
-      }
-    );
+    until (ishere "goal") (fwd; turn right);
     grab
   }
 robots:
