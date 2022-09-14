@@ -49,11 +49,12 @@ robots:
     devices:
     - logger
     inventory:
-    - [1, "one"]
-    - [1, "two"]
-    - [1, "three"]
-    - [1, "blocked two"]
-    - [1, "blocked three"]
+    - [1, one]
+    - [1, two]
+    - [1, three]
+    - [1, blocked one]
+    - [1, blocked two]
+    - [1, blocked three]
     program: |
       // if
       //  0. I stand on locked X
@@ -157,7 +158,15 @@ entities:
       attr: gold
     description:
       - This entity signals that the column is sorted.
-known: [bottom tee, one, two, three, blocked two, blocked three, OK]
+known:
+  - bottom tee
+  - OK
+  - one
+  - two
+  - three
+  - blocked one
+  - blocked two
+  - blocked three
 world:
   default: [grass, null]
   palette:

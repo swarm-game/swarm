@@ -1,10 +1,11 @@
 def repeat = \c. force c; repeat c end;
 
 def i2e = \i.
+  if (i == 1) { "one" } {
   if (i == 2) { "two" } {
   if (i == 3) { "three" } {
   fail $ "There should be only 2 or 3 entities placed at any time: " ++ format i
-  }}
+  }}}
 end;
 
 def cscan = \d.
@@ -52,8 +53,8 @@ repeat {
     //let sum = i2e (x + y + z) in
     teleport self (0,-6);
     counted <- scan down;
-    wait 8;
-    log (format counted);
+    //wait 8;
+    //log (format counted);
     case counted (\e.
         fail $ "Fatal error: there should always be a count entity at (0,-6)! " ++ format e ++ " " ++ format counted
     ) (\e.

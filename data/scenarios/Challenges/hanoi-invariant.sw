@@ -14,12 +14,25 @@ case me (\_. return ()) (\e.
 // if
 //  0. I stand on unlocked X
 //  1. place north of me is NOT empty
+//     or
+//     the count of all placed is NOT 3
 // then
 //  - lock X
 if (isUnlocked e)
 {
-    mn <- scan north;
-    case mn (\_. return ()) (\_. grab; place ("blocked " ++ e))
+    northFullOrAllPlaced <- as self {
+      mn <- scan north;
+      case mn (\_.
+        teleport self (0,-6);
+        allPlaced <- ishere "three";
+        return (not allPlaced)
+      ) (\_.
+        return true
+      );
+    };
+    if northFullOrAllPlaced {
+      grab; place ("blocked " ++ e)
+    } {}
 }
 // if
 //  0. I stand on locked X
