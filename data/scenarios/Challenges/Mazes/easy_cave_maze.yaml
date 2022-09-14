@@ -48,7 +48,6 @@ robots:
       - [50, strange loop]
       - [50, logger]
       - [50, grabber]
-      - [0, boulder]
       - [0, goal]
   - name: judge
     dir: [0,0]
