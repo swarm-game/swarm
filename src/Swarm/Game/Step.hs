@@ -545,11 +545,13 @@ stepCESK cesk = case cesk of
   -- we promote it to the returned environment as well.
   Out v s (FBind (Just x) t2 e : k) -> do
     return $ In t2 (addBinding x v e) s (FExec : fUnionEnv (singleton x v) k)
+  -- XXX
+  Out (VResult v _) s (FDiscardEnv : k) -> return $ Out v s k
+  Out v s (FDiscardEnv : k) -> return $ Out v s k
   -- If a command completes with a value and definition environment,
   -- and the next continuation frame contains a previous environment
   -- to union with, then pass the unioned environments along in
   -- another VResult.
-
   Out (VResult v e2) s (FUnionEnv e1 : k) -> return $ Out (VResult v (e1 `union` e2)) s k
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.

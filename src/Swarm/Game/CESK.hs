@@ -147,6 +147,10 @@ data Frame
     --   environment it returned and union it with this one to produce
     --   the result of a bind expression.
     FUnionEnv Env
+  | -- | We were executing a command; we should explicitly discard any
+    --   environment it generated (because it belonged to some nested
+    --   scope).
+    FDiscardEnv
   | -- | We were executing a command that might have definitions; next
     --   we should take the resulting 'Env' and add it to the robot's
     --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
@@ -345,6 +349,7 @@ prettyFrame (FApp v) = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _) = "let " ++ from x ++ " = _ in " ++ prettyString t
 prettyFrame (FTry t) = "try _ (" ++ prettyString (valueToTerm t) ++ ")"
 prettyFrame FUnionEnv {} = "_ ∪ <Env>"
+prettyFrame FDiscardEnv {} = "_ xEnv"
 prettyFrame FLoadEnv {} = "loadEnv"
 prettyFrame (FDef x) = "def " ++ from x ++ " = _"
 prettyFrame FExec = "exec _"
