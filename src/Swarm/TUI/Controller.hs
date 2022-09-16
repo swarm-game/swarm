@@ -175,7 +175,7 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
-advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown
+advanceMenu = _NewGameMenu . neHead %~ BL.listMoveDown
 
 handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMessagesEvent = \case
@@ -399,9 +399,14 @@ saveScenarioInfoOnQuit = do
           Nothing -> return ()
           Just si -> liftIO $ saveScenarioInfo p si
 
-        -- rebuild the NewGameMenu so it gets the updated ScenarioInfo
+        -- See what scenario is currently focused in the menu.  Depending on how the
+        -- previous scenario ended (via quit vs. via win), it might be the same as
+        -- currentScenarioPath or it might be different.
+        curPath <- preuse $ uiState . uiMenu . _NewGameMenu . neHead . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
+        -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
+        -- being sure to preserve the same focused scenario.
         sc <- use $ gameState . scenarios
-        forM_ (mkNewGameMenu cheat sc p) (uiState . uiMenu .=)
+        forM_ (mkNewGameMenu cheat sc (fromMaybe p curPath)) (uiState . uiMenu .=)
 
 -- | Quit a game.
 --
