@@ -34,7 +34,10 @@ Features include:
 Installing
 ==========
 
-Instructions for installing from a binary release will go here!
+There will _soon_ be a release of Swarm on Hackage and in a binary form!
+If you are interested in Haskell or functional programming, you can install
+it from source (see below) or, once it is released, with the Cabal tool.
+For instructions on how to install the binary directly, check the releases.
 
 Installing from Source
 ----------------------
