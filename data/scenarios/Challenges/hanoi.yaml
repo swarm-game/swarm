@@ -18,7 +18,6 @@ solution: |
 robots:
   - name: base
     dir: [0,-1]
-    system: true
     devices:
       - treads
       - logger
