@@ -34,7 +34,7 @@ Features include:
 Installing
 ==========
 
-Instructions from installing from a binary release will go here!
+Instructions for installing from a binary release will go here!
 
 Installing from Source
 ======================
