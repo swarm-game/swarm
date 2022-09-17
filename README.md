@@ -97,5 +97,5 @@ If you want to contribute, you're most welcome!  There are *lots* of
 ways to contribute, regardless of your Haskell background.  For
 example, even someone with no Haskell experience whatsoever could
 still help with *e.g.* game design, playtesting, and creating
-challenge scenarios.  Check out the [CONTRIBUTING](CONTRIBUTING.md)
+challenges and scenarios.  Check out the [CONTRIBUTING](CONTRIBUTING.md)
 file for more specific information about how to contribute.
