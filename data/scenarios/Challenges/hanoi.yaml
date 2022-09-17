@@ -14,11 +14,12 @@ objectives:
       z <- ishere "blocked three";
       return (x && y && z)
 solution: |
-  run "scenarios/Challenges/hanoi-solution.sw";
+  try {run "scenarios/Challenges/hanoi-solution.sw";} {say "Fatal error: solution failed!"}
 robots:
   - name: base
     dir: [0,-1]
     devices:
+      - net
       - treads
       - logger
       - grabber
@@ -58,7 +59,7 @@ robots:
       //  1. place noth of me is NOT empty
       // then
       //  - lock X
-      run "scenarios/Challenges/hanoi-invariant.sw"
+      try {run "scenarios/Challenges/hanoi-invariant.sw"} {say "Fatal error: invariant failed!"}
   - name: increasing
     dir: [0,0]
     system: true
@@ -75,7 +76,7 @@ robots:
       //  - place "OK"
       // else
       //  - try to grab "OK"
-      run "scenarios/Challenges/hanoi-increasing.sw"
+      try {run "scenarios/Challenges/hanoi-increasing.sw"} {say "Fatal error: increasing failed!"}
   - name: count
     dir: [0,0]
     system: true
@@ -90,7 +91,7 @@ robots:
       // count all entities placed in columns
       // the final count should be either 2 or 3
       // place "two" or "three" at x=0 y=-6
-      run "scenarios/Challenges/hanoi-count.sw"
+      try {run "scenarios/Challenges/hanoi-count.sw"} {say "Fatal error: count failed!"}
 entities:
   - name: bottom tee
     display:
