@@ -60,7 +60,6 @@ module Swarm.Util (
   (<<.=),
   (<>=),
   _NonEmpty,
-  neHead,
 
   -- * Utilities for NP-hard approximation
   smallHittingSet,
@@ -81,7 +80,6 @@ import Data.Either.Validation
 import Data.Int (Int64)
 import Data.List (maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -414,9 +412,6 @@ l <>= a = modify (l <>~ a)
 
 _NonEmpty :: Lens' (NonEmpty a) (a, [a])
 _NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
-
-neHead :: Lens' (NonEmpty a) a
-neHead = lens NE.head (\(_ :| t) a -> a :| t)
 
 ------------------------------------------------------------
 -- Some utilities for NP-hard approximation
