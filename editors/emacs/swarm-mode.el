@@ -81,6 +81,7 @@
                "run"
                "return"
                "try"
+               "swap"
                "atomic"
                "teleport"
                "as"

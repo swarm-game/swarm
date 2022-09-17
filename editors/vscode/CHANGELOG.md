@@ -2,6 +2,9 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## WIP
+- [Highlighter] added `swap` command
+
 ## version 0.0.6
 - [Highlighter] **FIX:** the number pattern now matches properly, previously it broke everything!
 - [Highlighter] added `listen` command
