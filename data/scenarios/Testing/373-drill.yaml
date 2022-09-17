@@ -1,5 +1,5 @@
-name: Test drill
-description: This is a developer playground and will be replaced with more suitable challenges soon.
+name: Drill test
+description: A developer playground for drilling.
 objectives:
   - goal:
       - Send robots to mine rock, iron and copper.
@@ -10,10 +10,17 @@ objectives:
         s <- as base {has "rock"};
         return (i && c && s)
       } { return false }
+solution: |
+  build {
+    move; drill forward; turn back; move; turn left;
+    move; move; drill left;
+    move; drill forward;
+    turn back; move; move; move;
+    give base "iron ore"; give base "copper ore"; give base "rock"
+  }
 robots:
   - name: base
-    loc: [0,-2]
-    dir: [1,0]
+    dir: [0,1]
     display:
       char: Ω
       attr: robot
@@ -27,10 +34,14 @@ robots:
       - [1, drill]
       - [3, logger]
       - [3, compass]
+      - [5, solar panel]
+      - [5, treads]
+      - [5, grabber]
 known: [water, wavy water]
 world:
   default: [ice, water]
   palette:
+    'Ω': [grass, null, base]
     '.': [grass]
     ' ': [ice, water]
     '~': [ice, wavy water]
@@ -44,13 +55,14 @@ world:
     '│': [stone, vertical wall]
     'A': [stone, mountain]
     'C': [stone, copper vein]
+    '@': [stone, boulder]
     'I': [stone, iron vein]
   upperleft: [-1, 1]
   map: |
     ┌─────┐                                                                ~~
     │IAAT~                                                                ~L~
-    │..AAA│                                                                ~~
-    │....C│                                                                 ~
+    │..@AA│                                                                ~~
+    │Ω...C│                                                                 ~
     └─────┘                                                                 ~
 entities:
   - name: copper vein

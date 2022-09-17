@@ -1,0 +1,190 @@
+name: Towers of Hanoi
+description: The classic Towers of Hanoi puzzle with three disks.
+objectives:
+  - goal:
+      - Move all the numbers (traditionally, "disks") from the
+        left column to the right column.
+      - You may only pick up one disk at a time, and you may never
+        place a larger disk on top of a smaller one.
+    condition: |
+      teleport self (2,-1);
+      x <- ishere "one";
+      teleport self (2,-2);
+      y <- ishere "blocked two";
+      teleport self (2,-3);
+      z <- ishere "blocked three";
+      return (x && y && z)
+solution: |
+  run "data/scenarios/Challenges/hanoi-solution.sw"
+robots:
+  - name: base
+    dir: [0,-1]
+    devices:
+      - net
+      - treads
+      - logger
+      - grabber
+      - dictionary
+      - branch predictor
+      - comparator
+      - strange loop
+      - compass
+      - clock
+      - scanner
+      - ADT calculator
+  - name: invariant
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    devices:
+    - logger
+    inventory:
+    - [1, one]
+    - [1, two]
+    - [1, three]
+    - [1, blocked one]
+    - [1, blocked two]
+    - [1, blocked three]
+    program: |
+      // if
+      //  0. I stand on locked X
+      //  1. place north of me is empty
+      //  2. all disks are placed
+      //  3. other columns are sorted (check "OK")
+      // then
+      //  - unlock X
+      // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      // if
+      //  0. I stand on unlocked X
+      //  1. place noth of me is NOT empty
+      // then
+      //  - lock X
+      run "data/scenarios/Challenges/hanoi-invariant.sw"
+  - name: increasing
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory:
+    - [1, OK]
+    devices:
+    - logger
+    program: |
+      // if
+      //  0. all (but max 3) disks in my column are sorted
+      // then
+      //  - place "OK"
+      // else
+      //  - try to grab "OK"
+      run "data/scenarios/Challenges/hanoi-increasing.sw"
+  - name: count
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory:
+    - [1, two]
+    - [0, three]
+    devices:
+    - logger
+    program: |
+      // count all entities placed in columns
+      // the final count should be either 2 or 3
+      // place "two" or "three" at x=0 y=-6
+      run "data/scenarios/Challenges/hanoi-count.sw"
+entities:
+  - name: bottom tee
+    display:
+      char: '┴'
+      attr: entity
+    description:
+    - A bottom tee wall.
+    properties: [unwalkable]
+  - name: three
+    display:
+      char: '3'
+      attr: gold
+    description:
+    - A disk of radius 3.
+    properties: [portable]
+  - name: two
+    display:
+      char: '2'
+      attr: gold
+    description:
+    - A disk of radius 2.
+    properties: [portable]
+  - name: one
+    display:
+      char: '1'
+      attr: gold
+    description:
+    - A disk of radius 1.
+    properties: [portable]
+  - name: blocked one
+    display:
+      char: '1'
+      attr: entity
+    description:
+    - A disk of radius 1.
+    properties: [unwalkable]
+  - name: blocked two
+    display:
+      char: '2'
+      attr: entity
+    description:
+    - A disk of radius 2.
+    properties: [unwalkable]
+  - name: blocked three
+    display:
+      char: '3'
+      attr: entity
+    description:
+    - A disk of radius 3.
+    properties: [unwalkable]
+  - name: OK
+    display:
+      char: 'O'
+      attr: gold
+    description:
+      - This entity signals that the column is sorted.
+known:
+  - bottom tee
+  - OK
+  - one
+  - two
+  - three
+  - blocked one
+  - blocked two
+  - blocked three
+world:
+  default: [grass, null]
+  palette:
+    ' ': [grass]
+    '_': [stone]
+    'v': [stone, null, base]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    '┴': [stone, bottom tee]
+    '1': [stone, one, invariant]
+    '2': [stone, blocked two, invariant]
+    '3': [stone, blocked three, invariant]
+    '.': [stone, null, invariant]
+    '^': [grass, null, increasing]
+    'X': [grass, three, count]
+
+  upperleft: [-3, 1]
+  map: |
+    ┌─────┐
+    │__v__│
+    │1│.│.│
+    │2│.│.│
+    │3│.│.│
+    └─┴─┴─┘
+     ^ ^ ^ 
+       X   

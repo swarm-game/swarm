@@ -1,5 +1,5 @@
-test.yaml
 chess_horse.yaml
-drill_test.yaml
 teleport.yaml
+2048.yaml
+hanoi.yaml
 Mazes

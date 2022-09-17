@@ -156,8 +156,9 @@ testScenarioSolution _ci _em =
     , testGroup
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
-        , testSolution Default "Challenges/test"
         , testSolution Default "Challenges/teleport"
+        , testSolution (Sec 5) "Challenges/2048"
+        , testSolution (Sec 10) "Challenges/hanoi"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
@@ -170,6 +171,7 @@ testScenarioSolution _ci _em =
         "Regression tests"
         [ expectFailBecause "Awaiting fix (#394)" $
             testSolution Default "Testing/394-build-drill"
+        , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" $ \g -> do
             let t = g ^. ticks
