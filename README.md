@@ -12,7 +12,7 @@ complex programs.
 
 ![World 0 after scanning a tree and making a log.](images/tutorial/log.png)
 
-The implementation is still in an early stage, but these are some of the (planned) features:
+Features include:
 
 * Practically infinite 2D procedurally generated worlds
 * Simple yet powerful programming language based on the polymorphic
@@ -30,16 +30,14 @@ The implementation is still in an early stage, but these are some of the (planne
       without worrying about collecting resources.
     - There are also challenge scenarios where you attempt to program
       robots in order to solve pre-designed puzzles or challenges.
-    - Future versions might also have multiplayer modes, with co-op or
-      PvP play over a network...?
 
-Installing and Playing
+Installing
+==========
+
+Instructions from installing from a binary release will go here!
+
+Installing from Source
 ======================
-
-Warning: Swarm is still in an early stage; it's missing many of the
-planned features, there is no winning condition, and the gameplay is
-not very deep yet.  But you can program cute little robots, and hey,
-that's all that really matters, right?
 
 **NOTE**: Swarm requires a POSIX-style environment that supports
 `terminfo`.  On Linux and OSX, the below instructions should work
@@ -47,7 +45,7 @@ natively.  On Windows, see [the comments on this GitHub
 issue](https://github.com/swarm-game/swarm/issues/53) for instructions
 getting it to work under the Windows Subsystem for Linux.
 
-The recommended way to install Swarm at the moment is as follows:
+To install Swarm from source:
 
 1. Clone the Swarm repository, e.g.
 
@@ -75,36 +73,19 @@ The recommended way to install Swarm at the moment is as follows:
 1. Have fun!
 
 
-Programming swarm
-=================
+Configuring your editor
+=======================
 
-Your base has a dictionary to store definitions, like this one:
-
-```
-def moveUntil : cmd bool -> cmd () = \predicate.
-  res <- predicate;
-  if res {
-    noop
-  } {
-    moveUntil predicate
-  }
-end
-```
-
-<sup>The indentation is not required but `;` is, as it is similar
-to Haskell `>>` - that is the command monad, which imperative
-programmers can ignore. :wink:
-</sup>
-
-This allows you to program robots to perform complicated tasks.
-
-While you can write commands and definitions like the one above
-in the REPL, swarm also has a editor support with highlighting
-and LSP integration:
+Although you can write commands and definitions directly in the Swarm
+REPL, once you get beyond the basics you'll probably want to use an
+external editor for writing Swarm programs.  Swarm has support for
+external editors with highlighting and LSP integration:
 
 ![Editor with problem popup](images/editor.png)
 
 See the `editors` folder for details on how to configure your editor.
+Currently, Emacs and VS Code are officially supported, but more can be
+added.
 
 Community
 =========
@@ -115,6 +96,6 @@ others in the community.
 If you want to contribute, you're most welcome!  There are *lots* of
 ways to contribute, regardless of your Haskell background.  For
 example, even someone with no Haskell experience whatsoever could
-still help with *e.g.* game design, playtesting, and level design for
-challenge mode.  Check out the [CONTRIBUTING](CONTRIBUTING.md) file
-for more specific information about how to contribute.
+still help with *e.g.* game design, playtesting, and creating
+challenge scenarios.  Check out the [CONTRIBUTING](CONTRIBUTING.md)
+file for more specific information about how to contribute.
