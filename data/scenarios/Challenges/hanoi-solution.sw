@@ -48,7 +48,7 @@ def hanoi : int -> int -> int -> int -> cmd () =
   {
     hanoi (n-1) a c b;
     moveToCol a;
-    wait 64;
+    wait 8;
     d <- getDisk;
     moveToCol c;
     placeDisk d;
