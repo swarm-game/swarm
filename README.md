@@ -37,7 +37,7 @@ Installing
 Instructions for installing from a binary release will go here!
 
 Installing from Source
-======================
+----------------------
 
 **NOTE**: Swarm requires a POSIX-style environment that supports
 `terminfo`.  On Linux and OSX, the below instructions should work
