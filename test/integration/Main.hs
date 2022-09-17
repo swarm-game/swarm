@@ -158,7 +158,7 @@ testScenarioSolution _ci _em =
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
         , testSolution (Sec 5) "Challenges/2048"
-        , testSolution (Sec 5) "Challenges/hanoi"
+        , testSolution (Sec 10) "Challenges/hanoi"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
