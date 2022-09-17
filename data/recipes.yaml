@@ -472,6 +472,12 @@
   - [1, grabber]
 
 - in:
+  - [2, grabber]
+  - [1, rubber band]
+  out:
+  - [1, fast grabber]
+
+- in:
   - [4, circuit]
   - [1, iron plate]
   - [3, copper pipe]

@@ -10,3 +10,4 @@
 555-teleport-location.yaml
 562-lodestone.yaml
 378-objectives.yaml
+684-swap.yaml

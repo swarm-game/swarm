@@ -774,8 +774,23 @@ execConst c vs s k = do
         flagRedraw
         return $ Out VUnit s k
       _ -> badConst
-    Grab -> doGrab False
-    Harvest -> doGrab True
+    Grab -> doGrab Grab'
+    Harvest -> doGrab Harvest'
+    Swap -> case vs of
+      [VText name] -> do
+        loc <- use robotLocation
+        -- Make sure the robot has the thing in its inventory
+        e <- hasInInventoryOrFail name
+        -- Grab
+        r <- doGrab Swap'
+        case r of
+          Out {} -> do
+            -- Place the entity and remove it from the inventory
+            updateEntityAt loc (const (Just e))
+            robotInventory %= delete e
+          _ -> pure ()
+        return r
+      _ -> badConst
     Turn -> case vs of
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
@@ -785,7 +800,6 @@ execConst c vs s k = do
       _ -> badConst
     Place -> case vs of
       [VText name] -> do
-        inv <- use robotInventory
         loc <- use robotLocation
 
         -- Make sure there's nothing already here
@@ -793,12 +807,7 @@ execConst c vs s k = do
         nothingHere `holdsOrFail` ["There is already an entity here."]
 
         -- Make sure the robot has the thing in its inventory
-        e <-
-          listToMaybe (lookupByName name inv)
-            `isJustOrFail` ["What is", indefinite name <> "?"]
-
-        (E.lookup e inv > 0)
-          `holdsOrFail` ["You don't have", indefinite name, "to place."]
+        e <- hasInInventoryOrFail name
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
@@ -1698,15 +1707,23 @@ execConst c vs s k = do
     [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
     _ -> badConst
 
+  -- Make sure the robot has the thing in its inventory
+  hasInInventoryOrFail :: (Has (Throw Exn) sig m, Has (State Robot) sig m) => Text -> m Entity
+  hasInInventoryOrFail eName = do
+    inv <- use robotInventory
+    e <-
+      listToMaybe (lookupByName eName inv)
+        `isJustOrFail` ["What is", indefinite eName <> "?"]
+    let cmd = T.toLower . T.pack . show $ c
+    (E.lookup e inv > 0)
+      `holdsOrFail` ["You don't have", indefinite eName, "to", cmd <> "."]
+    return e
+
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
-  doGrab shouldHarvest = do
-    let verb
-          | shouldHarvest = "harvest"
-          | otherwise = "grab"
-        verbed
-          | shouldHarvest = "harvested"
-          | otherwise = "grabbed"
+  doGrab cmd = do
+    let verb = verbGrabbingCmd cmd
+        verbed = verbedGrabbingCmd cmd
 
     -- Ensure there is an entity here.
     loc <- use robotLocation
@@ -1729,7 +1746,7 @@ execConst c vs s k = do
 
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.
-    when ((e `hasProperty` Growable) && shouldHarvest) $ do
+    when ((e `hasProperty` Growable) && cmd == Harvest') $ do
       let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
       createdAt <- getNow
@@ -1753,6 +1770,20 @@ execConst c vs s k = do
 ------------------------------------------------------------
 -- Some utility functions
 ------------------------------------------------------------
+
+data GrabbingCmd = Grab' | Harvest' | Swap' deriving (Eq, Show)
+
+verbGrabbingCmd :: GrabbingCmd -> Text
+verbGrabbingCmd = \case
+  Harvest' -> "harvest"
+  Grab' -> "grab"
+  Swap' -> "swap"
+
+verbedGrabbingCmd :: GrabbingCmd -> Text
+verbedGrabbingCmd = \case
+  Harvest' -> "harvested"
+  Grab' -> "grabbed"
+  Swap' -> "swapped"
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented

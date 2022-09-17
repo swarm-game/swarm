@@ -112,8 +112,7 @@ the same as a bug report. Just describe your idea in as much detail as you can.
 You are very much encouraged to help think about game design: how new
 language features, entities, devices, and world features should be
 added and changed, and how they all fit together to deepen the game
-and create possibilities of gameplay.  This aspect of the game is very
-much unfinished and will need a lot of work.  Take a look at the
+and create possibilities of gameplay.  Take a look at the
 [DESIGN](DESIGN.md) document in this repository for some overarching
 thoughts and principles about the design of the game.
 
@@ -237,8 +236,7 @@ suggestions.
   hand. PRs will be merged as a single squashed commit, using the
   title and description of the pull request, so make sure that they
   give a good overview of the content of the PR.  To merge a pull
-  request, (1) make sure it has at least one approving review, and
-  (2) add the `merge me` label.
+  request, just add the `merge me` label.
 
 More conventions will be added as we think of and/or come up with
 them!
@@ -268,8 +266,9 @@ fixed up later if necessary, and it's more important to help them feel
 welcome and that their contribution is valued.  More experienced
 contributors can be held to a higher standard.
 
-Having push access also means, of course, that you can push directly to
-`main`. You are welcome to do so for typos, small fixes, documentation
-improvements, and the like; for larger fixes, new features, _etc._ opening a
-pull request from a feature branch is still preferred, to give a chance for
-others to offer suggestions for improvement.
+Having push access also means, of course, that you can push directly
+to `main`. You are welcome to do so for typos, small fixes,
+documentation improvements, and the like; for larger fixes, new
+features, _etc._ you should still open a pull request from a feature
+branch, to give a chance for others to offer suggestions for
+improvement.
