@@ -35,25 +35,30 @@ def placeDisk = \d.
   goBack
 end;
 
-def moveToCol = \x.
-  w <- whereami;
-  if (fst w < x) { turn east; rep (x - fst w) move }
-  { if (fst w > x) { turn west; rep (fst w - x) move } {} };
+def moveToCol = \w.\x.
+  if (w < x) { turn east; rep (x - w) move }
+  { if (w > x) { turn west; rep (w - x) move } {} };
   turn south
 end;
 
-def hanoi : int -> int -> int -> int -> cmd () =
-  \n. \a. \b. \c.
-  if (n == 0) {}
+def hanoi :
+  int -> // The number of disks in each column
+  int -> // Current column (basically offset of all columns)
+  int -> // The offset to first column
+  int -> // The offset to second column
+  int -> // The offset to third column
+  cmd int
+  = \n. \o. \a. \b. \c.
+  if (n == 0) {return o}
   {
-    hanoi (n-1) a c b;
-    moveToCol a;
+    o_new <- hanoi (n-1) o a c b;
+    moveToCol o_new a;
     wait 8;
     d <- getDisk;
-    moveToCol c;
+    moveToCol a c;
     placeDisk d;
-    hanoi (n-1) b a c;
+    hanoi (n-1) c b a c;
   }
 end;
 
-hanoi 3 (-2) 0 2
+hanoi 3 0 (-2) 0 2
