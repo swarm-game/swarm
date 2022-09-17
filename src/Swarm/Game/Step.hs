@@ -778,14 +778,9 @@ execConst c vs s k = do
     Harvest -> doGrab Harvest'
     Swap -> case vs of
       [VText name] -> do
-        inv <- use robotInventory
         loc <- use robotLocation
         -- Make sure the robot has the thing in its inventory
-        e <-
-          listToMaybe (lookupByName name inv)
-            `isJustOrFail` ["What is", indefinite name <> "?"]
-        (E.lookup e inv > 0)
-          `holdsOrFail` ["You don't have", indefinite name, "to swap."]
+        e <- hasInInventoryOrFail name
         -- Grab
         r <- doGrab Swap'
         case r of
@@ -805,7 +800,6 @@ execConst c vs s k = do
       _ -> badConst
     Place -> case vs of
       [VText name] -> do
-        inv <- use robotInventory
         loc <- use robotLocation
 
         -- Make sure there's nothing already here
@@ -813,12 +807,7 @@ execConst c vs s k = do
         nothingHere `holdsOrFail` ["There is already an entity here."]
 
         -- Make sure the robot has the thing in its inventory
-        e <-
-          listToMaybe (lookupByName name inv)
-            `isJustOrFail` ["What is", indefinite name <> "?"]
-
-        (E.lookup e inv > 0)
-          `holdsOrFail` ["You don't have", indefinite name, "to place."]
+        e <- hasInInventoryOrFail name
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
@@ -1717,6 +1706,18 @@ execConst c vs s k = do
   returnEvalArith = case vs of
     [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
     _ -> badConst
+
+  -- Make sure the robot has the thing in its inventory
+  hasInInventoryOrFail :: (Has (Throw Exn) sig m, Has (State Robot) sig m) => Text -> m Entity
+  hasInInventoryOrFail eName = do
+    inv <- use robotInventory
+    e <-
+      listToMaybe (lookupByName eName inv)
+        `isJustOrFail` ["What is", indefinite eName <> "?"]
+    let cmd = T.toLower . T.pack . show $ c
+    (E.lookup e inv > 0)
+      `holdsOrFail` ["You don't have", indefinite eName, "to", cmd <> "."]
+    return e
 
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
