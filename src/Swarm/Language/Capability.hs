@@ -111,6 +111,8 @@ data Capability
     CTeleport
   | -- | Capability to run commands atomically
     CAtomic
+  | -- | Capability to execute swap (grab and place atomically at the same time).
+    CSwap
   | -- | Capabiltiy to do time-related things, like `wait` and get the
     --   current time.
     CTime
@@ -193,7 +195,7 @@ constCaps = \case
   Exp -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
-  Swap -> Just CAtomic
+  Swap -> Just CSwap
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime

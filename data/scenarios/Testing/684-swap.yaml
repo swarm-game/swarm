@@ -21,8 +21,9 @@ robots:
     dir: [1,0]
     devices:
       - logger
+      - scanner
       - grabber
-      - rubber band
+      - fast grabber
     inventory:
       - [1, gold coin]
       - [1, bitcoin]

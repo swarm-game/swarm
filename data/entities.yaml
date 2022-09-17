@@ -656,8 +656,25 @@
   - "The 'install' command takes two arguments: the robot
     on which to install a device (which can be at most 1 cell away),
     and the name of the device to install."
-
   capabilities: [grab, give, place, install]
+  properties: [portable]
+
+- name: fast grabber
+  display:
+    attr: device
+    char: '≪'
+  description:
+  - A fast grabber is an improved version of the basic grabber - not only
+    can it 'grab', 'place', 'give', and 'install', it can also 'swap'.
+  - The 'swap' command allows the robot to execute grab and place at the
+    same time so that the location where the robot is standing does not
+    become empty.
+  - You can use this to prevent failures where multiple robots
+    are trying to grab, place or scan a given location.
+  - In addition you retain the capability to use the 'atomic' command,
+    with which you can implement other commands that are safe when
+    run in parallel.
+  capabilities: [grab, swap, give, place, install, atomic]
   properties: [portable]
 
 - name: harvester
@@ -1000,7 +1017,7 @@
     rock to grab.  However, it is actually possible for the 'grab' to
     fail, if some other robot B snatches the rock right after robot A sensed
     it and before robot A got around to grab it on the next game tick."
-  - This will make robot A very sad and it will crash.
+  - "This will make robot A very sad and it will crash."
   - "To prevent this situation, robot A can wrap the commands in 'atomic', like so:"
   - |
     atomic (b <- ishere "rock"; if b {grab} {})
@@ -1020,4 +1037,3 @@
   - will attempt to move, but if that fails, turn left instead.
   properties: [portable]
   capabilities: [try]
-
