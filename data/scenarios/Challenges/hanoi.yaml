@@ -2,7 +2,8 @@ name: Towers of Hanoi
 description: The classic Towers of Hanoi puzzle with three disks.
 objectives:
   - goal:
-      - Move all the numbers (traditionally, "disks") from left column to the right column.
+      - Move all the numbers (traditionally, "disks") from the
+        left column to the right column.
       - You may only pick up one disk at a time, and you may never
         place a larger disk on top of a smaller one.
     condition: |
