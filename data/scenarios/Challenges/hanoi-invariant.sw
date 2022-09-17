@@ -31,7 +31,7 @@ if (isUnlocked e)
       );
     };
     if northFullOrAllPlaced {
-      grab; place ("blocked " ++ e)
+      swap ("blocked " ++ e); return ()
     } {}
 }
 // if
@@ -58,7 +58,7 @@ if (isUnlocked e)
         o3 <- ishere "OK";
         return (o1 && o2 && o3)
       };
-      if (allPlaced && allSorted) {grab; place (unlock e)} {}
+      if (allPlaced && allSorted) {swap (unlock e); return ()} {}
     ) (\_. return ())
 }
 ))
