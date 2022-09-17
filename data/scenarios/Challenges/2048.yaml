@@ -2,8 +2,13 @@ name: "2048"
 description: Make 2048!
 objectives:
   - goal:
-    - OK, it's not really the same as the classic "2048" game.
-      However, your goal is still to make 2048.
+    - OK, OK, it's not really the same as the classic "2048" game.
+      However, your goal is still to make 2048!  You start with a `1`
+      which regrows immediately when
+      it is harvested, so if you plant it, you can get as many as you want.  Your
+      job is to combine `1`s in order to make a `2048`
+      entity.
+    - "Hint: the `format` command can turn numbers into strings!"
     condition: |
       try {
         as base {has "2048"}
