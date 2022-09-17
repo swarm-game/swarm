@@ -355,7 +355,9 @@ data Const
     AppF
   | -- Concurrency
 
-    -- | When executing @atomic c@, a robot will not be interrupted,
+    -- | Swap placed entity with one in inventory. Essentially atomic grab and place.
+    Swap
+  | -- | When executing @atomic c@, a robot will not be interrupted,
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
@@ -636,6 +638,11 @@ constInfo c = case c of
       [ "This operator is useful to avoid nesting parentheses."
       , "For exaple:"
       , "`f $ g $ h x = f (g (h x))`"
+      ]
+  Swap ->
+    command 1 short . doc "Swap placed entity with one in inventory." $
+      [ "This essentially works like atomic grab and place."
+      , "Use this to avoid race conditions where more robots grab, scan or place in one location."
       ]
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
