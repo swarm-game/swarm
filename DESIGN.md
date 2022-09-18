@@ -32,16 +32,16 @@ abstractions, and multiple avenues for exploration.  In other words,
 we *don't* want a linear chain of achievements, where you *must*
 enable language feature X in order to obtain resource Y, which you
 need in order to enable language feature Z, which you need in order
-to... and so on.  Some of this will probably happen organically---it
+to... and so on.  Some of this will probably happen organically; it
 would probably be impossible to enforce a strictly linear chain of
-achievements even if we wanted to---but it's worth reflecting on
+achievements even if we wanted to. But it's worth reflecting on
 explicitly.
 
 Discoverability
 ---------------
 
-Ideally, everything in the game---including both entities and
-programming language features---should be discoverable just by
+Ideally, everything in the game, including both entities and
+programming language features, should be discoverable just by
 playing.
 
 Balance
