@@ -1,7 +1,6 @@
 name: Curry
 description: Race to make a bowl of curry as fast as possible.
-  See https://github.com/swarm-game/swarm/wiki/Speedrunning for more
-  information on Swarm speedrunning.
+  See the Swarm wiki for more information on Swarm speedrunning.
 objectives:
   - condition: as base {has "curry"}
 robots:

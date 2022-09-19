@@ -1,7 +1,6 @@
 name: Forester
 description: Race to harvest 1024 trees as quickly as possible.
-  See https://github.com/swarm-game/swarm/wiki/Speedrunning for more
-  information on Swarm speedrunning.
+  See the Swarm wiki for more information on Swarm speedrunning.
 objectives:
   - condition: as base {n <- count "tree"; return (n >= 1024)}
 robots:
