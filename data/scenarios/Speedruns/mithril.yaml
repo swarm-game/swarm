@@ -1,5 +1,7 @@
 name: Mithril
 description: Race to mine some mithril.
+  See https://github.com/swarm-game/swarm/wiki/Speedrunning for more
+  information on Swarm speedrunning.
 objectives:
   - condition: as base {has "mithril"}
 robots:
