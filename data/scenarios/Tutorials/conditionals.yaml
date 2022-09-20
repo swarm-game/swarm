@@ -45,7 +45,7 @@ objectives:
       - |
         TIP: the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}` is not
-        allowed, because `{grab}` has type `{cmd text}` whereas `{}` has type `{cmd ()}`.
+        allowed, because `{grab}` has type `{cmd text}` whereas `{}` has type `{cmd unit}`.
         In this case `{grab; return ()}` has the right type.
     condition: |
       try {

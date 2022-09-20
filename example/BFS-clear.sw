@@ -2,12 +2,12 @@
 // search, with robots spawning more robots.  Fun, though not very practical
 // in classic mode.
 
-def repeat : int -> cmd () -> cmd () = \n.\c.
+def repeat : int -> cmd unit -> cmd unit = \n.\c.
   if (n == 0)
     {}
     {c ; repeat (n-1) c}
 end;
-def while : cmd bool -> cmd () -> cmd () = \test.\c.
+def while : cmd bool -> cmd unit -> cmd unit = \test.\c.
   b <- test;
   if b {c ; while test c} {}
 end;
@@ -19,7 +19,7 @@ def getY : cmd int =
   pos <- whereami;
   return (snd pos);
 end;
-def gotoX : int -> cmd () = \tgt.
+def gotoX : int -> cmd unit = \tgt.
   cur <- getX;
   if (cur == tgt)
     {}
@@ -30,7 +30,7 @@ def gotoX : int -> cmd () = \tgt.
      gotoX tgt
     }
 end;
-def gotoY : int -> cmd () = \tgt.
+def gotoY : int -> cmd unit = \tgt.
   cur <- getY;
   if (cur == tgt)
     {}
@@ -41,8 +41,8 @@ def gotoY : int -> cmd () = \tgt.
      gotoY tgt
     }
 end;
-def goto : int -> int -> cmd () = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
-def spawnfwd : {cmd ()} -> cmd () = \c.
+def goto : int -> int -> cmd unit = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
+def spawnfwd : {cmd unit} -> cmd unit = \c.
    try {
      move;
      b <- isHere "tree";
@@ -53,7 +53,7 @@ def spawnfwd : {cmd ()} -> cmd () = \c.
      move
    } { turn back }
 end;
-def clear : cmd () =
+def clear : cmd unit =
   grab;
   repeat 4 (
     spawnfwd {clear};

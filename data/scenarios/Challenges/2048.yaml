@@ -14,7 +14,7 @@ objectives:
         as base {has "2048"}
       } { return false }
 solution: |
-  def makeN : int -> cmd () = \n.
+  def makeN : int -> cmd unit = \n.
     if (n == 1)
       {harvest; return ()}
       {makeN (n/2); makeN (n/2); make (format n)}

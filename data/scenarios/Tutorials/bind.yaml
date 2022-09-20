@@ -6,9 +6,9 @@ objectives:
       - |
         Every command returns a value.  However, some simple commands, like
         `move`, do not have any meaningful
-        value to return.  Since the unit type `()` has only one value, also
+        value to return.  Since the unit type `unit` has only one value,
         written `()`, returning this value does not convey any information.
-        Thus, the type of `move` is `cmd ()`.
+        Thus, the type of `move` is `cmd unit`.
       - |
         Other commands do return a nontrivial value after executing.
         For example, `grab` has type
