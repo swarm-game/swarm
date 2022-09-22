@@ -93,7 +93,7 @@ testLanguagePipeline =
             "failure inside function call"
             ( process
                 "if true \n{} \n(move)"
-                "3: Can't unify {u0} and cmd ()"
+                "3: Can't unify {u0} and cmd unit"
             )
         , testCase
             "parsing operators #236 - report failure on invalid operator start"
@@ -159,7 +159,7 @@ testLanguagePipeline =
             )
         , testCase
             "grabif"
-            (valid "def grabif : text -> cmd () = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
+            (valid "def grabif : text -> cmd unit = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
         , testCase
             "placeif"
             (valid "def placeif : text -> cmd bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; return true} {return false}) end")
