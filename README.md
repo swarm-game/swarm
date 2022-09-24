@@ -8,7 +8,11 @@ Swarm
 Swarm is a 2D programming and resource gathering game. Program your
 robots to explore the world and collect resources, which in turn
 allows you to build upgraded robots that can run more interesting and
-complex programs.
+complex programs.  Check out the [installation
+instructions](https://github.com/swarm-game/swarm#installing) below,
+join the [IRC channel](COMMUNITY.md), take a look at the
+[wiki](https://github.com/swarm-game/swarm/wiki), or [see how you can
+contribute](CONTRIBUTING.md)!
 
 ![World 0 after scanning a tree and making a log.](images/tutorial/log.png)
 
