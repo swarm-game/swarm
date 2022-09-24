@@ -913,16 +913,16 @@ resetWithREPLForm f =
 
 -- | Command-line options for configuring the app.
 data AppOpts = AppOpts
-  { userSeed :: Maybe Seed
-  -- ^ Explicit seed chosen by the user.
-  , userScenario :: Maybe FilePath
-  -- ^ Scenario the user wants to play.
-  , toRun :: Maybe FilePath
-  -- ^ Code to be run on base.
-  , cheatMode :: Bool
-  -- ^ Should cheat mode be enabled?
-  , userWebPort :: Maybe Port
-  -- ^ Explicit port on which to run the web API
+  { -- | Explicit seed chosen by the user.
+    userSeed :: Maybe Seed
+  , -- | Scenario the user wants to play.
+    userScenario :: Maybe FilePath
+  , -- | Code to be run on base.
+    toRun :: Maybe FilePath
+  , -- | Should cheat mode be enabled?
+    cheatMode :: Bool
+  , -- | Explicit port on which to run the web API
+    userWebPort :: Maybe Port
   }
 
 -- | Initialize the 'AppState'.
