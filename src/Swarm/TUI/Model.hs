@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -125,6 +126,7 @@ module Swarm.TUI.Model (
   runtimeState,
 
   -- ** Initialization
+  AppOpts (..),
   initAppState,
   startGame,
   scenarioToAppState,
@@ -909,17 +911,31 @@ resetWithREPLForm f =
 -- App state (= UI state + game state) initialization
 ------------------------------------------------------------
 
+-- | Command-line options for configuring the app.
+data AppOpts = AppOpts
+  { userSeed :: Maybe Seed
+  -- ^ Explicit seed chosen by the user.
+  , userScenario :: Maybe FilePath
+  -- ^ Scenario the user wants to play.
+  , toRun :: Maybe FilePath
+  -- ^ Code to be run on base.
+  , cheatMode :: Bool
+  -- ^ Should cheat mode be enabled?
+  , userWebPort :: Maybe Port
+  -- ^ Explicit port on which to run the web API
+  }
+
 -- | Initialize the 'AppState'.
-initAppState :: Maybe Seed -> Maybe String -> Maybe String -> Bool -> ExceptT Text IO AppState
-initAppState userSeed scenarioName toRun cheatMode = do
-  let skipMenu = isJust scenarioName || isJust toRun || isJust userSeed
+initAppState :: AppOpts -> ExceptT Text IO AppState
+initAppState AppOpts {..} = do
+  let skipMenu = isJust userScenario || isJust toRun || isJust userSeed
   gs <- initGameState
   ui <- initUIState (not skipMenu) cheatMode
   let rs = initRuntimeState
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
-      (scenario, path) <- loadScenario (fromMaybe "classic" scenarioName) (gs ^. entityMap)
+      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
       execStateT
         (startGameWithSeed userSeed scenario (ScenarioInfo path NotStarted NotStarted NotStarted) toRun)
         (AppState gs ui rs)
