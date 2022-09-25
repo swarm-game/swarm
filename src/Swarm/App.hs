@@ -19,9 +19,7 @@ import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
-import Swarm.Game.State
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
