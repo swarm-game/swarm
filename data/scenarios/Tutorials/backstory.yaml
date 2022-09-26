@@ -57,7 +57,7 @@ robots:
     dir: [1,0]
     loc: [0,0]
     inventory:
-      - [1, Ready!]
+      - [1, READY]
   - name: listener
     system: true
     display:
