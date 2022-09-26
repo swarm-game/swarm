@@ -81,7 +81,8 @@ reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
     ++ map (dirSyntax . dirInfo) allDirs
-    ++ [ "int"
+    ++ [ "unit"
+       , "int"
        , "text"
        , "dir"
        , "bool"
@@ -203,7 +204,7 @@ parseType = makeExprParser parseTypeAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyUnit <$ symbol "()"
+  TyUnit <$ reserved "unit"
     <|> TyVar <$> identifier
     <|> TyInt <$ reserved "int"
     <|> TyText <$ reserved "text"

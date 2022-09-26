@@ -1,8 +1,8 @@
 // A "cat" that wanders around randomly.  Shows off use of the
 // 'random' command.
 
-let forever : cmd () -> cmd () = \c. c ; forever c in
-let repeat : int -> cmd () -> cmd () =
+let forever : cmd unit -> cmd unit = \c. c ; forever c in
+let repeat : int -> cmd unit -> cmd unit =
   \n. \c. if (n == 0) {} {c ; repeat (n-1) c} in
 let randdir : cmd dir =
   d <- random 4;

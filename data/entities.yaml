@@ -343,7 +343,7 @@
   - A wild lambda.  They are somewhat rare, but regrow when picked.  Lambdas
     are delicious when cooked into curry.
   - Lambdas can also be used to create functions. For example,
-  - '  def thrice : cmd () -> cmd () = \c. c;c;c end'
+  - '  def thrice : cmd unit -> cmd unit = \c. c;c;c end'
   - defines the function `thrice` which repeats a command three times.
   properties: [portable, growable]
   growth: [100, 200]
@@ -780,7 +780,7 @@
     which creates a name for an expression or command that is
     available from then on, or with a `let` expression, which names an
     expression or command locally within another expression.
-  - '  def m2 : cmd () = move; move end'
+  - '  def m2 : cmd unit = move; move end'
   - '  let x : int = 3 in x^2 + 2*x + 1'
   - The type annotations in `def` and `let` are optional.
 
@@ -979,7 +979,7 @@
   - |
     `time : cmd int` returns the current time, measured in game ticks since the beginning of the game.
   - |
-    `wait : int -> cmd ()` causes a robot to sleep for a specified amount of time (measured in game ticks).
+    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
   capabilities: [time]
 

@@ -19,9 +19,7 @@ import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
-import Swarm.Game.State
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
@@ -44,9 +42,9 @@ app eventHandler =
 
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
-appMain :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
-appMain port mseed scenario toRun cheat = do
-  res <- runExceptT $ initAppState mseed scenario toRun cheat
+appMain :: AppOpts -> IO ()
+appMain opts = do
+  res <- runExceptT $ initAppState opts
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
@@ -76,7 +74,7 @@ appMain port mseed scenario toRun cheat = do
 
       -- Start the web service with a reference to the game state
       gsRef <- newIORef (s ^. gameState)
-      eport <- Swarm.Web.startWebThread port gsRef
+      eport <- Swarm.Web.startWebThread (userWebPort opts) gsRef
 
       let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
       let logE e = logEvent ErrorTrace ("Web API", -2) (T.pack e)
@@ -103,7 +101,16 @@ appMain port mseed scenario toRun cheat = do
 demoWeb :: IO ()
 demoWeb = do
   let demoPort = 8080
-  res <- runExceptT $ initAppState Nothing demoScenario Nothing True
+  res <-
+    runExceptT $
+      initAppState $
+        AppOpts
+          { userSeed = Nothing
+          , userScenario = demoScenario
+          , toRun = Nothing
+          , cheatMode = False
+          , userWebPort = Nothing
+          }
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do

@@ -10,18 +10,14 @@ import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
+import Swarm.TUI.Model (AppOpts (..))
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPrint, stderr)
 
 data CLI
-  = Run
-      (Maybe Int) -- seed
-      (Maybe FilePath) -- scenario
-      (Maybe FilePath) -- file to run
-      Bool -- cheat mode
-      (Maybe Int) -- web port
+  = Run AppOpts
   | Format Input
   | DocGen GenerateDocs
   | LSP
@@ -37,7 +33,7 @@ cliParser =
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
     )
-    <|> Run <$> seed <*> scenario <*> run <*> cheat <*> webPort
+    <|> Run <$> (AppOpts <$> seed <*> scenario <*> run <*> cheat <*> webPort)
  where
   format :: Parser CLI
   format =
@@ -116,7 +112,7 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run seed scenario toRun cheat webPort -> appMain webPort seed scenario toRun cheat
+    Run opts -> appMain opts
     DocGen g -> generateDocs g
     Format fo -> formatFile fo
     LSP -> lspMain
