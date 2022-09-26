@@ -23,24 +23,30 @@ objectives:
       - To prepare you, this simulator will walk you through a series of hands-on
         exercises that introduce you to the way robots work and the programming
         language you will use to control them.
-      - When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
-        and type `say "Ready!"` (without the backticks) at the prompt.
+      - |
+        When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
+        and type at the prompt:
+      - |
+        say "Ready!"
     condition: |
       try {
         l <- robotNamed "listener";
-        as l {has "Ready!"}
+        as l {has "READY"}
       } { return false }
 solution: |
   say "Ready!"
 entities:
-  - name: Ready!
+  - name: READY
     display:
       attr: device
       char: 'R'
     description:
-      - Type `say "Ready!"` (without the backticks) at the prompt
-        once you are ready for the first tutorial challenge!
-      - To open the full goal text again, you can hit Ctrl-G.
+      - |
+        When you're ready for your first tutorial challenge, type at the prompt:
+      - |
+        say "Ready!"
+      - |
+        To open the full goal text again, you can hit Ctrl-G.
     properties: [known, portable]
 robots:
   - name: base
@@ -59,7 +65,7 @@ robots:
     loc: [0,0]
     dir: [0,0]
     inventory:
-      - [0, "Ready!"]
+      - [0, READY]
     devices:
       - logger
     program: |
@@ -67,7 +73,12 @@ robots:
       forever {
         try {
           m <- listen;
-          if (m == "Ready!") {create "Ready!"; log "Ready!"} {log $ "Wrong message: " ++ m};
+          if (m == "Ready!" || m == "ready!" || m == "ready") {
+            create "READY";
+            log "The player is ready!"
+          } {
+            say $ "Wrong message: " ++ format m
+          }
         } {log "Something bad happened!"}
       }
 seed: 0
