@@ -2,7 +2,7 @@ def ifC : forall a. cmd bool -> {cmd a} -> {cmd a} -> cmd a =
   \test. \thn. \els. b <- test; if b thn els end
 
 // Recursive DFS to harvest a contiguous forest
-def dfs : cmd () =
+def dfs : cmd unit =
   ifC (ishere "tree") {
     grab;
     turn west;

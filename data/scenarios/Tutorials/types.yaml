@@ -11,9 +11,9 @@ objectives:
         checks,
         its type will be displayed in gray text at the top right of the window.
       - For example, if you try typing `move`, you can see that it has
-        type `cmd ()`, which means that `move` is a command which
+        type `cmd unit`, which means that `move` is a command which
         returns a value of the unit type (also written `()`).
-      - As another example, you can see that `turn` has type `dir -> cmd ()`,
+      - As another example, you can see that `turn` has type `dir -> cmd unit`,
         meaning that `turn` is a function which takes a direction as input
         and results in a command.
       - "Here are a few more expressions for you to try (feel free to try others as well):"

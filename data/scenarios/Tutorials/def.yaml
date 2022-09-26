@@ -11,8 +11,8 @@ objectives:
         `move` and `turn` commands required.  Your base has a `dictionary` device
         that can be used to define new commands.  For example:
       - |
-        def m4 : cmd () = move; move; move; move end
-      - defines a new command `m4`, with type `cmd ()`, as four consecutive `move` commands.
+        def m4 : cmd unit = move; move; move; move end
+      - defines a new command `m4`, with type `cmd unit`, as four consecutive `move` commands.
         With judicious
         use of new definitions, it should be possible to complete this challenge
         in just a few lines of code.

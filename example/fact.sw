@@ -1,6 +1,6 @@
 // Defining simple recursive functions.
 
-def repeat : int -> cmd () -> cmd () = \n.\c.
+def repeat : int -> cmd unit -> cmd unit = \n.\c.
   if (n == 0) {} {c ; repeat (n-1) c}
 end
 

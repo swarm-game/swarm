@@ -15,7 +15,7 @@ objectives:
         function which takes an input (locally called `x`) and returns
         `blah` as its output (`blah` can of course refer to `x`). For example:
       - |
-        def x4 : cmd () -> cmd () = \c. c; c; c; c end
+        def x4 : cmd unit -> cmd unit = \c. c; c; c; c end
       - That is, `x4` is defined as the function which takes a command, called `c`,
         as input, and returns the command
         `c; c; c; c` which consists of executing `c` four times.
