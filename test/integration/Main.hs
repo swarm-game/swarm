@@ -203,7 +203,9 @@ testScenarioSolution _ci _em =
             testSolution (Sec 10) "Testing/562-lodestone"
         , testSolution Default "Testing/378-objectives"
         , testSolution Default "Testing/684-swap"
-        , testSolution Default "Testing/699-teleport-blocked"
+        , testSolution Default "Testing/699-movement-fail/699-move-blocked"
+        , testSolution Default "Testing/699-movement-fail/699-move-liquid"
+        , testSolution Default "Testing/699-movement-fail/699-teleport-blocked"
         ]
     ]
  where

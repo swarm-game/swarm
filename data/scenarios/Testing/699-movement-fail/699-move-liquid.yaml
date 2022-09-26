@@ -1,0 +1,57 @@
+name: Move to liquid
+description: |
+  Robot moving to water location results in its drowning.
+  https://github.com/swarm-game/swarm/issues/699
+objectives:
+  - condition: |
+      def isAliveOn = \name.\loc. try {r <- robotNamed name; l <- as r {whereami}; return $ l == loc} {return false} end;
+      def isDead = \name. try {robotNamed name; return false} {return true} end;
+      d1 <- isDead "one";
+      a2 <- isAliveOn "two" (1,-2);
+      a3 <- isAliveOn "three" (1,-3);
+      b <- isAliveOn "base" (0,0);
+      return (d1 && a2 && a3 && b)
+solution: |
+  move; say "Fatal error: base was able to move into water and not fail!"
+robots:
+  - name: base
+    dir: [1,0]
+    devices: ["treads", "logger"]
+  - name: one
+    dir: [1,0]
+    devices: ["treads", "logger"]
+    program: |
+      move; say "Fatal error: one was able to move into water and not fail or drown!"
+  - name: two
+    dir: [1,0]
+    devices: ["treads", "logger", "boat", "net"]
+    program: |
+      try {move} {say "Fatal error: two was unable to move into water even though it has a boat!"}
+  - name: three
+    dir: [1,0]
+    system: true
+    devices: ["logger"]
+    program: |
+      try {move} {say "Fatal error: three was unable to move into water even though it is system robot!"}
+world:
+  default: [blank]
+  palette:
+    '~': [stone, water]
+    'B': [grass, null, base]
+    '1': [grass, null, one]
+    '2': [grass, null, two]
+    '3': [grass, null, three]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌──┐
+    │B~│
+    │1~│
+    │2~│
+    │3~│
+    └──┘
