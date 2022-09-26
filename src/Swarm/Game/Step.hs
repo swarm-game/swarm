@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -700,10 +701,16 @@ addSeedBot e (minT, maxT) loc ts =
         False
         ts
 
+-- | All functions that are used for robot step can access 'GameState' and the current 'Robot'.
+--
+-- They can also throw exception of our custom type, which is handled elsewhere.
+-- Because of that the constraint is only 'Throw', but not 'Catch'/'Error'.
+type HasRobotStepState sig m = (Has (State GameState) sig m, Has (State Robot) sig m, Has (Throw Exn) sig m)
+
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m, Has (Lift IO) sig m) =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   Const ->
   [Value] ->
   Store ->
@@ -1454,45 +1461,33 @@ execConst c vs s k = do
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
-          prependMsg = (\case (Fatal e) -> Fatal $ msg <> e; exn -> exn)
-       in catchError badConst (throwError . prependMsg)
+       in throwError . Fatal $ msg <> badConstMsg
  where
-  badConst :: (Has (State GameState) sig m, Has (Throw Exn) sig m) => m a
-  badConst =
-    throwError $
-      Fatal $
-        T.unlines
-          [ "Bad application of execConst:"
-          , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
-          ]
+  badConst :: HasRobotStepState sig m => m a
+  badConst = throwError $ Fatal badConstMsg
 
-  finishCookingRecipe ::
-    (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
-    Recipe e ->
-    WorldUpdate ->
-    RobotUpdate ->
-    m CESK
+  badConstMsg :: Text
+  badConstMsg =
+    T.unlines
+      [ "Bad application of execConst:"
+      , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
+      ]
+
+  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> WorldUpdate -> RobotUpdate -> m CESK
   finishCookingRecipe r wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
 
-  lookInDirection ::
-    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
-    Direction ->
-    m (V2 Int64, Maybe Entity)
+  lookInDirection :: HasRobotStepState sig m => Direction -> m (V2 Int64, Maybe Entity)
   lookInDirection d = do
     loc <- use robotLocation
     orient <- use robotOrientation
     when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
     let nextLoc = loc ^+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
-  ensureItem ::
-    (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) =>
-    Text ->
-    Text ->
-    m Entity
+  ensureItem :: HasRobotStepState sig m => Text -> Text -> m Entity
   ensureItem itemName action = do
     -- First, make sure we know about the entity.
     inv <- use robotInventory
@@ -1526,7 +1521,7 @@ execConst c vs s k = do
   -- installed, and the inventory that should be transferred from
   -- parent to child.
   checkRequirements ::
-    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
+    HasRobotStepState sig m =>
     Inventory ->
     Inventory ->
     Inventory ->
@@ -1647,18 +1642,14 @@ execConst c vs s k = do
               [de] -> Right $ Just $ snd de
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
-  destroyIfNotBase :: (Has (State Robot) sig m, Has (Error Exn) sig m) => m ()
+  destroyIfNotBase :: HasRobotStepState sig m => m ()
   destroyIfNotBase = do
     rid <- use robotID
     (rid /= 0) `holdsOrFail` ["You consider destroying your base, but decide not to do it after all."]
     selfDestruct .= True
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
-  checkMoveAhead ::
-    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
-    V2 Int64 ->
-    MoveFailure ->
-    m ()
+  checkMoveAhead :: HasRobotStepState sig m => V2 Int64 -> MoveFailure -> m ()
   checkMoveAhead nextLoc MoveFailure {..} = do
     me <- entityAt nextLoc
     systemRob <- use systemRobot
@@ -1682,10 +1673,7 @@ execConst c vs s k = do
               ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
               IgnoreFail -> return ()
 
-  getRobotWithinTouch ::
-    (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) =>
-    RID ->
-    m Robot
+  getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
   getRobotWithinTouch rid = do
     cid <- use robotID
     if cid == rid
@@ -1717,7 +1705,7 @@ execConst c vs s k = do
     _ -> badConst
 
   -- Make sure the robot has the thing in its inventory
-  hasInInventoryOrFail :: (Has (Throw Exn) sig m, Has (State Robot) sig m) => Text -> m Entity
+  hasInInventoryOrFail :: HasRobotStepState sig m => Text -> m Entity
   hasInInventoryOrFail eName = do
     inv <- use robotInventory
     e <-
@@ -1730,6 +1718,7 @@ execConst c vs s k = do
 
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
+  doGrab :: (HasRobotStepState sig m, Has (Lift IO) sig m) => GrabbingCmd -> m CESK
   doGrab cmd = do
     let verb = verbGrabbingCmd cmd
         verbed = verbedGrabbingCmd cmd
@@ -1814,7 +1803,7 @@ verbedGrabbingCmd = \case
 --   entities will be copied/created, that is, no entities will be
 --   removed from the parent robot.
 provisionChild ::
-  (Has (State Robot) sig m, Has (State GameState) sig m) =>
+  (HasRobotStepState sig m) =>
   RID ->
   Inventory ->
   Inventory ->
@@ -1834,7 +1823,7 @@ provisionChild childID toInstall toGive = do
 --   location.  This should be the /only/ way to update the location
 --   of a robot.
 updateRobotLocation ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  (HasRobotStepState sig m) =>
   V2 Int64 ->
   V2 Int64 ->
   m ()
@@ -1861,9 +1850,9 @@ updateRobotLocation oldLoc newLoc
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.
 onTarget ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
+  HasRobotStepState sig m =>
   RID ->
-  (forall sig' m'. (Has (State GameState) sig' m', Has (State Robot) sig' m', Has (Error Exn) sig' m') => m' ()) ->
+  (forall sig' m'. (HasRobotStepState sig' m') => m' ()) ->
   m ()
 onTarget rid act = do
   myID <- use robotID
@@ -1976,7 +1965,7 @@ safeExp a b
 ------------------------------------------------------------
 
 -- | Update the global list of discovered entities, and check for new recipes.
-updateDiscoveredEntities :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()
+updateDiscoveredEntities :: (HasRobotStepState sig m) => Entity -> m ()
 updateDiscoveredEntities e = do
   allDiscovered <- use allDiscoveredEntities
   if E.contains0plus e allDiscovered
