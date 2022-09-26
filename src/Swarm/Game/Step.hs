@@ -748,13 +748,14 @@ execConst c vs s k = do
         let oldLoc = target ^. robotLocation
             nextLoc = V2 (fromIntegral x) (fromIntegral y)
 
-        checkMoveAhead nextLoc $
-          MoveFailure
-            { failIfBlocked = Destroy
-            , failIfDrown = Destroy
-            }
+        onTarget rid $ do
+          checkMoveAhead nextLoc $
+            MoveFailure
+              { failIfBlocked = Destroy
+              , failIfDrown = Destroy
+              }
+          updateRobotLocation oldLoc nextLoc
 
-        onTarget rid $ updateRobotLocation oldLoc nextLoc
         return $ Out VUnit s k
       _ -> badConst
     Grab -> doGrab Grab'
@@ -1692,9 +1693,10 @@ execConst c vs s k = do
       else do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
-        -- Make sure it is in the same location
+        -- Make sure it is either in the same location or we do not care
+        omni <- (||) <$> use systemRobot <*> use creativeMode
         loc <- use robotLocation
-        ((other ^. robotLocation) `manhattan` loc <= 1)
+        (omni || (other ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
         return other
 
@@ -1873,7 +1875,9 @@ onTarget rid act = do
         Nothing -> return ()
         Just tgt -> do
           tgt' <- execState @Robot tgt act
-          robotMap . ix rid .= tgt'
+          if tgt' ^. selfDestruct
+            then deleteRobot rid
+            else robotMap . ix rid .= tgt'
 
 ------------------------------------------------------------
 -- Comparison
