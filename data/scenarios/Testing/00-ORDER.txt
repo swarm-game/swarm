@@ -12,3 +12,4 @@
 562-lodestone.yaml
 378-objectives.yaml
 684-swap.yaml
+699-movement-fail

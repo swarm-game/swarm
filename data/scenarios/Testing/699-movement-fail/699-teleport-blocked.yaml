@@ -1,0 +1,53 @@
+name: Teleport to blocked
+description: |
+  Teleporting self or another robot to blocked location results in destruction of that robot.
+  https://github.com/swarm-game/swarm/issues/699
+creative: true
+objectives:
+  - condition: |
+      def isAliveOn = \name.\loc. try {r <- robotNamed name; l <- as r {whereami}; return $ l == loc} {return false} end;
+      def isDead = \name. try {robotNamed name; return false} {return true} end;
+      d1 <- isDead "one";
+      d2 <- isDead "two";
+      a3 <- isAliveOn "three" (3,0);
+      a4 <- isAliveOn "four" (3,0);
+      b <- isAliveOn "base" (5,0);
+      return (d1 && d2 && a3 && a4 && b)
+solution: |
+  o <- robotNamed "one"; reprogram o {t <- robotNamed "two"; teleport t (3,0); teleport self (3,0)};
+  try {teleport self (3,0)} {teleport self (5,0)}
+robots:
+  - name: base
+    dir: [0,0]
+  - name: one
+    dir: [1,0]
+  - name: two
+    dir: [-1,0]
+  - name: three
+    dir: [0,1]
+    system: true
+    program: |
+      t <- robotNamed "four"; teleport t (3,0); teleport self (3,0)
+  - name: four
+    dir: [0,-1]
+    system: true
+world:
+  default: [blank]
+  palette:
+    '@': [stone, boulder]
+    'B': [grass, null, base]
+    '1': [grass, null, one]
+    '2': [grass, null, two]
+    '3': [grass, null, three]
+    '4': [grass, null, four]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌──────┐
+    │B12@34│
+    └──────┘

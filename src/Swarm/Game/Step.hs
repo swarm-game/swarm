@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -732,23 +733,12 @@ execConst c vs s k = do
       loc <- use robotLocation
       orient <- use robotOrientation
       let nextLoc = loc ^+^ (orient ? zero)
-      me <- entityAt nextLoc
-
-      -- Make sure nothing is in the way.
-      case me of
-        Nothing -> return ()
-        Just e -> do
-          (not . (`hasProperty` Unwalkable)) e
-            `holdsOrFail` ["There is a", e ^. entityName, "in the way!"]
-
-          -- Robots drown if they walk over liquid
-          caps <- use robotCapabilities
-          when
-            (e `hasProperty` Liquid && CFloat `S.notMember` caps)
-            destroyIfNotBase
-
+      checkMoveAhead nextLoc $
+        MoveFailure
+          { failIfBlocked = ThrowExn
+          , failIfDrown = Destroy
+          }
       updateRobotLocation loc nextLoc
-      flagRedraw
       return $ Out VUnit s k
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
@@ -757,21 +747,15 @@ execConst c vs s k = do
         -- either change current robot or one in robot map
         let oldLoc = target ^. robotLocation
             nextLoc = V2 (fromIntegral x) (fromIntegral y)
-            caps = target ^. robotCapabilities
 
-        me <- entityAt nextLoc
-        -- Make sure nothing is in the way.
-        case me of
-          Nothing -> return ()
-          Just e -> do
-            let unwalkable = e `hasProperty` Unwalkable
-            let drowning = e `hasProperty` Liquid && CFloat `S.notMember` caps
-            when (unwalkable || drowning) $ do
-              d <- isDestroyable target
-              when d $ onTarget rid (selfDestruct .= True)
+        onTarget rid $ do
+          checkMoveAhead nextLoc $
+            MoveFailure
+              { failIfBlocked = Destroy
+              , failIfDrown = Destroy
+              }
+          updateRobotLocation oldLoc nextLoc
 
-        onTarget rid $ updateRobotLocation oldLoc nextLoc
-        flagRedraw
         return $ Out VUnit s k
       _ -> badConst
     Grab -> doGrab Grab'
@@ -1665,14 +1649,38 @@ execConst c vs s k = do
 
   destroyIfNotBase :: (Has (State Robot) sig m, Has (Error Exn) sig m) => m ()
   destroyIfNotBase = do
-    destroy <- isDestroyable =<< get @Robot
-    when destroy $ selfDestruct .= True
+    rid <- use robotID
+    (rid /= 0) `holdsOrFail` ["You consider destroying your base, but decide not to do it after all."]
+    selfDestruct .= True
 
-  isDestroyable :: (Has (Error Exn) sig m) => Robot -> m Bool
-  isDestroyable r = do
-    if r ^. robotID == 0
-      then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
-      else return . not $ r ^. systemRobot
+  -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
+  checkMoveAhead ::
+    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
+    V2 Int64 ->
+    MoveFailure ->
+    m ()
+  checkMoveAhead nextLoc MoveFailure {..} = do
+    me <- entityAt nextLoc
+    systemRob <- use systemRobot
+    case me of
+      Nothing -> return ()
+      Just e
+        | systemRob -> return ()
+        | otherwise -> do
+          -- robots can not walk through walls
+          when (e `hasProperty` Unwalkable) $
+            case failIfBlocked of
+              Destroy -> destroyIfNotBase
+              ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
+              IgnoreFail -> return ()
+
+          -- robots drown if they walk over liquid without boat
+          caps <- use robotCapabilities
+          when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
+            case failIfDrown of
+              Destroy -> destroyIfNotBase
+              ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+              IgnoreFail -> return ()
 
   getRobotWithinTouch ::
     (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) =>
@@ -1685,9 +1693,10 @@ execConst c vs s k = do
       else do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
-        -- Make sure it is in the same location
+        -- Make sure it is either in the same location or we do not care
+        omni <- (||) <$> use systemRobot <*> use creativeMode
         loc <- use robotLocation
-        ((other ^. robotLocation) `manhattan` loc <= 1)
+        (omni || (other ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
         return other
 
@@ -1771,6 +1780,15 @@ execConst c vs s k = do
 -- Some utility functions
 ------------------------------------------------------------
 
+-- | How to handle failure, for example when moving to blocked location
+data RobotFailure = ThrowExn | Destroy | IgnoreFail
+
+-- | How to handle failure when moving/teleporting to a location.
+data MoveFailure = MoveFailure
+  { failIfBlocked :: RobotFailure
+  , failIfDrown :: RobotFailure
+  }
+
 data GrabbingCmd = Grab' | Harvest' | Swap' deriving (Eq, Show)
 
 verbGrabbingCmd :: GrabbingCmd -> Text
@@ -1827,6 +1845,7 @@ updateRobotLocation oldLoc newLoc
     robotsByLocation . at oldLoc %= deleteOne rid
     robotsByLocation . at newLoc . non Empty %= IS.insert rid
     modify (unsafeSetRobotLocation newLoc)
+    flagRedraw
  where
   -- Make sure empty sets don't hang around in the
   -- robotsByLocation map.  We don't want a key with an
@@ -1842,9 +1861,9 @@ updateRobotLocation oldLoc newLoc
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.
 onTarget ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
   RID ->
-  (forall sig' m'. (Has (State GameState) sig' m', Has (State Robot) sig' m') => m' ()) ->
+  (forall sig' m'. (Has (State GameState) sig' m', Has (State Robot) sig' m', Has (Error Exn) sig' m') => m' ()) ->
   m ()
 onTarget rid act = do
   myID <- use robotID
@@ -1856,7 +1875,9 @@ onTarget rid act = do
         Nothing -> return ()
         Just tgt -> do
           tgt' <- execState @Robot tgt act
-          robotMap . ix rid .= tgt'
+          if tgt' ^. selfDestruct
+            then deleteRobot rid
+            else robotMap . ix rid .= tgt'
 
 ------------------------------------------------------------
 -- Comparison
