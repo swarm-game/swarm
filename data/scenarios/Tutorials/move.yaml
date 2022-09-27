@@ -2,16 +2,12 @@ version: 1
 name: Moving, part 1
 description: |
   Learn how to move and chain commands.
-#
-# The players might not use ';' here, so it should be brought up again when building robots.
-#
 objectives:
   - goal:
       - Robots can use the `move` command to move forward one unit
         in the direction they are currently facing.
       - To complete this challenge, move your robot two spaces to the right,
         to the coordinates (2,0).
-      - Note that you can chain commands with semicolon, `;`.
       - You can open this popup window at any time to remind yourself of the goal
         using Ctrl-G.
     condition: |
@@ -21,25 +17,107 @@ objectives:
       } { return false }
 solution: |
   move; move
-robots:
-  - name: base
-    dir: [1,0]
-    devices:
-      - treads
-      - logger
 world:
   default: [blank]
   palette:
-    '>': [grass, null, base]
     '.': [grass]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    ' ': [blank]
+    '┌': [blank, upper left corner]
+    '┐': [blank, upper right corner]
+    '└': [blank, lower left corner]
+    '┘': [blank, lower right corner]
+    '─': [blank, horizontal wall]
+    '│': [blank, vertical wall]
+    'G': [blank, vertical wall, gate]
+    '-': [blank, null, horizon]
+    '|': [blank, null, vertice]    
+    'u': [blank, null, upright]
+    'l': [blank, null, lowright]
   upperleft: [-1, 1]
   map: |
-    ┌───┐
-    │>..│
-    └───┘
+    ┌───┐------u
+    │   G      |
+    └───┘------l
+robots:
+  - name: base
+    dir: [1,0]
+    loc: [0,0]
+    devices:
+      - treads
+      - logger
+  - name: check1
+    dir: [0,0]
+    loc: [2,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == (2,0))
+        } { return false }
+      );
+      create "Win"
+  - name: horizon
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      place "horizontal wall"
+  - name: vertice
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,vertical wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      place "vertical wall"
+  - name: upright
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,upper right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      place "upper right corner"
+  - name: lowright
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,lower right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      place "lower right corner"
+  - name: gate
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      grab
+entities:
+  - name: Win
+    display:
+      char: W
+      attr: gold
+    description:
+      - This entity signals that the objective has been met.
