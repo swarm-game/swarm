@@ -9,7 +9,13 @@ title: "Swarm alpha release!"
 
 The [Swarm](https://github.com/swarm-game/swarm/) development team is
 very proud to announce an alpha release of the game.  There are still
-many missing features and known bugs, but XXX
+many missing features (for example, [saving games is not yet
+possible](https://github.com/swarm-game/swarm/issues/50)) and [known
+bugs](https://github.com/swarm-game/swarm/issues?q=is%3Aissue+is%3Aopen+label%3ABug+),
+but at this point it's quite playable (and, dare we say, fun) and
+ready for some intrepid souls to try it out and give us some feedback.
+
+XXX put screenshot here
 
 As a reminder, Swarm is a 2D programming and resource gathering game,
 written in Haskell. Notable changes since the [last progress
@@ -24,8 +30,14 @@ update](https://byorgey.wordpress.com/2022/06/20/swarm-status-report/) include:
 - Backwards incremental search and tab completion in the REPL
 - Many, many small bug fixes and improvements!
 
+To install, check out the [installation
+instructions](https://github.com/swarm-game/swarm#installing): you can
+download a [binary release](XXX) for your platform, or [install from
+Hackage](https://hackage.haskell.org/package/swarm).  Give it a try
+and [send us your feedback](XXX)!
+
 If you're interested in getting involved, check out our [contribution
 guide](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md),
-come join us on IRC (`#swarm` on Libera.Chat) and take a look at the
+come join us on IRC (`#swarm` on Libera.Chat), or take a look at the
 list of [issues marked "low-hanging
 fruit"](https://github.com/swarm-game/swarm/issues?q=is%3Aissue+is%3Aopen+label%3A%22C-Low+Hanging+Fruit%22).
