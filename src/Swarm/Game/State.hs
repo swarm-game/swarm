@@ -834,7 +834,7 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
       & concatMap
         ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robotList) ->
             let robotWithLoc = trobotLocation ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
-            in map robotWithLoc robotList
+             in map robotWithLoc robotList
         )
 
 -- | Create an initial game state for a specific scenario.
