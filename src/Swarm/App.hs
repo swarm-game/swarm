@@ -26,6 +26,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
+import System.IO (stderr)
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
@@ -46,7 +47,7 @@ appMain :: AppOpts -> IO ()
 appMain opts = do
   res <- runExceptT $ initAppState opts
   case res of
-    Left errMsg -> T.putStrLn errMsg
+    Left errMsg -> T.hPutStrLn stderr errMsg
     Right s -> do
       -- Send Frame events as at a reasonable rate for 30 fps. The
       -- game is responsible for figuring out how many steps to take

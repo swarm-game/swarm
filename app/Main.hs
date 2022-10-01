@@ -99,7 +99,7 @@ formatFile input = do
       Text.putStrLn content
       exitSuccess
     Left e -> do
-      Text.putStrLn $ showInput input <> ":" <> e
+      Text.hPutStrLn stderr $ showInput input <> ":" <> e
       exitFailure
 
 showVersion :: IO ()

@@ -142,9 +142,10 @@ instance FromJSONE EntityMap (Recipe Entity) where
 --   recipes from the data file @recipes.yaml@.
 loadRecipes :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text [Recipe Entity])
 loadRecipes em = runThrow $ do
-  mayFileName <- sendIO $ getDataFileNameSafe "recipes.yaml"
+  let f = "recipes.yaml"
+  mayFileName <- sendIO $ getDataFileNameSafe f
   case mayFileName of
-    Nothing -> throwError dataFileNotFound
+    Nothing -> sendIO (dataNotFound f) >>= throwError
     Just fileName -> do
       res <- sendIO $ decodeFileEither @[Recipe Text] fileName
       textRecipes <- res `isRightOr` (from @String @Text . prettyPrintParseException)

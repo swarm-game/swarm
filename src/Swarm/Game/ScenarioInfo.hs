@@ -68,7 +68,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
-import Swarm.Util (dataFileNotFound, getDataDirSafe, getSwarmSavePath)
+import Swarm.Util (dataNotFound, getDataDirSafe, getSwarmSavePath)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
@@ -212,7 +212,7 @@ normalizeScenarioPath col p =
         then return path
         else do
           canonPath <- canonicalizePath path
-          Just ddir <- getDataDirSafe -- no way we got this far without data directory
+          Just ddir <- getDataDirSafe "." -- no way we got this far without data directory
           d <- canonicalizePath ddir
           let n =
                 stripPrefix (d </> "scenarios") canonPath
@@ -227,10 +227,11 @@ scenarioCollectionToList (SC (Just order) m) = (m M.!) <$> order
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
 loadScenarios em = runThrow $ do
-  mdataDir <- sendIO getDataDirSafe
+  let p = "scenarios"
+  mdataDir <- sendIO $ getDataDirSafe p
   case mdataDir of
-    Nothing -> throwError dataFileNotFound
-    Just dataDir -> loadScenarioDir em (dataDir </> "scenarios")
+    Nothing -> sendIO (dataNotFound p) >>= throwError
+    Just dataDir -> loadScenarioDir em dataDir
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.

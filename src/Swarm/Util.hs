@@ -65,7 +65,7 @@ module Swarm.Util (
   smallHittingSet,
   getDataDirSafe,
   getDataFileNameSafe,
-  dataFileNotFound,
+  dataNotFound,
 ) where
 
 import Control.Algebra (Has)
@@ -215,20 +215,20 @@ readFileMayT = catchIO . T.readFile
 catchIO :: IO a -> IO (Maybe a)
 catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
 
-getDataDirSafe :: IO (Maybe FilePath)
-getDataDirSafe = do
+getDataDirSafe :: FilePath -> IO (Maybe FilePath)
+getDataDirSafe p = do
   d <- getDataDir
   de <- doesDirectoryExist d
   if de
     then return $ Just d
     else do
-      xd <- (</> "data") <$> getSwarmDataPath False
+      xd <- (</> "data" </> p) <$> getSwarmDataPath False
       xde <- doesDirectoryExist xd
       return $ if xde then Just xd else Nothing
 
 getDataFileNameSafe :: FilePath -> IO (Maybe FilePath)
 getDataFileNameSafe name = do
-  dir <- getDataDirSafe
+  dir <- getDataDirSafe "."
   case dir of
     Nothing -> return Nothing
     Just d -> do
@@ -236,8 +236,15 @@ getDataFileNameSafe name = do
       fe <- doesFileExist fp
       return $ if fe then Just fp else Nothing
 
-dataFileNotFound :: Text
-dataFileNotFound = T.pack ""
+dataNotFound :: FilePath -> IO Text
+dataNotFound f = do
+  d <- getSwarmDataPath False
+  let squotes = squote . T.pack
+  return $
+    T.unlines
+      [ "Could not find the data: " <> squotes f
+      , "Try downloading the Swarm 'data' directory to: " <> squotes d
+      ]
 
 -- | Get path to swarm data, optionally creating necessary
 --   directories.
@@ -265,14 +272,17 @@ getSwarmHistoryPath createDirs =
 -- | Read all the .txt files in the data/ directory.
 readAppData :: IO (Map Text Text)
 readAppData = do
-  d <- getDataDir
-  fs <-
-    filter ((== ".txt") . takeExtension)
-      <$> ( listDirectory d `catch` \e ->
-              hPutStr stderr (show (e :: IOException)) >> return []
-          )
-  M.fromList . mapMaybe sequenceA
-    <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+  md <- getDataDirSafe "."
+  case md of
+    Nothing -> fail . T.unpack =<< dataNotFound "<the data directory itself>"
+    Just d -> do
+      fs <-
+        filter ((== ".txt") . takeExtension)
+          <$> ( listDirectory d `catch` \e ->
+                  hPutStr stderr (show (e :: IOException)) >> return []
+              )
+      M.fromList . mapMaybe sequenceA
+        <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
 
 ------------------------------------------------------------
 -- Some Text-y stuff

@@ -105,7 +105,7 @@ import GHC.Generics (Generic)
 import Linear (V2)
 import Swarm.Game.Display
 import Swarm.Language.Capability
-import Swarm.Util (dataFileNotFound, getDataFileNameSafe, plural, reflow, (?))
+import Swarm.Util (dataNotFound, getDataFileNameSafe, plural, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -361,9 +361,10 @@ instance ToJSON Entity where
 --   either an 'EntityMap' or a pretty-printed parse error.
 loadEntities :: MonadIO m => m (Either Text EntityMap)
 loadEntities = liftIO $ do
-  mayFileName <- getDataFileNameSafe "entities.yaml"
+  let f = "entities.yaml"
+  mayFileName <- getDataFileNameSafe f
   case mayFileName of
-    Nothing -> pure $ Left dataFileNotFound
+    Nothing -> Left <$> dataNotFound f
     Just fileName -> bimap (from . prettyPrintParseException) buildEntityMap <$> decodeFileEither fileName
 
 ------------------------------------------------------------
