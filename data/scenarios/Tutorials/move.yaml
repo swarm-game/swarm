@@ -20,8 +20,7 @@ solution: |
 world:
   default: [blank]
   palette:
-    '.': [grass]
-    ' ': [blank]
+    '.': [blank]
     # FIRST ROOM
     '┌': [blank, upper left corner]
     '┐': [blank, upper right corner, upright0]
@@ -30,15 +29,25 @@ world:
     '─': [blank, horizontal wall]
     '│': [blank, vertical wall]
     # SECOND ROOM
-    'G': [blank, vertical wall, gate]
+    '1': [blank, vertical wall, gate]
     '-': [blank, "1", horizon]
     '|': [blank, "1", vertice]
     'u': [blank, "1", upright]
     'l': [blank, "1", lowright]
-  upperleft: [-1, 1]
+    # THIRD ROOM
+    '2': [blank, "2", gate]
+    '~': [blank, "2", horizon]
+    '/': [blank, "2", vertice]
+    'R': [blank, "2", upright]
+    'L': [blank, "2", upleft]
+  upperleft: [-1, 5]
   map: |
-    ┌───┐-----u
-    │   G     |
+    .......L~~R
+    ......./../
+    ......./../
+    ......./../
+    ┌───┐---22u
+    │...1.....|
     └───┘-----l
 
 
@@ -63,10 +72,27 @@ robots:
       invisible: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
       until (
         try {
           loc <- as base {whereami};
-          return (loc == (2,0))
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: check2
+    dir: [0,0]
+    loc: [8,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
         } { return false }
       );
       create "Win"
@@ -118,6 +144,18 @@ robots:
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "lower right corner"
+  - name: upleft
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,upper left corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "upper left corner"
   - name: upright0
     dir: [0,0]
     system: true
