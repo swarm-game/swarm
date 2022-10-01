@@ -228,8 +228,9 @@ at various locations.
 
 #### Cells
 
-Each cell of the world is specified by a 1-, 2-, or 3-tuple, for
-example, `[grass]`, `[grass, tree]`, or `[grass, null, base]`.
+Each cell of the world is specified by a list of terrain, optional entity
+and robots present (if any). For example, `[grass]`, `[grass, tree]`,
+or `[grass, null, base]`.
 
 - The first (required) item specifies the terrain.  Currently, valid
   terrain values are `stone`, `dirt`, `grass`, `ice`, or `blank`.
@@ -237,9 +238,9 @@ example, `[grass]`, `[grass, tree]`, or `[grass, null, base]`.
   should be present in the cell.  This may be a built-in entity, or a
   custom entity specified in the `entities` section.  `null` may be
   used to explicitly specify no entity in the cell.
-- The third item (if present) specifies the name of a robot which
-  should be present in the cell.  This must be the name of a robot
-  specified in the `robots` section.  A copy of the robot will be
+- The third item and later (if present) specifies the names of the robots
+  which should be present in the cell.  This must be the names of the robots
+  specified in the `robots` section.  A copy of each robot will be
   created at each location in the `map` where it is drawn.
 
   Although multiple robots may be in a single location in general,
