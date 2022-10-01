@@ -206,6 +206,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/699-movement-fail/699-move-blocked"
         , testSolution Default "Testing/699-movement-fail/699-move-liquid"
         , testSolution Default "Testing/699-movement-fail/699-teleport-blocked"
+        , testSolution Default "Testing/710-multi-robot"
         ]
     ]
  where
