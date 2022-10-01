@@ -78,6 +78,7 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)
+import Control.Monad.Extra (mapMaybeM)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -153,7 +154,7 @@ getRobot = getThing "robot" M.lookup
 data Cell = Cell
   { cellTerrain :: TerrainType
   , cellEntity :: Maybe Entity
-  , cellRobot :: Maybe TRobot
+  , cellRobots :: [TRobot]
   }
   deriving (Eq, Show)
 
@@ -164,7 +165,7 @@ data Cell = Cell
 instance FromJSONE (EntityMap, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
     let tup = V.toList v
-    when (null tup || length tup > 3) $ fail "palette entry must have length 1, 2, or 3"
+    when (null tup) $ fail "palette entry must have length 1, 2, or more"
 
     terr <- liftE $ parseJSON (head tup)
 
@@ -174,13 +175,13 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
         meName <- liftE $ parseJSON @(Maybe Text) e
         traverse (localE fst . getEntity) meName
 
-    rob <- case tup ^? ix 2 of
-      Nothing -> return Nothing
-      Just r -> do
-        mrName <- liftE $ parseJSON @(Maybe Text) r
-        traverse (localE snd . getRobot) mrName
+    let name2rob r = do
+          mrName <- liftE $ parseJSON @(Maybe Text) r
+          traverse (localE snd . getRobot) mrName
 
-    return $ Cell terr ent rob
+    robs <- mapMaybeM name2rob (drop 2 tup)
+
+    return $ Cell terr ent robs
 
 ------------------------------------------------------------
 -- World description
