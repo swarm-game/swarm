@@ -165,7 +165,7 @@ data Cell = Cell
 instance FromJSONE (EntityMap, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
     let tup = V.toList v
-    when (null tup) $ fail "palette entry must have length 1, 2, or more"
+    when (null tup) $ fail "palette entry must nonzero length (terrain, optional entity and then robots if any)"
 
     terr <- liftE $ parseJSON (head tup)
 

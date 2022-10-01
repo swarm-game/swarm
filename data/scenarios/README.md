@@ -239,7 +239,7 @@ or `[grass, null, base]`.
   custom entity specified in the `entities` section.  `null` may be
   used to explicitly specify no entity in the cell.
 - The third item and later (if present) specifies the names of the robots
-  which should be present in the cell.  This must be the names of the robots
+  which should be present in the cell.  These must be names of robots
   specified in the `robots` section.  A copy of each robot will be
   created at each location in the `map` where it is drawn.
 
