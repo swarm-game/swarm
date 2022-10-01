@@ -27,20 +27,21 @@ module Swarm.Version (
   NewReleaseFailure (..),
 ) where
 
-import Control.Monad (forM)
+import Control.Exception (catch, displayException)
 import Data.Aeson (Array, Value (..), (.:))
-import Data.Aeson.Types (parseMaybe)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Char (isDigit)
-import Data.Foldable (find, toList)
+import Data.Either (lefts, rights)
+import Data.Foldable (toList)
 import Data.List.Extra (breakOnEnd)
-import Data.Maybe (catMaybes)
+import Data.Maybe (listToMaybe)
 import Data.Version (Version (..), parseVersion, showVersion)
-import Data.Yaml (ParseException, decodeEither')
+import Data.Yaml (ParseException, Parser, decodeEither', parseEither)
 import GitHash (GitInfo, giBranch, giHash, giTag, tGitInfoCwdTry)
 import Network.HTTP.Client (
+  HttpException,
   Request (requestHeaders),
   Response (responseBody),
   httpLbs,
@@ -89,43 +90,70 @@ version =
    in if v == "0.0.0.1" then "pre-alpha version" else v
 
 -- | Get the current upstream release version if any.
-upstreamReleaseVersion :: IO (Maybe String)
-upstreamReleaseVersion = do
-  manager <- newManager tlsManagerSettings
-  -- -------------------------------------------------------------------------------
-  -- SEND REQUEST
-  request <- parseRequest "https://api.github.com/repos/swarm-game/swarm/releases"
-  response <-
+upstreamReleaseVersion :: IO (Either NewReleaseFailure String)
+upstreamReleaseVersion =
+  catch
+    (either parseFailure getRelease . decodeResp <$> sendRequest)
+    (return . Left . queryFailure)
+ where
+  -- ------------------------------
+  -- send request to GitHub API
+  sendRequest :: IO (Response BSL.ByteString)
+  sendRequest = do
+    manager <- newManager tlsManagerSettings
+    request <- parseRequest "https://api.github.com/repos/swarm-game/swarm/releases"
     httpLbs
       request {requestHeaders = [(hUserAgent, "swarm-game/swarm-swarmversion")]}
       manager
-  -- -------------------------------------------------------------------------------
-  -- PARSE RESPONSE
-  -- putStrLn $ "The status code was: " ++ show (statusCode $ responseStatus response)
-  let result = decodeEither' (BS.pack . BSL.unpack $ responseBody response) :: Either ParseException Array
-  case result of
-    Left _e -> do
-      -- print e
-      return Nothing
-    Right rs -> do
-      ts <- forM (toList rs) $ \r -> do
-        return . flip parseMaybe r $ \case
-          Object o -> do
-            pre <- o .: "prerelease"
-            if pre
-              then fail "Not a real release!"
-              else o .: "tag_name"
-          _ -> fail "The JSON list does not contain structures!"
-      return $ find isSwarmReleaseTag . catMaybes $ ts
+  -- ------------------------------
+  -- get the latest actual release
+  getRelease :: Array -> Either NewReleaseFailure String
+  getRelease rs =
+    let ts = parseReleases rs
+        maybeRel = listToMaybe $ rights ts
+     in case maybeRel of
+          Nothing -> Left $ NoMainUpstreamRelease (lefts ts)
+          Just rel -> Right rel
+  -- ------------------------------
+  -- pretty print failures
+  parseFailure :: ParseException -> Either NewReleaseFailure String
+  parseFailure e = Left . FailedReleaseQuery $ "Failure during response parsing: " <> displayException e
+  queryFailure :: HttpException -> NewReleaseFailure
+  queryFailure e = FailedReleaseQuery $ "Failure requesting GitHub releases: " <> displayException e
+  -- ------------------------------
+  -- parsing helpers
+  decodeResp :: Response BSL.ByteString -> Either ParseException Array
+  decodeResp resp = decodeEither' (BS.pack . BSL.unpack $ responseBody resp)
+  parseReleases :: Array -> [Either String String]
+  parseReleases = map (parseEither parseRelease) . toList
+
+parseRelease :: Value -> Parser String
+parseRelease = \case
+  Object o -> do
+    pre <- o .: "prerelease"
+    if pre
+      then fail "Not a real release!"
+      else do
+        t <- o .: "tag_name"
+        if isSwarmReleaseTag t
+          then return t
+          else fail $ "The release '" <> t <> "' is not main Swarm release!"
+  _otherValue -> fail "The JSON release is not an Object!"
 
 data NewReleaseFailure where
-  NoUpstreamRelease :: NewReleaseFailure
+  FailedReleaseQuery :: String -> NewReleaseFailure
+  NoMainUpstreamRelease :: [String] -> NewReleaseFailure
   OnDevelopmentBranch :: String -> NewReleaseFailure
   OldUpstreamRelease :: Version -> Version -> NewReleaseFailure
 
 instance Show NewReleaseFailure where
   show = \case
-    NoUpstreamRelease -> "No upstream releases found."
+    FailedReleaseQuery e -> "Failed to query upstream release: " <> e
+    NoMainUpstreamRelease fs ->
+      "No upstream releases found."
+        <> if null fs
+          then ""
+          else " Rejected:\n" <> unlines (zipWith ((<>) . show @Int) [1 ..] fs)
     OnDevelopmentBranch br -> "Currently on development branch '" <> br <> "', skipping release query."
     OldUpstreamRelease up my ->
       "Upstream release '"
@@ -153,19 +181,17 @@ getNewerReleaseVersion :: IO (Either NewReleaseFailure String)
 getNewerReleaseVersion =
   case gitInfo of
     -- when using cabal install, the git info is unavailable, which is of no interest to players
-    Left _e -> maybe (Left NoUpstreamRelease) Right <$> upstreamReleaseVersion
+    Left _e -> upstreamReleaseVersion
     Right gi ->
       if giBranch gi /= "main"
         then return . Left . OnDevelopmentBranch $ giBranch gi
-        else getUpVer <$> upstreamReleaseVersion
+        else (>>= getUpVer) <$> upstreamReleaseVersion
  where
   myVer :: Version
   myVer = Paths_swarm.version
-  getUpVer :: Maybe String -> Either NewReleaseFailure String
-  getUpVer = \case
-    Nothing -> Left NoUpstreamRelease
-    Just upTag ->
-      let upVer = tagToVersion upTag
-       in if myVer >= upVer
-            then Left $ OldUpstreamRelease upVer myVer
-            else Right upTag
+  getUpVer :: String -> Either NewReleaseFailure String
+  getUpVer upTag =
+    let upVer = tagToVersion upTag
+     in if myVer >= upVer
+          then Left $ OldUpstreamRelease upVer myVer
+          else Right upTag
