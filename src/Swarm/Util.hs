@@ -217,14 +217,20 @@ catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
 
 getDataDirSafe :: FilePath -> IO (Maybe FilePath)
 getDataDirSafe p = do
-  d <- getDataDir
+  d <- mySubdir <$> getDataDir
   de <- doesDirectoryExist d
   if de
     then return $ Just d
     else do
-      xd <- (</> "data" </> p) <$> getSwarmDataPath False
+      xd <- mySubdir . (</> "data") <$> getSwarmDataPath False
       xde <- doesDirectoryExist xd
       return $ if xde then Just xd else Nothing
+ where
+  mySubdir d = d `appDir` p
+  appDir r = \case
+    "" -> r
+    "." -> r
+    d -> r </> d
 
 getDataFileNameSafe :: FilePath -> IO (Maybe FilePath)
 getDataFileNameSafe name = do
