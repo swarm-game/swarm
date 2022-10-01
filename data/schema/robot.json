@@ -41,7 +41,8 @@
                     "type": "number"
                 }
             ],
-            "description": "The starting orientation of the robot, expressed as a vector. Every time the robot executes a move command, this vector will be added to its position. Typically, this is a unit vector in one of the four cardinal directions, although there is no particular reason that it has to be."
+            "default": [0,0],
+            "description": "An optional starting orientation of the robot, expressed as a vector.  Every time the robot executes a `move` command, this vector will be added to its position.  Typically, this is a unit vector in one of the four cardinal directions, although there is no particular reason that it has to be. When omitted, the robot's direction will be the zero vector."
         },
         "display": {
             "default": "default",
@@ -78,7 +79,6 @@
         }
     },
     "required": [
-        "name",
-        "dir"
+        "name"
     ]
 }
