@@ -140,7 +140,8 @@ newVersionWidget :: Either NewReleaseFailure String -> Maybe (Widget n)
 newVersionWidget = \case
   Right ver -> Just . txt $ "New version " <> T.pack ver <> " is available!"
   Left (OnDevelopmentBranch _b) -> Just . txt $ "Good luck developing!"
-  Left NoUpstreamRelease -> Nothing
+  Left (FailedReleaseQuery _f) -> Nothing
+  Left (NoMainUpstreamRelease _fails) -> Nothing
   Left (OldUpstreamRelease _up _my) -> Nothing
 
 drawLogo :: Text -> Widget Name
