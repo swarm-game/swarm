@@ -808,7 +808,7 @@ scenarioToGameState scenario userSeed toRun g = do
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
 buildWorld :: EntityMap -> WorldDescription -> ([TRobot], Seed -> WorldFun Int Entity)
-buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
+buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
   cs = fromIntegral $ length (head area)
@@ -831,11 +831,10 @@ buildWorld em (WorldDescription {..}) = (robots, first fromEnum . wf)
     area
       & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
       & concat
-      & mapMaybe
-        ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robot) ->
-            robot
-              & traverse . trobotLocation
-              ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
+      & concatMap
+        ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robotList) ->
+            let robotWithLoc = trobotLocation ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
+             in map robotWithLoc robotList
         )
 
 -- | Create an initial game state for a specific scenario.

@@ -575,6 +575,22 @@
     - A lower right corner wall.
   properties: [unwalkable, known]
 
+- name: down and horizontal wall
+  display:
+    attr: entity
+    char: '┬'
+  description:
+    - A down and horizontal wall.
+  properties: [unwalkable, known]
+
+- name: up and horizontal wall
+  display:
+    attr: entity
+    char: '┴'
+  description:
+    - A up and horizontal wall.
+  properties: [unwalkable, known]
+
 - name: horizontal wall
   display:
     attr: entity

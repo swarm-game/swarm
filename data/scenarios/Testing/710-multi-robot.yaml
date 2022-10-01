@@ -1,0 +1,249 @@
+name: Multiple robots in palette
+description: |
+  Using multiple robots in palette to open new rooms.
+  See the lowright/upright robots in the second room.
+  https://github.com/swarm-game/swarm/issues/710
+objectives:
+  - goal:
+      - Move to the end of the room.
+    condition: |
+      r <- robotNamed "check1";
+      as r {has "Win"}
+  - goal:
+      - Move to the end of the second room.
+    condition: |
+      r <- robotNamed "check2";
+      as r {has "Win"}
+  - goal:
+      - Move to the end of the third room.
+    condition: |
+      r <- robotNamed "check3";
+      as r {has "Win"}
+solution: |
+  move;move;move; move;move;move; move;move;move;
+world:
+  default: [blank]
+  palette:
+    '.': [blank]
+    # FIRST ROOM
+    '┌': [blank, upper left corner]
+    '└': [blank, lower left corner]
+    '─': [blank, horizontal wall]
+    '│': [blank, vertical wall]
+    '┐': [blank, upper right corner, upright0]
+    '┘': [blank, lower right corner, lowright0]
+    # SECOND ROOM
+    '1': [blank, vertical wall, gate1]
+    '-': [blank, "1", horizon]
+    'u': [blank, "1", upright, upright1]
+    'l': [blank, "1", lowright, lowright1]
+    '2': [blank, "1", vertice, gate2]
+    # THIRD ROOM
+    '~': [blank, "2", horizon]
+    '/': [blank, "2", vertice]
+    'U': [blank, "2", upright]
+    'L': [blank, "2", lowright]
+  upperleft: [-1, 1]
+  map: |
+    ┌────┐--u~~U
+    │....1..2../
+    └────┘--l~~L
+
+robots:
+  - name: base
+    dir: [1,0]
+    loc: [0,0]
+    devices:
+      - treads
+      - logger
+  - name: check1
+    dir: [0,0]
+    loc: [3,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: check2
+    dir: [0,0]
+    loc: [6,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: check3
+    dir: [0,0]
+    loc: [9,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: horizon
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "horizontal wall"
+  - name: vertice
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,vertical wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "vertical wall"
+  - name: upright
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,upper right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "upper right corner"
+  - name: lowright
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,lower right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "lower right corner"
+  - name: upleft
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,upper left corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "upper left corner"
+  - name: upright0
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,down and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      swap "down and horizontal wall"
+  - name: lowright0
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,up and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      swap "up and horizontal wall"
+  - name: upright1
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,down and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
+      until (as c1 {has "Win"});
+      swap "down and horizontal wall"
+  - name: lowright1
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,up and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
+      until (as c1 {has "Win"});
+      swap "up and horizontal wall"
+  - name: gate1
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      grab
+  - name: gate2
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
+      until (as c1 {has "Win"});
+      grab
+entities:
+  - name: Win
+    display:
+      char: W
+      attr: gold
+    description:
+      - This entity signals that the objective has been met.
+  - name: "1"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 1st objective.
+  - name: "2"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 2nd objective.
