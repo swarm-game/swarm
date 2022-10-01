@@ -31,10 +31,10 @@ world:
     '│': [blank, vertical wall]
     # SECOND ROOM
     'G': [blank, vertical wall, gate]
-    '-': [blank, null, horizon]
-    '|': [blank, null, vertice]    
-    'u': [blank, null, upright]
-    'l': [blank, null, lowright]
+    '-': [blank, "1", horizon]
+    '|': [blank, "1", vertice]
+    'u': [blank, "1", upright]
+    'l': [blank, "1", lowright]
   upperleft: [-1, 1]
   map: |
     ┌───┐-----u
@@ -78,9 +78,10 @@ robots:
     inventory: [[1,horizontal wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      c1 <- robotNamed "check1";
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
-      place "horizontal wall"
+      swap "horizontal wall"
   - name: vertice
     dir: [0,0]
     system: true
@@ -89,9 +90,10 @@ robots:
     inventory: [[1,vertical wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      c1 <- robotNamed "check1";
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
-      place "vertical wall"
+      swap "vertical wall"
   - name: upright
     dir: [0,0]
     system: true
@@ -100,9 +102,10 @@ robots:
     inventory: [[1,upper right corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      c1 <- robotNamed "check1";
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
-      place "upper right corner"
+      swap "upper right corner"
   - name: lowright
     dir: [0,0]
     system: true
@@ -111,9 +114,10 @@ robots:
     inventory: [[1,lower right corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      c1 <- robotNamed "check1";
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
-      place "lower right corner"
+      swap "lower right corner"
   - name: upright0
     dir: [0,0]
     system: true
@@ -153,3 +157,21 @@ entities:
       attr: gold
     description:
       - This entity signals that the objective has been met.
+  - name: "1"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 1st objective.
+  - name: "2"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 2nd objective.
+  - name: "3"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 3rd objective.
