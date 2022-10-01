@@ -54,6 +54,7 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, when)
+import Control.Monad.Extra (mapMaybeM)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
@@ -78,7 +79,6 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)
-import Control.Monad.Extra (mapMaybeM)
 
 ------------------------------------------------------------
 -- Scenario objectives
