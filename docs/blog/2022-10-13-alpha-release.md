@@ -15,7 +15,7 @@ bugs](https://github.com/swarm-game/swarm/issues?q=is%3Aissue+is%3Aopen+label%3A
 but at this point it's quite playable (and, dare we say, fun) and
 ready for some intrepid souls to try it out and give us some feedback.
 
-XXX put screenshot here
+XXX put fun screenshot here
 
 As a reminder, Swarm is a 2D programming and resource gathering game,
 written in Haskell. Notable changes since the [last progress
@@ -34,10 +34,38 @@ To install, check out the [installation
 instructions](https://github.com/swarm-game/swarm#installing): you can
 download a [binary release](XXX) for your platform, or [install from
 Hackage](https://hackage.haskell.org/package/swarm).  Give it a try
-and [send us your feedback](XXX)!
+and [send us your feedback](https://github.com/swarm-game/swarm/issues/new/choose)!
 
 If you're interested in getting involved, check out our [contribution
 guide](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md),
 come join us on IRC (`#swarm` on Libera.Chat), or take a look at the
 list of [issues marked "low-hanging
 fruit"](https://github.com/swarm-game/swarm/issues?q=is%3Aissue+is%3Aopen+label%3A%22C-Low+Hanging+Fruit%22).
+
+Brought to you by the swarm development team:
+
+Brent Yorgey
+Ondřej Šebek
+Tristan de Cacqueray
+
+With contributions from:
+
+Alexander Block
+Daniel Díaz Carrete
+Huw Campbell
+Ishan Bhanuka
+Jacob
+Jens Petersen
+José Rafael Vieira
+Joshua Price
+lsmor
+Noah Yorgey
+Norbert Dzikowski
+Paul Brauner
+Ryan Yates
+Sam Tay
+
+...not to mention many others who gave valuable suggestions and
+feedback.  Want to see your name listed here in the next release?
+[See how you can
+contribute!](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md)
