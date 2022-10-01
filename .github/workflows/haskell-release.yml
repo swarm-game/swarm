@@ -108,6 +108,15 @@ jobs:
           asset_name: swarm-${{ github.ref }}-${{ runner.os }}-${{ matrix.compiler }}
           asset_content_type: application/octet-stream
 
+      - name: Generate tarball for Hackage 
+        run: cabal v2-sdist
+
+      - uses: haskell-actions/hackage-publish@v1
+        with:
+          hackageToken: "${{ secrets.HACKAGE_AUTH_TOKEN }}"
+          packagesPath: dist-newstyle/sdist
+          publish: true
+
   upload_data:
     needs: [create_release]
     name: Swarm Release - Data
@@ -136,4 +145,4 @@ jobs:
           upload_url: ${{ steps.get_release_info.outputs.upload_url }}
           asset_path: ${{ env.DATA_ZIP }}
           asset_name: swarm-data-${{ github.ref }}
-          asset_content_type: application/octet-stream
+          asset_content_type: application/zip
