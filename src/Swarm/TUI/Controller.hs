@@ -82,9 +82,9 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
-import Swarm.Version (NewReleaseFailure(..))
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
