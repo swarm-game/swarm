@@ -184,7 +184,7 @@ import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.Util
-import Swarm.Version (NewReleaseFailure (NoUpstreamRelease))
+import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import System.Clock
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
 import Witch (into)
@@ -708,7 +708,7 @@ initRuntimeState :: RuntimeState
 initRuntimeState =
   RuntimeState
     { _webPort = Nothing
-    , _upstreamRelease = Left NoUpstreamRelease
+    , _upstreamRelease = Left (NoMainUpstreamRelease [])
     , _eventLog = mempty
     }
 

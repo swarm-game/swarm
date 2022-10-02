@@ -82,6 +82,7 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
 
@@ -105,8 +106,10 @@ handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent = \case
   -- the query for upstream version could finish at any time, so we have to handle it here
   AppEvent (UpstreamVersion ev) -> do
+    let logReleaseEvent l e = runtimeState . eventLog %= logEvent l ("Release", -7) (T.pack $ show e)
     case ev of
-      Left e -> runtimeState . eventLog %= logEvent Said ("Release", -7) (T.pack $ show e)
+      Left e@(FailedReleaseQuery _e) -> logReleaseEvent ErrorTrace e
+      Left e -> logReleaseEvent Said e
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do
