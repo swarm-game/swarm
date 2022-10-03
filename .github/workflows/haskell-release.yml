@@ -1,7 +1,8 @@
 name: Release
 
 on:
-  # Trigger the workflow on the new PVP version tag created
+  # Trigger the workflow on the new PVP version tag created.
+  # https://pvp.haskell.org/
   # See patterns explanation at:
   # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
   push:
@@ -16,21 +17,23 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
+      - name: Zip data directory
+        run: |
+          zip -r data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
+
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1.1.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: true
-          prerelease: false
+          files: |
+            LICENSE
+            data.zip
 
       - name: Output Release URL File
         run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+
       - name: Save Release URL File for publish
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: release_url
           path: release_url.txt
@@ -51,7 +54,10 @@ jobs:
             compilerKind: ghc
             compilerVersion: 8.10.7
             cabal: "3.6"
-            os: ubuntu-latest
+            # It might be good idea to use older runner for building binary:
+            # on latest runners like fedora, it would link symbols in newer
+            # system libraries, so users could not run it on older OSes
+            os: ubuntu-20.04
 
     steps:
       - name: Check out code
@@ -64,16 +70,6 @@ jobs:
           ghc-version: ${{ matrix.compilerVersion }}
           cabal-version: ${{ matrix.cabal }}
 
-      - name: Freeze
-        run: |
-          cabal freeze
-
-      - name: Cache ~/.cabal/store
-        uses: actions/cache@v1
-        with:
-          path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
-          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
-
       - name: Build binary
         run: |
           mkdir dist
@@ -81,11 +77,6 @@ jobs:
 
       - name: Set binary path name
         run: echo "::set-env name=BINARY_PATH::./dist/swarm"
-
-      - name: Compress binary
-        uses: svenstaro/upx-action@2.0.1
-        with:
-          file: ${{ env.BINARY_PATH }}
 
       - name: Load Release URL File from release job
         uses: actions/download-artifact@v1
@@ -105,44 +96,20 @@ jobs:
         with:
           upload_url: ${{ steps.get_release_info.outputs.upload_url }}
           asset_path: ${{ env.BINARY_PATH }}
-          asset_name: swarm-${{ github.ref }}-${{ runner.os }}-${{ matrix.compiler }}
+          asset_name: swarm-${{ runner.os }}
           asset_content_type: application/octet-stream
 
       - name: Generate tarball for Hackage 
         run: cabal v2-sdist
+      
+      # - name: Generate documentation for Hackage
+      #   # The hackage-server attempts to build documentation for library packages, but this can fail.
+      #   # If it does we can do it ourselves
+      #   run: cabal v2-haddock --builddir=docs --haddock-for-hackage --enable-doc
 
       - uses: haskell-actions/hackage-publish@v1
         with:
           hackageToken: "${{ secrets.HACKAGE_AUTH_TOKEN }}"
           packagesPath: dist-newstyle/sdist
+          # docsPath: docs
           publish: true
-
-  upload_data:
-    needs: [create_release]
-    name: Swarm Release - Data
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Get Release File Name & Upload URL
-        id: get_release_info
-        run: |
-          echo "::set-output name=upload_url::$(cat release_url/release_url.txt)"
-
-      - name: Zip data directory
-        run: |
-          DATA_ZIP=data.zip
-          echo "::set-env name=DATA_ZIP::${DATA_ZIP}"
-          zip -r ${DATA_ZIP} ./data || { echo "Unable to create a zip archive."; exit 1;  }
-
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.get_release_info.outputs.upload_url }}
-          asset_path: ${{ env.DATA_ZIP }}
-          asset_name: swarm-data-${{ github.ref }}
-          asset_content_type: application/zip
