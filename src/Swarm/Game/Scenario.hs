@@ -31,6 +31,7 @@ module Swarm.Game.Scenario (
 
   -- ** Fields
   scenarioName,
+  scenarioAuthor,
   scenarioDescription,
   scenarioCreative,
   scenarioSeed,
@@ -234,6 +235,7 @@ paintMap pal = traverse (traverse toCell . into @String) . T.lines
 --   scenario.
 data Scenario = Scenario
   { _scenarioName :: Text
+  , _scenarioAuthor :: Maybe Text
   , _scenarioDescription :: Text
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
@@ -271,6 +273,7 @@ instance FromJSONE EntityMap Scenario where
 
       Scenario
         <$> liftE (v .: "name")
+        <*> liftE (v .:? "author")
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
@@ -288,6 +291,9 @@ instance FromJSONE EntityMap Scenario where
 
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
+
+-- | The author of the scenario.
+scenarioAuthor :: Lens' Scenario (Maybe Text)
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.

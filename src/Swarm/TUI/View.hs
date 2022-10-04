@@ -75,7 +75,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -217,17 +217,24 @@ drawNewGameMenuUI (l :| ls) =
     let bestRealTime = if oneBest then "best:" else "best real time:"
     let noSame = if oneBest then const Nothing else Just
     let lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
-    vBox . catMaybes $
-      [ Just $ txtWrap (nonBlank (s ^. scenarioDescription))
-      , Just $
-          padTop (Pad 3) $
-            padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestTime)
-      , noSame $ -- hide best game time if it is same as best real time
-          padTop (Pad 1) $
-            padRight (Pad 1) (txt "best game time:") <+> describeStatus (si ^. scenarioBestTicks)
-      , Just $
-          padTop (Pad 1) $
-            padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
+    vBox
+      [ txtWrap (nonBlank (s ^. scenarioDescription))
+      , vBox . catMaybes $
+          [ padTop (Pad 1)
+              . padRight (Pad 1)
+              . (txt "Author: " <+>)
+              . txt
+              <$> (s ^. scenarioAuthor)
+          , Just $
+              padTop (Pad 3) $
+                padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestTime)
+          , noSame $ -- hide best game time if it is same as best real time
+              padTop (Pad 1) $
+                padRight (Pad 1) (txt "best game time:") <+> describeStatus (si ^. scenarioBestTicks)
+          , Just $
+              padTop (Pad 1) $
+                padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
+          ]
       ]
 
   nonBlank "" = " "

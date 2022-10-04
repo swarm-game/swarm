@@ -1,4 +1,5 @@
 name: Towers of Hanoi
+author: Ondřej Šebek and Brent Yorgey
 description: The classic Towers of Hanoi puzzle with three disks.
 objectives:
   - goal:
