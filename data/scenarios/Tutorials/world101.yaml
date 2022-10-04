@@ -45,7 +45,7 @@ objectives:
         define and use parameterized commands.  Scan some things and use
         the process of elimination to find one.  Since lambdas regrow,
         once you find one, try getting it with `harvest`.
-      - "TIP: remember that you can click on a cells in the world to see their
+      - "TIP: remember that you can click on cells in the world to see their
         coordinates."
     condition: |
       try { as base {has "lambda"} } {return false}
