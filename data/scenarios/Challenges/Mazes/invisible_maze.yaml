@@ -1,3 +1,4 @@
+version: 1
 name: Invisible maze
 author: Brent Yorgey
 description: There is a maze, but it can't be seen, only sensed... can you

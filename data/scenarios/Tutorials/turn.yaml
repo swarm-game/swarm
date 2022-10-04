@@ -1,3 +1,4 @@
+version: 1
 name: Moving, part 2
 description: |
   Learn how to turn in some direction and pass parameters to commands.

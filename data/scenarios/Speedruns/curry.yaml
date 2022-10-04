@@ -1,3 +1,4 @@
+version: 1
 name: Curry
 author: Brent Yorgey
 description: Race to make a bowl of curry as fast as possible.

@@ -1,3 +1,4 @@
+version: 1
 name: Chess Knight
 author: Ondřej Šebek
 description: In this quirky challenge, you move as the chess knight piece. Can you capture the enemy king?

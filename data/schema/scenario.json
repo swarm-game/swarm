@@ -5,6 +5,10 @@
     "description": "Scenario for the swarm game",
     "type": "object",
     "properties": {
+        "version": {
+            "description": "The version number of the scenario schema.  Currently, this should always be 1, but it is ignored.  In the future, this may be used to convert older formats to newer ones, or simply to print a nice error message when we can't read an older format.",
+            "type": "number"
+        },
         "name": {
             "description": "The name of the scenario. For official scenarios, this is what shows up in the new game menu.",
             "type": "string"

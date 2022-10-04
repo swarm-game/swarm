@@ -1,3 +1,4 @@
+version: 1
 name: Forester
 author: Brent Yorgey
 description: Race to harvest 1024 trees as quickly as possible.

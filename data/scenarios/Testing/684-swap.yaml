@@ -1,3 +1,4 @@
+version: 1
 name: Swap in one tick
 description: |
   Swapping an entity should be done in one tick.
