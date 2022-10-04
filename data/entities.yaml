@@ -775,7 +775,7 @@
   - '  build {move; grab; turn back; move; give base "tree"}'
   - |
     builds a robot to get the tree on the cell to the
-    east (if there is one) and bring it back to the base. The `build` command
+    north (if there is one) and bring it back to the base. The `build` command
     always returns a reference to the newly constructed robot. For example,
   - '  r <- build {move}; view r'
   - |
