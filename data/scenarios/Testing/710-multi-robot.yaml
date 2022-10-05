@@ -1,3 +1,4 @@
+version: 1
 name: Multiple robots in palette
 description: |
   Using multiple robots in palette to open new rooms.

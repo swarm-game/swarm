@@ -1,5 +1,6 @@
 # See also 479-atomic-race.
 
+version: 1
 name: Atomic grab/harvest/place
 description: |
   'atomic' blocks should be able to prevent crashes due to race conditions

@@ -30,7 +30,9 @@ module Swarm.Game.Scenario (
   Scenario,
 
   -- ** Fields
+  scenarioVersion,
   scenarioName,
+  scenarioAuthor,
   scenarioDescription,
   scenarioCreative,
   scenarioSeed,
@@ -233,7 +235,9 @@ paintMap pal = traverse (traverse toCell . into @String) . T.lines
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
 data Scenario = Scenario
-  { _scenarioName :: Text
+  { _scenarioVersion :: Int
+  , _scenarioName :: Text
+  , _scenarioAuthor :: Maybe Text
   , _scenarioDescription :: Text
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
@@ -270,7 +274,9 @@ instance FromJSONE EntityMap Scenario where
       let rsMap = buildRobotMap rs
 
       Scenario
-        <$> liftE (v .: "name")
+        <$> liftE (v .: "version")
+        <*> liftE (v .: "name")
+        <*> liftE (v .:? "author")
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
@@ -286,8 +292,17 @@ instance FromJSONE EntityMap Scenario where
 --------------------------------------------------
 -- Lenses
 
+-- | The version number of the scenario schema.  Currently, this
+--   should always be 1, but it is ignored.  In the future, this may
+--   be used to convert older formats to newer ones, or simply to
+--   print a nice error message when we can't read an older format.
+scenarioVersion :: Lens' Scenario Int
+
 -- | The name of the scenario.
 scenarioName :: Lens' Scenario Text
+
+-- | The author of the scenario.
+scenarioAuthor :: Lens' Scenario (Maybe Text)
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.

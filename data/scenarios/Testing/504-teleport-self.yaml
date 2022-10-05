@@ -1,3 +1,4 @@
+version: 1
 name: Teleport self in win condition check
 description: |
   `teleport self` did not work in the win condition check.

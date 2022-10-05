@@ -1,4 +1,6 @@
+version: 1
 name: "2048"
+author: Brent Yorgey
 description: Make 2048!
 objectives:
   - goal:

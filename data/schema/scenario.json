@@ -5,12 +5,20 @@
     "description": "Scenario for the swarm game",
     "type": "object",
     "properties": {
+        "version": {
+            "description": "The version number of the scenario schema.  Currently, this should always be 1.",
+            "type": "number"
+        },
         "name": {
             "description": "The name of the scenario. For official scenarios, this is what shows up in the new game menu.",
             "type": "string"
         },
         "description": {
             "description": "A short description of the scenario. This shows up next to the new game menu when the scenario is selected.",
+            "type": "string"
+        },
+        "author": {
+            "description": "The author of the scenario (optional).  Typically this is a person's name, but it can be any string. It is displayed under the scenario description in the new game menu.",
             "type": "string"
         },
         "creative": {
@@ -90,6 +98,7 @@
         }
     },
     "required": [
+        "version",
         "name",
         "world",
         "robots"

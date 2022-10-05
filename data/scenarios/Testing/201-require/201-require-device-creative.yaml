@@ -1,3 +1,4 @@
+version: 1
 name: Require device in creative mode
 description: |
   Require a device using the 'require' command in creative mode.

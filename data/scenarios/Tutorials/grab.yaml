@@ -1,3 +1,4 @@
+version: 1
 name: Grab
 description: |
   Learn how to interact with the world by grabbing entities.

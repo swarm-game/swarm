@@ -1,3 +1,4 @@
+version: 1
 name: Lambda
 description: |
   Learn how to define functions.

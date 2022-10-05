@@ -1,3 +1,4 @@
+version: 1
 name: Test harvest command
 description: |
   Test the difference between the grab and harvest commands,
