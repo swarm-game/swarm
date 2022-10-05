@@ -66,7 +66,6 @@ robots:
       - treads
       - logger
   - name: check1
-    dir: [0,0]
     loc: [2,0]
     system: true
     display:
@@ -82,7 +81,6 @@ robots:
       );
       create "Win"
   - name: check2
-    dir: [0,0]
     loc: [8,0]
     system: true
     display:
@@ -98,7 +96,6 @@ robots:
       );
       create "Win"
   - name: horizon
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -110,7 +107,6 @@ robots:
       until (as c1 {has "Win"});
       swap "horizontal wall"
   - name: vertice
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -122,7 +118,6 @@ robots:
       until (as c1 {has "Win"});
       swap "vertical wall"
   - name: vertice2
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -133,7 +128,6 @@ robots:
       until (as c1 {has "Win"});
       swap "vertical wall"
   - name: upright
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -145,7 +139,6 @@ robots:
       until (as c1 {has "Win"});
       swap "upper right corner"
   - name: lowright
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -157,7 +150,6 @@ robots:
       until (as c1 {has "Win"});
       swap "lower right corner"
   - name: upleft
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -169,7 +161,6 @@ robots:
       until (as c1 {has "Win"});
       swap "upper left corner"
   - name: upright0
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -180,7 +171,6 @@ robots:
       until (as c1 {has "Win"});
       swap "down and horizontal wall"
   - name: lowright0
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -191,7 +181,6 @@ robots:
       until (as c1 {has "Win"});
       swap "up and horizontal wall"
   - name: lowright2
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -202,7 +191,6 @@ robots:
       until (as c1 {has "Win"});
       swap "lower right corner"
   - name: gate1
-    dir: [0,0]
     system: true
     display:
       invisible: true
@@ -212,7 +200,6 @@ robots:
       until (as c1 {has "Win"});
       grab
   - name: gate2
-    dir: [0,0]
     system: true
     display:
       invisible: true
