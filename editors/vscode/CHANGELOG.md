@@ -4,6 +4,7 @@ All notable changes to the "swarm-language" extension will be documented in this
 
 ## WIP
 - [Highlighter] added `swap` command
+- [Highlighter] added `split` and `chars` functions
 
 ## version 0.0.6
 - [Highlighter] **FIX:** the number pattern now matches properly, previously it broke everything!
