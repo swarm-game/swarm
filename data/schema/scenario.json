@@ -98,6 +98,7 @@
         }
     },
     "required": [
+        "version",
         "name",
         "world",
         "robots"
