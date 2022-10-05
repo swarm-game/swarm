@@ -220,6 +220,7 @@ drawNewGameMenuUI (l :| ls) =
     vBox . catMaybes $
       [ Just $ txtWrap (nonBlank (s ^. scenarioDescription))
       , padTop (Pad 1)
+          . withAttr dimAttr
           . (txt "Author: " <+>)
           . txt
           <$> (s ^. scenarioAuthor)
