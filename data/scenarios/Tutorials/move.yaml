@@ -29,13 +29,14 @@ world:
     '─': [blank, horizontal wall]
     '│': [blank, vertical wall]
     # SECOND ROOM
-    '1': [blank, vertical wall, gate]
+    '1': [blank, vertical wall, gate1]
     '-': [blank, "1", horizon]
     '|': [blank, "1", vertice]
-    'u': [blank, "1", upright]
+    'u': [blank, "1", upright, vertice2]
     'l': [blank, "1", lowright]
+    'j': [blank, "1", horizon, lowright2]
     # THIRD ROOM
-    '2': [blank, "2", gate]
+    '2': [blank, "1", horizon, gate2]
     '~': [blank, "2", horizon]
     '/': [blank, "2", vertice]
     'R': [blank, "2", upright]
@@ -46,7 +47,7 @@ world:
     ......./../
     ......./../
     ......./../
-    ┌───┐---22u
+    ┌───┐--j22u
     │...1.....|
     └───┘-----l
 
@@ -120,6 +121,17 @@ robots:
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "vertical wall"
+  - name: vertice2
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,vertical wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed ("check2");
+      until (as c1 {has "Win"});
+      swap "vertical wall"
   - name: upright
     dir: [0,0]
     system: true
@@ -178,7 +190,18 @@ robots:
       c1 <- robotNamed "check1";
       until (as c1 {has "Win"});
       swap "up and horizontal wall"
-  - name: gate
+  - name: lowright2
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,lower right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed ("check2");
+      until (as c1 {has "Win"});
+      swap "lower right corner"
+  - name: gate1
     dir: [0,0]
     system: true
     display:
@@ -186,6 +209,16 @@ robots:
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      grab
+  - name: gate2
+    dir: [0,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
       until (as c1 {has "Win"});
       grab
 entities:
