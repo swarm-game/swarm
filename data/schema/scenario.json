@@ -6,7 +6,7 @@
     "type": "object",
     "properties": {
         "version": {
-            "description": "The version number of the scenario schema.  Currently, this should always be 1, but it is ignored.  In the future, this may be used to convert older formats to newer ones, or simply to print a nice error message when we can't read an older format.",
+            "description": "The version number of the scenario schema.  Currently, this should always be 1.",
             "type": "number"
         },
         "name": {
@@ -18,7 +18,7 @@
             "type": "string"
         },
         "author": {
-            "description": "The author of the scenario.  Typically this is a person's name, but it can be any string. It is displayed under the scenario description in the new game menu.",
+            "description": "The author of the scenario (optional).  Typically this is a person's name, but it can be any string. It is displayed under the scenario description in the new game menu.",
             "type": "string"
         },
         "creative": {
