@@ -131,7 +131,6 @@ testScenarioSolution _ci _em =
         "Tutorial"
         [ testSolution Default "Tutorials/backstory"
         , testSolution Default "Tutorials/move"
-        , testSolution Default "Tutorials/turn"
         , testSolution Default "Tutorials/craft"
         , testSolution Default "Tutorials/grab"
         , testSolution Default "Tutorials/place"
