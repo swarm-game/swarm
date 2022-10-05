@@ -638,11 +638,12 @@ constInfo c = case c of
   Format -> function 1 "Turn an arbitrary value into a string."
   Concat -> binaryOp "++" 6 R "Concatenate the given strings."
   Chars -> function 1 "Counts the number of caracters in the text."
-  Split -> function 2 . doc "Split the text into two at given position." $
-    [ "To be more specific, the following holds:"
-    , "`\\s1.\\s2. (s1,s2) == split (chars s1) (s1 ++ s2)`"
-    , "So split can be used to undo concatenation if you know the length of the original string."
-    ]
+  Split ->
+    function 2 . doc "Split the text into two at given position." $
+      [ "To be more specific, the following holds:"
+      , "`\\s1.\\s2. (s1,s2) == split (chars s1) (s1 ++ s2)`"
+      , "So split can be used to undo concatenation if you know the length of the original string."
+      ]
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."

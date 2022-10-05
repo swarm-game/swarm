@@ -10,12 +10,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
 import Swarm.Game.Value
+import Swarm.Util (quote)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import TestUtil
 import Witch (from)
-import Swarm.Util (quote)
 
 testEval :: GameState -> TestTree
 testEval g =
@@ -221,9 +221,9 @@ testEval g =
             "split undo concatenation"
             ( \s1 s2 ->
                 -- \s1.\s2. (s1,s2) == split (chars s1) (s1 ++ s2)
-                let (t1,t2) = (tquote s1, tquote s2)
-                 in T.concat ["(", t1, ",",  t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
-                  `evaluatesToP` VBool True
+                let (t1, t2) = (tquote s1, tquote s2)
+                 in T.concat ["(", t1, ",", t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
+                      `evaluatesToP` VBool True
             )
         ]
     , testGroup
