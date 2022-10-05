@@ -1,9 +1,17 @@
 Swarm
 =====
 
-[![Build Status](https://github.com/swarm-game/swarm/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/swarm-game/swarm/actions)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
-![GitHub Contributors](https://contrib.rocks/image?repo=swarm-game/swarm)
+[![Build Status][build-status]][actions]
+[![Contributor Covenant][badge-covenant]](CODE_OF_CONDUCT.md)
+[![ircchat][badge-ircchat]][ircchat]
+![GitHub Contributors][contribs]
+
+[build-status]: https://github.com/swarm-game/swarm/actions/workflows/haskell-ci.yml/badge.svg
+[actions]: https://github.com/swarm-game/swarm/actions
+[badge-covenant]: https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg
+[badge-ircchat]: https://img.shields.io/badge/chat-on%20libera-brightgreen.svg
+[ircchat]: https://web.libera.chat/?channels=#swarm
+[contribs]: https://contrib.rocks/image?repo=swarm-game/swarm
 
 Swarm is a 2D programming and resource gathering game. Program your
 robots to explore the world and collect resources, which in turn
