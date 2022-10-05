@@ -7,15 +7,73 @@ objectives:
       - Robots can use the `move` command to move forward one unit
         in the direction they are currently facing.
       - To complete this challenge, move your robot two spaces to the right,
-        to the coordinates (2,0).
+        to the coordinates (2,0) marked with the purple flower.
+      - Note that you can chain commands with semicolon, `;`.
       - You can open this popup window at any time to remind yourself of the goal
         using Ctrl-G.
     condition: |
-      try {
-        loc <- as base {whereami};
-        return (loc == (2,0))
-      } { return false }
+      r <- robotNamed "check1";
+      loc <- as r {has "Win"};
+  - goal:
+      - Good! Now you need to learn how to effectively repeat actions.
+      - |
+        Previously you could move twice by chaining the move command:
+      - |
+        move; move
+      - To reuse that command withouth having to retype it press the upward
+        arrow on your keaybord. This will allow you to select previous commands.
+      - Ahead of you is a six steps long coridor, move to it's end, i.e. the
+        coordinates (8,0) marked with the second purple flower.
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check2";
+      loc <- as r {has "Win"};
+  - goal:
+      - Well done! In addition to `move`, you can use the `turn` command
+        to turn your robot, for example, `turn right` or `turn east`.
+      - Switch to the inventory view (by clicking on it, or typing `Alt+E`)
+        and select the treads device to read about the details.
+        You can come back to the REPL prompt by clicking on it or typing `Alt+R`.
+      - Afterwards, move your robot to the flower in the northeast corner
+        to the coordinates (8,4) marked with two flowers.
+      - |
+        Remember, you can chain commands with `;`, for example:
+      - |
+        `move;move;move;move`
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check3";
+      loc <- as r {has "Win"};
+  - goal:
+      - Good job! You are now ready to move and turn on your own.
+      - To complete this challenge, move your robot to the northeast corner
+        to the coordinates (8,8) marked with one flower.
+      - Remeber you can press the upward arrow on your keaybord to select previous command.
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check4";
+      loc <- as r {has "Win"};
 solution: |
+  // 0
+  move;move;
+  // 1
+  move;move;
+  move;move;move;move;
+  // 2
+  turn left;
+  move;move;move;move; // go 6 north
+  // 3
+  turn left;
+  move;move;move;move; // go 8 west
+  move;move;move;move;
+  turn right;
+  move;move;move;move; // go 4 north
+  turn right;
+  move;move;move;move; // go 8 east
+  move;move;move;move;
 known:
   - flower
 world:
@@ -84,6 +142,7 @@ robots:
     devices:
       - treads
       - logger
+      - compass
   - name: check1
     loc: [2,0]
     system: true
