@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Swarm unit tests
 module TestEval where
@@ -14,6 +15,7 @@ import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import TestUtil
 import Witch (from)
+import Swarm.Util (quote)
 
 testEval :: GameState -> TestTree
 testEval g =
@@ -210,6 +212,19 @@ testEval g =
         , testCase
             "try / div by 0"
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
+        , testProperty
+            "number of characters"
+            ( \s ->
+                ("chars " <> quote (T.pack s)) `evaluatesToP` VInt (fromIntegral $ length s)
+            )
+        , testProperty
+            "split undo concatenation"
+            ( \s1 s2 ->
+                -- \s1.\s2. (s1,s2) == split (chars s1) (s1 ++ s2)
+                let (t1,t2) = (tquote s1, tquote s2)
+                 in T.concat ["(", t1, ",",  t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
+                  `evaluatesToP` VBool True
+            )
         ]
     , testGroup
         "text"
@@ -228,6 +243,8 @@ testEval g =
         ]
     ]
  where
+  tquote :: String -> Text
+  tquote = quote . T.pack
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
     result <- evaluate tm
@@ -235,7 +252,8 @@ testEval g =
       Right _ -> assertFailure "Unexpected success"
       Left err ->
         p err
-          @? "Expected predicate did not hold on error message " ++ from @Text @String err
+          @? "Expected predicate did not hold on error message "
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
