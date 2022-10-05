@@ -20,9 +20,9 @@ objectives:
         Previously you could move twice by chaining the move command:
       - |
         move; move
-      - To reuse that command withouth having to retype it press the upward
-        arrow on your keaybord. This will allow you to select previous commands.
-      - Ahead of you is a six steps long coridor, move to it's end, i.e. the
+      - To reuse that command without having to retype it press the upward
+        arrow on your keyboard. This will allow you to select previous commands.
+      - Ahead of you is a six steps long corridor. Move to its end, i.e. the
         coordinates (8,0) marked with the second purple flower.
       - You can open this popup window at any time to remind yourself of the goal
         using Ctrl-G.
@@ -35,8 +35,8 @@ objectives:
       - Switch to the inventory view (by clicking on it, or typing `Alt+E`)
         and select the treads device to read about the details.
         You can come back to the REPL prompt by clicking on it or typing `Alt+R`.
-      - Afterwards, move your robot to the flower in the northeast corner
-        to the coordinates (8,4) marked with two flowers.
+      - Afterwards, move your robot to the coordinates (8,4) in the northeast corner
+        marked with two flowers.
       - |
         Remember, you can chain commands with `;`, for example:
       - |
@@ -48,9 +48,9 @@ objectives:
       loc <- as r {has "Win"};
   - goal:
       - Good job! You are now ready to move and turn on your own.
-      - To complete this challenge, move your robot to the northeast corner
+      - To complete this challenge, move your robot to the northeast corner,
         to the coordinates (8,8) marked with one flower.
-      - Remeber you can press the upward arrow on your keaybord to select previous command.
+      - Remember you can press the upward arrow on your keyboard to select previous commands.
       - You can open this popup window at any time to remind yourself of the goal
         using Ctrl-G.
     condition: |
