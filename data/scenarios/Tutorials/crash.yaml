@@ -1,3 +1,4 @@
+version: 1
 name: Debug
 description: |
   Learn how to view built robots and debug them.

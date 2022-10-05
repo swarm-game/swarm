@@ -1,4 +1,6 @@
+version: 1
 name: Cave shaped maze
+author: Ondřej Šebek
 description: A maze shaped like a cave. It only goes down or forward.
 objectives:
 - goal:

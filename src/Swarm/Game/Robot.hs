@@ -497,7 +497,7 @@ instance FromJSONE EntityMap TRobot where
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
       <*> liftE (v .:? "loc")
-      <*> liftE (v .: "dir" .!= zero)
+      <*> liftE (v .:? "dir" .!= zero)
       <*> liftE (v .:? "display" .!= defaultRobotDisplay)
       <*> liftE (mkMachine <$> (v .:? "program"))
       <*> v ..:? "devices" ..!= []

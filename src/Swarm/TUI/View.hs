@@ -75,7 +75,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -140,7 +140,8 @@ newVersionWidget :: Either NewReleaseFailure String -> Maybe (Widget n)
 newVersionWidget = \case
   Right ver -> Just . txt $ "New version " <> T.pack ver <> " is available!"
   Left (OnDevelopmentBranch _b) -> Just . txt $ "Good luck developing!"
-  Left NoUpstreamRelease -> Nothing
+  Left (FailedReleaseQuery _f) -> Nothing
+  Left (NoMainUpstreamRelease _fails) -> Nothing
   Left (OldUpstreamRelease _up _my) -> Nothing
 
 drawLogo :: Text -> Widget Name
@@ -218,12 +219,17 @@ drawNewGameMenuUI (l :| ls) =
     let lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
     vBox . catMaybes $
       [ Just $ txtWrap (nonBlank (s ^. scenarioDescription))
+      , padTop (Pad 1)
+          . withAttr dimAttr
+          . (txt "Author: " <+>)
+          . txt
+          <$> (s ^. scenarioAuthor)
       , Just $
           padTop (Pad 3) $
             padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestTime)
       , noSame $ -- hide best game time if it is same as best real time
           padTop (Pad 1) $
-            padRight (Pad 1) (txt "best game time:") <+> describeStatus (si ^. scenarioBestTicks)
+            txt "best game time: " <+> describeStatus (si ^. scenarioBestTicks)
       , Just $
           padTop (Pad 1) $
             padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)

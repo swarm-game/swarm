@@ -1,4 +1,6 @@
+version: 1
 name: Spiral shaped maze
+author: Ondřej Šebek
 description: A maze shaped like a spiral, with a twist!
 objectives:
 - goal:

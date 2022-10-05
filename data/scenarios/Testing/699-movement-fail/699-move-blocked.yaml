@@ -1,3 +1,4 @@
+version: 1
 name: Move to blocked
 description: |
   Robot moving to blocked location results in its destruction.

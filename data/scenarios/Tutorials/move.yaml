@@ -1,44 +1,460 @@
-name: Moving, part 1
+version: 1
+name: Moving
 description: |
   Learn how to move and chain commands.
-#
-# The players might not use ';' here, so it should be brought up again when building robots.
-#
 objectives:
   - goal:
       - Robots can use the `move` command to move forward one unit
         in the direction they are currently facing.
       - To complete this challenge, move your robot two spaces to the right,
-        to the coordinates (2,0).
+        to the coordinates (2,0) marked with the purple flower.
       - Note that you can chain commands with semicolon, `;`.
       - You can open this popup window at any time to remind yourself of the goal
         using Ctrl-G.
     condition: |
-      try {
-        loc <- as base {whereami};
-        return (loc == (2,0))
-      } { return false }
+      r <- robotNamed "check1";
+      loc <- as r {has "Win"};
+  - goal:
+      - Good! Now you need to learn how to effectively repeat actions.
+      - |
+        Previously you could move twice by chaining the move command:
+      - |
+        move; move
+      - To reuse that command without having to retype it press the upward
+        arrow on your keyboard. This will allow you to select previous commands.
+      - Ahead of you is a six steps long corridor. Move to its end, i.e. the
+        coordinates (8,0) marked with the second purple flower.
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check2";
+      loc <- as r {has "Win"};
+  - goal:
+      - Well done! In addition to `move`, you can use the `turn` command
+        to turn your robot, for example, `turn right` or `turn east`.
+      - Switch to the inventory view (by clicking on it, or typing `Alt+E`)
+        and select the treads device to read about the details.
+        You can come back to the REPL prompt by clicking on it or typing `Alt+R`.
+      - Afterwards, move your robot to the coordinates (8,4) in the northeast corner
+        marked with two flowers.
+      - |
+        Remember, you can chain commands with `;`, for example:
+      - |
+        `move;move;move;move`
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check3";
+      loc <- as r {has "Win"};
+  - goal:
+      - Good job! You are now ready to move and turn on your own.
+      - To complete this challenge, move your robot to the northeast corner,
+        to the coordinates (8,8) marked with one flower.
+      - Remember you can press the upward arrow on your keyboard to select previous commands.
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check4";
+      loc <- as r {has "Win"};
 solution: |
-  move; move
-robots:
-  - name: base
-    dir: [1,0]
-    devices:
-      - treads
-      - logger
+  // 0
+  move;move;
+  // 1
+  move;move;
+  move;move;move;move;
+  // 2
+  turn left;
+  move;move;move;move; // go 6 north
+  // 3
+  turn left;
+  move;move;move;move; // go 8 west
+  move;move;move;move;
+  turn right;
+  move;move;move;move; // go 4 north
+  turn right;
+  move;move;move;move; // go 8 east
+  move;move;move;move;
+known:
+  - flower
 world:
   default: [blank]
   palette:
-    '>': [grass, null, base]
-    '.': [grass]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
-  upperleft: [-1, 1]
+    '.': [blank]
+    '*': [blank, flower]
+    'X': [blank, "1", gardener]
+    'Y': [blank, "2", gardener]
+    'Z': [blank, "3", gardener, check4]
+    # FIRST ROOM
+    '┌': [blank, upper left corner]
+    '┐': [blank, upper right corner, downHorizon1]
+    '└': [blank, lower left corner]
+    '┘': [blank, lower right corner, upHorizon1]
+    '─': [blank, horizontal wall]
+    '│': [blank, vertical wall]
+    # SECOND ROOM
+    '1': [blank, vertical wall, gate1]
+    '-': [blank, "1", horizon]
+    '|': [blank, "1", vertice]
+    'c': [blank, "1", upright, leftVertice2]
+    'b': [blank, "1", lowright]
+    'd': [blank, "1", horizon, upHorizon2]
+    # THIRD ROOM
+    '2': [blank, "1", horizon, gate2]
+    '~': [blank, "2", horizon]
+    '/': [blank, "2", vertice]
+    'R': [blank, "2", upright]
+    'L': [blank, "2", upleft, downHorizon3]
+    'K': [blank, "2", vertice, leftVertice3]
+    # FOURTH ROOM
+    '3': [blank, "2", vertice, gate3]
+    '_': [blank, "3", horizon]
+    '\': [blank, "3", vertice]
+    'A': [blank, "3", lowleft]
+    'B': [blank, "3", lowright]
+    'C': [blank, "3", upright]
+    'D': [blank, "3", upleft]
+  upperleft: [-1, 9]
   map: |
-    ┌───┐
-    │>..│
-    └───┘
+    D_________C
+    \........Z\
+    \..D______B
+    \..\.......
+    \..A___L~~R
+    \......3YY/
+    A______K../
+    ......./../
+    ┌───┐--d22c
+    │..*1....X|
+    └───┘-----b
+
+# Font inspiration and a nicely visible separator:
+#
+# ███████ ██     ██  █████  ██████  ███    ███ 
+# ██      ██     ██ ██   ██ ██   ██ ████  ████ 
+# ███████ ██  █  ██ ███████ ██████  ██ ████ ██ 
+#      ██ ██ ███ ██ ██   ██ ██   ██ ██  ██  ██ 
+# ███████  ███ ███  ██   ██ ██   ██ ██      ██ 
+
+robots:
+  - name: base
+    dir: [1,0]
+    loc: [0,0]
+    devices:
+      - treads
+      - logger
+      - compass
+  - name: check1
+    loc: [2,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: check2
+    loc: [8,0]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: check3
+    loc: [8,4]
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l || loc == (fst l - 1, snd l))
+        } { return false }
+      );
+      create "Win"
+  - name: check4
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  #################
+  ## HORIZONTAL  ##
+  #################
+  - name: horizon
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "horizontal wall"
+  #################
+  ## VERTICAL    ##
+  #################
+  - name: vertice
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,vertical wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "vertical wall"
+  - name: vertice2
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,vertical wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed ("check2");
+      until (as c1 {has "Win"});
+      swap "vertical wall"
+  #################
+  ## CORNERS     ##
+  #################
+  # the order is:
+  # upleft   upright
+  #     D+----+C
+  #      |    |
+  #      |    |
+  #     A+----+B
+  # lowleft  lowright
+  #########
+  ##  A  ##
+  #########
+  - name: lowleft
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,lower left corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "lower left corner"
+  #########
+  ##  B  ##
+  #########
+  - name: lowright
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,lower right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "lower right corner"
+  - name: lowright2
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,lower right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed ("check2");
+      until (as c1 {has "Win"});
+      swap "lower right corner"
+  #########
+  ##  C  ##
+  #########
+  - name: upright
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,upper right corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "upper right corner"
+  #########
+  ##  D  ##
+  #########
+  - name: upleft
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,upper left corner]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "upper left corner"
+  #################
+  ## SEPARATORS  ##
+  #################
+  # 1
+  - name: downHorizon1
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,down and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      swap "down and horizontal wall"
+  - name: upHorizon1
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,up and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      swap "up and horizontal wall"
+  # 2
+  - name: leftVertice2
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,left and vertical wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
+      until (as c1 {has "Win"});
+      swap "left and vertical wall"
+  - name: downHorizon2
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,down and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
+      until (as c1 {has "Win"});
+      swap "down and horizontal wall"
+  - name: upHorizon2
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,up and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
+      until (as c1 {has "Win"});
+      swap "up and horizontal wall"
+  # 3
+  - name: leftVertice3
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,left and vertical wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check3";
+      until (as c1 {has "Win"});
+      swap "left and vertical wall"
+  - name: downHorizon3
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,down and horizontal wall]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check3";
+      until (as c1 {has "Win"});
+      swap "down and horizontal wall"
+  #################
+  ## GATES       ##
+  #################
+  - name: gate1
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      grab
+  - name: gate2
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check2";
+      until (as c1 {has "Win"});
+      grab
+  - name: gate3
+    system: true
+    display:
+      invisible: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check3";
+      until (as c1 {has "Win"});
+      grab
+  - name: gardener
+    system: true
+    display:
+      invisible: true
+    inventory: [[1,flower]]
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      c1 <- robotNamed ("check" ++ n);
+      until (as c1 {has "Win"});
+      swap "flower"
+entities:
+  - name: Win
+    display:
+      char: W
+      attr: gold
+    description:
+      - This entity signals that the objective has been met.
+  - name: "1"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 1st objective.
+  - name: "2"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 2nd objective.
+  - name: "3"
+    display:
+      char: W
+      invisible: true
+    description:
+      - This entity is used to mean that the robot should check the 3rd objective.

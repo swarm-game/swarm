@@ -1,3 +1,4 @@
+version: 1
 name: Require inventory
 description: |
   Learn how to require inventory when building robots.

@@ -1,3 +1,4 @@
+version: 1
 name: Test build with drill
 description: |
   Inner build does not correctly require Drill.

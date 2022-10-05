@@ -1,3 +1,4 @@
+version: 1
 name: Define
 description: |
   Learn how to define new commands.
@@ -22,7 +23,15 @@ objectives:
         its contents and coordinates are shown in the lower left.
       - |
         TIP: the type annotation in a definition is optional.  You could also write
-        `def m4 = move; move; move; move end`, and Swarm would infer the type of `m4`.
+        `def m4 = move; move; move; move end`, and Swarm would infer
+        the type of `m4`.
+      - |
+        TIP: writing function definitions at the prompt is annoying.
+        You can also put definitions in a `.sw` file and load it
+        with the `run` command. Check out
+        https://github.com/swarm-game/swarm/tree/main/editors
+        for help setting up an external editor with things like
+        syntax and error highlighting.
     condition: |
       try {
         as base {has "flower"}

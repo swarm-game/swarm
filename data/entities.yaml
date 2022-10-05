@@ -591,6 +591,22 @@
     - A up and horizontal wall.
   properties: [unwalkable, known]
 
+- name: left and vertical wall
+  display:
+    attr: entity
+    char: '┤'
+  description:
+    - A left and vertical wall.
+  properties: [unwalkable, known]
+
+- name: right and vertical wall
+  display:
+    attr: entity
+    char: '├'
+  description:
+    - A right and vertical wall.
+  properties: [unwalkable, known]
+
 - name: horizontal wall
   display:
     attr: entity
@@ -775,7 +791,7 @@
   - '  build {move; grab; turn back; move; give base "tree"}'
   - |
     builds a robot to get the tree on the cell to the
-    east (if there is one) and bring it back to the base. The `build` command
+    north (if there is one) and bring it back to the base. The `build` command
     always returns a reference to the newly constructed robot. For example,
   - '  r <- build {move}; view r'
   - |
