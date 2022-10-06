@@ -40,7 +40,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isNothing, listToMaybe)
+import Data.Maybe (fromMaybe, isNothing, listToMaybe, catMaybes)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -71,6 +71,7 @@ import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
+import System.FilePath.Lens (filename)
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
@@ -1418,7 +1419,10 @@ execConst c vs s k = do
     -- "./path/to/file.sw" and "./path/to/file"
     Run -> case vs of
       [VText fileName] -> do
-        mf <- sendIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
+        let filePath = into @String fileName
+        sData <- sendIO $ getDataFileNameSafe filePath
+        sDataSW <- sendIO $ getDataFileNameSafe (filePath <> ".sw")
+        mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
