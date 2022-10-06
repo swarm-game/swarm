@@ -1456,6 +1456,15 @@ execConst c vs s k = do
     Format -> case vs of
       [v] -> return $ Out (VText (prettyValue v)) s k
       _ -> badConst
+    Chars -> case vs of
+      [VText t] -> return $ Out (VInt (fromIntegral $ T.length t)) s k
+      _ -> badConst
+    Split -> case vs of
+      [VInt i, VText t] ->
+        let p = T.splitAt (fromInteger i) t
+            t2 = over both VText p
+         in return $ Out (uncurry VPair t2) s k
+      _ -> badConst
     Concat -> case vs of
       [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
       _ -> badConst
