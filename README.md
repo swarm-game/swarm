@@ -46,21 +46,48 @@ Features include:
 Installing
 ==========
 
-There will _soon_ be a release of Swarm on Hackage and in a binary form!
-If you are interested in Haskell or functional programming, you can install
-it from source (see below) or, once it is released, with the Cabal tool.
-For instructions on how to install the binary directly, check the releases.
+**NOTE**: Swarm requires a POSIX-style terminal environment that
+supports `terminfo`.  Linux and MacOS should work fine.  On Windows,
+you will need to use something like the Windows Subsystem for Linux.
+For example, see [the comments on this GitHub
+issue](https://github.com/swarm-game/swarm/issues/53) for instructions
+on building from source on Windows.
 
-Installing from Source
+It is recommended that you use a relatively large terminal window
+(*e.g.* 170 columns x 40 rows or larger).  To find out the size of
+your terminal, you can type `stty size`. If it's not big enough, try
+decreasing the font size. You can read about and/or share recommended
+terminal settings in [this GitHub
+issue](https://github.com/swarm-game/swarm/issues/447).
+
+- [Installing via binaries](#installing-via-binaries)
+- [Installing from Hackage](#installing-from-Hackage)
+- [Installing from source](#installing-from-source)
+
+Installing via binaries
+-----------------------
+
+Coming soon!
+
+Installing from Hackage
+-----------------------
+
+If you can't use the provided binaries, or prefer installing from
+Hackage, you should be able to install [from
+Hackage](https://hackage.haskell.org/package/swarm) with
+
+    cabal install swarm
+
+If you don't already have the `cabal` tool, first [install
+`ghcup`](https://www.haskell.org/ghcup/), then run `ghcup install
+cabal` (if `cabal` was not automatically downloaded as part of
+`ghcup`'s installation).
+
+Installing from source
 ----------------------
 
-**NOTE**: Swarm requires a POSIX-style environment that supports
-`terminfo`.  On Linux and OSX, the below instructions should work
-natively.  On Windows, see [the comments on this GitHub
-issue](https://github.com/swarm-game/swarm/issues/53) for instructions
-getting it to work under the Windows Subsystem for Linux.
-
-To install Swarm from source:
+If you want the latest unreleased bleeding-edge features, or want to
+contribute to Swarm development, you can build from source.
 
 1. Clone the Swarm repository, e.g.
 
@@ -74,10 +101,6 @@ To install Swarm from source:
 
            ghcup install stack
 
-1. It is recommended that you use a relatively large terminal window (*e.g.*
-   132 columns x 43 rows or larger).
-    * To find out the size of your terminal, you can type `stty size`.
-
 1. Now use `stack` to build and run Swarm:
 
        cd /path/to/the/swarm/repo
@@ -85,7 +108,6 @@ To install Swarm from source:
 
 1. Go get a snack while `stack` downloads a Haskell compiler and
    all of Swarm's dependencies.
-1. Have fun!
 
 
 Configuring your editor
@@ -99,7 +121,7 @@ external editors with highlighting and LSP integration:
 ![Editor with problem popup](images/editor.png)
 
 See the `editors` folder for details on how to configure your editor.
-Currently, Emacs and VS Code are officially supported, but more can be
+Currently, emacs and VS Code are officially supported, but more can be
 added.
 
 Community
