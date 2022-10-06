@@ -4,16 +4,16 @@
 
 First Swarm release! Swarm already has:
 
-- programming language based on the polymorphic
+- a programming language based on the polymorphic
   lambda calculus + recursion, with a command monad for describing
   first-class imperative actions
 - scenarios which can be loaded from YAML files
-  - the release comes with official challenges and in-game tutorial
+  - the release comes with official challenges and an in-game tutorial
   - the default Classic and Creative modes use the same YAML syntax
   - we include JSON schemas for editor support when writing scenarios 
 - procedural 2D world generation
 - LSP server built into the Swarm executable
 - Terminal UI interface
-  - running the executable opens Main menu by default
-  - game screen with world view, inventory and REPL
-    - popup windows for messages, challenge description, etc.
+  - running the executable opens the Main menu by default
+  - game screen with a world view, inventory and REPL
+    - popup windows for messages, challenge descriptions, etc.
