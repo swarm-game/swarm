@@ -34,4 +34,4 @@ All notable changes to the "swarm-language" extension will be documented in this
 
 ## version 0.0.1
 
-- Initial release with support for higlighting
+- Initial release with support for highlighting
