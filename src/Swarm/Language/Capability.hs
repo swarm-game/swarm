@@ -203,6 +203,8 @@ constCaps = \case
   -- Text operations
   Format -> Just CText
   Concat -> Just CText
+  Split -> Just CText
+  Chars -> Just CText
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
