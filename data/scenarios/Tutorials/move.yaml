@@ -58,7 +58,7 @@ objectives:
       loc <- as r {has "Win"};
 solution: |
   // 0
-  move;move; turn forward;
+  move;move;
   // 1
   move;move;
   move;move;move;move;
@@ -367,7 +367,11 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      grab
   - name: 2G
     system: true
     display:
