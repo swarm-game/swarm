@@ -10,16 +10,18 @@ the community and connect with others.
   which specifically governs those contributing to the project on
   GitHub, but by extension the whole community.
 - The `#swarm` channel on the [Libera.Chat](https://libera.chat/) IRC
-  network is open to all.  At the moment it's primarily used to
-  discuss development, but you're welcome to use it to discuss
-  anything Swarm-related (*e.g.* asking for help, showing off your cool
-  programming exploits, *etc.*).
+  network is open to all.  If you don't already have a preferred IRC
+  client, you can easily [connect via this web
+  client](https://web.libera.chat/?channels=#swarm). At the moment,
+  the channel is primarily used to discuss development, but you're
+  welcome to use it to discuss anything Swarm-related (*e.g.* asking
+  for help, showing off your cool programming exploits, *etc.*).
 - Feel free to make use of the [Swarm
   wiki](https://github.com/swarm-game/swarm/wiki) on Github as a place to
   collaborate, discuss strategy, post cool robot programs, create
   documentation, or whatever.
 - We are open to other community-building tools and spaces, depending
-  on the desires of people in the community, and especially as the
+  on the desires of people in the community, especially as the
   community grows. For example, GitHub and IRC might be fine while
   there are just a few people hacking on it, but eventually people are
   going to want a place to post their cool screenshots, get help

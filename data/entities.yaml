@@ -591,6 +591,22 @@
     - A up and horizontal wall.
   properties: [unwalkable, known]
 
+- name: left and vertical wall
+  display:
+    attr: entity
+    char: '┤'
+  description:
+    - A left and vertical wall.
+  properties: [unwalkable, known]
+
+- name: right and vertical wall
+  display:
+    attr: entity
+    char: '├'
+  description:
+    - A right and vertical wall.
+  properties: [unwalkable, known]
+
 - name: horizontal wall
   display:
     attr: entity
