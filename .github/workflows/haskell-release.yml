@@ -19,7 +19,7 @@ jobs:
 
       - name: Zip data directory
         run: |
-          zip -r data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
+          zip -r swarm-data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
 
       - name: Create Release
         id: create_release
@@ -27,7 +27,7 @@ jobs:
         with:
           files: |
             LICENSE
-            data.zip
+            swarm-data.zip
 
       - name: Output Release URL File
         run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt

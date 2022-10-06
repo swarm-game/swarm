@@ -89,7 +89,7 @@ You will also need to extract the data to your local Swarm folder so
 the executable can find it:
 ```bash
 mkdir -p ~/.local/share/swarm/
-unzip data.zip -d ~/.local/share/swarm
+unzip swarm-data.zip -d ~/.local/share/swarm
 ```
 
 Installing from Hackage

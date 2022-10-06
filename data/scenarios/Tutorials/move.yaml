@@ -213,17 +213,17 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P horizontal wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P horizontal wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## VERTICAL    ##
   #################
@@ -231,17 +231,17 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P vertical wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P vertical wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## CORNERS     ##
   #################
@@ -259,17 +259,17 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P lower left corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P lower left corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #########
   ##  B  ##
   #########
@@ -277,17 +277,17 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P lower right corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P lower right corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #########
   ##  C  ##
   #########
@@ -295,17 +295,17 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P upper right corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P upper right corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #########
   ##  D  ##
   #########
@@ -313,17 +313,17 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P upper left corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P upper left corner
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## SEPARATORS  ##
   #################
@@ -332,34 +332,34 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 1S up and horizontal wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   # 2
   - name: 2S left and vertical wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2S up and horizontal wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   # 3
   - name: 3S left and vertical wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3S down and horizontal wall
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## GATES       ##
   #################
@@ -376,12 +376,12 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3G
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## GARDENERS   ##
   #################
@@ -389,17 +389,17 @@ robots:
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P flower
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P flower
     system: true
     display:
       invisible: true
-    program: run "data/scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_system.sw"
 entities:
   - name: Win
     display:
