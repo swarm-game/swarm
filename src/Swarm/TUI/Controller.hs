@@ -263,13 +263,14 @@ handleMainEvent ev = do
     -- speed controls
     ControlKey 'x' | isRunning -> modify $ adjustTPS (+)
     ControlKey 'z' | isRunning -> modify $ adjustTPS (-)
-    VtyEvent vev
-      | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- special keys that work on all panels
     MetaKey 'w' -> setFocus WorldPanel
     MetaKey 'e' -> setFocus RobotPanel
     MetaKey 'r' -> setFocus REPLPanel
     MetaKey 't' -> setFocus InfoPanel
+    -- pass keys on to modal event handler if a modal is open
+    VtyEvent vev
+      | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- toggle creative mode if in "cheat mode"
     ControlKey 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
