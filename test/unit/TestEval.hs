@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- | Swarm unit tests
 module TestEval where
@@ -10,7 +9,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
 import Swarm.Game.Value
-import Swarm.Util (quote)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
