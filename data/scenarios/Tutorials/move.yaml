@@ -58,7 +58,7 @@ objectives:
       loc <- as r {has "Win"};
 solution: |
   // 0
-  move;move;
+  move;move; turn forward;
   // 1
   move;move;
   move;move;move;move;
@@ -80,10 +80,10 @@ world:
   default: [blank]
   palette:
     '.': [blank]
-    '*': [blank, flower, check1]
-    'X': [blank, null, 1P flower, check2]
+    '*': [blank, flower]
+    'X': [blank, null, 1P flower]
     'Y': [blank, null, 2P flower]
-    'Z': [blank, null, 3P flower, check4]
+    'Z': [blank, null, 3P flower]
     # FIRST ROOM
     '┌': [blank, upper left corner]
     '┐': [blank, upper right corner, 1S down and horizontal wall]
@@ -147,6 +147,7 @@ robots:
   ## OBJECTIVES  ##
   #################
   - name: check1
+    loc: [2,0]
     system: true
     display:
       invisible: true
@@ -161,6 +162,7 @@ robots:
       );
       create "Win"
   - name: check2
+    loc: [8,0]
     system: true
     display:
       invisible: true
@@ -190,6 +192,7 @@ robots:
       );
       create "Win"
   - name: check4
+    loc: [8,8]
     system: true
     display:
       invisible: true

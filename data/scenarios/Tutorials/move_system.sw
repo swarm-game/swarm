@@ -3,13 +3,15 @@ def until = \c. b <- c; if b {} {until c} end;
 // name format: NA Entity
 // N - one digit room number
 // A one letter action
-name <- whoami;
-let n = fst (split 1 name) in
-let a = fst $ split 1 $ snd $ split 1 name in
-let e = snd $ split 3 name in
+nameCheck <- atomic (
+    name <- whoami;
+    check <- robotNamed ("check" ++ fst (split 1 name));
+    return (name, check)
+);
+let a = fst $ split 1 $ snd $ split 1 $ fst nameCheck in
+let e = snd $ split 3 $ fst nameCheck in
 
-check <- robotNamed ("check" ++ n);
-until (as check {has "Win"});
+until (as (snd nameCheck) {has "Win"});
 
 if (a == "S") {
     if (e != "") { create e } {};
@@ -22,5 +24,5 @@ if (a == "S") {
     if (e != "") { create e } {};
     place e
 } {
-    say $ "Finished waiting for check" ++ n ++ " but I don't know what to do: " ++ a
+    say $ "Finished waiting for check but I don't know what to do: '" ++ a ++ "'"
 }}}
