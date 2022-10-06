@@ -66,16 +66,21 @@ issue](https://github.com/swarm-game/swarm/issues/447).
 Installing via binaries
 -----------------------
 
+Currently we have one binary release built on an Ubuntu XXX system; it
+will probably work on any XXX.  We hope to add MacOS binaries in the
+near future.
+
 You can download the `swarm` binary and compressed data directory from
 the [latest release](https://github.com/swarm-game/swarm/releases). If
 you want to run the binary simply as `swarm`, you have to put it in
-your `PATH`:
+one of the directories in your `PATH`:
 ```bash
 chmod +x ./swarm          # make it executable
 echo $PATH | tr ':' '\n'  # choose one of the listed directories
 mv ./swarm /my/chosen/bin/directory/
 ```
-You will also need to extract the data to your local Swarm folder:
+You will also need to extract the data to your local Swarm folder so
+the executable can find it:
 ```bash
 mkdir -p ~/.local/share/swarm/
 unzip data.zip -d ~/.local/share/swarm
@@ -84,9 +89,9 @@ unzip data.zip -d ~/.local/share/swarm
 Installing from Hackage
 -----------------------
 
-If you can't use the provided binaries, or prefer installing from
-Hackage, you should be able to install [from
-Hackage](https://hackage.haskell.org/package/swarm) with
+If you can't use the provided binaries, or prefer installing [from
+Hackage](https://hackage.haskell.org/package/swarm), you should be
+able to install with
 
     cabal install swarm
 
@@ -94,6 +99,10 @@ If you don't already have the `cabal` tool, first [install
 `ghcup`](https://www.haskell.org/ghcup/), then run `ghcup install
 cabal` (if `cabal` was not automatically downloaded as part of
 `ghcup`'s installation).
+
+You may need to add `~/.cabal/bin` to your `PATH`; alternatively, you
+can install with `cabal install --installdir=<DIR> swarm` to have
+`cabal` install the `swarm` executable in a `<DIR>` of your choosing.
 
 Installing from source
 ----------------------
