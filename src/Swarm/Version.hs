@@ -181,7 +181,7 @@ getNewerReleaseVersion :: IO (Either NewReleaseFailure String)
 getNewerReleaseVersion =
   case gitInfo of
     -- when using cabal install, the git info is unavailable, which is of no interest to players
-    Left _e -> upstreamReleaseVersion
+    Left _e -> (>>= getUpVer) <$> upstreamReleaseVersion
     Right gi ->
       if giBranch gi /= "main"
         then return . Left . OnDevelopmentBranch $ giBranch gi
