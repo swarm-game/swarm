@@ -54,9 +54,9 @@ then be able to follow instructions for installing on Linux.
 
 It is recommended that you use a relatively large terminal window
 (*e.g.* 170 columns x 40 rows or larger).  To find out the size of
-your terminal, you can type `stty size`. If it's not big enough, try
-decreasing the font size. You can read about and/or share recommended
-terminal settings in [this GitHub
+your terminal, you can type `stty size` at a command prompt. If it's
+not big enough, try decreasing the font size. You can read about
+and/or share recommended terminal settings in [this GitHub
 issue](https://github.com/swarm-game/swarm/issues/447).
 
 - [Installing via binaries](#installing-via-binaries)
