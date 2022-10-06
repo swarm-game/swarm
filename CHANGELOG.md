@@ -1,5 +1,15 @@
 # Revision history for swarm
 
+## **?.?.?.?** - ????-??-??
+
+A bugfixing release for a few minor bugs that plagued the first release:
+
+- fallback to to the swarm data directory when the `run` file is not found
+  - this caused the move tutorial to be unplayable because it tried to execute
+    `run "data/scenarios/Tutorials/move_system.sw"`
+    but now it should be fixed
+
+
 ## **0.1.0.0** - 2022-10-06
 
 First Swarm release! Swarm already has:
