@@ -66,8 +66,8 @@ issue](https://github.com/swarm-game/swarm/issues/447).
 Installing via binaries
 -----------------------
 
-Currently we have one binary release built on an Ubuntu XXX system; it
-will probably work on any XXX.  We hope to add MacOS binaries in the
+Currently we have one binary release built on [Ubuntu Bionic](https://github.com/docker-library/buildpack-deps/blob/98a5ab81d47a106c458cdf90733df0ee8beea06c/ubuntu/bionic/Dockerfile); it
+will probably work on any GNU/Linux.  We hope to add MacOS binaries in the
 near future.
 
 You can download the `swarm` binary and compressed data directory from
