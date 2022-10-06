@@ -18,7 +18,7 @@ objectives:
       return (not b)
     } { return false }
 solution: |
-  run "data/scenarios/Challenges/Mazes/loopy_maze_sol.sw"
+  run "scenarios/Challenges/Mazes/loopy_maze_sol.sw"
 robots:
   - name: base
     dir: [0,1]
