@@ -212,19 +212,6 @@ testEval g =
         , testCase
             "try / div by 0"
             ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
-        , testProperty
-            "number of characters"
-            ( \s ->
-                ("chars " <> quote (T.pack s)) `evaluatesToP` VInt (fromIntegral $ length s)
-            )
-        , testProperty
-            "split undo concatenation"
-            ( \s1 s2 ->
-                -- \s1.\s2. (s1,s2) == split (chars s1) (s1 ++ s2)
-                let (t1, t2) = (tquote s1, tquote s2)
-                 in T.concat ["(", t1, ",", t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
-                      `evaluatesToP` VBool True
-            )
         ]
     , testGroup
         "text"
@@ -240,11 +227,24 @@ testEval g =
         , testCase
             "concat"
             ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VText "x = 5!")
+        , testProperty
+            "number of characters"
+            ( \s ->
+                ("chars " <> tquote s) `evaluatesToP` VInt (fromIntegral $ length s)
+            )
+        , testProperty
+            "split undo concatenation"
+            ( \s1 s2 ->
+                -- \s1.\s2. (s1,s2) == split (chars s1) (s1 ++ s2)
+                let (t1, t2) = (tquote s1, tquote s2)
+                 in T.concat ["(", t1, ",", t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
+                      `evaluatesToP` VBool True
+            )
         ]
     ]
  where
   tquote :: String -> Text
-  tquote = quote . T.pack
+  tquote = T.pack . show
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
     result <- evaluate tm
@@ -263,7 +263,7 @@ testEval g =
   evaluatesToP :: Text -> Value -> Property
   evaluatesToP tm val = ioProperty $ do
     result <- evaluate tm
-    return $ Right val == (fst <$> result)
+    return $ Right val === (fst <$> result)
 
   evaluatesToInAtMost :: Text -> (Value, Int) -> Assertion
   evaluatesToInAtMost tm (val, maxSteps) = do

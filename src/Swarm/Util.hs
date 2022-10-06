@@ -373,14 +373,11 @@ number _ = plural
 
 -- | Surround some text in single quotes.
 squote :: Text -> Text
-squote t = T.concat ["'", escape t, "'"]
+squote t = T.concat ["'", t, "'"]
 
 -- | Surround some text in double quotes.
 quote :: Text -> Text
-quote t = T.concat ["\"", escape t, "\""]
-
-escape :: Text -> Text
-escape = T.replace "\"" "\\\"" . T.replace "\\" "\\\\"
+quote t = T.concat ["\"", t, "\""]
 
 -- | Make a list of things with commas and the word "and".
 commaList :: [Text] -> Text
