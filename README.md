@@ -66,7 +66,20 @@ issue](https://github.com/swarm-game/swarm/issues/447).
 Installing via binaries
 -----------------------
 
-Coming soon!
+You can download the `swarm` binary and compressed data directory from
+the [latest release](https://github.com/swarm-game/swarm/releases). If
+you want to run the binary simply as `swarm`, you have to put it in
+your `PATH`:
+```bash
+chmod +x ./swarm          # make it executable
+echo $PATH | tr ':' '\n'  # choose one of the listed directories
+mv ./swarm /my/chosen/bin/directory/
+```
+You will also need to extract the data to your local Swarm folder:
+```bash
+mkdir -p ~/.local/share/swarm/
+unzip data.zip -d ~/.local/share/swarm
+```
 
 Installing from Hackage
 -----------------------
