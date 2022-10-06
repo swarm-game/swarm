@@ -68,7 +68,6 @@ import Swarm.Language.Syntax
 import Swarm.Util
 import System.Clock (TimeSpec)
 import System.Clock qualified
-import System.FilePath.Lens (filename)
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
