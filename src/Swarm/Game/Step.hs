@@ -40,7 +40,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isNothing, listToMaybe, catMaybes)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -68,10 +68,10 @@ import Swarm.Language.Syntax
 import Swarm.Util
 import System.Clock (TimeSpec)
 import System.Clock qualified
+import System.FilePath.Lens (filename)
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
-import System.FilePath.Lens (filename)
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
