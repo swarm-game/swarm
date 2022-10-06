@@ -1,14 +1,17 @@
 # Revision history for swarm
 
-## **?.?.?.?** - ????-??-??
+## **0.1.0.1** - 2022-10-06
 
-A bugfixing release for a few minor bugs that plagued the first release:
+A bugfix release for a few minor bugs that plagued the first release:
 
-- fallback to to the swarm data directory when the `run` file is not found
-  - this caused the move tutorial to be unplayable because it tried to execute
+- Fall back to to the swarm data directory when a `run` file is not
+  found ([#730](https://github.com/swarm-game/swarm/pull/730))
+  - This bug caused the move tutorial to be unplayable because it tried to execute
     `run "data/scenarios/Tutorials/move_system.sw"`
-    but now it should be fixed
-
+- Fix version check when there is no GitInfo
+  ([#729](https://github.com/swarm-game/swarm/pull/729))
+  - This bug caused the game to always report that there was a new
+    version available even when you already had the latest (and only!) version.
 
 ## **0.1.0.0** - 2022-10-06
 
