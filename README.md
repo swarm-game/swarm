@@ -47,11 +47,10 @@ Installing
 ==========
 
 **NOTE**: Swarm requires a POSIX-style terminal environment that
-supports `terminfo`.  Linux and MacOS should work fine.  On Windows,
-you will need to use something like the Windows Subsystem for Linux.
-For example, see [the comments on this GitHub
-issue](https://github.com/swarm-game/swarm/issues/53) for instructions
-on building from source on Windows.
+supports `terminfo`.  Linux and MacOS should work out of the box.  On
+Windows, you will need to use [Windows Subsystem for
+Linux](https://learn.microsoft.com/en-us/windows/wsl/); you should
+then be able to follow instructions for installing on Linux.
 
 It is recommended that you use a relatively large terminal window
 (*e.g.* 170 columns x 40 rows or larger).  To find out the size of
