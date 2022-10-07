@@ -37,7 +37,6 @@ import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
 
-
 -- | A value, or something like a value, along with its
 --   type and requirements
 data Processed val = Processed val Polytype Requirements

@@ -101,13 +101,13 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Pipeline (Processed (Processed))
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
-import Swarm.Language.Pipeline (Processed (Processed))
 
 -- | A record that stores the information
 --   for all defintions stored in a 'Robot'
@@ -433,7 +433,6 @@ tickSteps :: Lens' Robot Int
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
-
 emptyRobotContext :: RobotContext
 emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
 
@@ -520,21 +519,21 @@ type instance IxValue RobotContext = Processed Value
 instance Ixed RobotContext
 instance At RobotContext where
   at name = lens getter setter
-    where
-      getter ctx =
-        do
-          typ <- Ctx.lookup name (ctx ^. defTypes)
-          val <- Ctx.lookup name (ctx ^. defVals)
-          req <- Ctx.lookup name (ctx ^. defReqs)
-          return $ Processed val typ req
-      setter ctx Nothing = 
-        ctx & defTypes %~ Ctx.delete name
-            & defVals %~ Ctx.delete name
-            & defReqs %~ Ctx.delete name
-      setter ctx (Just (Processed val typ req)) = 
-        ctx & defTypes %~ Ctx.addBinding name typ
-            & defVals %~ Ctx.addBinding name val
-            & defReqs %~ Ctx.addBinding name req
+   where
+    getter ctx =
+      do
+        typ <- Ctx.lookup name (ctx ^. defTypes)
+        val <- Ctx.lookup name (ctx ^. defVals)
+        req <- Ctx.lookup name (ctx ^. defReqs)
+        return $ Processed val typ req
+    setter ctx Nothing =
+      ctx & defTypes %~ Ctx.delete name
+        & defVals %~ Ctx.delete name
+        & defReqs %~ Ctx.delete name
+    setter ctx (Just (Processed val typ req)) =
+      ctx & defTypes %~ Ctx.addBinding name typ
+        & defVals %~ Ctx.addBinding name val
+        & defReqs %~ Ctx.addBinding name req
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool

@@ -688,12 +688,11 @@ stripCmd pty = pty
 topContext :: AppState -> RobotContext
 topContext s = ctxPossiblyWithIt
  where
-  ctx = fromMaybe emptyRobotContext $ s ^? gameState . robotMap . at 0 ._Just . robotContext
-  
+  ctx = fromMaybe emptyRobotContext $ s ^? gameState . robotMap . at 0 . _Just . robotContext
+
   ctxPossiblyWithIt = case s ^. gameState . replStatus of
     REPLDone (Just p) -> ctx & at "it" ?~ p
     _ -> ctx
-
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -926,7 +925,7 @@ makeEntity e = do
 
   case isActive <$> (s ^. gameState . robotMap . at 0) of
     Just False -> do
-      gameState . replStatus .= REPLWorking (Processed Nothing mkTy mkReq) 
+      gameState . replStatus .= REPLWorking (Processed Nothing mkTy mkReq)
       gameState . robotMap . ix 0 . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
