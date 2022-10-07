@@ -904,7 +904,6 @@ populateInventoryList (Just r) = do
 resetWithREPLForm :: Form REPLPrompt AppEvent Name -> UIState -> UIState
 resetWithREPLForm f =
   (uiReplForm .~ f)
-    . (uiReplType .~ Nothing)
     . (uiError .~ Nothing)
 
 ------------------------------------------------------------

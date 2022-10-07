@@ -208,7 +208,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
-  uiState . uiMenu
+  uiState
+    . uiMenu
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
       Just stk' -> NewGameMenu stk'
@@ -236,11 +237,11 @@ handleMainEvent ev = do
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do
-        safeAutoUnpause
-        uiState . uiModal .= Nothing
-        -- message modal is not autopaused, so update notifications when leaving it
-        when (m ^. modalType == MessagesModal) $ do
-          gameState . lastSeenMessageTime .= s ^. gameState . ticks
+          safeAutoUnpause
+          uiState . uiModal .= Nothing
+          -- message modal is not autopaused, so update notifications when leaving it
+          when (m ^. modalType == MessagesModal) $ do
+            gameState . lastSeenMessageTime .= s ^. gameState . ticks
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -583,7 +584,7 @@ updateUI = do
   replUpdated <- case g ^. replStatus of
     -- It did, and the result was the unit value.  Just reset replStatus.
     REPLWorking _ (Just VUnit) -> do
-      gameState . replStatus .= REPLDone
+      gameState . replStatus .= REPLDone (Just (PolyUnit, VUnit))
       pure True
 
     -- It did, and returned some other value.  Pretty-print the
@@ -591,7 +592,7 @@ updateUI = do
     REPLWorking pty (Just v) -> do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
-      gameState . replStatus .= REPLDone
+      gameState . replStatus .= REPLDone (Just (pty, v))
       pure True
 
     -- Otherwise, do nothing.
@@ -720,8 +721,8 @@ handleREPLEvent = \case
             Just found
               | T.null t -> uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
               | otherwise -> do
-                uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
-                modify validateREPLForm
+                  uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
+                  modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
@@ -767,9 +768,9 @@ tabComplete s (CmdPrompt t mms)
   | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
   | T.null lastWord = CmdPrompt t []
   | otherwise = case matches of
-    [] -> CmdPrompt t []
-    [m] -> CmdPrompt (completeWith m) []
-    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+      [] -> CmdPrompt t []
+      [m] -> CmdPrompt (completeWith m) []
+      (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
   completeWith m = T.append t (T.drop (T.length lastWord) m)
   lastWord = T.takeWhileEnd isIdentChar t
@@ -782,12 +783,16 @@ tabComplete s (CmdPrompt t mms)
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
+    CmdPrompt "" _ ->
+      let theType = s ^. gameState . replStatus . replActiveType
+       in s & uiState . uiReplType .~ theType
     CmdPrompt uinput _ ->
       let result = processTerm' topTypeCtx topReqCtx uinput
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
-       in s & uiState . uiReplForm %~ validate result
+       in s
+            & uiState . uiReplForm %~ validate result
             & uiState . uiReplType .~ theType
     SearchPrompt _ _ -> s
  where
@@ -908,7 +913,7 @@ handleRobotPanelEvent = \case
 makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
-  let mkTy = Forall [] $ TyCmd TyUnit
+  let mkTy = PolyUnit
       mkProg = TApp (TConst Make) (TText (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
       topStore =

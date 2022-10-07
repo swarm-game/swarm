@@ -58,6 +58,7 @@ module Swarm.Language.Types (
   -- * Polytypes
   Poly (..),
   Polytype,
+  pattern PolyUnit,
   UPolytype,
 
   -- * Contexts
@@ -157,6 +158,7 @@ type UType = UTerm TypeF IntVar
 -- The derived Data instances are so we can make a quasiquoter for
 -- types.
 deriving instance Data UType
+
 deriving instance Data IntVar
 
 -- | A generic /fold/ for things defined via 'UTerm' (including, in
@@ -367,7 +369,12 @@ pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty1 = UTerm (TyDelayF ty1)
 
+pattern PolyUnit :: Polytype
+pattern PolyUnit = Forall [] (TyCmd TyUnit)
+
 -- Derive aeson instances for type serialization
 deriving instance Generic Type
+
 deriving instance ToJSON Type
+
 deriving instance FromJSON Type
