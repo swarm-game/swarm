@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE InstanceSigs #-}
 
 -- |
 -- Module      :  Swarm.Game.Robot
@@ -106,6 +107,8 @@ import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
+import Swarm.Language.Context (Var, lookup)
+import Swarm.Language.Pipeline (Processed (Processed))
 
 -- | A record that stores the information
 --   for all defintions stored in a 'Robot'
@@ -508,6 +511,29 @@ instance FromJSONE EntityMap TRobot where
    where
     mkMachine Nothing = Out VUnit emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore
+
+type instance Index RobotContext = Ctx.Var
+type instance IxValue RobotContext = Processed Value
+
+instance Ixed RobotContext
+instance At RobotContext where
+  at :: Var -> Lens' RobotContext (Maybe (Processed Value))
+  at name = lens getter setter
+    where
+      getter ctx =
+        do
+          typ <- Ctx.lookup name (ctx ^. defTypes)
+          val <- Ctx.lookup name (ctx ^. defVals)
+          req <- Ctx.lookup name (ctx ^. defReqs)
+          return $ Processed val typ req
+      setter ctx Nothing = 
+        ctx & defTypes %~ Ctx.delete name
+            & defVals %~ Ctx.delete name
+            & defReqs %~ Ctx.delete name
+      setter ctx (Just (Processed val typ req)) = 
+        ctx & defTypes %~ Ctx.addBinding name typ
+            & defVals %~ Ctx.addBinding name val
+            & defReqs %~ Ctx.addBinding name req
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
