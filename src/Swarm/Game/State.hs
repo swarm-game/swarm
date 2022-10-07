@@ -152,6 +152,7 @@ import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Requirement (Requirements)
 import Swarm.Language.Syntax (Const, Term (TText), allConst)
 import Swarm.Language.Types
 import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
@@ -178,12 +179,12 @@ makePrisms ''ViewCenterRule
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
-    REPLDone (Maybe (Polytype, Value))
+    REPLDone (Maybe (Polytype, Requirements, Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
     --   entered.  The @Maybe Value@ starts out as @Nothing@ and gets
     --   filled in with a result once the command completes.
-    REPLWorking Polytype (Maybe Value)
+    REPLWorking (Polytype, Requirements) (Maybe Value)
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinCondition
@@ -505,8 +506,8 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
 replActiveType :: Getter REPLStatus (Maybe Polytype)
 replActiveType = to getter
  where
-  getter (REPLDone (Just (typ, _))) = Just typ
-  getter (REPLWorking typ _) = Just typ
+  getter (REPLDone (Just (typ, _, _))) = Just typ
+  getter (REPLWorking (typ, _) _) = Just typ
   getter _ = Nothing
 
 -- | Get the notification list of messages from the point of view of focused robot.
@@ -764,7 +765,7 @@ scenarioToGameState scenario userSeed toRun g = do
         -- otherwise the store of definition cells is not saved (see #333)
         _replStatus = case toRun of
           Nothing -> REPLDone Nothing
-          Just _ -> REPLWorking PolyUnit Nothing
+          Just _ -> REPLWorking (PolyUnit, mempty) Nothing
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0

@@ -36,7 +36,7 @@ module Swarm.Game.Robot (
   TRobot,
 
   -- * Robot context
-  RobotContext,
+  RobotContext (RobotContext),
   defTypes,
   defReqs,
   defVals,
