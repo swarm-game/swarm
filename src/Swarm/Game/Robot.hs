@@ -6,7 +6,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE InstanceSigs #-}
 
 -- |
 -- Module      :  Swarm.Game.Robot
@@ -37,7 +36,7 @@ module Swarm.Game.Robot (
   TRobot,
 
   -- * Robot context
-  RobotContext (RobotContext),
+  RobotContext,
   defTypes,
   defReqs,
   defVals,
@@ -108,7 +107,6 @@ import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
-import Swarm.Language.Context (Var, lookup)
 import Swarm.Language.Pipeline (Processed (Processed))
 
 -- | A record that stores the information
@@ -521,7 +519,6 @@ type instance IxValue RobotContext = Processed Value
 
 instance Ixed RobotContext
 instance At RobotContext where
-  at :: Var -> Lens' RobotContext (Maybe (Processed Value))
   at name = lens getter setter
     where
       getter ctx =

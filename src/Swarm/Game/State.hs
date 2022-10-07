@@ -152,7 +152,6 @@ import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm, Processed (Processed))
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Requirement (Requirements)
 import Swarm.Language.Syntax (Const, Term (TText), allConst)
 import Swarm.Language.Types
 import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
