@@ -846,7 +846,6 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
             let robotWithLoc = trobotLocation ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
              in map robotWithLoc robotList
         )
-      
 
 -- | Create an initial game state for a specific scenario.
 initGameStateForScenario :: String -> Maybe Seed -> Maybe String -> ExceptT Text IO GameState
