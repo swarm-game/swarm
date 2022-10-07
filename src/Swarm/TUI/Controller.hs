@@ -686,21 +686,14 @@ stripCmd pty = pty
 ------------------------------------------------------------
 
 topContext :: AppState -> RobotContext
-topContext s = RobotContext topTypeCtx topReqCtx topValCtx topStore
+topContext s = ctxPossiblyWithIt
  where
-  itCtxConstr = Swarm.Language.Context.singleton "it"
+  ctx = fromMaybe emptyRobotContext $ s ^? gameState . robotMap . at 0 ._Just . robotContext
+  
+  ctxPossiblyWithIt = case s ^. gameState . replStatus of
+    REPLDone (Just p) -> ctx & at "it" ?~ p
+    _ -> ctx
 
-  (itType, itReq, itVal) = case s ^. gameState . replStatus of
-    REPLDone (Just (Processed val typ req)) -> (itCtxConstr typ, itCtxConstr req, itCtxConstr val)
-    _ -> (mempty, mempty, mempty)
-
-  topTypeCtx = itType <> s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-  topReqCtx = itReq <> s ^. gameState . robotMap . ix 0 . robotContext . defReqs
-  topValCtx = itVal <> s ^. gameState . robotMap . ix 0 . robotContext . defVals
-
-  topStore =
-    fromMaybe emptyStore $
-      s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()

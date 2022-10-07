@@ -70,6 +70,7 @@ module Swarm.Game.Robot (
   runningAtomic,
 
   -- ** Creation & instantiation
+  emptyRobotContext,
   mkRobot,
   instantiateRobot,
 
@@ -435,6 +436,9 @@ tickSteps :: Lens' Robot Int
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
 
+emptyRobotContext :: RobotContext
+emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+
 -- | A general function for creating robots.
 mkRobot ::
   -- | ID number of the robot.
@@ -475,7 +479,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+    , _robotContext = emptyRobotContext
     , _robotID = rid
     , _robotParentID = pid
     , _robotHeavy = heavy
