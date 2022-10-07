@@ -208,8 +208,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
-  uiState
-    . uiMenu
+  uiState . uiMenu
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
       Just stk' -> NewGameMenu stk'
@@ -791,8 +790,7 @@ validateREPLForm s =
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
-       in s
-            & uiState . uiReplForm %~ validate result
+       in s & uiState . uiReplForm %~ validate result
             & uiState . uiReplType .~ theType
     SearchPrompt _ _ -> s
  where
