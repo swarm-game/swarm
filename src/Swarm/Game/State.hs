@@ -150,7 +150,7 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pipeline (ProcessedTerm, Processed (Processed))
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement (Requirements)
 import Swarm.Language.Syntax (Const, Term (TText), allConst)
@@ -179,12 +179,12 @@ makePrisms ''ViewCenterRule
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
-    REPLDone (Maybe (Polytype, Requirements, Value))
+    REPLDone (Maybe (Processed Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
     --   entered.  The @Maybe Value@ starts out as @Nothing@ and gets
     --   filled in with a result once the command completes.
-    REPLWorking (Polytype, Requirements) (Maybe Value)
+    REPLWorking (Processed (Maybe Value))
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinCondition
@@ -500,14 +500,14 @@ replWorking :: Getter GameState Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
  where
   matchesWorking (REPLDone _) = False
-  matchesWorking (REPLWorking _ _) = True
+  matchesWorking (REPLWorking _) = True
 
 -- | Either the type of the command being executed, or of the last command
 replActiveType :: Getter REPLStatus (Maybe Polytype)
 replActiveType = to getter
  where
-  getter (REPLDone (Just (typ, _, _))) = Just typ
-  getter (REPLWorking (typ, _) _) = Just typ
+  getter (REPLDone (Just (Processed _ typ _))) = Just typ
+  getter (REPLWorking (Processed _ typ _)) = Just typ
   getter _ = Nothing
 
 -- | Get the notification list of messages from the point of view of focused robot.

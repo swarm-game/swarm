@@ -13,6 +13,7 @@
 -- text representing a Swarm program into something useful, this is
 -- probably the module you want.
 module Swarm.Language.Pipeline (
+  Processed (..),
   ProcessedTerm (..),
   processTerm,
   processParsedTerm,
@@ -35,6 +36,12 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
+
+
+-- | A value, or something like a value, along with its
+--   type and requirements
+data Processed val = Processed val Polytype Requirements
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 -- | A record containing the results of the language processing
 --   pipeline.  Put a 'Term' in, and get one of these out.
