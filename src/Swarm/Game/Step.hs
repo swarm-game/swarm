@@ -110,9 +110,9 @@ gameTick = do
     Just r -> do
       res <- use replStatus
       case res of
-        REPLWorking ty Nothing -> case getResult r of
+        REPLWorking (Processed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
-            replStatus .= REPLWorking ty (Just v)
+            replStatus .= REPLWorking (Processed (Just v) ty req)
             robotMap . ix 0 . robotContext . defStore .= s
           Nothing -> return ()
         _otherREPLStatus -> return ()

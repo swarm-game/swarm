@@ -765,7 +765,7 @@ scenarioToGameState scenario userSeed toRun g = do
         -- otherwise the store of definition cells is not saved (see #333)
         _replStatus = case toRun of
           Nothing -> REPLDone Nothing
-          Just _ -> REPLWorking (PolyUnit, mempty) Nothing
+          Just _ -> REPLWorking (Processed Nothing PolyUnit mempty)
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0
