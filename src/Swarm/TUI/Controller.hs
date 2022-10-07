@@ -583,7 +583,7 @@ updateUI = do
   replUpdated <- case g ^. replStatus of
     -- It did, and the result was the unit value.  Just reset replStatus.
     REPLWorking _ (Just VUnit) -> do
-      gameState . replStatus .= REPLDone
+      gameState . replStatus .= REPLDone (Just (PolyUnit, VUnit))
       pure True
 
     -- It did, and returned some other value.  Pretty-print the
@@ -591,7 +591,7 @@ updateUI = do
     REPLWorking pty (Just v) -> do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
-      gameState . replStatus .= REPLDone
+      gameState . replStatus .= REPLDone (Just (pty, v))
       pure True
 
     -- Otherwise, do nothing.
@@ -782,6 +782,9 @@ tabComplete s (CmdPrompt t mms)
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
+    CmdPrompt "" _ ->
+      let theType = s ^. gameState . replStatus . replActiveType
+       in s & uiState . uiReplType .~ theType
     CmdPrompt uinput _ ->
       let result = processTerm' topTypeCtx topReqCtx uinput
           theType = case result of
@@ -908,7 +911,7 @@ handleRobotPanelEvent = \case
 makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
-  let mkTy = Forall [] $ TyCmd TyUnit
+  let mkTy = PolyUnit
       mkProg = TApp (TConst Make) (TText (e ^. entityName))
       mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
       topStore =

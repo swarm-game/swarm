@@ -62,6 +62,7 @@ module Swarm.Game.State (
   needsRedraw,
   replStatus,
   replWorking,
+  replActiveType,
   messageQueue,
   lastSeenMessageTime,
   focusedRobotID,
@@ -176,7 +177,8 @@ makePrisms ''ViewCenterRule
 -- | A data type to represent the current status of the REPL.
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
-    REPLDone
+    --   We persist the last value and its type though.
+    REPLDone (Maybe (Polytype, Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
     --   entered.  The @Maybe Value@ starts out as @Nothing@ and gets
@@ -496,8 +498,16 @@ viewCenterRule = lens getter setter
 replWorking :: Getter GameState Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
  where
-  matchesWorking REPLDone = False
+  matchesWorking (REPLDone _) = False
   matchesWorking (REPLWorking _ _) = True
+
+-- | Either the type of the command being executed, or of the last command
+replActiveType :: Getter REPLStatus (Maybe Polytype)
+replActiveType = to getter
+ where
+  getter (REPLDone (Just (typ, _))) = Just typ
+  getter (REPLWorking typ _) = Just typ
+  getter _ = Nothing
 
 -- | Get the notification list of messages from the point of view of focused robot.
 messageNotifications :: Getter GameState (Notifications LogEntry)
@@ -703,7 +713,7 @@ initGameState = do
       , _viewCenterRule = VCRobot 0
       , _viewCenter = V2 0 0
       , _needsRedraw = False
-      , _replStatus = REPLDone
+      , _replStatus = REPLDone Nothing
       , _messageQueue = Empty
       , _lastSeenMessageTime = -1
       , _focusedRobotID = 0
@@ -753,8 +763,8 @@ scenarioToGameState scenario userSeed toRun g = do
       , -- When starting base with the run flag, REPL status must be set to working,
         -- otherwise the store of definition cells is not saved (see #333)
         _replStatus = case toRun of
-          Nothing -> REPLDone
-          Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
+          Nothing -> REPLDone Nothing
+          Just _ -> REPLWorking PolyUnit Nothing
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0

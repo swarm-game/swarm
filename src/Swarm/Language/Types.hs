@@ -58,6 +58,7 @@ module Swarm.Language.Types (
   -- * Polytypes
   Poly (..),
   Polytype,
+  pattern PolyUnit,
   UPolytype,
 
   -- * Contexts
@@ -366,6 +367,9 @@ pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
 
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty1 = UTerm (TyDelayF ty1)
+
+pattern PolyUnit :: Polytype
+pattern PolyUnit = Forall [] (TyCmd TyUnit)
 
 -- Derive aeson instances for type serialization
 deriving instance Generic Type
