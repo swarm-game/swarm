@@ -23,6 +23,7 @@ module Swarm.Language.Types (
   tyVars,
   pattern TyBase,
   pattern TyVar,
+  pattern TyVoid,
   pattern TyUnit,
   pattern TyInt,
   pattern TyText,
@@ -39,6 +40,7 @@ module Swarm.Language.Types (
   UType,
   pattern UTyBase,
   pattern UTyVar,
+  pattern UTyVoid,
   pattern UTyUnit,
   pattern UTyInt,
   pattern UTyText,
@@ -96,7 +98,9 @@ import Witch
 
 -- | Base types.
 data BaseTy
-  = -- | The unit type, with a single inhabitant.
+  = -- | The void type, with no inhabintants.
+    BVoid
+  | -- | The unit type, with a single inhabitant.
     BUnit
   | -- | Signed, arbitrary-size integers.
     BInt
@@ -289,6 +293,9 @@ pattern TyBase b = Fix (TyBaseF b)
 pattern TyVar :: Var -> Type
 pattern TyVar v = Fix (TyVarF v)
 
+pattern TyVoid :: Type
+pattern TyVoid = Fix (TyBaseF BVoid)
+
 pattern TyUnit :: Type
 pattern TyUnit = Fix (TyBaseF BUnit)
 
@@ -333,6 +340,9 @@ pattern UTyBase b = UTerm (TyBaseF b)
 
 pattern UTyVar :: Var -> UType
 pattern UTyVar v = UTerm (TyVarF v)
+
+pattern UTyVoid :: UType
+pattern UTyVoid = UTerm (TyBaseF BVoid)
 
 pattern UTyUnit :: UType
 pattern UTyUnit = UTerm (TyBaseF BUnit)

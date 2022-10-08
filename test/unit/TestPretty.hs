@@ -5,6 +5,7 @@ module TestPretty where
 
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
+import Swarm.Language.Types
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -76,6 +77,10 @@ testPrettyConst =
         "pairs #225 - nested pairs are printed right-associative"
         ( equalPretty "(1, 2, 3)" $
             TPair (TInt 1) (TPair (TInt 2) (TInt 3))
+        )
+    , testCase
+        "void type"
+        ( assertEqual "" "void" . show $ ppr TyVoid
         )
     ]
  where
