@@ -685,6 +685,9 @@ stripCmd pty = pty
 -- REPL events
 ------------------------------------------------------------
 
+-- | Context for the REPL commands to execute in. Contains the base
+--   robot context plus the `it` variable that refers to the last
+--   computed value.
 topContext :: AppState -> RobotContext
 topContext s = ctxPossiblyWithIt
  where
