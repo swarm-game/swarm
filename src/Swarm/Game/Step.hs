@@ -498,6 +498,10 @@ stepCESK cesk = case cesk of
   ------------------------------------------------------------
   -- Execution
 
+  -- To execute a value wrapped in VLocal, we push a FDiscardEnv frame
+  -- on the stack and continue.
+  Out (VLocal v) s (FExec : k) ->
+    return $ Out v s (FExec : FDiscardEnv : k)
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
   -- called.  We memoize both recursive and non-recursive definitions,

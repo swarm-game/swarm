@@ -85,6 +85,11 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
+  -- | A special wrapper indicating that any names bound by the inner
+  --   @Value@ should not escape to the outer scope.  A @VLocal@
+  --   wrapper is automatically added every time we look up the value
+  --   of a variable.
+  VLocal :: Value -> Value
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Pretty-print a value.
@@ -112,6 +117,7 @@ valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TRef n
+valueToTerm (VLocal v) = valueToTerm v
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value
