@@ -12,4 +12,3 @@ robots:
       attr: robot
 world:
   default: [grass]
-  offset: true
