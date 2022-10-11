@@ -77,6 +77,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model

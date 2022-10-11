@@ -65,6 +65,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Util
 import System.Clock (TimeSpec)
 import System.Clock qualified

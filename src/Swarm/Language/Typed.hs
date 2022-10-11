@@ -3,6 +3,9 @@
 module Swarm.Language.Typed (Typed (..), value, polytype, requires) where
 
 import Control.Lens (makeLenses)
+import Data.Aeson (ToJSON)
+import Data.Aeson.Types (FromJSON)
+import GHC.Generics (Generic)
 import Swarm.Language.Requirement (Requirements)
 import Swarm.Language.Types (Polytype)
 
@@ -12,5 +15,6 @@ data Typed v = Typed
   , _polytype :: Polytype
   , _requires :: Requirements
   }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 makeLenses ''Typed
