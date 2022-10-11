@@ -9,7 +9,7 @@ import GHC.Generics (Generic)
 import Swarm.Language.Requirement (Requirements)
 import Swarm.Language.Types (Polytype)
 
--- | A value, or a hole, or something else that has its type & requirementss fixed
+-- | A value, or a hole, or something else that has its type & requirements fixed
 data Typed v = Typed
   { _value :: v
   , _polytype :: Polytype
