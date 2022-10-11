@@ -114,7 +114,7 @@ gameTick = do
         REPLWorking (Typed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
             replStatus .= REPLWorking (Typed (Just v) ty req)
-            robotMap . ix 0 . robotContext . defStore .= s
+            baseRobot . robotContext . defStore .= s
           Nothing -> return ()
         _otherREPLStatus -> return ()
     Nothing -> return ()

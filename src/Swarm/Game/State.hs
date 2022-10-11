@@ -38,6 +38,7 @@ module Swarm.Game.State (
   robotsByLocation,
   robotsAtLocation,
   robotsInArea,
+  baseRobot,
   activeRobots,
   waitingRobots,
   availableRecipes,
@@ -61,6 +62,7 @@ module Swarm.Game.State (
   viewCenter,
   needsRedraw,
   replStatus,
+  replNextValueIndex,
   replWorking,
   replActiveType,
   messageQueue,
@@ -286,6 +288,7 @@ data GameState = GameState
   , _viewCenter :: V2 Int64
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
+  , _replNextValueIndex :: Integer
   , _messageQueue :: Seq LogEntry
   , _lastSeenMessageTime :: Integer
   , _focusedRobotID :: RID
@@ -361,6 +364,9 @@ robotsInArea o d gs = map (rm IM.!) rids
   rm = gs ^. robotMap
   rl = gs ^. robotsByLocation
   rids = concatMap IS.elems $ getElemsInArea o d rl
+
+baseRobot :: Traversal' GameState Robot
+baseRobot = robotMap . ix 0 
 
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
@@ -442,6 +448,9 @@ needsRedraw :: Lens' GameState Bool
 
 -- | The current status of the REPL.
 replStatus :: Lens' GameState REPLStatus
+
+-- | The index of the next it{index} value
+replNextValueIndex :: Lens' GameState Integer
 
 -- | A queue of global messages.
 --
@@ -715,6 +724,7 @@ initGameState = do
       , _viewCenter = V2 0 0
       , _needsRedraw = False
       , _replStatus = REPLDone Nothing
+      , _replNextValueIndex = 0
       , _messageQueue = Empty
       , _lastSeenMessageTime = -1
       , _focusedRobotID = 0

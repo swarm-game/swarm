@@ -57,6 +57,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
@@ -590,9 +591,14 @@ updateUI = do
     -- It did, and returned some other value.  Pretty-print the
     -- result as a REPL output, with its type, and reset the replStatus.
     REPLWorking (Typed (Just v) pty reqs) -> do
-      let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
+      let val = Typed v pty reqs
+      itIx <- use (gameState . replNextValueIndex)
+      let itName = fromString $ "it" ++ show itIx
+      let out = T.intercalate " " [itName, " := ", into (prettyValue v), ":", prettyText (stripCmd pty)]
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
-      gameState . replStatus .= REPLDone (Just $ Typed v pty reqs)
+      gameState . replStatus .= REPLDone (Just val)
+      gameState . baseRobot . robotContext . at itName .= Just val
+      gameState . replNextValueIndex %= (+1)
       pure True
 
     -- Otherwise, do nothing.
@@ -687,12 +693,17 @@ stripCmd pty = pty
 ------------------------------------------------------------
 
 -- | Context for the REPL commands to execute in. Contains the base
---   robot context plus the `it` variable that refers to the last
---   computed value.
+--   robot context plus the `it{i}` variables that refer to the previous
+--   computed values
 topContext :: AppState -> RobotContext
 topContext s = ctxPossiblyWithIt
  where
-  ctx = fromMaybe emptyRobotContext $ s ^? gameState . robotMap . at 0 . _Just . robotContext
+  ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
+
+  -- its :: [(Text, Typed Value)]
+  -- its = zip (map (fromString . ("it" ++) . show @Int) [0 ..]) $ s ^. gameState . replValueHistory
+
+  -- ctxWithIts = foldr (\(key, value) c -> set (at key) (Just value) c) ctx its
 
   ctxPossiblyWithIt = case s ^. gameState . replStatus of
     REPLDone (Just p) -> ctx & at "it" ?~ p
@@ -702,7 +713,7 @@ topContext s = ctxPossiblyWithIt
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent = \case
   ControlKey 'c' -> do
-    gameState . robotMap . ix 0 . machine %= cancel
+    gameState . baseRobot . machine %= cancel
     uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
   Key V.KEnter -> do
     s <- get
@@ -711,7 +722,7 @@ handleREPLEvent = \case
 
         startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs _) =
           (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
-            . (gameState . robotMap . ix 0 . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
+            . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
             . (gameState %~ execState (activateRobot 0))
 
     if not $ s ^. gameState . replWorking
@@ -782,7 +793,7 @@ tabComplete s (CmdPrompt t mms)
  where
   completeWith m = T.append t (T.drop (T.length lastWord) m)
   lastWord = T.takeWhileEnd isIdentChar t
-  names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
+  names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
   matches = filter (lastWord `T.isPrefixOf`) possibleWords
 
@@ -925,12 +936,12 @@ makeEntity e = do
       mkPT = ProcessedTerm mkProg (Module mkTy empty) mkReq empty
       topStore =
         fromMaybe emptyStore $
-          s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
+          s ^? gameState . baseRobot . robotContext . defStore
 
-  case isActive <$> (s ^. gameState . robotMap . at 0) of
+  case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
       gameState . replStatus .= REPLWorking (Typed Nothing mkTy mkReq)
-      gameState . robotMap . ix 0 . machine .= initMachine mkPT empty topStore
+      gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
 
