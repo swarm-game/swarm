@@ -150,7 +150,6 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (Processed (Processed), ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TText), allConst)
 import Swarm.Language.Types
@@ -178,12 +177,12 @@ makePrisms ''ViewCenterRule
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
-    REPLDone (Maybe (Processed Value))
+    REPLDone (Maybe (Typed Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
     --   entered.  The @Maybe Value@ starts out as @Nothing@ and gets
     --   filled in with a result once the command completes.
-    REPLWorking (Processed (Maybe Value))
+    REPLWorking (Typed (Maybe Value))
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinCondition
@@ -505,8 +504,8 @@ replWorking = to (\s -> matchesWorking $ s ^. replStatus)
 replActiveType :: Getter REPLStatus (Maybe Polytype)
 replActiveType = to getter
  where
-  getter (REPLDone (Just (Processed _ typ _))) = Just typ
-  getter (REPLWorking (Processed _ typ _)) = Just typ
+  getter (REPLDone (Just (Typed _ typ _))) = Just typ
+  getter (REPLWorking (Typed _ typ _)) = Just typ
   getter _ = Nothing
 
 -- | Get the notification list of messages from the point of view of focused robot.
@@ -764,7 +763,7 @@ scenarioToGameState scenario userSeed toRun g = do
         -- otherwise the store of definition cells is not saved (see #333)
         _replStatus = case toRun of
           Nothing -> REPLDone Nothing
-          Just _ -> REPLWorking (Processed Nothing PolyUnit mempty)
+          Just _ -> REPLWorking (Typed Nothing PolyUnit mempty)
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0

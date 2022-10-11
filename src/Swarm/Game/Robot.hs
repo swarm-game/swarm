@@ -101,13 +101,13 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (Processed (Processed))
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
+import Swarm.Language.Typed (Typed)
 
 -- | A record that stores the information
 --   for all defintions stored in a 'Robot'
@@ -133,7 +133,7 @@ emptyRobotContext :: RobotContext
 emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
 
 type instance Index RobotContext = Ctx.Var
-type instance IxValue RobotContext = Processed Value
+type instance IxValue RobotContext = Typed Value
 
 instance Ixed RobotContext
 instance At RobotContext where
@@ -144,12 +144,12 @@ instance At RobotContext where
         typ <- Ctx.lookup name (ctx ^. defTypes)
         val <- Ctx.lookup name (ctx ^. defVals)
         req <- Ctx.lookup name (ctx ^. defReqs)
-        return $ Processed val typ req
+        return $ Typed val typ req
     setter ctx Nothing =
       ctx & defTypes %~ Ctx.delete name
         & defVals %~ Ctx.delete name
         & defReqs %~ Ctx.delete name
-    setter ctx (Just (Processed val typ req)) =
+    setter ctx (Just (Typed val typ req)) =
       ctx & defTypes %~ Ctx.addBinding name typ
         & defVals %~ Ctx.addBinding name val
         & defReqs %~ Ctx.addBinding name req

@@ -582,16 +582,16 @@ updateUI = do
   -- Now check if the base finished running a program entered at the REPL.
   replUpdated <- case g ^. replStatus of
     -- It did, and the result was the unit value.  Just reset replStatus.
-    REPLWorking (Processed (Just VUnit) typ reqs) -> do
-      gameState . replStatus .= REPLDone (Just $ Processed VUnit typ reqs)
+    REPLWorking (Typed (Just VUnit) typ reqs) -> do
+      gameState . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
       pure True
 
     -- It did, and returned some other value.  Pretty-print the
     -- result as a REPL output, with its type, and reset the replStatus.
-    REPLWorking (Processed (Just v) pty reqs) -> do
+    REPLWorking (Typed (Just v) pty reqs) -> do
       let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
-      gameState . replStatus .= REPLDone (Just $ Processed v pty reqs)
+      gameState . replStatus .= REPLDone (Just $ Typed v pty reqs)
       pure True
 
     -- Otherwise, do nothing.
@@ -709,7 +709,7 @@ handleREPLEvent = \case
         topCtx = topContext s
 
         startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs _) =
-          (gameState . replStatus .~ REPLWorking (Processed Nothing ty reqs))
+          (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
             . (gameState . robotMap . ix 0 . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
             . (gameState %~ execState (activateRobot 0))
 
@@ -928,7 +928,7 @@ makeEntity e = do
 
   case isActive <$> (s ^. gameState . robotMap . at 0) of
     Just False -> do
-      gameState . replStatus .= REPLWorking (Processed Nothing mkTy mkReq)
+      gameState . replStatus .= REPLWorking (Typed Nothing mkTy mkReq)
       gameState . robotMap . ix 0 . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
