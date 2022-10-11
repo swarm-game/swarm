@@ -747,6 +747,15 @@ handleREPLEvent = \case
       CmdPrompt {} -> continueWithoutRedraw
       SearchPrompt _ _ ->
         uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+  ControlKey 'd' -> do
+    formSt <- use $ uiState . uiReplForm . to formState
+    case formSt of
+      CmdPrompt t _ -> if t == T.empty
+        then toggleModal QuitModal
+        else continueWithoutRedraw
+      SearchPrompt t _ -> if t == T.empty
+        then toggleModal QuitModal
+        else continueWithoutRedraw
   ev -> do
     replForm <- use $ uiState . uiReplForm
     f' <- nestEventM' replForm (handleFormEvent ev)
