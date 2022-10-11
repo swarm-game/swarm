@@ -45,7 +45,7 @@ module Swarm.Language.Syntax (
   isLong,
 
   -- * Syntax
-  Syntax (..),
+  Syntax' (..), Syntax, pattern Syntax,
   Location (..),
   noLoc,
   pattern STerm,
@@ -61,7 +61,7 @@ module Swarm.Language.Syntax (
   -- * Terms
   Var,
   DelayType (..),
-  Term (..),
+  Term' (..), Term,
   mkOp,
   mkOp',
 
@@ -715,9 +715,16 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   sop = noLoc (TConst c)
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
--- | The surface syntax for the language
-data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
+-- | The surface syntax for the language, with location and type annotations.
+data Syntax' ty = Syntax' {sLoc :: Location, sType :: ty, sTerm :: Term}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
+type Syntax = Syntax' ()
+
+pattern Syntax :: Location -> Term -> Syntax
+pattern Syntax l t = Syntax' l () t
+
+{-# COMPLETE Syntax #-}
 
 data Location = NoLoc | Location Int Int
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
@@ -798,7 +805,7 @@ data DelayType
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | Terms of the Swarm language.
-data Term
+data Term' ty
   = -- | The unit value.
     TUnit
   | -- | A constant.
@@ -829,22 +836,22 @@ data Term
   | -- | A variable.
     TVar Var
   | -- | A pair.
-    SPair Syntax Syntax
+    SPair (Syntax' ty) (Syntax' ty)
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam Var (Maybe Type) Syntax
+    SLam Var (Maybe Type) (Syntax' ty)
   | -- | Function application.
-    SApp Syntax Syntax
+    SApp (Syntax' ty) (Syntax' ty)
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool Var (Maybe Polytype) Syntax Syntax
+    SLet Bool Var (Maybe Polytype) (Syntax' ty) (Syntax' ty)
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
-    SDef Bool Var (Maybe Polytype) Syntax
+    SDef Bool Var (Maybe Polytype) (Syntax' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe Var) Syntax Syntax
+    SBind (Maybe Var) (Syntax' ty) (Syntax' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -852,8 +859,10 @@ data Term
     --   Note that 'Force' is just a constant, whereas 'SDelay' has to
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
-    SDelay DelayType Syntax
+    SDelay DelayType (Syntax' ty)
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
+type Term = Term' ()
 
 instance Plated Term where
   plate = uniplate
