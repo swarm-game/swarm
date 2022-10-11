@@ -41,6 +41,7 @@ module Swarm.Game.Robot (
   defReqs,
   defVals,
   defStore,
+  emptyRobotContext,
 
   -- ** Lenses
   robotEntity,
@@ -69,7 +70,6 @@ module Swarm.Game.Robot (
   runningAtomic,
 
   -- ** Creation & instantiation
-  emptyRobotContext,
   mkRobot,
   instantiateRobot,
 
@@ -128,6 +128,31 @@ data RobotContext = RobotContext
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 makeLenses ''RobotContext
+
+emptyRobotContext :: RobotContext
+emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+
+type instance Index RobotContext = Ctx.Var
+type instance IxValue RobotContext = Processed Value
+
+instance Ixed RobotContext
+instance At RobotContext where
+  at name = lens getter setter
+   where
+    getter ctx =
+      do
+        typ <- Ctx.lookup name (ctx ^. defTypes)
+        val <- Ctx.lookup name (ctx ^. defVals)
+        req <- Ctx.lookup name (ctx ^. defReqs)
+        return $ Processed val typ req
+    setter ctx Nothing =
+      ctx & defTypes %~ Ctx.delete name
+        & defVals %~ Ctx.delete name
+        & defReqs %~ Ctx.delete name
+    setter ctx (Just (Processed val typ req)) =
+      ctx & defTypes %~ Ctx.addBinding name typ
+        & defVals %~ Ctx.addBinding name val
+        & defReqs %~ Ctx.addBinding name req
 
 data LogSource = Said | Logged | ErrorTrace
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
@@ -433,8 +458,6 @@ tickSteps :: Lens' Robot Int
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
-emptyRobotContext :: RobotContext
-emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
 
 -- | A general function for creating robots.
 mkRobot ::
@@ -513,27 +536,6 @@ instance FromJSONE EntityMap TRobot where
     mkMachine Nothing = Out VUnit emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore
 
-type instance Index RobotContext = Ctx.Var
-type instance IxValue RobotContext = Processed Value
-
-instance Ixed RobotContext
-instance At RobotContext where
-  at name = lens getter setter
-   where
-    getter ctx =
-      do
-        typ <- Ctx.lookup name (ctx ^. defTypes)
-        val <- Ctx.lookup name (ctx ^. defVals)
-        req <- Ctx.lookup name (ctx ^. defReqs)
-        return $ Processed val typ req
-    setter ctx Nothing =
-      ctx & defTypes %~ Ctx.delete name
-        & defVals %~ Ctx.delete name
-        & defReqs %~ Ctx.delete name
-    setter ctx (Just (Processed val typ req)) =
-      ctx & defTypes %~ Ctx.addBinding name typ
-        & defVals %~ Ctx.addBinding name val
-        & defReqs %~ Ctx.addBinding name req
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
