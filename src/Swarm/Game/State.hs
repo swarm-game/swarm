@@ -365,6 +365,7 @@ robotsInArea o d gs = map (rm IM.!) rids
   rl = gs ^. robotsByLocation
   rids = concatMap IS.elems $ getElemsInArea o d rl
 
+-- | The base robot, if it exists.
 baseRobot :: Traversal' GameState Robot
 baseRobot = robotMap . ix 0
 
