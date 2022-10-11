@@ -598,7 +598,7 @@ updateUI = do
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
       gameState . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
-      gameState . replNextValueIndex %= (+1)
+      gameState . replNextValueIndex %= (+ 1)
       pure True
 
     -- Otherwise, do nothing.

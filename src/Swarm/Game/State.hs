@@ -366,7 +366,7 @@ robotsInArea o d gs = map (rm IM.!) rids
   rids = concatMap IS.elems $ getElemsInArea o d rl
 
 baseRobot :: Traversal' GameState Robot
-baseRobot = robotMap . ix 0 
+baseRobot = robotMap . ix 0
 
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
