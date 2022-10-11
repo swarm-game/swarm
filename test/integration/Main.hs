@@ -36,6 +36,7 @@ import Swarm.Game.State (
   waitingRobots,
   winCondition,
   winSolution,
+  baseRobot
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
