@@ -216,7 +216,10 @@ suggestions.
   to configure your favorite editor to have `fourmolu` automatically
   applied to your code; but if you don't know how to set that up, don't
   worry!  The [`restyled.io` bot](https://restyled.io/) automatically
-  reformats pull requests as necessary.
+  reformats pull requests as necessary. Here's the command to apply the formatting that *exactly* matches what the bot would do:
+
+      cabal install fourmolu-0.4.0.0
+      find src/ app/ test/ -name "*.hs" | xargs fourmolu --mode=inplace --cabal-default-extensions
 
 * If you are a repository contributor (see [I have push access to the
   Swarm repository, now

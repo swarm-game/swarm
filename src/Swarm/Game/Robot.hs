@@ -103,11 +103,11 @@ import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
-import Swarm.Language.Typed (Typed)
 
 -- | A record that stores the information
 --   for all defintions stored in a 'Robot'
@@ -535,7 +535,6 @@ instance FromJSONE EntityMap TRobot where
    where
     mkMachine Nothing = Out VUnit emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore
-
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool

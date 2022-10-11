@@ -90,6 +90,7 @@ library
                       Swarm.Language.Parse.QQ
                       Swarm.Language.Pretty
                       Swarm.Language.Typecheck
+                      Swarm.Language.Typed
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
                       Swarm.Language.Pipeline
