@@ -45,7 +45,9 @@ module Swarm.Language.Syntax (
   isLong,
 
   -- * Syntax
-  Syntax' (..), Syntax, pattern Syntax,
+  Syntax' (..),
+  Syntax,
+  pattern Syntax,
   Location (..),
   noLoc,
   pattern STerm,
@@ -61,7 +63,8 @@ module Swarm.Language.Syntax (
   -- * Terms
   Var,
   DelayType (..),
-  Term' (..), Term,
+  Term' (..),
+  Term,
   mkOp,
   mkOp',
 
