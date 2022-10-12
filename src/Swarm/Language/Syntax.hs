@@ -719,13 +719,13 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
 -- | The surface syntax for the language, with location and type annotations.
-data Syntax' ty = Syntax' {sLoc :: Location, sType :: ty, sTerm :: Term}
+data Syntax' ty = Syntax' {sLoc :: Location, sTerm :: Term' ty, sType :: ty}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 type Syntax = Syntax' ()
 
 pattern Syntax :: Location -> Term -> Syntax
-pattern Syntax l t = Syntax' l () t
+pattern Syntax l t = Syntax' l t ()
 
 {-# COMPLETE Syntax #-}
 

@@ -274,7 +274,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   -- appropriate context.
   SDef _ x Nothing t1 -> do
     xTy <- fresh
-    ty <- withBinding x (Forall [] xTy) $ infer t1
+    ty <- withBinding x (Forall [] xTy) $ inferType t1
     xTy =:= ty
     pty <- generalize ty
     return $ Module (UTyCmd UTyUnit) (singleton x pty)
@@ -322,28 +322,36 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.
-  _anyOtherTerm -> trivMod <$> infer s
+  _anyOtherTerm -> trivMod <$> inferType s
 
 -- | Infer the type of a term which does not contain definitions.
-infer :: Syntax -> Infer UType
+inferType :: Syntax -> Infer UType
+inferType = fmap sType . infer
+
+-- | Infer the type of a term which does not contain definitions,
+--   returning a type-annotated term.
+infer :: Syntax -> Infer (Syntax' UType)
 infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
-  TUnit -> return UTyUnit
-  TConst c -> instantiate . toU $ inferConst c
-  TDir _ -> return UTyDir
-  TInt _ -> return UTyInt
-  TAntiInt _ -> return UTyInt
-  TText _ -> return UTyText
-  TAntiText _ -> return UTyText
-  TBool _ -> return UTyBool
-  TRobot _ -> return UTyRobot
+  TUnit -> return $ Syntax' l t UTyUnit
+  TConst c -> Syntax' l t <$> (instantiate . toU $ inferConst c)
+  TDir _ -> return $ Syntax' l t UTyDir
+  TInt _ -> return $ Syntax' l t UTyInt
+  TAntiInt _ -> return $ Syntax' l t UTyInt
+  TText _ -> return $ Syntax' l t UTyText
+  TAntiText _ -> return $ Syntax' l t UTyText
+  TBool _ -> return $ Syntax' l t UTyBool
+  TRobot _ -> return $ Syntax' l t UTyRobot
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwError $ CantInfer l t
-  TRequireDevice _ -> return $ UTyCmd UTyUnit
-  TRequire _ _ -> return $ UTyCmd UTyUnit
+  TRequireDevice _ -> return $ Syntax' l t (UTyCmd UTyUnit)
+  TRequire _ _ -> return $ Syntax' l t (UTyCmd UTyUnit)
   -- To infer the type of a pair, just infer both components.
-  SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
+  SPair t1 t2 -> do
+    Syntax' _ s1 ty1 <- infer t1
+    Syntax' _ s2 ty2 <- infer t2
+    return $ Syntax' l (SPair s1 s2) (UTyProd ty1 ty2)
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
   -- is @Just@, we should typecheck the body under a context extended
@@ -353,11 +361,16 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- @SDelay@ nodes are never generated from the surface syntax, only
   -- dynamically at runtime when evaluating recursive let or def expressions,
   -- so we don't have to worry about typechecking them here.
-  SDelay _ dt -> UTyDelay <$> infer dt
+  SDelay d t -> do
+    Syntax' _ s ty <- infer t
+    return $ Syntax' l (SDelay d s) UTyDelay
   -- We need a special case for checking the argument to 'atomic'.
   -- 'atomic t' has the same type as 't', which must have a type of
   -- the form 'cmd a'.  't' must also be syntactically free of
   -- variables.
+
+  -- XXX WORKING HERE
+
   TConst Atomic :$: at -> do
     argTy <- fresh
     check at (UTyCmd argTy)
