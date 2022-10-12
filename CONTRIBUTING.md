@@ -209,37 +209,58 @@ We follow a few conventions to help keep everyone on the same page.
 Please open a pull request or ask on IRC if you have any questions or
 suggestions.
 
-* We use [`fourmolu`](https://hackage.haskell.org/package/fourmolu)
-  with a [custom
-  configuration](https://github.com/swarm-game/swarm/blob/main/fourmolu.yaml)
-  for formatting Haskell code.  There is probably a way
-  to configure your favorite editor to have `fourmolu` automatically
-  applied to your code; but if you don't know how to set that up, don't
-  worry!  The [`restyled.io` bot](https://restyled.io/) automatically
-  reformats pull requests as necessary.
-
-* If you are a repository contributor (see [I have push access to the
-  Swarm repository, now
-  what?](#i-have-push-access-to-the-swarm-repository-now-what)), you
-  should create new contributions as branches in the swarm repository
-  itself (as opposed to in your own fork), unless you have a good
-  reason for doing otherwise.  Then you can open a pull request from
-  the branch to `main`.  This eases collaboration and makes CI go more
-  smoothly (for example, the `restyled.io` bot works much better on
-  pulls from local branches than from forks).
-
-* Feel free to open a pull request very early in the process, and mark
-  it as a draft.  This way you can get feedback (and even allow others
-  to contribute) as you go.
-
-* Pull requests should be merged by the `mergify` bot rather than by
-  hand. PRs will be merged as a single squashed commit, using the
-  title and description of the pull request, so make sure that they
-  give a good overview of the content of the PR.  To merge a pull
-  request, just add the `merge me` label.
-
 More conventions will be added as we think of and/or come up with
 them!
+
+#### Formatting style
+
+We use [`fourmolu-0.4.0.0`](https://hackage.haskell.org/package/fourmolu)
+with a [custom
+configuration](https://github.com/swarm-game/swarm/blob/main/fourmolu.yaml)
+for formatting Haskell code.
+
+You can run the formatter from the shell:
+```bash
+cabal install fourmolu-0.4.0.0
+cd path/to/the/root/of/swarm/repo
+find src/ app/ test/ -name "*.hs" | xargs fourmolu --mode=inplace --cabal-default-extensions
+```
+
+There is probably a way to configure your favorite editor to have `fourmolu`
+automatically applied to your code; but if you don't know how to set that up,
+don't worry!  The [`restyled.io` bot](https://restyled.io/) automatically
+reformats pull requests as necessary.
+
+#### Branches in the main repository
+
+If you are a repository contributor (see [I have push access to the
+Swarm repository, now
+what?](#i-have-push-access-to-the-swarm-repository-now-what)), you
+should create new contributions as branches in the swarm repository
+itself (as opposed to in your own fork), unless you have a good
+reason for doing otherwise.  Then you can open a pull request from
+the branch to `main`.  This eases collaboration and makes CI go more
+smoothly (for example, the `restyled.io` bot works much better on
+pulls from local branches than from forks).
+
+#### Draft pull requests
+
+Feel free to open a pull request very early in the process, and mark
+it as a draft.  This way you can get feedback (and even allow others
+to contribute) as you go.
+
+#### Merging pull requests
+
+Pull requests should be merged by the `mergify` bot rather than by
+hand. PRs will be merged as a single squashed commit, using the
+title and description of the pull request, so make sure that they
+give a good overview of the content of the PR.
+
+This workflow is preferable because it makes sure that the changes
+pass _when merged_ not just in the possibly outdated branch.
+
+To merge a pull request, just add the <kbd>merge me</kbd> label.
+
 
 ## I have push access to the Swarm repository, now what?
 
