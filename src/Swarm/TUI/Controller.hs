@@ -236,11 +236,11 @@ handleMainEvent ev = do
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do
-        safeAutoUnpause
-        uiState . uiModal .= Nothing
-        -- message modal is not autopaused, so update notifications when leaving it
-        when (m ^. modalType == MessagesModal) $ do
-          gameState . lastSeenMessageTime .= s ^. gameState . ticks
+          safeAutoUnpause
+          uiState . uiModal .= Nothing
+          -- message modal is not autopaused, so update notifications when leaving it
+          when (m ^. modalType == MessagesModal) $ do
+            gameState . lastSeenMessageTime .= s ^. gameState . ticks
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -720,8 +720,8 @@ handleREPLEvent = \case
             Just found
               | T.null t -> uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
               | otherwise -> do
-                uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
-                modify validateREPLForm
+                  uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
+                  modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
@@ -748,14 +748,10 @@ handleREPLEvent = \case
       SearchPrompt _ _ ->
         uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
   ControlKey 'd' -> do
-    formSt <- use $ uiState . uiReplForm . to formState
-    case formSt of
-      CmdPrompt t _ -> if t == T.empty
-        then toggleModal QuitModal
-        else continueWithoutRedraw
-      SearchPrompt t _ -> if t == T.empty
-        then toggleModal QuitModal
-        else continueWithoutRedraw
+    text <- use $ uiState . uiReplForm . to formState . promptTextL
+    if text == T.empty
+      then toggleModal QuitModal
+      else continueWithoutRedraw
   ev -> do
     replForm <- use $ uiState . uiReplForm
     f' <- nestEventM' replForm (handleFormEvent ev)
@@ -776,9 +772,9 @@ tabComplete s (CmdPrompt t mms)
   | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
   | T.null lastWord = CmdPrompt t []
   | otherwise = case matches of
-    [] -> CmdPrompt t []
-    [m] -> CmdPrompt (completeWith m) []
-    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+      [] -> CmdPrompt t []
+      [m] -> CmdPrompt (completeWith m) []
+      (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
   completeWith m = T.append t (T.drop (T.length lastWord) m)
   lastWord = T.takeWhileEnd isIdentChar t
@@ -799,7 +795,8 @@ validateREPLForm s =
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
-       in s & uiState . uiReplForm %~ validate result
+       in s
+            & uiState . uiReplForm %~ validate result
             & uiState . uiReplType .~ theType
     SearchPrompt _ _ -> s
  where
