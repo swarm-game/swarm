@@ -1,5 +1,20 @@
 # Revision history for swarm
 
+## **0.1.1.0** - 2022-10-13
+
+A couple new features and an important bugfix for the Hackage release.
+
+- Update to `hsnoise-0.0.3`, fixing some world generation bugs that
+  only showed up in the Hackage
+  release. ([#746](https://github.com/swarm-game/swarm/pull/746))
+- New "blank" creative scenario
+  ([#741](https://github.com/swarm-game/swarm/pull/741))
+- REPL improvements
+    - `Ctrl-D` at an empty REPL prompt now triggers a quit
+      ([#743](https://github.com/swarm-game/swarm/pull/743))
+    - The REPL panel now persists in showing the type of the most
+      recently evaluated expression ([#733](https://github.com/swarm-game/swarm/pull/733))
+
 ## **0.1.0.1** - 2022-10-06
 
 A bugfix release for a few minor bugs that plagued the first release:
