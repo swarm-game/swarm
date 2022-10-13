@@ -14,6 +14,7 @@ module Swarm.Language.LSP where
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
+import Data.Foldable (forM_)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
@@ -71,9 +72,7 @@ validateSwarmCode doc version content = do
           Left e -> Just $ showTypeErrorPos content e
         Left e -> Just $ showErrorPos e
   -- debug $ "-> " <> from (show err)
-  case err of
-    Nothing -> pure ()
-    Just e -> sendDiagnostic e
+  forM_ err sendDiagnostic
  where
   sendDiagnostic :: ((Int, Int), (Int, Int), Text) -> LspM () ()
   sendDiagnostic ((startLine, startCol), (endLine, endCol), msg) = do
