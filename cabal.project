@@ -1,4 +1,0 @@
--- If you edit this file, be sure to regenerate the CI configuration
--- by running 'haskell-ci regenerate'.
-
-packages: .
