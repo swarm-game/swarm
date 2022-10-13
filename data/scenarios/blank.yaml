@@ -1,0 +1,14 @@
+version: 1
+name: Blank world
+description: No constraints and no obstacles!  Do whatever you want, in this empty void!
+creative: true
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,1]
+    heavy: true
+    display:
+      char: Ω
+      attr: robot
+world:
+  default: [grass]

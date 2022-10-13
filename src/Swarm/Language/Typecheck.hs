@@ -34,7 +34,7 @@ module Swarm.Language.Typecheck (
   skolemize,
   generalize,
 
-  -- * Type inferen
+  -- * Type inference
   inferTop,
   inferModule,
   infer,
