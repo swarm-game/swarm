@@ -353,34 +353,35 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     t2' <- infer t2
     return $ Syntax' l (SPair t1' t2') (UTyProd (sType t1') (sType t2'))
 
---  -- if t : ty, then  {t} : {ty}.
---  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
---  -- is @Just@, we should typecheck the body under a context extended
---  -- with a type binding for the variable, and ensure that the type of
---  -- the variable is the same as the type inferred for the overall
---  -- @SDelay@.  However, we rely on the invariant that such recursive
---  -- @SDelay@ nodes are never generated from the surface syntax, only
---  -- dynamically at runtime when evaluating recursive let or def expressions,
---  -- so we don't have to worry about typechecking them here.
---  SDelay d t -> do
---    Syntax' _ t' ty <- infer t
---    return $ Syntax' l (SDelay d t') UTyDelay
---  -- We need a special case for checking the argument to 'atomic'.
---  -- 'atomic t' has the same type as 't', which must have a type of
---  -- the form 'cmd a'.  't' must also be syntactically free of
---  -- variables.
+  -- if t : ty, then  {t} : {ty}.
+  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
+  -- is @Just@, we should typecheck the body under a context extended
+  -- with a type binding for the variable, and ensure that the type of
+  -- the variable is the same as the type inferred for the overall
+  -- @SDelay@.  However, we rely on the invariant that such recursive
+  -- @SDelay@ nodes are never generated from the surface syntax, only
+  -- dynamically at runtime when evaluating recursive let or def expressions,
+  -- so we don't have to worry about typechecking them here.
+  SDelay d t1 -> do
+    t1' <- infer t1
+    return $ Syntax' l (SDelay d t1') (UTyDelay (sType t1'))
 
---  -- XXX WORKING HERE
+-- We need a special case for checking the argument to 'atomic'.
+-- 'atomic t' has the same type as 't', which must have a type of
+-- the form 'cmd a'.  't' must also be syntactically free of
+-- variables.
 
---  TConst Atomic :$: at -> do
---    argTy <- fresh
---    check at (UTyCmd argTy)
---    -- It's important that we typecheck the subterm @at@ *before* we
---    -- check that it is a valid argument to @atomic@: this way we can
---    -- ensure that we have already inferred the types of any variables
---    -- referenced.
---    validAtomic at
---    return $ UTyCmd argTy
+-- XXX WORKING HERE
+
+-- TConst Atomic :$: at -> do
+--   argTy <- fresh
+--   check at (UTyCmd argTy)
+--   -- It's important that we typecheck the subterm @at@ *before* we
+--   -- check that it is a valid argument to @atomic@: this way we can
+--   -- ensure that we have already inferred the types of any variables
+--   -- referenced.
+--   validAtomic at
+--   return $ UTyCmd argTy
 
 --  -- Just look up variables in the context.
 --  TVar x -> lookup l x
