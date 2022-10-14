@@ -1,6 +1,6 @@
 # Revision history for swarm
 
-## **0.1.1.0** - 2022-10-13
+## **0.1.1.0** - 2022-10-14
 
 A couple new features and an important bugfix for the Hackage release.
 
