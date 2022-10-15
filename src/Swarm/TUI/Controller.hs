@@ -696,17 +696,13 @@ stripCmd pty = (False, pty)
 ------------------------------------------------------------
 
 -- | Context for the REPL commands to execute in. Contains the base
---   robot context plus the `it{i}` variables that refer to the previous
---   computed values
+--   robot context plus the `it` variable that refer to the previously
+--   computed values. (Note that `it{n}` variables are set in the
+--   base robot context; we only set `it` here because it's so transient)
 topContext :: AppState -> RobotContext
 topContext s = ctxPossiblyWithIt
  where
   ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
-
-  -- its :: [(Text, Typed Value)]
-  -- its = zip (map (fromString . ("it" ++) . show @Int) [0 ..]) $ s ^. gameState . replValueHistory
-
-  -- ctxWithIts = foldr (\(key, value) c -> set (at key) (Just value) c) ctx its
 
   ctxPossiblyWithIt = case s ^. gameState . replStatus of
     REPLDone (Just p) -> ctx & at "it" ?~ p
