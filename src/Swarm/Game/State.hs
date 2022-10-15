@@ -777,6 +777,7 @@ scenarioToGameState scenario userSeed toRun g = do
         _replStatus = case toRun of
           Nothing -> REPLDone Nothing
           Just _ -> REPLWorking (Typed Nothing PolyUnit mempty)
+      , _replNextValueIndex = 0
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0
