@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -59,6 +60,7 @@ import Data.Set (Set, (\\))
 import Data.Set qualified as S
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Module
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -78,11 +80,19 @@ type Infer = ReaderT UCtx (ExceptT TypeErr (IntBindingT TypeF Identity))
 runInfer :: TCtx -> Infer UModule -> Either TypeErr TModule
 runInfer ctx =
   (>>= applyBindings)
-    >>> (>>= \(Module uty uctx) -> Module <$> (fromU <$> generalize uty) <*> pure (fromU uctx))
+    >>> ( >>=
+            \(Module u uctx) ->
+              Module <$> foo u <*> pure (fromU uctx)
+        )
     >>> flip runReaderT (toU ctx)
     >>> runExceptT
     >>> evalIntBindingT
     >>> runIdentity
+
+foo :: Syntax' UType -> Infer (Syntax' Polytype)
+foo = undefined
+
+-- (fromU <$> generalize uty)
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
@@ -162,8 +172,11 @@ instance HasBindings UPolytype where
 instance HasBindings UCtx where
   applyBindings = mapM applyBindings
 
+instance HasBindings u => HasBindings (Syntax' u) where
+  applyBindings = undefined
+
 instance HasBindings UModule where
-  applyBindings (Module uty uctx) = Module <$> applyBindings uty <*> applyBindings uctx
+  applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -267,33 +280,33 @@ inferTop ctx = runInfer ctx . inferModule
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
 inferModule :: Syntax -> Infer UModule
-inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
+inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef _ x Nothing t1 -> do
+  SDef r x Nothing t1 -> do
     xTy <- fresh
-    ty <- withBinding x (Forall [] xTy) $ inferType t1
-    _ <- xTy =:= ty
-    pty <- generalize ty
-    return $ Module (UTyCmd UTyUnit) (singleton x pty)
+    t1' <- withBinding x (Forall [] xTy) $ infer t1
+    _ <- xTy =:= sType t1'
+    pty <- generalize (sType t1')
+    return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton x pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef _ x (Just pty) t1 -> do
+  SDef r x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
-    _ <- withBinding x upty $ check t1 uty
-    return $ Module (UTyCmd UTyUnit) (singleton x upty)
+    t1' <- withBinding x upty $ check t1 uty
+    return $ Module (Syntax' l (SDef r x (Just pty) t1') (UTyCmd UTyUnit)) (singleton x upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    Module cmda ctx1 <- inferModule c1
-    a <- decomposeCmdTy cmda
+    Module c1' ctx1 <- inferModule c1
+    a <- decomposeCmdTy (sType c1')
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
@@ -304,13 +317,13 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
       maybe id (`withBinding` Forall [] a) mx $ do
-        Module cmdb ctx2 <- inferModule c2
+        Module c2' ctx2 <- inferModule c2
 
-        -- We don't actually need the result type since we're just going
-        -- to return cmdb, but it's important to ensure it's a command
-        -- type anyway.  Otherwise something like 'move; 3' would be
-        -- accepted with type int.
-        _ <- decomposeCmdTy cmdb
+        -- We don't actually need the result type since we're just
+        -- going to return the entire type, but it's important to
+        -- ensure it's a command type anyway.  Otherwise something
+        -- like 'move; 3' would be accepted with type int.
+        _ <- decomposeCmdTy (sType c2')
 
         -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
         -- definitions will shadow previous ones.  Include the binder
@@ -318,15 +331,14 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
         -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
         -- then they will be able to refer to r again later.
         let ctxX = maybe Ctx.empty (`Ctx.singleton` Forall [] a) mx
-        return $ Module cmdb (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
+        return $
+          Module
+            (Syntax' l (SBind mx c1' c2') (sType c2'))
+            (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.
-  _anyOtherTerm -> trivMod <$> inferType s
-
--- | Infer the type of a term which does not contain definitions.
-inferType :: Syntax -> Infer UType
-inferType = fmap sType . infer
+  _anyOtherTerm -> trivMod <$> infer s
 
 -- | Infer the type of a term which does not contain definitions,
 --   returning a type-annotated term.

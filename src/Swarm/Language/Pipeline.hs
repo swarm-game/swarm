@@ -28,6 +28,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Language.Context
 import Swarm.Language.Elaborate
+import Swarm.Language.Module
 import Swarm.Language.Parse
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement
@@ -35,6 +36,9 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
+
+-- XXX should get rid of the Term argument, because TModule already contains it!
+-- XXX Need to update elaborator to take a typed term instead of untyped!
 
 -- | A record containing the results of the language processing
 --   pipeline.  Put a 'Term' in, and get one of these out.

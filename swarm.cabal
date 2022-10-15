@@ -84,6 +84,7 @@ library
     exposed-modules:  Swarm.Language.Context
                       Swarm.Language.Types
                       Swarm.Language.Syntax
+                      Swarm.Language.Module
                       Swarm.Language.Capability
                       Swarm.Language.Requirement
                       Swarm.Language.Parse

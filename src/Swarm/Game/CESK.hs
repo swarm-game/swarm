@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.Game.CESK
@@ -101,6 +102,7 @@ import Swarm.Game.Exception
 import Swarm.Game.Value as V
 import Swarm.Game.World (World)
 import Swarm.Language.Context
+import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement (ReqCtx)
@@ -281,7 +283,7 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ reqCtx) e s k =
+initMachine' (ProcessedTerm t (Module (sType -> Forall _ (TyCmd _)) ctx) _ reqCtx) e s k =
   case ctx of
     Empty -> In t e s (FExec : k)
     _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
