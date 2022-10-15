@@ -595,7 +595,7 @@ updateUI = do
       let val = Typed v finalType reqs
       itIx <- use (gameState . replNextValueIndex)
       let itName = fromString $ "it" ++ show itIx
-      let out = T.intercalate " " [itName,  ":", prettyText finalType, if wasCmd then "<-" else "=",  into (prettyValue v)]
+      let out = T.intercalate " " [itName, ":", prettyText finalType, if wasCmd then "<-" else "=", into (prettyValue v)]
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
       gameState . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
