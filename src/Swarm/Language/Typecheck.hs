@@ -141,8 +141,8 @@ substU m =
 infix 4 =:=
 
 -- | Constrain two types to be equal.
-(=:=) :: UType -> UType -> Infer ()
-s =:= t = void (lift $ s U.=:= t)
+(=:=) :: UType -> UType -> Infer UType
+s =:= t = lift $ s U.=:= t
 
 -- | @unification-fd@ provides a function 'U.applyBindings' which
 --   fully substitutes for any bound unification variables (for
@@ -275,7 +275,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   SDef _ x Nothing t1 -> do
     xTy <- fresh
     ty <- withBinding x (Forall [] xTy) $ inferType t1
-    xTy =:= ty
+    _ <- xTy =:= ty
     pty <- generalize ty
     return $ Module (UTyCmd UTyUnit) (singleton x pty)
 
@@ -284,7 +284,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   SDef _ x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
-    withBinding x upty $ check t1 uty
+    _ <- withBinding x upty $ check t1 uty
     return $ Module (UTyCmd UTyUnit) (singleton x upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
@@ -366,88 +366,91 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     t1' <- infer t1
     return $ Syntax' l (SDelay d t1') (UTyDelay (sType t1'))
 
--- We need a special case for checking the argument to 'atomic'.
--- 'atomic t' has the same type as 't', which must have a type of
--- the form 'cmd a'.  't' must also be syntactically free of
--- variables.
+  -- We need a special case for checking the argument to 'atomic'.
+  -- 'atomic t' has the same type as 't', which must have a type of
+  -- the form 'cmd a'.  't' must also be syntactically free of
+  -- variables.
 
--- XXX WORKING HERE
+  TConst Atomic :$: at -> do
+    argTy <- fresh
+    at' <- check at (UTyCmd argTy)
+    -- It's important that we typecheck the subterm @at@ *before* we
+    -- check that it is a valid argument to @atomic@: this way we can
+    -- ensure that we have already inferred the types of any variables
+    -- referenced.
+    validAtomic at
+    return at'
 
--- TConst Atomic :$: at -> do
---   argTy <- fresh
---   check at (UTyCmd argTy)
---   -- It's important that we typecheck the subterm @at@ *before* we
---   -- check that it is a valid argument to @atomic@: this way we can
---   -- ensure that we have already inferred the types of any variables
---   -- referenced.
---   validAtomic at
---   return $ UTyCmd argTy
+  -- Just look up variables in the context.
+  TVar x -> Syntax' l (TVar x) <$> lookup l x
+  -- To infer the type of a lambda if the type of the argument is
+  -- provided, just infer the body under an extended context and return
+  -- the appropriate function type.
+  SLam x (Just argTy) lt -> do
+    let uargTy = toU argTy
+    lt' <- withBinding x (Forall [] uargTy) $ infer lt
+    return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (sType lt'))
 
---  -- Just look up variables in the context.
---  TVar x -> lookup l x
---  -- To infer the type of a lambda if the type of the argument is
---  -- provided, just infer the body under an extended context and return
---  -- the appropriate function type.
---  SLam x (Just argTy) lt -> do
---    let uargTy = toU argTy
---    resTy <- withBinding x (Forall [] uargTy) $ infer lt
---    return $ UTyFun uargTy resTy
+  -- If the type of the argument is not provided, create a fresh
+  -- unification variable for it and proceed.
+  SLam x Nothing lt -> do
+    argTy <- fresh
+    lt' <- withBinding x (Forall [] argTy) $ infer lt
+    return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (sType lt'))
 
---  -- If the type of the argument is not provided, create a fresh
---  -- unification variable for it and proceed.
---  SLam x Nothing lt -> do
---    argTy <- fresh
---    resTy <- withBinding x (Forall [] argTy) $ infer lt
---    return $ UTyFun argTy resTy
+  -- To infer the type of an application:
+  SApp f x -> do
+    -- Infer the type of the left-hand side and make sure it has a function type.
+    f' <- infer f
+    (ty1, ty2) <- decomposeFunTy (sType f')
 
---  -- To infer the type of an application:
---  SApp f x -> do
---    -- Infer the type of the left-hand side and make sure it has a function type.
---    fTy <- infer f
---    (ty1, ty2) <- decomposeFunTy fTy
+    -- Then check that the argument has the right type.
+    x' <- check x ty1 `catchError` addLocToTypeErr x
+    return $ Syntax' l (SApp f' x') ty2
 
---    -- Then check that the argument has the right type.
---    check x ty1 `catchError` addLocToTypeErr x
---    return ty2
-
---  -- We can infer the type of a let whether a type has been provided for
---  -- the variable or not.
---  SLet _ x Nothing t1 t2 -> do
---    xTy <- fresh
---    uty <- withBinding x (Forall [] xTy) $ infer t1
---    xTy =:= uty
---    upty <- generalize uty
---    withBinding x upty $ infer t2
---  SLet _ x (Just pty) t1 t2 -> do
---    let upty = toU pty
---    -- If an explicit polytype has been provided, skolemize it and check
---    -- definition and body under an extended context.
---    uty <- skolemize upty
---    resTy <- withBinding x upty $ do
---      check t1 uty `catchError` addLocToTypeErr t1
---      infer t2
---    -- Make sure no skolem variables have escaped.
---    ask >>= mapM_ noSkolems
---    return resTy
---  SDef {} -> throwError $ DefNotTopLevel l t
---  SBind mx c1 c2 -> do
---    ty1 <- infer c1
---    a <- decomposeCmdTy ty1
---    ty2 <- maybe id (`withBinding` Forall [] a) mx $ infer c2
---    _ <- decomposeCmdTy ty2
---    return ty2
--- where
---  noSkolems :: UPolytype -> Infer ()
---  noSkolems (Forall xs upty) = do
---    upty' <- applyBindings upty
---    let tyvs =
---          ucata
---            (const S.empty)
---            (\case TyVarF v -> S.singleton v; f -> fold f)
---            upty'
---        ftyvs = tyvs `S.difference` S.fromList xs
---    unless (S.null ftyvs) $
---      throwError $ EscapedSkolem l (head (S.toList ftyvs))
+  -- We can infer the type of a let whether a type has been provided for
+  -- the variable or not.
+  SLet r x Nothing t1 t2 -> do
+    xTy <- fresh
+    t1' <- withBinding x (Forall [] xTy) $ infer t1
+    let uty = sType t1'
+    _ <- xTy =:= uty
+    upty <- generalize uty
+    t2' <- withBinding x upty $ infer t2
+    return $ Syntax' l (SLet r x Nothing t1' t2') (sType t2')
+  SLet r x (Just pty) t1 t2 -> do
+    let upty = toU pty
+    -- If an explicit polytype has been provided, skolemize it and check
+    -- definition and body under an extended context.
+    uty <- skolemize upty
+    (t1', t2') <- withBinding x upty $ do
+      (,)
+        <$> check t1 uty
+        `catchError` addLocToTypeErr t1
+        <*> infer t2
+    -- Make sure no skolem variables have escaped.
+    ask >>= mapM_ noSkolems
+    return $ Syntax' l (SLet r x (Just pty) t1' t2') (sType t2')
+  SDef {} -> throwError $ DefNotTopLevel l t
+  SBind mx c1 c2 -> do
+    c1' <- infer c1
+    a <- decomposeCmdTy (sType c1')
+    c2' <- maybe id (`withBinding` Forall [] a) mx $ infer c2
+    _ <- decomposeCmdTy (sType c2')
+    return $ Syntax' l (SBind mx c1' c2') (sType c2')
+ where
+  noSkolems :: UPolytype -> Infer ()
+  noSkolems (Forall xs upty) = do
+    upty' <- applyBindings upty
+    let tyvs =
+          ucata
+            (const S.empty)
+            (\case TyVarF v -> S.singleton v; f -> fold f)
+            upty'
+        ftyvs = tyvs `S.difference` S.fromList xs
+    unless (S.null ftyvs) $
+      throwError $
+        EscapedSkolem l (head (S.toList ftyvs))
 
 addLocToTypeErr :: Syntax' ty -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
@@ -459,7 +462,7 @@ decomposeCmdTy :: UType -> Infer UType
 decomposeCmdTy (UTyCmd a) = return a
 decomposeCmdTy ty = do
   a <- fresh
-  ty =:= UTyCmd a
+  _ <- ty =:= UTyCmd a
   return a
 
 -- | Decompose a type that is supposed to be a function type.
@@ -468,7 +471,7 @@ decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
 decomposeFunTy ty = do
   ty1 <- fresh
   ty2 <- fresh
-  ty =:= UTyFun ty1 ty2
+  _ <- ty =:= UTyFun ty1 ty2
   return (ty1, ty2)
 
 -- | Infer the type of a constant.
@@ -553,12 +556,13 @@ inferConst c = case c of
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]
 
--- | @check t ty@ checks that @t@ has type @ty@.
-check :: Syntax -> UType -> Infer ()
+-- | @check t ty@ checks that @t@ has type @ty@, returning a
+--   type-annotated AST if so.
+check :: Syntax -> UType -> Infer (Syntax' UType)
 check t ty = do
-  ty' <- inferType t
-  _ <- ty =:= ty'
-  return ()
+  Syntax' l t' ty' <- infer t
+  theTy <- ty =:= ty'
+  return $ Syntax' l t' theTy
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
@@ -633,32 +637,32 @@ analyzeAtomic locals (Syntax l t) = case t of
   TVar x
     | x `S.member` locals -> return 0
     | otherwise -> do
-      mxTy <- asks $ Ctx.lookup x
-      case mxTy of
-        -- If the variable is undefined, return 0 to indicate the
-        -- atomic block is valid, because we'd rather have the error
-        -- caught by the real name+type checking.
-        Nothing -> return 0
-        Just xTy -> do
-          -- Use applyBindings to make sure that we apply as much
-          -- information as unification has learned at this point.  In
-          -- theory, continuing to typecheck other terms elsewhere in
-          -- the program could give us further information about xTy,
-          -- so we might have incomplete information at this point.
-          -- However, since variables referenced in an atomic block
-          -- must necessarily have simple types, it's unlikely this
-          -- will really make a difference.  The alternative, more
-          -- "correct" way to do this would be to simply emit some
-          -- constraints at this point saying that xTy must be a
-          -- simple type, and check later that the constraint holds,
-          -- after performing complete type inference.  However, since
-          -- the current approach is much simpler, we'll stick with
-          -- this until such time as we have concrete examples showing
-          -- that the more correct, complex way is necessary.
-          xTy' <- applyBindings xTy
-          if isSimpleUPolytype xTy'
-            then return 0
-            else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
+        mxTy <- asks $ Ctx.lookup x
+        case mxTy of
+          -- If the variable is undefined, return 0 to indicate the
+          -- atomic block is valid, because we'd rather have the error
+          -- caught by the real name+type checking.
+          Nothing -> return 0
+          Just xTy -> do
+            -- Use applyBindings to make sure that we apply as much
+            -- information as unification has learned at this point.  In
+            -- theory, continuing to typecheck other terms elsewhere in
+            -- the program could give us further information about xTy,
+            -- so we might have incomplete information at this point.
+            -- However, since variables referenced in an atomic block
+            -- must necessarily have simple types, it's unlikely this
+            -- will really make a difference.  The alternative, more
+            -- "correct" way to do this would be to simply emit some
+            -- constraints at this point saying that xTy must be a
+            -- simple type, and check later that the constraint holds,
+            -- after performing complete type inference.  However, since
+            -- the current approach is much simpler, we'll stick with
+            -- this until such time as we have concrete examples showing
+            -- that the more correct, complex way is necessary.
+            xTy' <- applyBindings xTy
+            if isSimpleUPolytype xTy'
+              then return 0
+              else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
   -- No lambda, `let` or `def` allowed!
   SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)
