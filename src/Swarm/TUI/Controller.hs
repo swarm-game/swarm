@@ -767,6 +767,11 @@ handleREPLEvent = \case
       CmdPrompt {} -> continueWithoutRedraw
       SearchPrompt _ _ ->
         uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+  ControlKey 'd' -> do
+    text <- use $ uiState . uiReplForm . to formState . promptTextL
+    if text == T.empty
+      then toggleModal QuitModal
+      else continueWithoutRedraw
   ev -> do
     replForm <- use $ uiState . uiReplForm
     f' <- nestEventM' replForm (handleFormEvent ev)
@@ -810,7 +815,8 @@ validateREPLForm s =
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
-       in s & uiState . uiReplForm %~ validate result
+       in s
+            & uiState . uiReplForm %~ validate result
             & uiState . uiReplType .~ theType
     SearchPrompt _ _ -> s
  where
