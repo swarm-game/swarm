@@ -591,10 +591,11 @@ updateUI = do
     -- It did, and returned some other value.  Pretty-print the
     -- result as a REPL output, with its type, and reset the replStatus.
     REPLWorking (Typed (Just v) pty reqs) -> do
-      let val = Typed v pty reqs
+      let (wasCmd, finalType) = stripCmd pty
+      let val = Typed v finalType reqs
       itIx <- use (gameState . replNextValueIndex)
       let itName = fromString $ "it" ++ show itIx
-      let out = T.intercalate " " [itName, " := ", into (prettyValue v), ":", prettyText (stripCmd pty)]
+      let out = T.intercalate " " [itName,  ":", prettyText finalType, if wasCmd then "<-" else "=",  into (prettyValue v)]
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
       gameState . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
@@ -684,9 +685,11 @@ loadVisibleRegion = do
       gs <- use gameState
       gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
-stripCmd :: Polytype -> Polytype
-stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
-stripCmd pty = pty
+-- | Strips top-level `cmd` from type (in case of REPL evaluation),
+--   and returns a boolean to indicate if it happened
+stripCmd :: Polytype -> (Bool, Polytype)
+stripCmd (Forall xs (TyCmd ty)) = (True, Forall xs ty)
+stripCmd pty = (False, pty)
 
 ------------------------------------------------------------
 -- REPL events
