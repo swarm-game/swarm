@@ -10,15 +10,16 @@ module Swarm.Language.Elaborate where
 
 import Control.Lens (transform, (%~))
 import Swarm.Language.Syntax
+import Swarm.Language.Types
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
---   term, given its top-level type.  This currently performs such
---   operations as rewriting @if@ expressions and recursive let
---   expressions to use laziness appropriately.  In theory it could
---   also perform rewriting for overloaded constants depending on the
---   actual type they are used at, but currently that sort of thing
---   tends to make type inference fall over.
-elaborate :: Term -> Term
+--   term.  This currently performs such operations as rewriting @if@
+--   expressions and recursive let expressions to use laziness
+--   appropriately.  In theory it could also perform rewriting for
+--   overloaded constants depending on the actual type they are used
+--   at, but currently that sort of thing tends to make type inference
+--   fall over.
+elaborate :: Syntax' Polytype -> Syntax' Polytype
 elaborate =
   -- Wrap all *free* variables in 'Force'.  Free variables must be
   -- referring to a previous definition, which are all wrapped in

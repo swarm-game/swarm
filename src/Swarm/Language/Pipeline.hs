@@ -44,10 +44,8 @@ import Witch
 --   pipeline.  Put a 'Term' in, and get one of these out.
 data ProcessedTerm
   = ProcessedTerm
-      Term
-      -- ^ The elaborated term
       TModule
-      -- ^ The type of the term (and of any embedded definitions)
+      -- ^ The elaborated + type-annotated term, plus types of any embedded definitions
       Requirements
       -- ^ Requirements of the term
       ReqCtx
@@ -64,7 +62,7 @@ instance FromJSON ProcessedTerm where
       Right (Just pt) -> return pt
 
 instance ToJSON ProcessedTerm where
-  toJSON (ProcessedTerm t _ _ _) = String $ prettyText t
+  toJSON (ProcessedTerm t _ _) = String $ prettyText (moduleAST t)
 
 -- | Given a 'Text' value representing a Swarm program,
 --
@@ -108,6 +106,6 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
-  ty <- inferTop ctx t
+  m <- inferTop ctx t
   let (caps, capCtx') = requirements capCtx (sTerm t)
-  return $ ProcessedTerm (elaborate (sTerm t)) ty caps capCtx'
+  return $ ProcessedTerm (elaborate (moduleAST m)) caps capCtx'
