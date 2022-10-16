@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- |
 -- Module      :  Swarm.TUI.Controller
@@ -70,13 +71,12 @@ import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability (Capability (CMake))
 import Swarm.Language.Context
 import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
+import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
-import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.TUI.List
@@ -701,8 +701,8 @@ handleREPLEvent = \case
         topStore =
           fromMaybe emptyStore $
             s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
-        startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
-          (gameState . replStatus .~ REPLWorking ty Nothing)
+        startBaseProgram t@(ProcessedTerm _ (Module tm _) _ _) =
+          (gameState . replStatus .~ REPLWorking (sType tm) Nothing)
             . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
             . (gameState %~ execState (activateRobot 0))
 
@@ -789,7 +789,7 @@ validateREPLForm s =
     CmdPrompt uinput _ ->
       let result = processTerm' topTypeCtx topReqCtx uinput
           theType = case result of
-            Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+            Right (Just (ProcessedTerm _ (Module tm _) _ _)) -> Just (sType tm)
             _ -> Nothing
        in s & uiState . uiReplForm %~ validate result
             & uiState . uiReplType .~ theType
@@ -912,16 +912,15 @@ handleRobotPanelEvent = \case
 makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
-  let mkTy = PolyUnit
-      mkProg = TApp (TConst Make) (TText (e ^. entityName))
-      mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
+  let name = e ^. entityName
+      mkPT = [tmQ| make $str:name |]
       topStore =
         fromMaybe emptyStore $
           s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
 
   case isActive <$> (s ^. gameState . robotMap . at 0) of
     Just False -> do
-      gameState . replStatus .= REPLWorking mkTy Nothing
+      gameState . replStatus .= REPLWorking PolyUnit Nothing
       gameState . robotMap . ix 0 . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
