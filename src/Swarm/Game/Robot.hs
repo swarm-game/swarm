@@ -41,6 +41,7 @@ module Swarm.Game.Robot (
   defReqs,
   defVals,
   defStore,
+  emptyRobotContext,
 
   -- ** Lenses
   robotEntity,
@@ -102,6 +103,7 @@ import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
@@ -126,6 +128,31 @@ data RobotContext = RobotContext
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 makeLenses ''RobotContext
+
+emptyRobotContext :: RobotContext
+emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+
+type instance Index RobotContext = Ctx.Var
+type instance IxValue RobotContext = Typed Value
+
+instance Ixed RobotContext
+instance At RobotContext where
+  at name = lens getter setter
+   where
+    getter ctx =
+      do
+        typ <- Ctx.lookup name (ctx ^. defTypes)
+        val <- Ctx.lookup name (ctx ^. defVals)
+        req <- Ctx.lookup name (ctx ^. defReqs)
+        return $ Typed val typ req
+    setter ctx Nothing =
+      ctx & defTypes %~ Ctx.delete name
+        & defVals %~ Ctx.delete name
+        & defReqs %~ Ctx.delete name
+    setter ctx (Just (Typed val typ req)) =
+      ctx & defTypes %~ Ctx.addBinding name typ
+        & defVals %~ Ctx.addBinding name val
+        & defReqs %~ Ctx.addBinding name req
 
 data LogSource = Said | Logged | ErrorTrace
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
@@ -472,7 +499,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+    , _robotContext = emptyRobotContext
     , _robotID = rid
     , _robotParentID = pid
     , _robotHeavy = heavy
