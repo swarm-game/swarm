@@ -70,7 +70,7 @@ appMain opts = do
           writeBChan chan Frame
 
       _ <- forkIO $ do
-        upRel <- getNewerReleaseVersion
+        upRel <- getNewerReleaseVersion (repoGitInfo opts)
         writeBChan chan (UpstreamVersion upRel)
 
       -- Start the web service with a reference to the game state
@@ -111,6 +111,7 @@ demoWeb = do
           , toRun = Nothing
           , cheatMode = False
           , userWebPort = Nothing
+          , repoGitInfo = Nothing
           }
   case res of
     Left errMsg -> T.putStrLn errMsg

@@ -162,6 +162,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
+import GitHash (GitInfo)
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
@@ -922,6 +923,8 @@ data AppOpts = AppOpts
     cheatMode :: Bool
   , -- | Explicit port on which to run the web API
     userWebPort :: Maybe Port
+  , -- | Information about the Git repository (not present in release).
+    repoGitInfo :: Maybe GitInfo
   }
 
 -- | Initialize the 'AppState'.

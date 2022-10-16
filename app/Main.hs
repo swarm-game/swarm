@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
 import Data.Foldable qualified
 import Data.Text (Text, pack)
 import Data.Text.IO qualified as Text
+import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
@@ -15,6 +17,14 @@ import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPrint, stderr)
+
+gitInfo :: Maybe GitInfo
+gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
+
+commitInfo :: String
+commitInfo = case gitInfo of
+  Nothing -> ""
+  Just git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
 data CLI
   = Run AppOpts
@@ -33,7 +43,7 @@ cliParser =
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
     )
-    <|> Run <$> (AppOpts <$> seed <*> scenario <*> run <*> cheat <*> webPort)
+    <|> Run <$> (AppOpts <$> seed <*> scenario <*> run <*> cheat <*> webPort <*> pure gitInfo)
  where
   format :: Parser CLI
   format =
@@ -105,7 +115,7 @@ formatFile input = do
 showVersion :: IO ()
 showVersion = do
   putStrLn $ "Swarm game - " <> version <> commitInfo
-  up <- getNewerReleaseVersion
+  up <- getNewerReleaseVersion gitInfo
   either (hPrint stderr) (putStrLn . ("New upstream release: " <>)) up
 
 main :: IO ()
