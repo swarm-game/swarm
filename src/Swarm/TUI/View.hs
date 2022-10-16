@@ -554,7 +554,7 @@ robotsListWidget s = hCenter table
         | otherwise -> withAttr greenAttr $ txt "idle"
 
   basePos :: V2 Double
-  basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? robotMap . ix 0 . robotLocation)
+  basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? baseRobot . robotLocation)
   -- Keep the base and non sytem robot (e.g. no seed)
   isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base

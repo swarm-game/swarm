@@ -57,6 +57,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
@@ -77,6 +78,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.TUI.List
 import Swarm.TUI.Model
@@ -582,16 +584,22 @@ updateUI = do
   -- Now check if the base finished running a program entered at the REPL.
   replUpdated <- case g ^. replStatus of
     -- It did, and the result was the unit value.  Just reset replStatus.
-    REPLWorking _ (Just VUnit) -> do
-      gameState . replStatus .= REPLDone (Just (PolyUnit, VUnit))
+    REPLWorking (Typed (Just VUnit) typ reqs) -> do
+      gameState . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
       pure True
 
     -- It did, and returned some other value.  Pretty-print the
     -- result as a REPL output, with its type, and reset the replStatus.
-    REPLWorking pty (Just v) -> do
-      let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
+    REPLWorking (Typed (Just v) pty reqs) -> do
+      let finalType = stripCmd pty
+      let val = Typed v finalType reqs
+      itIx <- use (gameState . replNextValueIndex)
+      let itName = fromString $ "it" ++ show itIx
+      let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
       uiState . uiReplHistory %= addREPLItem (REPLOutput out)
-      gameState . replStatus .= REPLDone (Just (pty, v))
+      gameState . replStatus .= REPLDone (Just val)
+      gameState . baseRobot . robotContext . at itName .= Just val
+      gameState . replNextValueIndex %= (+ 1)
       pure True
 
     -- Otherwise, do nothing.
@@ -677,6 +685,8 @@ loadVisibleRegion = do
       gs <- use gameState
       gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
+-- | Strips top-level `cmd` from type (in case of REPL evaluation),
+--   and returns a boolean to indicate if it happened
 stripCmd :: Polytype -> Polytype
 stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
 stripCmd pty = pty
@@ -685,30 +695,39 @@ stripCmd pty = pty
 -- REPL events
 ------------------------------------------------------------
 
+-- | Context for the REPL commands to execute in. Contains the base
+--   robot context plus the `it` variable that refer to the previously
+--   computed values. (Note that `it{n}` variables are set in the
+--   base robot context; we only set `it` here because it's so transient)
+topContext :: AppState -> RobotContext
+topContext s = ctxPossiblyWithIt
+ where
+  ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
+
+  ctxPossiblyWithIt = case s ^. gameState . replStatus of
+    REPLDone (Just p) -> ctx & at "it" ?~ p
+    _ -> ctx
+
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent = \case
   ControlKey 'c' -> do
-    gameState . robotMap . ix 0 . machine %= cancel
+    gameState . baseRobot . machine %= cancel
     uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
   Key V.KEnter -> do
     s <- get
     let entry = formState (s ^. uiState . uiReplForm)
-        topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-        topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defReqs
-        topValCtx = s ^. gameState . robotMap . ix 0 . robotContext . defVals
-        topStore =
-          fromMaybe emptyStore $
-            s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
-        startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
-          (gameState . replStatus .~ REPLWorking ty Nothing)
-            . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
+        topCtx = topContext s
+
+        startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs _) =
+          (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
+            . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
             . (gameState %~ execState (activateRobot 0))
 
     if not $ s ^. gameState . replWorking
       then case entry of
         CmdPrompt uinput _ ->
-          case processTerm' topTypeCtx topReqCtx uinput of
+          case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
             Right mt -> do
               uiState %= resetWithREPLForm (set promptUpdateL "" (s ^. uiState))
               uiState . uiReplHistory %= addREPLItem (REPLEntry uinput)
@@ -778,7 +797,7 @@ tabComplete s (CmdPrompt t mms)
  where
   completeWith m = T.append t (T.drop (T.length lastWord) m)
   lastWord = T.takeWhileEnd isIdentChar t
-  names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
+  names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
   matches = filter (lastWord `T.isPrefixOf`) possibleWords
 
@@ -791,7 +810,7 @@ validateREPLForm s =
       let theType = s ^. gameState . replStatus . replActiveType
        in s & uiState . uiReplType .~ theType
     CmdPrompt uinput _ ->
-      let result = processTerm' topTypeCtx topReqCtx uinput
+      let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
           theType = case result of
             Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
             _ -> Nothing
@@ -801,8 +820,7 @@ validateREPLForm s =
     SearchPrompt _ _ -> s
  where
   replPrompt = s ^. uiState . uiReplForm . to formState
-  topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-  topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defReqs
+  topCtx = topContext s
   validate result = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
@@ -918,16 +936,17 @@ makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
   let mkTy = PolyUnit
+      mkReq = R.singletonCap CMake
       mkProg = TApp (TConst Make) (TText (e ^. entityName))
-      mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
+      mkPT = ProcessedTerm mkProg (Module mkTy empty) mkReq empty
       topStore =
         fromMaybe emptyStore $
-          s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
+          s ^? gameState . baseRobot . robotContext . defStore
 
-  case isActive <$> (s ^. gameState . robotMap . at 0) of
+  case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
-      gameState . replStatus .= REPLWorking mkTy Nothing
-      gameState . robotMap . ix 0 . machine .= initMachine mkPT empty topStore
+      gameState . replStatus .= REPLWorking (Typed Nothing mkTy mkReq)
+      gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
 
