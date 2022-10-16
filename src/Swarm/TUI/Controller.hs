@@ -72,6 +72,7 @@ import Swarm.Game.Value (Value (VUnit), prettyValue)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CMake))
 import Swarm.Language.Context
+import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
