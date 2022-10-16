@@ -720,7 +720,7 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 
 -- | The surface syntax for the language, with location and type annotations.
 data Syntax' ty = Syntax' {sLoc :: Location, sTerm :: Term' ty, sType :: ty}
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 type Syntax = Syntax' ()
 
@@ -863,7 +863,7 @@ data Term' ty
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType (Syntax' ty)
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 type Term = Term' ()
 

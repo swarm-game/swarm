@@ -85,17 +85,14 @@ runInfer ctx =
   (>>= applyBindings)
     >>> ( >>=
             \(Module u uctx) ->
-              Module <$> foo u <*> pure (fromU uctx)
+              Module
+                <$> mapM (fmap fromU . generalize) u
+                <*> pure (fromU uctx)
         )
     >>> flip runReaderT (toU ctx)
     >>> runExceptT
     >>> evalIntBindingT
     >>> runIdentity
-
-foo :: Syntax' UType -> Infer (Syntax' Polytype)
-foo = undefined
-
--- (fromU <$> generalize uty)
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
