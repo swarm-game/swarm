@@ -1,6 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -51,8 +52,10 @@ import Control.Monad.Reader
 import Control.Unification hiding (applyBindings, (=:=))
 import Control.Unification qualified as U
 import Control.Unification.IntVar
+import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
+import Data.Generics (mkM)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -172,8 +175,11 @@ instance HasBindings UPolytype where
 instance HasBindings UCtx where
   applyBindings = mapM applyBindings
 
-instance HasBindings u => HasBindings (Syntax' u) where
-  applyBindings = undefined
+instance (HasBindings u, Data u) => HasBindings (Term' u) where
+  applyBindings = gmapM (mkM (applyBindings @(Syntax' u)))
+
+instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
+  applyBindings (Syntax' l t u) = Syntax' l <$> applyBindings t <*> applyBindings u
 
 instance HasBindings UModule where
   applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx

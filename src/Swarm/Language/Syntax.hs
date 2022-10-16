@@ -867,7 +867,7 @@ data Term' ty
 
 type Term = Term' ()
 
-instance Plated Term where
+instance Data ty => Plated (Term' ty) where
   plate = uniplate
 
 -- | Traversal over those subterms of a term which represent free
