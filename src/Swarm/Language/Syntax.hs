@@ -872,7 +872,7 @@ instance Data ty => Plated (Term' ty) where
 
 -- | Traversal over those subterms of a term which represent free
 --   variables.
-fvT :: Traversal' Term Term
+fvT :: Traversal' (Term' ty) (Term' ty)
 fvT f = go S.empty
  where
   go bound t = case t of
@@ -891,30 +891,30 @@ fvT f = go S.empty
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)
-    SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
-    SApp (Syntax l1 t1) (Syntax l2 t2) ->
-      SApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    SLet r x ty (Syntax l1 t1) (Syntax l2 t2) ->
+    SLam x ty (Syntax' l1 t1 ty1) -> SLam x ty <$> (Syntax' l1 <$> go (S.insert x bound) t1 <*> pure ty1)
+    SApp (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
+      SApp <$> (Syntax' l1 <$> go bound t1 <*> pure ty1) <*> (Syntax' l2 <$> go bound t2 <*> pure ty2)
+    SLet r x ty (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
       let bound' = S.insert x bound
-       in SLet r x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
-    SPair (Syntax l1 t1) (Syntax l2 t2) ->
-      SPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    SDef r x ty (Syntax l1 t1) ->
-      SDef r x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
-    SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
-      SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
-    SDelay m (Syntax l1 t1) ->
-      SDelay m <$> (Syntax l1 <$> go bound t1)
+       in SLet r x ty <$> (Syntax' l1 <$> go bound' t1 <*> pure ty1) <*> (Syntax' l2 <$> go bound' t2 <*> pure ty2)
+    SPair (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
+      SPair <$> (Syntax' l1 <$> go bound t1 <*> pure ty1) <*> (Syntax' l2 <$> go bound t2 <*> pure ty2)
+    SDef r x ty (Syntax' l1 t1 ty1) ->
+      SDef r x ty <$> (Syntax' l1 <$> go (S.insert x bound) t1 <*> pure ty1)
+    SBind mx (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
+      SBind mx <$> (Syntax' l1 <$> go bound t1 <*> pure ty1) <*> (Syntax' l2 <$> go (maybe id S.insert mx bound) t2 <*> pure ty2)
+    SDelay m (Syntax' l1 t1 ty1) ->
+      SDelay m <$> (Syntax' l1 <$> go bound t1 <*> pure ty1)
 
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via
 --   @'Data.Set.Lens.setOf' 'fv'@.
-fv :: Traversal' Term Var
+fv :: Traversal' (Term' ty) Var
 fv = fvT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular variable.
-mapFree1 :: Var -> (Term -> Term) -> Term -> Term
-mapFree1 x f = fvT %~ (\t -> if t == TVar x then f t else t)
+mapFree1 :: Var -> (Term' ty -> Term' ty) -> Term' ty -> Term' ty
+mapFree1 x f = fvT %~ (\t -> case t of TVar y | y == x -> f t; _ -> t)
 
 lowShow :: Show a => a -> Text
 lowShow a = toLower (from (show a))
