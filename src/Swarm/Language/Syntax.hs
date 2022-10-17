@@ -2,6 +2,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -46,6 +48,9 @@ module Swarm.Language.Syntax (
 
   -- * Syntax
   Syntax' (..),
+  sLoc,
+  sTerm,
+  sType,
   Syntax,
   pattern Syntax,
   Location (..),
@@ -74,7 +79,7 @@ module Swarm.Language.Syntax (
   mapFree1,
 ) where
 
-import Control.Lens (Plated (..), Traversal', (%~))
+import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
 import Data.Aeson.Types
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
@@ -702,6 +707,9 @@ constInfo c = case c of
       , tangibility = Intangible
       }
 
+  lowShow :: Show a => a -> Text
+  lowShow a = toLower (from (show a))
+
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
 mkOp' c t1 = TApp (TApp (TConst c) t1)
@@ -719,7 +727,11 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
 -- | The surface syntax for the language, with location and type annotations.
-data Syntax' ty = Syntax' {sLoc :: Location, sTerm :: Term' ty, sType :: ty}
+data Syntax' ty = Syntax'
+  { _sLoc :: Location
+  , _sTerm :: Term' ty
+  , _sType :: ty
+  }
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 type Syntax = Syntax' ()
@@ -870,51 +882,48 @@ type Term = Term' ()
 instance Data ty => Plated (Term' ty) where
   plate = uniplate
 
+makeLenses ''Syntax'
+
 -- | Traversal over those subterms of a term which represent free
 --   variables.
-fvT :: Traversal' (Term' ty) (Term' ty)
+fvT :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
 fvT f = go S.empty
  where
-  go bound t = case t of
-    TUnit -> pure t
-    TConst {} -> pure t
-    TDir {} -> pure t
-    TInt {} -> pure t
-    TAntiInt {} -> pure t
-    TText {} -> pure t
-    TAntiText {} -> pure t
-    TBool {} -> pure t
-    TRobot {} -> pure t
-    TRef {} -> pure t
-    TRequireDevice {} -> pure t
-    TRequire {} -> pure t
+  -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
+  go bound s@(Syntax' l t ty) = case t of
+    TUnit -> pure s
+    TConst {} -> pure s
+    TDir {} -> pure s
+    TInt {} -> pure s
+    TAntiInt {} -> pure s
+    TText {} -> pure s
+    TAntiText {} -> pure s
+    TBool {} -> pure s
+    TRobot {} -> pure s
+    TRef {} -> pure s
+    TRequireDevice {} -> pure s
+    TRequire {} -> pure s
     TVar x
-      | x `S.member` bound -> pure t
-      | otherwise -> f (TVar x)
-    SLam x ty (Syntax' l1 t1 ty1) -> SLam x ty <$> (Syntax' l1 <$> go (S.insert x bound) t1 <*> pure ty1)
-    SApp (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
-      SApp <$> (Syntax' l1 <$> go bound t1 <*> pure ty1) <*> (Syntax' l2 <$> go bound t2 <*> pure ty2)
-    SLet r x ty (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
+      | x `S.member` bound -> pure s
+      | otherwise -> f s
+    SLam x xty s1 -> rewrap $ SLam x xty <$> go (S.insert x bound) s1
+    SApp s1 s2 -> rewrap $ SApp <$> go bound s1 <*> go bound s2
+    SLet r x xty s1 s2 ->
       let bound' = S.insert x bound
-       in SLet r x ty <$> (Syntax' l1 <$> go bound' t1 <*> pure ty1) <*> (Syntax' l2 <$> go bound' t2 <*> pure ty2)
-    SPair (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
-      SPair <$> (Syntax' l1 <$> go bound t1 <*> pure ty1) <*> (Syntax' l2 <$> go bound t2 <*> pure ty2)
-    SDef r x ty (Syntax' l1 t1 ty1) ->
-      SDef r x ty <$> (Syntax' l1 <$> go (S.insert x bound) t1 <*> pure ty1)
-    SBind mx (Syntax' l1 t1 ty1) (Syntax' l2 t2 ty2) ->
-      SBind mx <$> (Syntax' l1 <$> go bound t1 <*> pure ty1) <*> (Syntax' l2 <$> go (maybe id S.insert mx bound) t2 <*> pure ty2)
-    SDelay m (Syntax' l1 t1 ty1) ->
-      SDelay m <$> (Syntax' l1 <$> go bound t1 <*> pure ty1)
+       in rewrap $ SLet r x xty <$> go bound' s1 <*> go bound' s2
+    SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
+    SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert x bound) s1
+    SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id S.insert mx bound) s2
+    SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
+   where
+    rewrap s' = Syntax' l <$> s' <*> pure ty
 
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via
 --   @'Data.Set.Lens.setOf' 'fv'@.
-fv :: Traversal' (Term' ty) Var
-fv = fvT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
+fv :: Traversal' (Syntax' ty) Var
+fv = fvT . sTerm . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular variable.
-mapFree1 :: Var -> (Term' ty -> Term' ty) -> Term' ty -> Term' ty
-mapFree1 x f = fvT %~ (\t -> case t of TVar y | y == x -> f t; _ -> t)
-
-lowShow :: Show a => a -> Text
-lowShow a = toLower (from (show a))
+mapFree1 :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
+mapFree1 x f = fvT %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
