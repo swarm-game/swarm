@@ -458,7 +458,7 @@ type Count = Number
 hashCount :: Num p => Number -> p
 hashCount c = case c of
   PosInfinity -> 1
-  Integer a | a < 0 -> 2 + fromIntegral a
+  Integer a | a >= 0 -> 2 + fromIntegral a
   _neg -> error $ "Count should never be negative! Value: " ++ show c
 
 -- | An inventory is really just a bag/multiset of entities.  That is,
