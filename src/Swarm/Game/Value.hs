@@ -32,6 +32,7 @@ import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Prelude
+import Swarm.Language.Number (Number)
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -39,7 +40,7 @@ data Value where
   -- | The unit value.
   VUnit :: Value
   -- | An integer.
-  VInt :: Integer -> Value
+  VInt :: Number -> Value
   -- | Literal text.
   VText :: Text -> Value
   -- | A direction.

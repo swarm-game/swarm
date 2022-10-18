@@ -17,11 +17,11 @@ import Data.Yaml.Aeson ( FromJSON(..), Value(..) )
 --
 -- However for that to work well with other language constructs
 -- we introduce negative infinity as well.
-data Number = NegInfinity | Count Integer | PosInfinity
+data Number = NegInfinity | Integer Integer | PosInfinity
   deriving (Eq, Ord, Show, Read, Generic, Data)
 
 instance ToJSON Number where
-  toJSON (Count a) = toJSON a
+  toJSON (Integer a) = toJSON a
   toJSON NegInfinity = String "-inf"
   toJSON PosInfinity = String "inf"
 
@@ -29,8 +29,8 @@ instance FromJSON Number where
   parseJSON = \case
     Number s ->
       if s - fromInteger (truncate s) == 0
-        then pure $ Count (truncate s)
-        else fail "Count is not a whole number!"
+        then pure $ Integer (truncate s)
+        else fail "Integer is not a whole number!"
     String "-inf" -> pure NegInfinity
     String "inf" -> pure PosInfinity
     e -> fail $
@@ -40,24 +40,24 @@ instance FromJSONE e Number
 
 instance Num Number where
   (+) :: Number -> Number -> Number
-  Count a + Count b = Count $ a + b
-  i + Count _c = i
-  Count _c + i = i
+  Integer a + Integer b = Integer $ a + b
+  i + Integer _c = i
+  Integer _c + i = i
   i + j = if i == j then i else error "Can not add infinities together!"
   (*) :: Number -> Number -> Number
-  Count a * Count b = Count $ a * b
+  Integer a * Integer b = Integer $ a * b
   i * j = signum i * signum j * PosInfinity
   abs :: Number -> Number
-  abs (Count c) = Count (abs c)
+  abs (Integer c) = Integer (abs c)
   abs NegInfinity = PosInfinity
   abs PosInfinity = PosInfinity
   signum :: Number -> Number
-  signum (Count c) = Count (signum c)
+  signum (Integer c) = Integer (signum c)
   signum NegInfinity = -1
   signum PosInfinity = 1
   fromInteger :: Integer -> Number
-  fromInteger = Count . fromInteger
+  fromInteger = Integer . fromInteger
   negate :: Number -> Number
-  negate (Count c) = Count (negate c)
+  negate (Integer c) = Integer (negate c)
   negate NegInfinity = PosInfinity
   negate PosInfinity = NegInfinity  

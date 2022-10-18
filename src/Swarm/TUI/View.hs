@@ -883,7 +883,7 @@ drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
  where
   showCount = padLeft Max . str . prettyCount
   prettyCount = \case
-    E.Count a -> show a
+    E.Integer a -> show a
     E.PosInfinity -> "∞"
     E.NegInfinity -> "-∞" -- this shoud never happen
 drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
@@ -1021,7 +1021,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
         ]
   inLen = length ins + length times
   outLen = length outs
-  times = [(fromIntegral time, timeE) | time /= 1]
+  times = [(fromInteger time, timeE) | time /= 1]
 
   -- Draw inputs and outputs.
   drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name

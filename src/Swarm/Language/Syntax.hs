@@ -87,6 +87,7 @@ import GHC.Generics (Generic)
 import Linear
 import Swarm.Language.Types
 import Witch.From (from)
+import Swarm.Language.Number (Number)
 
 ------------------------------------------------------------
 -- Constants
@@ -806,7 +807,7 @@ data Term
   | -- | A direction literal.
     TDir Direction
   | -- | An integer literal.
-    TInt Integer
+    TInt Number
   | -- | An antiquoted Haskell variable name of type Integer.
     TAntiInt Text
   | -- | A text literal.

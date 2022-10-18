@@ -30,6 +30,8 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
+import Swarm.Language.Number ( Number(..) )
+
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -114,7 +116,10 @@ instance PrettyPrec Term where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c
   prettyPrec _ (TDir d) = ppr d
-  prettyPrec _ (TInt n) = pretty n
+  prettyPrec _ (TInt n) = case n of
+    Integer i -> pretty i
+    NegInfinity -> undefined --  TODO
+    PosInfinity -> undefined
   prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
   prettyPrec _ (TText s) = fromString (show s)
   prettyPrec _ (TAntiText v) = "$str:" <> pretty v

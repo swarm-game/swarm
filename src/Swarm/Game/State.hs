@@ -265,7 +265,7 @@ data GameState = GameState
     -- wakeUpRobotsDoneSleeping.
     -- Waiting robots for a given time are a list because it is cheaper to
     -- append to a list than to a Set.
-    _waitingRobots :: Map Integer [RID]
+    _waitingRobots :: Map Number [RID]
   , _robotsByLocation :: Map (V2 Int64) IntSet
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
@@ -384,7 +384,7 @@ activeRobots = internalActiveRobots
 -- | The names of the robots that are currently sleeping, indexed by wake up
 --   time. Note that this may not include all sleeping robots, particularly
 --   those that are only taking a short nap (e.g. wait 1).
-waitingRobots :: Getter GameState (Map Integer [RID])
+waitingRobots :: Getter GameState (Map Number [RID])
 waitingRobots = internalWaitingRobots
 
 -- | A counter used to generate globally unique IDs.
@@ -636,7 +636,7 @@ emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
-sleepUntil :: Has (State GameState) sig m => RID -> Integer -> m ()
+sleepUntil :: Has (State GameState) sig m => RID -> Number -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
   internalWaitingRobots . at time . non [] %= (rid :)
@@ -654,7 +654,7 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 --   if they still exist in the keys of robotMap.
 wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
 wakeUpRobotsDoneSleeping = do
-  time <- use ticks
+  time <- Integer <$> use ticks
   mrids <- internalWaitingRobots . at time <<.= Nothing
   case mrids of
     Nothing -> return ()

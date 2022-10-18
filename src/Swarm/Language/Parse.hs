@@ -55,6 +55,7 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
 import Witch
+import Swarm.Language.Number (Number(Integer))
 
 -- Imports for doctests (cabal-docspec needs this)
 
@@ -246,7 +247,7 @@ parseTermAtom =
         <|> TConst <$> parseConst
         <|> TVar <$> identifier
         <|> TDir <$> parseDirection
-        <|> TInt <$> integer
+        <|> TInt . Integer <$> integer
         <|> TText <$> textLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
         <|> reserved "require"

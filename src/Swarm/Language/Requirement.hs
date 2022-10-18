@@ -100,7 +100,7 @@ instance Monoid Requirements where
 singleton :: Requirement -> Requirements
 singleton (ReqCap c) = Requirements (S.singleton c) S.empty M.empty
 singleton (ReqDev d) = Requirements S.empty (S.singleton d) M.empty
-singleton (ReqInv n e) = Requirements S.empty S.empty (M.singleton e (Count $ fromIntegral n))
+singleton (ReqInv n e) = Requirements S.empty S.empty (M.singleton e (Integer $ fromIntegral n))
 
 -- | For convenience, create a 'Requirements' set with a single
 --   'Capability' requirement.
