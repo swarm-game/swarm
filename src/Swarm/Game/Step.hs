@@ -1964,14 +1964,23 @@ incomparable v1 v2 =
 --   incorrectly use it on a bad 'Const' in the library.
 evalArith :: Has (Throw Exn) sig m => Const -> Number -> Number -> m Number
 evalArith = \case
-  Add -> ok (+)
-  Sub -> ok (-)
+  Add -> safeAdd
+  Sub -> \i j -> evalArith Add i (-j)
   Mul -> ok (*)
   Div -> safeDiv
   Exp -> safeExp
   c -> \_ _ -> throwError $ Fatal $ T.append "evalArith called on bad constant " (from (show c))
  where
   ok f x y = return $ f x y
+
+-- | Perform addition on (possibly infinite) numbers safely.
+safeAdd :: Has (Throw Exn) sig m => Number -> Number -> m Number
+safeAdd = add
+ where
+  add PosInfinity NegInfinity = failAdd
+  add NegInfinity PosInfinity = failAdd
+  add i j = return $ i + j
+  failAdd = throwError $ CmdFailed Div "Can not add opposite infinities together!"
 
 -- | Perform an integer division, but return infinity for division by zero.
 --   Dividing infinity by infinity is also undefined.

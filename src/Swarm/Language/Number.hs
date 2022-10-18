@@ -43,7 +43,7 @@ instance Num Number where
   Integer a + Integer b = Integer $ a + b
   i + Integer _c = i
   Integer _c + i = i
-  i + j = if i == j then i else error "Can not add infinities together!"
+  i + j = if i == j then i else error "Can not add opposite infinities together!"
   (*) :: Number -> Number -> Number
   Integer a * Integer b = Integer $ a * b
   i * j = case (signum i * signum j) `compare` 0 of
