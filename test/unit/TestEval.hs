@@ -14,7 +14,7 @@ import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import TestUtil
 import Witch (from)
-import Swarm.Language.Number (Number(Integer))
+import Swarm.Language.Number (Number(Integer, PosInfinity))
 
 testEval :: GameState -> TestTree
 testEval g =
@@ -165,8 +165,8 @@ testEval g =
             ("if true {1} {1/0}" `evaluatesTo` VInt 1)
         , testCase
             "function with if is not lazy"
-            ( "let f = \\x. \\y. if true {x} {y} in f 1 (1/0)"
-                `throwsError` ("by zero" `T.isInfixOf`)
+            ( "let f = \\x. \\y. if true {x} {y} in f 1 ((1/0) - (1/0))"
+                `throwsError` ("opposite infinities" `T.isInfixOf`)
             )
         , testCase
             "memoization baseline"
@@ -209,8 +209,8 @@ testEval g =
             "try / fail / fail"
             ("try {fail \"foo\"} {fail \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
         , testCase
-            "try / div by 0"
-            ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
+            "try / div infinities"
+            ("try {return ((1/0) / (1/0))} {return 3}" `evaluatesTo` VInt 3)
         ]
     , testGroup
         "text"
