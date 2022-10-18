@@ -46,7 +46,10 @@ instance Num Number where
   i + j = if i == j then i else error "Can not add infinities together!"
   (*) :: Number -> Number -> Number
   Integer a * Integer b = Integer $ a * b
-  i * j = signum i * signum j * PosInfinity
+  i * j = case (signum i * signum j) `compare` 0 of
+    LT -> NegInfinity
+    EQ -> 0
+    GT -> PosInfinity
   abs :: Number -> Number
   abs (Integer c) = Integer (abs c)
   abs NegInfinity = PosInfinity
@@ -56,7 +59,7 @@ instance Num Number where
   signum NegInfinity = -1
   signum PosInfinity = 1
   fromInteger :: Integer -> Number
-  fromInteger = Integer . fromInteger
+  fromInteger = Integer
   negate :: Number -> Number
   negate (Integer c) = Integer (negate c)
   negate NegInfinity = PosInfinity
