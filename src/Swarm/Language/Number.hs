@@ -1,13 +1,15 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Swarm.Language.Number (
-    Number(..),
+  Number (..),
 ) where
-import GHC.Generics (Generic)
+
 import Data.Data (Data)
 import Data.Yaml (ToJSON (..))
+import Data.Yaml.Aeson (FromJSON (..), Value (..))
+import GHC.Generics (Generic)
 import Swarm.Util.Yaml (FromJSONE)
-import Data.Yaml.Aeson ( FromJSON(..), Value(..) )
 
 -- | A type that represent the quantity of something.
 --
@@ -33,8 +35,9 @@ instance FromJSON Number where
         else fail "Integer is not a whole number!"
     String "-inf" -> pure NegInfinity
     String "inf" -> pure PosInfinity
-    e -> fail $
-      "Expected number or null for count, but got '" <> show e <> "'!"
+    e ->
+      fail $
+        "Expected number or null for count, but got '" <> show e <> "'!"
 
 instance FromJSONE e Number
 
@@ -63,4 +66,4 @@ instance Num Number where
   negate :: Number -> Number
   negate (Integer c) = Integer (negate c)
   negate NegInfinity = PosInfinity
-  negate PosInfinity = NegInfinity  
+  negate PosInfinity = NegInfinity

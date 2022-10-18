@@ -26,12 +26,11 @@ import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Number (Number (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
-import Swarm.Language.Number ( Number(..) )
-
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.

@@ -40,8 +40,8 @@ import GHC.Generics (Generic)
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Number (Number (..))
 import Swarm.Language.Syntax hiding (Count)
-import Swarm.Language.Number (Number(..))
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:

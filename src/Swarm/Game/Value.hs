@@ -29,10 +29,10 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Context
+import Swarm.Language.Number (Number)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Prelude
-import Swarm.Language.Number (Number)
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.

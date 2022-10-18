@@ -52,7 +52,7 @@ module Swarm.Game.Entity (
   -- * Inventories
   Inventory,
   Count,
-  Number(..),
+  Number (..),
 
   -- ** Construction
   empty,
@@ -106,12 +106,12 @@ import GHC.Generics (Generic)
 import Linear (V2)
 import Swarm.Game.Display
 import Swarm.Language.Capability
+import Swarm.Language.Number (Number (..))
 import Swarm.Util (dataNotFound, getDataFileNameSafe, plural, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
-import Swarm.Language.Number (Number (..))
 
 ------------------------------------------------------------
 -- Properties
@@ -598,7 +598,6 @@ deleteAll e (Inventory cs byN h) =
     (h - hashCount n * (e ^. entityHash))
  where
   n = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
-
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]

@@ -85,9 +85,9 @@ import Data.Text hiding (filter, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear
+import Swarm.Language.Number (Number)
 import Swarm.Language.Types
 import Witch.From (from)
-import Swarm.Language.Number (Number)
 
 ------------------------------------------------------------
 -- Constants

@@ -9,12 +9,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
 import Swarm.Game.Value
+import Swarm.Language.Number (Number (Integer, PosInfinity))
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import TestUtil
 import Witch (from)
-import Swarm.Language.Number (Number(Integer, PosInfinity))
 
 testEval :: GameState -> TestTree
 testEval g =

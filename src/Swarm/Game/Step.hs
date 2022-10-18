@@ -50,8 +50,9 @@ import Data.Tuple (swap)
 import Linear (V2 (..), zero, (^+^))
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton, union, Integer)
-import Swarm.Game.Entity qualified as E 
+import Swarm.Game.Entity (Number (..))
+import Swarm.Game.Entity hiding (Integer, empty, lookup, singleton, union)
+import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -72,7 +73,6 @@ import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
-import Swarm.Game.Entity (Number(..))
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
@@ -1377,7 +1377,6 @@ execConst c vs s k = do
             let salvageInventory = E.union (target ^. robotInventory) (target ^. installedDevices)
             robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
 
-
             -- Copy over the salvaged robot's log, if we have one
             inst <- use installedDevices
             em <- use entityMap
@@ -1401,14 +1400,16 @@ execConst c vs s k = do
             robotMap . at (target ^. robotID) . traverse . systemRobot .= True
 
             ourID <- use @Robot robotID
-            let salvageItems = if system || creative
-                  then []
-                  else concatMap (uncurry replicateCount) (E.elems salvageInventory)
+            let salvageItems =
+                  if system || creative
+                    then []
+                    else concatMap (uncurry replicateCount) (E.elems salvageInventory)
                 numItems = length salvageItems
-                replicateCount n e = e ^. entityName & case n of
-                  E.Integer x -> replicate (fromIntegral x)
-                  E.PosInfinity -> replicate 42
-                  E.NegInfinity -> replicate (-42)
+                replicateCount n e =
+                  e ^. entityName & case n of
+                    E.Integer x -> replicate (fromIntegral x)
+                    E.PosInfinity -> replicate 42
+                    E.NegInfinity -> replicate (-42)
 
             -- The program for the salvaged robot to run
             let giveInventory =
@@ -1989,13 +1990,13 @@ safeDiv i 0 = return $ signum i * PosInfinity
 safeDiv (Integer a) (Integer b) = return . Integer $ a `div` b
 safeDiv (Integer _a) _ = return 0
 safeDiv i b@(Integer _b) = return $ b * i
-safeDiv _ _ = throwError $ CmdFailed Div "Dividing infinities" 
+safeDiv _ _ = throwError $ CmdFailed Div "Dividing infinities"
 
 -- | Perform exponentiation, but fail on negative powers and negative number to the poer of infinity.
 safeExp :: Has (Throw Exn) sig m => Number -> Number -> m Number
 safeExp = \case
   PosInfinity -> \b -> return $ PosInfinity * signum b
-  NegInfinity -> \b -> return $ NegInfinity * signum b 
+  NegInfinity -> \b -> return $ NegInfinity * signum b
   Integer a -> \case
     PosInfinity
       | a == 0 -> return 0

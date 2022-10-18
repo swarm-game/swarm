@@ -33,7 +33,7 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities, Count)
+import Swarm.Game.Entity (Count, Entity, EntityMap (entitiesByName), entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
 import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
