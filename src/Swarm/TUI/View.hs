@@ -613,7 +613,7 @@ helpWidget theSeed mport =
     , ("Ctrl-o", "single step")
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
-    , ("Ctrl-q", "quit the game")
+    , ("Ctrl-q", "quit the current scenario")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
     , ("Meta-r", "focus on the REPL")
