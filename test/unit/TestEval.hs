@@ -14,6 +14,7 @@ import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import TestUtil
 import Witch (from)
+import Swarm.Language.Number (Number(Integer))
 
 testEval :: GameState -> TestTree
 testEval g =
@@ -23,19 +24,19 @@ testEval g =
         "arithmetic"
         [ testProperty
             "addition"
-            (\a b -> binOp a "+" b `evaluatesToP` VInt (a + b))
+            (\a b -> binOp a "+" b `evaluatesToP` VInt (Integer $ a + b))
         , testProperty
             "subtraction"
-            (\a b -> binOp a "-" b `evaluatesToP` VInt (a - b))
+            (\a b -> binOp a "-" b `evaluatesToP` VInt (Integer $ a - b))
         , testProperty
             "multiplication"
-            (\a b -> binOp a "*" b `evaluatesToP` VInt (a * b))
+            (\a b -> binOp a "*" b `evaluatesToP` VInt (Integer $ a * b))
         , testProperty
             "division"
-            (\a (NonZero b) -> binOp a "/" b `evaluatesToP` VInt (a `div` b))
+            (\a (NonZero b) -> binOp a "/" b `evaluatesToP` VInt (Integer $ a `div` b))
         , testProperty
             "exponentiation"
-            (\a (NonNegative b) -> binOp a "^" b `evaluatesToP` VInt (a ^ (b :: Integer)))
+            (\a (NonNegative b) -> binOp a "^" b `evaluatesToP` VInt (Integer $ a ^ (b :: Integer)))
         ]
     , testGroup
         "int comparison"
