@@ -804,7 +804,7 @@ scenarioToGameState scenario userSeed toRun g = do
       & ix baseID . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
-          True -> union (fromElems (map (Infinity,) entities))
+          True -> union (fromElems (map (PosInfinity,) entities))
       & ix baseID . installedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id

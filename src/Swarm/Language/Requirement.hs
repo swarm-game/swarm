@@ -41,7 +41,7 @@ import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax hiding (Count)
-import Swarm.Game.Entity (Count(..))
+import Swarm.Language.Number (Number(..))
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:
@@ -85,7 +85,7 @@ data Requirement
 data Requirements = Requirements
   { capReqs :: Set Capability
   , devReqs :: Set Text
-  , invReqs :: Map Text Count
+  , invReqs :: Map Text Number
   }
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 

@@ -51,7 +51,8 @@ module Swarm.Game.Entity (
 
   -- * Inventories
   Inventory,
-  Count(..),
+  Count,
+  Number(..),
 
   -- ** Construction
   empty,
@@ -110,8 +111,7 @@ import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
-import Numeric.Natural (Natural)
-import Data.Data (Data)
+import Swarm.Language.Number (Number (..))
 
 ------------------------------------------------------------
 -- Properties
@@ -452,48 +452,14 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 -- Inventory
 ------------------------------------------------------------
 
--- | A type that represent /how many/ of something we have.
---
--- In some challenges it is useful to have _an infinite_ amount
--- of supplies in robots inventory as that is more visible
--- than hidden default devices.
-data Count = Count Natural | Infinity
-  deriving (Eq, Ord, Show, Read, Generic, Data)
+type Count = Number
 
-instance ToJSON Count where
-  toJSON (Count a) = toJSON a
-  toJSON Infinity = Null
-
-instance FromJSON Count where
-  parseJSON = \case
-    Number s ->
-      if s - fromInteger (truncate s) == 0
-        then pure $ Count (truncate s)
-        else fail "Count is not a whole number!"
-    Null -> pure Infinity
-    e -> fail $
-      "Expected number or null for count, but got '" <> show e <> "'!"
-
-instance FromJSONE e Count
-
-instance Num Count where
-  Count a + Count b = Count $ a + b
-  _ + _ = Infinity
-  Count a * Count b = Count $ a * b
-  _ * _ = Infinity
-  abs = id
-  signum (Count 0) = 0
-  signum _ = 1
-  fromInteger = Count . fromInteger
-  Count a - Count b = Count $ a - b
-  Infinity - Count _ = Infinity
-  _ - _ = 0
-
--- | Internal way to shift count to positive integers when hashing.
-hashCount :: Num p => Count -> p
+-- | Internal way to shift numbers to positive integers when hashing.
+hashCount :: Num p => Number -> p
 hashCount c = case c of
-  Infinity -> 1
-  Count a -> 2 + fromIntegral a
+  PosInfinity -> 1
+  Count a | a < 0 -> 2 + fromIntegral a
+  _neg -> error $ "Count should never be negative! Value: " ++ show c
 
 -- | An inventory is really just a bag/multiset of entities.  That is,
 --   it contains some entities, along with the number of times each

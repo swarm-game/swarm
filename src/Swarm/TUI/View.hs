@@ -884,7 +884,8 @@ drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
   showCount = padLeft Max . str . prettyCount
   prettyCount = \case
     E.Count a -> show a
-    E.Infinity -> "∞"
+    E.PosInfinity -> "∞"
+    E.NegInfinity -> "-∞" -- this shoud never happen
 drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
 
 -- | Draw the name of an entity, labelled with its visual

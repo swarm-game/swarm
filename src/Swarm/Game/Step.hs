@@ -929,8 +929,9 @@ execConst c vs s k = do
         inv <- use robotInventory
         let n = case countByName name inv of
               E.Count x -> x
-              E.Infinity -> 42
-        return $ Out (VInt $ fromIntegral n) s k
+              E.PosInfinity -> 42
+              E.NegInfinity -> -42
+        return $ Out (VInt n) s k
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
@@ -1408,7 +1409,8 @@ execConst c vs s k = do
                 numItems = length salvageItems
                 replicateCount n e = e ^. entityName & case n of
                   E.Count x -> replicate (fromIntegral x)
-                  E.Infinity -> replicate 42
+                  E.PosInfinity -> replicate 42
+                  E.NegInfinity -> replicate (-42)
 
             -- The program for the salvaged robot to run
             let giveInventory =
