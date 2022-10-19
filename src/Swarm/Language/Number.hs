@@ -6,11 +6,11 @@ module Swarm.Language.Number (
 ) where
 
 import Data.Data (Data)
+import Data.Hashable (Hashable)
 import Data.Yaml (ToJSON (..))
 import Data.Yaml.Aeson (FromJSON (..), Value (..))
 import GHC.Generics (Generic)
 import Swarm.Util.Yaml (FromJSONE)
-import Data.Hashable (Hashable)
 
 -- | A type that represent the quantity of something.
 --
