@@ -1468,6 +1468,7 @@ execConst c vs s k = do
     Mul -> returnEvalArith
     Div -> returnEvalArith
     Exp -> returnEvalArith
+    Infinity -> return $ Out (VInt PosInfinity) s k
     Format -> case vs of
       [v] -> return $ Out (VText (prettyValue v)) s k
       _ -> badConst

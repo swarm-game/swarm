@@ -343,6 +343,10 @@ data Const
     Div
   | -- | Arithmetic exponentiation operator
     Exp
+  | -- Special arithmetic constants
+
+    -- | Positive infinity
+    Infinity
   | -- String operators
 
     -- | Turn an arbitrary value into a string
@@ -630,6 +634,7 @@ constInfo c = case c of
   Mul -> binaryOp "*" 7 L "Multiply the given integer values."
   Div -> binaryOp "/" 7 L "Divide the left integer value by the right one, rounding down."
   Exp -> binaryOp "^" 8 R "Raise the left integer value to the power of the right one."
+  Infinity -> function 0 "The positive infinity is used to count an unlimited supply of entities."
   Eq -> binaryOp "==" 4 N "Check that the left value is equal to the right one."
   Neq -> binaryOp "!=" 4 N "Check that the left value is not equal to the right one."
   Lt -> binaryOp "<" 4 N "Check that the left value is lesser than the right one."

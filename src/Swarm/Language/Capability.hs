@@ -193,6 +193,7 @@ constCaps = \case
   Mul -> Just CArith
   Div -> Just CArith
   Exp -> Just CArith
+  Infinity -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
   Swap -> Just CSwap

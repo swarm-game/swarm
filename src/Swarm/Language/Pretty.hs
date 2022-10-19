@@ -115,10 +115,10 @@ instance PrettyPrec Term where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c
   prettyPrec _ (TDir d) = ppr d
-  prettyPrec _ (TInt n) = case n of
+  prettyPrec p (TInt n) = case n of
     Integer i -> pretty i
-    NegInfinity -> undefined --  TODO
-    PosInfinity -> undefined
+    NegInfinity -> prettyPrec p (TApp (TConst Neg) (TConst Infinity))
+    PosInfinity -> prettyPrec p (TConst Infinity)
   prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
   prettyPrec _ (TText s) = fromString (show s)
   prettyPrec _ (TAntiText v) = "$str:" <> pretty v

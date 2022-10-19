@@ -11,7 +11,7 @@ objectives:
         boatInstalled <- as r {installed "boat"};
         b1 <- as r {count "boat"};
         b0 <- as base {count "boat"};
-        return (p == (2,0) && b0 == 0 && boatInstalled && b1 == 0);
+        return (p == (2,0) && b0 == infinity && boatInstalled && b1 == 0);
       } { return false }
 creative: true
 solution: |

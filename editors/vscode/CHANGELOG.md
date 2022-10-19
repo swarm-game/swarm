@@ -2,6 +2,9 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## WIP
+- [Highlighter] added `infinity` unary function
+
 ## version 0.0.7
 - [Highlighter] added `swap` command
 - [Highlighter] added `split` and `chars` functions
