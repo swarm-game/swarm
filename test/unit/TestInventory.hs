@@ -51,6 +51,12 @@ testInventory =
             hash (E.insertCount (Integer i) x (E.insertCount (Integer j) x E.empty))
               === hash (E.insertCount (Integer $ i + j) x E.empty)
         )
+    , testProperty
+        "insert i x (insert infinity x) has same hash as insert infinity x"
+        ( \(NonNegative i) ->
+            hash (E.insertCount (Integer i) x (E.insertCount PosInfinity x E.empty))
+              === hash (E.insertCount PosInfinity x E.empty)
+        )
     , testCase
         "insert 2 / delete"
         ( assertEqual
@@ -65,17 +71,30 @@ testInventory =
             (2 * x ^. E.entityHash)
             (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty)))
         )
+    , testProperty
+        "delete i x (insert infinity x) has same hash as insert infinity x"
+        ( \(NonNegative i) ->
+            hash (E.deleteCount (Integer i) x (E.insertCount PosInfinity x E.empty))
+              === hash (E.insertCount PosInfinity x E.empty)
+        )
     , testCase
         "deleteAll x (insert x) is same as insertCount 0 empty"
         ( assertEqual
-            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insertCount 0 x"
+            "insert 2 x, deleteAll x same hash as insert 0 x"
             (hash (E.insertCount 0 x E.empty))
             (hash (E.deleteAll x (E.insertCount 2 x E.empty)))
         )
     , testCase
+        "deleteAll x (insertCount infinity x) is same as insertCount 0 empty"
+        ( assertEqual
+            "insert infinity x, deleteAll x same hash as insert 0 x"
+            (hash (E.insertCount 0 x E.empty))
+            (hash (E.deleteAll x (E.insertCount PosInfinity x E.empty)))
+        )
+    , testCase
         "deleteAll x [x: 2, y: 2] --> [x: 0, y: 2]"
         ( assertEqual
-            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insertCount 0 x"
+            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insert 0 x"
             (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
             (hash (E.deleteAll x (E.insertCount 2 y (E.insertCount 2 x E.empty))))
         )
