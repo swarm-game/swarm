@@ -281,10 +281,8 @@ handleMainEvent ev = do
         WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
           uiState . uiWorldCursor .= mouseCoordsM
-        REPLPanel ->
-          -- Do not clear the world cursor when going back to the REPL
-          continueWithoutRedraw
-        _ -> uiState . uiWorldCursor .= Nothing >> continueWithoutRedraw
+        REPLInput -> handleREPLEvent ev
+        _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos

@@ -42,6 +42,7 @@ module Swarm.Language.Typecheck (
   check,
   decomposeCmdTy,
   decomposeFunTy,
+  isSimpleUType,
 ) where
 
 import Control.Category ((>>>))
