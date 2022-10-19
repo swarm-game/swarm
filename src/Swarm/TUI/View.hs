@@ -480,7 +480,6 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                   | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
                   ]
                     ++ [ (stopMsg, QuitButton)
-
                        , (continueMsg, KeepPlayingButton)
                        ]
                 )
