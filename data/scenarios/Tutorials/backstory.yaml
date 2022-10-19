@@ -35,7 +35,7 @@ objectives:
         as l {has "READY"}
       } { return false }
 solution: |
-  say "I said something wrong."; say "Nobody types new messages this fast."; say "Ready!"
+  say "I said something wrong."; say "Ready!"
 entities:
   - name: READY
     display:
@@ -70,26 +70,18 @@ robots:
     devices:
       - logger
     program: |
-      def forever = \m.\c. n <- force c m; forever n c end;
-      forever "" { \oldMessage.
+      def forever = \c. force c; forever c end;
+      forever {
         try {
           m <- listen;
           if (m == "Ready!" || m == "ready!" || m == "ready") {
             create "READY";
             log "The player is ready!";
-            return oldMessage;
           } {
-            if (m == oldMessage) {
-              return oldMessage;
-            } {
-              let message = "Wrong message: " ++ format m in
-              say message;
-              return message;
-            }
+            log $ "Wrong message: " ++ format m;
           }
         } {
           log "Something bad happened!";
-          return oldMessage;
         }
       }
 seed: 0
