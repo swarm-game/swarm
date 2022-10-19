@@ -10,6 +10,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Typecheck (isSimpleUType)
+import Swarm.Language.Types
 import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (from)
@@ -232,6 +234,16 @@ testLanguagePipeline =
         , testCase
             "invalid hex literal"
             (process "0xabcD6G2" "1:8:\n  |\n1 | 0xabcD6G2\n  |        ^\nunexpected 'G'\n")
+        ]
+    , testGroup
+        "void type"
+        [ testCase
+            "void - isSimpleUType"
+            ( assertBool "" $ isSimpleUType UTyVoid
+            )
+        , testCase
+            "void - valid type signature"
+            (valid "def f : void -> a = \\x. undefined end")
         ]
     ]
  where
