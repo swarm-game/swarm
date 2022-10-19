@@ -195,6 +195,7 @@ testScenarioSolution _ci _em =
                 testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
+            , testSolution Default "Testing/201-require/621-infinite-requirement"
             ]
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
@@ -218,19 +219,21 @@ testScenarioSolution _ci _em =
 
   testSolution' :: Time -> FilePath -> (GameState -> Assertion) -> TestTree
   testSolution' s p verify = testCase p $ do
-    Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
-    case gs ^. winSolution of
-      Nothing -> assertFailure "No solution to test!"
-      Just sol -> do
-        let gs' = gs & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
-        m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
-        case m of
-          Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
-          Just g -> do
-            -- When debugging, try logging all robot messages.
-            -- printAllLogs
-            noBadErrors g
-            verify g
+    egs <- runExceptT $ initGameStateForScenario p Nothing Nothing
+    case egs of
+      Left e -> assertFailure (T.unpack e)
+      Right gs -> case gs ^. winSolution of
+        Nothing -> assertFailure "No solution to test!"
+        Just sol -> do
+          let gs' = gs & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+          m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
+          case m of
+            Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
+            Just g -> do
+              -- When debugging, try logging all robot messages.
+              -- printAllLogs
+              noBadErrors g
+              verify g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do

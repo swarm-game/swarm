@@ -1,0 +1,47 @@
+version: 1
+name: Require infinite entities
+description: |
+  Require infinite number of entities using the 'require' command.
+  https://github.com/swarm-game/swarm/issues/621
+objectives:
+  - condition: |
+      try {
+        teleport self (1,0);
+        grab;
+        teleport self (2,0);
+        grab;
+        r <- robotNumbered 1;
+        r1 <- as r {count "rock"};
+        r0 <- as base {count "rock"};
+        return (r0 == infinity && r1 == infinity);
+      } { return false }
+solution: |
+  build { require infinity "rock"; move; place "rock"; move; place "rock" }
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - 3D printer
+      - logger
+      - dictionary
+    inventory:
+      - [1, solar panel]
+      - [1, treads]
+      - [1, grabber]
+      - [infinity, rock]
+world:
+  default: [blank, null]
+  palette:
+    '.': [grass]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌───┐
+    │...│
+    └───┘
