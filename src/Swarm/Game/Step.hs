@@ -1982,7 +1982,7 @@ safeAdd = add
   add PosInfinity NegInfinity = failAdd
   add NegInfinity PosInfinity = failAdd
   add i j = return $ i + j
-  failAdd = throwError $ CmdFailed Div "Can not add opposite infinities together!"
+  failAdd = throwError $ CmdFailed Add "Can not add opposite infinities together!"
 
 -- | Perform an integer division, but return infinity for division by zero.
 --   Dividing infinity by infinity is also undefined.
