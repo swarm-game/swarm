@@ -48,7 +48,7 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text, index, toLower)
 import Data.Text qualified as T
 import Data.Void
-import Swarm.Language.Number (Number (Integer))
+import Swarm.Language.Number (Number (Integer, PosInfinity))
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Text.Megaparsec hiding (runParser)
@@ -255,6 +255,9 @@ parseTermAtom =
                   <$> (textLiteral <?> "device name in double quotes")
                )
                 <|> ( TRequire <$> (fromIntegral <$> integer)
+                        <*> (textLiteral <?> "entity name in double quotes")
+                    )
+                <|> ( TRequire <$> (PosInfinity <$ (reserved "infinity" <?> "infinity constant"))
                         <*> (textLiteral <?> "entity name in double quotes")
                     )
              )

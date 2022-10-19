@@ -10,6 +10,7 @@ import Data.Yaml (ToJSON (..))
 import Data.Yaml.Aeson (FromJSON (..), Value (..))
 import GHC.Generics (Generic)
 import Swarm.Util.Yaml (FromJSONE)
+import Data.Hashable (Hashable)
 
 -- | A type that represent the quantity of something.
 --
@@ -20,7 +21,7 @@ import Swarm.Util.Yaml (FromJSONE)
 -- However for that to work well with other language constructs
 -- we introduce negative infinity as well.
 data Number = NegInfinity | Integer Integer | PosInfinity
-  deriving (Eq, Ord, Show, Read, Generic, Data)
+  deriving (Eq, Ord, Show, Read, Hashable, Generic, Data)
 
 instance ToJSON Number where
   toJSON (Integer a) = toJSON a

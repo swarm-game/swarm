@@ -72,7 +72,7 @@ data Requirement
     --   Inventory requirements are additive, that is, say, requiring 5
     --   of entity `e` and later requiring 7 is the same as requiring
     --   12.
-    ReqInv Int Text
+    ReqInv Number Text
   deriving (Eq, Ord, Show, Read, Generic, Hashable, Data, FromJSON, ToJSON)
 
 -- | It is tempting to define @Requirements = Set Requirement@, but
@@ -100,7 +100,7 @@ instance Monoid Requirements where
 singleton :: Requirement -> Requirements
 singleton (ReqCap c) = Requirements (S.singleton c) S.empty M.empty
 singleton (ReqDev d) = Requirements S.empty (S.singleton d) M.empty
-singleton (ReqInv n e) = Requirements S.empty S.empty (M.singleton e (Integer $ fromIntegral n))
+singleton (ReqInv n e) = Requirements S.empty S.empty (M.singleton e n)
 
 -- | For convenience, create a 'Requirements' set with a single
 --   'Capability' requirement.
@@ -114,7 +114,7 @@ singletonDev = singleton . ReqDev
 
 -- | For convenience, create a 'Requirements' set with a single
 --   inventory requirement.
-singletonInv :: Int -> Text -> Requirements
+singletonInv :: Number -> Text -> Requirements
 singletonInv n e = singleton (ReqInv n e)
 
 insert :: Requirement -> Requirements -> Requirements

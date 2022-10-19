@@ -831,7 +831,7 @@ data Term
   | -- | Require a specific device to be installed.
     TRequireDevice Text
   | -- | Require a certain number of an entity.
-    TRequire Int Text
+    TRequire Number Text
   | -- | A variable.
     TVar Var
   | -- | A pair.
