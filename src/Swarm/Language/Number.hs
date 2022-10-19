@@ -24,8 +24,8 @@ data Number = NegInfinity | Integer Integer | PosInfinity
 
 instance ToJSON Number where
   toJSON (Integer a) = toJSON a
-  toJSON NegInfinity = String "-inf"
-  toJSON PosInfinity = String "inf"
+  toJSON NegInfinity = String "-infinity"
+  toJSON PosInfinity = String "infinity"
 
 instance FromJSON Number where
   parseJSON = \case
@@ -33,11 +33,11 @@ instance FromJSON Number where
       if s - fromInteger (truncate s) == 0
         then pure $ Integer (truncate s)
         else fail "Integer is not a whole number!"
-    String "-inf" -> pure NegInfinity
-    String "inf" -> pure PosInfinity
+    String "-infinity" -> pure NegInfinity
+    String "infinity" -> pure PosInfinity
     e ->
       fail $
-        "Expected number or null for count, but got '" <> show e <> "'!"
+        "Expected number, null or (-)infinity for count, but got '" <> show e <> "'!"
 
 instance FromJSONE e Number
 
