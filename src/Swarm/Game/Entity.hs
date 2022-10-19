@@ -454,13 +454,6 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 
 type Count = Number
 
--- | Internal way to shift numbers to positive integers when hashing.
-hashCount :: Num p => Number -> p
-hashCount c = case c of
-  PosInfinity -> 0
-  Integer a | a >= 0 -> 1 + fromIntegral a
-  _neg -> error $ "Count should never be negative! Value: " ++ show c
-
 -- | An inventory is really just a bag/multiset of entities.  That is,
 --   it contains some entities, along with the number of times each
 --   occurs.  Entities can be looked up directly, or by name.
@@ -535,15 +528,27 @@ fromElems = insertInventoryList empty
 insertInventoryList :: Inventory -> [(Count, Entity)] -> Inventory
 insertInventoryList = foldl' (flip (uncurry insertCount))
 
+-- | Internal way to shift numbers to positive integers when hashing.
+--
+-- THIS DOES NOT FOLLOW ARITHMETIC LAWS, USE EXTREME CAUTION!
+hashCount :: Num p => Number -> p
+hashCount c = case c of
+  PosInfinity -> 1
+  Integer a | a >= 0 -> 1 + fromIntegral a
+  _neg -> error $ "Count should never be negative! Value: " ++ show c
+
 -- | Insert a certain number of copies of an entity into an inventory.
 --   If the inventory already contains this entity, then only its
 --   count will be incremented.
 insertCount :: Count -> Entity -> Inventory -> Inventory
-insertCount k e (Inventory countsMap byNameMap h) =
-  Inventory
-    newCountsMap
-    newByName
-    (h + addedHash) -- homomorphic hashing
+insertCount k e inv@(Inventory countsMap byNameMap h) =
+  if k < 0
+    then deleteCount (-k) e inv
+    else
+      Inventory
+        newCountsMap
+        newByName
+        (h + addedHash) -- homomorphic hashing
  where
   eHash = e ^. entityHash
   sumCounts _key (m, _) (n, _) = (m + n, e)
@@ -560,10 +565,9 @@ insertCount k e (Inventory countsMap byNameMap h) =
   -- signals that we at least "know about" the entity.
   --
   -- EXEPT WE HAVE TO ACCOUNT FOR INFINITY! So we compare the new count.
-  countedHash extra = (hashCount k + extra) * eHash
   addedHash = case fst <$> mOrig of
-    Nothing -> countedHash 0 -- we know the entity is not known so avoid lookup
-    Just orig -> if orig + k == orig then 0 else countedHash 1
+    Nothing -> (hashCount k + 1) * eHash -- we know the entity was not known
+    Just orig -> (hashCount (k + orig) - hashCount orig) * eHash
 
 -- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
@@ -594,24 +598,25 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount k e (Inventory countsMap byNameMap h) =
-  Inventory
-    newCountsMap
-    byNameMap
-    (h - subtractedHash)
+deleteCount k e inv@(Inventory countsMap byNameMap h) =
+  if k < 0
+    then insertCount (-k) e inv
+    else
+      Inventory
+        newCountsMap
+        byNameMap
+        (h - subtractedHash)
  where
   eHash = e ^. entityHash
   (mOrig, newCountsMap) = IM.updateLookupWithKey removeCount eHash countsMap
-  subtractSafe n = max 0 (n - k)
+  subtractSafe PosInfinity _ = PosInfinity
+  subtractSafe m n = max 0 (n - m)
   removeCount :: Int -> (Count, a) -> Maybe (Count, a)
-  removeCount _k = Just . first subtractSafe
+  removeCount _k = Just . first (subtractSafe k)
   subtractedHash :: Int
-  subtractedHash = case mOrig of
+  subtractedHash = case fst <$> mOrig of
     Nothing -> 0
-    Just (origCount, _e) ->
-      if origCount == subtractSafe origCount
-        then 0
-        else hashCount k * eHash
+    Just orig -> (hashCount orig - hashCount (subtractSafe k orig)) * eHash
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
@@ -625,12 +630,10 @@ deleteAll e (Inventory countsMap byNameMap h) =
   lookAnsSet0 mo = (mo, Just (0, e))
   (mOrig, newCountsMap) = IM.alterF lookAnsSet0 eHash countsMap
   subtractedHash :: Int
-  subtractedHash = case mOrig of
+  subtractedHash = case fst <$> mOrig of
     Nothing -> 0
-    Just (origCount, _e) ->
-      if origCount == 0
-        then 0
-        else hashCount origCount * eHash
+    Just 0 -> 0
+    Just orig -> (hashCount orig - hashCount 0) * eHash
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
