@@ -444,6 +444,7 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal g -> padLeftRight 1 (displayParagraphs g)
+  KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 quitMsg :: Menu -> Text
 quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress will be lost!"
@@ -479,7 +480,8 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                   | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
                   ]
                     ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, CancelButton)
+
+                       , (continueMsg, KeepPlayingButton)
                        ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
@@ -492,6 +494,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
       GoalModal _ -> (" Goal ", Nothing, 80)
+      KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
