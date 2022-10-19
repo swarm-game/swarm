@@ -29,7 +29,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
-import Swarm.Language.Pretty (PrettyPrec (prettyPrec), prettyText)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term (TInt))
 import Swarm.Util

@@ -418,8 +418,8 @@ stepCESK cesk = case cesk of
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
   -- Require and requireDevice just turn into no-ops.
-  In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
-  In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  In TRequireDevice {} e s k -> return $ In (TConst Noop) e s k
+  In TRequire {} e s k -> return $ In (TConst Noop) e s k
   -- Normally it's not possible to have a TRobot value in surface
   -- syntax, but the salvage command generates a program that needs to
   -- refer directly to the salvaging robot.
