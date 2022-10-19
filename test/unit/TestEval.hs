@@ -225,9 +225,24 @@ testEval g =
         , testCase
             "concat"
             ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VText "x = 5!")
+        , testProperty
+            "number of characters"
+            ( \s ->
+                ("chars " <> tquote s) `evaluatesToP` VInt (fromIntegral $ length s)
+            )
+        , testProperty
+            "split undo concatenation"
+            ( \s1 s2 ->
+                -- \s1.\s2. (s1,s2) == split (chars s1) (s1 ++ s2)
+                let (t1, t2) = (tquote s1, tquote s2)
+                 in T.concat ["(", t1, ",", t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
+                      `evaluatesToP` VBool True
+            )
         ]
     ]
  where
+  tquote :: String -> Text
+  tquote = T.pack . show
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
     result <- evaluate tm
@@ -235,7 +250,8 @@ testEval g =
       Right _ -> assertFailure "Unexpected success"
       Left err ->
         p err
-          @? "Expected predicate did not hold on error message " ++ from @Text @String err
+          @? "Expected predicate did not hold on error message "
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
@@ -245,7 +261,7 @@ testEval g =
   evaluatesToP :: Text -> Value -> Property
   evaluatesToP tm val = ioProperty $ do
     result <- evaluate tm
-    return $ Right val == (fst <$> result)
+    return $ Right val === (fst <$> result)
 
   evaluatesToInAtMost :: Text -> (Value, Int) -> Assertion
   evaluatesToInAtMost tm (val, maxSteps) = do

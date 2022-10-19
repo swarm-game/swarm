@@ -29,6 +29,7 @@ import Swarm.Game.State (
   GameState,
   WinCondition (Won),
   activeRobots,
+  baseRobot,
   initGameStateForScenario,
   messageQueue,
   robotMap,
@@ -130,7 +131,7 @@ testScenarioSolution _ci _em =
     [ testGroup
         "Tutorial"
         [ testSolution Default "Tutorials/backstory"
-        , testSolution Default "Tutorials/move"
+        , testSolution (Sec 3) "Tutorials/move"
         , testSolution Default "Tutorials/craft"
         , testSolution Default "Tutorials/grab"
         , testSolution Default "Tutorials/place"
@@ -221,7 +222,7 @@ testScenarioSolution _ci _em =
     case gs ^. winSolution of
       Nothing -> assertFailure "No solution to test!"
       Just sol -> do
-        let gs' = gs & robotMap . ix 0 . machine .~ initMachine sol Ctx.empty emptyStore
+        let gs' = gs & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
         m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
         case m of
           Nothing -> assertFailure "Timed out - this likely means that the solution did not work."

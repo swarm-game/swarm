@@ -43,6 +43,8 @@
                "fail"
                "not"
                "format"
+               "chars"
+               "split"
              ))
              (x-commands '(
                "noop"

@@ -33,7 +33,7 @@ entities:
       - If you have this, you win!
     properties: [known, portable]
 solution: |
-  run "data/scenarios/Tutorials/crash-solution.sw"
+  run "scenarios/Tutorials/crash-solution.sw"
 robots:
   - name: base
     dir: [0,1]
@@ -66,7 +66,7 @@ robots:
       invisible: true
     system: true
     program: |
-      run "data/scenarios/Tutorials/crash-secret.sw"
+      run "scenarios/Tutorials/crash-secret.sw"
 known: [water, tree, mountain]
 world:
   default: [blank]

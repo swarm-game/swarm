@@ -34,7 +34,7 @@ module Swarm.Language.Typecheck (
   skolemize,
   generalize,
 
-  -- * Type inferen
+  -- * Type inference
   inferTop,
   inferModule,
   infer,
@@ -525,6 +525,8 @@ inferConst c = case c of
   Exp -> arithBinT
   Format -> [tyQ| a -> text |]
   Concat -> [tyQ| text -> text -> text |]
+  Chars -> [tyQ| text -> int |]
+  Split -> [tyQ| int -> text -> (text * text) |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| text -> cmd text |]
   Atomic -> [tyQ| cmd a -> cmd a |]

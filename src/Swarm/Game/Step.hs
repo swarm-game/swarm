@@ -40,7 +40,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -65,6 +65,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Util
 import System.Clock (TimeSpec)
 import System.Clock qualified
@@ -110,10 +111,10 @@ gameTick = do
     Just r -> do
       res <- use replStatus
       case res of
-        REPLWorking ty Nothing -> case getResult r of
+        REPLWorking (Typed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
-            replStatus .= REPLWorking ty (Just v)
-            robotMap . ix 0 . robotContext . defStore .= s
+            replStatus .= REPLWorking (Typed (Just v) ty req)
+            baseRobot . robotContext . defStore .= s
           Nothing -> return ()
         _otherREPLStatus -> return ()
     Nothing -> return ()
@@ -1418,7 +1419,10 @@ execConst c vs s k = do
     -- "./path/to/file.sw" and "./path/to/file"
     Run -> case vs of
       [VText fileName] -> do
-        mf <- sendIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
+        let filePath = into @String fileName
+        sData <- sendIO $ getDataFileNameSafe filePath
+        sDataSW <- sendIO $ getDataFileNameSafe (filePath <> ".sw")
+        mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
@@ -1455,6 +1459,15 @@ execConst c vs s k = do
     Exp -> returnEvalArith
     Format -> case vs of
       [v] -> return $ Out (VText (prettyValue v)) s k
+      _ -> badConst
+    Chars -> case vs of
+      [VText t] -> return $ Out (VInt (fromIntegral $ T.length t)) s k
+      _ -> badConst
+    Split -> case vs of
+      [VInt i, VText t] ->
+        let p = T.splitAt (fromInteger i) t
+            t2 = over both VText p
+         in return $ Out (uncurry VPair t2) s k
       _ -> badConst
     Concat -> case vs of
       [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k

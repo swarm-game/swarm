@@ -38,6 +38,7 @@ module Swarm.Game.State (
   robotsByLocation,
   robotsAtLocation,
   robotsInArea,
+  baseRobot,
   activeRobots,
   waitingRobots,
   availableRecipes,
@@ -61,7 +62,9 @@ module Swarm.Game.State (
   viewCenter,
   needsRedraw,
   replStatus,
+  replNextValueIndex,
   replWorking,
+  replActiveType,
   messageQueue,
   lastSeenMessageTime,
   focusedRobotID,
@@ -152,6 +155,7 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TText), allConst)
+import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
@@ -176,12 +180,13 @@ makePrisms ''ViewCenterRule
 -- | A data type to represent the current status of the REPL.
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
-    REPLDone
+    --   We persist the last value and its type though.
+    REPLDone (Maybe (Typed Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
     --   entered.  The @Maybe Value@ starts out as @Nothing@ and gets
     --   filled in with a result once the command completes.
-    REPLWorking Polytype (Maybe Value)
+    REPLWorking (Typed (Maybe Value))
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinCondition
@@ -283,6 +288,7 @@ data GameState = GameState
   , _viewCenter :: V2 Int64
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
+  , _replNextValueIndex :: Integer
   , _messageQueue :: Seq LogEntry
   , _lastSeenMessageTime :: Integer
   , _focusedRobotID :: RID
@@ -358,6 +364,10 @@ robotsInArea o d gs = map (rm IM.!) rids
   rm = gs ^. robotMap
   rl = gs ^. robotsByLocation
   rids = concatMap IS.elems $ getElemsInArea o d rl
+
+-- | The base robot, if it exists.
+baseRobot :: Traversal' GameState Robot
+baseRobot = robotMap . ix 0
 
 -- | The list of entities that have been discovered.
 allDiscoveredEntities :: Lens' GameState Inventory
@@ -440,6 +450,9 @@ needsRedraw :: Lens' GameState Bool
 -- | The current status of the REPL.
 replStatus :: Lens' GameState REPLStatus
 
+-- | The index of the next it{index} value
+replNextValueIndex :: Lens' GameState Integer
+
 -- | A queue of global messages.
 --
 -- Note that we put the newest entry to the right.
@@ -496,8 +509,16 @@ viewCenterRule = lens getter setter
 replWorking :: Getter GameState Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
  where
-  matchesWorking REPLDone = False
-  matchesWorking (REPLWorking _ _) = True
+  matchesWorking (REPLDone _) = False
+  matchesWorking (REPLWorking _) = True
+
+-- | Either the type of the command being executed, or of the last command
+replActiveType :: Getter REPLStatus (Maybe Polytype)
+replActiveType = to getter
+ where
+  getter (REPLDone (Just (Typed _ typ _))) = Just typ
+  getter (REPLWorking (Typed _ typ _)) = Just typ
+  getter _ = Nothing
 
 -- | Get the notification list of messages from the point of view of focused robot.
 messageNotifications :: Getter GameState (Notifications LogEntry)
@@ -703,7 +724,8 @@ initGameState = do
       , _viewCenterRule = VCRobot 0
       , _viewCenter = V2 0 0
       , _needsRedraw = False
-      , _replStatus = REPLDone
+      , _replStatus = REPLDone Nothing
+      , _replNextValueIndex = 0
       , _messageQueue = Empty
       , _lastSeenMessageTime = -1
       , _focusedRobotID = 0
@@ -753,8 +775,9 @@ scenarioToGameState scenario userSeed toRun g = do
       , -- When starting base with the run flag, REPL status must be set to working,
         -- otherwise the store of definition cells is not saved (see #333)
         _replStatus = case toRun of
-          Nothing -> REPLDone
-          Just _ -> REPLWorking (Forall [] (TyCmd TyUnit)) Nothing
+          Nothing -> REPLDone Nothing
+          Just _ -> REPLWorking (Typed Nothing PolyUnit mempty)
+      , _replNextValueIndex = 0
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0
