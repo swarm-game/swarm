@@ -1641,13 +1641,13 @@ execConst c vs s k = do
             missingParentInv = neededParentInv `E.difference` parentInventory
             missingMap =
               M.fromList
-                . filter ((> 0) . snd)
+                . filter (\(n, x) -> x > 0 && (x /= PosInfinity || countByName n parentInventory /= PosInfinity))
                 . map (swap . second (^. entityName))
                 . E.elems
                 $ missingParentInv
 
         -- If we're missing anything, throw an error
-        E.isEmpty missingParentInv
+        null missingMap
           `holdsOr` Incapable fixI (R.Requirements S.empty S.empty missingMap) cmd
 
         return (minimalInstallSet, missingChildInv)
