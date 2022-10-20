@@ -447,11 +447,11 @@ drawModal s = \case
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 quitMsg :: Menu -> Text
-quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress will be lost!"
+quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
  where
   quitAction = case m of
     NoMenu -> "quit"
-    _ -> "quit and return to the menu"
+    _ -> "return to the menu"
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
