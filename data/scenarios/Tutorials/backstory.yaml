@@ -23,7 +23,10 @@ objectives:
         idea.
       - To prepare you, this simulator will walk you through a series of hands-on
         exercises that introduce you to the way robots work and the programming
-        language you will use to control them.
+        language you will use to control them.  Note that your progress through
+        the tutorials will be saved automatically.  You can return to
+        the menu at any time to jump around between tutorials or pick
+        up again where you left off.
       - |
         When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
         and type at the prompt:
