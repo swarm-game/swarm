@@ -118,6 +118,8 @@ module Swarm.TUI.Model (
   upstreamRelease,
   eventLog,
   logEvent,
+  stdEntityMap,
+  stdRecipes,
 
   -- * App state
   AppState,
@@ -166,6 +168,7 @@ import GitHash (GitInfo)
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
+import Swarm.Game.Recipe (Recipe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (Scenario, loadScenario)
 import Swarm.Game.ScenarioInfo (
@@ -699,10 +702,14 @@ promptUpdateL = lens g s
 --                                Runtime state                              --
 -- ----------------------------------------------------------------------------
 
+-- | The @RuntimeState@ stores any state which needs to persist across multiple
+--   scenario play sessions, and/or needs to exist when not playing a scenario.
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _stdEntityMap :: EntityMap
+  , _stdRecipes :: [Recipe Entity]
   }
 
 initRuntimeState :: RuntimeState
@@ -711,6 +718,8 @@ initRuntimeState =
     { _webPort = Nothing
     , _upstreamRelease = Left (NoMainUpstreamRelease [])
     , _eventLog = mempty
+    , _stdEntityMap = mempty
+    , _stdRecipes = []
     }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
@@ -727,6 +736,16 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- If some error happens before a game is even selected, this is the
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
+
+-- | The standard entity map loaded from disk.  Individual scenarios
+--   may define additional entities which will get added to this map
+--   when loading the scenario.
+stdEntityMap :: Lens' RuntimeState EntityMap
+
+-- | The standard list of recipes loaded from disk.  Individual scenarios
+--   may define additional recipes which will get added to this list
+--   when loading the scenario.
+stdRecipes :: Lens' RuntimeState [Recipe Entity]
 
 -- | Simply log to the runtime event log.
 logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
