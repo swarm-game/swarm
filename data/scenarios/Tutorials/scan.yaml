@@ -30,7 +30,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [1,0]
+    dir: [0,1]
     heavy: true
     display:
       char: Ω
