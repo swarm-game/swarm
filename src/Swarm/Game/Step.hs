@@ -1345,7 +1345,7 @@ execConst c vs s k = do
               ["A robot built by the robot named " <> r ^. robotName <> "."]
               (Just (r ^. robotLocation))
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
-                  ? east
+                  ? north
               )
               defaultRobotDisplay
               (In cmd e s [FExec])
