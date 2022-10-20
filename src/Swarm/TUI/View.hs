@@ -487,7 +487,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             )
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
-        let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" "++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
+        let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
          in ( ""
             , Just (0, [("Keep playing", CancelButton), (stopMsg, QuitButton)])
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
@@ -498,8 +498,8 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
 -- | Get the name of the current New Game menu.
 curMenuName :: AppState -> Maybe Text
 curMenuName s = case s ^. uiState . uiMenu of
-  NewGameMenu (_ :| (parentMenu : _))
-    -> Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
+  NewGameMenu (_ :| (parentMenu : _)) ->
+    Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
   NewGameMenu _ -> Just "Scenarios"
   _ -> Nothing
 
