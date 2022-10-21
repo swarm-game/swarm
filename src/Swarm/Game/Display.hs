@@ -46,7 +46,7 @@ import GHC.Generics (Generic)
 import Swarm.Language.Syntax (Direction (..))
 import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
 import Swarm.Util (maxOn, (?))
-import Swarm.Util.Yaml (FromJSONE(..), withObjectE, getE, liftE, With (runE))
+import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
@@ -104,14 +104,14 @@ instance FromJSON Display where
 instance FromJSONE Display Display where
   parseJSONE = withObjectE "Display" $ \v -> do
     defD <- getE
-    liftE $ Display
-      <$> v .:? "char" .!= (defD ^. defaultChar)
-      <*> v .:? "orientationMap" .!= (defD ^. orientationMap)
-      <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
-      <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= (defD ^. displayAttr)
-      <*> v .:? "priority" .!= (defD ^. displayPriority)
-      <*> v .:? "invisible" .!= (defD ^. invisible)
-
+    liftE $
+      Display
+        <$> v .:? "char" .!= (defD ^. defaultChar)
+        <*> v .:? "orientationMap" .!= (defD ^. orientationMap)
+        <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
+        <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= (defD ^. displayAttr)
+        <*> v .:? "priority" .!= (defD ^. displayPriority)
+        <*> v .:? "invisible" .!= (defD ^. invisible)
 
 instance ToJSON Display where
   toJSON d =
