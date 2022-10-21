@@ -99,7 +99,7 @@ import Witch
 
 -- | Base types.
 data BaseTy
-  = -- | The void type, with no inhabintants.
+  = -- | The void type, with no inhabitants.
     BVoid
   | -- | The unit type, with a single inhabitant.
     BUnit
