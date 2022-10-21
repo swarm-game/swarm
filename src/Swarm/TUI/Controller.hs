@@ -157,10 +157,10 @@ handleMainMenuEvent menu = \case
           -- Extract the first tutorial challenge and run it
           let firstTutorial = case scOrder tutorialCollection of
                 Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
-                  Just (SISingle scene si) -> (scene, si)
+                  Just (SISingle siPair) -> siPair
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
-          uncurry startGame firstTutorial Nothing
+          startGame firstTutorial Nothing
         Messages -> do
           runtimeState . eventLog . notificationsCount .= 0
           uiState . uiMenu .= MessagesMenu
@@ -196,7 +196,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle scene si) -> startGame scene si Nothing
+      Just (SISingle siPair) -> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
@@ -371,7 +371,8 @@ handleModalEvent = \case
     case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
       Just (Just KeepPlayingButton) -> toggleModal KeepPlayingModal
-      Just (Just (NextButton scene)) -> saveScenarioInfoOnQuit >> uncurry startGame scene Nothing
+      Just (Just (StartOverButton siPair)) -> restartGame siPair
+      Just (Just (NextButton siPair)) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
