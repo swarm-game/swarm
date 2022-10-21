@@ -54,7 +54,7 @@ cliParser =
     subparser . mconcat $
       [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
-      , command "cheatsheet" (info (pure $ CheatSheet $ Just Commands) $ progDesc "Output nice Wiki tables")
+      , command "cheatsheet" (info (pure $ CheatSheet $ Just Capabilities) $ progDesc "Output nice Wiki tables")
       ]
   editor :: Parser (Maybe EditorType)
   editor =

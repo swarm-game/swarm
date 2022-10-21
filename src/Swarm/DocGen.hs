@@ -19,14 +19,14 @@ module Swarm.DocGen (
 
 import Control.Lens (view, (^.))
 import Control.Monad (zipWithM, zipWithM_, (<=<))
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Except (ExceptT, runExceptT, liftIO)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
-import Data.Foldable (toList)
+import Data.Foldable (toList, find)
 import Data.List (transpose)
 import Data.Map.Lazy (Map)
 import Data.Map.Lazy qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
@@ -39,7 +39,8 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
-import Swarm.Language.Capability (capabilityName, constCaps)
+import Swarm.Language.Capability (Capability)
+import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
@@ -85,10 +86,14 @@ generateDocs = \case
               generateEditorKeywords et
         mapM_ editorGen [minBound .. maxBound]
   CheatSheet s -> case s of
-    Nothing -> error "Not implemented"
+    Nothing -> error "Not implemented for all Wikis"
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
-      _ -> error "Not implemented"
+      Capabilities -> simpleErrorHandle $ do
+          entities <- loadEntities >>= guardRight "load entities"
+          liftIO $ T.putStrLn $ capabilityPage entities
+      Recipes -> error "Recipes are not implemented"
+      Entities -> error "Entities are not implemented"
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -188,7 +193,7 @@ commandToList c =
     escapeTable
     [ addLink (T.pack $ "#" <> show c) . codeQuote $ constSyntax c
     , codeQuote . prettyText $ inferConst c
-    , maybe "" capabilityName $ constCaps c
+    , maybe "" Capability.capabilityName $ Capability.constCaps c
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
     ]
  where
@@ -208,7 +213,7 @@ commandToSection c =
     , ""
     , "- syntax: " <> codeQuote (constSyntax c)
     , "- type: " <> (codeQuote . prettyText $ inferConst c)
-    , maybe "" (("- required capabilities: " <>) . capabilityName) $ constCaps c
+    , maybe "" (("- required capabilities: " <>) . Capability.capabilityName) $ Capability.constCaps c
     , ""
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
     ]
@@ -228,6 +233,34 @@ commandsPage =
     , "# Detailed descriptions"
     ]
       <> map commandToSection (commands <> builtinFunctions <> operators)
+
+-- -------------
+-- CAPABILITIES
+-- -------------
+
+capabilityHeader :: [Text]
+capabilityHeader = ["Name", "Commands", "Entities", "Notes"]
+
+capabilityRow :: EntityMap -> Capability -> [Text]
+capabilityRow em cap =
+  [ Capability.capabilityName cap
+  , T.intercalate ", " (constSyntax <$> cs) -- TODO: link to the other wiki page
+  , T.intercalate ", " (view entityName <$> es)
+  , "TODO: Notes"
+  ]
+ where
+  cs = [ c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
+  es = fromMaybe [] $ E.entitiesByCap em Map.!? cap
+
+capabilityTable :: EntityMap -> [Capability] -> Text
+capabilityTable em cs = T.unlines $ header <> map (listToRow mw) capabilityRows
+ where
+  mw = maxWidths (capabilityHeader : capabilityRows)
+  capabilityRows = map (capabilityRow em) cs
+  header = [listToRow mw capabilityHeader, separatingLine mw]
+
+capabilityPage :: EntityMap -> Text
+capabilityPage em = capabilityTable em [minBound..maxBound]
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
