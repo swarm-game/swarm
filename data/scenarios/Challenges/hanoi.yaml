@@ -37,8 +37,6 @@ robots:
   - name: invariant
     dir: [0,0]
     system: true
-    display:
-      invisible: true
     devices:
     - logger
     inventory:
@@ -66,8 +64,6 @@ robots:
   - name: increasing
     dir: [0,0]
     system: true
-    display:
-      invisible: true
     inventory:
     - [1, OK]
     devices:
@@ -83,8 +79,6 @@ robots:
   - name: count
     dir: [0,0]
     system: true
-    display:
-      invisible: true
     inventory:
     - [1, two]
     - [0, three]
