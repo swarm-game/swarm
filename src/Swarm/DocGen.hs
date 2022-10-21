@@ -19,10 +19,10 @@ module Swarm.DocGen (
 
 import Control.Lens (view, (^.))
 import Control.Monad (zipWithM, zipWithM_, (<=<))
-import Control.Monad.Except (ExceptT, runExceptT, liftIO)
+import Control.Monad.Except (ExceptT, liftIO, runExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
-import Data.Foldable (toList, find)
+import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy (Map)
 import Data.Map.Lazy qualified as Map
@@ -90,8 +90,8 @@ generateDocs = \case
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
       Capabilities -> simpleErrorHandle $ do
-          entities <- loadEntities >>= guardRight "load entities"
-          liftIO $ T.putStrLn $ capabilityPage entities
+        entities <- loadEntities >>= guardRight "load entities"
+        liftIO $ T.putStrLn $ capabilityPage entities
       Recipes -> error "Recipes are not implemented"
       Entities -> error "Entities are not implemented"
 
@@ -249,7 +249,7 @@ capabilityRow em cap =
   , "TODO: Notes"
   ]
  where
-  cs = [ c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
+  cs = [c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
   es = fromMaybe [] $ E.entitiesByCap em Map.!? cap
 
 capabilityTable :: EntityMap -> [Capability] -> Text
@@ -260,7 +260,7 @@ capabilityTable em cs = T.unlines $ header <> map (listToRow mw) capabilityRows
   header = [listToRow mw capabilityHeader, separatingLine mw]
 
 capabilityPage :: EntityMap -> Text
-capabilityPage em = capabilityTable em [minBound..maxBound]
+capabilityPage em = capabilityTable em [minBound .. maxBound]
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
