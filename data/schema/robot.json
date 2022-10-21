@@ -70,7 +70,7 @@
         "system": {
             "default": false,
             "type": "boolean",
-            "description": "Whether the robot is a \"system\" robot. System robots can do anything, without regard for devices and capabilities."
+            "description": "Whether the robot is a \"system\" robot. System robots can do anything, without regard for devices and capabilities. System robots are invisible by default."
         },
         "heavy": {
             "default": false,
