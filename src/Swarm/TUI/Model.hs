@@ -436,11 +436,12 @@ data ModalType
   | RobotsModal
   | WinModal
   | QuitModal
+  | KeepPlayingModal
   | DescriptionModal Entity
   | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = CancelButton | QuitButton | NextButton (Scenario, ScenarioInfo)
+data ButtonSelection = CancelButton | KeepPlayingButton | QuitButton | NextButton (Scenario, ScenarioInfo)
 
 data Modal = Modal
   { _modalType :: ModalType
