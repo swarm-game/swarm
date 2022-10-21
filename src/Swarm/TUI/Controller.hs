@@ -370,6 +370,7 @@ handleModalEvent = \case
     toggleModal QuitModal
     case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
+      Just (Just KeepPlayingButton) -> toggleModal KeepPlayingModal
       Just (Just (NextButton scene)) -> saveScenarioInfoOnQuit >> uncurry startGame scene Nothing
       _ -> return ()
   ev -> do

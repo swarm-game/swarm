@@ -444,13 +444,14 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal g -> padLeftRight 1 (displayParagraphs g)
+  KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 quitMsg :: Menu -> Text
-quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress will be lost!"
+quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
  where
   quitAction = case m of
     NoMenu -> "quit"
-    _ -> "quit and return to the menu"
+    _ -> "return to the menu"
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
@@ -479,19 +480,28 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                   | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
                   ]
                     ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, CancelButton)
+                       , (continueMsg, KeepPlayingButton)
                        ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
-        let stopMsg = fromMaybe "Quit to menu" haltingMessage
+        let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
          in ( ""
             , Just (0, [("Keep playing", CancelButton), (stopMsg, QuitButton)])
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
       GoalModal _ -> (" Goal ", Nothing, 80)
+      KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
+
+-- | Get the name of the current New Game menu.
+curMenuName :: AppState -> Maybe Text
+curMenuName s = case s ^. uiState . uiMenu of
+  NewGameMenu (_ :| (parentMenu : _)) ->
+    Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
+  NewGameMenu _ -> Just "Scenarios"
+  _ -> Nothing
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
@@ -613,7 +623,7 @@ helpWidget theSeed mport =
     , ("Ctrl-o", "single step")
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
-    , ("Ctrl-q", "quit the game")
+    , ("Ctrl-q", "quit the current scenario")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
     , ("Meta-r", "focus on the REPL")
