@@ -8,6 +8,7 @@ robots:
     heavy: true
     display:
       char: Ω
+      orientationMap: {}
       attr: robot
     devices:
       - 3D printer

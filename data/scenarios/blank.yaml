@@ -9,6 +9,7 @@ robots:
     heavy: true
     display:
       char: Ω
+      orientationMap: {}
       attr: robot
 world:
   default: [grass]

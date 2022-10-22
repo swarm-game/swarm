@@ -52,6 +52,7 @@ robots:
     heavy: true
     display:
       char: Ω
+      orientationMap: {}
       attr: robot
     devices:
       - logger
