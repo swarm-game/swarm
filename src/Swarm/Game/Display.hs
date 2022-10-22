@@ -44,7 +44,7 @@ import Data.Map qualified as M
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax (Direction (..))
-import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
+import Swarm.TUI.Attr (entityAttr, robotAttrName, worldPrefix)
 import Swarm.Util (maxOn, (?))
 
 -- | Display priority.  Entities with higher priority will be drawn on
@@ -171,7 +171,7 @@ defaultRobotDisplay =
           , (DNorth, '^')
           ]
     , _curOrientation = Nothing
-    , _displayAttr = robotAttr
+    , _displayAttr = robotAttrName
     , _displayPriority = 10
     , _invisible = False
     }

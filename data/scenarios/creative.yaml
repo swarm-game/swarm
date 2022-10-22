@@ -10,7 +10,7 @@ robots:
     heavy: true
     display:
       char: Ω
-      attr: robot
+      attr: blink
 world:
   seed: null
   offset: true

@@ -152,7 +152,7 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
 
   attrFor :: Char -> AttrName
   attrFor c
-    | c `elem` ("<>v^" :: String) = robotAttr
+    | c `elem` ("<>v^" :: String) = robotAttrName
   attrFor 'T' = plantAttr
   attrFor '@' = rockAttr
   attrFor '~' = waterAttr
@@ -515,7 +515,7 @@ robotsListWidget s = hCenter table
       . BT.table
       $ map (padLeftRight 1) <$> (headers : robotsTable)
   headers =
-    withAttr robotAttr
+    withAttr robotAttrName
       <$> [ txt "Name"
           , txt "Age"
           , txt "Position"
@@ -656,7 +656,7 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
     | otherwise = []
 
 constHeader :: Widget Name
-constHeader = padBottom (Pad 1) $ withAttr robotAttr $ padLeft (Pad 1) $ txt "command name : type"
+constHeader = padBottom (Pad 1) $ withAttr robotAttrName $ padLeft (Pad 1) $ txt "command name : type"
 
 constWiki :: [Widget Name]
 constWiki =
@@ -951,7 +951,7 @@ displayProperties = displayList . mapMaybe showProperty
   displayList [] = emptyWidget
   displayList ps =
     vBox
-      [ hBox . L.intersperse (txt ", ") . map (withAttr robotAttr . txt) $ ps
+      [ hBox . L.intersperse (txt ", ") . map (withAttr robotAttrName . txt) $ ps
       , txt " "
       ]
 

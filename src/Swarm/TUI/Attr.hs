@@ -30,7 +30,7 @@ module Swarm.TUI.Attr (
 
   -- ** Common attributes
   entityAttr,
-  robotAttr,
+  robotAttrName,
   rockAttr,
   plantAttr,
 
@@ -66,7 +66,8 @@ swarmAttrMap =
       <> [(waterAttr, V.white `on` V.blue)]
       <> terrainAttr
       <> [ -- Robot attribute
-           (robotAttr, fg V.white `V.withStyle` V.bold)
+           (robotAttrName, robotAttr)
+         , (blinkAttrName, blinkAttr)
          , -- UI rendering attributes
            (highlightAttr, fg V.cyan)
          , (invalidFormInputAttr, fg V.red)
@@ -133,8 +134,17 @@ terrainAttr =
   ]
 
 -- | The default robot attribute.
-robotAttr :: AttrName
-robotAttr = attrName "robot"
+robotAttrName :: AttrName
+robotAttrName = attrName "robot"
+
+robotAttr :: V.Attr
+robotAttr = fg V.white `V.withStyle` V.bold
+
+blinkAttrName :: AttrName
+blinkAttrName = worldPrefix <> attrName "blink"
+
+blinkAttr :: V.Attr
+blinkAttr = robotAttr `V.withStyle` V.blink
 
 dirtAttr, grassAttr, stoneAttr, iceAttr, waterAttr, rockAttr, plantAttr :: AttrName
 dirtAttr = terrainPrefix <> attrName "dirt"
