@@ -41,13 +41,13 @@ import Control.Lens hiding (Const, from, (.=))
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe, isJust)
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax (Direction (..))
 import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
 import Swarm.Util (maxOn, (?))
-import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE, (..:?))
-import Data.Maybe (fromMaybe, isJust)
+import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
