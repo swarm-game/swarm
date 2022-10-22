@@ -46,7 +46,8 @@ import GHC.Generics (Generic)
 import Swarm.Language.Syntax (Direction (..))
 import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
 import Swarm.Util (maxOn, (?))
-import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
+import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE, (..:?))
+import Data.Maybe (fromMaybe, isJust)
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
@@ -104,10 +105,12 @@ instance FromJSON Display where
 instance FromJSONE Display Display where
   parseJSONE = withObjectE "Display" $ \v -> do
     defD <- getE
+    mc <- liftE $ v .:? "char"
+    let c = fromMaybe (defD ^. defaultChar) mc
+    let dOM = if isJust mc then mempty else defD ^. orientationMap
     liftE $
-      Display
-        <$> v .:? "char" .!= (defD ^. defaultChar)
-        <*> v .:? "orientationMap" .!= (defD ^. orientationMap)
+      Display c
+        <$> v .:? "orientationMap" .!= dOM
         <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
         <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= (defD ^. displayAttr)
         <*> v .:? "priority" .!= (defD ^. displayPriority)
