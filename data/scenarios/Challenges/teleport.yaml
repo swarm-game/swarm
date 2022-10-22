@@ -29,8 +29,6 @@ robots:
       - [0, lambda]
   - name: portkey1
     system: true
-    display:
-      invisible: true
     loc: [0,0]
     dir: [0,0]
     program: |
@@ -44,8 +42,6 @@ robots:
       );
   - name: portkey2
     system: true
-    display:
-      invisible: true
     loc: [16,0]
     dir: [0,0]
     program: |

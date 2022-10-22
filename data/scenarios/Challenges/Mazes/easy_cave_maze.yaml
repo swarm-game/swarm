@@ -45,8 +45,6 @@ robots:
   - name: judge
     dir: [0,0]
     system: true
-    display:
-      invisible: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       until (d <- scan down; return (d == inl ()));

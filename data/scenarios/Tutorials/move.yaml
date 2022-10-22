@@ -149,8 +149,6 @@ robots:
   - name: check1
     loc: [2,0]
     system: true
-    display:
-      invisible: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       l <- whereami;
@@ -164,8 +162,6 @@ robots:
   - name: check2
     loc: [8,0]
     system: true
-    display:
-      invisible: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       l <- whereami;
@@ -179,8 +175,6 @@ robots:
   - name: check3
     loc: [8,4]
     system: true
-    display:
-      invisible: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       l <- whereami;
@@ -194,8 +188,6 @@ robots:
   - name: check4
     loc: [8,8]
     system: true
-    display:
-      invisible: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       l <- whereami;
@@ -211,36 +203,24 @@ robots:
   #################
   - name: 1P horizontal wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P horizontal wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P horizontal wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## VERTICAL    ##
   #################
   - name: 1P vertical wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P vertical wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P vertical wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## CORNERS     ##
@@ -257,72 +237,48 @@ robots:
   #########
   - name: 1P lower left corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P lower left corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P lower left corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #########
   ##  B  ##
   #########
   - name: 1P lower right corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P lower right corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P lower right corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #########
   ##  C  ##
   #########
   - name: 1P upper right corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P upper right corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P upper right corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #########
   ##  D  ##
   #########
   - name: 1P upper left corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P upper left corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P upper left corner
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## SEPARATORS  ##
@@ -330,43 +286,29 @@ robots:
   # 1
   - name: 1S down and horizontal wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 1S up and horizontal wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   # 2
   - name: 2S left and vertical wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2S up and horizontal wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   # 3
   - name: 3S left and vertical wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3S down and horizontal wall
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## GATES       ##
   #################
   - name: 1G
     system: true
-    display:
-      invisible: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       c1 <- robotNamed "check1";
@@ -374,31 +316,21 @@ robots:
       grab
   - name: 2G
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3G
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   #################
   ## GARDENERS   ##
   #################
   - name: 1P flower
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 2P flower
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
   - name: 3P flower
     system: true
-    display:
-      invisible: true
     program: run "scenarios/Tutorials/move_system.sw"
 entities:
   - name: Win
