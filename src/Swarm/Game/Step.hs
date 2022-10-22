@@ -1993,7 +1993,7 @@ safeDiv (Integer _a) _ = return 0
 safeDiv i b@(Integer _b) = return $ b * i
 safeDiv _ _ = throwError $ CmdFailed Div "Dividing infinities"
 
--- | Perform exponentiation, but fail on negative powers and negative number to the poer of infinity.
+-- | Perform exponentiation, but fail on negative powers and negative numbers to the power of infinity.
 safeExp :: Has (Throw Exn) sig m => Number -> Number -> m Number
 safeExp = \case
   PosInfinity -> \b -> return $ PosInfinity * signum b
