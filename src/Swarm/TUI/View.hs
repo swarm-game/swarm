@@ -174,7 +174,7 @@ drawNewGameMenuUI (l :| ls) =
       , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
  where
-  drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
+  drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioBestTime of
     NotStarted -> txt " ○ "
@@ -212,7 +212,7 @@ drawNewGameMenuUI (l :| ls) =
 
   drawDescription :: ScenarioItem -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle s si) = do
+  drawDescription (SISingle (s, si)) = do
     let oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
     let bestRealTime = if oneBest then "best:" else "best real time:"
     let noSame = if oneBest then const Nothing else Just
@@ -457,6 +457,7 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
 generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
+  currentScenario = s ^. (uiState . scenarioRef)
   haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
@@ -488,8 +489,16 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
         let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
+            maybeStartOver = sequenceA ("Start over", StartOverButton <$> currentScenario)
          in ( ""
-            , Just (0, [("Keep playing", CancelButton), (stopMsg, QuitButton)])
+            , Just
+                ( 0
+                , catMaybes
+                    [ Just ("Keep playing", CancelButton)
+                    , maybeStartOver
+                    , Just (stopMsg, QuitButton)
+                    ]
+                )
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
       GoalModal _ -> (" Goal ", Nothing, 80)

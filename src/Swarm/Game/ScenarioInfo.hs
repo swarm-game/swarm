@@ -25,6 +25,7 @@ module Swarm.Game.ScenarioInfo (
   scenarioBestTime,
   scenarioBestTicks,
   updateScenarioInfoOnQuit,
+  ScenarioInfoPair,
 
   -- * Scenario collection
   ScenarioCollection (..),
@@ -130,6 +131,8 @@ instance ToJSON ScenarioInfo where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
+type ScenarioInfoPair = (Scenario, ScenarioInfo)
+
 scenarioOptions :: Options
 scenarioOptions =
   defaultOptions
@@ -173,12 +176,12 @@ updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = cas
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
-data ScenarioItem = SISingle Scenario ScenarioInfo | SICollection Text ScenarioCollection
+data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollection
   deriving (Eq, Show)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
-scenarioItemName (SISingle s _ss) = s ^. scenarioName
+scenarioItemName (SISingle (s, _ss)) = s ^. scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name,
@@ -330,7 +333,7 @@ loadScenarioItem em path = do
     False -> do
       s <- loadScenarioFile em path
       si <- loadScenarioInfo path
-      return $ SISingle s si
+      return $ SISingle (s, si)
 
 ------------------------------------------------------------
 -- Some lenses + prisms
