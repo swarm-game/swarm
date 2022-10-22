@@ -14,7 +14,6 @@ robots:
     dir: [1,0]
     display:
       char: Ω
-      orientationMap: {}
       attr: robot
     devices:
       - dictionary

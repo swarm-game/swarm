@@ -24,7 +24,6 @@ robots:
     dir: [0,1]
     display:
       char: Ω
-      orientationMap: {}
       attr: robot
     devices:
       - logger
