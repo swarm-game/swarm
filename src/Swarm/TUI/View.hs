@@ -726,7 +726,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
       let highlight
-            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
+            | s ^. gameState . notifLens . notificationsCount > 0 = Alert
             | otherwise = NoHighlight
        in Just (highlight, key, name)
 
@@ -751,7 +751,7 @@ drawKeyMenu s =
     . (++ [gameModeWidget])
     . map (padLeftRight 1 . drawKeyCmd)
     . (globalKeyCmds ++)
-    . map (\(k, n) -> (NoHighlight, k, n))
+    . map highlightKeyCmds
     . keyCmdsFor
     . focusGetCurrent
     . view (uiState . uiFocusRing)
@@ -784,6 +784,10 @@ drawKeyMenu s =
       ]
   may b = if b then Just else const Nothing
 
+  highlightKeyCmds (k, n) = (,k,n) $ case n of
+    "pop out" | (s ^. uiState . uiMoreInfoBot) || (s ^. uiState . uiMoreInfoTop) -> Alert
+    _ -> PanelSpecific
+
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
@@ -793,6 +797,7 @@ drawKeyMenu s =
     [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
       ++ [("c", "recenter") | not viewingBase]
+      ++ [("f", "FPS")]
   keyCmdsFor (Just RobotPanel) =
     [ ("Ret", "pop out")
     , ("m", "make")
@@ -801,12 +806,19 @@ drawKeyMenu s =
   keyCmdsFor (Just InfoPanel) = []
   keyCmdsFor _ = []
 
-data KeyHighlight = NoHighlight | Highlighted
+data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
 -- | Draw a single key command in the menu.
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
-drawKeyCmd (Highlighted, key, cmd) = hBox [withAttr notifAttr (txt $ T.concat ["[", key, "] "]), txt cmd]
-drawKeyCmd (NoHighlight, key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
+drawKeyCmd (h, key, cmd) = hBox
+  [ withAttr attr (txt $ T.concat ["[", key, "] "])
+  , txt cmd
+  ]
+  where
+    attr = case h of
+      NoHighlight -> defAttr
+      Alert -> notifAttr
+      PanelSpecific -> highlightAttr
 
 ------------------------------------------------------------
 -- World panel
