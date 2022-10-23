@@ -794,7 +794,7 @@ drawKeyMenu s =
     ]
       ++ [("c", "recenter") | not viewingBase]
   keyCmdsFor (Just RobotPanel) =
-    [ ("Ret", "focus")
+    [ ("Ret", "pop out")
     , ("m", "make")
     , ("0", (if showZero then "hide" else "show") <> " 0")
     ]
