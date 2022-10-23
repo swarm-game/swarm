@@ -87,7 +87,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Pretty (prettyText, prettyString)
+import Swarm.Language.Pretty (prettyString, prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types (Polytype)
