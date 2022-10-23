@@ -87,7 +87,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyText, prettyString)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types (Polytype)
@@ -1027,7 +1027,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
   drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
   drawIn i (n, ingr) =
     hBox
-      [ padRight (Pad 1) $ str (show n) -- how many?
+      [ padRight (Pad 1) $ str (prettyString $ TInt n) -- how many?
       , fmtEntityName missing ingr -- name of the input
       , padLeft (Pad 1) $ -- a connecting line:   ─────┬
           hBorder
@@ -1050,7 +1050,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
           )
             <+> hBorder
       , fmtEntityName False ingr
-      , padLeft (Pad 1) $ str (show n)
+      , padLeft (Pad 1) $ str (prettyString $ TInt n)
       ]
 
   -- If it's the focused entity, draw it highlighted.
