@@ -7,7 +7,10 @@ objectives:
       - Previously you learned how to make new things (like a branch predictor) from ingredients.
         Now you will learn how to obtain the ingredients you need.
       - There are some trees ahead of your robot; `move` to each one and `grab` it.
-      - You can learn more by reading about the grabber device in your inventory.
+      - You can learn more by reading about the grabber device in your
+        inventory.  Remember, if the description does not fit in the
+        lower left info box, you can either hit `Enter` to pop out the
+        description, or focus the info box in order to scroll.
       - |
         TIP: You can use the arrow key Up ('↑') to reuse your previous commands.
     condition: |
