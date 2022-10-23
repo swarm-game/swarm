@@ -708,21 +708,50 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _scenarios :: ScenarioCollection
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
+  , _adjList :: Array Int Text
+  , _nameList :: Array Int Text
   }
 
-initRuntimeState :: RuntimeState
-initRuntimeState =
-  RuntimeState
+initRuntimeState :: ExceptT Text IO RuntimeState
+initRuntimeState = do
+
+  let guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
+  entities <- loadEntities >>= guardRight "load entities"
+  recipes <- loadRecipes entities >>= guardRight "load recipes"
+  loadedScenarios <- loadScenarios entities >>= guardRight "load scenarios"
+
+  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
+
+  (adjs, names) <- liftIO . markEx "load name generation data" $ do
+    -- if data directory did not exist we would have failed loading scenarios
+    Just adjsFile <- getDataFileNameSafe "adjectives.txt"
+    as <- tail . T.lines <$> T.readFile adjsFile
+    Just namesFile <- getDataFileNameSafe "names.txt"
+    ns <- tail . T.lines <$> T.readFile namesFile
+    return (as, ns)
+
+  return $ RuntimeState
     { _webPort = Nothing
     , _upstreamRelease = Left (NoMainUpstreamRelease [])
     , _eventLog = mempty
-    , _stdEntityMap = mempty
-    , _stdRecipes = []
+    , _scenarios = loadedScenarios
+    , _adjList = listArray (0, length adjs - 1) adjs
+    , _nameList = listArray (0, length names - 1) names
+    , _stdEntityMap = entities
+    , _stdRecipes = recipes
     }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
+let exclude = ['_adjList, '_nameList]
+ in makeLensesWith
+      ( lensRules
+          & generateSignatures .~ False
+          & lensField . mapped . mapped %~ \fn n ->
+            if n `elem` exclude then [] else fn n
+      )
+      ''RuntimeState
 
 -- | The port on which the HTTP debug service is running.
 webPort :: Lens' RuntimeState (Maybe Port)
@@ -737,6 +766,9 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' GameState ScenarioCollection
+
 -- | The standard entity map loaded from disk.  Individual scenarios
 --   may define additional entities which will get added to this map
 --   when loading the scenario.
@@ -746,6 +778,17 @@ stdEntityMap :: Lens' RuntimeState EntityMap
 --   may define additional recipes which will get added to this list
 --   when loading the scenario.
 stdRecipes :: Lens' RuntimeState [Recipe Entity]
+
+-- | Read-only list of adjectives, for use in building random robot names.
+adjList :: Getter GameState (Array Int Text)
+adjList = to _adjList
+
+-- | Read-only list of names, for use in building random robot names.
+nameList :: Getter GameState (Array Int Text)
+nameList = to _nameList
+
+------------------------------------------------------------
+-- Utility
 
 -- | Simply log to the runtime event log.
 logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
@@ -950,9 +993,9 @@ data AppOpts = AppOpts
 initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState AppOpts {..} = do
   let skipMenu = isJust userScenario || isJust toRun || isJust userSeed
+  rs <- initRuntimeState
   gs <- initGameState
   ui <- initUIState (not skipMenu) cheatMode
-  let rs = initRuntimeState
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do

@@ -274,13 +274,10 @@ data GameState = GameState
   , _gensym :: Int
   , _seed :: Seed
   , _randGen :: StdGen
-  , _adjList :: Array Int Text
-  , _nameList :: Array Int Text
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
   , _recipesReq :: IntMap [Recipe Entity]
-  , _scenarios :: ScenarioCollection
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
@@ -308,7 +305,7 @@ makeLensesFor
   ]
   ''GameState
 
-let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList]
+let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -398,14 +395,6 @@ seed :: Lens' GameState Seed
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
 
--- | Read-only list of words, for use in building random robot names.
-adjList :: Getter GameState (Array Int Text)
-adjList = to _adjList
-
--- | Read-only list of words, for use in building random robot names.
-nameList :: Getter GameState (Array Int Text)
-nameList = to _nameList
-
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
 
@@ -417,9 +406,6 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | All recipes the game knows about, indexed by requirement/catalyst.
 recipesReq :: Lens' GameState (IntMap [Recipe Entity])
-
--- | The collection of scenarios that comes with the game.
-scenarios :: Lens' GameState ScenarioCollection
 
 -- | The filepath of the currently running scenario.
 --
@@ -676,62 +662,41 @@ deleteRobot rn = do
 -- Initialization
 ------------------------------------------------------------
 
--- | Create an initial game state record, first loading entities and
---   recipies from disk.
-initGameState :: ExceptT Text IO GameState
-initGameState = do
-  let guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-  entities <- loadEntities >>= guardRight "load entities"
-  recipes <- loadRecipes entities >>= guardRight "load recipes"
-  loadedScenarios <- loadScenarios entities >>= guardRight "load scenarios"
-
-  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
-
-  (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    -- if data directory did not exist we would have failed loading scenarios
-    Just adjsFile <- getDataFileNameSafe "adjectives.txt"
-    as <- tail . T.lines <$> T.readFile adjsFile
-    Just namesFile <- getDataFileNameSafe "names.txt"
-    ns <- tail . T.lines <$> T.readFile namesFile
-    return (as, ns)
-
-  return $
-    GameState
-      { _creativeMode = False
-      , _winCondition = NoWinCondition
-      , _winSolution = Nothing
-      , _runStatus = Running
-      , _robotMap = IM.empty
-      , _robotsByLocation = M.empty
-      , _availableRecipes = mempty
-      , _availableCommands = mempty
-      , _allDiscoveredEntities = empty
-      , _activeRobots = IS.empty
-      , _waitingRobots = M.empty
-      , _gensym = 0
-      , _seed = 0
-      , _randGen = mkStdGen 0
-      , _adjList = listArray (0, length adjs - 1) adjs
-      , _nameList = listArray (0, length names - 1) names
-      , _entityMap = entities
-      , _recipesOut = outRecipeMap recipes
-      , _recipesIn = inRecipeMap recipes
-      , _recipesReq = reqRecipeMap recipes
-      , _scenarios = loadedScenarios
-      , _currentScenarioPath = Nothing
-      , _knownEntities = []
-      , _world = W.emptyWorld (fromEnum StoneT)
-      , _viewCenterRule = VCRobot 0
-      , _viewCenter = V2 0 0
-      , _needsRedraw = False
-      , _replStatus = REPLDone Nothing
-      , _replNextValueIndex = 0
-      , _messageQueue = Empty
-      , _lastSeenMessageTime = -1
-      , _focusedRobotID = 0
-      , _ticks = 0
-      , _robotStepsPerTick = defaultRobotStepsPerTick
-      }
+-- | Create an initial game state record.
+initGameState :: GameState
+initGameState = GameState
+  { _creativeMode = False
+  , _winCondition = NoWinCondition
+  , _winSolution = Nothing
+  , _runStatus = Running
+  , _robotMap = IM.empty
+  , _robotsByLocation = M.empty
+  , _availableRecipes = mempty
+  , _availableCommands = mempty
+  , _allDiscoveredEntities = empty
+  , _activeRobots = IS.empty
+  , _waitingRobots = M.empty
+  , _gensym = 0
+  , _seed = 0
+  , _randGen = mkStdGen 0
+  , _entityMap = M.empty
+  , _recipesOut = IM.empty
+  , _recipesIn = IM.empty
+  , _recipesReq = IM.empty
+  , _currentScenarioPath = Nothing
+  , _knownEntities = []
+  , _world = W.emptyWorld (fromEnum StoneT)
+  , _viewCenterRule = VCRobot 0
+  , _viewCenter = V2 0 0
+  , _needsRedraw = False
+  , _replStatus = REPLDone Nothing
+  , _replNextValueIndex = 0
+  , _messageQueue = Empty
+  , _lastSeenMessageTime = -1
+  , _focusedRobotID = 0
+  , _ticks = 0
+  , _robotStepsPerTick = defaultRobotStepsPerTick
+  }
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
 scenarioToGameState :: Scenario -> Maybe Seed -> Maybe String -> GameState -> IO GameState
@@ -860,13 +825,17 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
              in map robotWithLoc robotList
         )
 
+-- XXX needs to load RuntimeState too!
+-- Need to move this somewhere else.
+
 -- | Create an initial game state for a specific scenario.
 initGameStateForScenario :: String -> Maybe Seed -> Maybe String -> ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
-  g <- initGameState
-  (scene, path) <- loadScenario sceneName (g ^. entityMap)
+  let g = initGameState
+  r <- initRuntimeState
+  (scene, path) <- loadScenario sceneName (r ^. entityMap)
   gs <- liftIO $ scenarioToGameState scene userSeed toRun g
-  normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
+  normalPath <- liftIO $ normalizeScenarioPath (r ^. scenarios) path
   t <- liftIO getZonedTime
   return $
     gs
