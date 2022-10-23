@@ -810,15 +810,16 @@ data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
 -- | Draw a single key command in the menu.
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
-drawKeyCmd (h, key, cmd) = hBox
-  [ withAttr attr (txt $ T.concat ["[", key, "] "])
-  , txt cmd
-  ]
-  where
-    attr = case h of
-      NoHighlight -> defAttr
-      Alert -> notifAttr
-      PanelSpecific -> highlightAttr
+drawKeyCmd (h, key, cmd) =
+  hBox
+    [ withAttr attr (txt $ T.concat ["[", key, "] "])
+    , txt cmd
+    ]
+ where
+  attr = case h of
+    NoHighlight -> defAttr
+    Alert -> notifAttr
+    PanelSpecific -> highlightAttr
 
 ------------------------------------------------------------
 -- World panel
