@@ -501,7 +501,11 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                 )
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
-      GoalModal _ -> (" Goal ", Nothing, 80)
+      GoalModal _ ->
+        let goalModalTitle = case currentScenario of
+              Nothing -> "Goal"
+              Just (scenario, _) -> scenario ^. scenarioName
+         in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
       KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
 
 -- | Get the name of the current New Game menu.
