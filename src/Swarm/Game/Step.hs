@@ -1996,8 +1996,8 @@ safeDiv _ _ = throwError $ CmdFailed Div "Dividing infinities"
 -- | Perform exponentiation, but fail on negative powers and negative numbers to the power of infinity.
 safeExp :: Has (Throw Exn) sig m => Number -> Number -> m Number
 safeExp = \case
-  PosInfinity -> \b -> return $ PosInfinity * signum b
-  NegInfinity -> \b -> return $ NegInfinity * signum b
+  PosInfinity -> return . infinityExp PosInfinity
+  NegInfinity -> return . infinityExp NegInfinity
   Integer a -> \case
     PosInfinity
       | a == 0 -> return 0
@@ -2007,6 +2007,11 @@ safeExp = \case
     Integer b
       | b < 0 -> throwError $ CmdFailed Exp "Negative exponent"
       | otherwise -> return . Integer $ a ^ b
+ where
+  infinityExp :: Number -> Number -> Number
+  infinityExp i = \case
+    0 -> 1
+    b -> i * signum b
 
 ------------------------------------------------------------
 -- Updating discovered entities, recipes, and commands
