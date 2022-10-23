@@ -874,7 +874,7 @@ populateInventoryList (Just r) = do
       itemList mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
-          . sortOn (view entityName . snd)
+          . sortOn (T.toLower . view entityName . snd)
           . filter shouldDisplay
           . elems
 
