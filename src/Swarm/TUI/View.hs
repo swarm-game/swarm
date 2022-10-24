@@ -264,7 +264,7 @@ drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $
 --   main layer and a layer for a floating dialog that can be on top.
 drawGameUI :: AppState -> [Widget Name]
 drawGameUI s =
-  [ drawDialog s
+  [ joinBorders $ drawDialog s
   , joinBorders $
       hBox
         [ hLimitPercent 25 $
