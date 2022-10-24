@@ -36,10 +36,9 @@ objectives:
 solution: |
   def x4 = \c. c;c;c;c end;
   def mp = move; place "rock" end;
-  def mp4 = mp; mp; mp; mp end;
   def rr = turn right; move; turn right; x4 mp; turn back; x4 move end;
   build {
-    require "treads"; require "grabber"; // #540
+    require "treads"; require "grabber"; require "lambda"; // #540
     require 16 "rock";
     x4 rr
   };
