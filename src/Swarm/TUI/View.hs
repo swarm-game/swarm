@@ -791,7 +791,7 @@ drawKeyMenu s =
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
-      ++ [("Ret", "execute") | not isReplWorking]
+      ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll") | creative
@@ -799,7 +799,7 @@ drawKeyMenu s =
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]
   keyCmdsFor (Just RobotPanel) =
-    [ ("Ret", "pop out")
+    [ ("Enter", "pop out")
     , ("m", "make")
     , ("0", (if showZero then "hide" else "show") <> " 0")
     ]
