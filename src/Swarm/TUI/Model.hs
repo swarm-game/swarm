@@ -444,7 +444,7 @@ data ModalType
   | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = CancelButton | KeepPlayingButton | StartOverButton ScenarioInfoPair | QuitButton | NextButton ScenarioInfoPair
+data ButtonSelection = CancelButton | KeepPlayingButton | StartOverButton Seed ScenarioInfoPair | QuitButton | NextButton ScenarioInfoPair
 
 data Modal = Modal
   { _modalType :: ModalType
@@ -964,8 +964,8 @@ startGame = startGameWithSeed Nothing
 --
 -- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
 -- case upstream so that the Scenario passed to this function definitely exists.
-restartGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> m ()
-restartGame siPair = startGame siPair Nothing
+restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
+restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Nothing
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.

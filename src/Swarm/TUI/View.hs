@@ -457,7 +457,8 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
 generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
-  currentScenario = s ^. (uiState . scenarioRef)
+  currentScenario = s ^. uiState . scenarioRef
+  currentSeed = s ^. gameState . seed
   haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
@@ -489,7 +490,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
         let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
-            maybeStartOver = sequenceA ("Start over", StartOverButton <$> currentScenario)
+            maybeStartOver = sequenceA ("Start over", StartOverButton currentSeed <$> currentScenario)
          in ( ""
             , Just
                 ( 0
