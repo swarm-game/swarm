@@ -79,7 +79,7 @@ cliParser =
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
   cheat :: Parser Bool
-  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode")
+  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
 
 cliInfo :: ParserInfo CLI
 cliInfo =
