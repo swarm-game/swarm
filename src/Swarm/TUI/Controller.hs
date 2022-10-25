@@ -371,7 +371,7 @@ handleModalEvent = \case
     case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
       Just (Just KeepPlayingButton) -> toggleModal KeepPlayingModal
-      Just (Just (StartOverButton siPair)) -> restartGame siPair
+      Just (Just (StartOverButton currentSeed siPair)) -> restartGame currentSeed siPair
       Just (Just (NextButton siPair)) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
       _ -> return ()
   ev -> do
