@@ -20,6 +20,7 @@ module Swarm.TUI.Model.UI (
   uiError,
   uiModal,
   uiGoal,
+  uiAchievements,
   lgTicksPerSecond,
   lastFrameTime,
   accumulatedTime,
@@ -49,6 +50,7 @@ import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.ScenarioInfo (
@@ -56,6 +58,9 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Achievement.Attainment
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
@@ -83,6 +88,7 @@ data UIState = UIState
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiGoal :: Maybe [Text]
+  , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
   , _uiHideRobotsUntil :: TimeSpec
@@ -162,6 +168,10 @@ uiModal :: Lens' UIState (Maybe Modal)
 -- | Status of the scenario goal: whether there is one, and whether it
 --   has been displayed to the user initially.
 uiGoal :: Lens' UIState (Maybe [Text])
+
+-- | Status of the scenario goal: whether there is one, and whether it
+--   has been displayed to the user initially.
+uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
@@ -249,11 +259,12 @@ initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 --   parameter indicates whether we should start off by showing the
 --   main menu.
 initUIState :: Bool -> Bool -> ExceptT Text IO UIState
-initUIState showMainMenu cheatMode = liftIO $ do
-  historyT <- readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- readAppData
+initUIState showMainMenu cheatMode = do
+  historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
+  appDataMap <- liftIO readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
-  startTime <- getTime Monotonic
+  startTime <- liftIO $ getTime Monotonic
+  achievements <- ExceptT loadAchievementsInfo
   return $
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
@@ -270,6 +281,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiError = Nothing
       , _uiModal = Nothing
       , _uiGoal = Nothing
+      , _uiAchievements = M.fromList $ map (\x -> (x ^. achievement, x)) achievements
       , _uiShowFPS = False
       , _uiShowZero = True
       , _uiHideRobotsUntil = startTime - 1

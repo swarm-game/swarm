@@ -117,12 +117,17 @@ library
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
+                      Swarm.TUI.Model.Achievement.Attainment
+                      Swarm.TUI.Model.Achievement.Definitions
+                      Swarm.TUI.Model.Achievement.Description
+                      Swarm.TUI.Model.Achievement.Persistence
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
                       Swarm.TUI.Model.StateUpdate
                       Swarm.TUI.Model.UI
                       Swarm.TUI.View
+                      Swarm.TUI.View.Achievement
                       Swarm.TUI.View.Util
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
@@ -178,6 +183,7 @@ library
                       text                          >= 1.2.4 && < 2.1,
                       text-zipper                   >= 0.10 && < 0.13,
                       time                          >= 1.9 && < 1.14,
+                      transformers                  >= 0.6.0 && < 0.6.1,
                       unification-fd                >= 0.11  && < 0.12,
                       unordered-containers          >= 0.2.14 && < 0.3,
                       vector                        >= 0.12 && < 0.14,

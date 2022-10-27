@@ -5,13 +5,17 @@ module Swarm.TUI.Model.StateUpdate (
   initAppState,
   startGame,
   restartGame,
+  attainAchievement,
   scenarioToAppState,
+  WhenToPersist (..),
 ) where
 
+import Brick
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (getZonedTime)
@@ -30,6 +34,9 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievement.Attainment
+import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.Clock
@@ -97,6 +104,24 @@ scenarioToAppState siPair@(scene, _) userSeed toRun = do
     x <- use l
     x' <- liftIO $ a x
     l .= x'
+
+data WhenToPersist
+  = PersistImmediate
+  | PersistDeferred
+
+attainAchievement :: WhenToPersist -> CategorizedAchievement -> EventM Name AppState ()
+attainAchievement persist a = do
+  currentTime <- liftIO getZonedTime
+  (uiState . uiAchievements)
+    %= M.insertWith
+      (<>)
+      a
+      (Attainment a Nothing currentTime)
+  case persist of
+    PersistImmediate -> do
+      newAchievements <- use $ uiState . uiAchievements
+      liftIO $ saveAchievementsInfo $ M.elems newAchievements
+    PersistDeferred -> return ()
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState :: ScenarioInfoPair -> UIState -> IO UIState

@@ -269,7 +269,8 @@ dataNotFound f = do
       ]
 
 -- | Get path to swarm data, optionally creating necessary
---   directories.
+--   directories. This could fail if user has bad permissions
+--   on his own $HOME or $XDG_DATA_HOME which is unlikely.
 getSwarmDataPath :: Bool -> IO FilePath
 getSwarmDataPath createDirs = do
   swarmData <- getXdgDirectory XdgData "swarm"
@@ -280,13 +281,10 @@ getSwarmDataPath createDirs = do
 --   directories.
 getSwarmSavePath :: Bool -> IO FilePath
 getSwarmSavePath createDirs = do
-  swarmSave <- getXdgDirectory XdgData ("swarm" </> "saves")
-  when createDirs (createDirectoryIfMissing True swarmSave)
-  pure swarmSave
+  (</> "saves") <$> getSwarmDataPath createDirs
 
 -- | Get path to swarm history, optionally creating necessary
---   directories. This could fail if user has bad permissions
---   on his own $HOME or $XDG_DATA_HOME which is unlikely.
+--   directories.
 getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs =
   (</> "history") <$> getSwarmDataPath createDirs
