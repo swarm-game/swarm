@@ -24,6 +24,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
  )
 import Swarm.Game.State
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
@@ -60,13 +61,20 @@ data Modal = Modal
 
 makeLenses ''Modal
 
-data MainMenuEntry = NewGame | Tutorial | Messages | About | Quit
+data MainMenuEntry
+  = NewGame
+  | Tutorial
+  | Achievements
+  | Messages
+  | About
+  | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
   = NoMenu -- We started playing directly from command line, no menu to show
   | MainMenu (BL.List Name MainMenuEntry)
   | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
+  | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
   | AboutMenu
 

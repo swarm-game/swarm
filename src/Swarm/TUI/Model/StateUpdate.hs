@@ -5,13 +5,16 @@ module Swarm.TUI.Model.StateUpdate (
   initAppState,
   startGame,
   restartGame,
+  attainAchievement,
   scenarioToAppState,
 ) where
 
+import Brick
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (getZonedTime)
@@ -30,6 +33,9 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievement.Attainment
+import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.Clock
@@ -97,6 +103,17 @@ scenarioToAppState siPair@(scene, _) userSeed toRun = do
     x <- use l
     x' <- liftIO $ a x
     l .= x'
+
+attainAchievement ::  CategorizedAchievement -> EventM Name AppState ()
+attainAchievement a = do
+  currentTime <- liftIO getZonedTime
+  (uiState . uiAchievements)
+    %= M.insertWith
+      (<>)
+      a
+      (Attainment a Nothing currentTime)
+  newAchievements <- use $ uiState . uiAchievements
+  liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState :: ScenarioInfoPair -> UIState -> IO UIState
