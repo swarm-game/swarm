@@ -117,12 +117,16 @@ library
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
+                      Swarm.TUI.Model.Achievement.Attainment
+                      Swarm.TUI.Model.Achievement.Definitions
+                      Swarm.TUI.Model.Achievement.Persistence
                       Swarm.TUI.Model.Menus
                       Swarm.TUI.Model.Names
                       Swarm.TUI.Model.Repl
                       Swarm.TUI.Model.StateUpdates
                       Swarm.TUI.Model.UI
                       Swarm.TUI.View
+                      Swarm.TUI.View.Achievement
                       Swarm.TUI.View.Utils
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Utils

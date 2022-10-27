@@ -28,6 +28,8 @@ data Name
     InventoryListItem Int
   | -- | The list of main menu choices.
     MenuList
+  | -- | The list of achievements.
+    AchievementList
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.

@@ -91,6 +91,7 @@ import Swarm.Game.World qualified as W
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
+import Swarm.TUI.View.Achievement
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
@@ -116,6 +117,7 @@ drawUI s
       NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
       MainMenu l -> [drawMainMenuUI s l]
       NewGameMenu stk -> [drawNewGameMenuUI stk]
+      AchievementsMenu l -> [drawAchievementsMenuUI s l]
       MessagesMenu -> [drawMainMessages s]
       AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
@@ -132,7 +134,7 @@ drawMainMenuUI s l =
   vBox . catMaybes $
     [ drawLogo <$> logo
     , hCenter . padTopBottom 2 <$> newVersionWidget version
-    , Just . centerLayer . vLimit 5 . hLimit 20 $
+    , Just . centerLayer . vLimit 6 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
  where
@@ -246,6 +248,7 @@ drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
 drawMainMenuEntry s = \case
   NewGame -> txt "New game"
   Tutorial -> txt "Tutorial"
+  Achievements -> txt "Achievements"
   About -> txt "About"
   Messages -> highlightMessages $ txt "Messages"
   Quit -> txt "Quit"
