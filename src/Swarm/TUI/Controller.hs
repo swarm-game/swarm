@@ -799,10 +799,10 @@ tabComplete s (CmdPrompt t mms)
     [m] -> CmdPrompt (completeWith lastWord m) []
     (m : ms) -> CmdPrompt (completeWith lastWord m) (ms ++ [m])
  where
-
-  replacementFunc m tt = if hasOpenQuotes tt
-    then T.append (T.dropWhileEnd (/= '"') tt) m
-    else replaceLast m tt
+  replacementFunc m tt =
+    if hasOpenQuotes tt
+      then T.append (T.dropWhileEnd (/= '"') tt) m
+      else replaceLast m tt
 
   completeWith w m = T.append t (T.drop (T.length w) m)
   lastWord = T.takeWhileEnd isIdentChar t
@@ -816,7 +816,6 @@ tabComplete s (CmdPrompt t mms)
   entityNames = M.keys $ entitiesByName theEntityMap
   lastQuotedString = T.takeWhileEnd (/= '"') t
   strMatches = filter (lastQuotedString `T.isPrefixOf`) entityNames
-
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
