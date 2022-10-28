@@ -788,18 +788,35 @@ handleREPLEvent = \case
 tabComplete :: AppState -> REPLPrompt -> REPLPrompt
 tabComplete _ p@(SearchPrompt {}) = p
 tabComplete s (CmdPrompt t mms)
-  | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
-  | T.null lastWord = CmdPrompt t []
-  | otherwise = case matches of
+  | (m : ms) <- mms = CmdPrompt (replacementFunc m t) (ms ++ [m])
+  | hasOpenQuotes t = case strMatches of
     [] -> CmdPrompt t []
-    [m] -> CmdPrompt (completeWith m) []
-    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+    [m] -> CmdPrompt (completeWith lastQuotedString m) []
+    (m : ms) -> CmdPrompt (completeWith lastQuotedString m) (ms ++ [m])
+  | T.null lastWord = CmdPrompt t []
+  | otherwise = case kwMatches of
+    [] -> CmdPrompt t []
+    [m] -> CmdPrompt (completeWith lastWord m) []
+    (m : ms) -> CmdPrompt (completeWith lastWord m) (ms ++ [m])
  where
-  completeWith m = T.append t (T.drop (T.length lastWord) m)
+
+  replacementFunc m tt = if hasOpenQuotes tt
+    then T.append (T.dropWhileEnd (/= '"') tt) m
+    else replaceLast m tt
+
+  completeWith w m = T.append t (T.drop (T.length w) m)
   lastWord = T.takeWhileEnd isIdentChar t
   names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
-  matches = filter (lastWord `T.isPrefixOf`) possibleWords
+  kwMatches = filter (lastWord `T.isPrefixOf`) possibleWords
+
+  -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
+  hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
+  theEntityMap = s ^. gameState . entityMap
+  entityNames = M.keys $ entitiesByName theEntityMap
+  lastQuotedString = T.takeWhileEnd (/= '"') t
+  strMatches = filter (lastQuotedString `T.isPrefixOf`) entityNames
+
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
