@@ -81,7 +81,7 @@ cliParser =
   autoplay :: Parser Bool
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   cheat :: Parser Bool
-  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode")
+  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
 
 cliInfo :: ParserInfo CLI
 cliInfo =

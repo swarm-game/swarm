@@ -34,15 +34,13 @@ objectives:
         ifC (has "tree") {return false} {return true}
       } { return false }
 solution: |
-  def m4 = move; move; move; move end;
+  def x4 = \c. c;c;c;c end;
   def mp = move; place "rock" end;
-  def mp4 = mp; mp; mp; mp end;
-  def rr = move; turn right; mp4; turn back; m4; turn right end;
+  def rr = turn right; move; turn right; x4 mp; turn back; x4 move end;
   build {
-    require "treads"; require "grabber"; // #540
+    require "treads"; require "grabber"; require "lambda"; // #540
     require 16 "rock";
-    turn right;
-    rr; rr; rr; rr
+    x4 rr
   };
 robots:
   - name: base
@@ -62,6 +60,7 @@ robots:
       - [16, treads]
       - [16, grabber]
       - [16, scanner]
+      - [16, lambda]
       - [100, rock]
 world:
   default: [blank]

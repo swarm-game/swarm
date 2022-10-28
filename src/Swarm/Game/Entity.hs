@@ -97,6 +97,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Set (Set)
+import Data.Set qualified as Set (fromList)
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -219,7 +220,7 @@ data Entity = Entity
     -- grabbed.
     _entityYields :: Maybe Text
   , -- | Properties of the entity.
-    _entityProperties :: [EntityProperty]
+    _entityProperties :: Set EntityProperty
   , -- | Capabilities provided by this entity.
     _entityCapabilities :: [Capability]
   , -- | Inventory of other entities held by this entity.
@@ -274,7 +275,7 @@ mkEntity ::
   [Capability] ->
   Entity
 mkEntity disp nm descr props caps =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props caps empty
+  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing (Set.fromList props) caps empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -330,7 +331,7 @@ instance FromJSON Entity where
               <*> v .:? "orientation"
               <*> v .:? "growth"
               <*> v .:? "yields"
-              <*> v .:? "properties" .!= []
+              <*> v .:? "properties" .!= mempty
               <*> v .:? "capabilities" .!= []
               <*> pure empty
           )
@@ -431,7 +432,7 @@ entityYields :: Lens' Entity (Maybe Text)
 entityYields = hashedLens _entityYields (\e x -> e {_entityYields = x})
 
 -- | The properties enjoyed by this entity.
-entityProperties :: Lens' Entity [EntityProperty]
+entityProperties :: Lens' Entity (Set EntityProperty)
 entityProperties = hashedLens _entityProperties (\e x -> e {_entityProperties = x})
 
 -- | Test whether an entity has a certain property.
