@@ -108,7 +108,8 @@ demoWeb = do
         AppOpts
           { userSeed = Nothing
           , userScenario = demoScenario
-          , toRun = Nothing
+          , scriptToRun = Nothing
+          , autoPlay = False
           , cheatMode = False
           , userWebPort = Nothing
           , repoGitInfo = Nothing
