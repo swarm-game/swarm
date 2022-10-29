@@ -148,7 +148,7 @@ module Swarm.TUI.Model (
 import Brick
 import Brick.Focus
 import Brick.Widgets.Dialog (Dialog)
-import Brick.Widgets.Edit (Editor, editorText, getEditContents, applyEdit)
+import Brick.Widgets.Edit (Editor, applyEdit, editorText, getEditContents)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative (Applicative (liftA2), (<|>))
 import Control.Lens hiding (from, (<.>))
@@ -166,6 +166,7 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Zipper qualified as TZ
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
@@ -198,7 +199,6 @@ import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import System.Clock
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
 import Witch (into)
-import Data.Text.Zipper qualified as TZ
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -412,10 +412,10 @@ data REPLState = REPLState
 
 newREPLEditor :: Text -> Editor Text Name
 newREPLEditor t = applyEdit gotoEnd $ editorText REPLPanel (Just 1) t
-  where
-    ls = T.lines t
-    pos = (length ls - 1, T.length (last ls))
-    gotoEnd = if null ls then id else TZ.moveCursor pos
+ where
+  ls = T.lines t
+  pos = (length ls - 1, T.length (last ls))
+  gotoEnd = if null ls then id else TZ.moveCursor pos
 
 initREPLState :: REPLHistory -> REPLState
 initREPLState = REPLState defaultPrompt (newREPLEditor "") True "" Nothing
