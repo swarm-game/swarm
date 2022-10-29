@@ -21,7 +21,9 @@ module Swarm.DocGen (
   noPageAddresses,
 ) where
 
+import Control.Arrow (left)
 import Control.Lens (view, (^.))
+import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_, (<=<))
 import Control.Monad.Except (ExceptT, liftIO, runExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
@@ -37,7 +39,10 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities, entityDisplay)
+import Data.Yaml (decodeFileEither)
+import Data.Yaml.Aeson (prettyPrintParseException)
+import Swarm.Game.Display (displayChar)
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
 import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
@@ -49,15 +54,10 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (isRightOr, getDataFileNameSafe)
+import Swarm.Util (getDataFileNameSafe, isRightOr)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
-import Swarm.Game.Display (displayChar)
-import Control.Lens.Combinators (to)
-import Data.Yaml (decodeFileEither)
-import Data.Yaml.Aeson (prettyPrintParseException)
 import Witch (from)
-import Control.Arrow (left)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -319,14 +319,14 @@ entityToList e =
     [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
     , addLink ("#" <> linkID) $ view entityName e
     , T.intercalate ", " $ Capability.capabilityName <$> view E.entityCapabilities e
-    , T.intercalate ", " . map tshow $ filter (/=E.Portable) props
+    , T.intercalate ", " . map tshow $ filter (/= E.Portable) props
     , if E.Portable `elem` props
-      then ":heavy_check_mark:"
-      else ":negative_squared_cross_mark:" 
+        then ":heavy_check_mark:"
+        else ":negative_squared_cross_mark:"
     ]
-  where
-    props = view E.entityProperties e
-    linkID = T.replace " " "-" $ view entityName e
+ where
+  props = view E.entityProperties e
+  linkID = T.replace " " "-" $ view entityName e
 
 entityTable :: [Entity] -> Text
 entityTable es = T.unlines $ header <> map (listToRow mw) entityRows
@@ -341,11 +341,11 @@ entityToSection e =
     [ "## " <> view E.entityName e
     , ""
     , " - Char: " <> (codeQuote . T.singleton $ e ^. entityDisplay . to displayChar)
-    ] <>
-    [ " - Properties: " <> T.intercalate ", " (map tshow props) | not $ null props ] <>
-    [ " - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
-    <> ["\n"]
-    <> [T.intercalate "\n\n" $ view E.entityDescription e]
+    ]
+      <> [" - Properties: " <> T.intercalate ", " (map tshow props) | not $ null props]
+      <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
+      <> ["\n"]
+      <> [T.intercalate "\n\n" $ view E.entityDescription e]
  where
   props = view E.entityProperties e
   caps = view E.entityCapabilities e
@@ -359,7 +359,6 @@ entitiesPage a es =
     , entityTable es
     ]
       <> map entityToSection es
-
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
