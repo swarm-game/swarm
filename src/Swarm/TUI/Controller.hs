@@ -258,6 +258,9 @@ handleMainEvent ev = do
     ControlKey 'g' -> case s ^. uiState . uiGoal of
       Just g | g /= [] -> toggleModal (GoalModal g)
       _ -> continueWithoutRedraw
+    MetaKey 'h' -> do
+      t <- liftIO $ getTime Monotonic
+      uiState . uiHideRobotsUntil .= t + TimeSpec 2 0 -- hide for two seconds
     -- pausing and stepping
     ControlKey 'p' | isRunning -> safeTogglePause
     ControlKey 'o' | isRunning -> do
