@@ -744,7 +744,7 @@ handleREPLEvent = \case
   Key V.KDown -> modify $ adjReplHistIndex Newer
   ControlKey 'r' -> do
     s <- get
-    let uinput = s ^. uiState . uiREPL . replPromptEditor . to getEditContents . to T.unlines
+    let uinput = s ^. uiState . uiREPL . replPromptText
     case s ^. uiState . uiREPL . replPromptType of
       CmdPrompt _ -> uiState . uiREPL . replPromptType .= SearchPrompt (s ^. uiState . uiREPL . replHistory)
       SearchPrompt rh -> case lastEntry uinput rh of
@@ -767,7 +767,9 @@ handleREPLEvent = \case
       then toggleModal QuitModal
       else continueWithoutRedraw
   -- finally if none match pass the event to the editor
-  ev -> Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
+  ev -> do
+    Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
+    modify validateREPLForm
 
 data CompletionType
   = FunctionName
