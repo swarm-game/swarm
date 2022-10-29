@@ -261,7 +261,7 @@ handleMainEvent ev = do
     MetaKey 'h' -> do
       t <- liftIO $ getTime Monotonic
       uiState . uiHideRobotsUntil .= t + TimeSpec 2 0 -- hide for two seconds
-    -- pausing and stepping
+      -- pausing and stepping
     ControlKey 'p' | isRunning -> safeTogglePause
     ControlKey 'o' | isRunning -> do
       gameState . runStatus .= ManualPause
