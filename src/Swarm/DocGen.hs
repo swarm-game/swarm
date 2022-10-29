@@ -15,7 +15,7 @@ module Swarm.DocGen (
   editorList,
 
   -- ** Wiki pages
-  PageAddress(..),
+  PageAddress (..),
   commandsPage,
   capabilityPage,
   noPageAddresses,
@@ -80,7 +80,8 @@ data PageAddress = PageAddress
   , commandsAddress :: Text
   , capabilityAddress :: Text
   , recipesAddress :: Text
-  } deriving (Eq, Show)
+  }
+  deriving (Eq, Show)
 
 noPageAddresses :: PageAddress
 noPageAddresses = PageAddress "" "" "" ""
@@ -204,7 +205,6 @@ tshow = T.pack . show
 -- COMMANDS
 -- ---------
 
-
 commandHeader :: [Text]
 commandHeader = ["Syntax", "Type", "Capability", "Description"]
 
@@ -216,7 +216,7 @@ commandToList c =
     , codeQuote . prettyText $ inferConst c
     , maybe "" Capability.capabilityName $ Capability.constCaps c
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
-    ]  
+    ]
 
 constTable :: [Const] -> Text
 constTable cs = T.unlines $ header <> map (listToRow mw) commandRows
@@ -261,20 +261,25 @@ capabilityHeader :: [Text]
 capabilityHeader = ["Name", "Commands", "Entities"]
 
 capabilityRow :: PageAddress -> EntityMap -> Capability -> [Text]
-capabilityRow PageAddress{..} em cap =
-  map escapeTable
-  [ Capability.capabilityName cap
-  , T.intercalate ", " (linkCommand <$> cs)
-  , T.intercalate ", " (linkEntity . view entityName <$> es)
-  ]
+capabilityRow PageAddress {..} em cap =
+  map
+    escapeTable
+    [ Capability.capabilityName cap
+    , T.intercalate ", " (linkCommand <$> cs)
+    , T.intercalate ", " (linkEntity . view entityName <$> es)
+    ]
  where
-  linkEntity t = if T.null entityAddress
-    then t
-    else addLink (entityAddress <> "#" <> T.replace " " "-" t) t
-  linkCommand c = (if T.null commandsAddress
-    then id
-    else addLink (commandsAddress <> "#" <> tshow c)
-    ) . codeQuote $ constSyntax c
+  linkEntity t =
+    if T.null entityAddress
+      then t
+      else addLink (entityAddress <> "#" <> T.replace " " "-" t) t
+  linkCommand c =
+    ( if T.null commandsAddress
+        then id
+        else addLink (commandsAddress <> "#" <> tshow c)
+    )
+      . codeQuote
+      $ constSyntax c
 
   cs = [c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
   es = fromMaybe [] $ E.entitiesByCap em Map.!? cap

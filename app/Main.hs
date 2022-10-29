@@ -4,12 +4,14 @@
 module Main where
 
 import Data.Foldable qualified
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
+import Data.Text qualified as T
 import Data.Text.IO qualified as Text
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
-import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs, PageAddress(..))
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.TUI.Model (AppOpts (..))
@@ -17,8 +19,6 @@ import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPrint, stderr)
-import qualified Data.Text as T
-import Data.Maybe (fromMaybe)
 
 gitInfo :: Maybe GitInfo
 gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
@@ -66,15 +66,17 @@ cliParser =
       , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
       ]
   address :: Parser PageAddress
-  address = let replace a b = T.unpack . T.replace a b . T.pack 
-                opt n = fmap (fromMaybe "") . optional $
-                  option
-                    str
-                    ( long n
-                        <> metavar "ADDRESS"
-                        <> help ("Set the address of " <> replace "-" " " n <> ". Default no link.")
-                    )
-                  in PageAddress <$> opt "entities-page" <*> opt "commands-page" <*> opt "capabilities-page" <*> opt "recipes-page"
+  address =
+    let replace a b = T.unpack . T.replace a b . T.pack
+        opt n =
+          fmap (fromMaybe "") . optional $
+            option
+              str
+              ( long n
+                  <> metavar "ADDRESS"
+                  <> help ("Set the address of " <> replace "-" " " n <> ". Default no link.")
+              )
+     in PageAddress <$> opt "entities-page" <*> opt "commands-page" <*> opt "capabilities-page" <*> opt "recipes-page"
   cheatsheet :: Parser (Maybe SheetType)
   cheatsheet =
     Data.Foldable.asum
