@@ -116,6 +116,7 @@ library
                       Swarm.TUI.Model
                       Swarm.TUI.View
                       Swarm.TUI.Controller
+                      Swarm.TUI.Inventory.Sorting
                       Swarm.App
                       Swarm.Version
                       Swarm.Web
@@ -152,6 +153,7 @@ library
                       minimorph                     >= 0.3 && < 0.4,
                       mtl                           >= 2.2.2 && < 2.3,
                       murmur3                       >= 1.0.4 && < 1.1,
+                      natural-sort                  >= 0.1.2 && < 0.2,
                       parser-combinators            >= 1.2 && < 1.4,
                       prettyprinter                 >= 1.7.0 && < 1.8,
                       random                        >= 1.2.0 && < 1.3,
