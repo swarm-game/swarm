@@ -41,7 +41,7 @@ module Swarm.TUI.Controller (
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Widgets.Dialog
-import Brick.Widgets.Edit (getEditContents, handleEditorEvent)
+import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
@@ -715,7 +715,7 @@ handleREPLEvent = \case
     s <- get
     let topCtx = topContext s
         repl = s ^. uiState . uiREPL
-        uinput = repl ^. replPromptEditor . to getEditContents . to T.unlines
+        uinput = repl ^. replPromptText
 
         startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs _) =
           (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
@@ -855,7 +855,7 @@ validateREPLForm s =
               & uiState . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
-  uinput = s ^. uiState . uiREPL . replPromptEditor . to getEditContents . to T.unlines
+  uinput = s ^. uiState . uiREPL . replPromptText
   replPrompt = s ^. uiState . uiREPL . replPromptType
   topCtx = topContext s
 
@@ -878,7 +878,7 @@ adjReplHistIndex d s =
     newREPL :: REPLState
     newREPL = repl & replHistory %~ moveReplHistIndex d oldEntry
 
-    saveLastEntry = replLast .~ (repl ^. replPromptEditor . to getEditContents . to T.unlines)
+    saveLastEntry = replLast .~ (repl ^. replPromptText)
     showNewEntry = (replPromptEditor .~ newREPLEditor newEntry) . (replPromptType .~ CmdPrompt [])
     -- get REPL data
     getCurrEntry = fromMaybe (repl ^. replLast) . getCurrentItemText . view replHistory
