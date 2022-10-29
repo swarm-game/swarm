@@ -316,8 +316,9 @@ drawGameUI s =
  where
   addCursorPos = case s ^. uiState . uiWorldCursor of
     Nothing -> id
-    Just coord -> let worlCursorInfo = drawWorldCursorInfo (s ^. uiState . uiShowRobots) (s ^. gameState) coord
-                   in bottomLabels . leftLabel ?~ padLeftRight 1 worlCursorInfo
+    Just coord ->
+      let worlCursorInfo = drawWorldCursorInfo (s ^. uiState . uiShowRobots) (s ^. gameState) coord
+       in bottomLabels . leftLabel ?~ padLeftRight 1 worlCursorInfo
   -- Add clock display in top right of the world view if focused robot
   -- has a clock installed
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
@@ -861,9 +862,10 @@ displayLoc showRobots g coords =
  where
   terrain = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
   entity = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
-  robots = if showRobots
-    then map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
-    else []
+  robots =
+    if showRobots
+      then map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
+      else []
 
   displayForEntity :: Entity -> Display
   displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
