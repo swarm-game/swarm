@@ -21,7 +21,7 @@ objectives:
         or you can use bind notation: `f <- harvest; ... ; place f;`.
       - |
         TIP: Newly built robots start out facing the same
-        direction as their parent, which in this case will always be north.
+        direction as their parent, which in the tutorials will always be north.
     condition: |
       try {
         teleport self (0,-1);
