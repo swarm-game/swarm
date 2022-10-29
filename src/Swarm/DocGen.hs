@@ -37,7 +37,7 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities)
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities, entityDisplay)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
 import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
@@ -49,9 +49,15 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (isRightOr)
+import Swarm.Util (isRightOr, getDataFileNameSafe)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
+import Swarm.Game.Display (displayChar)
+import Control.Lens.Combinators (to)
+import Data.Yaml (decodeFileEither)
+import Data.Yaml.Aeson (prettyPrintParseException)
+import Witch (from)
+import Control.Arrow (left)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -108,7 +114,12 @@ generateDocs = \case
         entities <- loadEntities >>= guardRight "load entities"
         liftIO $ T.putStrLn $ capabilityPage address entities
       Recipes -> error "Recipes are not implemented"
-      Entities -> error "Entities are not implemented"
+      Entities -> simpleErrorHandle $ do
+        let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
+        let f = "entities.yaml"
+        Just fileName <- liftIO $ getDataFileNameSafe f
+        entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
+        liftIO $ T.putStrLn $ entitiesPage address entities
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -293,6 +304,62 @@ capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRow
 
 capabilityPage :: PageAddress -> EntityMap -> Text
 capabilityPage a em = capabilityTable a em [minBound .. maxBound]
+
+-- ---------
+-- COMMANDS
+-- ---------
+
+entityHeader :: [Text]
+entityHeader = ["?", "Name", "Capabilities", "Properties*", "Portable"]
+
+entityToList :: Entity -> [Text]
+entityToList e =
+  map
+    escapeTable
+    [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
+    , addLink ("#" <> linkID) $ view entityName e
+    , T.intercalate ", " $ Capability.capabilityName <$> view E.entityCapabilities e
+    , T.intercalate ", " . map tshow $ filter (/=E.Portable) props
+    , if E.Portable `elem` props
+      then ":heavy_check_mark:"
+      else ":negative_squared_cross_mark:" 
+    ]
+  where
+    props = view E.entityProperties e
+    linkID = T.replace " " "-" $ view entityName e
+
+entityTable :: [Entity] -> Text
+entityTable es = T.unlines $ header <> map (listToRow mw) entityRows
+ where
+  mw = maxWidths (entityHeader : entityRows)
+  entityRows = map entityToList es
+  header = [listToRow mw entityHeader, separatingLine mw]
+
+entityToSection :: Entity -> Text
+entityToSection e =
+  T.unlines $
+    [ "## " <> view E.entityName e
+    , ""
+    , " - Char: " <> (codeQuote . T.singleton $ e ^. entityDisplay . to displayChar)
+    ] <>
+    [ " - Properties: " <> T.intercalate ", " (map tshow props) | not $ null props ] <>
+    [ " - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
+    <> ["\n"]
+    <> [T.intercalate "\n\n" $ view E.entityDescription e]
+ where
+  props = view E.entityProperties e
+  caps = view E.entityCapabilities e
+
+entitiesPage :: PageAddress -> [Entity] -> Text
+entitiesPage a es =
+  T.intercalate "\n\n" $
+    [ "# Entities"
+    , "This is a quick-overview table of entities - click the name for detailed description."
+    , "*) As a note, most entities have the Portable property, so we show it in a separate column."
+    , entityTable es
+    ]
+      <> map entityToSection es
+
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
