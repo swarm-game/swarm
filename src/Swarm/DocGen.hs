@@ -306,7 +306,7 @@ capabilityPage :: PageAddress -> EntityMap -> Text
 capabilityPage a em = capabilityTable a em [minBound .. maxBound]
 
 -- ---------
--- COMMANDS
+-- Entities
 -- ---------
 
 entityHeader :: [Text]
@@ -351,7 +351,7 @@ entityToSection e =
   caps = view E.entityCapabilities e
 
 entitiesPage :: PageAddress -> [Entity] -> Text
-entitiesPage a es =
+entitiesPage _a es =
   T.intercalate "\n\n" $
     [ "# Entities"
     , "This is a quick-overview table of entities - click the name for detailed description."
