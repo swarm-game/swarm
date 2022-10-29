@@ -44,7 +44,7 @@ import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
-import Brick.Widgets.Edit (Editor, getEditContents, renderEditor)
+import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
@@ -1159,11 +1159,14 @@ replPromptAsWidget t (SearchPrompt rh) =
       | T.null t -> txt "[find] "
       | otherwise -> txt $ "[found: \"" <> lastentry <> "\"] "
 
-renderREPLPrompt :: FocusRing Name -> Editor Text Name -> REPLPrompt -> Widget Name
-renderREPLPrompt focus replEditor prompt = ps1 <+> replE
+renderREPLPrompt :: FocusRing Name -> REPLState -> Widget Name
+renderREPLPrompt focus repl = ps1 <+> replE
  where
+  prompt = repl ^. replPromptType
+  replEditor = repl ^. replPromptEditor
+  color = if repl ^. replValid then id else withAttr redAttr
   ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
-  replE = withFocusRing focus (renderEditor (vBox . map txt)) replEditor
+  replE = withFocusRing focus (renderEditor (color . vBox . map txt)) replEditor
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
@@ -1174,7 +1177,7 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt]
   latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines) (repl ^. replHistory))
   currentPrompt :: Widget Name
   currentPrompt = case isActive <$> base of
-    Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) (repl ^. replPromptEditor) (repl ^. replPromptType)
+    Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
   inputLines = 1
   repl = s ^. uiState . uiREPL
