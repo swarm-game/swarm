@@ -63,6 +63,7 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
+import Data.Set qualified as Set (toList)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -959,7 +960,7 @@ explainFocusedItem s = case focusedItem s of
 explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
   vBox
-    [ displayProperties (e ^. entityProperties)
+    [ displayProperties $ Set.toList (e ^. entityProperties)
     , displayParagraphs (e ^. entityDescription)
     , explainRecipes s e
     ]

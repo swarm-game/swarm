@@ -147,7 +147,7 @@ import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
 import Brick.Widgets.List qualified as BL
-import Control.Applicative (Applicative (liftA2))
+import Control.Applicative (Applicative (liftA2), (<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
@@ -182,6 +182,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
   scenarioItemByPath,
   scenarioPath,
+  scenarioSolution,
   scenarioStatus,
   _SISingle,
  )
@@ -933,7 +934,9 @@ data AppOpts = AppOpts
   , -- | Scenario the user wants to play.
     userScenario :: Maybe FilePath
   , -- | Code to be run on base.
-    toRun :: Maybe FilePath
+    scriptToRun :: Maybe FilePath
+  , -- | Automatically run the solution defined in the scenario file
+    autoPlay :: Bool
   , -- | Should cheat mode be enabled?
     cheatMode :: Bool
   , -- | Explicit port on which to run the web API
@@ -945,7 +948,8 @@ data AppOpts = AppOpts
 -- | Initialize the 'AppState'.
 initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState AppOpts {..} = do
-  let skipMenu = isJust userScenario || isJust toRun || isJust userSeed
+  let isRunningInitialProgram = isJust scriptToRun || autoPlay
+      skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   gs <- initGameState
   ui <- initUIState (not skipMenu) cheatMode
   let rs = initRuntimeState
@@ -953,12 +957,19 @@ initAppState AppOpts {..} = do
     False -> return $ AppState gs ui rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
+
+      let maybeAutoplay = do
+            guard autoPlay
+            soln <- scenario ^. scenarioSolution
+            return $ SuggestedSolution soln
+      let realToRun = maybeAutoplay <|> (ScriptPath <$> scriptToRun)
+
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) toRun)
+        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) realToRun)
         (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.
-startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe FilePath -> m ()
+startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
 startGame = startGameWithSeed Nothing
 
 -- | Re-initialize the game from the stored reference to the current scenario.
@@ -975,7 +986,7 @@ restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Not
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe FilePath -> m ()
+startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
 startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
@@ -1001,7 +1012,7 @@ nextScenario = \case
 -- XXX do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
-scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe String -> m ()
+scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe CodeToRun -> m ()
 scenarioToAppState siPair@(scene, _) userSeed toRun = do
   withLensIO gameState $ scenarioToGameState scene userSeed toRun
   withLensIO uiState $ scenarioToUIState siPair
