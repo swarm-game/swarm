@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Swarm.DocGen (
   generateDocs,
@@ -193,9 +194,16 @@ listToRow mw xs = wrap '|' . T.intercalate "|" $ zipWith format mw xs
 maxWidths :: [[Text]] -> [Int]
 maxWidths = map (maximum . map T.length) . transpose
 
+addLink :: Text -> Text -> Text
+addLink l t = T.concat ["[", t, "](", l, ")"]
+
+tshow :: Show a => a -> Text
+tshow = T.pack . show
+
 -- ---------
 -- COMMANDS
 -- ---------
+
 
 commandHeader :: [Text]
 commandHeader = ["Syntax", "Type", "Capability", "Description"]
@@ -204,13 +212,11 @@ commandToList :: Const -> [Text]
 commandToList c =
   map
     escapeTable
-    [ addLink (T.pack $ "#" <> show c) . codeQuote $ constSyntax c
+    [ addLink ("#" <> tshow c) . codeQuote $ constSyntax c
     , codeQuote . prettyText $ inferConst c
     , maybe "" Capability.capabilityName $ Capability.constCaps c
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
-    ]
- where
-  addLink l t = T.concat ["[", t, "](", l, ")"]
+    ]  
 
 constTable :: [Const] -> Text
 constTable cs = T.unlines $ header <> map (listToRow mw) commandRows
@@ -252,21 +258,23 @@ commandsPage =
 -- -------------
 
 capabilityHeader :: [Text]
-capabilityHeader = ["Name", "Commands", "Entities", "Notes"]
+capabilityHeader = ["Name", "Commands", "Entities"]
 
 capabilityRow :: PageAddress -> EntityMap -> Capability -> [Text]
-capabilityRow a em cap =
+capabilityRow PageAddress{..} em cap =
   map escapeTable
   [ Capability.capabilityName cap
-  , T.intercalate ", " (codeQuote . constSyntax <$> cs)
+  , T.intercalate ", " (linkCommand <$> cs)
   , T.intercalate ", " (linkEntity . view entityName <$> es)
-  , "" -- TODO: Notes
   ]
  where
-  entityLink = entityAddress a
-  linkEntity t = if T.null entityLink
+  linkEntity t = if T.null entityAddress
     then t
-    else "[" <> t <> "](" <> entityLink <> "#" <> T.replace " " "-" t <> ")"
+    else addLink (entityAddress <> "#" <> T.replace " " "-" t) t
+  linkCommand c = (if T.null commandsAddress
+    then id
+    else addLink (commandsAddress <> "#" <> tshow c)
+    ) . codeQuote $ constSyntax c
 
   cs = [c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
   es = fromMaybe [] $ E.entitiesByCap em Map.!? cap
