@@ -6,9 +6,12 @@ module TestInventory where
 import Control.Lens ((^.))
 import Data.Hashable
 import Swarm.Game.Display
+import Swarm.Game.Entity (Number (..))
 import Swarm.Game.Entity qualified as E
+import Test.QuickCheck (NonNegative (..), (===))
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck (testProperty)
 
 testInventory :: TestTree
 testInventory =
@@ -17,16 +20,23 @@ testInventory =
     [ testCase
         "insert 0 / hash"
         ( assertEqual
-            "insertCount 0 x empty has same hash as x"
-            (x ^. E.entityHash)
+            "insertCount 0 x empty has same hash as (1+1+0)*x"
+            (2 * x ^. E.entityHash)
             (hash (E.insertCount 0 x E.empty))
         )
     , testCase
-        "insert / hash"
+        "insert 1 / hash"
         ( assertEqual
-            "insert x empty has same hash as 2*x"
-            (2 * (x ^. E.entityHash))
+            "insert x empty has same hash as (1+1+1)*x"
+            (3 * (x ^. E.entityHash))
             (hash (E.insert x E.empty))
+        )
+    , testCase
+        "insert 2 / hash"
+        ( assertEqual
+            "insertCount 2 x empty has same hash as (1+1+2)*x"
+            (4 * x ^. E.entityHash)
+            (hash (E.insertCount 2 x E.empty))
         )
     , testCase
         "insert / insert"
@@ -34,6 +44,18 @@ testInventory =
             "insert x y gives same hash as insert y x"
             (hash (E.insert x (E.insert y E.empty)))
             (hash (E.insert y (E.insert x E.empty)))
+        )
+    , testProperty
+        "insert i x (insert j x) has same hash as insert (i+j) x"
+        ( \(NonNegative i) (NonNegative j) ->
+            hash (E.insertCount (Integer i) x (E.insertCount (Integer j) x E.empty))
+              === hash (E.insertCount (Integer $ i + j) x E.empty)
+        )
+    , testProperty
+        "insert i x (insert infinity x) has same hash as insert infinity x"
+        ( \(NonNegative i) ->
+            hash (E.insertCount (Integer i) x (E.insertCount PosInfinity x E.empty))
+              === hash (E.insertCount PosInfinity x E.empty)
         )
     , testCase
         "insert 2 / delete"
@@ -45,14 +67,34 @@ testInventory =
     , testCase
         "insert 2 / delete 3"
         ( assertEqual
-            "insert 2, delete 3 gives hash of x"
-            (x ^. E.entityHash)
+            "insert 2, delete 3 has the same hash as (1+1)*x"
+            (2 * x ^. E.entityHash)
             (hash (E.deleteCount 3 x (E.insertCount 2 x E.empty)))
         )
+    , testProperty
+        "delete i x (insert infinity x) has same hash as insert infinity x"
+        ( \(NonNegative i) ->
+            hash (E.deleteCount (Integer i) x (E.insertCount PosInfinity x E.empty))
+              === hash (E.insertCount PosInfinity x E.empty)
+        )
     , testCase
-        "deleteAll"
+        "deleteAll x (insert x) is same as insertCount 0 empty"
         ( assertEqual
-            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insertCount 0 x"
+            "insert 2 x, deleteAll x same hash as insert 0 x"
+            (hash (E.insertCount 0 x E.empty))
+            (hash (E.deleteAll x (E.insertCount 2 x E.empty)))
+        )
+    , testCase
+        "deleteAll x (insertCount infinity x) is same as insertCount 0 empty"
+        ( assertEqual
+            "insert infinity x, deleteAll x same hash as insert 0 x"
+            (hash (E.insertCount 0 x E.empty))
+            (hash (E.deleteAll x (E.insertCount PosInfinity x E.empty)))
+        )
+    , testCase
+        "deleteAll x [x: 2, y: 2] --> [x: 0, y: 2]"
+        ( assertEqual
+            "insert 2 x, insert 2 y, deleteAll x same hash as insert 2 y, insert 0 x"
             (hash (E.insertCount 0 x (E.insertCount 2 y E.empty)))
             (hash (E.deleteAll x (E.insertCount 2 y (E.insertCount 2 x E.empty))))
         )

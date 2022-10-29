@@ -42,6 +42,7 @@
                "undefined"
                "fail"
                "not"
+               "infinity"
                "format"
                "chars"
                "split"

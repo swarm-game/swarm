@@ -26,6 +26,7 @@ import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Number (Number (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
@@ -115,7 +116,10 @@ instance PrettyPrec Term where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c
   prettyPrec _ (TDir d) = ppr d
-  prettyPrec _ (TInt n) = pretty n
+  prettyPrec p (TInt n) = case n of
+    Integer i -> pretty i
+    NegInfinity -> prettyPrec p (TApp (TConst Neg) (TConst Infinity))
+    PosInfinity -> prettyPrec p (TConst Infinity)
   prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
   prettyPrec _ (TText s) = fromString (show s)
   prettyPrec _ (TAntiText v) = "$str:" <> pretty v
@@ -123,7 +127,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
   prettyPrec _ (TRef r) = "@" <> pretty r
   prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TText d)
-  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TText e)
+  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> prettyPrec 0 (TInt n) <+> ppr (TText e)
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t

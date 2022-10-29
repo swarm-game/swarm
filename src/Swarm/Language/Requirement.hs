@@ -40,7 +40,8 @@ import GHC.Generics (Generic)
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Syntax
+import Swarm.Language.Number (Number (..))
+import Swarm.Language.Syntax hiding (Count)
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:
@@ -71,7 +72,7 @@ data Requirement
     --   Inventory requirements are additive, that is, say, requiring 5
     --   of entity `e` and later requiring 7 is the same as requiring
     --   12.
-    ReqInv Int Text
+    ReqInv Number Text
   deriving (Eq, Ord, Show, Read, Generic, Hashable, Data, FromJSON, ToJSON)
 
 -- | It is tempting to define @Requirements = Set Requirement@, but
@@ -84,7 +85,7 @@ data Requirement
 data Requirements = Requirements
   { capReqs :: Set Capability
   , devReqs :: Set Text
-  , invReqs :: Map Text Int
+  , invReqs :: Map Text Number
   }
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
@@ -113,7 +114,7 @@ singletonDev = singleton . ReqDev
 
 -- | For convenience, create a 'Requirements' set with a single
 --   inventory requirement.
-singletonInv :: Int -> Text -> Requirements
+singletonInv :: Number -> Text -> Requirements
 singletonInv n e = singleton (ReqInv n e)
 
 insert :: Requirement -> Requirements -> Requirements

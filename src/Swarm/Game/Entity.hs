@@ -52,6 +52,7 @@ module Swarm.Game.Entity (
   -- * Inventories
   Inventory,
   Count,
+  Number (..),
 
   -- ** Construction
   empty,
@@ -106,7 +107,8 @@ import GHC.Generics (Generic)
 import Linear (V2)
 import Swarm.Game.Display
 import Swarm.Language.Capability
-import Swarm.Util (dataNotFound, getDataFileNameSafe, plural, reflow, (?))
+import Swarm.Language.Number (Number (..))
+import Swarm.Util (dataNotFound, getDataFileNameSafe, plural, reflow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -451,9 +453,7 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 -- Inventory
 ------------------------------------------------------------
 
--- | A convenient synonym to remind us when an 'Int' is supposed to
---   represent /how many/ of something we have.
-type Count = Int
+type Count = Number
 
 -- | An inventory is really just a bag/multiset of entities.  That is,
 --   it contains some entities, along with the number of times each
@@ -524,18 +524,38 @@ fromList = foldl' (flip insert) empty
 
 -- | Create an inventory from a list of entities and their counts.
 fromElems :: [(Count, Entity)] -> Inventory
-fromElems = foldl' (flip (uncurry insertCount)) empty
+fromElems = insertInventoryList empty
+
+insertInventoryList :: Inventory -> [(Count, Entity)] -> Inventory
+insertInventoryList = foldl' (flip (uncurry insertCount))
+
+-- | Internal way to shift numbers to positive integers when hashing.
+--
+-- THIS DOES NOT FOLLOW ARITHMETIC LAWS, USE EXTREME CAUTION!
+hashCount :: Num p => Number -> p
+hashCount c = case c of
+  PosInfinity -> 1
+  Integer a | a >= 0 -> 1 + fromIntegral a
+  _neg -> error $ "Count should never be negative! Value: " ++ show c
 
 -- | Insert a certain number of copies of an entity into an inventory.
 --   If the inventory already contains this entity, then only its
 --   count will be incremented.
 insertCount :: Count -> Entity -> Inventory -> Inventory
-insertCount k e (Inventory cs byN h) =
-  Inventory
-    (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (k, e) cs)
-    (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
-    (h + (k + extra) * (e ^. entityHash)) -- homomorphic hashing
+insertCount k e inv@(Inventory countsMap byNameMap h) =
+  if k < 0
+    then deleteCount (-k) e inv
+    else
+      Inventory
+        newCountsMap
+        newByName
+        (h + addedHash) -- homomorphic hashing
  where
+  eHash = e ^. entityHash
+  sumCounts _key (m, _) (n, _) = (m + n, e)
+  (mOrig, newCountsMap) = IM.insertLookupWithKey sumCounts eHash (k, e) countsMap
+  nameKey = T.toLower $ e ^. entityName
+  newByName = M.insertWith IS.union nameKey (IS.singleton eHash) byNameMap
   -- Include the hash of an entity once just for "knowing about" it;
   -- then include the hash once per actual copy of the entity.  In
   -- other words, having k copies of e in the inventory contributes
@@ -544,7 +564,11 @@ insertCount k e (Inventory cs byN h) =
   -- insert 0 copies of something, since having 0 copies of something
   -- is different than not having it as a key at all; having 0 copies
   -- signals that we at least "know about" the entity.
-  extra = if (e ^. entityHash) `IM.member` cs then 0 else 1
+  --
+  -- EXEPT WE HAVE TO ACCOUNT FOR INFINITY! So we compare the new count.
+  addedHash = case fst <$> mOrig of
+    Nothing -> (hashCount k + 1) * eHash -- we know the entity was not known
+    Just orig -> (hashCount (k + orig) - hashCount orig) * eHash
 
 -- | Check whether an inventory contains at least one of a given entity.
 contains :: Inventory -> Entity -> Bool
@@ -575,24 +599,42 @@ delete = deleteCount 1
 
 -- | Delete a specified number of copies of an entity from an inventory.
 deleteCount :: Count -> Entity -> Inventory -> Inventory
-deleteCount k e (Inventory cs byN h) = Inventory cs' byN h'
+deleteCount k e inv@(Inventory countsMap byNameMap h) =
+  if k < 0
+    then insertCount (-k) e inv
+    else
+      Inventory
+        newCountsMap
+        byNameMap
+        (h - subtractedHash)
  where
-  m = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
-  cs' = IM.adjust removeCount (e ^. entityHash) cs
-  h' = h - min k m * (e ^. entityHash)
-
-  removeCount :: (Count, a) -> (Count, a)
-  removeCount (n, a) = (max 0 (n - k), a)
+  eHash = e ^. entityHash
+  (mOrig, newCountsMap) = IM.updateLookupWithKey removeCount eHash countsMap
+  subtractSafe PosInfinity _ = PosInfinity
+  subtractSafe m n = max 0 (n - m)
+  removeCount :: Int -> (Count, a) -> Maybe (Count, a)
+  removeCount _k = Just . first (subtractSafe k)
+  subtractedHash :: Int
+  subtractedHash = case fst <$> mOrig of
+    Nothing -> 0
+    Just orig -> (hashCount orig - hashCount (subtractSafe k orig)) * eHash
 
 -- | Delete all copies of a certain entity from an inventory.
 deleteAll :: Entity -> Inventory -> Inventory
-deleteAll e (Inventory cs byN h) =
+deleteAll e (Inventory countsMap byNameMap h) =
   Inventory
-    (IM.adjust (first (const 0)) (e ^. entityHash) cs)
-    byN
-    (h - n * (e ^. entityHash))
+    newCountsMap
+    byNameMap
+    (h - subtractedHash)
  where
-  n = (fst <$> IM.lookup (e ^. entityHash) cs) ? 0
+  eHash = e ^. entityHash
+  lookAnsSet0 mo = (mo, Just (0, e))
+  (mOrig, newCountsMap) = IM.alterF lookAnsSet0 eHash countsMap
+  subtractedHash :: Int
+  subtractedHash = case fst <$> mOrig of
+    Nothing -> 0
+    Just 0 -> 0
+    Just orig -> (hashCount orig - hashCount 0) * eHash
 
 -- | Get the entities in an inventory and their associated counts.
 elems :: Inventory -> [(Count, Entity)]
@@ -600,17 +642,7 @@ elems (Inventory cs _ _) = IM.elems cs
 
 -- | Union two inventories.
 union :: Inventory -> Inventory -> Inventory
-union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
-  Inventory
-    (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
-    (M.unionWith IS.union byN1 byN2)
-    (h1 + h2 - common)
- where
-  -- Need to subtract off the sum of the hashes in common, because
-  -- of the way each entity with count k contributes (k+1) times its
-  -- hash.  So if the two inventories share an entity e, just adding their
-  -- hashes would mean e now contributes (k+2) times its hash.
-  common = IS.foldl' (+) 0 $ IM.keysSet cs1 `IS.intersection` IM.keysSet cs2
+union i1 i2 = i1 `insertInventoryList` elems i2
 
 -- | Subtract the second inventory from the first.
 difference :: Inventory -> Inventory -> Inventory

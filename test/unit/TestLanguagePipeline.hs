@@ -129,7 +129,7 @@ testLanguagePipeline =
                     , "1 | require x"
                     , "  |         ^"
                     , "unexpected 'x'"
-                    , "expecting device name in double quotes or integer literal"
+                    , "expecting device name in double quotes, infinity constant, or integer literal"
                     ]
                 )
             )

@@ -96,7 +96,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
 import GHC.Generics (Generic)
-import Swarm.Game.Entity (Entity, Inventory)
+import Swarm.Game.Entity (Entity, Inventory, Number)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
 import Swarm.Game.World (World)
@@ -263,7 +263,7 @@ data CESK
     Up Exn Store Cont
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
-    Waiting Integer CESK
+    Waiting Number CESK
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract

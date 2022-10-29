@@ -523,6 +523,7 @@ inferConst c = case c of
   Mul -> arithBinT
   Div -> arithBinT
   Exp -> arithBinT
+  Infinity -> [tyQ| int |]
   Format -> [tyQ| a -> text |]
   Concat -> [tyQ| text -> text -> text |]
   Chars -> [tyQ| text -> int |]

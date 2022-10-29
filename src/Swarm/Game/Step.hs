@@ -50,7 +50,8 @@ import Data.Tuple (swap)
 import Linear (V2 (..), zero, (^+^))
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
+import Swarm.Game.Entity (Number (..))
+import Swarm.Game.Entity hiding (Integer, empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
@@ -97,7 +98,7 @@ gameTick = do
             case waitingUntil curRobot' of
               Just wakeUpTime
                 -- if w=2 t=1 then we do not needlessly put robot to waiting queue
-                | wakeUpTime - 2 <= time -> return ()
+                | wakeUpTime - 2 <= Integer time -> return ()
                 | otherwise -> sleepUntil rn wakeUpTime
               Nothing ->
                 unless (isActive curRobot') (sleepForever rn)
@@ -391,7 +392,7 @@ stepCESK cesk = case cesk of
   -- then stepCESK is a no-op.
   Waiting wakeupTime cesk' -> do
     time <- use ticks
-    if wakeupTime <= time
+    if wakeupTime <= Integer time
       then stepCESK cesk'
       else return cesk
   Out v s (FImmediate wf rf : k) -> do
@@ -417,8 +418,8 @@ stepCESK cesk = case cesk of
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
   -- Require and requireDevice just turn into no-ops.
-  In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
-  In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  In (TRequireDevice _dev) e s k -> return $ In (TConst Noop) e s k
+  In (TRequire _num _ent) e s k -> return $ In (TConst Noop) e s k
   -- Normally it's not possible to have a TRobot value in surface
   -- syntax, but the salvage command generates a program that needs to
   -- refer directly to the salvaging robot.
@@ -663,7 +664,7 @@ evalConst c vs s k = do
 
 -- | A system program for a "seed robot", to regrow a growable entity
 --   after it is harvested.
-seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
+seedProgram :: Number -> Number -> Text -> ProcessedTerm
 seedProgram minTime randTime thing =
   [tmQ|
     try {
@@ -680,7 +681,7 @@ seedProgram minTime randTime thing =
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
 --   by placed entities.
-addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> TimeSpec -> m ()
+addSeedBot :: Has (State GameState) sig m => Entity -> (Number, Number) -> V2 Int64 -> TimeSpec -> m ()
 addSeedBot e (minT, maxT) loc ts =
   void $
     addTRobot $
@@ -730,7 +731,7 @@ execConst c vs s k = do
     Wait -> case vs of
       [VInt d] -> do
         time <- use ticks
-        return $ Waiting (time + d) (Out VUnit s k)
+        return $ Waiting (Integer time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
       destroyIfNotBase
@@ -749,7 +750,7 @@ execConst c vs s k = do
       updateRobotLocation loc nextLoc
       return $ Out VUnit s k
     Teleport -> case vs of
-      [VRobot rid, VPair (VInt x) (VInt y)] -> do
+      [VRobot rid, VPair (VInt (Integer x)) (VInt (Integer y))] -> do
         -- Make sure the other robot exists and is close
         target <- getRobotWithinTouch rid
         -- either change current robot or one in robot map
@@ -927,14 +928,15 @@ execConst c vs s k = do
     Count -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        return $ Out (VInt (fromIntegral $ countByName name inv)) s k
+        let n = countByName name inv
+        return $ Out (VInt n) s k
       _ -> badConst
     Whereami -> do
       V2 x y <- use robotLocation
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
     Time -> do
       t <- use ticks
-      return $ Out (VInt t) s k
+      return $ Out (VInt $ Integer t) s k
     Drill -> case vs of
       [VDir d] -> do
         rname <- use robotName
@@ -1027,9 +1029,9 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Random -> case vs of
-      [VInt hi] -> do
+      [VInt (Integer hi)] -> do
         n <- uniform (0, hi - 1)
-        return $ Out (VInt n) s k
+        return $ Out (VInt . Integer $ n) s k
       _ -> badConst
     Atomic -> case vs of
       -- To execute an atomic block, set the runningAtomic flag,
@@ -1066,7 +1068,7 @@ execConst c vs s k = do
         return $ Out robotValue s k
       _ -> badConst
     RobotNumbered -> case vs of
-      [VInt rid] -> do
+      [VInt (Integer rid)] -> do
         r <-
           robotWithID (fromIntegral rid)
             >>= (`isJustOrFail` ["There is no robot with number", from (show rid)])
@@ -1375,22 +1377,21 @@ execConst c vs s k = do
             let salvageInventory = E.union (target ^. robotInventory) (target ^. installedDevices)
             robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
 
-            let salvageItems = concatMap (\(n, e) -> replicate n (e ^. entityName)) (E.elems salvageInventory)
-                numItems = length salvageItems
-
             -- Copy over the salvaged robot's log, if we have one
             inst <- use installedDevices
             em <- use entityMap
             creative <- use creativeMode
+            system <- use systemRobot
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
             when (creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Immediately copy over any items the robot knows about
-            -- but has 0 of
-            let knownItems = map snd . filter ((== 0) . fst) . elems $ salvageInventory
-            robotInventory %= \i -> foldr (insertCount 0) i knownItems
+            -- but has 0 of and in creative mode just get everything now.
+            let immediate = if system || creative then id else filter ((== 0) . fst)
+            let immediateItems = map snd . immediate . elems $ salvageInventory
+            robotInventory %= \i -> foldr (insertCount 0) i immediateItems
 
             -- Now reprogram the robot being salvaged to 'give' each
             -- item in its inventory to us, one at a time, then
@@ -1399,6 +1400,16 @@ execConst c vs s k = do
             robotMap . at (target ^. robotID) . traverse . systemRobot .= True
 
             ourID <- use @Robot robotID
+            let salvageItems =
+                  if system || creative
+                    then []
+                    else concatMap (uncurry replicateCount) (E.elems salvageInventory)
+                numItems = length salvageItems
+                replicateCount n e =
+                  e ^. entityName & case n of
+                    E.Integer x -> replicate (fromIntegral x)
+                    E.PosInfinity -> replicate 42
+                    E.NegInfinity -> replicate (-42)
 
             -- The program for the salvaged robot to run
             let giveInventory =
@@ -1412,7 +1423,7 @@ execConst c vs s k = do
 
             -- Now wait the right amount of time for it to finish.
             time <- use ticks
-            return $ Waiting (time + fromIntegral numItems + 1) (Out VUnit s k)
+            return $ Waiting (Integer $ time + fromIntegral numItems + 1) (Out VUnit s k)
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in
@@ -1457,6 +1468,7 @@ execConst c vs s k = do
     Mul -> returnEvalArith
     Div -> returnEvalArith
     Exp -> returnEvalArith
+    Infinity -> return $ Out (VInt PosInfinity) s k
     Format -> case vs of
       [v] -> return $ Out (VText (prettyValue v)) s k
       _ -> badConst
@@ -1464,10 +1476,12 @@ execConst c vs s k = do
       [VText t] -> return $ Out (VInt (fromIntegral $ T.length t)) s k
       _ -> badConst
     Split -> case vs of
-      [VInt i, VText t] ->
+      [VInt (Integer i), VText t] ->
         let p = T.splitAt (fromInteger i) t
             t2 = over both VText p
          in return $ Out (uncurry VPair t2) s k
+      [VInt NegInfinity, t] -> return $ Out (VPair (VText "") t) s k
+      [VInt PosInfinity, t] -> return $ Out (VPair t (VText "")) s k
       _ -> badConst
     Concat -> case vs of
       [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
@@ -1490,7 +1504,7 @@ execConst c vs s k = do
   finishCookingRecipe r wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime
-    return . (if remTime <= 1 then id else Waiting (remTime + time)) $
+    return . (if remTime <= 1 then id else Waiting (Integer $ remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
 
   lookInDirection :: HasRobotStepState sig m => Direction -> m (V2 Int64, Maybe Entity)
@@ -1627,13 +1641,13 @@ execConst c vs s k = do
             missingParentInv = neededParentInv `E.difference` parentInventory
             missingMap =
               M.fromList
-                . filter ((> 0) . snd)
+                . filter (\(n, x) -> x > 0 && (x /= PosInfinity || countByName n parentInventory /= PosInfinity))
                 . map (swap . second (^. entityName))
                 . E.elems
                 $ missingParentInv
 
         -- If we're missing anything, throw an error
-        E.isEmpty missingParentInv
+        null missingMap
           `holdsOr` Incapable fixI (R.Requirements S.empty S.empty missingMap) cmd
 
         return (minimalInstallSet, missingChildInv)
@@ -1763,7 +1777,7 @@ execConst c vs s k = do
       createdAt <- getNow
 
       -- Grow a new entity from a seed.
-      addSeedBot e (minT, maxT) loc createdAt
+      addSeedBot e (Integer minT, Integer maxT) loc createdAt
 
     -- Add the picked up item to the robot's inventory.  If the
     -- entity yields something different, add that instead.
@@ -1950,10 +1964,10 @@ incomparable v1 v2 =
 -- | Evaluate the application of an arithmetic operator, returning
 --   an exception in the case of a failing operation, or in case we
 --   incorrectly use it on a bad 'Const' in the library.
-evalArith :: Has (Throw Exn) sig m => Const -> Integer -> Integer -> m Integer
+evalArith :: Has (Throw Exn) sig m => Const -> Number -> Number -> m Number
 evalArith = \case
-  Add -> ok (+)
-  Sub -> ok (-)
+  Add -> safeAdd
+  Sub -> \i j -> evalArith Add i (-j)
   Mul -> ok (*)
   Div -> safeDiv
   Exp -> safeExp
@@ -1961,17 +1975,43 @@ evalArith = \case
  where
   ok f x y = return $ f x y
 
--- | Perform an integer division, but return @Nothing@ for division by
---   zero.
-safeDiv :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
-safeDiv _ 0 = throwError $ CmdFailed Div "Division by zero"
-safeDiv a b = return $ a `div` b
+-- | Perform addition on (possibly infinite) numbers safely.
+safeAdd :: Has (Throw Exn) sig m => Number -> Number -> m Number
+safeAdd = add
+ where
+  add PosInfinity NegInfinity = failAdd
+  add NegInfinity PosInfinity = failAdd
+  add i j = return $ i + j
+  failAdd = throwError $ CmdFailed Add "Can not add opposite infinities together!"
 
--- | Perform exponentiation, but return @Nothing@ if the power is negative.
-safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
-safeExp a b
-  | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
-  | otherwise = return $ a ^ b
+-- | Perform an integer division, but return infinity for division by zero.
+--   Dividing infinity by infinity is also undefined.
+safeDiv :: Has (Throw Exn) sig m => Number -> Number -> m Number
+safeDiv i 0 = return $ signum i * PosInfinity
+safeDiv (Integer a) (Integer b) = return . Integer $ a `div` b
+safeDiv (Integer _a) _ = return 0
+safeDiv i b@(Integer _b) = return $ b * i
+safeDiv _ _ = throwError $ CmdFailed Div "Dividing infinities"
+
+-- | Perform exponentiation, but fail on negative powers and negative numbers to the power of infinity.
+safeExp :: Has (Throw Exn) sig m => Number -> Number -> m Number
+safeExp = \case
+  PosInfinity -> return . infinityExp PosInfinity
+  NegInfinity -> return . infinityExp NegInfinity
+  Integer a -> \case
+    PosInfinity
+      | a == 0 -> return 0
+      | a > 0 -> return PosInfinity
+      | otherwise -> throwError $ CmdFailed Exp "Negative number to the power of infinity"
+    NegInfinity -> return 0
+    Integer b
+      | b < 0 -> throwError $ CmdFailed Exp "Negative exponent"
+      | otherwise -> return . Integer $ a ^ b
+ where
+  infinityExp :: Number -> Number -> Number
+  infinityExp i = \case
+    0 -> 1
+    b -> i * signum b
 
 ------------------------------------------------------------
 -- Updating discovered entities, recipes, and commands

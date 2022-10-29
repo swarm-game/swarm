@@ -31,7 +31,7 @@ import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (Requirements (..))
-import Swarm.Language.Syntax (Const, Term)
+import Swarm.Language.Syntax (Const, Term (TInt))
 import Swarm.Util
 import Witch (from)
 
@@ -172,7 +172,7 @@ formatIncapable em f (Requirements caps _ inv) tm
     cas -> "capabilities " <> T.intercalate ", " cas
   formatDevices = T.intercalate " or " . map (^. entityName)
   formatEntity (e, 1) = e
-  formatEntity (e, n) = e <> " (" <> from (show n) <> ")"
+  formatEntity (e, n) = e <> " (" <> from (prettyText (TInt n)) <> ")"
 
 -- | Exceptions that span multiple lines should be indented.
 unlinesExText :: [Text] -> Text

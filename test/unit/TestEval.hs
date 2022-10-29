@@ -9,6 +9,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
 import Swarm.Game.Value
+import Swarm.Language.Number (Number (..))
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
@@ -23,19 +24,19 @@ testEval g =
         "arithmetic"
         [ testProperty
             "addition"
-            (\a b -> binOp a "+" b `evaluatesToP` VInt (a + b))
+            (\a b -> binOp a "+" b `evaluatesToP` VInt (Integer $ a + b))
         , testProperty
             "subtraction"
-            (\a b -> binOp a "-" b `evaluatesToP` VInt (a - b))
+            (\a b -> binOp a "-" b `evaluatesToP` VInt (Integer $ a - b))
         , testProperty
             "multiplication"
-            (\a b -> binOp a "*" b `evaluatesToP` VInt (a * b))
+            (\a b -> binOp a "*" b `evaluatesToP` VInt (Integer $ a * b))
         , testProperty
             "division"
-            (\a (NonZero b) -> binOp a "/" b `evaluatesToP` VInt (a `div` b))
+            (\a (NonZero b) -> binOp a "/" b `evaluatesToP` VInt (Integer $ a `div` b))
         , testProperty
             "exponentiation"
-            (\a (NonNegative b) -> binOp a "^" b `evaluatesToP` VInt (a ^ (b :: Integer)))
+            (\a (NonNegative b) -> binOp a "^" b `evaluatesToP` VInt (Integer $ a ^ (b :: Integer)))
         ]
     , testGroup
         "int comparison"
@@ -164,8 +165,8 @@ testEval g =
             ("if true {1} {1/0}" `evaluatesTo` VInt 1)
         , testCase
             "function with if is not lazy"
-            ( "let f = \\x. \\y. if true {x} {y} in f 1 (1/0)"
-                `throwsError` ("by zero" `T.isInfixOf`)
+            ( "let f = \\x. \\y. if true {x} {y} in f 1 ((1/0) - (1/0))"
+                `throwsError` ("opposite infinities" `T.isInfixOf`)
             )
         , testCase
             "memoization baseline"
@@ -208,8 +209,8 @@ testEval g =
             "try / fail / fail"
             ("try {fail \"foo\"} {fail \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
         , testCase
-            "try / div by 0"
-            ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
+            "try / div infinities"
+            ("try {return ((1/0) / (1/0))} {return 3}" `evaluatesTo` VInt 3)
         ]
     , testGroup
         "text"

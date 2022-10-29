@@ -88,7 +88,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyText, prettyString)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types (Polytype)
@@ -922,7 +922,11 @@ drawItem sel i _ (Separator l) =
   (if sel == Just (i + 1) then visible else id) $ hBorderWithLabel (txt l)
 drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
  where
-  showCount = padLeft Max . str . show
+  showCount = padLeft Max . str . prettyCount
+  prettyCount = \case
+    E.Integer a -> show a
+    E.PosInfinity -> "∞"
+    E.NegInfinity -> "-∞" -- this should never happen
 drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
 
 -- | Draw the name of an entity, labelled with its visual
@@ -1058,13 +1062,13 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
         ]
   inLen = length ins + length times
   outLen = length outs
-  times = [(fromIntegral time, timeE) | time /= 1]
+  times = [(fromInteger time, timeE) | time /= 1]
 
   -- Draw inputs and outputs.
   drawIn, drawOut :: Int -> (Count, Entity) -> Widget Name
   drawIn i (n, ingr) =
     hBox
-      [ padRight (Pad 1) $ str (show n) -- how many?
+      [ padRight (Pad 1) $ str (prettyString $ TInt n) -- how many?
       , fmtEntityName missing ingr -- name of the input
       , padLeft (Pad 1) $ -- a connecting line:   ─────┬
           hBorder
@@ -1087,7 +1091,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
           )
             <+> hBorder
       , fmtEntityName False ingr
-      , padLeft (Pad 1) $ str (show n)
+      , padLeft (Pad 1) $ str (prettyString $ TInt n)
       ]
 
   -- If it's the focused entity, draw it highlighted.

@@ -29,6 +29,7 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Context
+import Swarm.Language.Number (Number)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Prelude
@@ -39,7 +40,7 @@ data Value where
   -- | The unit value.
   VUnit :: Value
   -- | An integer.
-  VInt :: Integer -> Value
+  VInt :: Number -> Value
   -- | Literal text.
   VText :: Text -> Value
   -- | A direction.
