@@ -1162,7 +1162,7 @@ replPromptAsWidget t (SearchPrompt rh) =
 renderREPLPrompt :: FocusRing Name -> Editor Text Name -> REPLPrompt -> Widget Name
 renderREPLPrompt focus replEditor prompt = ps1 <+> replE
  where
-  ps1 = replPromptAsWidget (T.unlines $ getEditContents replEditor) prompt
+  ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
   replE = withFocusRing focus (renderEditor (vBox . map txt)) replEditor
 
 -- | Draw the REPL.
