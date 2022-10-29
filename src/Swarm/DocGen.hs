@@ -14,7 +14,10 @@ module Swarm.DocGen (
   editorList,
 
   -- ** Wiki pages
+  PageAddress(..),
   commandsPage,
+  capabilityPage,
+  noPageAddresses,
 ) where
 
 import Control.Lens (view, (^.))
@@ -62,7 +65,7 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
-  CheatSheet :: Maybe SheetType -> GenerateDocs
+  CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
@@ -70,6 +73,16 @@ data EditorType = Emacs | VSCode
 
 data SheetType = Entities | Commands | Capabilities | Recipes
   deriving (Eq, Show, Enum, Bounded)
+
+data PageAddress = PageAddress
+  { entityAddress :: Text
+  , commandsAddress :: Text
+  , capabilityAddress :: Text
+  , recipesAddress :: Text
+  } deriving (Eq, Show)
+
+noPageAddresses :: PageAddress
+noPageAddresses = PageAddress "" "" "" ""
 
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
@@ -85,13 +98,13 @@ generateDocs = \case
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
         mapM_ editorGen [minBound .. maxBound]
-  CheatSheet s -> case s of
+  CheatSheet address s -> case s of
     Nothing -> error "Not implemented for all Wikis"
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
       Capabilities -> simpleErrorHandle $ do
         entities <- loadEntities >>= guardRight "load entities"
-        liftIO $ T.putStrLn $ capabilityPage entities
+        liftIO $ T.putStrLn $ capabilityPage address entities
       Recipes -> error "Recipes are not implemented"
       Entities -> error "Entities are not implemented"
 
@@ -241,26 +254,29 @@ commandsPage =
 capabilityHeader :: [Text]
 capabilityHeader = ["Name", "Commands", "Entities", "Notes"]
 
-capabilityRow :: EntityMap -> Capability -> [Text]
-capabilityRow em cap =
+capabilityRow :: PageAddress -> EntityMap -> Capability -> [Text]
+capabilityRow a em cap =
   [ Capability.capabilityName cap
-  , T.intercalate ", " (constSyntax <$> cs) -- TODO: link to the other wiki page
+  , T.intercalate ", " (linkEntity . codeQuote . constSyntax <$> cs)
   , T.intercalate ", " (view entityName <$> es)
-  , "TODO: Notes"
+  , "" -- TODO: Notes
   ]
  where
+  entityLink = entityAddress a
+  linkEntity t = if T.null entityLink then t else "[" <> t <> "](" <> entityLink <> "#" <> t <> ")"
+
   cs = [c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
   es = fromMaybe [] $ E.entitiesByCap em Map.!? cap
 
-capabilityTable :: EntityMap -> [Capability] -> Text
-capabilityTable em cs = T.unlines $ header <> map (listToRow mw) capabilityRows
+capabilityTable :: PageAddress -> EntityMap -> [Capability] -> Text
+capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRows
  where
   mw = maxWidths (capabilityHeader : capabilityRows)
-  capabilityRows = map (capabilityRow em) cs
+  capabilityRows = map (capabilityRow a em) cs
   header = [listToRow mw capabilityHeader, separatingLine mw]
 
-capabilityPage :: EntityMap -> Text
-capabilityPage em = capabilityTable em [minBound .. maxBound]
+capabilityPage :: PageAddress -> EntityMap -> Text
+capabilityPage a em = capabilityTable a em [minBound .. maxBound]
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
