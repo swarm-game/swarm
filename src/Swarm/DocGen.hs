@@ -256,14 +256,17 @@ capabilityHeader = ["Name", "Commands", "Entities", "Notes"]
 
 capabilityRow :: PageAddress -> EntityMap -> Capability -> [Text]
 capabilityRow a em cap =
+  map escapeTable
   [ Capability.capabilityName cap
-  , T.intercalate ", " (linkEntity . codeQuote . constSyntax <$> cs)
-  , T.intercalate ", " (view entityName <$> es)
+  , T.intercalate ", " (codeQuote . constSyntax <$> cs)
+  , T.intercalate ", " (linkEntity . view entityName <$> es)
   , "" -- TODO: Notes
   ]
  where
   entityLink = entityAddress a
-  linkEntity t = if T.null entityLink then t else "[" <> t <> "](" <> entityLink <> "#" <> t <> ")"
+  linkEntity t = if T.null entityLink
+    then t
+    else "[" <> t <> "](" <> entityLink <> "#" <> T.replace " " "-" t <> ")"
 
   cs = [c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
   es = fromMaybe [] $ E.entitiesByCap em Map.!? cap

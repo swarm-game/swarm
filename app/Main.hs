@@ -69,7 +69,7 @@ cliParser =
   address = let replace a b = T.unpack . T.replace a b . T.pack 
                 opt n = fmap (fromMaybe "") . optional $
                   option
-                    auto
+                    str
                     ( long n
                         <> metavar "ADDRESS"
                         <> help ("Set the address of " <> replace "-" " " n <> ". Default no link.")
