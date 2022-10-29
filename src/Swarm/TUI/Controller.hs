@@ -40,8 +40,8 @@ module Swarm.TUI.Controller (
 
 import Brick hiding (Direction)
 import Brick.Focus
-import Brick.Forms
 import Brick.Widgets.Dialog
+import Brick.Widgets.Edit (getEditContents, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
@@ -422,7 +422,7 @@ saveScenarioInfoOnQuit = do
 -- * returns to the previous menu
 quitGame :: EventM Name AppState ()
 quitGame = do
-  history <- use $ uiState . uiReplHistory
+  history <- use $ uiState . uiREPL . replHistory
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
   saveScenarioInfoOnQuit
@@ -597,7 +597,7 @@ updateUI = do
       itIx <- use (gameState . replNextValueIndex)
       let itName = fromString $ "it" ++ show itIx
       let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
-      uiState . uiReplHistory %= addREPLItem (REPLOutput out)
+      uiState . uiREPL . replHistory %= addREPLItem (REPLOutput out)
       gameState . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
       gameState . replNextValueIndex %= (+ 1)
@@ -696,29 +696,26 @@ stripCmd pty = pty
 -- REPL events
 ------------------------------------------------------------
 
--- | Context for the REPL commands to execute in. Contains the base
---   robot context plus the `it` variable that refer to the previously
---   computed values. (Note that `it{n}` variables are set in the
---   base robot context; we only set `it` here because it's so transient)
-topContext :: AppState -> RobotContext
-topContext s = ctxPossiblyWithIt
- where
-  ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
-
-  ctxPossiblyWithIt = case s ^. gameState . replStatus of
-    REPLDone (Just p) -> ctx & at "it" ?~ p
-    _ -> ctx
+-- | Set the REPLForm to the given value, resetting type error checks to Nothing
+--   and removing uiError.
+resetREPL :: T.Text -> REPLPrompt -> UIState -> UIState
+resetREPL t r ui =
+  ui
+    & uiREPL . replPromptText .~ t
+    & uiREPL . replPromptType .~ r
+    & uiError .~ Nothing
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent = \case
   ControlKey 'c' -> do
     gameState . baseRobot . machine %= cancel
-    uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+    uiState . uiREPL . replPromptType .= CmdPrompt []
   Key V.KEnter -> do
     s <- get
-    let entry = formState (s ^. uiState . uiReplForm)
-        topCtx = topContext s
+    let topCtx = topContext s
+        repl = s ^. uiState . uiREPL
+        uinput = repl ^. replPromptEditor . to getEditContents . to T.unlines
 
         startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs _) =
           (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
@@ -726,63 +723,51 @@ handleREPLEvent = \case
             . (gameState %~ execState (activateRobot 0))
 
     if not $ s ^. gameState . replWorking
-      then case entry of
-        CmdPrompt uinput _ ->
+      then case repl ^. replPromptType of
+        CmdPrompt _ ->
           case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
             Right mt -> do
-              uiState %= resetWithREPLForm (set promptUpdateL "" (s ^. uiState))
-              uiState . uiReplHistory %= addREPLItem (REPLEntry uinput)
+              uiState %= resetREPL "" (CmdPrompt [])
+              uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
               modify $ maybe id startBaseProgram mt
             Left err -> uiState . uiError ?= err
-        SearchPrompt t hist ->
-          case lastEntry t hist of
-            Nothing -> uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+        SearchPrompt hist ->
+          case lastEntry uinput hist of
+            Nothing -> uiState %= resetREPL "" (CmdPrompt [])
             Just found
-              | T.null t -> uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+              | T.null uinput -> uiState %= resetREPL "" (CmdPrompt [])
               | otherwise -> do
-                uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
+                uiState %= resetREPL found (CmdPrompt [])
                 modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
   ControlKey 'r' -> do
     s <- get
-    case s ^. uiState . uiReplForm . to formState of
-      CmdPrompt uinput _ ->
-        let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
-         in uiState . uiReplForm .= newform
-      SearchPrompt ftext rh -> case lastEntry ftext rh of
+    let uinput = s ^. uiState . uiREPL . replPromptEditor . to getEditContents . to T.unlines
+    case s ^. uiState . uiREPL . replPromptType of
+      CmdPrompt _ -> uiState . uiREPL . replPromptType .= SearchPrompt (s ^. uiState . uiREPL . replHistory)
+      SearchPrompt rh -> case lastEntry uinput rh of
         Nothing -> pure ()
-        Just found ->
-          let newform = mkReplForm $ SearchPrompt ftext (removeEntry found rh)
-           in uiState . uiReplForm .= newform
+        Just found -> uiState . uiREPL . replPromptType .= SearchPrompt (removeEntry found rh)
   CharKey '\t' -> do
-    formSt <- use $ uiState . uiReplForm . to formState
-    newform <- gets $ mkReplForm . flip tabComplete formSt
-    uiState . uiReplForm .= newform
+    s <- get
+    let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
+    uiState . uiREPL %= tabComplete names (s ^. gameState . entityMap)
     modify validateREPLForm
   EscapeKey -> do
-    formSt <- use $ uiState . uiReplForm . to formState
+    formSt <- use $ uiState . uiREPL . replPromptType
     case formSt of
       CmdPrompt {} -> continueWithoutRedraw
-      SearchPrompt _ _ ->
-        uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+      SearchPrompt _ ->
+        uiState %= resetREPL "" (CmdPrompt [])
   ControlKey 'd' -> do
-    text <- use $ uiState . uiReplForm . to formState . promptTextL
+    text <- use $ uiState . uiREPL . replPromptText
     if text == T.empty
       then toggleModal QuitModal
       else continueWithoutRedraw
-  ev -> do
-    replForm <- use $ uiState . uiReplForm
-    f' <- nestEventM' replForm (handleFormEvent ev)
-    case formState f' of
-      CmdPrompt {} -> do
-        uiState . uiReplForm .= f'
-        modify validateREPLForm
-      SearchPrompt t _ -> do
-        -- TODO: why does promptUpdateL not update the uiState?
-        newform <- use $ uiState . to (set promptUpdateL t)
-        uiState . uiReplForm .= newform
+  -- finally if none match pass the event to the editor
+  ev -> Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
 
 data CompletionType
   = FunctionName
@@ -792,33 +777,34 @@ data CompletionType
 -- | Try to complete the last word in a partially-entered REPL prompt using
 --   reserved words and names in scope (in the case of function names) or
 --   entity names (in the case of string literals).
-tabComplete :: AppState -> REPLPrompt -> REPLPrompt
-tabComplete _ p@(SearchPrompt {}) = p
-tabComplete s (CmdPrompt t mms)
-  -- Case 1: If completion candidates have already been
-  -- populated via case (3), cycle through them.
-  -- Note that tabbing through the candidates *does* update the value
-  -- of "t", which one might think would narrow the candidate list
-  -- to only that match and therefore halt the cycling.
-  -- However, the candidate list only gets recomputed (repopulated)
-  -- if the user subsequently presses a non-Tab key. Thus the current
-  -- value of "t" is ignored for all Tab presses subsequent to the
-  -- first.
-  | (m : ms) <- mms = CmdPrompt (replacementFunc m) (ms ++ [m])
-  -- Case 2: Require at least one letter to be typed in order to offer completions for
-  -- function names.
-  -- We allow suggestions for Entity Name strings without anything having been typed.
-  | T.null lastWord && completionType == FunctionName = CmdPrompt t []
-  -- Case 3: Typing another character in the REPL clears the completion candidates from
-  -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
-  -- repopulates them.
-  | otherwise = case candidateMatches of
-    [] -> CmdPrompt t []
-    [m] -> CmdPrompt (completeWith m) []
-    -- Perform completion with the first candidate, then populate the list
-    -- of all candidates with the current completion moved to the back
-    -- of the queue.
-    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+tabComplete :: [Var] -> EntityMap -> REPLState -> REPLState
+tabComplete names em repl = case repl ^. replPromptType of
+  SearchPrompt _ -> repl
+  CmdPrompt mms
+    -- Case 1: If completion candidates have already been
+    -- populated via case (3), cycle through them.
+    -- Note that tabbing through the candidates *does* update the value
+    -- of "t", which one might think would narrow the candidate list
+    -- to only that match and therefore halt the cycling.
+    -- However, the candidate list only gets recomputed (repopulated)
+    -- if the user subsequently presses a non-Tab key. Thus the current
+    -- value of "t" is ignored for all Tab presses subsequent to the
+    -- first.
+    | (m : ms) <- mms -> setCmd (replacementFunc m) (ms ++ [m])
+    -- Case 2: Require at least one letter to be typed in order to offer completions for
+    -- function names.
+    -- We allow suggestions for Entity Name strings without anything having been typed.
+    | T.null lastWord && completionType == FunctionName -> setCmd t []
+    -- Case 3: Typing another character in the REPL clears the completion candidates from
+    -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
+    -- repopulates them.
+    | otherwise -> case candidateMatches of
+      [] -> setCmd t []
+      [m] -> setCmd (completeWith m) []
+      -- Perform completion with the first candidate, then populate the list
+      -- of all candidates with the current completion moved to the back
+      -- of the queue.
+      (m : ms) -> setCmd (completeWith m) (ms ++ [m])
  where
   -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
   hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
@@ -837,55 +823,65 @@ tabComplete s (CmdPrompt t mms)
     EntityName -> (entityNames, (/= '"'))
     FunctionName -> (possibleWords, isIdentChar)
 
-  names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
 
-  theEntityMap = s ^. gameState . entityMap
-  entityNames = M.keys $ entitiesByName theEntityMap
+  entityNames = M.keys $ entitiesByName em
+
+  t = repl ^. replPromptText
+  setCmd nt ms =
+    repl
+      & replPromptText .~ nt
+      & replPromptType .~ CmdPrompt ms
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
-    CmdPrompt "" _ ->
-      let theType = s ^. gameState . replStatus . replActiveType
-       in s & uiState . uiReplType .~ theType
-    CmdPrompt uinput _ ->
-      let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
-          theType = case result of
-            Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
-            _ -> Nothing
-       in s
-            & uiState . uiReplForm %~ validate result
-            & uiState . uiReplType .~ theType
-    SearchPrompt _ _ -> s
+    CmdPrompt _
+      | T.null uinput ->
+        let theType = s ^. gameState . replStatus . replActiveType
+         in s & uiState . uiREPL . replType .~ theType
+    CmdPrompt _
+      | otherwise ->
+        let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
+            theType = case result of
+              Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+              _ -> Nothing
+         in s
+              & uiState . uiREPL . replValid .~ isRight result
+              & uiState . uiREPL . replType .~ theType
+    SearchPrompt _ -> s
  where
-  replPrompt = s ^. uiState . uiReplForm . to formState
+  uinput = s ^. uiState . uiREPL . replPromptEditor . to getEditContents . to T.unlines
+  replPrompt = s ^. uiState . uiREPL . replPromptType
   topCtx = topContext s
-  validate result = setFieldValid (isRight result) REPLInput
 
 -- | Update our current position in the REPL history.
 adjReplHistIndex :: TimeDir -> AppState -> AppState
 adjReplHistIndex d s =
-  ns
-    & (if replIndexIsAtInput (s ^. repl) then saveLastEntry else id)
-    & (if oldEntry /= newEntry then showNewEntry else id)
+  s
+    & uiState . uiREPL %~ moveREPL
     & validateREPLForm
  where
-  -- new AppState after moving the repl index
-  ns = s & repl %~ moveReplHistIndex d oldEntry
+  moveREPL :: REPLState -> REPLState
+  moveREPL repl =
+    newREPL
+      & (if replIndexIsAtInput (repl ^. replHistory) then saveLastEntry else id)
+      & (if oldEntry /= newEntry then showNewEntry else id)
+   where
+    -- & validateREPLForm
 
-  repl :: Lens' AppState REPLHistory
-  repl = uiState . uiReplHistory
+    -- new AppState after moving the repl index
+    newREPL :: REPLState
+    newREPL = repl & replHistory %~ moveReplHistIndex d oldEntry
 
-  replLast = s ^. uiState . uiReplLast
-  saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState . promptTextL)
-  showNewEntry = uiState . uiReplForm %~ updateFormState (mkCmdPrompt newEntry)
-  -- get REPL data
-  getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
-  oldEntry = getCurrEntry s
-  newEntry = getCurrEntry ns
+    saveLastEntry = replLast .~ (repl ^. replPromptEditor . to getEditContents . to T.unlines)
+    showNewEntry = (replPromptEditor .~ newREPLEditor newEntry) . (replPromptType .~ CmdPrompt [])
+    -- get REPL data
+    getCurrEntry = fromMaybe (repl ^. replLast) . getCurrentItemText . view replHistory
+    oldEntry = getCurrEntry repl
+    newEntry = getCurrEntry newREPL
 
 ------------------------------------------------------------
 -- World events

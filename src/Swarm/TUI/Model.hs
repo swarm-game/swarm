@@ -53,13 +53,7 @@ module Swarm.TUI.Model (
 
   -- ** Prompt utils
   REPLPrompt (..),
-  mkCmdPrompt,
-  replPromptAsWidget,
-  promptTextL,
-  promptUpdateL,
-  mkReplForm,
   removeEntry,
-  resetWithREPLForm,
 
   -- ** Inventory
   InventoryListEntry (..),
@@ -74,10 +68,7 @@ module Swarm.TUI.Model (
   uiCheatMode,
   uiFocusRing,
   uiWorldCursor,
-  uiReplForm,
-  uiReplType,
-  uiReplHistory,
-  uiReplLast,
+  uiREPL,
   uiInventory,
   uiInventorySort,
   uiMoreInfoTop,
@@ -101,10 +92,21 @@ module Swarm.TUI.Model (
   scenarioRef,
   appData,
 
+  -- *** REPL Panel Model
+  REPLState,
+  replPromptType,
+  replPromptEditor,
+  replPromptText,
+  replValid,
+  replLast,
+  replType,
+  replHistory,
+  newREPLEditor,
+
   -- ** Initialization
   initFocusRing,
   defaultPrompt,
-  initReplForm,
+  initREPLState,
   initLgTicksPerSecond,
   initUIState,
   lastEntry,
@@ -136,6 +138,7 @@ module Swarm.TUI.Model (
   Seed,
 
   -- ** Utility
+  topContext,
   focusedItem,
   focusedEntity,
   nextScenario,
@@ -144,8 +147,8 @@ module Swarm.TUI.Model (
 
 import Brick
 import Brick.Focus
-import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
+import Brick.Widgets.Edit (Editor, editorText, getEditContents)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative (Applicative (liftA2), (<|>))
 import Control.Lens hiding (from, (<.>))
@@ -363,19 +366,12 @@ getCurrentItemText history = replItemText <$> Seq.lookup (history ^. replIndex) 
 replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
-------------------------------------------------------------
--- Repl Prompt
-------------------------------------------------------------
-
--- | This data type represent what is prompted to the player
---   and how the REPL show interpret the user input.
-data REPLPrompt
-  = -- | Interpret the given text as a regular command.
-    --   The list is for potential completions, which we can
-    --   cycle through by hitting Tab repeatedly
-    CmdPrompt Text [Text]
-  | -- | Interpret the given text as "search this text in history"
-    SearchPrompt Text REPLHistory
+-- | Given some text,  removes the REPLEntry within REPLHistory which is equal to that.
+--   This is used when the user enters in search mode and want to traverse the history.
+--   If a command has been used many times, the history will be populated with it causing
+--   the effect that search command always finds the same command.
+removeEntry :: Text -> REPLHistory -> REPLHistory
+removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
 
 -- | Get the last REPLEntry in REPLHistory matching the given text
 lastEntry :: Text -> REPLHistory -> Maybe Text
@@ -387,48 +383,68 @@ lastEntry t h =
   matchesText histItem = t `T.isInfixOf` replItemText histItem
   matchEntry = liftA2 (&&) matchesText isREPLEntry
 
--- | Given some text,  removes the REPLEntry within REPLHistory which is equal to that.
---   This is used when the user enters in search mode and want to traverse the history.
---   If a command has been used many times, the history will be populated with it causing
---   the effect that search command always finds the same command.
-removeEntry :: Text -> REPLHistory -> REPLHistory
-removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
+------------------------------------------------------------
+-- REPL
+------------------------------------------------------------
 
-mkCmdPrompt :: Text -> REPLPrompt
-mkCmdPrompt t = CmdPrompt t []
+-- | This data type tells us how to interpret the text typed
+--   by the player at the prompt (which is stored in Editor).
+data REPLPrompt
+  = -- | Interpret the prompt text as a regular command.
+    --   The list is for potential completions, which we can
+    --   cycle through by hitting Tab repeatedly
+    CmdPrompt [Text]
+  | -- | Interpret the prompt text as "search this text in history"
+    SearchPrompt REPLHistory
 
 defaultPrompt :: REPLPrompt
-defaultPrompt = mkCmdPrompt ""
+defaultPrompt = CmdPrompt []
 
--- | Lens for accesing the text of the prompt.
---   Notice that setting the text clears any pending completions.
-promptTextL :: Lens' REPLPrompt Text
-promptTextL = lens g s
+data REPLState = REPLState
+  { _replPromptType :: REPLPrompt
+  , _replPromptEditor :: Editor Text Name
+  , _replValid :: Bool
+  , _replLast :: Text
+  , _replType :: Maybe Polytype
+  , _replHistory :: REPLHistory
+  }
+
+newREPLEditor :: Text -> Editor Text Name
+newREPLEditor = editorText REPLPanel (Just 1)
+
+initREPLState :: REPLHistory -> REPLState
+initREPLState = REPLState defaultPrompt (newREPLEditor "") True "" Nothing
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''REPLState
+
+-- | The way we interpret text typed by the player in the REPL prompt.
+replPromptType :: Lens' REPLState REPLPrompt
+
+-- | The prompt where the user can type input at the REPL.
+replPromptEditor :: Lens' REPLState (Editor Text Name)
+
+-- | Convinience lens to get text from editor and replace it with new
+--   one that has the provided text.
+replPromptText :: Lens' REPLState Text
+replPromptText = lens g s
  where
-  -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).
-  -- This should be force in the ADT itself... right know this here
-  -- The compiler will complain about "Non complete patterns" on this two function.
-  g :: REPLPrompt -> Text
-  g (CmdPrompt t _) = t
-  g (SearchPrompt t _) = t
+  g r = r ^. replPromptEditor . to getEditContents . to T.unlines
+  s r t = r & replPromptEditor .~ newREPLEditor t
 
-  s :: REPLPrompt -> Text -> REPLPrompt
-  s (CmdPrompt _ _) t = mkCmdPrompt t
-  s (SearchPrompt _ h) t = SearchPrompt t h
+-- | Whether the prompt text is a valid 'Term'.
+replValid :: Lens' REPLState Bool
 
--- | Turn the repl prompt into a decorator for the form
-replPromptAsWidget :: REPLPrompt -> Widget Name
-replPromptAsWidget (CmdPrompt {}) = txt "> "
-replPromptAsWidget (SearchPrompt t rh) =
-  case lastEntry t rh of
-    Nothing -> txt "[nothing found] "
-    Just lastentry
-      | T.null t -> txt "[find] "
-      | otherwise -> txt $ "[found: \"" <> lastentry <> "\"] "
+-- | The type of the current REPL input which should be displayed to
+--   the user (if any).
+replType :: Lens' REPLState (Maybe Polytype)
 
--- | Creates the repl form as a decorated form.
-mkReplForm :: REPLPrompt -> Form REPLPrompt AppEvent Name
-mkReplForm r = newForm [(replPromptAsWidget r <+>) @@= editTextField promptTextL REPLInput (Just 1)] r
+-- | The last thing the user has typed which isn't part of the history.
+--   This is used to restore the repl form after the user visited the history.
+replLast :: Lens' REPLState Text
+
+-- | History of things the user has typed at the REPL, interleaved
+--   with outputs the system has generated.
+replHistory :: Lens' REPLState REPLHistory
 
 ------------------------------------------------------------
 -- Menus and dialogs
@@ -527,10 +543,7 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
-  , _uiReplForm :: Form REPLPrompt AppEvent Name
-  , _uiReplType :: Maybe Polytype
-  , _uiReplLast :: Text
-  , _uiReplHistory :: REPLHistory
+  , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
   , _uiMoreInfoTop :: Bool
@@ -585,20 +598,10 @@ uiFocusRing :: Lens' UIState (FocusRing Name)
 -- | The last clicked position on the world view.
 uiWorldCursor :: Lens' UIState (Maybe W.Coords)
 
--- | The form where the user can type input at the REPL.
-uiReplForm :: Lens' UIState (Form REPLPrompt AppEvent Name)
+-- | The state of REPL panel.
+uiREPL :: Lens' UIState REPLState
 
--- | The type of the current REPL input which should be displayed to
---   the user (if any).
-uiReplType :: Lens' UIState (Maybe Polytype)
-
--- | The last thing the user has typed which isn't part of the history.
---   This is used to restore the repl form after the user visited the history.
-uiReplLast :: Lens' UIState Text
-
--- | History of things the user has typed at the REPL, interleaved
---   with outputs the system has generated.
-uiReplHistory :: Lens' UIState REPLHistory
+-- | The order and direction of sorting inventory list.
 uiInventorySort :: Lens' UIState InventorySortOptions
 
 -- | The hash value of the focused robot entity (so we can tell if its
@@ -689,24 +692,6 @@ accumulatedTime :: Lens' UIState TimeSpec
 -- | Free-form data loaded from the @data@ directory, for things like
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' UIState (Map Text Text)
-
--- | Lens for accesing the text of the prompt.
---   Notice that setting the text clears any pending completions.
-promptUpdateL :: Lens UIState (Form REPLPrompt AppEvent Name) Text Text
-promptUpdateL = lens g s
- where
-  -- Notice that the prompt ADT must have a Text field in every constructor (representing what the user writes).
-  -- This should be force in the ADT itself... right know this here
-  -- The compiler will complain about "Non complete patterns" on this two function.
-  g :: UIState -> Text
-  g ui = case formState (ui ^. uiReplForm) of
-    CmdPrompt t _ -> t
-    SearchPrompt t _ -> t
-
-  s :: UIState -> Text -> Form REPLPrompt AppEvent Name
-  s ui inputText = case formState (ui ^. uiReplForm) of
-    CmdPrompt _ _ -> mkReplForm $ mkCmdPrompt inputText
-    SearchPrompt _ _ -> mkReplForm $ SearchPrompt inputText (ui ^. uiReplHistory)
 
 -- ----------------------------------------------------------------------------
 --                                Runtime state                              --
@@ -807,13 +792,6 @@ focusedEntity =
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
 
--- | The initial state of the REPL entry form.
-initReplForm :: Form REPLPrompt AppEvent Name
-initReplForm =
-  newForm
-    [(replPromptAsWidget defaultPrompt <+>) @@= editTextField promptTextL REPLInput (Just 1)]
-    (mkCmdPrompt "")
-
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int
 initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
@@ -836,10 +814,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiWorldCursor = Nothing
-      , _uiReplForm = initReplForm
-      , _uiReplType = Nothing
-      , _uiReplHistory = newREPLHistory history
-      , _uiReplLast = ""
+      , _uiREPL = initREPLState $ newREPLHistory history
       , _uiInventory = Nothing
       , _uiInventorySort = defaultSortOptions
       , _uiMoreInfoTop = False
@@ -915,13 +890,6 @@ populateInventoryList (Just r) = do
   -- Finally, populate the newly created list in the UI, and remember
   -- the hash of the current robot.
   uiInventory .= Just (r ^. inventoryHash, lst)
-
--- | Set the REPLForm to the given value, resetting type error checks to Nothing
---   and removing uiError.
-resetWithREPLForm :: Form REPLPrompt AppEvent Name -> UIState -> UIState
-resetWithREPLForm f =
-  (uiReplForm .~ f)
-    . (uiError .~ Nothing)
 
 ------------------------------------------------------------
 -- App state (= UI state + game state) initialization
@@ -1009,6 +977,19 @@ nextScenario = \case
           else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
   _ -> Nothing
 
+-- | Context for the REPL commands to execute in. Contains the base
+--   robot context plus the `it` variable that refer to the previously
+--   computed values. (Note that `it{n}` variables are set in the
+--   base robot context; we only set `it` here because it's so transient)
+topContext :: AppState -> RobotContext
+topContext s = ctxPossiblyWithIt
+ where
+  ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
+
+  ctxPossiblyWithIt = case s ^. gameState . replStatus of
+    REPLDone (Just p) -> ctx & at "it" ?~ p
+    _ -> ctx
+
 -- XXX do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
@@ -1036,6 +1017,6 @@ scenarioToUIState siPair u =
       & uiShowFPS .~ False
       & uiShowZero .~ True
       & lgTicksPerSecond .~ initLgTicksPerSecond
-      & resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
-      & uiReplHistory %~ restartREPLHistory
+      & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
+      & uiREPL . replHistory %~ restartREPLHistory
       & scenarioRef ?~ siPair
