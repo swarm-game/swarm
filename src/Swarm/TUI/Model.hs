@@ -79,6 +79,7 @@ module Swarm.TUI.Model (
   uiReplHistory,
   uiReplLast,
   uiInventory,
+  uiInventorySort,
   uiMoreInfoTop,
   uiMoreInfoBot,
   uiScrollToEnd,
@@ -152,7 +153,7 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
-import Data.List (findIndex, sortOn)
+import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -188,6 +189,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
+import Swarm.TUI.Inventory.Sorting
 import Swarm.Util
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import System.Clock
@@ -530,6 +532,7 @@ data UIState = UIState
   , _uiReplLast :: Text
   , _uiReplHistory :: REPLHistory
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
+  , _uiInventorySort :: InventorySortOptions
   , _uiMoreInfoTop :: Bool
   , _uiMoreInfoBot :: Bool
   , _uiScrollToEnd :: Bool
@@ -596,6 +599,7 @@ uiReplLast :: Lens' UIState Text
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
 uiReplHistory :: Lens' UIState REPLHistory
+uiInventorySort :: Lens' UIState InventorySortOptions
 
 -- | The hash value of the focused robot entity (so we can tell if its
 --   inventory changed) along with a list of the items in the
@@ -837,6 +841,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiReplHistory = newREPLHistory history
       , _uiReplLast = ""
       , _uiInventory = Nothing
+      , _uiInventorySort = defaultSortOptions
       , _uiMoreInfoTop = False
       , _uiMoreInfoBot = False
       , _uiScrollToEnd = False
@@ -870,12 +875,13 @@ populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   showZero <- use uiShowZero
+  sortOptions <- use uiInventorySort
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = InstalledEntry e
       itemList mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
-          . sortOn (T.toLower . view entityName . snd)
+          . sortInventory sortOptions
           . filter shouldDisplay
           . elems
 
@@ -1026,6 +1032,7 @@ scenarioToUIState siPair u =
       & uiGoal .~ Nothing
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
+      & uiInventorySort .~ defaultSortOptions
       & uiShowFPS .~ False
       & uiShowZero .~ True
       & lgTicksPerSecond .~ initLgTicksPerSecond

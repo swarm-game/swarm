@@ -80,6 +80,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.View (generateModal)
@@ -960,6 +961,12 @@ handleRobotPanelEvent = \case
   (CharKey '0') -> do
     uiState . uiInventoryShouldUpdate .= True
     uiState . uiShowZero %= not
+  (CharKey ';') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySort %= cycleSortOrder
+  (CharKey ':') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySort %= cycleSortDirection
   (VtyEvent ev) -> do
     -- This does not work we want to skip redrawing in the no-list case
     -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))

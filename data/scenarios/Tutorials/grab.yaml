@@ -11,8 +11,6 @@ objectives:
         inventory.  Remember, if the description does not fit in the
         lower left info box, you can either hit `Enter` to pop out the
         description, or focus the info box in order to scroll.
-      - |
-        TIP: You can use the arrow key Up ('↑') to reuse your previous commands.
     condition: |
       try {
         t <- as base {count "tree"};

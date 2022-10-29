@@ -94,6 +94,7 @@ import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
+import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
@@ -768,6 +769,7 @@ drawKeyMenu s =
     Just g | g /= [] -> True
     _ -> False
   showZero = s ^. uiState . uiShowZero
+  inventorySort = s ^. uiState . uiInventorySort
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -804,6 +806,7 @@ drawKeyMenu s =
     [ ("Enter", "pop out")
     , ("m", "make")
     , ("0", (if showZero then "hide" else "show") <> " 0")
+    , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
     ]
   keyCmdsFor (Just InfoPanel) = []
   keyCmdsFor _ = []
