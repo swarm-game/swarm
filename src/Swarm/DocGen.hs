@@ -322,7 +322,7 @@ entityToList e =
     [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
     , addLink ("#" <> linkID) $ view entityName e
     , T.intercalate ", " $ Capability.capabilityName <$> view E.entityCapabilities e
-    , T.intercalate ", " . map tshow $ filter (/= E.Portable) props
+    , T.intercalate ", " . map tshow . filter (/= E.Portable) $ toList props
     , if E.Portable `elem` props
         then ":heavy_check_mark:"
         else ":negative_squared_cross_mark:"
@@ -345,7 +345,7 @@ entityToSection e =
     , ""
     , " - Char: " <> (codeQuote . T.singleton $ e ^. entityDisplay . to displayChar)
     ]
-      <> [" - Properties: " <> T.intercalate ", " (map tshow props) | not $ null props]
+      <> [" - Properties: " <> T.intercalate ", " (map tshow $ toList props) | not $ null props]
       <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
       <> ["\n"]
       <> [T.intercalate "\n\n" $ view E.entityDescription e]
