@@ -161,6 +161,7 @@ library
                       split                         >= 0.2.3 && < 0.3,
                       stm                           >= 2.5.0 && < 2.6,
                       syb                           >= 0.7 && < 0.8,
+                      tagged                        >= 0.8 && < 0.9,
                       template-haskell              >= 2.16 && < 2.20,
                       text                          >= 1.2.4 && < 2.1,
                       time                          >= 1.9 && < 1.14,
@@ -170,7 +171,7 @@ library
                       vty                           >= 5.33 && < 5.38,
                       wai                           >= 3.2 && < 3.3,
                       warp                          >= 3.2 && < 3.4,
-                      witch                         >= 0.3.4 && < 1.2,
+                      witch                         >= 1.1.1.0 && < 1.2,
                       word-wrap                     >= 0.5 && < 0.6,
                       yaml                          >= 0.11 && < 0.12,
     hs-source-dirs:   src
