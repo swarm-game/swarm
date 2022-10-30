@@ -44,7 +44,7 @@ import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
+import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
@@ -113,13 +113,16 @@ generateDocs = \case
       Capabilities -> simpleErrorHandle $ do
         entities <- loadEntities >>= guardRight "load entities"
         liftIO $ T.putStrLn $ capabilityPage address entities
-      Recipes -> error "Recipes are not implemented"
       Entities -> simpleErrorHandle $ do
         let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
         let f = "entities.yaml"
         Just fileName <- liftIO $ getDataFileNameSafe f
         entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
         liftIO $ T.putStrLn $ entitiesPage address entities
+      Recipes -> simpleErrorHandle $ do
+        entities <- loadEntities >>= guardRight "load entities"
+        recipes <- loadRecipes entities >>= guardRight "load recipes"
+        liftIO $ T.putStrLn $ recipePage address recipes
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -359,6 +362,40 @@ entitiesPage _a es =
     , entityTable es
     ]
       <> map entityToSection es
+
+-- -------------
+-- RECIPES
+-- -------------
+
+recipeHeader :: [Text]
+recipeHeader = ["In", "Out", "Required", "Time", "Weight"]
+
+recipeRow :: PageAddress -> Recipe Entity -> [Text]
+recipeRow PageAddress {..} r =
+  map
+    escapeTable
+    [ T.intercalate ", " (map formatCE $ view recipeInputs r)
+    , T.intercalate ", " (map formatCE $ view recipeOutputs r)
+    , T.intercalate ", " (map formatCE $ view recipeRequirements r)
+    , tshow $ view recipeTime r
+    , tshow $ view recipeWeight r
+    ]
+ where
+  formatCE (c, e) = T.unwords [tshow c, linkEntity $ view entityName e]
+  linkEntity t =
+    if T.null entityAddress
+      then t
+      else addLink (entityAddress <> "#" <> T.replace " " "-" t) t
+
+recipeTable :: PageAddress -> [Recipe Entity] -> Text
+recipeTable a rs = T.unlines $ header <> map (listToRow mw) recipeRows
+ where
+  mw = maxWidths (recipeHeader : recipeRows)
+  recipeRows = map (recipeRow a) rs
+  header = [listToRow mw recipeHeader, separatingLine mw]
+
+recipePage :: PageAddress -> [Recipe Entity] -> Text
+recipePage = recipeTable
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
