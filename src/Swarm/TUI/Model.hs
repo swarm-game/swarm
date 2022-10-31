@@ -86,6 +86,8 @@ module Swarm.TUI.Model (
   lastInfoTime,
   uiShowFPS,
   uiShowZero,
+  uiShowRobots,
+  uiHideRobotsUntil,
   uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
@@ -559,6 +561,7 @@ data UIState = UIState
   , _uiGoal :: Maybe [Text]
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
+  , _uiHideRobotsUntil :: TimeSpec
   , _uiInventoryShouldUpdate :: Bool
   , _uiTPF :: Double
   , _uiFPS :: Double
@@ -641,6 +644,13 @@ uiShowFPS :: Lens' UIState Bool
 
 -- | A toggle to show or hide inventory items with count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
+
+-- | Hide robots on the world map.
+uiHideRobotsUntil :: Lens' UIState TimeSpec
+
+-- | Whether to show or hide robots on the world map.
+uiShowRobots :: Getter UIState Bool
+uiShowRobots = to (\ui -> ui ^. lastFrameTime > ui ^. uiHideRobotsUntil)
 
 -- | Whether the Inventory ui panel should update
 uiInventoryShouldUpdate :: Lens' UIState Bool
@@ -830,6 +840,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiGoal = Nothing
       , _uiShowFPS = False
       , _uiShowZero = True
+      , _uiHideRobotsUntil = startTime - 1
       , _uiInventoryShouldUpdate = False
       , _uiTPF = 0
       , _uiFPS = 0

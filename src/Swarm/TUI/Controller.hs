@@ -258,6 +258,16 @@ handleMainEvent ev = do
     ControlKey 'g' -> case s ^. uiState . uiGoal of
       Just g | g /= [] -> toggleModal (GoalModal g)
       _ -> continueWithoutRedraw
+    MetaKey 'h' -> do
+      t <- liftIO $ getTime Monotonic
+      h <- use $ uiState . uiHideRobotsUntil
+      if h >= t
+        then -- ignore repeated keypresses
+          continueWithoutRedraw
+        else -- hide for two seconds
+        do
+          uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
+          invalidateCacheEntry WorldCache
     -- pausing and stepping
     ControlKey 'p' | isRunning -> safeTogglePause
     ControlKey 'o' | isRunning -> do

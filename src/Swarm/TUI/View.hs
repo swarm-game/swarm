@@ -295,7 +295,7 @@ drawGameUI s =
                     & addCursorPos
                     & addClock
                 )
-                (drawWorld $ s ^. gameState)
+                (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
             , drawKeyMenu s
             , clickable REPLPanel $
                 panel
@@ -315,8 +315,10 @@ drawGameUI s =
   ]
  where
   addCursorPos = case s ^. uiState . uiWorldCursor of
-    Just coord -> bottomLabels . leftLabel ?~ padLeftRight 1 (drawWorldCursorInfo (s ^. gameState) coord)
     Nothing -> id
+    Just coord ->
+      let worlCursorInfo = drawWorldCursorInfo (s ^. uiState . uiShowRobots) (s ^. gameState) coord
+       in bottomLabels . leftLabel ?~ padLeftRight 1 worlCursorInfo
   -- Add clock display in top right of the world view if focused robot
   -- has a clock installed
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
@@ -324,9 +326,9 @@ drawGameUI s =
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
 
-drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
-drawWorldCursorInfo g i@(W.Coords (y, x)) =
-  hBox [drawLoc g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
+drawWorldCursorInfo :: Bool -> GameState -> W.Coords -> Widget Name
+drawWorldCursorInfo showRobots g i@(W.Coords (y, x)) =
+  hBox [drawLoc showRobots g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.
@@ -570,7 +572,7 @@ robotsListWidget s = hCenter table
     locWidget = hBox [worldCell, txt $ " " <> locStr]
      where
       rloc@(V2 x y) = robot ^. robotLocation
-      worldCell = drawLoc g (W.locToCoords rloc)
+      worldCell = drawLoc (s ^. uiState . uiShowRobots) g (W.locToCoords rloc)
       locStr = from (show x) <> " " <> from (show y)
 
     statusWidget = case robot ^. machine of
@@ -640,6 +642,7 @@ helpWidget theSeed mport =
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
     , ("Ctrl-q", "quit the current scenario")
+    , ("Meta-h", "hide robots for 2s")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
     , ("Meta-r", "focus on the REPL")
@@ -785,6 +788,7 @@ drawKeyMenu s =
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
       , Just (NoHighlight, "^o", "step")
       , Just (NoHighlight, "^zx", "speed")
+      , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing
 
@@ -831,8 +835,8 @@ drawKeyCmd (h, key, cmd) =
 ------------------------------------------------------------
 
 -- | Draw the current world view.
-drawWorld :: GameState -> Widget Name
-drawWorld g =
+drawWorld :: Bool -> GameState -> Widget Name
+drawWorld showRobots g =
   center
     . cached WorldCache
     . reportExtent WorldExtent
@@ -844,21 +848,25 @@ drawWorld g =
       let w = ctx ^. availWidthL
           h = ctx ^. availHeightL
           ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-      render . vBox . map hBox . chunksOf w . map (drawLoc g) $ ixs
+      render . vBox . map hBox . chunksOf w . map (drawLoc showRobots g) $ ixs
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: GameState -> W.Coords -> Widget Name
-drawLoc g = renderDisplay . displayLoc g
+drawLoc :: Bool -> GameState -> W.Coords -> Widget Name
+drawLoc showRobots g = renderDisplay . displayLoc showRobots g
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
-displayLoc :: GameState -> W.Coords -> Display
-displayLoc g coords =
-  sconcat . NE.fromList $
-    [terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))]
-      ++ maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
-      ++ map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
+displayLoc :: Bool -> GameState -> W.Coords -> Display
+displayLoc showRobots g coords =
+  sconcat $ terrain NE.:| entity <> robots
  where
+  terrain = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
+  entity = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
+  robots =
+    if showRobots
+      then map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
+      else []
+
   displayForEntity :: Entity -> Display
   displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
 
