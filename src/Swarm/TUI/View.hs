@@ -44,6 +44,7 @@ import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
+import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
@@ -64,7 +65,6 @@ import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set qualified as Set (toList)
-import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
@@ -303,7 +303,7 @@ drawGameUI s =
                   fr
                   REPLPanel
                   ( plainBorder
-                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiReplType))
+                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
                   )
                   ( vLimit replHeight
                       . padBottom Max
@@ -1149,21 +1149,43 @@ drawLogEntry addName e = withAttr (colorLogs e) . txtWrapWith indent2 $ if addNa
 -- REPL panel
 ------------------------------------------------------------
 
+-- | Turn the repl prompt into a decorator for the form
+replPromptAsWidget :: Text -> REPLPrompt -> Widget Name
+replPromptAsWidget _ (CmdPrompt _) = txt "> "
+replPromptAsWidget t (SearchPrompt rh) =
+  case lastEntry t rh of
+    Nothing -> txt "[nothing found] "
+    Just lastentry
+      | T.null t -> txt "[find] "
+      | otherwise -> txt $ "[found: \"" <> lastentry <> "\"] "
+
+renderREPLPrompt :: FocusRing Name -> REPLState -> Widget Name
+renderREPLPrompt focus repl = ps1 <+> replE
+ where
+  prompt = repl ^. replPromptType
+  replEditor = repl ^. replPromptEditor
+  color = if repl ^. replValid then id else withAttr redAttr
+  ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
+  replE =
+    renderEditor
+      (color . vBox . map txt)
+      (focusGetCurrent focus `elem` [Nothing, Just REPLPanel, Just REPLInput])
+      replEditor
+
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
-drawREPL s =
-  vBox $
-    map fmt (getLatestREPLHistoryItems (replHeight - inputLines) history)
-      ++ case isActive <$> base of
-        Just False -> [renderForm (s ^. uiState . uiReplForm)]
-        _ -> [padRight Max $ txt "..."]
-      ++ [padRight Max $ txt histIdx | debugging]
+drawREPL s = vBox $ latestHistory <> [currentPrompt]
  where
-  debugging = False -- Turn ON to get extra line with history index
-  inputLines = 1 + fromEnum debugging
-  history = s ^. uiState . uiReplHistory
+  -- rendered history lines fitting above REPL prompt
+  latestHistory :: [Widget n]
+  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines) (repl ^. replHistory))
+  currentPrompt :: Widget Name
+  currentPrompt = case isActive <$> base of
+    Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
+    _running -> padRight Max $ txt "..."
+  inputLines = 1
+  repl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
-  histIdx = fromString $ show (history ^. replIndex)
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
 

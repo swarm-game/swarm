@@ -166,6 +166,7 @@ library
                       tagged                        >= 0.8 && < 0.9,
                       template-haskell              >= 2.16 && < 2.20,
                       text                          >= 1.2.4 && < 2.1,
+                      text-zipper                   >= 0.10 && < 0.13,
                       time                          >= 1.9 && < 1.14,
                       unification-fd                >= 0.11  && < 0.12,
                       unordered-containers          >= 0.2.14 && < 0.3,
