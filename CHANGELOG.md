@@ -35,7 +35,7 @@ contributors @0xcefaedfe, @kostmo, @ussgarci, and @valyagolev. Notable changes i
 
 There were several other small fixes and improvements; see the [full
 changelog
-here](https://github.com/swarm-game/swarm/compare/0.1.1.0...0.2).
+here](https://github.com/swarm-game/swarm/compare/0.1.1.0...0.2.0.0).
 
 ## **0.1.1.0** - 2022-10-14
 
