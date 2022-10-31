@@ -4,12 +4,14 @@
 module Main where
 
 import Data.Foldable qualified
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
+import Data.Text qualified as T
 import Data.Text.IO qualified as Text
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
-import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.TUI.Model (AppOpts (..))
@@ -54,7 +56,7 @@ cliParser =
     subparser . mconcat $
       [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
-      , command "cheatsheet" (info (pure $ CheatSheet $ Just Commands) $ progDesc "Output nice Wiki tables")
+      , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
       ]
   editor :: Parser (Maybe EditorType)
   editor =
@@ -62,6 +64,27 @@ cliParser =
       [ pure Nothing
       , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
       , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
+      ]
+  address :: Parser PageAddress
+  address =
+    let replace a b = T.unpack . T.replace a b . T.pack
+        opt n =
+          fmap (fromMaybe "") . optional $
+            option
+              str
+              ( long n
+                  <> metavar "ADDRESS"
+                  <> help ("Set the address of " <> replace "-" " " n <> ". Default no link.")
+              )
+     in PageAddress <$> opt "entities-page" <*> opt "commands-page" <*> opt "capabilities-page" <*> opt "recipes-page"
+  cheatsheet :: Parser (Maybe SheetType)
+  cheatsheet =
+    Data.Foldable.asum
+      [ pure Nothing
+      , Just Entities <$ switch (long "entities" <> help "Generate entities page (uses data from entities.yaml)")
+      , Just Recipes <$ switch (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
+      , Just Capabilities <$ switch (long "capabilities" <> help "Generate capabilities page (uses entity map)")
+      , Just Commands <$ switch (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")
       ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
