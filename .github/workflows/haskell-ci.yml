@@ -57,6 +57,11 @@ jobs:
     strategy:
       matrix:
         include:
+          - compiler: ghc-9.4.2
+            compilerKind: ghc
+            compilerVersion: 9.4.2
+            setup-method: ghcup
+            allow-failure: false
           - compiler: ghc-9.2.4
             compilerKind: ghc
             compilerVersion: 9.2.4
@@ -148,7 +153,7 @@ jobs:
       - name: cache (tools)
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-0ac7885f
+          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-0367592e
           path: ~/.haskell-ci-tools
       - name: install cabal-plan
         run: |
@@ -170,10 +175,10 @@ jobs:
           cabal-docspec --version
       - name: install hlint
         run: |
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then HLINTVER=$(cd /tmp && (${CABAL} v2-install -v $ARG_COMPILER --dry-run hlint  --constraint='hlint >=3.5 && <3.6' |  perl -ne 'if (/\bhlint-(\d+(\.\d+)*)\b/) { print "$1"; last; }')); echo "HLint version $HLINTVER" ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then if [ ! -e $HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint ]; then echo "Downloading HLint version $HLINTVER"; mkdir -p $HOME/.haskell-ci-tools; curl --write-out 'Status Code: %{http_code} Redirects: %{num_redirects} Total time: %{time_total} Total Dsize: %{size_download}\n' --silent --location --output $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz "https://github.com/ndmitchell/hlint/releases/download/v$HLINTVER/hlint-$HLINTVER-x86_64-linux.tar.gz"; tar -xzv -f $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz -C $HOME/.haskell-ci-tools; fi ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then mkdir -p $CABAL_DIR/bin && ln -sf "$HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint" $CABAL_DIR/bin/hlint ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then hlint --version ; fi
+          if [ $((HCNUMVER >= 90400)) -ne 0 ] ; then HLINTVER=$(cd /tmp && (${CABAL} v2-install -v $ARG_COMPILER --dry-run hlint  --constraint='hlint >=3.5 && <3.6' |  perl -ne 'if (/\bhlint-(\d+(\.\d+)*)\b/) { print "$1"; last; }')); echo "HLint version $HLINTVER" ; fi
+          if [ $((HCNUMVER >= 90400)) -ne 0 ] ; then if [ ! -e $HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint ]; then echo "Downloading HLint version $HLINTVER"; mkdir -p $HOME/.haskell-ci-tools; curl --write-out 'Status Code: %{http_code} Redirects: %{num_redirects} Total time: %{time_total} Total Dsize: %{size_download}\n' --silent --location --output $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz "https://github.com/ndmitchell/hlint/releases/download/v$HLINTVER/hlint-$HLINTVER-x86_64-linux.tar.gz"; tar -xzv -f $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz -C $HOME/.haskell-ci-tools; fi ; fi
+          if [ $((HCNUMVER >= 90400)) -ne 0 ] ; then mkdir -p $CABAL_DIR/bin && ln -sf "$HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint" $CABAL_DIR/bin/hlint ; fi
+          if [ $((HCNUMVER >= 90400)) -ne 0 ] ; then hlint --version ; fi
       - name: checkout
         uses: actions/checkout@v2
         with:
@@ -233,8 +238,8 @@ jobs:
           cabal-docspec $ARG_COMPILER
       - name: hlint
         run: |
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src) ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XImportQualifiedPost app) ; fi
+          if [ $((HCNUMVER >= 90400)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src) ; fi
+          if [ $((HCNUMVER >= 90400)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XImportQualifiedPost app) ; fi
       - name: cabal check
         run: |
           cd ${PKGDIR_swarm} || false
