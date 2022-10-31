@@ -96,7 +96,7 @@ import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
 import Swarm.Game.CESK
-import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay)
+import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
@@ -516,20 +516,23 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
 instance FromJSONE EntityMap TRobot where
-  parseJSONE = withObjectE "robot" $ \v ->
+  parseJSONE = withObjectE "robot" $ \v -> do
     -- Note we can't generate a unique ID here since we don't have
     -- access to a 'State GameState' effect; a unique ID will be
     -- filled in later when adding the robot to the world.
+    sys <- liftE $ v .:? "system" .!= False
+    let defDisplay = defaultRobotDisplay & invisible .~ sys
+
     mkRobot () Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
       <*> liftE (v .:? "loc")
       <*> liftE (v .:? "dir" .!= zero)
-      <*> liftE (v .:? "display" .!= defaultRobotDisplay)
+      <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
       <*> liftE (mkMachine <$> (v .:? "program"))
       <*> v ..:? "devices" ..!= []
       <*> v ..:? "inventory" ..!= []
-      <*> liftE (v .:? "system" .!= False)
+      <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
       <*> pure 0
    where

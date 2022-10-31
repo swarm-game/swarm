@@ -79,6 +79,7 @@ module Swarm.TUI.Model (
   uiReplHistory,
   uiReplLast,
   uiInventory,
+  uiInventorySort,
   uiMoreInfoTop,
   uiMoreInfoBot,
   uiScrollToEnd,
@@ -97,6 +98,7 @@ module Swarm.TUI.Model (
   uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
+  scenarioRef,
   appData,
 
   -- ** Initialization
@@ -129,6 +131,7 @@ module Swarm.TUI.Model (
   AppOpts (..),
   initAppState,
   startGame,
+  restartGame,
   scenarioToAppState,
   Seed,
 
@@ -144,13 +147,13 @@ import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Dialog (Dialog)
 import Brick.Widgets.List qualified as BL
-import Control.Applicative (Applicative (liftA2))
+import Control.Applicative (Applicative (liftA2), (<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Foldable (toList)
-import Data.List (findIndex, sortOn)
+import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -167,10 +170,11 @@ import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, loadScenario)
+import Swarm.Game.Scenario (loadScenario)
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfo (..),
+  ScenarioInfoPair,
   ScenarioItem (..),
   ScenarioStatus (..),
   normalizeScenarioPath,
@@ -178,12 +182,14 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
   scenarioItemByPath,
   scenarioPath,
+  scenarioSolution,
   scenarioStatus,
   _SISingle,
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
+import Swarm.TUI.Inventory.Sorting
 import Swarm.Util
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import System.Clock
@@ -436,11 +442,12 @@ data ModalType
   | RobotsModal
   | WinModal
   | QuitModal
+  | KeepPlayingModal
   | DescriptionModal Entity
   | GoalModal [Text]
   deriving (Eq, Show)
 
-data ButtonSelection = CancelButton | QuitButton | NextButton (Scenario, ScenarioInfo)
+data ButtonSelection = CancelButton | KeepPlayingButton | StartOverButton Seed ScenarioInfoPair | QuitButton | NextButton ScenarioInfoPair
 
 data Modal = Modal
   { _modalType :: ModalType
@@ -482,7 +489,7 @@ mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitP
   go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
    where
     hasName :: ScenarioItem -> Bool
-    hasName (SISingle _ (ScenarioInfo pth _ _ _)) = takeFileName pth == thing
+    hasName (SISingle (_, ScenarioInfo pth _ _ _)) = takeFileName pth == thing
     hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
 
     lst = BL.listFindBy hasName (mkScenarioList cheat curSC)
@@ -525,6 +532,7 @@ data UIState = UIState
   , _uiReplLast :: Text
   , _uiReplHistory :: REPLHistory
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
+  , _uiInventorySort :: InventorySortOptions
   , _uiMoreInfoTop :: Bool
   , _uiMoreInfoBot :: Bool
   , _uiScrollToEnd :: Bool
@@ -544,6 +552,7 @@ data UIState = UIState
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
   , _appData :: Map Text Text
+  , _scenarioRef :: Maybe ScenarioInfoPair
   }
 
 --------------------------------------------------
@@ -590,6 +599,7 @@ uiReplLast :: Lens' UIState Text
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
 uiReplHistory :: Lens' UIState REPLHistory
+uiInventorySort :: Lens' UIState InventorySortOptions
 
 -- | The hash value of the focused robot entity (so we can tell if its
 --   inventory changed) along with a list of the items in the
@@ -632,6 +642,9 @@ uiTPF :: Lens' UIState Double
 
 -- | Computed frames per milli seconds
 uiFPS :: Lens' UIState Double
+
+-- | The currently active Scenario description, useful for starting over.
+scenarioRef :: Lens' UIState (Maybe ScenarioInfoPair)
 
 -- | The base-2 logarithm of the current game speed in ticks/second.
 --   Note that we cap this value to the range of +/- log2 INTMAX.
@@ -828,6 +841,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiReplHistory = newREPLHistory history
       , _uiReplLast = ""
       , _uiInventory = Nothing
+      , _uiInventorySort = defaultSortOptions
       , _uiMoreInfoTop = False
       , _uiMoreInfoBot = False
       , _uiScrollToEnd = False
@@ -847,6 +861,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _frameCount = 0
       , _frameTickCount = 0
       , _appData = appDataMap
+      , _scenarioRef = Nothing
       }
 
 ------------------------------------------------------------
@@ -860,12 +875,13 @@ populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   showZero <- use uiShowZero
+  sortOptions <- use uiInventorySort
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = InstalledEntry e
       itemList mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
-          . sortOn (view entityName . snd)
+          . sortInventory sortOptions
           . filter shouldDisplay
           . elems
 
@@ -918,7 +934,9 @@ data AppOpts = AppOpts
   , -- | Scenario the user wants to play.
     userScenario :: Maybe FilePath
   , -- | Code to be run on base.
-    toRun :: Maybe FilePath
+    scriptToRun :: Maybe FilePath
+  , -- | Automatically run the solution defined in the scenario file
+    autoPlay :: Bool
   , -- | Should cheat mode be enabled?
     cheatMode :: Bool
   , -- | Explicit port on which to run the web API
@@ -930,7 +948,8 @@ data AppOpts = AppOpts
 -- | Initialize the 'AppState'.
 initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState AppOpts {..} = do
-  let skipMenu = isJust userScenario || isJust toRun || isJust userSeed
+  let isRunningInitialProgram = isJust scriptToRun || autoPlay
+      skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   gs <- initGameState
   ui <- initUIState (not skipMenu) cheatMode
   let rs = initRuntimeState
@@ -938,30 +957,49 @@ initAppState AppOpts {..} = do
     False -> return $ AppState gs ui rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
+
+      let maybeAutoplay = do
+            guard autoPlay
+            soln <- scenario ^. scenarioSolution
+            return $ SuggestedSolution soln
+      let realToRun = maybeAutoplay <|> (ScriptPath <$> scriptToRun)
+
       execStateT
-        (startGameWithSeed userSeed scenario (ScenarioInfo path NotStarted NotStarted NotStarted) toRun)
+        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) realToRun)
         (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.
-startGame :: (MonadIO m, MonadState AppState m) => Scenario -> ScenarioInfo -> Maybe FilePath -> m ()
+startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
 startGame = startGameWithSeed Nothing
+
+-- | Re-initialize the game from the stored reference to the current scenario.
+--
+-- Note that "restarting" is intended only for "scenarios";
+-- with some scenarios, it may be possible to get stuck so that it is
+-- either impossible or very annoying to win, so being offered an
+-- option to restart is more user-friendly.
+--
+-- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
+-- case upstream so that the Scenario passed to this function definitely exists.
+restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
+restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Nothing
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> Scenario -> ScenarioInfo -> Maybe FilePath -> m ()
-startGameWithSeed userSeed scene si toRun = do
+startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
+startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
-  scenarioToAppState scene userSeed toRun
+  scenarioToAppState siPair userSeed toRun
 
 -- | Extract the scenario which would come next in the menu from the
 --   currently selected scenario (if any).  Can return @Nothing@ if
 --   either we are not in the @NewGameMenu@, or the current scenario
 --   is the last among its siblings.
-nextScenario :: Menu -> Maybe (Scenario, ScenarioInfo)
+nextScenario :: Menu -> Maybe ScenarioInfoPair
 nextScenario = \case
   NewGameMenu (curMenu :| _) ->
     let nextMenuList = BL.listMoveDown curMenu
@@ -974,10 +1012,10 @@ nextScenario = \case
 -- XXX do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
-scenarioToAppState :: (MonadIO m, MonadState AppState m) => Scenario -> Maybe Seed -> Maybe String -> m ()
-scenarioToAppState scene userSeed toRun = do
+scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe CodeToRun -> m ()
+scenarioToAppState siPair@(scene, _) userSeed toRun = do
   withLensIO gameState $ scenarioToGameState scene userSeed toRun
-  withLensIO uiState $ scenarioToUIState scene
+  withLensIO uiState $ scenarioToUIState siPair
  where
   withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m ()
   withLensIO l a = do
@@ -986,16 +1024,18 @@ scenarioToAppState scene userSeed toRun = do
     l .= x'
 
 -- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState :: Scenario -> UIState -> IO UIState
-scenarioToUIState _scene u =
+scenarioToUIState :: ScenarioInfoPair -> UIState -> IO UIState
+scenarioToUIState siPair u =
   return $
     u
       & uiPlaying .~ True
       & uiGoal .~ Nothing
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
+      & uiInventorySort .~ defaultSortOptions
       & uiShowFPS .~ False
       & uiShowZero .~ True
       & lgTicksPerSecond .~ initLgTicksPerSecond
       & resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
       & uiReplHistory %~ restartREPLHistory
+      & scenarioRef ?~ siPair

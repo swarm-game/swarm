@@ -8,8 +8,7 @@ objectives:
         every expression in the language has a type, and all the types must match up
         properly before a program can be executed.
       - To see the type of an expression, enter the expression at the
-        REPL prompt without hitting Return.  If the expression type
-        checks,
+        REPL prompt (you do not need to execute it).  If the expression type checks,
         its type will be displayed in gray text at the top right of the window.
       - For example, if you try typing `move`, you can see that it has
         type `cmd unit`, which means that `move` is a command which

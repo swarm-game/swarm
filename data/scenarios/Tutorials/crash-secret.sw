@@ -60,6 +60,6 @@ log "Hi, I am secret";
 iterate allOK (foreachF 1 16 $ tryGive
   $ "Send a robot to `salvage` me and come back to `give base \"Win\"`.\n"
   ++ "When the rescue robot stands where I am and executes `salvage`,\n"
-  ++ "all my inventory and logs will go to it, namely the \"Win\".\n"
+  ++ "all my inventory and logs will go to it, including the \"Win\".\n"
   ++ "Once you have brought the \"Win\" to your base, you will win!"
 )

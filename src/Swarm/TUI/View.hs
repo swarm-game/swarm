@@ -63,6 +63,7 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
+import Data.Set qualified as Set (toList)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -93,6 +94,7 @@ import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
+import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
 import Swarm.Util
@@ -174,7 +176,7 @@ drawNewGameMenuUI (l :| ls) =
       , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
  where
-  drawScenarioItem (SISingle s si) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
+  drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioBestTime of
     NotStarted -> txt " ○ "
@@ -212,7 +214,7 @@ drawNewGameMenuUI (l :| ls) =
 
   drawDescription :: ScenarioItem -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle s si) = do
+  drawDescription (SISingle (s, si)) = do
     let oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
     let bestRealTime = if oneBest then "best:" else "best real time:"
     let noSame = if oneBest then const Nothing else Just
@@ -264,7 +266,7 @@ drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $
 --   main layer and a layer for a floating dialog that can be on top.
 drawGameUI :: AppState -> [Widget Name]
 drawGameUI s =
-  [ drawDialog s
+  [ joinBorders $ drawDialog s
   , joinBorders $
       hBox
         [ hLimitPercent 25 $
@@ -444,18 +446,21 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal g -> padLeftRight 1 (displayParagraphs g)
+  KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 quitMsg :: Menu -> Text
-quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress will be lost!"
+quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
  where
   quitAction = case m of
     NoMenu -> "quit"
-    _ -> "quit and return to the menu"
+    _ -> "return to the menu"
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
+  currentScenario = s ^. uiState . scenarioRef
+  currentSeed = s ^. gameState . seed
   haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
@@ -479,19 +484,40 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                   | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
                   ]
                     ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, CancelButton)
+                       , (continueMsg, KeepPlayingButton)
                        ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
-        let stopMsg = fromMaybe "Quit to menu" haltingMessage
+        let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
+            maybeStartOver = sequenceA ("Start over", StartOverButton currentSeed <$> currentScenario)
          in ( ""
-            , Just (0, [("Keep playing", CancelButton), (stopMsg, QuitButton)])
+            , Just
+                ( 0
+                , catMaybes
+                    [ Just ("Keep playing", CancelButton)
+                    , maybeStartOver
+                    , Just (stopMsg, QuitButton)
+                    ]
+                )
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
-      GoalModal _ -> (" Goal ", Nothing, 80)
+      GoalModal _ ->
+        let goalModalTitle = case currentScenario of
+              Nothing -> "Goal"
+              Just (scenario, _) -> scenario ^. scenarioName
+         in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
+      KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
+
+-- | Get the name of the current New Game menu.
+curMenuName :: AppState -> Maybe Text
+curMenuName s = case s ^. uiState . uiMenu of
+  NewGameMenu (_ :| (parentMenu : _)) ->
+    Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
+  NewGameMenu _ -> Just "Scenarios"
+  _ -> Nothing
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
@@ -613,7 +639,7 @@ helpWidget theSeed mport =
     , ("Ctrl-o", "single step")
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
-    , ("Ctrl-q", "quit the game")
+    , ("Ctrl-q", "quit the current scenario")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
     , ("Meta-r", "focus on the REPL")
@@ -703,7 +729,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
       let highlight
-            | s ^. gameState . notifLens . notificationsCount > 0 = Highlighted
+            | s ^. gameState . notifLens . notificationsCount > 0 = Alert
             | otherwise = NoHighlight
        in Just (highlight, key, name)
 
@@ -728,7 +754,7 @@ drawKeyMenu s =
     . (++ [gameModeWidget])
     . map (padLeftRight 1 . drawKeyCmd)
     . (globalKeyCmds ++)
-    . map (\(k, n) -> (NoHighlight, k, n))
+    . map highlightKeyCmds
     . keyCmdsFor
     . focusGetCurrent
     . view (uiState . uiFocusRing)
@@ -743,6 +769,7 @@ drawKeyMenu s =
     Just g | g /= [] -> True
     _ -> False
   showZero = s ^. uiState . uiShowZero
+  inventorySort = s ^. uiState . uiInventorySort
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -761,29 +788,43 @@ drawKeyMenu s =
       ]
   may b = if b then Just else const Nothing
 
+  highlightKeyCmds (k, n) = (,k,n) $ case n of
+    "pop out" | (s ^. uiState . uiMoreInfoBot) || (s ^. uiState . uiMoreInfoTop) -> Alert
+    _ -> PanelSpecific
+
   keyCmdsFor (Just REPLPanel) =
     [ ("↓↑", "history")
     ]
-      ++ [("Ret", "execute") | not isReplWorking]
+      ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
       ++ [("c", "recenter") | not viewingBase]
+      ++ [("f", "FPS")]
   keyCmdsFor (Just RobotPanel) =
-    [ ("Ret", "focus")
+    [ ("Enter", "pop out")
     , ("m", "make")
     , ("0", (if showZero then "hide" else "show") <> " 0")
+    , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
     ]
   keyCmdsFor (Just InfoPanel) = []
   keyCmdsFor _ = []
 
-data KeyHighlight = NoHighlight | Highlighted
+data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
 -- | Draw a single key command in the menu.
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
-drawKeyCmd (Highlighted, key, cmd) = hBox [withAttr notifAttr (txt $ T.concat ["[", key, "] "]), txt cmd]
-drawKeyCmd (NoHighlight, key, cmd) = txt $ T.concat ["[", key, "] ", cmd]
+drawKeyCmd (h, key, cmd) =
+  hBox
+    [ withAttr attr (txt $ T.concat ["[", key, "] "])
+    , txt cmd
+    ]
+ where
+  attr = case h of
+    NoHighlight -> defAttr
+    Alert -> notifAttr
+    PanelSpecific -> highlightAttr
 
 ------------------------------------------------------------
 -- World panel
@@ -919,7 +960,7 @@ explainFocusedItem s = case focusedItem s of
 explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
   vBox
-    [ displayProperties (e ^. entityProperties)
+    [ displayProperties $ Set.toList (e ^. entityProperties)
     , displayParagraphs (e ^. entityDescription)
     , explainRecipes s e
     ]

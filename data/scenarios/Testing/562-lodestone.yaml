@@ -1,14 +1,15 @@
 version: 1
 name: Test lodestone
 description: Pick or drill lodestone and use it to flip bits.
-goal:
-    - To create a drill bit, you will need to flip the available bit.
-win: |
-  try {
-    as base {has "drill bit"};
-  } { return false }
+objectives:
+  - goal:
+        - To create a drill bit, you will need to flip the available bit.
+    condition: |
+      try {
+        as base {has "drill bit"};
+      } { return false }
 solution: |
-  run "562-lodestone.sw"
+  run "scenarios/Testing/562-lodestone.sw"
 robots:
   - name: base
     dir: [1,0]

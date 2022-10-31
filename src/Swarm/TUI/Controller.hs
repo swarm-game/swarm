@@ -80,6 +80,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.View (generateModal)
@@ -157,10 +158,10 @@ handleMainMenuEvent menu = \case
           -- Extract the first tutorial challenge and run it
           let firstTutorial = case scOrder tutorialCollection of
                 Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
-                  Just (SISingle scene si) -> (scene, si)
+                  Just (SISingle siPair) -> siPair
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
-          uncurry startGame firstTutorial Nothing
+          startGame firstTutorial Nothing
         Messages -> do
           runtimeState . eventLog . notificationsCount .= 0
           uiState . uiMenu .= MessagesMenu
@@ -196,7 +197,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle scene si) -> startGame scene si Nothing
+      Just (SISingle siPair) -> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
@@ -281,10 +282,8 @@ handleMainEvent ev = do
         WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
           uiState . uiWorldCursor .= mouseCoordsM
-        REPLPanel ->
-          -- Do not clear the world cursor when going back to the REPL
-          continueWithoutRedraw
-        _ -> uiState . uiWorldCursor .= Nothing >> continueWithoutRedraw
+        REPLInput -> handleREPLEvent ev
+        _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
@@ -372,7 +371,9 @@ handleModalEvent = \case
     toggleModal QuitModal
     case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
-      Just (Just (NextButton scene)) -> saveScenarioInfoOnQuit >> uncurry startGame scene Nothing
+      Just (Just KeepPlayingButton) -> toggleModal KeepPlayingModal
+      Just (Just (StartOverButton currentSeed siPair)) -> restartGame currentSeed siPair
+      Just (Just (NextButton siPair)) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
@@ -783,23 +784,64 @@ handleREPLEvent = \case
         newform <- use $ uiState . to (set promptUpdateL t)
         uiState . uiReplForm .= newform
 
--- | Try to complete the last word in a partially entered REPL prompt using
---   things reserved words and names in scope.
+data CompletionType
+  = FunctionName
+  | EntityName
+  deriving (Eq)
+
+-- | Try to complete the last word in a partially-entered REPL prompt using
+--   reserved words and names in scope (in the case of function names) or
+--   entity names (in the case of string literals).
 tabComplete :: AppState -> REPLPrompt -> REPLPrompt
 tabComplete _ p@(SearchPrompt {}) = p
 tabComplete s (CmdPrompt t mms)
-  | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
-  | T.null lastWord = CmdPrompt t []
-  | otherwise = case matches of
+  -- Case 1: If completion candidates have already been
+  -- populated via case (3), cycle through them.
+  -- Note that tabbing through the candidates *does* update the value
+  -- of "t", which one might think would narrow the candidate list
+  -- to only that match and therefore halt the cycling.
+  -- However, the candidate list only gets recomputed (repopulated)
+  -- if the user subsequently presses a non-Tab key. Thus the current
+  -- value of "t" is ignored for all Tab presses subsequent to the
+  -- first.
+  | (m : ms) <- mms = CmdPrompt (replacementFunc m) (ms ++ [m])
+  -- Case 2: Require at least one letter to be typed in order to offer completions for
+  -- function names.
+  -- We allow suggestions for Entity Name strings without anything having been typed.
+  | T.null lastWord && completionType == FunctionName = CmdPrompt t []
+  -- Case 3: Typing another character in the REPL clears the completion candidates from
+  -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
+  -- repopulates them.
+  | otherwise = case candidateMatches of
     [] -> CmdPrompt t []
     [m] -> CmdPrompt (completeWith m) []
+    -- Perform completion with the first candidate, then populate the list
+    -- of all candidates with the current completion moved to the back
+    -- of the queue.
     (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
  where
-  completeWith m = T.append t (T.drop (T.length lastWord) m)
-  lastWord = T.takeWhileEnd isIdentChar t
+  -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
+  hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
+
+  completionType =
+    if hasOpenQuotes t
+      then EntityName
+      else FunctionName
+
+  replacementFunc = T.append $ T.dropWhileEnd replacementBoundaryPredicate t
+  completeWith m = T.append t $ T.drop (T.length lastWord) m
+  lastWord = T.takeWhileEnd replacementBoundaryPredicate t
+  candidateMatches = filter (lastWord `T.isPrefixOf`) replacementCandidates
+
+  (replacementCandidates, replacementBoundaryPredicate) = case completionType of
+    EntityName -> (entityNames, (/= '"'))
+    FunctionName -> (possibleWords, isIdentChar)
+
   names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
   possibleWords = reservedWords ++ names
-  matches = filter (lastWord `T.isPrefixOf`) possibleWords
+
+  theEntityMap = s ^. gameState . entityMap
+  entityNames = M.keys $ entitiesByName theEntityMap
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
@@ -919,6 +961,12 @@ handleRobotPanelEvent = \case
   (CharKey '0') -> do
     uiState . uiInventoryShouldUpdate .= True
     uiState . uiShowZero %= not
+  (CharKey ';') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySort %= cycleSortOrder
+  (CharKey ':') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySort %= cycleSortDirection
   (VtyEvent ev) -> do
     -- This does not work we want to skip redrawing in the no-list case
     -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
