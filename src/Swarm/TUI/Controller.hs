@@ -875,8 +875,6 @@ adjReplHistIndex d s =
       & (if replIndexIsAtInput (repl ^. replHistory) then saveLastEntry else id)
       & (if oldEntry /= newEntry then showNewEntry else id)
    where
-    -- & validateREPLForm
-
     -- new AppState after moving the repl index
     newREPL :: REPLState
     newREPL = repl & replHistory %~ moveReplHistIndex d oldEntry
