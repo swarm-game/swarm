@@ -1166,7 +1166,11 @@ renderREPLPrompt focus repl = ps1 <+> replE
   replEditor = repl ^. replPromptEditor
   color = if repl ^. replValid then id else withAttr redAttr
   ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
-  replE = withFocusRing focus (renderEditor (color . vBox . map txt)) replEditor
+  replE =
+    renderEditor
+      (color . vBox . map txt)
+      (focusGetCurrent focus `elem` [Nothing, Just REPLPanel, Just REPLInput])
+      replEditor
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name

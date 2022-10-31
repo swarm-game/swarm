@@ -411,7 +411,7 @@ data REPLState = REPLState
   }
 
 newREPLEditor :: Text -> Editor Text Name
-newREPLEditor t = applyEdit gotoEnd $ editorText REPLPanel (Just 1) t
+newREPLEditor t = applyEdit gotoEnd $ editorText REPLInput (Just 1) t
  where
   ls = T.lines t
   pos = (length ls - 1, T.length (last ls))
