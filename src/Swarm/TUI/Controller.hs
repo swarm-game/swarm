@@ -262,10 +262,10 @@ handleMainEvent ev = do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
       if h >= t
-        -- ignore repeated keypresses
-        then continueWithoutRedraw
-        -- hide for two seconds
-        else do
+        then -- ignore repeated keypresses
+          continueWithoutRedraw
+        else -- hide for two seconds
+        do
           uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
           invalidateCacheEntry WorldCache
     -- pausing and stepping
