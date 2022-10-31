@@ -769,6 +769,9 @@ handleREPLEvent = \case
   -- finally if none match pass the event to the editor
   ev -> do
     Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
+    uiState . uiREPL . replPromptType %= \case
+      CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
+      SearchPrompt a -> SearchPrompt a
     modify validateREPLForm
 
 data CompletionType
