@@ -430,8 +430,6 @@ replPromptEditor :: Lens' REPLState (Editor Text Name)
 
 -- | Convinience lens to get text from editor and replace it with new
 --   one that has the provided text.
---
--- TODO: Editor uses a list of Text meaning something? It does not seem to be lines or cursor position.
 replPromptText :: Lens' REPLState Text
 replPromptText = lens g s
  where
