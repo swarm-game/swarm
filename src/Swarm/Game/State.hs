@@ -120,7 +120,7 @@ import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
-import Data.List (partition)
+import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -800,8 +800,33 @@ scenarioToGameState scenario userSeed toRun g = do
   getCodeToRun x = case x of
     SuggestedSolution s -> s
     ScriptPath (into @Text -> f) -> [tmQ| run($str:f) |]
+
+  -- Rules for selecting the "base" robot:
+  -- -------------------------------------
+  -- What follows is a thorough description of how the base
+  -- choice is made as of the most recent study of the code.
+  -- This level of detail is not meant to be public-facing.
+  --
+  -- For an abbreviated explanation, see the "Base robot" section of the
+  -- "Scenario Authoring Guide".
+  -- https://github.com/swarm-game/swarm/tree/main/data/scenarios#base-robot
+  --
+  -- Precedence rules:
+  -- 1. Prefer those robots defined with a loc in the Scenario file
+  --   1.a. If multiple robots define a loc, use the robot that is defined
+  --        first within the Scenario file.
+  --   1.b. Note that if a robot is both given a loc AND is specified in the
+  --        world map, then two instances of the robot shall be created. The
+  --        instance with the loc shall be preferred as the base.
+  -- 2. Fall back to robots generated from templates via the map and palette.
+  --   2.a. If multiple robots are specified in the map, prefer the one that
+  --        is defined first within the Scenario file.
+  --   2.b. If multiple robots are instantiated from the same template, then
+  --        prefer the one closest to the upper-left of the screen, with higher rows given precedence over columns.
+  robotsByBasePrecedence = locatedRobots ++ map snd (sortOn fst genRobots)
+
   robotList =
-    zipWith instantiateRobot [baseID ..] (locatedRobots ++ genRobots)
+    zipWith instantiateRobot [baseID ..] robotsByBasePrecedence
       -- If the  --run flag was used, use it to replace the CESK machine of the
       -- robot whose id is 0, i.e. the first robot listed in the scenario.
       & ix baseID . machine
@@ -838,7 +863,7 @@ scenarioToGameState scenario userSeed toRun g = do
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
-buildWorld :: EntityMap -> WorldDescription -> ([TRobot], Seed -> WorldFun Int Entity)
+buildWorld :: EntityMap -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
 buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
@@ -857,7 +882,7 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
     Just (Cell t e _) -> const (worldFunFromArray worldArray (t, e))
 
   -- Get all the robots described in cells and set their locations appropriately
-  robots :: [TRobot]
+  robots :: [IndexedTRobot]
   robots =
     area
       & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
@@ -865,7 +890,7 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
       & concatMap
         ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robotList) ->
             let robotWithLoc = trobotLocation ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
-             in map robotWithLoc robotList
+             in map (fmap robotWithLoc) robotList
         )
 
 -- | Create an initial game state for a specific scenario.

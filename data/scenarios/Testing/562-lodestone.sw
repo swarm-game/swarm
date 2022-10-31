@@ -37,9 +37,12 @@ build {
   log "Hi!";
   require "branch predictor";
   repeat (
-    turn east; m2; x <- until (ishere "bit (0)") {harvest}; turn back; m2; place x
+    log "I am going for a bit";
+    turn east; m2; x <- until (ishere "bit (0)") {harvest}; turn back; m2; place x;
+		log "I brought a bit";
 )};
 until (ishere "bit (0)") {grab};
 until (ishere "bit (0)") {grab};
 
+make "bit (1)";
 make "drill bit"
