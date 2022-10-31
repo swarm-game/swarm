@@ -25,6 +25,7 @@ module Swarm.Game.Scenario (
   -- * WorldDescription
   Cell (..),
   WorldDescription (..),
+  IndexedTRobot,
 
   -- * Scenario
   Scenario,
@@ -52,7 +53,6 @@ module Swarm.Game.Scenario (
 ) where
 
 import Control.Algebra (Has)
-import Control.Arrow ((&&&))
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
@@ -116,13 +116,17 @@ instance FromJSON Objective where
 -- Robot map
 ------------------------------------------------------------
 
+-- | A robot template paired with its definition's index within
+-- the Scenario file
+type IndexedTRobot = (Int, TRobot)
+
 -- | A map from names to robots, used to look up robots in scenario
 --   descriptions.
-type RobotMap = Map Text TRobot
+type RobotMap = Map Text IndexedTRobot
 
 -- | Create a 'RobotMap' from a list of robot templates.
 buildRobotMap :: [TRobot] -> RobotMap
-buildRobotMap = M.fromList . map (view trobotName &&& id)
+buildRobotMap rs = M.fromList $ zipWith (\x y -> (view trobotName y, (x, y))) [0 ..] rs
 
 ------------------------------------------------------------
 -- Lookup utilities
@@ -144,7 +148,7 @@ getEntity = getThing "entity" lookupEntityName
 
 -- | Look up a robot by name in a 'RobotMap', throwing a parse error
 --   if it is not found.
-getRobot :: Text -> ParserE RobotMap TRobot
+getRobot :: Text -> ParserE RobotMap IndexedTRobot
 getRobot = getThing "robot" M.lookup
 
 ------------------------------------------------------------
@@ -156,7 +160,7 @@ getRobot = getThing "robot" M.lookup
 data Cell = Cell
   { cellTerrain :: TerrainType
   , cellEntity :: Maybe Entity
-  , cellRobots :: [TRobot]
+  , cellRobots :: [IndexedTRobot]
   }
   deriving (Eq, Show)
 
