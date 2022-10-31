@@ -282,7 +282,7 @@ handleMainEvent ev = do
         WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
           uiState . uiWorldCursor .= mouseCoordsM
-        REPLInput -> handleREPLEvent ev
+        REPLPanel -> handleREPLEvent ev
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of

@@ -227,8 +227,6 @@ data Name
     RobotPanel
   | -- | The info panel on the bottom left.
     InfoPanel
-  | -- | The REPL input form.
-    REPLInput
   | -- | The render cache for the world view.
     WorldCache
   | -- | The cached extent for the world view.
