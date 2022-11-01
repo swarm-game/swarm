@@ -100,7 +100,7 @@
                "west"
                "down"
              ))
-             (x-types '("int" "text" "dir" "bool" "cmd" "void"))
+             (x-types '("int" "text" "dir" "bool" "cmd" "void" "unit"))
 
              (x-keywords-regexp (regexp-opt x-keywords 'words))
              (x-builtins-regexp (regexp-opt x-builtins 'words))
