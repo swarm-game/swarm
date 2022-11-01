@@ -17,6 +17,7 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
+import Control.Applicative (liftA2)
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
@@ -72,7 +73,6 @@ import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
-import Control.Applicative (liftA2)
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
