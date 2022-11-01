@@ -1,6 +1,6 @@
 # Revision history for swarm
 
-## **0.2.0.0** - 2022-10-31
+## **0.2.0.0** - 2022-11-01
 
 A bunch of small fixes and improvements; special thanks to new
 contributors @0xcefaedfe, @kostmo, @ussgarci, and @valyagolev. Notable changes include:
@@ -28,7 +28,7 @@ contributors @0xcefaedfe, @kostmo, @ussgarci, and @valyagolev. Notable changes i
 - Bug fixes:
     - Fix bug in the first tutorial challenge that froze the game and
       ate all memory if the user said anything other than expected
-      ([#762](https://github.com/swarm-game/swarm/pull/762))
+      ([#762](https://github.com/swarm-game/swarm/pull/762), [#810](https://github.com/swarm-game/swarm/pull/810))
 - Documentation:
     - Generate all wiki "cheat sheets" automatically ([#769](https://github.com/swarm-game/swarm/pull/769))
 - Support for building on GHC 9.4 ([#752](https://github.com/swarm-game/swarm/pull/752))
