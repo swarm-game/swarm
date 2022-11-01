@@ -38,7 +38,7 @@ objectives:
         as l {has "READY"}
       } { return false }
 solution: |
-  say "I said something wrong."; say "Ready!"
+  say "Ready!"
 entities:
   - name: READY
     display:
@@ -79,13 +79,11 @@ robots:
           m <- listen;
           if (m == "Ready!" || m == "ready!" || m == "ready") {
             create "READY";
-            log "The player is ready!";
+            log "The player is ready!"
           } {
-            log $ "Wrong message: " ++ format m;
+            say $ "Wrong message: " ++ format m
           }
-        } {
-          log "Something bad happened!";
-        }
+        } {log "Something bad happened!"}
       }
 seed: 0
 world:

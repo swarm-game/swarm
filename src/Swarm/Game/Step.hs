@@ -17,6 +17,7 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
+import Control.Applicative (liftA2)
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
@@ -1104,14 +1105,16 @@ execConst c vs s k = do
     Listen -> do
       gs <- get @GameState
       loc <- use robotLocation
+      rid <- use robotID
       creative <- use creativeMode
       system <- use systemRobot
       mq <- use messageQueue
-      let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
-          limitLast = \case
+      let isClose e = system || creative || messageIsFromNearby loc e
+      let notMine e = rid /= e ^. leRobotID
+      let limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-          mm = limitLast $ Seq.takeWhileR recentAndClose mq
+      let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
