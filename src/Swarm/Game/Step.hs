@@ -72,6 +72,7 @@ import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
+import Control.Applicative (liftA2)
 
 -- | The main function to do one game tick.  The only reason we need
 --   @IO@ is so that robots can run programs loaded from files, via
@@ -1108,12 +1109,12 @@ execConst c vs s k = do
       creative <- use creativeMode
       system <- use systemRobot
       mq <- use messageQueue
-      let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
+      let isClose e = system || creative || messageIsFromNearby loc e
       let notMine e = rid /= e ^. leRobotID
       let limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-      let mm = limitLast . Seq.filter notMine $ Seq.takeWhileR recentAndClose mq
+      let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
