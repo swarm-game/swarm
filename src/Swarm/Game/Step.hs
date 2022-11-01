@@ -1104,14 +1104,16 @@ execConst c vs s k = do
     Listen -> do
       gs <- get @GameState
       loc <- use robotLocation
+      rid <- use robotID
       creative <- use creativeMode
       system <- use systemRobot
       mq <- use messageQueue
       let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
+      let notMine e = rid /= e ^. leRobotID
           limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-          mm = limitLast $ Seq.takeWhileR recentAndClose mq
+          mm = limitLast . Seq.filter notMine $ Seq.takeWhileR recentAndClose mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
