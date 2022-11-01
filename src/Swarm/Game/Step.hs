@@ -1110,10 +1110,10 @@ execConst c vs s k = do
       mq <- use messageQueue
       let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
       let notMine e = rid /= e ^. leRobotID
-          limitLast = \case
+      let limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-          mm = limitLast . Seq.filter notMine $ Seq.takeWhileR recentAndClose mq
+      let mm = limitLast . Seq.filter notMine $ Seq.takeWhileR recentAndClose mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
