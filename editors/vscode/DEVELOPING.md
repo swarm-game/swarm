@@ -10,6 +10,7 @@
 
 * `package.json` - this is the manifest file in which you declare your language support and define the location of the grammar file that has been copied into your extension.
 * `syntaxes/swarm.tmLanguage.json` - this is the Text mate grammar file that is used for tokenization.
+  * here is an overview of the available scopes: [SO answer](https://stackoverflow.com/a/21914803/11105559)
 * `language-configuration.json` - this is the language configuration, defining the tokens that are used for comments and brackets.
 * `client/src/extension.ts` - this is the LSP client, that will connect to `swarm` executable which can serve as LSP server.
 
