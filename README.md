@@ -147,7 +147,7 @@ external editors with highlighting and LSP integration:
 
 ![Editor with problem popup](images/editor.png)
 
-See the `editors` folder for details on how to configure your editor.
+See the [`editors` folder](editors/) for details on how to configure your editor.
 Currently, emacs and VS Code are officially supported, but more can be
 added.
 
