@@ -16,9 +16,8 @@
 				"begin": "def\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
 				"end": "end",
 				"beginCaptures": {
-					"1": {"name": "variable.other"},
-					"3": {"name": "storage.type"},
-					"5": {"name": "storage.modifier"}
+					"1": {"name": "entity.name.function"},
+					"3": {"name": "entity.name.type"}
 				},
 				"patterns": [
 					{"include": "#keywords"},
@@ -30,12 +29,11 @@
 				},
 				{
 				"name": "keyword.control.dictionary.let",
-				"begin": "\\s*let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|string|int|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
+				"begin": "\\s*let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|text|int|void|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
 				"end": "\\s*in",
 				"beginCaptures": {
-					"1": {"name": "variable.other"},
-					"3": {"name": "storage.type"},
-					"5": {"name": "storage.modifier"}
+					"1": {"name": "entity.name.function"},
+					"3": {"name": "entity.name.type"}
 				},
 				"patterns": [
 					{"include": "#keywords"},
@@ -94,7 +92,7 @@
 				"match": "\\b(?i)(left|right|back|forward|north|south|east|west|down)\\b"
 				},
 				{
-				"name": "variable.other"	,
+				"name": "variable.parameter",
 				"match": "\\b(?i)([a-z]\\w*)\\b"
 				}
 			]
