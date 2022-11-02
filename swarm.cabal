@@ -129,7 +129,7 @@ library
     build-depends:    base                          >= 4.14 && < 4.18,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
-                      brick                         >= 1.0 && < 1.4,
+                      brick                         >= 1.0 && < 1.5,
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
                       containers                    >= 0.6.2 && < 0.7,
