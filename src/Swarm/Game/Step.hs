@@ -1339,8 +1339,9 @@ execConst c vs s k = do
         createdAt <- getNow
 
         -- Construct the new robot and add it to the world.
+        parentCtx <- use robotContext
         newRobot <-
-          addTRobot $
+          addTRobot . (trobotContext .~ parentCtx) $
             mkRobot
               ()
               (Just pid)

@@ -18,7 +18,14 @@ solution: |
   r <- build {
     wait 2;
     log "Hi, I am builder";
-    forever (build {log "Hi, I am pusher"; turn forward; forever push}; log "- robot built")
+    forever (
+      build {
+        log "Hi, I am pusher";
+        require "drill";          // #540
+        forever push
+      };
+      log "- robot built"
+    )
   };
   wait 10;
   place "detonator";
