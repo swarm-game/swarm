@@ -60,6 +60,7 @@ module Swarm.Game.Robot (
   inventoryHash,
   robotCapabilities,
   robotContext,
+  trobotContext,
   robotID,
   robotParentID,
   robotHeavy,
@@ -322,8 +323,12 @@ robotOrientation = robotEntity . entityOrientation
 robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
 
--- | The robot's context
+-- | The robot's context.
 robotContext :: Lens' Robot RobotContext
+
+-- | The robot's context.
+trobotContext :: Lens' TRobot RobotContext
+trobotContext = lens _robotContext (\r c -> r {_robotContext = c})
 
 -- | The (unique) ID number of the robot.  This is only a Getter since
 --   the robot ID is immutable.
