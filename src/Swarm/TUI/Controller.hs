@@ -730,26 +730,26 @@ handleREPLEvent x = do
       Driving -> handleREPLEventDriving x
 
 -- | Handle a user "driving" input event for the REPL.
-handleREPLEventDriving:: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventDriving :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventDriving x = case x of
   Key V.KUp -> inputCmd "move;"
   Key V.KDown -> inputCmd "turn back;"
   Key V.KLeft -> inputCmd "turn left;"
   Key V.KRight -> inputCmd "turn right;"
   _ -> handleREPLEventTyping $ Key V.KEnter
-  where
-    inputCmd cmdText = do
-      uiState . uiREPL %= setCmd cmdText []
-      modify validateREPLForm
-      handleREPLEventTyping $ Key V.KEnter
+ where
+  inputCmd cmdText = do
+    uiState . uiREPL %= setCmd cmdText []
+    modify validateREPLForm
+    handleREPLEventTyping $ Key V.KEnter
 
-    setCmd nt ms repl =
-      repl
-        & replPromptText .~ nt
-        & replPromptType .~ CmdPrompt ms
+  setCmd nt ms repl =
+    repl
+      & replPromptText .~ nt
+      & replPromptType .~ CmdPrompt ms
 
 -- | Handle a user input event for the REPL.
-handleREPLEventTyping:: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventTyping = \case
   ControlKey 'c' -> do
     gameState . baseRobot . machine %= cancel
