@@ -96,12 +96,14 @@ module Swarm.TUI.Model (
 
   -- *** REPL Panel Model
   REPLState,
+  ReplControlMode (..),
   replPromptType,
   replPromptEditor,
   replPromptText,
   replValid,
   replLast,
   replType,
+  replControlMode,
   replHistory,
   newREPLEditor,
 
@@ -403,12 +405,18 @@ data REPLPrompt
 defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt []
 
+data ReplControlMode
+  = Piloting
+  | Typing
+  deriving (Enum, Bounded, Eq)
+
 data REPLState = REPLState
   { _replPromptType :: REPLPrompt
   , _replPromptEditor :: Editor Text Name
   , _replValid :: Bool
   , _replLast :: Text
   , _replType :: Maybe Polytype
+  , _replControlMode :: ReplControlMode
   , _replHistory :: REPLHistory
   }
 
@@ -420,7 +428,7 @@ newREPLEditor t = applyEdit gotoEnd $ editorText REPLInput (Just 1) t
   gotoEnd = if null ls then id else TZ.moveCursor pos
 
 initREPLState :: REPLHistory -> REPLState
-initREPLState = REPLState defaultPrompt (newREPLEditor "") True "" Nothing
+initREPLState = REPLState defaultPrompt (newREPLEditor "") True "" Nothing Typing
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''REPLState
 
@@ -448,6 +456,9 @@ replType :: Lens' REPLState (Maybe Polytype)
 -- | The last thing the user has typed which isn't part of the history.
 --   This is used to restore the repl form after the user visited the history.
 replLast :: Lens' REPLState Text
+
+-- | Piloting or Typing mode
+replControlMode :: Lens' REPLState ReplControlMode
 
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
