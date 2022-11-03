@@ -719,7 +719,38 @@ resetREPL t r ui =
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleREPLEvent = \case
+handleREPLEvent x = do
+  s <- get
+  let controlMode = s ^. uiState . uiREPL . replControlMode
+  case x of
+    ControlKey 'd' -> do
+      uiState . uiREPL . replControlMode %= cycleEnum
+    _ -> case controlMode of
+      Typing -> handleREPLEventTyping x
+      Driving -> handleREPLEventDriving x
+
+-- | Handle a user "driving" input event for the REPL.
+handleREPLEventDriving:: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventDriving x = case x of
+  Key V.KUp -> inputCmd "move;"
+  Key V.KDown -> inputCmd "turn back;"
+  Key V.KLeft -> inputCmd "turn left;"
+  Key V.KRight -> inputCmd "turn right;"
+  _ -> handleREPLEventTyping $ Key V.KEnter
+  where
+    inputCmd cmdText = do
+      uiState . uiREPL %= setCmd cmdText []
+      modify validateREPLForm
+      handleREPLEventTyping $ Key V.KEnter
+
+    setCmd nt ms repl =
+      repl
+        & replPromptText .~ nt
+        & replPromptType .~ CmdPrompt ms
+
+-- | Handle a user input event for the REPL.
+handleREPLEventTyping:: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventTyping = \case
   ControlKey 'c' -> do
     gameState . baseRobot . machine %= cancel
     uiState . uiREPL . replPromptType .= CmdPrompt []
