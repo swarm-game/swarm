@@ -34,8 +34,6 @@ entities:
 solution: |
   def m5 = move; move; move; move; move end;
   build {
-    require "treads";  // #540
-
     require "boat"; turn right;
     m5; f <- grab; turn back; m5; give base f
   }
