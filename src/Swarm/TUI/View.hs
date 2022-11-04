@@ -752,17 +752,21 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
 -- This excludes the F-key modals that are shown elsewhere.
 drawKeyMenu :: AppState -> Widget Name
 drawKeyMenu s =
-  vLimit 1
-    . hBox
-    . (++ [gameModeWidget])
-    . map (padLeftRight 1 . drawKeyCmd)
-    . (globalKeyCmds ++)
-    . map highlightKeyCmds
-    . keyCmdsFor
-    . focusGetCurrent
-    . view (uiState . uiFocusRing)
-    $ s
+  vLimit 2 $
+    hBox
+      [ vBox
+          [ mkCmdRow globalKeyCmds
+          , padLeft (Pad 2) $ mkCmdRow focusedPanelCmds
+          ]
+      , gameModeWidget
+      ]
  where
+  mkCmdRow = hBox . map drawPaddedCmd
+  drawPaddedCmd = padLeftRight 1 . drawKeyCmd
+  focusedPanelCmds =
+    map highlightKeyCmds $
+      keyCmdsFor $ focusGetCurrent $ view (uiState . uiFocusRing) s
+
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
