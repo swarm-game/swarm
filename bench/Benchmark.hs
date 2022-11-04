@@ -24,7 +24,6 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (north)
 import Swarm.Util.Bench (idleProgram)
 
-
 -- | The program of a robot which waits a random number of ticks, changes its
 --   appearence, then waits another random number of ticks, places a tree, and
 --   then self-destructs.
