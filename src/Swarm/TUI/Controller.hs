@@ -744,12 +744,10 @@ handleREPLEventPiloting x = case x of
   Key V.KDown -> inputCmd "turn back"
   Key V.KLeft -> inputCmd "turn left"
   Key V.KRight -> inputCmd "turn right"
-
   ShiftKey V.KUp -> inputCmd "turn north"
   ShiftKey V.KDown -> inputCmd "turn south"
   ShiftKey V.KLeft -> inputCmd "turn west"
   ShiftKey V.KRight -> inputCmd "turn east"
-  
   Key V.KDel -> inputCmd "selfdestruct"
   CharKey 'g' -> inputCmd "grab"
   CharKey 'h' -> inputCmd "harvest"
