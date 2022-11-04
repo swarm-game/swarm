@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
 -- |
@@ -25,23 +25,67 @@ import Control.Exception (Exception (displayException), IOException, catch, thro
 import Control.Lens ((^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
+import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
 import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Data.Text.Lazy (pack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
+import Network.HTTP.Types (ok200)
+import Network.Wai (responseLBS)
 import Network.Wai qualified
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
+import Servant.Docs (ToCapture, ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.TUI.Model
+import Swarm.Util.Bench
 import System.Timeout (timeout)
+import Text.Blaze.Html.Renderer.Text (renderHtml)
+import Text.Markdown qualified as TM
 
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]
     :<|> "robot" :> Capture "id" Int :> Get '[JSON] (Maybe Robot)
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
+
+instance ToCapture (Capture "id" Int) where
+  toCapture _ =
+    SD.DocCapture
+      "id" -- name
+      "(integer) robot ID" -- description
+
+instance ToSample Robot where
+  toSamples _ = SD.singleSample fakeRobot
+
+instance ToSample T.Text where
+  toSamples _ =
+    [ ("When foo", "foo")
+    , ("When bar", "bar")
+    ]
+
+swarmApi :: Proxy SwarmApi
+swarmApi = Proxy
+
+type DocsAPI = SwarmApi :<|> Raw
+
+api :: Proxy DocsAPI
+api = Proxy
+
+docsBS :: ByteString
+docsBS =
+  encodeUtf8
+    . renderHtml
+    . TM.markdown TM.defaultMarkdownSettings
+    . pack
+    . SD.markdown
+    $ SD.docsWithIntros [intro] swarmApi
+ where
+  intro = SD.DocIntro "Swarm Web API" ["Endpoints are documented below."]
 
 mkApp :: IORef AppState -> Servant.Server SwarmApi
 mkApp appStateRef =
@@ -68,8 +112,17 @@ webMain baton port appStateRef = catch (Warp.runSettings settings app) handleErr
   onReady = case baton of
     Just mv -> Warp.setBeforeMainLoop $ putMVar mv (Right ())
     Nothing -> id
+
+  server :: Server DocsAPI
+  server = mkApp appStateRef :<|> Tagged serveDocs
+   where
+    serveDocs _ resp =
+      resp $ responseLBS ok200 [plain] docsBS
+    plain = ("Content-Type", "text/html")
+
   app :: Network.Wai.Application
-  app = Servant.serve (Proxy @SwarmApi) (mkApp appStateRef)
+  app = Servant.serve api server
+
   handleErr :: IOException -> IO ()
   handleErr e = case baton of
     Just mv -> putMVar mv (Left $ displayException e)
