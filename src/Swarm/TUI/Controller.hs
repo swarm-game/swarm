@@ -723,6 +723,7 @@ handleREPLEvent = \case
   ControlKey 'c' -> do
     gameState . baseRobot . machine %= cancel
     uiState . uiREPL . replPromptType .= CmdPrompt []
+    uiState . uiREPL . replPromptText .= ""
   Key V.KEnter -> do
     s <- get
     let topCtx = topContext s
