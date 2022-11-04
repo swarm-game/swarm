@@ -729,8 +729,9 @@ handleREPLEvent = \case
         repl = s ^. uiState . uiREPL
         uinput = repl ^. replPromptText
 
-        startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs _) =
+        startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs reqCtx) =
           (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
+            . (gameState . baseRobot . robotContext . defReqs .~ reqCtx)
             . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
             . (gameState %~ execState (activateRobot 0))
 
