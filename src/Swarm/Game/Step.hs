@@ -1436,6 +1436,9 @@ execConst c vs s k = do
 
         return $ case mt of
           Nothing -> Out VUnit s k
+          -- XXX need to get reqCtx from mt and make it available
+          -- somehow when running this sub-machine...  This will also
+          -- be a hack that should become better once we get #495...
           Just t -> initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
