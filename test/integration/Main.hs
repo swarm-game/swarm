@@ -23,7 +23,7 @@ import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (leText, machine, robotLog, waitingUntil)
+import Swarm.Game.Robot (defReqs, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -40,7 +40,7 @@ import Swarm.Game.State (
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
@@ -219,8 +219,11 @@ testScenarioSolution _ci _em =
     Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
     case gs ^. winSolution of
       Nothing -> assertFailure "No solution to test!"
-      Just sol -> do
-        let gs' = gs & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+      Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
+        let gs' =
+              gs
+                & baseRobot . robotContext . defReqs .~ reqCtx
+                & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
         m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
         case m of
           Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
