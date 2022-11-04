@@ -39,14 +39,9 @@ def harvest_lambdas =
   )
 end;
 build {
-  require "treads"; require "harvester"; require "logger";
-  require "lambda"; require "branch predictor";             // #540
   require 1 "lambda";
   tB; move; tR; plant_field "lambda";
 };
 build {
-  require "treads"; require "harvester"; require "logger"; require "scanner";
-  require "grabber";
-  require "lambda"; require "branch predictor"; require "strange loop";  // #540
   harvest_lambdas
 }
