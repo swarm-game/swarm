@@ -14,6 +14,8 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as Set
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
 
@@ -73,6 +75,9 @@ data PrereqSatisfaction = PrereqSatisfaction
   , prereqsSatisfied :: Bool
   }
   deriving (Generic, ToJSON)
+
+instance ToSample PrereqSatisfaction where
+  toSamples _ = SD.noSamples
 
 -- | Used only by the web interface for debugging
 getSatisfaction :: ObjectiveCompletion -> [PrereqSatisfaction]
