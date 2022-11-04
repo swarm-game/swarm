@@ -777,6 +777,12 @@ drawKeyMenu s =
     _ -> False
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
+  ctrlMode = s ^. uiState . uiREPL . replControlMode
+
+  renderControlModeSwitch :: ReplControlMode -> T.Text
+  renderControlModeSwitch = \case
+    Piloting -> "REPL"
+    Typing -> "pilot"
 
   gameModeWidget =
     padLeft Max . padLeftRight 1
@@ -805,6 +811,7 @@ drawKeyMenu s =
     ]
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
+      ++ [("M-p", renderControlModeSwitch ctrlMode) | creative]
   keyCmdsFor (Just WorldPanel) =
     [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
