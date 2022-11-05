@@ -1,0 +1,163 @@
+version: 1
+name: Pastoral Island
+description: |
+  Start a wool industry from the local fauna.
+creative: false
+objectives:
+  - goal:
+      - |
+        You've homesteaded on a small Pacific island.
+        It's time to gather resources to trade.
+      - |
+        You encounter some feral sheep. They look like a promising
+        source of wool.
+      - |
+        First, paddock the sheep so they don't drown.
+        Construct a fence using the nearby gate as a starting point.
+        Make sure there are no gaps!
+      - |
+        Note that you can use the "drill" command (by way of the "post puller" tool)
+        to demolish a fence that has been "placed".
+    condition: |
+      r <- robotnamed "sheep";
+      as r {run "/home/kostmo/github/swarm-scripts/characters/enclosure-checking.sw"};
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - treads
+      - scanner
+      - dictionary
+      - branch predictor
+      - strange loop
+      - clock
+      - ADT calculator
+      - comparator
+      - workbench
+      - lodestone
+      - grabber
+      - post puller
+  - name: sheep
+    description:
+      - meandering livestock
+    display:
+      invisible: false
+      char: '@'
+    system: true
+    dir: [0, 1]
+    program: |
+      run "/home/kostmo/github/swarm-scripts/characters/meandering-sheep.sw";
+entities:
+  - name: fence
+    display:
+      char: '#'
+    description:
+    - A fence.
+    properties: [known, portable,  unwalkable]
+  - name: solid fence
+    display:
+      char: '#'
+      attr: rock
+    description:
+    - An unmovable fence.
+    properties: [known,  unwalkable]
+  - name: post puller
+    display:
+      char: 'P'
+      attr: rock
+    capabilities: [drill]
+    description:
+    - Good for dismantling fences.
+    properties: [known]
+  - name: scrap wood
+    display:
+      char: '\'
+    description:
+    - Scrap wood, good for nothing, really.
+    properties: [known]
+  - name: gate
+    display:
+      char: '/'
+      attr: rock
+    description:
+    - A gate.
+    properties: [known]
+  - name: cabin
+    display:
+      char: 🏠
+      attr: rock
+    description:
+    - A cabin.
+    properties: [known,  unwalkable]
+  - name: fresh breadcrumb
+    display:
+      char: '.'
+    description:
+    - A marker that can be put down and found again.
+    properties: [portable]
+  - name: treaded breadcrumb
+    display:
+      char: 'x'
+    description:
+    - A marker that can be put down and found again.
+    properties: [portable]
+recipes:
+  - in:
+    - [2, board]
+    out:
+    - [1, fence]
+  - in:
+    - [0, fresh breadcrumb]
+    out:
+    - [1, fresh breadcrumb]
+  - in:
+    - [1, fresh breadcrumb]
+    out:
+    - [1, treaded breadcrumb]
+  - in:
+    - [1, fence]
+    out:
+    - [1, scrap wood]
+    required:
+    - [1, post puller]
+known: [mountain, tree, water, fresh breadcrumb, treaded breadcrumb]
+seed: 0
+solution: |
+  run "/home/kostmo/github/swarm-scripts/characters/fence-construction.sw"
+world:
+  default: [dirt, water]
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'G': [grass, gate]
+    'f': [grass, solid fence]
+    't': [dirt, tree]
+    'x': [stone, mountain]
+    'c': [stone, cabin]
+    's': [grass, null, sheep]
+    '~': [dirt, water]
+  upperleft: [-34, 11]
+  map: |
+    ~~.........~~~~~~~~~~~~~.......................~~~~~
+    ~..............~~~~...............................~~
+    ...................................................~
+    ....................................................
+    .........................................tttttttt...
+    .........................................tttttttt...
+    ..............................x..........tttttttt...
+    .........................................tttttttt...
+    .........s...............................tttttttt...
+    .........................................tttttttt...
+    ...................................f................
+    ..xx...............................G.....B......c...
+    ...x...............................f................
+    ..............................s.....................
+    ....................................................
+    ....................................................
+    ~........x.....s....................................
+    ~~..................................................
+    ~~~..........................x..............~~~~....
+    ~~~....................................~~~~~~~~~...~
+    ~~......................................~~~~~~~~~~~~
+    ~~..............................~~~~~~~~~~~~~~~~~~~~
+    ~~~~...................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
