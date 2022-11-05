@@ -46,7 +46,6 @@ solution: |
   def tB = turn back end;
   def S = m16; tL; m2; tL; m16; tR; m2; tR; m16 end;
   build {
-    require "treads";  // #540
     turn right; S; f <- harvest; tB; S; give base f
   }
 robots:

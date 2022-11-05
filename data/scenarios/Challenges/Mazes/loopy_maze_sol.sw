@@ -14,9 +14,5 @@ def DFS =
   tB; move; tB
 end;
 build {
-  require "treads"; require "scanner"; require "lambda";
-  require "strange loop"; require "branch predictor";
-  require "grabber";  // #540
-
   require 500 "rock"; DFS
 }

@@ -27,6 +27,7 @@ robots:
       - branch predictor
     inventory:
       - [10, drill]
+      - [10, lambda]
       - [10, logger]
       - [10, compass]
       - [10, treads]

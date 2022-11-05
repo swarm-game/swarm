@@ -38,7 +38,6 @@ solution: |
   def mp = move; place "rock" end;
   def rr = turn right; move; turn right; x4 mp; turn back; x4 move end;
   build {
-    require "treads"; require "grabber"; require "lambda"; // #540
     require 16 "rock";
     x4 rr
   };

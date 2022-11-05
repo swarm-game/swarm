@@ -9,7 +9,7 @@ objectives:
       try {
         as base {l <- has "detonator"; return (not l)}
       } { return false }
-# When testing, add `s <- build {...}; n <- as s {whoami}; log n` 
+# When testing, add `s <- build {...}; n <- as s {whoami}; log n`
 solution: |
   def forever = \c. c ; forever c end;
   def unblock = try {drill forward} {} end;
@@ -21,7 +21,6 @@ solution: |
     forever (
       build {
         log "Hi, I am pusher";
-        require "drill";          // #540
         forever push
       };
       log "- robot built"
