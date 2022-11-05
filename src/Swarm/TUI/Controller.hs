@@ -93,10 +93,13 @@ import Witch (into)
 pattern Key :: V.Key -> BrickEvent n e
 pattern Key k = VtyEvent (V.EvKey k [])
 
-pattern CharKey, ControlKey, MetaKey :: Char -> BrickEvent n e
+pattern CharKey, ControlChar, MetaChar :: Char -> BrickEvent n e
 pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
-pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
-pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
+pattern ControlChar c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
+pattern MetaChar c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
+
+pattern ShiftKey :: V.Key -> BrickEvent n e
+pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
 
 pattern EscapeKey :: BrickEvent n e
 pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
@@ -168,7 +171,7 @@ handleMainMenuEvent menu = \case
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt
-  ControlKey 'q' -> halt
+  ControlChar 'q' -> halt
   VtyEvent ev -> do
     menu' <- nestEventM' menu (handleListEvent ev)
     uiState . uiMenu .= MainMenu menu'
@@ -187,7 +190,7 @@ handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMessagesEvent = \case
   Key V.KEsc -> returnToMainMenu
   CharKey 'q' -> returnToMainMenu
-  ControlKey 'q' -> returnToMainMenu
+  ControlChar 'q' -> returnToMainMenu
   _ -> return ()
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
@@ -203,7 +206,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
-  ControlKey 'q' -> halt
+  ControlChar 'q' -> halt
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
     uiState . uiMenu .= NewGameMenu (menu' :| rest)
@@ -231,7 +234,7 @@ handleMainEvent ev = do
       | s ^. gameState . paused -> continueWithoutRedraw
       | otherwise -> runFrameUI
     -- ctrl-q works everywhere
-    ControlKey 'q' ->
+    ControlChar 'q' ->
       case s ^. gameState . winCondition of
         Won _ -> toggleModal WinModal
         _ -> toggleModal QuitModal
@@ -255,10 +258,10 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
-    ControlKey 'g' -> case s ^. uiState . uiGoal of
+    ControlChar 'g' -> case s ^. uiState . uiGoal of
       Just g | g /= [] -> toggleModal (GoalModal g)
       _ -> continueWithoutRedraw
-    MetaKey 'h' -> do
+    MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
       if h >= t
@@ -269,23 +272,23 @@ handleMainEvent ev = do
           uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
           invalidateCacheEntry WorldCache
     -- pausing and stepping
-    ControlKey 'p' | isRunning -> safeTogglePause
-    ControlKey 'o' | isRunning -> do
+    ControlChar 'p' | isRunning -> safeTogglePause
+    ControlChar 'o' | isRunning -> do
       gameState . runStatus .= ManualPause
       runGameTickUI
     -- speed controls
-    ControlKey 'x' | isRunning -> modify $ adjustTPS (+)
-    ControlKey 'z' | isRunning -> modify $ adjustTPS (-)
+    ControlChar 'x' | isRunning -> modify $ adjustTPS (+)
+    ControlChar 'z' | isRunning -> modify $ adjustTPS (-)
     -- special keys that work on all panels
-    MetaKey 'w' -> setFocus WorldPanel
-    MetaKey 'e' -> setFocus RobotPanel
-    MetaKey 'r' -> setFocus REPLPanel
-    MetaKey 't' -> setFocus InfoPanel
+    MetaChar 'w' -> setFocus WorldPanel
+    MetaChar 'e' -> setFocus RobotPanel
+    MetaChar 'r' -> setFocus REPLPanel
+    MetaChar 't' -> setFocus InfoPanel
     -- pass keys on to modal event handler if a modal is open
     VtyEvent vev
       | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- toggle creative mode if in "cheat mode"
-    ControlKey 'v'
+    ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
     MouseDown n _ _ mouseLoc ->
       case n of
@@ -719,10 +722,58 @@ resetREPL t r ui =
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleREPLEvent = \case
-  ControlKey 'c' -> do
+handleREPLEvent x = do
+  s <- get
+  let repl = s ^. uiState . uiREPL
+      controlMode = repl ^. replControlMode
+      uinput = repl ^. replPromptText
+  case x of
+    MetaChar 'p' ->
+      onlyCreative $ do
+        if T.null uinput
+          then uiState . uiREPL . replControlMode %= cycleEnum
+          else uiState . uiError ?= "Please clear the REPL first."
+    _ -> case controlMode of
+      Typing -> handleREPLEventTyping x
+      Piloting -> handleREPLEventPiloting x
+
+-- | Handle a user "piloting" input event for the REPL.
+handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventPiloting x = case x of
+  Key V.KUp -> inputCmd "move"
+  Key V.KDown -> inputCmd "turn back"
+  Key V.KLeft -> inputCmd "turn left"
+  Key V.KRight -> inputCmd "turn right"
+  ShiftKey V.KUp -> inputCmd "turn north"
+  ShiftKey V.KDown -> inputCmd "turn south"
+  ShiftKey V.KLeft -> inputCmd "turn west"
+  ShiftKey V.KRight -> inputCmd "turn east"
+  Key V.KDel -> inputCmd "selfdestruct"
+  CharKey 'g' -> inputCmd "grab"
+  CharKey 'h' -> inputCmd "harvest"
+  CharKey 'd' -> inputCmd "drill forward"
+  CharKey 's' -> inputCmd "scan forward"
+  CharKey 'b' -> inputCmd "blocked"
+  CharKey 'u' -> inputCmd "upload base"
+  _ -> inputCmd "noop"
+ where
+  inputCmd cmdText = do
+    uiState . uiREPL %= setCmd (cmdText <> ";")
+    modify validateREPLForm
+    handleREPLEventTyping $ Key V.KEnter
+
+  setCmd nt repl =
+    repl
+      & replPromptText .~ nt
+      & replPromptType .~ CmdPrompt []
+
+-- | Handle a user input event for the REPL.
+handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventTyping = \case
+  ControlChar 'c' -> do
     gameState . baseRobot . machine %= cancel
     uiState . uiREPL . replPromptType .= CmdPrompt []
+    uiState . uiREPL . replPromptText .= ""
   Key V.KEnter -> do
     s <- get
     let topCtx = topContext s
@@ -773,7 +824,7 @@ handleREPLEvent = \case
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
-  ControlKey 'r' -> do
+  ControlChar 'r' -> do
     s <- get
     let uinput = s ^. uiState . uiREPL . replPromptText
     case s ^. uiState . uiREPL . replPromptType of
@@ -792,7 +843,7 @@ handleREPLEvent = \case
       CmdPrompt {} -> continueWithoutRedraw
       SearchPrompt _ ->
         uiState %= resetREPL "" (CmdPrompt [])
-  ControlKey 'd' -> do
+  ControlChar 'd' -> do
     text <- use $ uiState . uiREPL . replPromptText
     if text == T.empty
       then toggleModal QuitModal
@@ -924,6 +975,11 @@ adjReplHistIndex d s =
 worldScrollDist :: Int64
 worldScrollDist = 8
 
+onlyCreative :: MonadState AppState m => m () -> m ()
+onlyCreative a = do
+  c <- use $ gameState . creativeMode
+  when c a
+
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 -- scrolling the world view in Creative mode
@@ -937,9 +993,6 @@ handleWorldEvent = \case
   -- Fall-through case: don't do anything.
   _ -> continueWithoutRedraw
  where
-  onlyCreative a = do
-    c <- use $ gameState . creativeMode
-    when c a
   moveKeys =
     [ V.KUp
     , V.KDown
