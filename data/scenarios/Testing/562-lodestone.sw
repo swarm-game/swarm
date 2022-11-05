@@ -32,10 +32,8 @@ build {log "Hey!"; turn north; m2; l <- grab; turn back; m2; place l};
 until (ishere "lodestone") {grab};
 
 // get two bit (0)
-// TODO: require should not be necessary
 build {
   log "Hi!";
-  require "branch predictor";
   repeat (
     log "I am going for a bit";
     turn east; m2; x <- until (ishere "bit (0)") {harvest}; turn back; m2; place x;
