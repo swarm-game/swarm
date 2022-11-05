@@ -36,12 +36,13 @@ import Data.Functor (void)
 import Data.Int (Int64)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
-import Data.List (find)
+import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
+import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -942,11 +943,12 @@ execConst c vs s k = do
         inv <- use robotInventory
         ins <- use installedDevices
 
-        let toyDrill = lookupByName "drill" ins
-            metalDrill = lookupByName "metal drill" ins
-            insDrill = listToMaybe $ metalDrill <> toyDrill
+        let equippedDrills = extantElemsWithCapability CDrill ins
+            -- Heuristic: choose the drill with the more elaborate name.
+            -- E.g. "metal drill" vs. "drill"
+            preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills
 
-        drill <- insDrill `isJustOr` Fatal "Drill is required but not installed?!"
+        drill <- preferredDrill `isJustOr` Fatal "Drill is required but not installed?!"
 
         let directionText = case d of
               DDown -> "under"

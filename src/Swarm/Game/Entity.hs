@@ -69,6 +69,7 @@ module Swarm.Game.Entity (
   isSubsetOf,
   isEmpty,
   inventoryCapabilities,
+  extantElemsWithCapability,
 
   -- ** Modification
   insert,
@@ -97,7 +98,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Set (Set)
-import Data.Set qualified as Set (fromList, toList, unions)
+import Data.Set qualified as Set (fromList, member, toList, unions)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
@@ -568,8 +569,15 @@ isEmpty = all ((== 0) . fst) . elems
 inventoryCapabilities :: Inventory -> Set Capability
 inventoryCapabilities = Set.unions . map (^. entityCapabilities) . nonzeroEntities
 
+-- | List elements that have at least one copy in the inventory.
 nonzeroEntities :: Inventory -> [Entity]
 nonzeroEntities = map snd . filter ((> 0) . fst) . elems
+
+-- | List elements that possess a given Capability and
+-- exist with nonzero count in the inventory.
+extantElemsWithCapability :: Capability -> Inventory -> [Entity]
+extantElemsWithCapability cap =
+  filter (Set.member cap . (^. entityCapabilities)) . nonzeroEntities
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory
