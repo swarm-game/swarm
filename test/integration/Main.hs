@@ -165,6 +165,10 @@ testScenarioSolution _ci _em =
             , testSolution Default "Challenges/Mazes/invisible_maze"
             , testSolution Default "Challenges/Mazes/loopy_maze"
             ]
+        , testGroup
+            "Ranching"
+            [ testSolution Default "Challenges/Ranching/gated_paddock"
+            ]
         ]
     , testGroup
         "Regression tests"
