@@ -16,7 +16,6 @@ solution: |
   def until = \p. \c. b <- p; if b {} {c; until p c} end;
   def fwd = until blocked move end;
   build {
-    require "branch predictor"; // #540
     turn west;
     until (ishere "goal") (fwd; turn right);
     grab

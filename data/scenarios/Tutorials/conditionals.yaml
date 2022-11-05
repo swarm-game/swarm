@@ -62,9 +62,6 @@ solution: |
   def pick = move; ifC (ishere VSR) {grab; return ()} {} end;
   def pickrow = x4 pick; turn back; x4 move end;
   build {
-    require "treads"; require "branch predictor"; require "grabber";
-    require "lambda"; require "scanner";  // #540
-
     turn south; x4 (move; tL; pickrow; tL); tB; x4 move; x4 (give base VSR)
   }
 robots:

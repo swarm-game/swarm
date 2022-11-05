@@ -23,7 +23,7 @@ import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (leText, machine, robotLog, waitingUntil)
+import Swarm.Game.Robot (defReqs, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -40,14 +40,13 @@ import Swarm.Game.State (
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -190,8 +189,7 @@ testScenarioSolution _ci _em =
             , testSolution Default "Testing/201-require/201-require-device-creative"
             , testSolution Default "Testing/201-require/201-require-device-creative1"
             , testSolution Default "Testing/201-require/201-require-entities"
-            , expectFailBecause "Awaiting fix (#540)" $
-                testSolution Default "Testing/201-require/201-require-entities-def"
+            , testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
             ]
@@ -219,8 +217,14 @@ testScenarioSolution _ci _em =
     Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
     case gs ^. winSolution of
       Nothing -> assertFailure "No solution to test!"
-      Just sol -> do
-        let gs' = gs & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+      Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
+        let gs' =
+              gs
+                -- See #827 for an explanation of why it's important to set
+                -- the robotContext defReqs here (and also why this will,
+                -- hopefully, eventually, go away).
+                & baseRobot . robotContext . defReqs .~ reqCtx
+                & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
         m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
         case m of
           Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
