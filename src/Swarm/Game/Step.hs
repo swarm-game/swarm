@@ -1434,12 +1434,11 @@ execConst c vs s k = do
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ case mt of
-          Nothing -> Out VUnit s k
-          -- XXX need to get reqCtx from mt and make it available
-          -- somehow when running this sub-machine...  This will also
-          -- be a hack that should become better once we get #495...
-          Just t -> initMachine' t empty s k
+        case mt of
+          Nothing -> return $ Out VUnit s k
+          Just t@(ProcessedTerm _ _ _ reqCtx) -> do
+            robotContext . defReqs <>= reqCtx
+            return $ initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
