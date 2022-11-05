@@ -20,7 +20,7 @@ objectives:
         to demolish a fence that has been "placed".
     condition: |
       r <- robotnamed "sheep";
-      as r {run "/home/kostmo/github/swarm-scripts/characters/enclosure-checking.sw"};
+      as r {run "scenarios/Challenges/Ranching/gated-paddock/enclosure-checking.sw"};
 robots:
   - name: base
     dir: [0, 1]
@@ -46,7 +46,7 @@ robots:
     system: true
     dir: [0, 1]
     program: |
-      run "/home/kostmo/github/swarm-scripts/characters/meandering-sheep.sw";
+      run "scenarios/Challenges/Ranching/gated-paddock/meandering-sheep.sw";
 entities:
   - name: fence
     display:
@@ -123,7 +123,7 @@ recipes:
 known: [mountain, tree, water, fresh breadcrumb, treaded breadcrumb]
 seed: 0
 solution: |
-  run "/home/kostmo/github/swarm-scripts/characters/fence-construction.sw"
+  run "scenarios/Challenges/Ranching/gated-paddock/fence-construction.sw"
 world:
   default: [dirt, water]
   palette:
