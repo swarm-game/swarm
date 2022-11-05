@@ -220,6 +220,9 @@ testScenarioSolution _ci _em =
       Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
         let gs' =
               gs
+                -- See #827 for an explanation of why it's important to set
+                -- the robotContext defReqs here (and also why this will,
+                -- hopefully, eventually, go away).
                 & baseRobot . robotContext . defReqs .~ reqCtx
                 & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
         m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
