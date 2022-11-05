@@ -47,7 +47,6 @@ import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
