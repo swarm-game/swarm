@@ -2014,7 +2014,7 @@ updateAvailableRecipes invs e = do
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
 updateAvailableCommands e = do
-  let newCaps = S.fromList (e ^. entityCapabilities)
+  let newCaps = e ^. entityCapabilities
       keepConsts = \case
         Just cap -> cap `S.member` newCaps
         Nothing -> False

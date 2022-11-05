@@ -321,7 +321,7 @@ entityToList e =
     escapeTable
     [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
     , addLink ("#" <> linkID) $ view entityName e
-    , T.intercalate ", " $ Capability.capabilityName <$> view E.entityCapabilities e
+    , T.intercalate ", " $ Capability.capabilityName <$> Set.toList (view E.entityCapabilities e)
     , T.intercalate ", " . map tshow . filter (/= E.Portable) $ toList props
     , if E.Portable `elem` props
         then ":heavy_check_mark:"
@@ -351,7 +351,7 @@ entityToSection e =
       <> [T.intercalate "\n\n" $ view E.entityDescription e]
  where
   props = view E.entityProperties e
-  caps = view E.entityCapabilities e
+  caps = Set.toList $ view E.entityCapabilities e
 
 entitiesPage :: PageAddress -> [Entity] -> Text
 entitiesPage _a es =
