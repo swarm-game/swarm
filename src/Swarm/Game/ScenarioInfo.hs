@@ -49,7 +49,7 @@ import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (unless, when)
+import Control.Monad (filterM, unless, when)
 import Data.Aeson (
   Options (..),
   defaultOptions,
@@ -59,7 +59,7 @@ import Data.Aeson (
  )
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
-import Data.List (intercalate, stripPrefix, (\\))
+import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
@@ -260,7 +260,7 @@ loadScenarioDir em dir = do
             <> ", using alphabetical order"
       return Nothing
     True -> Just . filter (not . null) . lines <$> sendIO (readFile orderFile)
-  fs <- sendIO $ keepYamlOrPublicDirectory <$> listDirectory dir
+  fs <- sendIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
 
   case morder of
     Just order -> do
@@ -289,9 +289,15 @@ loadScenarioDir em dir = do
  where
   -- Keep only files which are .yaml files or directories that start
   -- with something other than an underscore.
-  keepYamlOrPublicDirectory =
-    filter
-      (\f -> takeExtensions f == ".yaml" || (takeExtensions f == "" && head f /= '_'))
+  keepYamlOrPublicDirectory = filterM . isCatalogEntry
+
+  -- Whether the directory or file should be included in the scenario catalog.
+  isCatalogEntry d f = do
+    isDir <- doesDirectoryExist $ d </> f
+    return $
+      if isDir
+        then not $ "_" `isPrefixOf` f
+        else takeExtensions f == ".yaml"
 
 -- | How to transform scenario path to save path.
 scenarioPathToSavePath :: FilePath -> FilePath -> FilePath
