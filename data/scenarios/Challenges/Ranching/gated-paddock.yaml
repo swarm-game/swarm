@@ -21,7 +21,7 @@ objectives:
         to demolish a fence that has been "placed".
     condition: |
       r <- robotnamed "sheep";
-      as r {run "scenarios/Challenges/Ranching/gated-paddock/enclosure-checking.sw"};
+      as r {run "scenarios/Challenges/Ranching/_gated-paddock/enclosure-checking.sw"};
 robots:
   - name: base
     dir: [0, 1]
@@ -53,7 +53,7 @@ robots:
     system: true
     dir: [0, 1]
     program: |
-      run "scenarios/Challenges/Ranching/gated-paddock/meandering-sheep.sw";
+      run "scenarios/Challenges/Ranching/_gated-paddock/meandering-sheep.sw";
 entities:
   - name: fence
     display:
@@ -135,7 +135,7 @@ recipes:
 known: [mountain, tree, water]
 seed: 0
 solution: |
-  run "scenarios/Challenges/Ranching/gated-paddock/fence-construction.sw"
+  run "scenarios/Challenges/Ranching/_gated-paddock/fence-construction.sw"
 world:
   default: [dirt, water]
   palette:
