@@ -214,25 +214,27 @@ testScenarioSolution _ci _em =
 
   testSolution' :: Time -> FilePath -> (GameState -> Assertion) -> TestTree
   testSolution' s p verify = testCase p $ do
-    Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
-    case gs ^. winSolution of
-      Nothing -> assertFailure "No solution to test!"
-      Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
-        let gs' =
-              gs
-                -- See #827 for an explanation of why it's important to set
-                -- the robotContext defReqs here (and also why this will,
-                -- hopefully, eventually, go away).
-                & baseRobot . robotContext . defReqs .~ reqCtx
-                & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
-        m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
-        case m of
-          Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
-          Just g -> do
-            -- When debugging, try logging all robot messages.
-            -- printAllLogs
-            noBadErrors g
-            verify g
+    out <- runExceptT $ initGameStateForScenario p Nothing Nothing
+    case out of
+      Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
+      Right gs -> case gs ^. winSolution of
+        Nothing -> assertFailure "No solution to test!"
+        Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
+          let gs' =
+                gs
+                  -- See #827 for an explanation of why it's important to set
+                  -- the robotContext defReqs here (and also why this will,
+                  -- hopefully, eventually, go away).
+                  & baseRobot . robotContext . defReqs .~ reqCtx
+                  & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+          m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
+          case m of
+            Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
+            Just g -> do
+              -- When debugging, try logging all robot messages.
+              -- printAllLogs
+              noBadErrors g
+              verify g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
