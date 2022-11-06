@@ -34,8 +34,8 @@ robots:
       - ADT calculator
       - comparator
       - workbench
-      - lodestone
       - grabber
+      - lambda
       - logger
       - hearing aid
       - post puller
@@ -56,13 +56,6 @@ entities:
     description:
     - A fence.
     properties: [known, portable,  unwalkable]
-  - name: solid fence
-    display:
-      char: '#'
-      attr: rock
-    description:
-    - An immobile fence.
-    properties: [known,  unwalkable]
   - name: post puller
     display:
       char: 'P'
@@ -132,7 +125,7 @@ world:
     'B': [grass, null, base]
     '.': [grass]
     'G': [grass, gate]
-    'f': [grass, solid fence]
+    'f': [grass, fence]
     't': [dirt, tree]
     'x': [stone, mountain]
     'c': [stone, cabin]

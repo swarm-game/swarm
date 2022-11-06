@@ -1,7 +1,13 @@
 // Algorithm:
+// ----------
 // Maintain current direction until a wall is encountered.
 // Then enter "wall-following mode".
 // This mode presumes the wall is not a loop.
+// Wall-following mode exploits recursion to keep track of how many left turns were made
+// and then unwinds them again by ensuring each is paired with a right turn.
+// Once the recursion is fully unwound, the robot proceeds along its original direction
+// (though it may now be laterally displaced).
+//
 // (If it was a loop, then an "oriented breadcrumb" would need to be left.
 // The breadcrumb is oriented in case a single-width passage is backtracked
 // along the opposite wall.)

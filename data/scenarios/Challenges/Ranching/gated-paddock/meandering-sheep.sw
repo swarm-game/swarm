@@ -1,14 +1,22 @@
 // A "sheep" that wanders around randomly.
 
+
+def elif = \p.\t.\e. {if p t e} end;
+
 let forever : cmd unit -> cmd unit = \c. c ; forever c in
 let repeat : int -> cmd unit -> cmd unit =
   \n. \c. if (n == 0) {} {c ; repeat (n-1) c} in
 let randdir : cmd dir =
   d <- random 4;
-  return (
-    if (d == 0) {north}
-    {if (d == 1) {east}
-    {if (d == 2) {south} {west}}})
+  return $ if (d == 0) {
+      north
+    } $ elif (d == 1) {
+      east
+    } $ elif (d == 2) {
+      south
+    } {
+      west
+    }
   in
 
 forever (
