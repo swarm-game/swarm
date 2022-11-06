@@ -1,5 +1,23 @@
 // A "sheep" that wanders around randomly.
 
+/** A "gate" is walkable, so we need to supplement the "blocked" check with this function.
+Since fences are "unwalkable", they do not need to be mentioned in this function.
+*/
+def isFenced =
+    s <- scan forward;
+    return (
+        case s
+            (\_. false)
+            (\x. x == "gate")
+    );
+    end;
+
+def isBlockedOrFenced =
+    b <- blocked;
+    f <- isFenced;
+    return (b || f);
+    end;
+
 
 def elif = \p.\t.\e. {if p t e} end;
 
@@ -26,18 +44,18 @@ forever (
   turn d;
   dist <- random 3;
   repeat dist (
-    b <- blocked;
+
+    b <- isBlockedOrFenced;
     if b {} {
       move;
+    };
 
-      // Sheep can drown.
-      hasWater <- ishere "water";
-      if hasWater {
-        say "whoops!";
-        selfdestruct;
-      } {};
-
-    }
+    // Sheep can drown.
+    hasWater <- ishere "water";
+    if hasWater {
+      say "whoops!";
+      selfdestruct;
+    } {};
   );
   r <- random 5;
   if (r == 0) { say "baaa" } {}

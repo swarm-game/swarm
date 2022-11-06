@@ -12,12 +12,15 @@
 // The breadcrumb is oriented in case a single-width passage is backtracked
 // along the opposite wall.)
 
+/** A "gate" is walkable, so we need to supplement the "blocked" check with this function.
+Since fences are "unwalkable", they do not need to be mentioned in this function.
+*/
 def isFenced =
     s <- scan forward;
     return (
         case s
             (\_. false)
-            (\x. x == "fence" || x == "gate" || x == "solid fence")
+            (\x. x == "gate")
     );
     end;
 
