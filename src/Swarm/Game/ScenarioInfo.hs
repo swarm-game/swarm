@@ -260,7 +260,7 @@ loadScenarioDir em dir = do
             <> ", using alphabetical order"
       return Nothing
     True -> Just . filter (not . null) . lines <$> sendIO (readFile orderFile)
-  fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
+  fs <- sendIO $ keepYamlOrPublicDirectory <$> listDirectory dir
 
   case morder of
     Just order -> do
@@ -287,7 +287,11 @@ loadScenarioDir em dir = do
   let morder' = filter (`elem` fs) <$> morder
   SC morder' . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
  where
-  keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
+  -- Keep only files which are .yaml files or directories that start
+  -- with something other than an underscore.
+  keepYamlOrPublicDirectory =
+    filter
+      (\f -> takeExtensions f == ".yaml" || (takeExtensions f == "" && head f /= '_'))
 
 -- | How to transform scenario path to save path.
 scenarioPathToSavePath :: FilePath -> FilePath -> FilePath
