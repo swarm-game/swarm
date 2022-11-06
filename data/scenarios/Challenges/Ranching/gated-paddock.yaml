@@ -39,6 +39,9 @@ robots:
       - logger
       - hearing aid
       - post puller
+    inventory:
+      - [0, fence]
+      - [0, gate]
   - name: sheep
     description:
       - meandering livestock
