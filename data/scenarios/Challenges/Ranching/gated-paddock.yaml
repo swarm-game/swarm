@@ -42,6 +42,7 @@ robots:
     inventory:
       - [0, fence]
       - [0, gate]
+      - [10, hinge]
   - name: sheep
     description:
       - meandering livestock
@@ -79,6 +80,13 @@ entities:
       attr: rock
     description:
     - A gate.
+    properties: [known]
+  - name: hinge
+    display:
+      char: 'U'
+      attr: rock
+    description:
+    - Allows swinging action.
     properties: [known]
   - name: cabin
     display:
@@ -118,6 +126,11 @@ recipes:
     - [1, scrap wood]
     required:
     - [1, post puller]
+  - in:
+    - [1, hinge]
+    - [1, fence]
+    out:
+    - [1, gate]
 known: [mountain, tree, water]
 seed: 0
 solution: |
