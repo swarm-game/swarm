@@ -1,5 +1,6 @@
 version: 1
 name: Pastoral Island
+author: Karl Ostmo
 description: |
   Start a wool industry from the local fauna.
 creative: false
@@ -58,7 +59,7 @@ entities:
     display:
       char: '#'
     description:
-    - A fence.
+    - Keeps sheep in. And some other things out.
     properties: [known, portable,  unwalkable]
   - name: post puller
     display:
@@ -79,21 +80,21 @@ entities:
       char: '/'
       attr: rock
     description:
-    - A gate.
+    - A gate permits the player to pass through, but sheep cannot.
     properties: [known]
   - name: hinge
     display:
       char: 'U'
       attr: rock
     description:
-    - Allows swinging action.
+    - Facilitates swinging action.
     properties: [known]
   - name: cabin
     display:
       char: Π
       attr: rock
     description:
-    - A cabin.
+    - Home sweet home.
     properties: [known,  unwalkable]
   - name: fresh breadcrumb
     display:
@@ -105,7 +106,7 @@ entities:
     display:
       char: 'x'
     description:
-    - A marker that can be put down and found again.
+    - A marker that can be put down and found again (for a second time).
     properties: [portable]
 recipes:
   - in:

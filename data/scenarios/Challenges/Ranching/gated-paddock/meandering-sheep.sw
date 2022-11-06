@@ -18,7 +18,6 @@ def isBlockedOrFenced =
     return (b || f);
     end;
 
-
 def elif = \p.\t.\e. {if p t e} end;
 
 let forever : cmd unit -> cmd unit = \c. c ; forever c in
