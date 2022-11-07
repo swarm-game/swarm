@@ -167,7 +167,7 @@ testScenarioSolution _ci _em =
             ]
         , testGroup
             "Ranching"
-            [ testSolution Default "Challenges/Ranching/gated_paddock"
+            [ testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         ]
     , testGroup
