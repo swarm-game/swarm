@@ -1084,7 +1084,7 @@ execConst c vs s k = do
         m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
         emitMessage m
         let addLatestClosest rl = \case
-              Seq.Empty -> Seq.Empty
+              Seq.Empty -> Seq.singleton m
               es Seq.:|> e
                 | e ^. leTime < m ^. leTime -> es |> e |> m
                 | manhattan rl (e ^. leLocation) > manhattan rl (m ^. leLocation) -> es |> m
