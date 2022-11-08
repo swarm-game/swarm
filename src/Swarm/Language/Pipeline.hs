@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -34,6 +35,7 @@ import Swarm.Language.Requirement
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
+import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, runE, withTextE)
 import Witch
 
 -- | A record containing the results of the language processing
@@ -51,13 +53,19 @@ data ProcessedTerm
   deriving (Data, Show, Eq, Generic)
 
 instance FromJSON ProcessedTerm where
-  parseJSON = withText "Term" tryProcess
+  parseJSON :: Value -> Y.Parser ProcessedTerm
+  parseJSON v = runE (parseJSONE v) (empty @Polytype, empty @Requirements)
+
+instance FromJSONE (TCtx, ReqCtx) ProcessedTerm where
+  parseJSONE :: Value -> ParserE (TCtx, ReqCtx) ProcessedTerm
+  parseJSONE = withTextE "Term" tryProcess
    where
-    tryProcess :: Text -> Y.Parser ProcessedTerm
-    tryProcess t = case processTerm t of
-      Left err -> fail $ "Could not parse term: " ++ from err
-      Right Nothing -> fail "Term was only whitespace"
-      Right (Just pt) -> return pt
+    tryProcess :: Text -> ParserE (TCtx, ReqCtx) ProcessedTerm
+    tryProcess t =
+      getE >>= \(tCtx, reqCtx) -> case processTerm' tCtx reqCtx t of
+        Left err -> fail $ "Could not parse term: " ++ from err
+        Right Nothing -> fail "Term was only whitespace"
+        Right (Just pt) -> return pt
 
 instance ToJSON ProcessedTerm where
   toJSON (ProcessedTerm t _ _ _) = String $ prettyText t
