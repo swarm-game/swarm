@@ -125,7 +125,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
@@ -135,7 +135,7 @@ import Data.Text.IO qualified as T (readFile)
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
 import Linear
-import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe (
   Recipe,
@@ -777,11 +777,11 @@ scenarioToGameState scenario userSeed toRun g = do
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = V2 0 0
       , _needsRedraw = False
-      , -- When starting base with the run flag, REPL status must be set to working,
-        -- otherwise the store of definition cells is not saved (see #333)
-        _replStatus = case toRun of
-          Nothing -> REPLDone Nothing
-          Just _ -> REPLWorking (Typed Nothing PolyUnit mempty)
+      , -- When the base starts out running a program, the REPL status must be set to working,
+        -- otherwise the store of definition cells is not saved (see #333, #838)
+        _replStatus = case running of
+          False -> REPLDone Nothing
+          True -> REPLWorking (Typed Nothing PolyUnit mempty)
       , _replNextValueIndex = 0
       , _messageQueue = Empty
       , _focusedRobotID = baseID
@@ -829,6 +829,9 @@ scenarioToGameState scenario userSeed toRun g = do
     zipWith instantiateRobot [baseID ..] robotsByBasePrecedence
       -- If the  --run flag was used, use it to replace the CESK machine of the
       -- robot whose id is 0, i.e. the first robot listed in the scenario.
+      -- Note that this *replaces* any program the base robot otherwise
+      -- would have run (i.e. any program specified in the program: field
+      -- of the scenario description).
       & ix baseID . machine
         %~ case getCodeToRun <$> toRun of
           Nothing -> id
@@ -842,6 +845,10 @@ scenarioToGameState scenario userSeed toRun g = do
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)
+
+  running = case robotList of
+    [] -> False
+    (base : _) -> isNothing (finalValue (base ^. machine))
 
   -- Initial list of available commands = all commands enabled by
   -- devices in inventory or installed; and commands that require no
