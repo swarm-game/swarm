@@ -1,0 +1,22 @@
+version: 1
+name: Base definitions
+description: |
+  We can put definitions in the base's program field in
+  a scenario and then have those definitions available to the player.
+objectives:
+  - condition: |
+      as base {loc <- whereami; return (loc == (0,4))}
+solution: |
+  m4
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,1]
+    devices:
+      - tank treads
+      - dictionary
+      - logger
+    program: |
+      def m4 = move; move; move; move end
+world:
+  default: [blank]

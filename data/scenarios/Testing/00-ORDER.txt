@@ -14,3 +14,4 @@
 684-swap.yaml
 699-movement-fail
 710-multi-robot.yaml
+838-base-program.yaml
