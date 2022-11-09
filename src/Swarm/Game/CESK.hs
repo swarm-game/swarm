@@ -130,6 +130,10 @@ data Frame
     -- application) in environment @e@.  We will also push an 'FApp'
     -- frame on the stack.
     FArg Term Env
+  | -- | @FVArg v@ is like @FArg@ except that the argument is already
+    -- a value; when we are done evaluating the left-hand side of
+    -- the application we just directly apply it.
+    FVArg Value
   | -- | @FApp v@ says that we were evaluating the right-hand side of
     -- an application; once we are done, we should pass the resulting
     -- value as an argument to @v@.
@@ -341,6 +345,7 @@ prettyFrame :: Frame -> String
 prettyFrame (FSnd t _) = "(_, " ++ prettyString t ++ ")"
 prettyFrame (FFst v) = "(" ++ from (prettyValue v) ++ ", _)"
 prettyFrame (FArg t _) = "_ " ++ prettyString t
+prettyFrame (FVArg v) = "_ " ++ from (prettyValue v)
 prettyFrame (FApp v) = prettyString (valueToTerm v) ++ " _"
 prettyFrame (FLet x t _) = "let " ++ from x ++ " = _ in " ++ prettyString t
 prettyFrame (FTry t) = "try _ (" ++ prettyString (valueToTerm t) ++ ")"
