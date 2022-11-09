@@ -205,6 +205,7 @@ constCaps = \case
   Concat -> Just CText
   Split -> Just CText
   Chars -> Just CText
+  FoldText -> Just CText
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod

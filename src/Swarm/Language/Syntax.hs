@@ -352,6 +352,8 @@ data Const
     Chars
   | -- | Split string into two parts.
     Split
+  | -- | Generic text eliminator, i.e. fold.
+    FoldText
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -644,6 +646,8 @@ constInfo c = case c of
       , "`(s1,s2) == split (chars s1) (s1 ++ s2)`"
       , "So split can be used to undo concatenation if you know the length of the original string."
       ]
+  FoldText ->
+    function 3 "Process a text value with a left fold."
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."

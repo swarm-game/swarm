@@ -29,6 +29,7 @@ import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
+import Data.Char (ord)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, traverse_)
@@ -1476,6 +1477,17 @@ execConst c vs s k = do
       _ -> badConst
     Concat -> case vs of
       [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
+      _ -> badConst
+    FoldText -> case vs of
+      [f, z, VText t] -> case T.uncons t of
+        Nothing -> return $ Out z s k
+        Just (ch, t') ->
+          return $
+            Out
+              -- [foldText f ([[f [c]] z])] t'
+              (VInt . fromIntegral $ ord ch)
+              s
+              (FApp f : FVArg z : FApp (VCApp FoldText [f]) : FVArg (VText t') : k)
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
