@@ -352,6 +352,10 @@ data Const
     Chars
   | -- | Split string into two parts.
     Split
+  | -- | Get the character at an index.
+    Char
+  | -- | Create a text value from a length and an indexing function.
+    MkText
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -643,6 +647,17 @@ constInfo c = case c of
       [ "To be more specific, the following holds for all `text` values `s1` and `s2`:"
       , "`(s1,s2) == split (chars s1) (s1 ++ s2)`"
       , "So split can be used to undo concatenation if you know the length of the original string."
+      ]
+  Char ->
+    function 2 . doc "Get the character at a given index." $
+      [ "Gets the character (as an `int` representing a Unicode codepoint) at a specific index in a `text` value.  Valid indices are 0 through `chars t - 1`."
+      , "Throws an exception if given an out-of-bounds index."
+      ]
+  MkText ->
+    function 2 . doc "Build a text value from a length and an indexing function." $
+      [ "`buildText n f` creates a `text` value with length `n` and character `f i` at index `i`."
+      , "Satisfies `chars (buildText n f) == n` and `charAt i (buildText n f) == f i` for valid inputs."
+      , "Throws an exception if `n < 0`. Note that `f` will only ever be called on valid indices, so its behavior on invalid indices does not matter."
       ]
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $

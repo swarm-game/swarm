@@ -527,6 +527,8 @@ inferConst c = case c of
   Concat -> [tyQ| text -> text -> text |]
   Chars -> [tyQ| text -> int |]
   Split -> [tyQ| int -> text -> (text * text) |]
+  Char -> [tyQ| int -> text -> int |]
+  MkText -> [tyQ| int -> (int -> int) -> text |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| text -> cmd text |]
   Atomic -> [tyQ| cmd a -> cmd a |]

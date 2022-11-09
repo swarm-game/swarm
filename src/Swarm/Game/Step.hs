@@ -29,6 +29,7 @@ import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
+import Data.Char (ord)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, traverse_)
@@ -1484,6 +1485,16 @@ execConst c vs s k = do
     Concat -> case vs of
       [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
       _ -> badConst
+    Char -> case vs of
+      [VInt i, VText t]
+        | i < 0 || i >= fromIntegral (T.length t) ->
+            raise Char ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
+        | otherwise -> return $ Out (VInt . fromIntegral . ord . T.index t . fromIntegral $ i) s k
+      _ -> badConst
+    MkText -> case vs of
+      [VInt i, f]
+        | i < 0 -> raise MkText ["Length must be nonnegative:", prettyValue (VInt i)]
+        | otherwise -> undefined -- XXX need special stack frame to iterate indices?
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
