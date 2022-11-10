@@ -169,6 +169,9 @@ data Frame
     FUpdate Loc
   | -- | Signal that we are done with an atomic computation.
     FFinishAtomic
+  | -- | Accumulate partial results from 'MkText'.  Stores the index function,
+    --   the current index, and the accumulated characters.
+    FMkText Value Integer [Char]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.
@@ -353,6 +356,7 @@ prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FImmediate {} = "(_ : cmd a)"
 prettyFrame (FUpdate loc) = "store@" ++ show loc ++ "(_)"
 prettyFrame FFinishAtomic = "finishAtomic"
+prettyFrame (FMkText _ i cs) = "mkText " ++ show i ++ " " ++ show cs
 
 --------------------------------------------------------------
 -- Wrappers for functions in FImmediate

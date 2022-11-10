@@ -29,7 +29,7 @@ import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
-import Data.Char (ord)
+import Data.Char (chr, ord)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, traverse_)
@@ -501,6 +501,15 @@ stepCESK cesk = case cesk of
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
   Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
+  ------------------------------------------------------------
+  -- Text building
+  -- This is the mechanism used to implement the `mkText` primitive.
+
+  Out (VInt c) s (FMkText _ 0 cs : k) ->
+    return $ Out (VText (from @String (chr (fromIntegral c) : cs))) s k
+  Out (VInt c) s (FMkText f i cs : k) ->
+    return $ Out (VInt (i - 1)) s (FApp f : FMkText f (i - 1) (chr (fromIntegral c) : cs) : k)
+  Out _ s (FMkText {} : _) -> badMachineState s "FMkText frame with non-int value"
   ------------------------------------------------------------
   -- Execution
 
@@ -1492,9 +1501,11 @@ execConst c vs s k = do
         | otherwise -> return $ Out (VInt . fromIntegral . ord . T.index t . fromIntegral $ i) s k
       _ -> badConst
     MkText -> case vs of
-      [VInt i, f]
-        | i < 0 -> raise MkText ["Length must be nonnegative:", prettyValue (VInt i)]
-        | otherwise -> undefined -- XXX need special stack frame to iterate indices?
+      [VInt n, f]
+        | n < 0 -> raise MkText ["Length must be nonnegative:", prettyValue (VInt n)]
+        | n == 0 -> return $ Out (VText "") s k
+        | otherwise -> return $ Out (VInt (n - 1)) s (FApp f : FMkText f (n - 1) [] : k)
+      _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
