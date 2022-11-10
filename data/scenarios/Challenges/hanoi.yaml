@@ -157,7 +157,7 @@ known:
 world:
   default: [grass, null]
   palette:
-    ' ': [grass]
+    ',': [grass]
     '_': [stone]
     'v': [stone, null, base]
     '┌': [stone, upper left corner]
@@ -182,5 +182,5 @@ world:
     │2│.│.│
     │3│.│.│
     └─┴─┴─┘
-     ^ ^ ^ 
-       X   
+    ,^,^,^,
+    ,,,X,,,
