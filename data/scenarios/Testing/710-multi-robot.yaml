@@ -49,17 +49,16 @@ world:
     ┌────┐--u~~U
     │....1..2../
     └────┘--l~~L
-
 robots:
   - name: base
-    dir: [1,0]
-    loc: [0,0]
+    dir: [1, 0]
+    loc: [0, 0]
     devices:
       - treads
       - logger
   - name: check1
-    dir: [0,0]
-    loc: [3,0]
+    dir: [0, 0]
+    loc: [3, 0]
     system: true
     display:
       invisible: true
@@ -74,8 +73,8 @@ robots:
       );
       create "Win"
   - name: check2
-    dir: [0,0]
-    loc: [6,0]
+    dir: [0, 0]
+    loc: [6, 0]
     system: true
     display:
       invisible: true
@@ -90,8 +89,8 @@ robots:
       );
       create "Win"
   - name: check3
-    dir: [0,0]
-    loc: [9,0]
+    dir: [0, 0]
+    loc: [9, 0]
     system: true
     display:
       invisible: true
@@ -106,11 +105,11 @@ robots:
       );
       create "Win"
   - name: horizon
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,horizontal wall]]
+    inventory: [[1, horizontal wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
@@ -118,11 +117,11 @@ robots:
       until (as c1 {has "Win"});
       swap "horizontal wall"
   - name: vertice
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,vertical wall]]
+    inventory: [[1, vertical wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
@@ -130,11 +129,11 @@ robots:
       until (as c1 {has "Win"});
       swap "vertical wall"
   - name: upright
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,upper right corner]]
+    inventory: [[1, upper right corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
@@ -142,11 +141,11 @@ robots:
       until (as c1 {has "Win"});
       swap "upper right corner"
   - name: lowright
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,lower right corner]]
+    inventory: [[1, lower right corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
@@ -154,11 +153,11 @@ robots:
       until (as c1 {has "Win"});
       swap "lower right corner"
   - name: upleft
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,upper left corner]]
+    inventory: [[1, upper left corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
@@ -166,51 +165,51 @@ robots:
       until (as c1 {has "Win"});
       swap "upper left corner"
   - name: upright0
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,down and horizontal wall]]
+    inventory: [[1, down and horizontal wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       c1 <- robotNamed "check1";
       until (as c1 {has "Win"});
       swap "down and horizontal wall"
   - name: lowright0
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,up and horizontal wall]]
+    inventory: [[1, up and horizontal wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       c1 <- robotNamed "check1";
       until (as c1 {has "Win"});
       swap "up and horizontal wall"
   - name: upright1
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,down and horizontal wall]]
+    inventory: [[1, down and horizontal wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       c1 <- robotNamed "check2";
       until (as c1 {has "Win"});
       swap "down and horizontal wall"
   - name: lowright1
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
-    inventory: [[1,up and horizontal wall]]
+    inventory: [[1, up and horizontal wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
       c1 <- robotNamed "check2";
       until (as c1 {has "Win"});
       swap "up and horizontal wall"
   - name: gate1
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true
@@ -220,7 +219,7 @@ robots:
       until (as c1 {has "Win"});
       grab
   - name: gate2
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     display:
       invisible: true

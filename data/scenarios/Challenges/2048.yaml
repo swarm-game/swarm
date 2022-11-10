@@ -4,13 +4,8 @@ author: Brent Yorgey
 description: Make 2048!
 objectives:
   - goal:
-    - OK, OK, it's not really the same as the classic "2048" game.
-      However, your goal is still to make 2048!  You start with a `1`
-      which regrows immediately when
-      it is harvested, so if you plant it, you can get as many as you want.  Your
-      job is to combine `1`s in order to make a `2048`
-      entity.
-    - "Hint: the `format` command can turn numbers into strings!"
+      - OK, OK, it's not really the same as the classic "2048" game. However, your goal is still to make 2048!  You start with a `1` which regrows immediately when it is harvested, so if you plant it, you can get as many as you want.  Your job is to combine `1`s in order to make a `2048` entity.
+      - "Hint: the `format` command can turn numbers into strings!"
     condition: |
       try {
         as base {has "2048"}
@@ -29,135 +24,133 @@ entities:
       attr: gold
       char: "#"
     description:
-    - This is a one.  Maybe you can combine it with other ones
-      somehow.
+      - This is a one.  Maybe you can combine it with other ones somehow.
     properties: [growable, portable, infinite]
   - name: "2"
     display:
       attr: gold
       char: "#"
     description:
-    - This is a two.  Maybe you can combine it with other twos
-      somehow.
+      - This is a two.  Maybe you can combine it with other twos somehow.
     properties: [portable]
   - name: "4"
     display:
       attr: gold
       char: "#"
     description:
-    - This is a four.  You get the idea.
+      - This is a four.  You get the idea.
     properties: [portable]
   - name: "8"
     display:
       attr: gold
       char: "#"
     description:
-    - An eight.
+      - An eight.
     properties: [portable]
   - name: "16"
     display:
       attr: gold
       char: "#"
     description:
-    - A 16.
+      - A 16.
     properties: [portable]
   - name: "32"
     display:
       attr: gold
       char: "#"
     description:
-    - A 32.
+      - A 32.
     properties: [portable]
   - name: "64"
     display:
       attr: gold
       char: "#"
     description:
-    - A 64.
+      - A 64.
     properties: [portable]
   - name: "128"
     display:
       attr: gold
       char: "#"
     description:
-    - A 128.
+      - A 128.
     properties: [portable]
   - name: "256"
     display:
       attr: gold
       char: "#"
     description:
-    - A 256.
+      - A 256.
     properties: [portable]
   - name: "512"
     display:
       attr: gold
       char: "#"
     description:
-    - A 512.
+      - A 512.
     properties: [portable]
   - name: "1024"
     display:
       attr: gold
       char: "#"
     description:
-    - A 1024.
+      - A 1024.
     properties: [portable]
   - name: "2048"
     display:
       attr: gold
       char: "#"
     description:
-    - A 2048.
+      - A 2048.
     properties: [portable]
 recipes:
   - in:
-    - [2, "1"]
+      - [2, "1"]
     out:
-    - [1, "2"]
+      - [1, "2"]
   - in:
-    - [2, "2"]
+      - [2, "2"]
     out:
-    - [1, "4"]
+      - [1, "4"]
   - in:
-    - [2, "4"]
+      - [2, "4"]
     out:
-    - [1, "8"]
+      - [1, "8"]
   - in:
-    - [2, "8"]
+      - [2, "8"]
     out:
-    - [1, "16"]
+      - [1, "16"]
   - in:
-    - [2, "16"]
+      - [2, "16"]
     out:
-    - [1, "32"]
+      - [1, "32"]
   - in:
-    - [2, "32"]
+      - [2, "32"]
     out:
-    - [1, "64"]
+      - [1, "64"]
   - in:
-    - [2, "64"]
+      - [2, "64"]
     out:
-    - [1, "128"]
+      - [1, "128"]
   - in:
-    - [2, "128"]
+      - [2, "128"]
     out:
-    - [1, "256"]
+      - [1, "256"]
   - in:
-    - [2, "256"]
+      - [2, "256"]
     out:
-    - [1, "512"]
+      - [1, "512"]
   - in:
-    - [2, "512"]
+      - [2, "512"]
     out:
-    - [1, "1024"]
+      - [1, "1024"]
   - in:
-    - [2, "1024"]
+      - [2, "1024"]
     out:
-    - [1, "2048"]
+      - [1, "2048"]
 robots:
   - name: base
-    dir: [1,0]
+    dir: [1, 0]
     display:
       attr: robot
       char: "Ω"

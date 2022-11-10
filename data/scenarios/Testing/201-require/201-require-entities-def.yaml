@@ -17,8 +17,8 @@ solution: |
   build { log "hi"; require 5 "rock"; mp; mp; mp; mp }
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - 3D printer
       - logger

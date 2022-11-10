@@ -3,14 +3,14 @@ name: Cave shaped maze
 author: Ondřej Šebek
 description: A maze shaped like a cave. It only goes down or forward.
 objectives:
-- goal:
-  - You are at the top of a cave that gradually descends until reaching a dead end.
-  - At its bottom is a great treasure.
-  - Luckily, the cave does not branch out, so it is easy to find the path to the treasure.
-  - Send a robot to the the item marked as '!'. You win once the robot grabs it.
-  condition: |
-    j <- robotNamed "judge";
-    as j {has "goal"}
+  - goal:
+      - You are at the top of a cave that gradually descends until reaching a dead end.
+      - At its bottom is a great treasure.
+      - Luckily, the cave does not branch out, so it is easy to find the path to the treasure.
+      - Send a robot to the the item marked as '!'. You win once the robot grabs it.
+    condition: |
+      j <- robotNamed "judge";
+      as j {has "goal"}
 solution: |
   def until = \p. \c. b <- p; if b {} {c; until p c} end;
   def fwd = until blocked move end;
@@ -21,7 +21,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [0,1]
+    dir: [0, 1]
     display:
       char: 'Ω'
       attr: robot
@@ -42,7 +42,7 @@ robots:
       - [50, grabber]
       - [0, goal]
   - name: judge
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
@@ -55,14 +55,14 @@ entities:
       char: █
       attr: rock
     description:
-    - An impassable stone wall.
+      - An impassable stone wall.
     properties: [unwalkable, known]
   - name: goal
     display:
       char: '!'
       attr: device
     description:
-    - The place you're trying to reach!  You win by executing `grab` on this item.
+      - The place you're trying to reach!  You win by executing `grab` on this item.
     properties: [known, portable]
 world:
   default: [ice]
@@ -72,7 +72,7 @@ world:
     '~': [stone, water]
     '█': [stone, wall]
     '!': [stone, goal, judge]
-  upperleft: [0,0]
+  upperleft: [0, 0]
   map: |
     ██████████████████████████████
     █Ω  ████████ █████████████████

@@ -14,14 +14,14 @@ solution: |
   place "tree"
 robots:
   - name: base
-    loc: [5,0]
-    dir: [1,0]
+    loc: [5, 0]
+    dir: [1, 0]
     devices:
       - treads
       - logger
       - grabber
     inventory:
-    - [1, tree]
+      - [1, tree]
 world:
   default: [blank]
   palette:

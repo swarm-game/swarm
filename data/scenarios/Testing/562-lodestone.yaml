@@ -3,7 +3,7 @@ name: Test lodestone
 description: Pick or drill lodestone and use it to flip bits.
 objectives:
   - goal:
-        - To create a drill bit, you will need to flip the available bit.
+      - To create a drill bit, you will need to flip the available bit.
     condition: |
       try {
         as base {has "drill bit"};
@@ -12,7 +12,7 @@ solution: |
   run "scenarios/Testing/562-lodestone.sw"
 robots:
   - name: base
-    dir: [1,0]
+    dir: [1, 0]
     display:
       char: Ω
       attr: robot
@@ -72,36 +72,31 @@ entities:
       attr: iron'
       char: 'A'
     description:
-    - A place in the mountains where raw iron ore can be mined.
-      As it is hidden inside a mountain, a tunnel needs to be
-      first drilled through, so that the vein becomes accessible.
+      - A place in the mountains where raw iron ore can be mined. As it is hidden inside a mountain, a tunnel needs to be first drilled through, so that the vein becomes accessible.
     properties: [unwalkable]
-
   - name: magnetic mine
     display:
       attr: iron'
       char: 'Å'
     description:
-    - A place in the mountains where raw iron ore can be mined.
+      - A place in the mountains where raw iron ore can be mined.
     properties: [unwalkable]
-
 recipes:
   ## TOY DRILL
   - in:
-    - [1, magnetic vein]
+      - [1, magnetic vein]
     out:
-    - [1, magnetic mine]
-    - [1, lodestone]
+      - [1, magnetic mine]
+      - [1, lodestone]
     required:
-    - [1, drill]
+      - [1, drill]
     time: 42
-
   - in:
-    - [1, magnetic mine]
+      - [1, magnetic mine]
     out:
-    - [1, magnetic mine]
-    - [1, iron ore]
-    - [1, lodestone]
+      - [1, magnetic mine]
+      - [1, iron ore]
+      - [1, lodestone]
     required:
-    - [1, drill]
+      - [1, drill]
     time: 42

@@ -1,12 +1,11 @@
 version: 1
 name: Creative game
-description: No constraints!  Do whatever you want, create any items you
-  want out of thin air, build robots to your heart's content.
+description: No constraints!  Do whatever you want, create any items you want out of thin air, build robots to your heart's content.
 creative: true
 robots:
   - name: base
-    loc: [0,0]
-    dir: [0,1]
+    loc: [0, 0]
+    dir: [0, 1]
     heavy: true
     display:
       char: Ω

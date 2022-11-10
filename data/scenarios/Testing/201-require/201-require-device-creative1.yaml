@@ -18,8 +18,8 @@ solution: |
   build {require "boat"; move; move}
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - logger
       - 3D printer
@@ -47,7 +47,7 @@ entities:
       attr: water
       char: ' '
     description:
-    - An infinite ocean of water.
+      - An infinite ocean of water.
     properties: [known, portable, growable, liquid]
-    growth: [0,0]
+    growth: [0, 0]
     yields: water

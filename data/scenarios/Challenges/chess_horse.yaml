@@ -4,9 +4,8 @@ author: Ondřej Šebek
 description: In this quirky challenge, you move as the chess knight piece. Can you capture the enemy king?
 objectives:
   - goal:
-      - Robots can use the 'move' command to move.
-        But they only 'turn' in cardinal directions. 
-      - You are special. You are a knight. 
+      - Robots can use the 'move' command to move. But they only 'turn' in cardinal directions.
+      - You are special. You are a knight.
       - Go forth and capture the King!
     condition: |
       try {
@@ -19,8 +18,8 @@ solution: |
   move; move; move; turn right; move; turn left; move;
 robots:
   - name: horse
-    loc: [0,0]
-    dir: [2,-1]
+    loc: [0, 0]
+    dir: [2, -1]
     devices:
       - treads
       - logger
@@ -28,8 +27,8 @@ robots:
     display:
       char: '♘'
   - name: king
-    loc: [7,-6]
-    dir: [0,0]
+    loc: [7, -6]
+    dir: [0, 0]
     display:
       char: '♚'
 known: [water]

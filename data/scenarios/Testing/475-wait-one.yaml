@@ -16,16 +16,16 @@ solution: |
   log "I will win next tick!"; place "lambda";
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - logger
       - grabber
     inventory:
       - [1, lambda]
   - name: sleeper
-    loc: [0,-1]
-    dir: [1,0]
+    loc: [0, -1]
+    dir: [1, 0]
     devices:
       - logger
       - clock

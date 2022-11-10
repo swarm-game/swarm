@@ -4,10 +4,8 @@ author: Ondřej Šebek and Brent Yorgey
 description: The classic Towers of Hanoi puzzle with three disks.
 objectives:
   - goal:
-      - Move all the numbers (traditionally, "disks") from the
-        left column to the right column.
-      - You may only pick up one disk at a time, and you may never
-        place a larger disk on top of a smaller one.
+      - Move all the numbers (traditionally, "disks") from the left column to the right column.
+      - You may only pick up one disk at a time, and you may never place a larger disk on top of a smaller one.
     condition: |
       teleport self (2,-1);
       x <- ishere "one";
@@ -20,7 +18,7 @@ solution: |
   run "scenarios/Challenges/hanoi-solution.sw"
 robots:
   - name: base
-    dir: [0,-1]
+    dir: [0, -1]
     devices:
       - net
       - treads
@@ -35,17 +33,17 @@ robots:
       - scanner
       - ADT calculator
   - name: invariant
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     devices:
-    - logger
+      - logger
     inventory:
-    - [1, one]
-    - [1, two]
-    - [1, three]
-    - [1, blocked one]
-    - [1, blocked two]
-    - [1, blocked three]
+      - [1, one]
+      - [1, two]
+      - [1, three]
+      - [1, blocked one]
+      - [1, blocked two]
+      - [1, blocked three]
     program: |
       // if
       //  0. I stand on locked X
@@ -62,12 +60,12 @@ robots:
       //  - lock X
       run "scenarios/Challenges/hanoi-invariant.sw"
   - name: increasing
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     inventory:
-    - [1, OK]
+      - [1, OK]
     devices:
-    - logger
+      - logger
     program: |
       // if
       //  0. all (but max 3) disks in my column are sorted
@@ -77,13 +75,13 @@ robots:
       //  - try to grab "OK"
       run "scenarios/Challenges/hanoi-increasing.sw"
   - name: count
-    dir: [0,0]
+    dir: [0, 0]
     system: true
     inventory:
-    - [1, two]
-    - [0, three]
+      - [1, two]
+      - [0, three]
     devices:
-    - logger
+      - logger
     program: |
       // count all entities placed in columns
       // the final count should be either 2 or 3
@@ -95,49 +93,49 @@ entities:
       char: '┴'
       attr: entity
     description:
-    - A bottom tee wall.
+      - A bottom tee wall.
     properties: [unwalkable]
   - name: three
     display:
       char: '3'
       attr: gold
     description:
-    - A disk of radius 3.
+      - A disk of radius 3.
     properties: [portable]
   - name: two
     display:
       char: '2'
       attr: gold
     description:
-    - A disk of radius 2.
+      - A disk of radius 2.
     properties: [portable]
   - name: one
     display:
       char: '1'
       attr: gold
     description:
-    - A disk of radius 1.
+      - A disk of radius 1.
     properties: [portable]
   - name: blocked one
     display:
       char: '1'
       attr: entity
     description:
-    - A disk of radius 1.
+      - A disk of radius 1.
     properties: [unwalkable]
   - name: blocked two
     display:
       char: '2'
       attr: entity
     description:
-    - A disk of radius 2.
+      - A disk of radius 2.
     properties: [unwalkable]
   - name: blocked three
     display:
       char: '3'
       attr: entity
     description:
-    - A disk of radius 3.
+      - A disk of radius 3.
     properties: [unwalkable]
   - name: OK
     display:
@@ -173,7 +171,6 @@ world:
     '.': [stone, null, invariant]
     '^': [grass, null, increasing]
     'X': [grass, three, count]
-
   upperleft: [-3, 1]
   map: |
     ┌─────┐

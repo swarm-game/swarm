@@ -1,14 +1,13 @@
 version: 1
 name: Mithril
 author: Brent Yorgey
-description: Race to mine some mithril.
-  See the Swarm wiki for more information on Swarm speedrunning.
+description: Race to mine some mithril. See the Swarm wiki for more information on Swarm speedrunning.
 objectives:
   - condition: as base {has "mithril"}
 robots:
   - name: base
-    loc: [0,0]
-    dir: [0,1]
+    loc: [0, 0]
+    dir: [0, 1]
     heavy: true
     display:
       char: Ω

@@ -9,19 +9,11 @@ description: |
 #
 objectives:
   - goal:
-      - Previously you learned how to plunder a plentiful forest for wood.
-        Now you will learn how to plant trees to obtain as much wood as you need.
-      - There is a fast-growing tree (called "spruce") ahead of you.  You could `grab`
-        it as before, but you now have a new device called a `harvester`.
-        If you `harvest` a tree rather than `grab` it, a new tree will grow in its
-        place after some time.
-      - You can also place items from your inventory on the ground
-        below you using the `place` command.
-      - Using these commands in conjunction, you can plant new growable entities by
-        placing and then harvesting them.  For example, `place "spruce"; harvest` will
-        plant a new spruce seed.
-      - Your goal is to collect 6 spruce trees.  You can speed this up
-        by planting more trees.
+      - Previously you learned how to plunder a plentiful forest for wood. Now you will learn how to plant trees to obtain as much wood as you need.
+      - There is a fast-growing tree (called "spruce") ahead of you.  You could `grab` it as before, but you now have a new device called a `harvester`. If you `harvest` a tree rather than `grab` it, a new tree will grow in its place after some time.
+      - You can also place items from your inventory on the ground below you using the `place` command.
+      - Using these commands in conjunction, you can plant new growable entities by placing and then harvesting them.  For example, `place "spruce"; harvest` will plant a new spruce seed.
+      - Your goal is to collect 6 spruce trees.  You can speed this up by planting more trees.
       - |
         TIP: You can get a sneak peak at a feature we will explain later and type
         `def t = move; place "spruce"; harvest; end` after which you only need to type `t`
@@ -38,12 +30,12 @@ entities:
       attr: plant
       char: 'T'
     description:
-    - |
-      A tall, living entity made of a tough cellular material called "wood".
-      They regrow after being harvested and are an important raw ingredient used
-      in making many different devices.
-    - |
-      This one seems to grow a little faster.
+      - |
+        A tall, living entity made of a tough cellular material called "wood".
+        They regrow after being harvested and are an important raw ingredient used
+        in making many different devices.
+      - |
+        This one seems to grow a little faster.
     properties: [portable, growable]
     growth: [100, 120]
 solution: |
@@ -60,7 +52,7 @@ solution: |
   turn back; h; h; h; h; h; h;
 robots:
   - name: base
-    dir: [1,0]
+    dir: [1, 0]
     devices:
       - treads
       - grabber

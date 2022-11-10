@@ -31,8 +31,8 @@ solution: |
   reprogram fred {require "boat"; require "metal drill"; move; require 3 "rock"; move; require 5 "rock"}
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - 3D printer
       - logger

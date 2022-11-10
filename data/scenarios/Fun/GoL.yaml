@@ -7,8 +7,8 @@ robots:
     display:
       attr: robot
       char: 'Ω'
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - treads
       - compass
@@ -19,7 +19,7 @@ robots:
       - [1000, rock]
   - name: cell
     system: true
-    dir: [0,1]
+    dir: [0, 1]
     display:
       invisible: true
     inventory:
@@ -62,7 +62,7 @@ world:
   palette:
     'o': [ice, rock, cell]
     '.': [ice, null, cell]
-  upperleft: [1,-1]
+  upperleft: [1, -1]
   map: |
     ..............................
     ..............................

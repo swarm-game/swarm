@@ -15,21 +15,20 @@ objectives:
         botAlive <- isAlive "bot";
         return (baseAlive && not botAlive);
       } { return false; }
-
 solution: |
   log "start";
   wait 5;
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - treads
       - logger
     program: "move"
   - name: bot
-    loc: [0,-1]
-    dir: [1,0]
+    loc: [0, -1]
+    dir: [1, 0]
     devices:
       - treads
     program: "move"

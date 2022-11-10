@@ -16,11 +16,11 @@ solution: |
   salvage
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
   - name: fred
-    loc: [1,0]
-    dir: [0,0]
+    loc: [1, 0]
+    dir: [0, 0]
     inventory:
       - [1, rock]
 world:

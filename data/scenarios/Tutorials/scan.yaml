@@ -4,14 +4,9 @@ description: |
   Learn how to send robots to safely scan your surroundings.
 objectives:
   - goal:
-      - When you land on an alien planet, all the entities in the
-        world will be unfamiliar to you, but you can learn what they are using
-        the `scan` command, enabled by a `scanner` device.
-      - Send one or more robots to move next to some of the unknown entities (marked as ?),
-        scan them (with something like `scan forward` or `scan north`), and then return
-        to the base and execute `upload base`.
-      - For more information about the `scan` and `upload` commands, read
-        the description of the `scanner` in your inventory.
+      - When you land on an alien planet, all the entities in the world will be unfamiliar to you, but you can learn what they are using the `scan` command, enabled by a `scanner` device.
+      - Send one or more robots to move next to some of the unknown entities (marked as ?), scan them (with something like `scan forward` or `scan north`), and then return to the base and execute `upload base`.
+      - For more information about the `scan` and `upload` commands, read the description of the `scanner` in your inventory.
     condition: |
       try {
         bm <- as base {knows "mountain"};
@@ -30,7 +25,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [0,1]
+    dir: [0, 1]
     heavy: true
     display:
       char: Ω

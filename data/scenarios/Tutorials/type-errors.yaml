@@ -16,13 +16,8 @@ objectives:
         `place tree` (without double quotes around "tree")
       - |
         `move move`
-      - The last expression might give the most confusing error.
-        Obviously we are just missing a `;` separating the two `move`
-        commands.  However, without the semicolon, it looks like
-        `move` is a function being applied to an argument, but of course
-        `move` is not a function.
-      - Once you are done experimenting, execute `place "Win"` to finish this challenge and
-        move on to the next.
+      - The last expression might give the most confusing error. Obviously we are just missing a `;` separating the two `move` commands.  However, without the semicolon, it looks like `move` is a function being applied to an argument, but of course `move` is not a function.
+      - Once you are done experimenting, execute `place "Win"` to finish this challenge and move on to the next.
     condition: |
       try {
         w <- as base {has "Win"};
@@ -40,7 +35,7 @@ solution: |
   place "Win"
 robots:
   - name: base
-    dir: [1,0]
+    dir: [1, 0]
     devices:
       - treads
       - compass

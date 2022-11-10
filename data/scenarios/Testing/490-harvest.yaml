@@ -18,8 +18,8 @@ solution: |
   move; harvest; move; grab; turn right; move; grab; grab; harvest; grab
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - treads
       - harvester

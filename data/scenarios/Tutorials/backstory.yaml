@@ -4,29 +4,9 @@ description: |
   Introduction to the backstory of Swarm.
 objectives:
   - goal:
-      - In a shockingly original turn of events, you have crash landed
-        on an alien planet!  It's not clear how you'll ever get home,
-        but since you're here, you might as well explore a bit. Your
-        sensors indicate that the atmosphere is highly toxic, so
-        you'll have to stay inside your robotic base, with its
-        built-in life support system. However, you are stocked with
-        all the materials you need to build robots to explore
-        for you!
-      - To start, you only have some very basic
-        devices which can give your robots abilities like moving, turning,
-        grabbing things, and interpreting very simple imperative
-        programs. As you use your robots to gather resources, you will
-        be able to construct better devices, which in turn allow you to
-        construct robots with upgraded abilities and programming
-        language features, which in turn allow you to program more
-        sophisticated robots which in turn will... you get the
-        idea.
-      - To prepare you, this simulator will walk you through a series of hands-on
-        exercises that introduce you to the way robots work and the programming
-        language you will use to control them.  Note that your progress through
-        the tutorials will be saved automatically.  You can return to
-        the menu at any time to jump around between tutorials or pick
-        up again where you left off.
+      - In a shockingly original turn of events, you have crash landed on an alien planet!  It's not clear how you'll ever get home, but since you're here, you might as well explore a bit. Your sensors indicate that the atmosphere is highly toxic, so you'll have to stay inside your robotic base, with its built-in life support system. However, you are stocked with all the materials you need to build robots to explore for you!
+      - To start, you only have some very basic devices which can give your robots abilities like moving, turning, grabbing things, and interpreting very simple imperative programs. As you use your robots to gather resources, you will be able to construct better devices, which in turn allow you to construct robots with upgraded abilities and programming language features, which in turn allow you to program more sophisticated robots which in turn will... you get the idea.
+      - To prepare you, this simulator will walk you through a series of hands-on exercises that introduce you to the way robots work and the programming language you will use to control them.  Note that your progress through the tutorials will be saved automatically.  You can return to the menu at any time to jump around between tutorials or pick up again where you left off.
       - |
         When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
         and type at the prompt:
@@ -58,16 +38,16 @@ robots:
     display:
       char: 'Ω'
       attr: robot
-    dir: [1,0]
-    loc: [0,0]
+    dir: [1, 0]
+    loc: [0, 0]
     inventory:
       - [1, READY]
   - name: listener
     system: true
     display:
       invisible: true
-    loc: [0,0]
-    dir: [0,0]
+    loc: [0, 0]
+    dir: [0, 0]
     inventory:
       - [0, READY]
     devices:

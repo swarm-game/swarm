@@ -30,10 +30,7 @@ objectives:
         This could be useful, for example, if you do not care what you
         grabbed and just want to move it to another cell, or if you
         are not sure of the name of the thing being grabbed.
-      - Once you are done experimenting, do `place "Win"` to finish this challenge.
-        (Note, you might need to `grab` the entity you are standing on
-        or move to an empty cell first, since each cell can only
-        contain at most one entity.)
+      - Once you are done experimenting, do `place "Win"` to finish this challenge. (Note, you might need to `grab` the entity you are standing on or move to an empty cell first, since each cell can only contain at most one entity.)
     condition: |
       try {
         w <- as base {has "Win"};
@@ -48,12 +45,11 @@ entities:
       char: 'W'
     description:
       - Do `place "Win"` once you are done with this challenge.
-      - You might need to `grab` the entity you are standing on
-        or move to an empty cell first.
+      - You might need to `grab` the entity you are standing on or move to an empty cell first.
     properties: [known, portable]
 robots:
   - name: base
-    dir: [1,0]
+    dir: [1, 0]
     devices:
       - treads
       - grabber

@@ -30,8 +30,8 @@ solution: |
   place "detonator";
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - treads
       - logger

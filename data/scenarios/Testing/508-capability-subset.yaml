@@ -21,8 +21,8 @@ solution: |
   }
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - logger
       - net
@@ -58,7 +58,7 @@ entities:
       attr: water
       char: 'G'
     description:
-    - A satellite navigation device.
+      - A satellite navigation device.
     properties: [known, portable]
     capabilities: [senseloc]
   - name: Tardis
@@ -66,6 +66,6 @@ entities:
       attr: water
       char: '█'
     description:
-    - Bigger on the inside.
+      - Bigger on the inside.
     properties: [known, portable]
     capabilities: [senseloc, teleport]

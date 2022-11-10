@@ -4,13 +4,10 @@ description: |
   Learn how to move and chain commands.
 objectives:
   - goal:
-      - Robots can use the `move` command to move forward one unit
-        in the direction they are currently facing.
-      - To complete this challenge, move your robot two spaces to the right,
-        to the coordinates (2,0) marked with the purple flower.
+      - Robots can use the `move` command to move forward one unit in the direction they are currently facing.
+      - To complete this challenge, move your robot two spaces to the right, to the coordinates (2,0) marked with the purple flower.
       - Note that you can chain commands with semicolon, `;`.
-      - You can open this popup window at any time to remind yourself of the goal
-        using Ctrl-G.
+      - You can open this popup window at any time to remind yourself of the goal using Ctrl-G.
     condition: |
       r <- robotNamed "check1";
       loc <- as r {has "Win"};
@@ -20,44 +17,29 @@ objectives:
         Previously you could move twice by chaining the move command:
       - |
         move; move
-      - To reuse that command without having to retype it press the upward
-        arrow on your keyboard. This will allow you to select previous commands.
-      - Ahead of you is a six steps long corridor. Move to its end, i.e. the
-        coordinates (8,0) marked with the second purple flower.
-      - You can open this popup window at any time to remind yourself of the goal
-        using Ctrl-G.
+      - To reuse that command without having to retype it press the upward arrow on your keyboard. This will allow you to select previous commands.
+      - Ahead of you is a six steps long corridor. Move to its end, i.e. the coordinates (8,0) marked with the second purple flower.
+      - You can open this popup window at any time to remind yourself of the goal using Ctrl-G.
     condition: |
       r <- robotNamed "check2";
       loc <- as r {has "Win"};
   - goal:
-      - Well done! In addition to `move`, you can use the `turn` command
-        to turn your robot, for example, `turn right` or `turn east`.
-      - Switch to the inventory view in the upper left (by clicking on it or typing `Alt+E`)
-        and select the `treads` device to read about the details.
-        If the bottom-left info panel is not big enough to read the
-        whole thing, you can hit `Enter` on the `treads` device to pop
-        out the description, or you can focus the info panel (with
-        `Alt+T` or by clicking) and scroll it with arrow keys or PgUp/PgDown.
-        When you're done reading, you can come back to the REPL prompt
-        by clicking on it or typing `Alt+R`.
-      - Afterwards, move your robot to the coordinates (8,4) in the northeast corner
-        marked with two flowers.
+      - Well done! In addition to `move`, you can use the `turn` command to turn your robot, for example, `turn right` or `turn east`.
+      - Switch to the inventory view in the upper left (by clicking on it or typing `Alt+E`) and select the `treads` device to read about the details. If the bottom-left info panel is not big enough to read the whole thing, you can hit `Enter` on the `treads` device to pop out the description, or you can focus the info panel (with `Alt+T` or by clicking) and scroll it with arrow keys or PgUp/PgDown. When you're done reading, you can come back to the REPL prompt by clicking on it or typing `Alt+R`.
+      - Afterwards, move your robot to the coordinates (8,4) in the northeast corner marked with two flowers.
       - |
         Remember, you can chain commands with `;`, for example:
       - |
         `move;move;move;move`
-      - You can open this popup window at any time to remind yourself of the goal
-        using Ctrl-G.
+      - You can open this popup window at any time to remind yourself of the goal using Ctrl-G.
     condition: |
       r <- robotNamed "check3";
       loc <- as r {has "Win"};
   - goal:
       - Good job! You are now ready to move and turn on your own.
-      - To complete this challenge, move your robot to the northeast corner,
-        to the coordinates (8,8) marked with one flower.
+      - To complete this challenge, move your robot to the northeast corner, to the coordinates (8,8) marked with one flower.
       - Remember you can press the upward arrow on your keyboard to select previous commands.
-      - You can open this popup window at any time to remind yourself of the goal
-        using Ctrl-G.
+      - You can open this popup window at any time to remind yourself of the goal using Ctrl-G.
     condition: |
       r <- robotNamed "check4";
       loc <- as r {has "Win"};
@@ -131,7 +113,6 @@ world:
     ┌───┐--d22c
     │..*1....X|
     └───┘-----b
-
 # Font inspiration and a nicely visible separator:
 #
 # ███████ ██     ██  █████  ██████  ███    ███ 
@@ -139,11 +120,10 @@ world:
 # ███████ ██  █  ██ ███████ ██████  ██ ████ ██ 
 #      ██ ██ ███ ██ ██   ██ ██   ██ ██  ██  ██ 
 # ███████  ███ ███  ██   ██ ██   ██ ██      ██ 
-
 robots:
   - name: base
-    dir: [1,0]
-    loc: [0,0]
+    dir: [1, 0]
+    loc: [0, 0]
     devices:
       - treads
       - logger
@@ -152,7 +132,7 @@ robots:
   ## OBJECTIVES  ##
   #################
   - name: check1
-    loc: [2,0]
+    loc: [2, 0]
     system: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
@@ -165,7 +145,7 @@ robots:
       );
       create "Win"
   - name: check2
-    loc: [8,0]
+    loc: [8, 0]
     system: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
@@ -178,7 +158,7 @@ robots:
       );
       create "Win"
   - name: check3
-    loc: [8,4]
+    loc: [8, 4]
     system: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
@@ -191,7 +171,7 @@ robots:
       );
       create "Win"
   - name: check4
-    loc: [8,8]
+    loc: [8, 8]
     system: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;

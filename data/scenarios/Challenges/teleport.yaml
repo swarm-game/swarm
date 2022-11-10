@@ -18,8 +18,8 @@ solution: |
   turn back; move;move;move; w10; move;move;move; grab
 robots:
   - name: base
-    loc: [3,0]
-    dir: [1,0]
+    loc: [3, 0]
+    dir: [1, 0]
     devices:
       - treads
       - logger
@@ -29,8 +29,8 @@ robots:
       - [0, lambda]
   - name: portkey1
     system: true
-    loc: [0,0]
-    dir: [0,0]
+    loc: [0, 0]
+    dir: [0, 0]
     program: |
       def forever = \prog. wait 10; prog; forever prog; end;
       destRob <- robotNamed "portkey2";
@@ -42,8 +42,8 @@ robots:
       );
   - name: portkey2
     system: true
-    loc: [16,0]
-    dir: [0,0]
+    loc: [16, 0]
+    dir: [0, 0]
     program: |
       def forever = \prog. wait 10; prog; forever prog; end;
       wait 5;

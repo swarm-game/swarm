@@ -4,8 +4,7 @@ description: |
   Learn how to view built robots and debug them.
 objectives:
   - goal:
-      - Before you send your robots far away you need to learn how
-        to figure out what went wrong with them if they crash.
+      - Before you send your robots far away you need to learn how to figure out what went wrong with them if they crash.
       - |
         In this challenge, you should start by
         sending a robot to walk four steps straight east into the mountain,
@@ -16,10 +15,7 @@ objectives:
         For example:
       - |
         build {log "Hi!"; turn east; move; move; move; log "3"; move; log "OK"}
-      - After the robot crashes, execute `view it0` (or whichever
-        `itN` variable corresponds to the result of the `build`
-        command) to see how far it got. Further instructions should
-        appear in the crashed robot's log.
+      - After the robot crashes, execute `view it0` (or whichever `itN` variable corresponds to the result of the `build` command) to see how far it got. Further instructions should appear in the crashed robot's log.
     condition: |
       try {
         as base {has "Win"}
@@ -36,7 +32,7 @@ solution: |
   run "scenarios/Tutorials/crash-solution.sw"
 robots:
   - name: base
-    dir: [0,1]
+    dir: [0, 1]
     heavy: true
     display:
       char: Ω

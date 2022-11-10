@@ -4,18 +4,10 @@ description: |
   Learn about the Swarm type system.
 objectives:
   - goal:
-      - The Swarm programming language has a strong static type system.  That is,
-        every expression in the language has a type, and all the types must match up
-        properly before a program can be executed.
-      - To see the type of an expression, enter the expression at the
-        REPL prompt (you do not need to execute it).  If the expression type checks,
-        its type will be displayed in gray text at the top right of the window.
-      - For example, if you try typing `move`, you can see that it has
-        type `cmd unit`, which means that `move` is a command which
-        returns a value of the unit type (also written `()`).
-      - As another example, you can see that `turn` has type `dir -> cmd unit`,
-        meaning that `turn` is a function which takes a direction as input
-        and results in a command.
+      - The Swarm programming language has a strong static type system.  That is, every expression in the language has a type, and all the types must match up properly before a program can be executed.
+      - To see the type of an expression, enter the expression at the REPL prompt (you do not need to execute it).  If the expression type checks, its type will be displayed in gray text at the top right of the window.
+      - For example, if you try typing `move`, you can see that it has type `cmd unit`, which means that `move` is a command which returns a value of the unit type (also written `()`).
+      - As another example, you can see that `turn` has type `dir -> cmd unit`, meaning that `turn` is a function which takes a direction as input and results in a command.
       - "Here are a few more expressions for you to try (feel free to try others as well):"
       - |
         north
@@ -29,8 +21,7 @@ objectives:
         3
       - |
         "tree"
-      - Once you are done experimenting, execute `place "Win"` to finish this challenge and
-        move on to the next.
+      - Once you are done experimenting, execute `place "Win"` to finish this challenge and move on to the next.
     condition: |
       try {
         w <- as base {has "Win"};
@@ -46,10 +37,9 @@ entities:
     properties: [known, portable]
 solution: |
   place "Win"
-
 robots:
   - name: base
-    dir: [1,0]
+    dir: [1, 0]
     devices:
       - treads
       - compass

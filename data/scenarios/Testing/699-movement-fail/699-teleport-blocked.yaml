@@ -19,18 +19,18 @@ solution: |
   try {teleport self (3,0)} {teleport self (5,0)}
 robots:
   - name: base
-    dir: [0,0]
+    dir: [0, 0]
   - name: one
-    dir: [1,0]
+    dir: [1, 0]
   - name: two
-    dir: [-1,0]
+    dir: [-1, 0]
   - name: three
-    dir: [0,1]
+    dir: [0, 1]
     system: true
     program: |
       t <- robotNamed "four"; teleport t (3,0); teleport self (3,0)
   - name: four
-    dir: [0,-1]
+    dir: [0, -1]
     system: true
 world:
   default: [blank]

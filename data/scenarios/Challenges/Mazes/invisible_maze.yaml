@@ -1,22 +1,17 @@
 version: 1
 name: Invisible maze
 author: Brent Yorgey
-description: There is a maze, but it can't be seen, only sensed... can you
-  program a robot to navigate it successfully?
+description: There is a maze, but it can't be seen, only sensed... can you program a robot to navigate it successfully?
 objectives:
-- goal:
-  - There is a maze, but it can't be seen, only sensed... can you
-    program a robot to navigate it successfully?  You need to get a robot
-    to the goal square, labelled with an exclamation mark; you win by `grab`bing
-    the `goal`.
-  - In this challenge, it is guaranteed that the maze is a tree, that is,
-    there are no loops within the maze.
-  condition: |
-    try {
-      teleport self (27, -17);
-      b <- ishere "goal";
-      return (not b)
-    } { return false }
+  - goal:
+      - There is a maze, but it can't be seen, only sensed... can you program a robot to navigate it successfully?  You need to get a robot to the goal square, labelled with an exclamation mark; you win by `grab`bing the `goal`.
+      - In this challenge, it is guaranteed that the maze is a tree, that is, there are no loops within the maze.
+    condition: |
+      try {
+        teleport self (27, -17);
+        b <- ishere "goal";
+        return (not b)
+      } { return false }
 solution: |
   def tL = turn left end;
   def tR = turn right end;
@@ -29,7 +24,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [0,1]
+    dir: [0, 1]
     display:
       char: 'Ω'
       attr: robot
@@ -55,14 +50,14 @@ entities:
     display:
       invisible: true
     description:
-    - An invisible wall.
+      - An invisible wall.
     properties: [unwalkable, known]
   - name: goal
     display:
       char: '!'
       attr: device
     description:
-    - The place you're trying to reach!  You win by executing `grab` on this item.
+      - The place you're trying to reach!  You win by executing `grab` on this item.
     properties: [known, portable]
 world:
   default: [grass]
@@ -72,7 +67,7 @@ world:
     'x': [grass, wall]
     '@': [grass, boulder]
     '!': [grass, goal]
-  upperleft: [-1,1]
+  upperleft: [-1, 1]
   map: |
     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     @Ω........x...x..............@

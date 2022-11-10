@@ -4,19 +4,14 @@ description: |
   Learn how to define new commands.
 objectives:
   - goal:
-      - Your goal is to build a robot to fetch the flower growing in the
-        upper right and bring it back to you; you win the challenge when the base
-        has a flower in its inventory.
+      - Your goal is to build a robot to fetch the flower growing in the upper right and bring it back to you; you win the challenge when the base has a flower in its inventory.
       - |
         However, it would be extremely tedious to simply type out all the individual
         `move` and `turn` commands required.  Your base has a `dictionary` device
         that can be used to define new commands.  For example:
       - |
         def m4 : cmd unit = move; move; move; move end
-      - defines a new command `m4`, with type `cmd unit`, as four consecutive `move` commands.
-        With judicious
-        use of new definitions, it should be possible to complete this challenge
-        in just a few lines of code.
+      - defines a new command `m4`, with type `cmd unit`, as four consecutive `move` commands. With judicious use of new definitions, it should be possible to complete this challenge in just a few lines of code.
       - |
         TIP: your base is at coordinates (0,0), and the flower is at (16,4), which
         you can confirm by clicking in the world map panel. When you click on a cell,
@@ -50,7 +45,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [0,1]
+    dir: [0, 1]
     display:
       char: Ω
       attr: robot

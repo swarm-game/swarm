@@ -18,8 +18,8 @@ solution: |
   swap "bitcoin"; swap "gold coin";
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     devices:
       - logger
       - scanner
@@ -29,8 +29,8 @@ robots:
       - [1, gold coin]
       - [1, bitcoin]
   - name: watcher
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: [1, 0]
     system: true
     devices:
       - logger
