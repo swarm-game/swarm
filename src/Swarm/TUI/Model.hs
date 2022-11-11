@@ -140,6 +140,8 @@ module Swarm.TUI.Model (
   restartGame,
   scenarioToAppState,
   Seed,
+  -- *** Re-exported types used in options
+  ColorMode(..),
 
   -- ** Utility
   topContext,
@@ -203,6 +205,7 @@ import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import System.Clock
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
 import Witch (into)
+import Graphics.Vty (ColorMode(..))
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -935,7 +938,7 @@ data AppOpts = AppOpts
   , -- | Should cheat mode be enabled?
     cheatMode :: Bool
   , -- | Use full colours.
-    fullColour :: Bool
+    colorMode :: Maybe ColorMode
   , -- | Explicit port on which to run the web API
     userWebPort :: Maybe Port
   , -- | Information about the Git repository (not present in release).

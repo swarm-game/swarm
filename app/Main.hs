@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Main where
 
@@ -14,11 +15,12 @@ import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.TUI.Model (AppOpts (..))
+import Swarm.TUI.Model (AppOpts (..), ColorMode(..))
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPrint, stderr)
+import Text.Read (readMaybe)
 
 gitInfo :: Maybe GitInfo
 gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
@@ -115,8 +117,17 @@ cliParser =
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   cheat :: Parser Bool
   cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
-  color :: Parser Bool
-  color = switch (long "full-color" <> short 'c' <> help "Use full color mode.")
+  color :: Parser (Maybe ColorMode)
+  color = optional $ option colorModeParser (long "full-color" <> short 'c' <> metavar "MODE" <> help "Use none/8/16/full color mode.")
+  colorModeParser = Data.Foldable.asum
+    [ ColorMode8 <$ text "8"
+    , ColorMode16 <$ text "16"
+    , ColorMode240 <$> maybeReader (\case ('2':'4':'0':'_':w) -> readMaybe w; _ -> Nothing)
+    , FullColor <$ text "full"
+    , NoColor <$ text "none"
+    ]
+  text t = maybeReader (\x -> if x == t then Just x else Nothing)
+
 
 cliInfo :: ParserInfo CLI
 cliInfo =

@@ -92,8 +92,7 @@ appMain opts = do
             handleEvent e
 
       -- Setup virtual terminal
-      let useFullColor = if fullColour opts then \c -> c {V.colorMode = Just V.FullColor} else id
-      let buildVty = V.mkVty $ useFullColor V.defaultConfig
+      let buildVty = V.mkVty $ V.defaultConfig {V.colorMode = colorMode opts}
       initialVty <- buildVty
       V.setMode (V.outputIface initialVty) V.Mouse True
 
@@ -114,7 +113,7 @@ demoWeb = do
           , scriptToRun = Nothing
           , autoPlay = False
           , cheatMode = False
-          , fullColour = False
+          , colorMode = Nothing
           , userWebPort = Nothing
           , repoGitInfo = Nothing
           }
