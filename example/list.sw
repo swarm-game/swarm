@@ -148,7 +148,7 @@ end
 // nil : listI
 def nil = 0 end
 
-// Add non-negative number to beggining of list (cons adds the sign)
+// Add non-negative number to beginning of list (cons adds the sign)
 // consP : nat -> listI -> int
 def consP = \x.\xs.
   if (x == 0)
@@ -159,7 +159,7 @@ def consP = \x.\xs.
     }
 end
 
-// Add integer to the beggining of the list
+// Add integer to the beginning of the list
 // consP : int -> listI -> listI
 def cons = \x.\xs.
   if (x >= 0)

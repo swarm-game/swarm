@@ -230,7 +230,7 @@ data TypeErr
 
 -- | Various reasons the body of an @atomic@ might be invalid.
 data InvalidAtomicReason
-  = -- | The arugment has too many tangible commands.
+  = -- | The argument has too many tangible commands.
     TooManyTicks Int
   | -- | The argument uses some way to duplicate code: @def@, @let@, or lambda.
     AtomicDupingThing

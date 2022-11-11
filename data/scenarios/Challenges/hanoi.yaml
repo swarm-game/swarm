@@ -57,7 +57,7 @@ robots:
       // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       // if
       //  0. I stand on unlocked X
-      //  1. place noth of me is NOT empty
+      //  1. place north of me is NOT empty
       // then
       //  - lock X
       run "scenarios/Challenges/hanoi-invariant.sw"
