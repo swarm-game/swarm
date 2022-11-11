@@ -57,7 +57,7 @@ robots:
       // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       // if
       //  0. I stand on unlocked X
-      //  1. place noth of me is NOT empty
+      //  1. place north of me is NOT empty
       // then
       //  - lock X
       run "scenarios/Challenges/hanoi-invariant.sw"
@@ -157,7 +157,7 @@ known:
 world:
   default: [grass, null]
   palette:
-    ' ': [grass]
+    ',': [grass]
     '_': [stone]
     'v': [stone, null, base]
     '┌': [stone, upper left corner]
@@ -182,5 +182,5 @@ world:
     │2│.│.│
     │3│.│.│
     └─┴─┴─┘
-     ^ ^ ^ 
-       X   
+    ,^,^,^,
+    ,,,X,,,

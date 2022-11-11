@@ -111,14 +111,14 @@ import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
 -- | A record that stores the information
---   for all defintions stored in a 'Robot'
+--   for all definitions stored in a 'Robot'
 data RobotContext = RobotContext
   { -- | Map definition names to their types.
     _defTypes :: TCtx
-  , -- | Map defintion names to the capabilities
+  , -- | Map definition names to the capabilities
     --   required to evaluate/execute them.
     _defReqs :: ReqCtx
-  , -- | Map defintion names to their values. Note that since
+  , -- | Map definition names to their values. Note that since
     --   definitions are delayed, the values will just consist of
     --   'VRef's pointing into the store.
     _defVals :: Env
