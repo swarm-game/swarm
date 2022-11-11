@@ -108,7 +108,7 @@ cliParser =
             <> help ("Set the web service port (or disable it with 0). Default to " <> show defaultPort <> ".")
         )
   scenario :: Parser (Maybe String)
-  scenario = optional $ strOption (long "scenario" <> short 's' <> metavar "FILE" <> help "Name of a scenario to load")
+  scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
   autoplay :: Parser Bool
