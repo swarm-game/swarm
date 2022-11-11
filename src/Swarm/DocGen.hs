@@ -415,7 +415,7 @@ recipesToDot classic emap recipes = do
   world <- diamond "World"
   base <- diamond "Base"
   -- --------------------------------------------------------------------------
-  -- add nodes with for all the known entites
+  -- add nodes with for all the known entities
   let enames' = toList . Map.keysSet . entitiesByName $ emap
       enames = filter (`Set.notMember` ignoredEntites) enames'
   ebmap <- Map.fromList . zip enames <$> mapM (box . unpack) enames
@@ -425,7 +425,7 @@ recipesToDot classic emap recipes = do
       getE = safeGetEntity ebmap
       nid = getE . view entityName
   -- --------------------------------------------------------------------------
-  -- Get the starting inventories, entites present in the world and compute
+  -- Get the starting inventories, entities present in the world and compute
   -- how hard each entity is to get - see 'recipeLevels'.
   let devs = startingDevices classic
       inv = startingInventory classic
@@ -439,13 +439,13 @@ recipesToDot classic emap recipes = do
     mapM_ ((base ---<>) . nid) devs
     mapM_ ((base .->.) . nid . fst) $ Map.toList inv
   -- --------------------------------------------------------------------------
-  -- World entites
+  -- World entities
   (_wc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "forestgreen")
     mapM_ ((uncurry (Dot..->.) . (world,)) . getE) (toList testWorld2Entites)
   -- --------------------------------------------------------------------------
-  let -- put a hidden node above and below entites and connect them by hidden edges
+  let -- put a hidden node above and below entities and connect them by hidden edges
       wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
       wrapBelowAbove ns = do
         b <- hiddenNode
@@ -454,7 +454,7 @@ recipesToDot classic emap recipes = do
         mapM_ (b .~>.) ns'
         mapM_ (.~>. t) ns'
         return (b, t)
-      -- put set of entites in nice
+      -- put set of entities in nice
       subLevel :: Int -> Set Entity -> Dot (NodeId, NodeId)
       subLevel i ns = fmap snd . Dot.cluster $ do
         Dot.attribute ("style", "filled")
@@ -471,7 +471,7 @@ recipesToDot classic emap recipes = do
             ]
         return bt
   -- --------------------------------------------------------------------------
-  -- order entites into clusters based on how "far" they are from
+  -- order entities into clusters based on how "far" they are from
   -- what is available at the start - see 'recipeLevels'.
   bottom <- wrapBelowAbove worldEntites
   ls <- zipWithM subLevel [1 ..] (tail levels)
@@ -495,14 +495,14 @@ recipesToDot classic emap recipes = do
 -- RECIPE LEVELS
 -- ----------------------------------------------------------------------------
 
--- | Order entites in sets depending on how soon it is possible to obtain them.
+-- | Order entities in sets depending on how soon it is possible to obtain them.
 --
 -- So:
---  * Level 0 - starting entites (for example those obtainable in the world)
+--  * Level 0 - starting entities (for example those obtainable in the world)
 --  * Level N+1 - everything possible to make (or drill) from Level N
 --
--- This is almost a BFS, but the requirement is that the set of entites
--- required for recipe is subset of the entites known in Level N.
+-- This is almost a BFS, but the requirement is that the set of entities
+-- required for recipe is subset of the entities known in Level N.
 --
 -- If we ever depend on some graph library, this could be rewritten
 -- as some BFS-like algorithm with added recipe nodes, but you would
@@ -524,7 +524,7 @@ recipeLevels recipes start = levels
             then ls
             else go (n : ls) (Set.union n known)
 
--- | Get classic scenario to figure out starting entites.
+-- | Get classic scenario to figure out starting entities.
 classicScenario :: ExceptT Text IO Scenario
 classicScenario = do
   entities <- loadEntities >>= guardRight "load entities"
@@ -536,7 +536,7 @@ startingDevices = Set.fromList . map snd . E.elems . view installedDevices . ins
 startingInventory :: Scenario -> Map Entity Int
 startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots
 
--- | Ignore utility entites that are just used for tutorials and challenges.
+-- | Ignore utility entities that are just used for tutorials and challenges.
 ignoredEntites :: Set Text
 ignoredEntites =
   Set.fromList

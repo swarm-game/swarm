@@ -167,7 +167,7 @@ defaultEntityDisplay c =
 --   priority 10.
 --
 --   Note that the 'defaultChar' is used for direction 'DDown'
---   and is overriden for the special base robot.
+--   and is overridden for the special base robot.
 defaultRobotDisplay :: Display
 defaultRobotDisplay =
   Display

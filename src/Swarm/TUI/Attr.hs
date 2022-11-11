@@ -15,7 +15,7 @@
 -- and not those used in the world map, to avoid abusing attributes.
 -- For example using the robot attribute to highlight some text.
 --
--- The few attributes that we use for drawing the logo are an exeption.
+-- The few attributes that we use for drawing the logo are an exception.
 module Swarm.TUI.Attr (
   swarmAttrMap,
   worldAttributes,
