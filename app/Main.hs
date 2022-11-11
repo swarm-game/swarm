@@ -118,7 +118,7 @@ cliParser =
   cheat :: Parser Bool
   cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
   color :: Parser (Maybe ColorMode)
-  color = optional $ option colorModeParser (long "full-color" <> short 'c' <> metavar "MODE" <> help "Use none/8/16/full color mode.")
+  color = optional $ option colorModeParser (long "color" <> short 'c' <> metavar "MODE" <> help "Use none/8/16/full color mode.")
   colorModeParser =
     Data.Foldable.asum
       [ ColorMode8 <$ text "8"

@@ -938,7 +938,7 @@ data AppOpts = AppOpts
     autoPlay :: Bool
   , -- | Should cheat mode be enabled?
     cheatMode :: Bool
-  , -- | Use full colours.
+  , -- | What colour mode should be used?
     colorMode :: Maybe ColorMode
   , -- | Explicit port on which to run the web API
     userWebPort :: Maybe Port
