@@ -934,6 +934,8 @@ data AppOpts = AppOpts
     autoPlay :: Bool
   , -- | Should cheat mode be enabled?
     cheatMode :: Bool
+  , -- | Use full colours.
+    fullColour :: Bool
   , -- | Explicit port on which to run the web API
     userWebPort :: Maybe Port
   , -- | Information about the Git repository (not present in release).

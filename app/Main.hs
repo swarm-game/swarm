@@ -45,7 +45,17 @@ cliParser =
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
     )
-    <|> Run <$> (AppOpts <$> seed <*> scenario <*> run <*> autoplay <*> cheat <*> webPort <*> pure gitInfo)
+    <|> Run
+      <$> ( AppOpts
+              <$> seed
+              <*> scenario
+              <*> run
+              <*> autoplay
+              <*> cheat
+              <*> color
+              <*> webPort
+              <*> pure gitInfo
+          )
  where
   format :: Parser CLI
   format =
@@ -98,13 +108,15 @@ cliParser =
             <> help ("Set the web service port (or disable it with 0). Default to " <> show defaultPort <> ".")
         )
   scenario :: Parser (Maybe String)
-  scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
+  scenario = optional $ strOption (long "scenario" <> short 's' <> metavar "FILE" <> help "Name of a scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
   autoplay :: Parser Bool
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   cheat :: Parser Bool
   cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
+  color :: Parser Bool
+  color = switch (long "full-color" <> short 'c' <> help "Use full color mode.")
 
 cliInfo :: ParserInfo CLI
 cliInfo =

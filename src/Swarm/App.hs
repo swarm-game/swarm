@@ -91,10 +91,13 @@ appMain opts = do
             liftIO $ writeIORef appStateRef curSt
             handleEvent e
 
-      -- Run the app.
-      let buildVty = V.mkVty V.defaultConfig
+      -- Setup virtual terminal
+      let useFullColor = if fullColour opts then \c -> c {V.colorMode = Just V.FullColor} else id
+      let buildVty = V.mkVty $ useFullColor V.defaultConfig
       initialVty <- buildVty
       V.setMode (V.outputIface initialVty) V.Mouse True
+
+      -- Run the app.
       void $ customMain initialVty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
@@ -111,6 +114,7 @@ demoWeb = do
           , scriptToRun = Nothing
           , autoPlay = False
           , cheatMode = False
+          , fullColour = False
           , userWebPort = Nothing
           , repoGitInfo = Nothing
           }
