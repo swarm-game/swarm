@@ -140,8 +140,9 @@ module Swarm.TUI.Model (
   restartGame,
   scenarioToAppState,
   Seed,
+
   -- *** Re-exported types used in options
-  ColorMode(..),
+  ColorMode (..),
 
   -- ** Utility
   topContext,
@@ -176,6 +177,7 @@ import Data.Text.Zipper qualified as TZ
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
+import Graphics.Vty (ColorMode (..))
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
@@ -205,7 +207,6 @@ import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import System.Clock
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
 import Witch (into)
-import Graphics.Vty (ColorMode(..))
 
 ------------------------------------------------------------
 -- Custom UI label types
