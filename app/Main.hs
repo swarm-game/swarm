@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -14,11 +15,12 @@ import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.TUI.Model (AppOpts (..))
+import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPrint, stderr)
+import Text.Read (readMaybe)
 
 gitInfo :: Maybe GitInfo
 gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
@@ -45,7 +47,17 @@ cliParser =
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
     )
-    <|> Run <$> (AppOpts <$> seed <*> scenario <*> run <*> autoplay <*> cheat <*> webPort <*> pure gitInfo)
+    <|> Run
+      <$> ( AppOpts
+              <$> seed
+              <*> scenario
+              <*> run
+              <*> autoplay
+              <*> cheat
+              <*> color
+              <*> webPort
+              <*> pure gitInfo
+          )
  where
   format :: Parser CLI
   format =
@@ -98,13 +110,24 @@ cliParser =
             <> help ("Set the web service port (or disable it with 0). Default to " <> show defaultPort <> ".")
         )
   scenario :: Parser (Maybe String)
-  scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
+  scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
   autoplay :: Parser Bool
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   cheat :: Parser Bool
   cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
+  color :: Parser (Maybe ColorMode)
+  color = optional $ option colorModeParser (long "color" <> short 'c' <> metavar "MODE" <> help "Use none/8/16/full color mode.")
+  colorModeParser =
+    Data.Foldable.asum
+      [ ColorMode8 <$ text "8"
+      , ColorMode16 <$ text "16"
+      , ColorMode240 <$> maybeReader (\case ('2' : '4' : '0' : '_' : w) -> readMaybe w; _ -> Nothing)
+      , FullColor <$ text "full"
+      , NoColor <$ text "none"
+      ]
+  text t = maybeReader (\x -> if x == t then Just x else Nothing)
 
 cliInfo :: ParserInfo CLI
 cliInfo =

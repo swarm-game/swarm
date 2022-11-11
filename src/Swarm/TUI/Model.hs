@@ -141,6 +141,9 @@ module Swarm.TUI.Model (
   scenarioToAppState,
   Seed,
 
+  -- *** Re-exported types used in options
+  ColorMode (..),
+
   -- ** Utility
   topContext,
   focusedItem,
@@ -174,6 +177,7 @@ import Data.Text.Zipper qualified as TZ
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
+import Graphics.Vty (ColorMode (..))
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
@@ -934,6 +938,8 @@ data AppOpts = AppOpts
     autoPlay :: Bool
   , -- | Should cheat mode be enabled?
     cheatMode :: Bool
+  , -- | What colour mode should be used?
+    colorMode :: Maybe ColorMode
   , -- | Explicit port on which to run the web API
     userWebPort :: Maybe Port
   , -- | Information about the Git repository (not present in release).
