@@ -417,7 +417,7 @@ recipesToDot classic emap recipes = do
   -- --------------------------------------------------------------------------
   -- add nodes with for all the known entities
   let enames' = toList . Map.keysSet . entitiesByName $ emap
-      enames = filter (`Set.notMember` ignoredEntites) enames'
+      enames = filter (`Set.notMember` ignoredEntities) enames'
   ebmap <- Map.fromList . zip enames <$> mapM (box . unpack) enames
   -- --------------------------------------------------------------------------
   -- getters for the NodeId based on entity name or the whole entity
@@ -537,8 +537,8 @@ startingInventory :: Scenario -> Map Entity Int
 startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots
 
 -- | Ignore utility entities that are just used for tutorials and challenges.
-ignoredEntites :: Set Text
-ignoredEntites =
+ignoredEntities :: Set Text
+ignoredEntities =
   Set.fromList
     [ "upper left corner"
     , "upper right corner"
