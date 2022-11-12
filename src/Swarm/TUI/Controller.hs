@@ -627,7 +627,6 @@ updateUI = do
   -- the new message can be seen.
   uiState . uiScrollToEnd .= False
   logUpdated <- do
-
     -- If the inventory or info panels are currently focused, it would
     -- be rude to update them right under the user's nose, so consider
     -- them "sticky".  They will be updated as soon as the player moves
