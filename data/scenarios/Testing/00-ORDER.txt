@@ -11,6 +11,8 @@
 555-teleport-location.yaml
 562-lodestone.yaml
 378-objectives.yaml
+379-possession-objective.yaml
+380-counting-objective.yaml
 684-swap.yaml
 699-movement-fail
 710-multi-robot.yaml

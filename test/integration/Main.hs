@@ -184,6 +184,11 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/504-teleport-self"
         , testSolution Default "Testing/508-capability-subset"
         , testGroup
+            "Possession criteria (#858)"
+            [ testSolution Default "Testing/379-possession-objective"
+            , testSolution Default "Testing/380-counting-objective"
+            ]
+        , testGroup
             "Require (#201)"
             [ testSolution Default "Testing/201-require/201-require-device"
             , testSolution Default "Testing/201-require/201-require-device-creative"

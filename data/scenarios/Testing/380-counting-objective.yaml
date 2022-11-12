@@ -1,0 +1,36 @@
+version: 1
+name: Evaluate count of an item
+description: |
+  The goal criteria is exactly the same as
+  379-possession-objective but evaluated
+  with the "count" function instead.
+creative: false
+objectives:
+  - goal:
+      - |
+        Get 1 tree.
+    condition: |-
+      as base {
+        itemCount <- count "tree";
+        return $ itemCount > 0;
+      };
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - treads
+      - scanner
+      - grabber
+solution: |
+  move;
+  grab;
+known: [tree]
+world:
+  default: [blank]
+  palette:
+    'B': [grass, null, base]
+    'w': [grass, tree]
+  upperleft: [0, 0]
+  map: |-
+    w
+    B
