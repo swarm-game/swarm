@@ -1,0 +1,25 @@
+>// SYNTAX TEST "swarm" "sample testcase"
+#^^ source.swarm comment.line.double-slash
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.swarm comment.line.double-slash
+>
+>def h: text = "Hello World" end;
+#^^^^ source.swarm keyword.control.dictionary.def
+#    ^ source.swarm keyword.control.dictionary.def entity.name.function
+#     ^ source.swarm keyword.control.dictionary.def
+#      ^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#            ^ source.swarm keyword.control.dictionary.def
+#             ^ source.swarm keyword.control.dictionary.def
+#              ^ source.swarm keyword.control.dictionary.def string.quoted.double
+#               ^^^^^^^^^^^ source.swarm keyword.control.dictionary.def string.quoted.double
+#                          ^ source.swarm keyword.control.dictionary.def string.quoted.double
+#                           ^ source.swarm keyword.control.dictionary.def
+#                            ^^^ source.swarm keyword.control.dictionary.def
+#                               ^^ source.swarm
+>
+>return "";
+#^^^^^^ source.swarm keyword.other
+#      ^ source.swarm
+#       ^ source.swarm string.quoted.double
+#        ^ source.swarm string.quoted.double
+#         ^^ source.swarm
+>

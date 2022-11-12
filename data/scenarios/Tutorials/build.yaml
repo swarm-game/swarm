@@ -1,3 +1,4 @@
+version: 1
 name: Build
 description: |
   Learn how to build robots to carry out simple tasks.
@@ -19,7 +20,8 @@ objectives:
         TIP: You can use the name of the flower directly ("pickerelweed"),
         or you can use bind notation: `f <- harvest; ... ; place f;`.
       - |
-        TIP: Newly built robots always start out facing north.
+        TIP: Newly built robots start out facing the same
+        direction as their parent, which in the tutorials will always be north.
     condition: |
       try {
         teleport self (0,-1);
@@ -42,14 +44,6 @@ entities:
     # It would make sense for the plant to NOT grow away from water.
     # But if the player sent a robot that grabbed it and then did not
     # place it, another robot would need to salvage that robot.
-  - name: knownwater
-    display:
-      attr: water
-      char: '~'
-    description:
-    - An running stream of of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
 solution: |
   build {turn right; move; move; t <- harvest; turn right; move; place t}
 robots:
@@ -68,12 +62,13 @@ robots:
       - [10, solar panel]
       - [10, harvester]
       - [10, treads]
+known: [water]
 world:
   default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]
-    '~': [ice, knownwater]
+    '~': [ice, water]
     '*': [grass, pickerelweed]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]

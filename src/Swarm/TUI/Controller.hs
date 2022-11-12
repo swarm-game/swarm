@@ -40,8 +40,8 @@ module Swarm.TUI.Controller (
 
 import Brick hiding (Direction)
 import Brick.Focus
-import Brick.Forms
 import Brick.Widgets.Dialog
+import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
@@ -57,15 +57,16 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Vector qualified as V
+import Data.Time (getZonedTime)
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Scenario, ScenarioCollection, ScenarioItem (..), objectiveGoal, scMap, scOrder, scenarioCollectionToList, scenarioItemName, _SISingle)
+import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue)
@@ -77,11 +78,14 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
 
@@ -89,10 +93,13 @@ import Witch (into)
 pattern Key :: V.Key -> BrickEvent n e
 pattern Key k = VtyEvent (V.EvKey k [])
 
-pattern CharKey, ControlKey, MetaKey :: Char -> BrickEvent n e
+pattern CharKey, ControlChar, MetaChar :: Char -> BrickEvent n e
 pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
-pattern ControlKey c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
-pattern MetaKey c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
+pattern ControlChar c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
+pattern MetaChar c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
+
+pattern ShiftKey :: V.Key -> BrickEvent n e
+pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
 
 pattern EscapeKey :: BrickEvent n e
 pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
@@ -102,19 +109,29 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleEvent e = do
-  s <- get
-  if s ^. uiState . uiPlaying
-    then handleMainEvent e
-    else
-      e & case s ^. uiState . uiMenu of
-        -- If we reach the NoMenu case when uiPlaying is False, just
-        -- quit the app.  We should actually never reach this code (the
-        -- quitGame function would have already halted the app).
-        NoMenu -> const halt
-        MainMenu l -> handleMainMenuEvent l
-        NewGameMenu l -> handleNewGameMenuEvent l
-        AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
+handleEvent = \case
+  -- the query for upstream version could finish at any time, so we have to handle it here
+  AppEvent (UpstreamVersion ev) -> do
+    let logReleaseEvent l e = runtimeState . eventLog %= logEvent l ("Release", -7) (T.pack $ show e)
+    case ev of
+      Left e@(FailedReleaseQuery _e) -> logReleaseEvent ErrorTrace e
+      Left e -> logReleaseEvent Said e
+      Right _ -> pure ()
+    runtimeState . upstreamRelease .= ev
+  e -> do
+    s <- get
+    if s ^. uiState . uiPlaying
+      then handleMainEvent e
+      else
+        e & case s ^. uiState . uiMenu of
+          -- If we reach the NoMenu case when uiPlaying is False, just
+          -- quit the app.  We should actually never reach this code (the
+          -- quitGame function would have already halted the app).
+          NoMenu -> const halt
+          MainMenu l -> handleMainMenuEvent l
+          NewGameMenu l -> handleNewGameMenuEvent l
+          MessagesMenu -> handleMainMessagesEvent
+          AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
@@ -144,14 +161,17 @@ handleMainMenuEvent menu = \case
           -- Extract the first tutorial challenge and run it
           let firstTutorial = case scOrder tutorialCollection of
                 Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
-                  Just (SISingle scene) -> scene
+                  Just (SISingle siPair) -> siPair
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
-          startGame firstTutorial
+          startGame firstTutorial Nothing
+        Messages -> do
+          runtimeState . eventLog . notificationsCount .= 0
+          uiState . uiMenu .= MessagesMenu
         About -> uiState . uiMenu .= AboutMenu
         Quit -> halt
   CharKey 'q' -> halt
-  ControlKey 'q' -> halt
+  ControlChar 'q' -> halt
   VtyEvent ev -> do
     menu' <- nestEventM' menu (handleListEvent ev)
     uiState . uiMenu .= MainMenu menu'
@@ -162,47 +182,35 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
   Just (SICollection _ c) -> c
   _ -> error "No tutorials exist!"
 
--- | Load a 'Scenario' and start playing the game.
-startGame :: Scenario -> EventM Name AppState ()
-startGame scene = do
-  menu <- use $ uiState . uiMenu
-  case menu of
-    NewGameMenu (curMenu :| _) ->
-      let nextMenuList = BL.listMoveDown curMenu
-          isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
-          nextScenario =
-            if isLastScenario
-              then Nothing
-              else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
-       in uiState . uiNextScenario .= nextScenario
-    _ -> uiState . uiNextScenario .= Nothing
-  scenarioToAppState scene Nothing Nothing
-
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
-advanceMenu = _NewGameMenu . lens NE.head (\(_ :| t) a -> a :| t) %~ BL.listMoveDown
+advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
+
+handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMainMessagesEvent = \case
+  Key V.KEsc -> returnToMainMenu
+  CharKey 'q' -> returnToMainMenu
+  ControlChar 'q' -> returnToMainMenu
+  _ -> return ()
+ where
+  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle scene) -> startGame scene
+      Just (SISingle siPair) -> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
-  ControlKey 'q' -> halt
+  ControlChar 'q' -> halt
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
     uiState . uiMenu .= NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw
-
-mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
-mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
- where
-  filterTest = if cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
@@ -226,7 +234,7 @@ handleMainEvent ev = do
       | s ^. gameState . paused -> continueWithoutRedraw
       | otherwise -> runFrameUI
     -- ctrl-q works everywhere
-    ControlKey 'q' ->
+    ControlChar 'q' ->
       case s ^. gameState . winCondition of
         Won _ -> toggleModal WinModal
         _ -> toggleModal QuitModal
@@ -250,36 +258,47 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
-    ControlKey 'g' -> case s ^. uiState . uiGoal of
+    ControlChar 'g' -> case s ^. uiState . uiGoal of
       Just g | g /= [] -> toggleModal (GoalModal g)
       _ -> continueWithoutRedraw
+    MetaChar 'h' -> do
+      t <- liftIO $ getTime Monotonic
+      h <- use $ uiState . uiHideRobotsUntil
+      if h >= t
+        then -- ignore repeated keypresses
+          continueWithoutRedraw
+        else -- hide for two seconds
+        do
+          uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
+          invalidateCacheEntry WorldCache
     -- pausing and stepping
-    ControlKey 'p' | isRunning -> safeTogglePause
-    ControlKey 'o' | isRunning -> do
+    ControlChar 'p' | isRunning -> safeTogglePause
+    ControlChar 'o' | isRunning -> do
       gameState . runStatus .= ManualPause
       runGameTickUI
     -- speed controls
-    ControlKey 'x' | isRunning -> modify $ adjustTPS (+)
-    ControlKey 'z' | isRunning -> modify $ adjustTPS (-)
+    ControlChar 'x' | isRunning -> modify $ adjustTPS (+)
+    ControlChar 'z' | isRunning -> modify $ adjustTPS (-)
+    -- special keys that work on all panels
+    MetaChar 'w' -> setFocus WorldPanel
+    MetaChar 'e' -> setFocus RobotPanel
+    MetaChar 'r' -> setFocus REPLPanel
+    MetaChar 't' -> setFocus InfoPanel
+    -- pass keys on to modal event handler if a modal is open
     VtyEvent vev
       | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
-    -- special keys that work on all panels
-    MetaKey 'w' -> setFocus WorldPanel
-    MetaKey 'e' -> setFocus RobotPanel
-    MetaKey 'r' -> setFocus REPLPanel
-    MetaKey 't' -> setFocus InfoPanel
     -- toggle creative mode if in "cheat mode"
-    ControlKey 'v'
+    ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
     MouseDown n _ _ mouseLoc ->
       case n of
         WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
           uiState . uiWorldCursor .= mouseCoordsM
-        REPLPanel ->
-          -- Do not clear the world cursor when going back to the REPL
-          continueWithoutRedraw
-        _ -> uiState . uiWorldCursor .= Nothing >> continueWithoutRedraw
+        REPLInput -> do
+          setFocus REPLPanel
+          handleREPLEvent ev
+        _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
@@ -367,7 +386,9 @@ handleModalEvent = \case
     toggleModal QuitModal
     case dialogSelection <$> mdialog of
       Just (Just QuitButton) -> quitGame
-      Just (Just (NextButton scene)) -> startGame scene
+      Just (Just KeepPlayingButton) -> toggleModal KeepPlayingModal
+      Just (Just (StartOverButton currentSeed siPair)) -> restartGame currentSeed siPair
+      Just (Just (NextButton siPair)) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
@@ -376,13 +397,50 @@ handleModalEvent = \case
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 
--- | Quit a game.  Currently all it does is write out the updated REPL
---   history to a @.swarm_history@ file, and return to the previous menu.
+-- | Write the @ScenarioInfo@ out to disk when exiting a game.
+saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnQuit = do
+  -- Don't save progress if we are in cheat mode
+  cheat <- use $ uiState . uiCheatMode
+  unless cheat $ do
+    -- the path should be normalized and good to search in scenario collection
+    mp' <- use $ gameState . currentScenarioPath
+    case mp' of
+      Nothing -> return ()
+      Just p' -> do
+        gs <- use $ gameState . scenarios
+        p <- liftIO $ normalizeScenarioPath gs p'
+        t <- liftIO getZonedTime
+        won <- isJust <$> preuse (gameState . winCondition . _Won)
+        ts <- use $ gameState . ticks
+        let currentScenarioInfo :: Traversal' AppState ScenarioInfo
+            currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
+        currentScenarioInfo %= updateScenarioInfoOnQuit t ts won
+        status <- preuse currentScenarioInfo
+        case status of
+          Nothing -> return ()
+          Just si -> liftIO $ saveScenarioInfo p si
+
+        -- See what scenario is currently focused in the menu.  Depending on how the
+        -- previous scenario ended (via quit vs. via win), it might be the same as
+        -- currentScenarioPath or it might be different.
+        curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
+        -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
+        -- being sure to preserve the same focused scenario.
+        sc <- use $ gameState . scenarios
+        forM_ (mkNewGameMenu cheat sc (fromMaybe p curPath)) (uiState . uiMenu .=)
+
+-- | Quit a game.
+--
+-- * writes out the updated REPL history to a @.swarm_history@ file
+-- * saves current scenario status (InProgress/Completed)
+-- * returns to the previous menu
 quitGame :: EventM Name AppState ()
 quitGame = do
-  history <- use $ uiState . uiReplHistory
+  history <- use $ uiState . uiREPL . replHistory
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
+  saveScenarioInfoOnQuit
   menu <- use $ uiState . uiMenu
   case menu of
     NoMenu -> halt
@@ -542,16 +600,22 @@ updateUI = do
   -- Now check if the base finished running a program entered at the REPL.
   replUpdated <- case g ^. replStatus of
     -- It did, and the result was the unit value.  Just reset replStatus.
-    REPLWorking _ (Just VUnit) -> do
-      gameState . replStatus .= REPLDone
+    REPLWorking (Typed (Just VUnit) typ reqs) -> do
+      gameState . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
       pure True
 
     -- It did, and returned some other value.  Pretty-print the
     -- result as a REPL output, with its type, and reset the replStatus.
-    REPLWorking pty (Just v) -> do
-      let out = T.intercalate " " [into (prettyValue v), ":", prettyText (stripCmd pty)]
-      uiState . uiReplHistory %= addREPLItem (REPLOutput out)
-      gameState . replStatus .= REPLDone
+    REPLWorking (Typed (Just v) pty reqs) -> do
+      let finalType = stripCmd pty
+      let val = Typed v finalType reqs
+      itIx <- use (gameState . replNextValueIndex)
+      let itName = fromString $ "it" ++ show itIx
+      let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
+      uiState . uiREPL . replHistory %= addREPLItem (REPLOutput out)
+      gameState . replStatus .= REPLDone (Just val)
+      gameState . baseRobot . robotContext . at itName .= Just val
+      gameState . replNextValueIndex %= (+ 1)
       pure True
 
     -- Otherwise, do nothing.
@@ -637,6 +701,8 @@ loadVisibleRegion = do
       gs <- use gameState
       gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
+-- | Strips top-level `cmd` from type (in case of REPL evaluation),
+--   and returns a boolean to indicate if it happened
 stripCmd :: Polytype -> Polytype
 stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
 stripCmd pty = pty
@@ -645,138 +711,262 @@ stripCmd pty = pty
 -- REPL events
 ------------------------------------------------------------
 
+-- | Set the REPLForm to the given value, resetting type error checks to Nothing
+--   and removing uiError.
+resetREPL :: T.Text -> REPLPrompt -> UIState -> UIState
+resetREPL t r ui =
+  ui
+    & uiREPL . replPromptText .~ t
+    & uiREPL . replPromptType .~ r
+    & uiError .~ Nothing
+
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleREPLEvent = \case
-  ControlKey 'c' -> do
-    gameState . robotMap . ix 0 . machine %= cancel
-    uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+handleREPLEvent x = do
+  s <- get
+  let repl = s ^. uiState . uiREPL
+      controlMode = repl ^. replControlMode
+      uinput = repl ^. replPromptText
+  case x of
+    MetaChar 'p' ->
+      onlyCreative $ do
+        if T.null uinput
+          then uiState . uiREPL . replControlMode %= cycleEnum
+          else uiState . uiError ?= "Please clear the REPL first."
+    _ -> case controlMode of
+      Typing -> handleREPLEventTyping x
+      Piloting -> handleREPLEventPiloting x
+
+-- | Handle a user "piloting" input event for the REPL.
+handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventPiloting x = case x of
+  Key V.KUp -> inputCmd "move"
+  Key V.KDown -> inputCmd "turn back"
+  Key V.KLeft -> inputCmd "turn left"
+  Key V.KRight -> inputCmd "turn right"
+  ShiftKey V.KUp -> inputCmd "turn north"
+  ShiftKey V.KDown -> inputCmd "turn south"
+  ShiftKey V.KLeft -> inputCmd "turn west"
+  ShiftKey V.KRight -> inputCmd "turn east"
+  Key V.KDel -> inputCmd "selfdestruct"
+  CharKey 'g' -> inputCmd "grab"
+  CharKey 'h' -> inputCmd "harvest"
+  CharKey 'd' -> inputCmd "drill forward"
+  CharKey 's' -> inputCmd "scan forward"
+  CharKey 'b' -> inputCmd "blocked"
+  CharKey 'u' -> inputCmd "upload base"
+  _ -> inputCmd "noop"
+ where
+  inputCmd cmdText = do
+    uiState . uiREPL %= setCmd (cmdText <> ";")
+    modify validateREPLForm
+    handleREPLEventTyping $ Key V.KEnter
+
+  setCmd nt repl =
+    repl
+      & replPromptText .~ nt
+      & replPromptType .~ CmdPrompt []
+
+-- | Handle a user input event for the REPL.
+handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleREPLEventTyping = \case
+  ControlChar 'c' -> do
+    gameState . baseRobot . machine %= cancel
+    uiState . uiREPL . replPromptType .= CmdPrompt []
+    uiState . uiREPL . replPromptText .= ""
   Key V.KEnter -> do
     s <- get
-    let entry = formState (s ^. uiState . uiReplForm)
-        topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-        topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defReqs
-        topValCtx = s ^. gameState . robotMap . ix 0 . robotContext . defVals
-        topStore =
-          fromMaybe emptyStore $
-            s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
-        startBaseProgram t@(ProcessedTerm _ (Module ty _) _ _) =
-          (gameState . replStatus .~ REPLWorking ty Nothing)
-            . (gameState . robotMap . ix 0 . machine .~ initMachine t topValCtx topStore)
+    let topCtx = topContext s
+        repl = s ^. uiState . uiREPL
+        uinput = repl ^. replPromptText
+
+        -- The player typed something at the REPL and hit Enter; this
+        -- function takes the resulting ProcessedTerm (if the REPL
+        -- input is valid) and sets up the base robot to run it.
+        startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs reqCtx) =
+          -- Set the REPL status to Working
+          (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
+            -- The `reqCtx` maps names of variables defined in the
+            -- term (by `def` statements) to their requirements.
+            -- E.g. if we had `def m = move end`, the reqCtx would
+            -- record the fact that `m` needs the `move` capability.
+            -- We simply dump the entire `reqCtx` into the robot's
+            -- context, so we can look up requirements if we later
+            -- need to requirements-check an argument to `build` or
+            -- `reprogram` at runtime.  See the discussion at
+            -- https://github.com/swarm-game/swarm/pull/827 for more
+            -- details.
+            . (gameState . baseRobot . robotContext . defReqs .~ reqCtx)
+            -- Set up the robot's CESK machine to evaluate/execute the
+            -- given term, being sure to initialize the CESK machine
+            -- environment and store from the top-level context.
+            . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
+            -- Finally, be sure to activate the base robot.
             . (gameState %~ execState (activateRobot 0))
 
     if not $ s ^. gameState . replWorking
-      then case entry of
-        CmdPrompt uinput _ ->
-          case processTerm' topTypeCtx topReqCtx uinput of
+      then case repl ^. replPromptType of
+        CmdPrompt _ ->
+          case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
             Right mt -> do
-              uiState %= resetWithREPLForm (set promptUpdateL "" (s ^. uiState))
-              uiState . uiReplHistory %= addREPLItem (REPLEntry uinput)
+              uiState %= resetREPL "" (CmdPrompt [])
+              uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
               modify $ maybe id startBaseProgram mt
             Left err -> uiState . uiError ?= err
-        SearchPrompt t hist ->
-          case lastEntry t hist of
-            Nothing -> uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+        SearchPrompt hist ->
+          case lastEntry uinput hist of
+            Nothing -> uiState %= resetREPL "" (CmdPrompt [])
             Just found
-              | T.null t -> uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+              | T.null uinput -> uiState %= resetREPL "" (CmdPrompt [])
               | otherwise -> do
-                uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt found)
+                uiState %= resetREPL found (CmdPrompt [])
                 modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
-  ControlKey 'r' -> do
+  ControlChar 'r' -> do
     s <- get
-    case s ^. uiState . uiReplForm . to formState of
-      CmdPrompt uinput _ ->
-        let newform = mkReplForm $ SearchPrompt uinput (s ^. uiState . uiReplHistory)
-         in uiState . uiReplForm .= newform
-      SearchPrompt ftext rh -> case lastEntry ftext rh of
+    let uinput = s ^. uiState . uiREPL . replPromptText
+    case s ^. uiState . uiREPL . replPromptType of
+      CmdPrompt _ -> uiState . uiREPL . replPromptType .= SearchPrompt (s ^. uiState . uiREPL . replHistory)
+      SearchPrompt rh -> case lastEntry uinput rh of
         Nothing -> pure ()
-        Just found ->
-          let newform = mkReplForm $ SearchPrompt ftext (removeEntry found rh)
-           in uiState . uiReplForm .= newform
+        Just found -> uiState . uiREPL . replPromptType .= SearchPrompt (removeEntry found rh)
   CharKey '\t' -> do
-    formSt <- use $ uiState . uiReplForm . to formState
-    newform <- gets $ mkReplForm . flip tabComplete formSt
-    uiState . uiReplForm .= newform
+    s <- get
+    let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
+    uiState . uiREPL %= tabComplete names (s ^. gameState . entityMap)
     modify validateREPLForm
   EscapeKey -> do
-    formSt <- use $ uiState . uiReplForm . to formState
+    formSt <- use $ uiState . uiREPL . replPromptType
     case formSt of
       CmdPrompt {} -> continueWithoutRedraw
-      SearchPrompt _ _ ->
-        uiState %= resetWithREPLForm (mkReplForm $ mkCmdPrompt "")
+      SearchPrompt _ ->
+        uiState %= resetREPL "" (CmdPrompt [])
+  ControlChar 'd' -> do
+    text <- use $ uiState . uiREPL . replPromptText
+    if text == T.empty
+      then toggleModal QuitModal
+      else continueWithoutRedraw
+  -- finally if none match pass the event to the editor
   ev -> do
-    replForm <- use $ uiState . uiReplForm
-    f' <- nestEventM' replForm (handleFormEvent ev)
-    case formState f' of
-      CmdPrompt {} -> do
-        uiState . uiReplForm .= f'
-        modify validateREPLForm
-      SearchPrompt t _ -> do
-        -- TODO: why does promptUpdateL not update the uiState?
-        newform <- use $ uiState . to (set promptUpdateL t)
-        uiState . uiReplForm .= newform
+    Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
+    uiState . uiREPL . replPromptType %= \case
+      CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
+      SearchPrompt a -> SearchPrompt a
+    modify validateREPLForm
 
--- | Try to complete the last word in a partially entered REPL prompt using
---   things reserved words and names in scope.
-tabComplete :: AppState -> REPLPrompt -> REPLPrompt
-tabComplete _ p@(SearchPrompt {}) = p
-tabComplete s (CmdPrompt t mms)
-  | (m : ms) <- mms = CmdPrompt (replaceLast m t) (ms ++ [m])
-  | T.null lastWord = CmdPrompt t []
-  | otherwise = case matches of
-    [] -> CmdPrompt t []
-    [m] -> CmdPrompt (completeWith m) []
-    (m : ms) -> CmdPrompt (completeWith m) (ms ++ [m])
+data CompletionType
+  = FunctionName
+  | EntityName
+  deriving (Eq)
+
+-- | Try to complete the last word in a partially-entered REPL prompt using
+--   reserved words and names in scope (in the case of function names) or
+--   entity names (in the case of string literals).
+tabComplete :: [Var] -> EntityMap -> REPLState -> REPLState
+tabComplete names em repl = case repl ^. replPromptType of
+  SearchPrompt _ -> repl
+  CmdPrompt mms
+    -- Case 1: If completion candidates have already been
+    -- populated via case (3), cycle through them.
+    -- Note that tabbing through the candidates *does* update the value
+    -- of "t", which one might think would narrow the candidate list
+    -- to only that match and therefore halt the cycling.
+    -- However, the candidate list only gets recomputed (repopulated)
+    -- if the user subsequently presses a non-Tab key. Thus the current
+    -- value of "t" is ignored for all Tab presses subsequent to the
+    -- first.
+    | (m : ms) <- mms -> setCmd (replacementFunc m) (ms ++ [m])
+    -- Case 2: Require at least one letter to be typed in order to offer completions for
+    -- function names.
+    -- We allow suggestions for Entity Name strings without anything having been typed.
+    | T.null lastWord && completionType == FunctionName -> setCmd t []
+    -- Case 3: Typing another character in the REPL clears the completion candidates from
+    -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
+    -- repopulates them.
+    | otherwise -> case candidateMatches of
+      [] -> setCmd t []
+      [m] -> setCmd (completeWith m) []
+      -- Perform completion with the first candidate, then populate the list
+      -- of all candidates with the current completion moved to the back
+      -- of the queue.
+      (m : ms) -> setCmd (completeWith m) (ms ++ [m])
  where
-  completeWith m = T.append t (T.drop (T.length lastWord) m)
-  lastWord = T.takeWhileEnd isIdentChar t
-  names = s ^.. gameState . robotMap . ix 0 . robotContext . defTypes . to assocs . traverse . _1
+  -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
+  hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
+
+  completionType =
+    if hasOpenQuotes t
+      then EntityName
+      else FunctionName
+
+  replacementFunc = T.append $ T.dropWhileEnd replacementBoundaryPredicate t
+  completeWith m = T.append t $ T.drop (T.length lastWord) m
+  lastWord = T.takeWhileEnd replacementBoundaryPredicate t
+  candidateMatches = filter (lastWord `T.isPrefixOf`) replacementCandidates
+
+  (replacementCandidates, replacementBoundaryPredicate) = case completionType of
+    EntityName -> (entityNames, (/= '"'))
+    FunctionName -> (possibleWords, isIdentChar)
+
   possibleWords = reservedWords ++ names
-  matches = filter (lastWord `T.isPrefixOf`) possibleWords
+
+  entityNames = M.keys $ entitiesByName em
+
+  t = repl ^. replPromptText
+  setCmd nt ms =
+    repl
+      & replPromptText .~ nt
+      & replPromptType .~ CmdPrompt ms
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
 validateREPLForm :: AppState -> AppState
 validateREPLForm s =
   case replPrompt of
-    CmdPrompt uinput _ ->
-      let result = processTerm' topTypeCtx topReqCtx uinput
-          theType = case result of
-            Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
-            _ -> Nothing
-       in s & uiState . uiReplForm %~ validate result
-            & uiState . uiReplType .~ theType
-    SearchPrompt _ _ -> s
+    CmdPrompt _
+      | T.null uinput ->
+        let theType = s ^. gameState . replStatus . replActiveType
+         in s & uiState . uiREPL . replType .~ theType
+    CmdPrompt _
+      | otherwise ->
+        let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
+            theType = case result of
+              Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+              _ -> Nothing
+         in s
+              & uiState . uiREPL . replValid .~ isRight result
+              & uiState . uiREPL . replType .~ theType
+    SearchPrompt _ -> s
  where
-  replPrompt = s ^. uiState . uiReplForm . to formState
-  topTypeCtx = s ^. gameState . robotMap . ix 0 . robotContext . defTypes
-  topReqCtx = s ^. gameState . robotMap . ix 0 . robotContext . defReqs
-  validate result = setFieldValid (isRight result) REPLInput
+  uinput = s ^. uiState . uiREPL . replPromptText
+  replPrompt = s ^. uiState . uiREPL . replPromptType
+  topCtx = topContext s
 
 -- | Update our current position in the REPL history.
 adjReplHistIndex :: TimeDir -> AppState -> AppState
 adjReplHistIndex d s =
-  ns
-    & (if replIndexIsAtInput (s ^. repl) then saveLastEntry else id)
-    & (if oldEntry /= newEntry then showNewEntry else id)
+  s
+    & uiState . uiREPL %~ moveREPL
     & validateREPLForm
  where
-  -- new AppState after moving the repl index
-  ns = s & repl %~ moveReplHistIndex d oldEntry
+  moveREPL :: REPLState -> REPLState
+  moveREPL repl =
+    newREPL
+      & (if replIndexIsAtInput (repl ^. replHistory) then saveLastEntry else id)
+      & (if oldEntry /= newEntry then showNewEntry else id)
+   where
+    -- new AppState after moving the repl index
+    newREPL :: REPLState
+    newREPL = repl & replHistory %~ moveReplHistIndex d oldEntry
 
-  repl :: Lens' AppState REPLHistory
-  repl = uiState . uiReplHistory
-
-  replLast = s ^. uiState . uiReplLast
-  saveLastEntry = uiState . uiReplLast .~ (s ^. uiState . uiReplForm . to formState . promptTextL)
-  showNewEntry = uiState . uiReplForm %~ updateFormState (mkCmdPrompt newEntry)
-  -- get REPL data
-  getCurrEntry = fromMaybe replLast . getCurrentItemText . view repl
-  oldEntry = getCurrEntry s
-  newEntry = getCurrEntry ns
+    saveLastEntry = replLast .~ (repl ^. replPromptText)
+    showNewEntry = (replPromptEditor .~ newREPLEditor newEntry) . (replPromptType .~ CmdPrompt [])
+    -- get REPL data
+    getCurrEntry = fromMaybe (repl ^. replLast) . getCurrentItemText . view replHistory
+    oldEntry = getCurrEntry repl
+    newEntry = getCurrEntry newREPL
 
 ------------------------------------------------------------
 -- World events
@@ -784,6 +974,11 @@ adjReplHistIndex d s =
 
 worldScrollDist :: Int64
 worldScrollDist = 8
+
+onlyCreative :: MonadState AppState m => m () -> m ()
+onlyCreative a = do
+  c <- use $ gameState . creativeMode
+  when c a
 
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -798,9 +993,6 @@ handleWorldEvent = \case
   -- Fall-through case: don't do anything.
   _ -> continueWithoutRedraw
  where
-  onlyCreative a = do
-    c <- use $ gameState . creativeMode
-    when c a
   moveKeys =
     [ V.KUp
     , V.KDown
@@ -852,6 +1044,12 @@ handleRobotPanelEvent = \case
   (CharKey '0') -> do
     uiState . uiInventoryShouldUpdate .= True
     uiState . uiShowZero %= not
+  (CharKey ';') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySort %= cycleSortOrder
+  (CharKey ':') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySort %= cycleSortDirection
   (VtyEvent ev) -> do
     -- This does not work we want to skip redrawing in the no-list case
     -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
@@ -868,17 +1066,18 @@ handleRobotPanelEvent = \case
 makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
-  let mkTy = Forall [] $ TyCmd TyUnit
-      mkProg = TApp (TConst Make) (TString (e ^. entityName))
-      mkPT = ProcessedTerm mkProg (Module mkTy empty) (R.singletonCap CMake) empty
+  let mkTy = PolyUnit
+      mkReq = R.singletonCap CMake
+      mkProg = TApp (TConst Make) (TText (e ^. entityName))
+      mkPT = ProcessedTerm mkProg (Module mkTy empty) mkReq empty
       topStore =
         fromMaybe emptyStore $
-          s ^? gameState . robotMap . at 0 . _Just . robotContext . defStore
+          s ^? gameState . baseRobot . robotContext . defStore
 
-  case isActive <$> (s ^. gameState . robotMap . at 0) of
+  case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
-      gameState . replStatus .= REPLWorking mkTy Nothing
-      gameState . robotMap . ix 0 . machine .= initMachine mkPT empty topStore
+      gameState . replStatus .= REPLWorking (Typed Nothing mkTy mkReq)
+      gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
 

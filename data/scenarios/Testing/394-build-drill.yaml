@@ -1,3 +1,4 @@
+version: 1
 name: Test build with drill
 description: |
   Inner build does not correctly require Drill.
@@ -8,7 +9,7 @@ objectives:
       try {
         as base {l <- has "detonator"; return (not l)}
       } { return false }
-# When testing, add `s <- build {...}; n <- as s {whoami}; log n` 
+# When testing, add `s <- build {...}; n <- as s {whoami}; log n`
 solution: |
   def forever = \c. c ; forever c end;
   def unblock = try {drill forward} {} end;
@@ -17,7 +18,13 @@ solution: |
   r <- build {
     wait 2;
     log "Hi, I am builder";
-    forever (build {log "Hi, I am pusher"; turn forward; forever push}; log "- robot built")
+    forever (
+      build {
+        log "Hi, I am pusher";
+        forever push
+      };
+      log "- robot built"
+    )
   };
   wait 10;
   place "detonator";

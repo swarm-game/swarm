@@ -1,4 +1,6 @@
+version: 1
 name: Conway's Game of Life
+author: Brent Yorgey
 description: A basic implementation of the rules of the Game of Life.
 robots:
   - name: base

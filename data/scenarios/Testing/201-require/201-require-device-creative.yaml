@@ -1,3 +1,4 @@
+version: 1
 name: Require device in creative mode
 description: |
   Require a device using the 'require' command in creative mode.
@@ -22,11 +23,12 @@ robots:
     devices:
       - 3D printer
       - logger
+known: [water]
 world:
   default: [blank, null]
   palette:
     '.': [grass]
-    '~': [dirt, knownwater]
+    '~': [dirt, water]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
@@ -38,13 +40,3 @@ world:
     ┌───┐
     │.~.│
     └───┘
-entities:
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water

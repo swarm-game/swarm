@@ -89,7 +89,7 @@
   - [1, board]
   - [8, wooden gear]
   out:
-  - [1, printer]
+  - [1, typewriter]
 
 #########################################
 ##                BITS                 ##
@@ -389,6 +389,14 @@
   required:
   - [1, big furnace]
 
+- in:
+  - [1, iron plate]
+  out:
+  - [1, lodestone]
+  required:
+  - [2, lodestone]
+  time: 64
+
 ## TOOLS
 
 - in:
@@ -464,12 +472,41 @@
   - [1, grabber]
 
 - in:
+  - [2, grabber]
+  - [1, rubber band]
+  out:
+  - [1, fast grabber]
+
+- in:
   - [4, circuit]
   - [1, iron plate]
   - [3, copper pipe]
   - [16, iron gear]
   out:
   - [1, 3D printer]
+
+- in:
+  - [1, gold]
+  out:
+  - [8, gold coin]
+  required:
+  - [1, furnace]
+
+- in:
+  - [1, gold]
+  out:
+  - [8, gold coin]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, gold coin]
+  - [1, bit (1)]
+  - [1, bit (0)]
+  required:
+  - [1, metal drill]
+  out:
+  - [1, bitcoin]
 
 ## MAGIC
 
@@ -621,6 +658,13 @@
   - [1, calculator]
 
 - in:
+  - [1, calculator]
+  - [1, typewriter]
+  - [1, I/O cable]
+  out:
+  - [1, ADT calculator]
+
+- in:
   - [1, glass]
   - [1, silver]
   out:
@@ -659,3 +703,19 @@
   - [1, strange loop]
   out:
   - [1, rubber band]
+
+#########################################
+##                COTTON               ##
+#########################################
+
+- in:
+  - [4, cotton]
+  out:
+  - [1, string]
+  required:
+  - [1, small motor]
+
+- in:
+  - [256, string]
+  out:
+  - [1, net]

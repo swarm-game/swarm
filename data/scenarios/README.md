@@ -61,13 +61,19 @@ the [YAML extension](https://open-vsx.org/extension/redhat/vscode-yaml)
 installed.
 
 To point the editor to the right schema for scenarios in this repository,
-you can use this `setting.json`:
+you can use this `settings.json`:
 ```JSON
 {
   "yaml.schemas": {
-    "https://raw.githubusercontent.com/swarm-game/swarm/main/scenario.json": [
+    "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/scenario.json": [
       "data/scenarios/*.yaml",
       "data/scenarios/**/*.yaml"
+    ],
+    "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/entities.json": [
+      "data/entities.yaml"
+    ],
+    "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json": [
+      "data/recipes.yaml"
     ]
   }
 }
@@ -114,12 +120,15 @@ described by the following table.
 
 | Key            | Default? | Type                            | Description                                                                                                                                                                                                                                                                                                                                                   |
 |----------------|----------|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `version`      |          | `int`                           | The version number of the scenario schema.  Currently, this should always be 1.                                                                                                                                                                                                                                                                               |
 | `name`         |          | `string`                        | The name of the scenario. For official scenarios, this is what shows up in the new game menu.                                                                                                                                                                                                                                                                 |
 | `description`  | `""`     | `string`                        | A short description of the scenario. This shows up next to the new game menu when the scenario is selected.                                                                                                                                                                                                                                                   |
+| `author`       | `null`   | `string`                        | The author of the scenario (optional).  Typically this is a person's name, but it can be any string. It is displayed under the scenario description in the new game menu.                                                                                                                                                                                     |
 | `creative`     | `False`  | `boolean`                       | Whether the scenario should start out in creative mode.                                                                                                                                                                                                                                                                                                       |
 | `seed`         | `null`   | `int`                           | An optional seed that will be used to seed the random number generator.  If a procedurally generated world is used, the seed hence determines the world.  Hence, if the seed is specified, the procedurally generated world will be exactly the same every time, for every player.  If omitted, a random seed will be used every time the scenario is loaded. |
 | `entities`     | `[]`     | [`entity`](#entities) list      | An optional list of custom entities, to be used in addition to the built-in entities.  See [Entities](#entities).                                                                                                                                                                                                                                             |
 | `recipes`      | `[]`     | [`recipe`](#recipes) list       | An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities. See [Recipes](#recipes).                                                                                                                                                                                  |
+| `known`        | `[]`     | `string list`                   | A list of names of standard or custom entities which should have the `Known` property added to them; that is, robots should know what they are without having to scan them.                                                                                                                                                                                   |
 | `world`        |          | `object`                        | A description of the world.  See [World](#world).                                                                                                                                                                                                                                                                                                             |
 | `robots`       |          | [`robot`](#robots) list         | A list of robots that will inhabit the world.  See [Robots](#robots).                                                                                                                                                                                                                                                                                         |
 | `objectives`   | `[]`     | [`objective`](#objectives) list | An optional list of objectives, aka winning conditions.  The player has to complete the objectives in sequence to win.  See [Objectives](#objectives).                                                                                                                                                                                                        |
@@ -186,7 +195,7 @@ a key-value mapping described by the following table.
 | `curOrientation` | `null`   |           | TODO currently unused                                                                                                                                                                                  |
 | `attr`           | `entity` | `string`  | The name of the attribute that should be used to style the robot or entity.  A list of currently valid attributes can be found at https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/Attr.hs. |
 | `priority`       | `1`      | `int`     | When multiple entities and robots occupy the same cell, the one with the highest priority is drawn.  By default, entities have priority `1`, and robots have priority `10`.                            |
-| `invisible`      | `False`  | `boolean` | Whether the entity or robot should be invisible.  Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways.                                              |
+| `invisible`      | `False`  | `boolean` | Whether the entity or robot should be invisible.  Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways. System robots are invisible by default. |
 
 
 ### Recipes
@@ -221,8 +230,9 @@ at various locations.
 
 #### Cells
 
-Each cell of the world is specified by a 1-, 2-, or 3-tuple, for
-example, `[grass]`, `[grass, tree]`, or `[grass, null, base]`.
+Each cell of the world is specified by a list of terrain, optional entity
+and robots present (if any). For example, `[grass]`, `[grass, tree]`,
+or `[grass, null, base]`.
 
 - The first (required) item specifies the terrain.  Currently, valid
   terrain values are `stone`, `dirt`, `grass`, `ice`, or `blank`.
@@ -230,9 +240,9 @@ example, `[grass]`, `[grass, tree]`, or `[grass, null, base]`.
   should be present in the cell.  This may be a built-in entity, or a
   custom entity specified in the `entities` section.  `null` may be
   used to explicitly specify no entity in the cell.
-- The third item (if present) specifies the name of a robot which
-  should be present in the cell.  This must be the name of a robot
-  specified in the `robots` section.  A copy of the robot will be
+- The third item and later (if present) specifies the names of the robots
+  which should be present in the cell.  These must be names of robots
+  specified in the `robots` section.  A copy of each robot will be
   created at each location in the `map` where it is drawn.
 
   Although multiple robots may be in a single location in general,
@@ -253,13 +263,26 @@ table.
 | `name`        |          | `string`              | The name of the robot.  This shows up in the list of robots in the game (F2), and is also how the robot will be referred to in the [world](#world) `palette`.                                                                                                                                                                                                                                                                  |
 | `description` | `[]`     | `string list`         | A description of the robot, given as a list of paragraphs.  This is currently not used for much (perhaps not at all?).                                                                                                                                                                                                                                                                                                         |
 | `loc`         | `null`   | `int × int`           | An optional (x,y) starting location for the robot.  If the `loc` field is specified, then a concrete robot will be created at the given location.  If this field is omitted, then this robot record exists only as a *template* which can be referenced from a [cell](#cells) in the [world](#world) `palette`.  Concrete robots will then be created wherever the corresponding palette character is used in the world `map`. |
-| `dir`         |          | `int × int`           | The starting orientation of the robot, expressed as a vector.  Every time the robot executes a `move` command, this vector will be added to its position.  Typically, this is a unit vector in one of the four cardinal directions, although there is no particular reason that it has to be.                                                                                                                                  |
+| `dir`         | `[0,0]`  | `int × int`           | An optional starting orientation of the robot, expressed as a vector.  Every time the robot executes a `move` command, this vector will be added to its position.  Typically, this is a unit vector in one of the four cardinal directions, although there is no particular reason that it has to be. When omitted, the robot's direction will be the zero vector.                                                                                                 |
 | `display`     | default  | `map`                 | [Display](#display) information for the robot. If this field is omitted, the [default robot display](#display) will be used.                                                                                                                                                                                                                                                                                                   |
 | `program`     | `null`   | `string`              | This is the text of a Swarm program which the robot should initially run, and must be syntax- and type-error-free.  If omitted, the robot will simply be idle.                                                                                                                                                                                                                                                                 |
 | `devices`     | `[]`     | `string list`         | A list of entity names which should be *installed* as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs.                                                                                                                                                                                                                                                             |
 | `inventory`   | `[]`     | `(int × string) list` | A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each.                                                                                                                                                                                                                                                                                                       |
-| `system`      | `False`  | `boolean`             | Whether the robot is a "system" robot.  System robots can do anything, without regard for devices and capabilities.                                                                                                                                                                                                                                                                                                            |
+| `system`      | `False`  | `boolean`             | Whether the robot is a "system" robot.  System robots can do anything, without regard for devices and capabilities. System robots are invisible by default.                                                                                                                                                                                                                                                                                                            |
 | `heavy`       | `False`  | `boolean`             | Whether the robot is heavy.  Heavy robots require `tank treads` to `move` (rather than just `treads` for other robots).                                                                                                                                                                                                                                                                                                        |
+
+#### Base robot
+
+There must be at most one **base** robot in the world. Since concrete robots can be created
+either via the `loc` attribute or via the map and palette, use the following guide to
+ensure the base robot is the one you intended:
+
+1. Always list the intended **base** as the first robot definition in your scenario.
+2. The first robot with a `loc` attribute will become the base, even if other robots are defined earlier.
+3. Without any located robots, if multiple robots are instantiated on the map from
+   the first robot definition, the first robot in
+   [row-major order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
+   shall be the base.
 
 ### Objectives
 

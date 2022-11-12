@@ -1,7 +1,9 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -15,6 +17,7 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
+import Control.Applicative (liftA2)
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
@@ -28,17 +31,18 @@ import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
-import Data.Foldable (traverse_)
+import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Int (Int64)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
-import Data.List (find)
+import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
+import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -63,6 +67,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Util
 import System.Clock (TimeSpec)
 import System.Clock qualified
@@ -108,10 +113,10 @@ gameTick = do
     Just r -> do
       res <- use replStatus
       case res of
-        REPLWorking ty Nothing -> case getResult r of
+        REPLWorking (Typed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
-            replStatus .= REPLWorking ty (Just v)
-            robotMap . ix 0 . robotContext . defStore .= s
+            replStatus .= REPLWorking (Typed (Just v) ty req)
+            baseRobot . robotContext . defStore .= s
           Nothing -> return ()
         _otherREPLStatus -> return ()
     Nothing -> return ()
@@ -133,8 +138,7 @@ gameTick = do
         Left exn -> do
           em <- use entityMap
           time <- use ticks
-          let unused = error "Unexpectedly used field"
-              h = hypotheticalRobot unused unused
+          let h = hypotheticalRobot (Out VUnit emptyStore []) 0
               hid = view robotID h
               hn = view robotName h
               farAway = V2 maxBound maxBound
@@ -407,10 +411,10 @@ stepCESK cesk = case cesk of
   In TUnit _ s k -> return $ Out VUnit s k
   In (TDir d) _ s k -> return $ Out (VDir d) s k
   In (TInt n) _ s k -> return $ Out (VInt n) s k
-  In (TString str) _ s k -> return $ Out (VString str) s k
+  In (TText str) _ s k -> return $ Out (VText str) s k
   In (TBool b) _ s k -> return $ Out (VBool b) s k
   -- There should not be any antiquoted variables left at this point.
-  In (TAntiString v) _ s k ->
+  In (TAntiText v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
@@ -700,10 +704,16 @@ addSeedBot e (minT, maxT) loc ts =
         False
         ts
 
+-- | All functions that are used for robot step can access 'GameState' and the current 'Robot'.
+--
+-- They can also throw exception of our custom type, which is handled elsewhere.
+-- Because of that the constraint is only 'Throw', but not 'Catch'/'Error'.
+type HasRobotStepState sig m = (Has (State GameState) sig m, Has (State Robot) sig m, Has (Throw Exn) sig m)
+
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m, Has (Lift IO) sig m) =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   Const ->
   [Value] ->
   Store ->
@@ -733,23 +743,12 @@ execConst c vs s k = do
       loc <- use robotLocation
       orient <- use robotOrientation
       let nextLoc = loc ^+^ (orient ? zero)
-      me <- entityAt nextLoc
-
-      -- Make sure nothing is in the way.
-      case me of
-        Nothing -> return ()
-        Just e -> do
-          (not . (`hasProperty` Unwalkable)) e
-            `holdsOrFail` ["There is a", e ^. entityName, "in the way!"]
-
-          -- Robots drown if they walk over liquid
-          caps <- use robotCapabilities
-          when
-            (e `hasProperty` Liquid && CFloat `S.notMember` caps)
-            destroyIfNotBase
-
+      checkMoveAhead nextLoc $
+        MoveFailure
+          { failIfBlocked = ThrowExn
+          , failIfDrown = Destroy
+          }
       updateRobotLocation loc nextLoc
-      flagRedraw
       return $ Out VUnit s k
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
@@ -758,25 +757,34 @@ execConst c vs s k = do
         -- either change current robot or one in robot map
         let oldLoc = target ^. robotLocation
             nextLoc = V2 (fromIntegral x) (fromIntegral y)
-            caps = target ^. robotCapabilities
 
-        me <- entityAt nextLoc
-        -- Make sure nothing is in the way.
-        case me of
-          Nothing -> return ()
-          Just e -> do
-            let unwalkable = e `hasProperty` Unwalkable
-            let drowning = e `hasProperty` Liquid && CFloat `S.notMember` caps
-            when (unwalkable || drowning) $ do
-              d <- isDestroyable target
-              when d $ onTarget rid (selfDestruct .= True)
+        onTarget rid $ do
+          checkMoveAhead nextLoc $
+            MoveFailure
+              { failIfBlocked = Destroy
+              , failIfDrown = Destroy
+              }
+          updateRobotLocation oldLoc nextLoc
 
-        onTarget rid $ updateRobotLocation oldLoc nextLoc
-        flagRedraw
         return $ Out VUnit s k
       _ -> badConst
-    Grab -> doGrab False
-    Harvest -> doGrab True
+    Grab -> doGrab Grab'
+    Harvest -> doGrab Harvest'
+    Swap -> case vs of
+      [VText name] -> do
+        loc <- use robotLocation
+        -- Make sure the robot has the thing in its inventory
+        e <- hasInInventoryOrFail name
+        -- Grab
+        r <- doGrab Swap'
+        case r of
+          Out {} -> do
+            -- Place the entity and remove it from the inventory
+            updateEntityAt loc (const (Just e))
+            robotInventory %= delete e
+          _ -> pure ()
+        return r
+      _ -> badConst
     Turn -> case vs of
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
@@ -785,8 +793,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Place -> case vs of
-      [VString name] -> do
-        inv <- use robotInventory
+      [VText name] -> do
         loc <- use robotLocation
 
         -- Make sure there's nothing already here
@@ -794,12 +801,7 @@ execConst c vs s k = do
         nothingHere `holdsOrFail` ["There is already an entity here."]
 
         -- Make sure the robot has the thing in its inventory
-        e <-
-          listToMaybe (lookupByName name inv)
-            `isJustOrFail` ["What is", indefinite name <> "?"]
-
-        (E.lookup e inv > 0)
-          `holdsOrFail` ["You don't have", indefinite name, "to place."]
+        e <- hasInInventoryOrFail name
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
@@ -809,18 +811,11 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Give -> case vs of
-      [VRobot otherID, VString itemName] -> do
+      [VRobot otherID, VText itemName] -> do
         -- Make sure the other robot exists and is close
         _other <- getRobotWithinTouch otherID
 
-        -- Make sure we have the required item
-        inv <- use robotInventory
-        item <-
-          (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName <> "?"]
-
-        (E.lookup item inv > 0)
-          `holdsOrFail` ["You don't have", indefinite itemName, "to give."]
+        item <- ensureItem itemName "give"
 
         -- Giving something to ourself should be a no-op.  We need
         -- this as a special case since it will not work to modify
@@ -841,18 +836,11 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Install -> case vs of
-      [VRobot otherID, VString itemName] -> do
+      [VRobot otherID, VText itemName] -> do
         -- Make sure the other robot exists and is close
         _other <- getRobotWithinTouch otherID
 
-        -- Make sure we have the required item
-        inv <- use robotInventory
-        item <-
-          (listToMaybe . lookupByName itemName $ inv)
-            `isJustOrFail` ["What is", indefinite itemName <> "?"]
-
-        (E.lookup item inv > 0)
-          `holdsOrFail` ["You don't have", indefinite itemName, "to install."]
+        item <- ensureItem itemName "install"
 
         myID <- use robotID
         focusedID <- use focusedRobotID
@@ -882,7 +870,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Make -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         ins <- use installedDevices
         em <- use entityMap
@@ -929,17 +917,17 @@ execConst c vs s k = do
         finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
       _ -> badConst
     Has -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         return $ Out (VBool ((> 0) $ countByName name inv)) s k
       _ -> badConst
     Installed -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use installedDevices
         return $ Out (VBool ((> 0) $ countByName name inv)) s k
       _ -> badConst
     Count -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
@@ -955,11 +943,12 @@ execConst c vs s k = do
         inv <- use robotInventory
         ins <- use installedDevices
 
-        let toyDrill = lookupByName "drill" ins
-            metalDrill = lookupByName "metal drill" ins
-            insDrill = listToMaybe $ metalDrill <> toyDrill
+        let equippedDrills = extantElemsWithCapability CDrill ins
+            -- Heuristic: choose the drill with the more elaborate name.
+            -- E.g. "metal drill" vs. "drill"
+            preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills
 
-        drill <- insDrill `isJustOr` Fatal "Drill is required but not installed?!"
+        drill <- preferredDrill `isJustOr` Fatal "Drill is required but not installed?!"
 
         let directionText = case d of
               DDown -> "under"
@@ -1010,12 +999,12 @@ execConst c vs s k = do
           Just e -> do
             robotInventory %= insertCount 0 e
             updateDiscoveredEntities e
-            return $ VInj True (VString (e ^. entityName))
+            return $ VInj True (VText (e ^. entityName))
 
         return $ Out res s k
       _ -> badConst
     Knows -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         inv <- use robotInventory
         ins <- use installedDevices
         let allKnown = inv `E.union` ins
@@ -1074,7 +1063,7 @@ execConst c vs s k = do
         return $ Out v s k
       _ -> badConst
     RobotNamed -> case vs of
-      [VString rname] -> do
+      [VText rname] -> do
         r <- robotWithName rname >>= (`isJustOrFail` ["There is no robot named", rname])
         let robotValue = VRobot (r ^. robotID)
         return $ Out robotValue s k
@@ -1088,14 +1077,14 @@ execConst c vs s k = do
         return $ Out robotValue s k
       _ -> badConst
     Say -> case vs of
-      [VString msg] -> do
+      [VText msg] -> do
         creative <- use creativeMode
         system <- use systemRobot
         loc <- use robotLocation
         m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
         emitMessage m
         let addLatestClosest rl = \case
-              Seq.Empty -> Seq.Empty
+              Seq.Empty -> Seq.singleton m
               es Seq.:|> e
                 | e ^. leTime < m ^. leTime -> es |> e |> m
                 | manhattan rl (e ^. leLocation) > manhattan rl (m ^. leLocation) -> es |> m
@@ -1118,21 +1107,23 @@ execConst c vs s k = do
     Listen -> do
       gs <- get @GameState
       loc <- use robotLocation
+      rid <- use robotID
       creative <- use creativeMode
       system <- use systemRobot
       mq <- use messageQueue
-      let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
-          limitLast = \case
+      let isClose e = system || creative || messageIsFromNearby loc e
+      let notMine e = rid /= e ^. leRobotID
+      let limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-          mm = limitLast $ Seq.takeWhileR recentAndClose mq
+      let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
-          (\m -> Out (VString m) s k) -- return found message
+          (\m -> Out (VText m) s k) -- return found message
           mm
     Log -> case vs of
-      [VString msg] -> do
+      [VText msg] -> do
         void $ traceLog Logged msg
         return $ Out VUnit s k
       _ -> badConst
@@ -1151,7 +1142,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Appear -> case vs of
-      [VString app] -> do
+      [VText app] -> do
         flagRedraw
         case into @String app of
           [dc] -> do
@@ -1168,7 +1159,7 @@ execConst c vs s k = do
           _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
       _ -> badConst
     Create -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         em <- use entityMap
         e <-
           lookupEntityName name em
@@ -1180,7 +1171,7 @@ execConst c vs s k = do
         return $ Out VUnit s k
       _ -> badConst
     Ishere -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         loc <- use robotLocation
         me <- entityAt loc
         case me of
@@ -1198,10 +1189,10 @@ execConst c vs s k = do
     Whoami -> case vs of
       [] -> do
         name <- use robotName
-        return $ Out (VString name) s k
+        return $ Out (VText name) s k
       _ -> badConst
     Setname -> case vs of
-      [VString name] -> do
+      [VText name] -> do
         robotName .= name
         return $ Out VUnit s k
       _ -> badConst
@@ -1259,7 +1250,7 @@ execConst c vs s k = do
       _ -> badConst
     Undefined -> return $ Up (User "undefined") s k
     Fail -> case vs of
-      [VString msg] -> return $ Up (User msg) s k
+      [VText msg] -> return $ Up (User msg) s k
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
@@ -1350,8 +1341,9 @@ execConst c vs s k = do
         createdAt <- getNow
 
         -- Construct the new robot and add it to the world.
+        parentCtx <- use robotContext
         newRobot <-
-          addTRobot $
+          addTRobot . (trobotContext .~ parentCtx) $
             mkRobot
               ()
               (Just pid)
@@ -1359,7 +1351,7 @@ execConst c vs s k = do
               ["A robot built by the robot named " <> r ^. robotName <> "."]
               (Just (r ^. robotLocation))
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
-                  ? east
+                  ? north
               )
               defaultRobotDisplay
               (In cmd e s [FExec])
@@ -1417,7 +1409,7 @@ execConst c vs s k = do
             -- The program for the salvaged robot to run
             let giveInventory =
                   foldr (TBind Nothing . giveItem) (TConst Selfdestruct) salvageItems
-                giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TString item)
+                giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
             robotMap . at (target ^. robotID) . traverse . machine
@@ -1432,8 +1424,11 @@ execConst c vs s k = do
     -- with and without file extension as in
     -- "./path/to/file.sw" and "./path/to/file"
     Run -> case vs of
-      [VString fileName] -> do
-        mf <- sendIO $ mapM readFileMay [into fileName, into $ fileName <> ".sw"]
+      [VText fileName] -> do
+        let filePath = into @String fileName
+        sData <- sendIO $ getDataFileNameSafe filePath
+        sDataSW <- sendIO $ getDataFileNameSafe (filePath <> ".sw")
+        mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
@@ -1441,15 +1436,21 @@ execConst c vs s k = do
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ case mt of
-          Nothing -> Out VUnit s k
-          Just t -> initMachine' t empty s k
+        case mt of
+          Nothing -> return $ Out VUnit s k
+          Just t@(ProcessedTerm _ _ _ reqCtx) -> do
+            -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
+            -- See #827 for an explanation of (1) why this is needed, (2) why
+            -- it's slightly technically incorrect, and (3) why it is still way
+            -- better than what we had before.
+            robotContext . defReqs <>= reqCtx
+            return $ initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (- n)) s k
+      [VInt n] -> return $ Out (VInt (-n)) s k
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -1469,47 +1470,66 @@ execConst c vs s k = do
     Div -> returnEvalArith
     Exp -> returnEvalArith
     Format -> case vs of
-      [v] -> return $ Out (VString (prettyValue v)) s k
+      [v] -> return $ Out (VText (prettyValue v)) s k
+      _ -> badConst
+    Chars -> case vs of
+      [VText t] -> return $ Out (VInt (fromIntegral $ T.length t)) s k
+      _ -> badConst
+    Split -> case vs of
+      [VInt i, VText t] ->
+        let p = T.splitAt (fromInteger i) t
+            t2 = over both VText p
+         in return $ Out (uncurry VPair t2) s k
       _ -> badConst
     Concat -> case vs of
-      [VString v1, VString v2] -> return $ Out (VString (v1 <> v2)) s k
+      [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
-          prependMsg = (\case (Fatal e) -> Fatal $ msg <> e; exn -> exn)
-       in catchError badConst (throwError . prependMsg)
+       in throwError . Fatal $ msg <> badConstMsg
  where
-  badConst :: (Has (State GameState) sig m, Has (Throw Exn) sig m) => m a
-  badConst =
-    throwError $
-      Fatal $
-        T.unlines
-          [ "Bad application of execConst:"
-          , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
-          ]
+  badConst :: HasRobotStepState sig m => m a
+  badConst = throwError $ Fatal badConstMsg
 
-  finishCookingRecipe ::
-    (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
-    Recipe e ->
-    WorldUpdate ->
-    RobotUpdate ->
-    m CESK
+  badConstMsg :: Text
+  badConstMsg =
+    T.unlines
+      [ "Bad application of execConst:"
+      , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
+      ]
+
+  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> WorldUpdate -> RobotUpdate -> m CESK
   finishCookingRecipe r wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
 
-  lookInDirection ::
-    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
-    Direction ->
-    m (V2 Int64, Maybe Entity)
+  lookInDirection :: HasRobotStepState sig m => Direction -> m (V2 Int64, Maybe Entity)
   lookInDirection d = do
     loc <- use robotLocation
     orient <- use robotOrientation
     when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
     let nextLoc = loc ^+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
+  ensureItem :: HasRobotStepState sig m => Text -> Text -> m Entity
+  ensureItem itemName action = do
+    -- First, make sure we know about the entity.
+    inv <- use robotInventory
+    inst <- use installedDevices
+    item <-
+      asum (map (listToMaybe . lookupByName itemName) [inv, inst])
+        `isJustOrFail` ["What is", indefinite itemName <> "?"]
+
+    -- Next, check whether we have one.  If we don't, add a hint about
+    -- 'create' in creative mode.
+    creative <- use creativeMode
+    let create l = l <> ["You can make one first with 'create \"" <> itemName <> "\"'." | creative]
+
+    (E.lookup item inv > 0)
+      `holdsOrFail` create ["You don't have", indefinite itemName, "to", action <> "."]
+
+    return item
 
   -- Check the required devices and inventory for running the given
   -- command on a target robot.  This function is used in common by
@@ -1526,7 +1546,7 @@ execConst c vs s k = do
   -- installed, and the inventory that should be transferred from
   -- parent to child.
   checkRequirements ::
-    (Has (State GameState) sig m, Has (State Robot) sig m, Has (Error Exn) sig m) =>
+    HasRobotStepState sig m =>
     Inventory ->
     Inventory ->
     Inventory ->
@@ -1647,29 +1667,51 @@ execConst c vs s k = do
               [de] -> Right $ Just $ snd de
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
-  destroyIfNotBase :: (Has (State Robot) sig m, Has (Error Exn) sig m) => m ()
+  destroyIfNotBase :: HasRobotStepState sig m => m ()
   destroyIfNotBase = do
-    destroy <- isDestroyable =<< get @Robot
-    when destroy $ selfDestruct .= True
+    rid <- use robotID
+    (rid /= 0) `holdsOrFail` ["You consider destroying your base, but decide not to do it after all."]
+    selfDestruct .= True
 
-  isDestroyable :: (Has (Error Exn) sig m) => Robot -> m Bool
-  isDestroyable r = do
-    if r ^. robotID == 0
-      then throwError $ cmdExn c ["You consider destroying your base, but decide not to do it after all."]
-      else return True
+  -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
+  checkMoveAhead :: HasRobotStepState sig m => V2 Int64 -> MoveFailure -> m ()
+  checkMoveAhead nextLoc MoveFailure {..} = do
+    me <- entityAt nextLoc
+    systemRob <- use systemRobot
+    case me of
+      Nothing -> return ()
+      Just e
+        | systemRob -> return ()
+        | otherwise -> do
+          -- robots can not walk through walls
+          when (e `hasProperty` Unwalkable) $
+            case failIfBlocked of
+              Destroy -> destroyIfNotBase
+              ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
+              IgnoreFail -> return ()
 
-  getRobotWithinTouch ::
-    (Has (State Robot) sig m, Has (State GameState) sig m, Has (Error Exn) sig m) =>
-    RID ->
-    m Robot
+          -- robots drown if they walk over liquid without boat
+          caps <- use robotCapabilities
+          when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
+            case failIfDrown of
+              Destroy -> destroyIfNotBase
+              ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+              IgnoreFail -> return ()
+
+  getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
   getRobotWithinTouch rid = do
-    mother <- robotWithID rid
-    other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
-    -- Make sure it is in the same location
-    loc <- use robotLocation
-    ((other ^. robotLocation) `manhattan` loc <= 1)
-      `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
-    return other
+    cid <- use robotID
+    if cid == rid
+      then get @Robot
+      else do
+        mother <- robotWithID rid
+        other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
+        -- Make sure it is either in the same location or we do not care
+        omni <- (||) <$> use systemRobot <*> use creativeMode
+        loc <- use robotLocation
+        (omni || (other ^. robotLocation) `manhattan` loc <= 1)
+          `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
+        return other
 
   -- update some tile in the world setting it to entity or making it empty
   updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
@@ -1687,16 +1729,35 @@ execConst c vs s k = do
     [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
     _ -> badConst
 
+  -- Make sure the robot has the thing in its inventory
+  hasInInventoryOrFail :: HasRobotStepState sig m => Text -> m Entity
+  hasInInventoryOrFail eName = do
+    inv <- use robotInventory
+    e <-
+      listToMaybe (lookupByName eName inv)
+        `isJustOrFail` ["What is", indefinite eName <> "?"]
+    let cmd = T.toLower . T.pack . show $ c
+    (E.lookup e inv > 0)
+      `holdsOrFail` ["You don't have", indefinite eName, "to", cmd <> "."]
+    return e
+
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
-  doGrab shouldHarvest = do
+  doGrab :: (HasRobotStepState sig m, Has (Lift IO) sig m) => GrabbingCmd -> m CESK
+  doGrab cmd = do
+    let verb = verbGrabbingCmd cmd
+        verbed = verbedGrabbingCmd cmd
+
     -- Ensure there is an entity here.
     loc <- use robotLocation
-    e <- entityAt loc >>= (`isJustOrFail` ["There is nothing here to grab."])
+    e <-
+      entityAt loc
+        >>= (`isJustOrFail` ["There is nothing here to", verb <> "."])
 
     -- Ensure it can be picked up.
-    (e `hasProperty` Portable)
-      `holdsOrFail` ["The", e ^. entityName, "here can't be grabbed."]
+    omni <- (||) <$> use systemRobot <*> use creativeMode
+    (omni || e `hasProperty` Portable)
+      `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
     -- Remove the entity from the world.
     updateEntityAt loc (const Nothing)
@@ -1708,7 +1769,7 @@ execConst c vs s k = do
 
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.
-    when ((e `hasProperty` Growable) && shouldHarvest) $ do
+    when ((e `hasProperty` Growable) && cmd == Harvest') $ do
       let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
       createdAt <- getNow
@@ -1727,11 +1788,34 @@ execConst c vs s k = do
     updateDiscoveredEntities e'
 
     -- Return the name of the item obtained.
-    return $ Out (VString (e' ^. entityName)) s k
+    return $ Out (VText (e' ^. entityName)) s k
 
 ------------------------------------------------------------
 -- Some utility functions
 ------------------------------------------------------------
+
+-- | How to handle failure, for example when moving to blocked location
+data RobotFailure = ThrowExn | Destroy | IgnoreFail
+
+-- | How to handle failure when moving/teleporting to a location.
+data MoveFailure = MoveFailure
+  { failIfBlocked :: RobotFailure
+  , failIfDrown :: RobotFailure
+  }
+
+data GrabbingCmd = Grab' | Harvest' | Swap' deriving (Eq, Show)
+
+verbGrabbingCmd :: GrabbingCmd -> Text
+verbGrabbingCmd = \case
+  Harvest' -> "harvest"
+  Grab' -> "grab"
+  Swap' -> "swap"
+
+verbedGrabbingCmd :: GrabbingCmd -> Text
+verbedGrabbingCmd = \case
+  Harvest' -> "harvested"
+  Grab' -> "grabbed"
+  Swap' -> "swapped"
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented
@@ -1744,7 +1828,7 @@ execConst c vs s k = do
 --   entities will be copied/created, that is, no entities will be
 --   removed from the parent robot.
 provisionChild ::
-  (Has (State Robot) sig m, Has (State GameState) sig m) =>
+  (HasRobotStepState sig m) =>
   RID ->
   Inventory ->
   Inventory ->
@@ -1764,7 +1848,7 @@ provisionChild childID toInstall toGive = do
 --   location.  This should be the /only/ way to update the location
 --   of a robot.
 updateRobotLocation ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  (HasRobotStepState sig m) =>
   V2 Int64 ->
   V2 Int64 ->
   m ()
@@ -1775,6 +1859,7 @@ updateRobotLocation oldLoc newLoc
     robotsByLocation . at oldLoc %= deleteOne rid
     robotsByLocation . at newLoc . non Empty %= IS.insert rid
     modify (unsafeSetRobotLocation newLoc)
+    flagRedraw
  where
   -- Make sure empty sets don't hang around in the
   -- robotsByLocation map.  We don't want a key with an
@@ -1790,9 +1875,9 @@ updateRobotLocation oldLoc newLoc
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.
 onTarget ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  HasRobotStepState sig m =>
   RID ->
-  (forall sig' m'. (Has (State GameState) sig' m', Has (State Robot) sig' m') => m' ()) ->
+  (forall sig' m'. (HasRobotStepState sig' m') => m' ()) ->
   m ()
 onTarget rid act = do
   myID <- use robotID
@@ -1804,7 +1889,9 @@ onTarget rid act = do
         Nothing -> return ()
         Just tgt -> do
           tgt' <- execState @Robot tgt act
-          robotMap . ix rid .= tgt'
+          if tgt' ^. selfDestruct
+            then deleteRobot rid
+            else robotMap . ix rid .= tgt'
 
 ------------------------------------------------------------
 -- Comparison
@@ -1830,7 +1917,7 @@ compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
 compareValues v1 = case v1 of
   VUnit -> \case VUnit -> return EQ; v2 -> incompatCmp VUnit v2
   VInt n1 -> \case VInt n2 -> return (compare n1 n2); v2 -> incompatCmp v1 v2
-  VString t1 -> \case VString t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
+  VText t1 -> \case VText t2 -> return (compare t1 t2); v2 -> incompatCmp v1 v2
   VDir d1 -> \case VDir d2 -> return (compare d1 d2); v2 -> incompatCmp v1 v2
   VBool b1 -> \case VBool b2 -> return (compare b1 b2); v2 -> incompatCmp v1 v2
   VRobot r1 -> \case VRobot r2 -> return (compare r1 r2); v2 -> incompatCmp v1 v2
@@ -1903,7 +1990,7 @@ safeExp a b
 ------------------------------------------------------------
 
 -- | Update the global list of discovered entities, and check for new recipes.
-updateDiscoveredEntities :: (Has (State GameState) sig m, Has (State Robot) sig m) => Entity -> m ()
+updateDiscoveredEntities :: (HasRobotStepState sig m) => Entity -> m ()
 updateDiscoveredEntities e = do
   allDiscovered <- use allDiscoveredEntities
   if E.contains0plus e allDiscovered
@@ -1935,7 +2022,7 @@ updateAvailableRecipes invs e = do
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
 updateAvailableCommands e = do
-  let newCaps = S.fromList (e ^. entityCapabilities)
+  let newCaps = e ^. entityCapabilities
       keepConsts = \case
         Just cap -> cap `S.member` newCaps
         Nothing -> False

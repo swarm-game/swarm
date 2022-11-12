@@ -1,3 +1,4 @@
+version: 1
 name: Install
 description: |
   Learn how to install devices and gain new capabilities.
@@ -23,23 +24,6 @@ objectives:
         _ <- robotNumbered 1;
         return true;
       } { return false }
-entities:
-  - name: knownprinter
-    display:
-      attr: device
-      char: '3'
-    description:
-      - A 3D printer, that you should grab and install.
-    yields: 3D printer
-    properties: [known, portable]
-  - name: knownwater
-    display:
-      attr: water
-      char: '~'
-    description:
-    - A running stream of of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
 solution: |
   turn south; move; grab; install base "3D printer"; build {log "Hello World!"};
 robots:
@@ -53,13 +37,14 @@ robots:
     inventory:
       - [10, solar panel]
       - [10, logger]
+known: [3D printer, water]
 world:
   default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]
-    '~': [ice, knownwater]
-    '3': [grass, knownprinter]
+    '~': [ice, water]
+    '3': [grass, 3D printer]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]

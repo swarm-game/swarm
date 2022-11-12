@@ -1,4 +1,6 @@
+version: 1
 name: Invisible, loopy maze
+author: Brent Yorgey
 description: There is a maze, but it can't be seen, only sensed... can you
   program a robot to navigate it successfully?
 objectives:
@@ -16,7 +18,7 @@ objectives:
       return (not b)
     } { return false }
 solution: |
-  run "data/scenarios/Challenges/Mazes/loopy_maze_sol.sw"
+  run "scenarios/Challenges/Mazes/loopy_maze_sol.sw"
 robots:
   - name: base
     dir: [0,1]

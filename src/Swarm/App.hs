@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- Module      :  Swarm.App
 -- Copyright   :  Brent Yorgey
@@ -11,18 +13,20 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens ((^.))
+import Control.Lens ((%~), (&), (?~))
 import Control.Monad.Except
 import Data.IORef (newIORef, writeIORef)
+import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-import Network.Wai.Handler.Warp (Port)
-import Swarm.Game.State
+import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.View
+import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
+import System.IO (stderr)
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
@@ -39,11 +43,11 @@ app eventHandler =
 
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
-appMain :: Maybe Port -> Maybe Seed -> Maybe String -> Maybe String -> Bool -> IO ()
-appMain port seed scenario toRun cheat = do
-  res <- runExceptT $ initAppState seed scenario toRun cheat
+appMain :: AppOpts -> IO ()
+appMain opts = do
+  res <- runExceptT $ initAppState opts
   case res of
-    Left errMsg -> T.putStrLn errMsg
+    Left errMsg -> T.hPutStrLn stderr errMsg
     Right s -> do
       -- Send Frame events as at a reasonable rate for 30 fps. The
       -- game is responsible for figuring out how many steps to take
@@ -65,32 +69,56 @@ appMain port seed scenario toRun cheat = do
           threadDelay 33_333 -- cap maximum framerate at 30 FPS
           writeBChan chan Frame
 
+      _ <- forkIO $ do
+        upRel <- getNewerReleaseVersion (repoGitInfo opts)
+        writeBChan chan (UpstreamVersion upRel)
+
       -- Start the web service with a reference to the game state
-      gsRef <- newIORef (s ^. gameState)
-      Swarm.Web.startWebThread port gsRef
+      appStateRef <- newIORef s
+      eport <- Swarm.Web.startWebThread (userWebPort opts) appStateRef
+
+      let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
+      let logE e = logEvent ErrorTrace ("Web API", -2) (T.pack e)
+      let s' =
+            s & runtimeState
+              %~ case eport of
+                Right p -> (webPort ?~ p) . (eventLog %~ logP p)
+                Left e -> eventLog %~ logE e
 
       -- Update the reference for every event
       let eventHandler e = do
-            s' <- get
-            liftIO $ writeIORef gsRef (s' ^. gameState)
+            curSt <- get
+            liftIO $ writeIORef appStateRef curSt
             handleEvent e
 
       -- Run the app.
       let buildVty = V.mkVty V.defaultConfig
       initialVty <- buildVty
       V.setMode (V.outputIface initialVty) V.Mouse True
-      void $ customMain initialVty buildVty (Just chan) (app eventHandler) s
+      void $ customMain initialVty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
 -- This is useful to live update the code using `ghcid -W --test "Swarm.App.demoWeb"`
 demoWeb :: IO ()
 demoWeb = do
-  res <- runExceptT $ initAppState Nothing demoScenario Nothing True
+  let demoPort = 8080
+  res <-
+    runExceptT $
+      initAppState $
+        AppOpts
+          { userSeed = Nothing
+          , userScenario = demoScenario
+          , scriptToRun = Nothing
+          , autoPlay = False
+          , cheatMode = False
+          , userWebPort = Nothing
+          , repoGitInfo = Nothing
+          }
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
-      gsRef <- newIORef (s ^. gameState)
-      webMain Nothing 8080 gsRef
+      appStateRef <- newIORef s
+      webMain Nothing demoPort appStateRef
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 

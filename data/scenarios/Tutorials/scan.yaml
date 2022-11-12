@@ -1,3 +1,4 @@
+version: 1
 name: Scan
 description: |
   Learn how to send robots to safely scan your surroundings.
@@ -29,7 +30,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [1,0]
+    dir: [0,1]
     heavy: true
     display:
       char: Ω

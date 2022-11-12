@@ -1,4 +1,6 @@
+version: 1
 name: Chess Knight
+author: Ondřej Šebek
 description: In this quirky challenge, you move as the chess knight piece. Can you capture the enemy king?
 objectives:
   - goal:
@@ -13,15 +15,6 @@ objectives:
         kloc <- as king {whereami};
         return (bloc == kloc)
       } { return false }
-entities:
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
 solution: |
   move; move; move; turn right; move; turn left; move;
 robots:
@@ -39,8 +32,9 @@ robots:
     dir: [0,0]
     display:
       char: '♚'
+known: [water]
 world:
-  default: [ice, knownwater]
+  default: [ice, water]
   palette:
     '.': [grass]
     '#': [ice]

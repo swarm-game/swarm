@@ -49,12 +49,12 @@ quoteTermExp s = do
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
 antiTermExp :: Term -> Maybe TH.ExpQ
-antiTermExp (TAntiString v) =
-  Just $ TH.appE (TH.conE (TH.mkName "TString")) (TH.varE (TH.mkName (from v)))
+antiTermExp (TAntiText v) =
+  Just $ TH.appE (TH.conE (TH.mkName "TText")) (TH.varE (TH.mkName (from v)))
 antiTermExp (TAntiInt v) =
   Just $ TH.appE (TH.conE (TH.mkName "TInt")) (TH.varE (TH.mkName (from v)))
 antiTermExp _ = Nothing
 
--- At the moment, only antiquotation of literal strings and ints are
+-- At the moment, only antiquotation of literal text and ints are
 -- supported, because that's what we need for the seedProgram.  But
 -- we can easily add more in the future.

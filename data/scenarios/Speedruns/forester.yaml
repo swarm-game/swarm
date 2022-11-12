@@ -1,5 +1,8 @@
+version: 1
 name: Forester
+author: Brent Yorgey
 description: Race to harvest 1024 trees as quickly as possible.
+  See the Swarm wiki for more information on Swarm speedrunning.
 objectives:
   - condition: as base {n <- count "tree"; return (n >= 1024)}
 robots:

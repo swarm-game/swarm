@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Game.WorldGen
@@ -14,12 +15,14 @@ import Control.Lens (view)
 import Data.Array.IArray
 import Data.Bifunctor (second)
 import Data.Bool
+import Data.ByteString (ByteString)
 import Data.Enumeration
 import Data.Hash.Murmur
 import Data.Int (Int64)
 import Data.List (find)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
+import Data.Tagged
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric.Noise.Perlin
@@ -27,6 +30,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Terrain
 import Swarm.Game.World
 import Witch
+import Witch.Encoding qualified as Encoding
 
 -- | A simple test world used for a while during early development.
 testWorld1 :: Coords -> (TerrainType, Maybe Text)
@@ -92,7 +96,7 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
       (bool Soft Hard (sample ix pn1 > 0))
       (bool Natural Artificial (sample ix pn2 > 0))
    where
-    h = murmur3 0 . into . show $ ix
+    h = murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $ ix
 
     genBiome Big Hard Natural
       | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
@@ -111,7 +115,8 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
       | even (r + c) = (DirtT, Just "wavy water")
       | otherwise = (DirtT, Just "water")
     genBiome Small Soft Natural
-      | h `mod` 10 == 0 = (GrassT, Just "flower")
+      | h `mod` 20 == 0 = (GrassT, Just "flower")
+      | h `mod` 20 == 10 = (GrassT, Just "cotton")
       | otherwise = (GrassT, Nothing)
     genBiome Small Soft Artificial
       | h `mod` 10 == 0 = (GrassT, Just (T.concat ["bit (", from (show ((r + c) `mod` 2)), ")"]))

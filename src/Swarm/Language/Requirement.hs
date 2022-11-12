@@ -187,8 +187,8 @@ requirements' = go
     TDir d -> if isCardinal d then singletonCap COrient else mempty
     TInt _ -> mempty
     TAntiInt _ -> mempty
-    TString _ -> mempty
-    TAntiString _ -> mempty
+    TText _ -> mempty
+    TAntiText _ -> mempty
     TBool _ -> mempty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
@@ -235,7 +235,7 @@ requirements' = go
     -- the RHS.
     TBind mx t1 t2 -> go ctx t1 <> go (maybe id Ctx.delete mx ctx) t2
     -- Everything else is straightforward.
-    TPair t1 t2 -> go ctx t1 <> go ctx t2
+    TPair t1 t2 -> insert (ReqCap CProd) $ go ctx t1 <> go ctx t2
     TDelay _ t -> go ctx t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,

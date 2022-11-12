@@ -81,6 +81,8 @@ data Capability
     CListen
   | -- | Execute the 'Log' command
     CLog
+  | -- | Manipulate text values
+    CText
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
@@ -109,9 +111,17 @@ data Capability
     CTeleport
   | -- | Capability to run commands atomically
     CAtomic
+  | -- | Capability to execute swap (grab and place atomically at the same time).
+    CSwap
   | -- | Capabiltiy to do time-related things, like `wait` and get the
     --   current time.
     CTime
+  | -- | Capability to execute `try`.
+    CTry
+  | -- | Capability for working with sum types.
+    CSum
+  | -- | Capability for working with product types.
+    CProd
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -185,13 +195,16 @@ constCaps = \case
   Exp -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
+  Swap -> Just CSwap
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
   -- ----------------------------------------------------------------
-  -- String operations
-  Format -> Just CLog
-  Concat -> Just CLog
+  -- Text operations
+  Format -> Just CText
+  Concat -> Just CText
+  Split -> Just CText
+  Chars -> Just CText
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
@@ -212,6 +225,18 @@ constCaps = \case
   Or -> Just CCond
   Not -> Just CNegation
   -- ----------------------------------------------------------------
+  -- exceptions
+  Try -> Just CTry
+  -- ----------------------------------------------------------------
+  -- type-level arithmetic
+  Inl -> Just CSum
+  Inr -> Just CSum
+  Case -> Just CSum
+  Fst -> Just CProd
+  Snd -> Just CProd
+  -- XXX pair syntax should require CProd too
+
+  -- ----------------------------------------------------------------
   -- Some additional straightforward ones, which however currently
   -- cannot be used in classic mode since there is no craftable item
   -- which conveys their capability. TODO: #26
@@ -223,10 +248,4 @@ constCaps = \case
   -- Some more constants which *ought* to have their own capability but
   -- currently don't. TODO: #26
   View -> Nothing -- XXX this should also require something.
-  Inl -> Nothing -- XXX should require cap for sums
-  Inr -> Nothing
-  Case -> Nothing
-  Fst -> Nothing -- XXX should require cap for pairs
-  Snd -> Nothing
-  Try -> Nothing -- XXX these definitely need to require something.
   Knows -> Nothing

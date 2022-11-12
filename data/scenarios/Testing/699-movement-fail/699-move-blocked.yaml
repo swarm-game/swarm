@@ -1,0 +1,50 @@
+version: 1
+name: Move to blocked
+description: |
+  Robot moving to blocked location results in its destruction.
+  https://github.com/swarm-game/swarm/issues/699
+objectives:
+  - condition: |
+      def isAliveOn = \name.\loc. try {r <- robotNamed name; l <- as r {whereami}; return $ l == loc} {return false} end;
+      def isDead = \name. try {robotNamed name; return false} {return true} end;
+      a1 <- isAliveOn "one" (0,-1);
+      a2 <- isAliveOn "two" (1,-2);
+      b <- isAliveOn "base" (0,0);
+      return (a1 && a2 && b)
+solution: |
+  move; say "Fatal error: base was able to move into a boulder and not fail!"
+robots:
+  - name: base
+    dir: [1,0]
+    devices: ["treads", "logger"]
+  - name: one
+    dir: [1,0]
+    devices: ["treads", "logger"]
+    program: |
+      move; say "Fatal error: one was able to move into a boulder and not fail!"
+  - name: two
+    dir: [1,0]
+    system: true
+    devices: ["logger"]
+    program: |
+      try {move} {say "Fatal error: two was unable to move into a boulder even though it is system robot!"}
+world:
+  default: [blank]
+  palette:
+    '@': [stone, boulder]
+    'B': [grass, null, base]
+    '1': [grass, null, one]
+    '2': [grass, null, two]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  map: |
+    ┌──┐
+    │B@│
+    │1@│
+    │2@│
+    └──┘

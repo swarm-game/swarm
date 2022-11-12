@@ -43,6 +43,8 @@
                "fail"
                "not"
                "format"
+               "chars"
+               "split"
              ))
              (x-commands '(
                "noop"
@@ -81,6 +83,7 @@
                "run"
                "return"
                "try"
+               "swap"
                "atomic"
                "teleport"
                "as"
@@ -97,7 +100,7 @@
                "west"
                "down"
              ))
-             (x-types '("int" "string" "dir" "bool" "cmd"))
+             (x-types '("int" "text" "dir" "bool" "cmd" "void" "unit"))
 
              (x-keywords-regexp (regexp-opt x-keywords 'words))
              (x-builtins-regexp (regexp-opt x-builtins 'words))

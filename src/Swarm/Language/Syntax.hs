@@ -117,9 +117,9 @@ allDirs = [minBound .. maxBound]
 -- | Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  DLeft -> relative (\(V2 x y) -> V2 (- y) x)
-  DRight -> relative (\(V2 x y) -> V2 y (- x))
-  DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
+  DLeft -> relative (\(V2 x y) -> V2 (-y) x)
+  DRight -> relative (\(V2 x y) -> V2 y (-x))
+  DBack -> relative (\(V2 x y) -> V2 (-x) (-y))
   DDown -> relative (const down)
   DForward -> relative id
   DNorth -> cardinal north
@@ -348,6 +348,10 @@ data Const
     Format
   | -- | Concatenate string values
     Concat
+  | -- | Count number of characters.
+    Chars
+  | -- | Split string into two parts.
+    Split
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -355,7 +359,9 @@ data Const
     AppF
   | -- Concurrency
 
-    -- | When executing @atomic c@, a robot will not be interrupted,
+    -- | Swap placed entity with one in inventory. Essentially atomic grab and place.
+    Swap
+  | -- | When executing @atomic c@, a robot will not be interrupted,
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
@@ -631,11 +637,23 @@ constInfo c = case c of
   Geq -> binaryOp ">=" 4 N "Check that the left value is greater or equal to the right one."
   Format -> function 1 "Turn an arbitrary value into a string."
   Concat -> binaryOp "++" 6 R "Concatenate the given strings."
+  Chars -> function 1 "Counts the number of characters in the text."
+  Split ->
+    function 2 . doc "Split the text into two at given position." $
+      [ "To be more specific, the following holds for all `text` values `s1` and `s2`:"
+      , "`(s1,s2) == split (chars s1) (s1 ++ s2)`"
+      , "So split can be used to undo concatenation if you know the length of the original string."
+      ]
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."
       , "For exaple:"
       , "`f $ g $ h x = f (g (h x))`"
+      ]
+  Swap ->
+    command 1 short . doc "Swap placed entity with one in inventory." $
+      [ "This essentially works like atomic grab and place."
+      , "Use this to avoid race conditions where more robots grab, scan or place in one location."
       ]
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
@@ -757,7 +775,7 @@ pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
@@ -791,10 +809,10 @@ data Term
     TInt Integer
   | -- | An antiquoted Haskell variable name of type Integer.
     TAntiInt Text
-  | -- | A string literal.
-    TString Text
+  | -- | A text literal.
+    TText Text
   | -- | An antiquoted Haskell variable name of type Text.
-    TAntiString Text
+    TAntiText Text
   | -- | A Boolean literal.
     TBool Bool
   | -- | A robot value.  These never show up in surface syntax, but are
@@ -851,8 +869,8 @@ fvT f = go S.empty
     TDir {} -> pure t
     TInt {} -> pure t
     TAntiInt {} -> pure t
-    TString {} -> pure t
-    TAntiString {} -> pure t
+    TText {} -> pure t
+    TAntiText {} -> pure t
     TBool {} -> pure t
     TRobot {} -> pure t
     TRef {} -> pure t

@@ -5,7 +5,7 @@
 	"author": "Ondřej Šebek",
 	"license": "MIT",
 	"version": "0.0.3",
-	"publisher": "vscode",
+	"publisher": "xsebek",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/swarm-game/swarm"

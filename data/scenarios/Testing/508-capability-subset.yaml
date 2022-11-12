@@ -1,3 +1,4 @@
+version: 1
 name: Install one device
 description: |
   Install least amount of devices that provide needed capabilities
@@ -13,25 +14,33 @@ objectives:
       } { return false }
 solution: |
   log "Hi, I can build teleporting robots!";
-  build {log "Hi, I can teleport!"; teleport self (5,0); p <- whereami; log $ "I am at " ++ format p}
+  try {
+    build {log "Hi, I can teleport!"; teleport self (5,0); p <- whereami; log $ "I am at " ++ format p}
+  } {
+    fail "Fatal error: BASE: I could not build my robot! What happened?!"
+  }
 robots:
   - name: base
     loc: [0,0]
     dir: [1,0]
     devices:
       - logger
+      - net
       - 3D printer
     inventory:
       - [1, mirror]
+      - [1, string]
       - [1, GPS]
       - [1, Tardis]
       - [1, logger]
       - [1, solar panel]
+      - [1, ADT calculator]
+known: [water]
 world:
-  default: [ice, knownwater]
+  default: [ice, water]
   palette:
     '.': [grass]
-    ' ': [ice, knownwater]
+    ' ': [ice, water]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
@@ -60,12 +69,3 @@ entities:
     - Bigger on the inside.
     properties: [known, portable]
     capabilities: [senseloc, teleport]
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water

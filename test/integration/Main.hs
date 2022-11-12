@@ -23,12 +23,13 @@ import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (leText, machine, robotLog, waitingUntil)
+import Swarm.Game.Robot (defReqs, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
   WinCondition (Won),
   activeRobots,
+  baseRobot,
   initGameStateForScenario,
   messageQueue,
   robotMap,
@@ -39,14 +40,13 @@ import Swarm.Game.State (
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -130,8 +130,7 @@ testScenarioSolution _ci _em =
     [ testGroup
         "Tutorial"
         [ testSolution Default "Tutorials/backstory"
-        , testSolution Default "Tutorials/move"
-        , testSolution Default "Tutorials/turn"
+        , testSolution (Sec 3) "Tutorials/move"
         , testSolution Default "Tutorials/craft"
         , testSolution Default "Tutorials/grab"
         , testSolution Default "Tutorials/place"
@@ -156,18 +155,21 @@ testScenarioSolution _ci _em =
     , testGroup
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
-        , testSolution Default "Challenges/test"
         , testSolution Default "Challenges/teleport"
+        , testSolution (Sec 5) "Challenges/2048"
+        , testSolution (Sec 10) "Challenges/hanoi"
         , testGroup
             "Mazes"
-            [ testSolution Default "Challenges/Mazes/invisible_maze"
+            [ testSolution Default "Challenges/Mazes/easy_cave_maze"
+            , testSolution Default "Challenges/Mazes/easy_spiral_maze"
+            , testSolution Default "Challenges/Mazes/invisible_maze"
             , testSolution Default "Challenges/Mazes/loopy_maze"
             ]
         ]
     , testGroup
         "Regression tests"
-        [ expectFailBecause "Awaiting fix (#394)" $
-            testSolution Default "Testing/394-build-drill"
+        [ testSolution Default "Testing/394-build-drill"
+        , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" $ \g -> do
             let t = g ^. ticks
@@ -187,17 +189,20 @@ testScenarioSolution _ci _em =
             , testSolution Default "Testing/201-require/201-require-device-creative"
             , testSolution Default "Testing/201-require/201-require-device-creative1"
             , testSolution Default "Testing/201-require/201-require-entities"
-            , expectFailBecause "Awaiting fix (#540)" $
-                testSolution Default "Testing/201-require/201-require-entities-def"
+            , testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
             ]
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
         , testSolution Default "Testing/555-teleport-location"
-        , expectFailBecause "Awaiting fix (#540)" $
-            testSolution (Sec 10) "Testing/562-lodestone"
+        , testSolution Default "Testing/562-lodestone"
         , testSolution Default "Testing/378-objectives"
+        , testSolution Default "Testing/684-swap"
+        , testSolution Default "Testing/699-movement-fail/699-move-blocked"
+        , testSolution Default "Testing/699-movement-fail/699-move-liquid"
+        , testSolution Default "Testing/699-movement-fail/699-teleport-blocked"
+        , testSolution Default "Testing/710-multi-robot"
         ]
     ]
  where
@@ -209,19 +214,27 @@ testScenarioSolution _ci _em =
 
   testSolution' :: Time -> FilePath -> (GameState -> Assertion) -> TestTree
   testSolution' s p verify = testCase p $ do
-    Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
-    case gs ^. winSolution of
-      Nothing -> assertFailure "No solution to test!"
-      Just sol -> do
-        let gs' = gs & robotMap . ix 0 . machine .~ initMachine sol Ctx.empty emptyStore
-        m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
-        case m of
-          Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
-          Just g -> do
-            -- When debugging, try logging all robot messages.
-            -- printAllLogs
-            noBadErrors g
-            verify g
+    out <- runExceptT $ initGameStateForScenario p Nothing Nothing
+    case out of
+      Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
+      Right gs -> case gs ^. winSolution of
+        Nothing -> assertFailure "No solution to test!"
+        Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
+          let gs' =
+                gs
+                  -- See #827 for an explanation of why it's important to set
+                  -- the robotContext defReqs here (and also why this will,
+                  -- hopefully, eventually, go away).
+                  & baseRobot . robotContext . defReqs .~ reqCtx
+                  & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+          m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
+          case m of
+            Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
+            Just g -> do
+              -- When debugging, try logging all robot messages.
+              -- printAllLogs
+              noBadErrors g
+              verify g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do

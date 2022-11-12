@@ -1,3 +1,4 @@
+version: 1
 name: Conditionals
 description: |
   Learn how to write conditional expressions.
@@ -12,7 +13,7 @@ objectives:
         to sweep over the entire 4x4 square and pick up a `very small
         rock` any time you detect one.
       - |
-        The `ishere` command, with type `string -> cmd bool`, can be used
+        The `ishere` command, with type `text -> cmd bool`, can be used
         for detecting the presence of a specific item such as a `very small rock`.
         What we need is a way to take the `bool` output from `ishere`
         and use it to decide whether to `grab` a rock or not.
@@ -45,7 +46,7 @@ objectives:
       - |
         TIP: the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}` is not
-        allowed, because `{grab}` has type `{cmd string}` whereas `{}` has type `{cmd ()}`.
+        allowed, because `{grab}` has type `{cmd text}` whereas `{}` has type `{cmd unit}`.
         In this case `{grab; return ()}` has the right type.
     condition: |
       try {
@@ -61,9 +62,6 @@ solution: |
   def pick = move; ifC (ishere VSR) {grab; return ()} {} end;
   def pickrow = x4 pick; turn back; x4 move end;
   build {
-    require "treads"; require "branch predictor"; require "grabber";
-    require "lambda"; require "scanner";  // #540
-
     turn south; x4 (move; tL; pickrow; tL); tB; x4 move; x4 (give base VSR)
   }
 robots:

@@ -1,44 +1,346 @@
-name: Moving, part 1
+version: 1
+name: Moving
 description: |
   Learn how to move and chain commands.
-#
-# The players might not use ';' here, so it should be brought up again when building robots.
-#
 objectives:
   - goal:
       - Robots can use the `move` command to move forward one unit
         in the direction they are currently facing.
       - To complete this challenge, move your robot two spaces to the right,
-        to the coordinates (2,0).
+        to the coordinates (2,0) marked with the purple flower.
       - Note that you can chain commands with semicolon, `;`.
       - You can open this popup window at any time to remind yourself of the goal
         using Ctrl-G.
     condition: |
-      try {
-        loc <- as base {whereami};
-        return (loc == (2,0))
-      } { return false }
+      r <- robotNamed "check1";
+      loc <- as r {has "Win"};
+  - goal:
+      - Good! Now you need to learn how to effectively repeat actions.
+      - |
+        Previously you could move twice by chaining the move command:
+      - |
+        move; move
+      - To reuse that command without having to retype it press the upward
+        arrow on your keyboard. This will allow you to select previous commands.
+      - Ahead of you is a six steps long corridor. Move to its end, i.e. the
+        coordinates (8,0) marked with the second purple flower.
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check2";
+      loc <- as r {has "Win"};
+  - goal:
+      - Well done! In addition to `move`, you can use the `turn` command
+        to turn your robot, for example, `turn right` or `turn east`.
+      - Switch to the inventory view in the upper left (by clicking on it or typing `Alt+E`)
+        and select the `treads` device to read about the details.
+        If the bottom-left info panel is not big enough to read the
+        whole thing, you can hit `Enter` on the `treads` device to pop
+        out the description, or you can focus the info panel (with
+        `Alt+T` or by clicking) and scroll it with arrow keys or PgUp/PgDown.
+        When you're done reading, you can come back to the REPL prompt
+        by clicking on it or typing `Alt+R`.
+      - Afterwards, move your robot to the coordinates (8,4) in the northeast corner
+        marked with two flowers.
+      - |
+        Remember, you can chain commands with `;`, for example:
+      - |
+        `move;move;move;move`
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check3";
+      loc <- as r {has "Win"};
+  - goal:
+      - Good job! You are now ready to move and turn on your own.
+      - To complete this challenge, move your robot to the northeast corner,
+        to the coordinates (8,8) marked with one flower.
+      - Remember you can press the upward arrow on your keyboard to select previous commands.
+      - You can open this popup window at any time to remind yourself of the goal
+        using Ctrl-G.
+    condition: |
+      r <- robotNamed "check4";
+      loc <- as r {has "Win"};
 solution: |
-  move; move
-robots:
-  - name: base
-    dir: [1,0]
-    devices:
-      - treads
-      - logger
+  // 0
+  move;move;
+  // 1
+  move;move;
+  move;move;move;move;
+  // 2
+  turn left;
+  move;move;move;move; // go 6 north
+  // 3
+  turn left;
+  move;move;move;move; // go 8 west
+  move;move;move;move;
+  turn right;
+  move;move;move;move; // go 4 north
+  turn right;
+  move;move;move;move; // go 8 east
+  move;move;move;move;
+known:
+  - flower
 world:
   default: [blank]
   palette:
-    '>': [grass, null, base]
-    '.': [grass]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
-  upperleft: [-1, 1]
+    '.': [blank]
+    '*': [blank, flower]
+    'X': [blank, null, 1P flower]
+    'Y': [blank, null, 2P flower]
+    'Z': [blank, null, 3P flower]
+    # FIRST ROOM
+    '┌': [blank, upper left corner]
+    '┐': [blank, upper right corner, 1S down and horizontal wall]
+    '└': [blank, lower left corner]
+    '┘': [blank, lower right corner, 1S up and horizontal wall]
+    '─': [blank, horizontal wall]
+    '│': [blank, vertical wall]
+    # SECOND ROOM
+    '1': [blank, vertical wall, 1G]
+    '-': [blank, null, 1P horizontal wall]
+    '|': [blank, null, 1P vertical wall]
+    'c': [blank, null, 1P upper right corner, 2S left and vertical wall]
+    'b': [blank, null, 1P lower right corner]
+    'd': [blank, null, 1P horizontal wall, 2S up and horizontal wall]
+    # THIRD ROOM
+    '2': [blank, null, 1P horizontal wall, 2G]
+    '~': [blank, null, 2P horizontal wall]
+    '/': [blank, null, 2P vertical wall]
+    'R': [blank, null, 2P upper right corner]
+    'L': [blank, null, 2P upper left corner, 3S down and horizontal wall]
+    'K': [blank, null, 2P vertical wall, 3S left and vertical wall]
+    # FOURTH ROOM
+    '3': [blank, null, 2P vertical wall, 3G]
+    '_': [blank, null, 3P horizontal wall]
+    '\': [blank, null, 3P vertical wall]
+    'A': [blank, null, 3P lower left corner]
+    'B': [blank, null, 3P lower right corner]
+    'C': [blank, null, 3P upper right corner]
+    'D': [blank, null, 3P upper left corner]
+  upperleft: [-1, 9]
   map: |
-    ┌───┐
-    │>..│
-    └───┘
+    D_________C
+    \........Z\
+    \..D______B
+    \..\.......
+    \..A___L~~R
+    \......3YY/
+    A______K../
+    ......./../
+    ┌───┐--d22c
+    │..*1....X|
+    └───┘-----b
+
+# Font inspiration and a nicely visible separator:
+#
+# ███████ ██     ██  █████  ██████  ███    ███ 
+# ██      ██     ██ ██   ██ ██   ██ ████  ████ 
+# ███████ ██  █  ██ ███████ ██████  ██ ████ ██ 
+#      ██ ██ ███ ██ ██   ██ ██   ██ ██  ██  ██ 
+# ███████  ███ ███  ██   ██ ██   ██ ██      ██ 
+
+robots:
+  - name: base
+    dir: [1,0]
+    loc: [0,0]
+    devices:
+      - treads
+      - logger
+      - compass
+  #################
+  ## OBJECTIVES  ##
+  #################
+  - name: check1
+    loc: [2,0]
+    system: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: check2
+    loc: [8,0]
+    system: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  - name: check3
+    loc: [8,4]
+    system: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l || loc == (fst l - 1, snd l))
+        } { return false }
+      );
+      create "Win"
+  - name: check4
+    loc: [8,8]
+    system: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      l <- whereami;
+      until (
+        try {
+          loc <- as base {whereami};
+          return (loc == l)
+        } { return false }
+      );
+      create "Win"
+  #################
+  ## HORIZONTAL  ##
+  #################
+  - name: 1P horizontal wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2P horizontal wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3P horizontal wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #################
+  ## VERTICAL    ##
+  #################
+  - name: 1P vertical wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2P vertical wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3P vertical wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #################
+  ## CORNERS     ##
+  #################
+  # the order is:
+  # upleft   upright
+  #     D+----+C
+  #      |    |
+  #      |    |
+  #     A+----+B
+  # lowleft  lowright
+  #########
+  ##  A  ##
+  #########
+  - name: 1P lower left corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2P lower left corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3P lower left corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #########
+  ##  B  ##
+  #########
+  - name: 1P lower right corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2P lower right corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3P lower right corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #########
+  ##  C  ##
+  #########
+  - name: 1P upper right corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2P upper right corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3P upper right corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #########
+  ##  D  ##
+  #########
+  - name: 1P upper left corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2P upper left corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3P upper left corner
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #################
+  ## SEPARATORS  ##
+  #################
+  # 1
+  - name: 1S down and horizontal wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 1S up and horizontal wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  # 2
+  - name: 2S left and vertical wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2S up and horizontal wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  # 3
+  - name: 3S left and vertical wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3S down and horizontal wall
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #################
+  ## GATES       ##
+  #################
+  - name: 1G
+    system: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      c1 <- robotNamed "check1";
+      until (as c1 {has "Win"});
+      grab
+  - name: 2G
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3G
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  #################
+  ## GARDENERS   ##
+  #################
+  - name: 1P flower
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 2P flower
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+  - name: 3P flower
+    system: true
+    program: run "scenarios/Tutorials/move_system.sw"
+entities:
+  - name: Win
+    display:
+      char: W
+      attr: gold
+    description:
+      - This entity signals that the objective has been met.

@@ -41,6 +41,7 @@ module Swarm.Game.Robot (
   defReqs,
   defVals,
   defStore,
+  emptyRobotContext,
 
   -- ** Lenses
   robotEntity,
@@ -59,6 +60,7 @@ module Swarm.Game.Robot (
   inventoryHash,
   robotCapabilities,
   robotContext,
+  trobotContext,
   robotID,
   robotParentID,
   robotHeavy,
@@ -95,13 +97,14 @@ import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
 import Swarm.Game.CESK
-import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay)
+import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Util ()
 import Swarm.Util.Yaml
@@ -123,9 +126,34 @@ data RobotContext = RobotContext
     --   definitions.
     _defStore :: Store
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 makeLenses ''RobotContext
+
+emptyRobotContext :: RobotContext
+emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+
+type instance Index RobotContext = Ctx.Var
+type instance IxValue RobotContext = Typed Value
+
+instance Ixed RobotContext
+instance At RobotContext where
+  at name = lens getter setter
+   where
+    getter ctx =
+      do
+        typ <- Ctx.lookup name (ctx ^. defTypes)
+        val <- Ctx.lookup name (ctx ^. defVals)
+        req <- Ctx.lookup name (ctx ^. defReqs)
+        return $ Typed val typ req
+    setter ctx Nothing =
+      ctx & defTypes %~ Ctx.delete name
+        & defVals %~ Ctx.delete name
+        & defReqs %~ Ctx.delete name
+    setter ctx (Just (Typed val typ req)) =
+      ctx & defTypes %~ Ctx.addBinding name typ
+        & defVals %~ Ctx.addBinding name val
+        & defReqs %~ Ctx.addBinding name req
 
 data LogSource = Said | Logged | ErrorTrace
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
@@ -199,6 +227,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   deriving (Generic)
 
 deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase)) => Eq (RobotR phase)
 
 deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJSON (RobotR phase)
 
@@ -294,8 +323,12 @@ robotOrientation = robotEntity . entityOrientation
 robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
 
--- | The robot's context
+-- | The robot's context.
 robotContext :: Lens' Robot RobotContext
+
+-- | The robot's context.
+trobotContext :: Lens' TRobot RobotContext
+trobotContext = lens _robotContext (\r c -> r {_robotContext = c})
 
 -- | The (unique) ID number of the robot.  This is only a Getter since
 --   the robot ID is immutable.
@@ -471,7 +504,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+    , _robotContext = emptyRobotContext
     , _robotID = rid
     , _robotParentID = pid
     , _robotHeavy = heavy
@@ -488,20 +521,23 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
 instance FromJSONE EntityMap TRobot where
-  parseJSONE = withObjectE "robot" $ \v ->
+  parseJSONE = withObjectE "robot" $ \v -> do
     -- Note we can't generate a unique ID here since we don't have
     -- access to a 'State GameState' effect; a unique ID will be
     -- filled in later when adding the robot to the world.
+    sys <- liftE $ v .:? "system" .!= False
+    let defDisplay = defaultRobotDisplay & invisible .~ sys
+
     mkRobot () Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
       <*> liftE (v .:? "loc")
-      <*> liftE (v .: "dir")
-      <*> liftE (v .:? "display" .!= defaultRobotDisplay)
+      <*> liftE (v .:? "dir" .!= zero)
+      <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
       <*> liftE (mkMachine <$> (v .:? "program"))
       <*> v ..:? "devices" ..!= []
       <*> v ..:? "inventory" ..!= []
-      <*> liftE (v .:? "system" .!= False)
+      <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
       <*> pure 0
    where

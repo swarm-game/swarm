@@ -25,6 +25,7 @@ module Swarm.Game.Recipe (
   loadRecipes,
   outRecipeMap,
   inRecipeMap,
+  reqRecipeMap,
 
   -- * Looking up recipes
   MissingIngredient (..),
@@ -50,8 +51,7 @@ import Witch
 
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (runThrow)
-import Paths_swarm
+import Control.Carrier.Throw.Either (runThrow, throwError)
 import Swarm.Game.Entity as E
 import Swarm.Util
 import Swarm.Util.Yaml
@@ -142,11 +142,15 @@ instance FromJSONE EntityMap (Recipe Entity) where
 --   recipes from the data file @recipes.yaml@.
 loadRecipes :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text [Recipe Entity])
 loadRecipes em = runThrow $ do
-  fileName <- sendIO $ getDataFileName "recipes.yaml"
-  res <- sendIO $ decodeFileEither @[Recipe Text] fileName
-  textRecipes <- res `isRightOr` (from @String @Text . prettyPrintParseException)
-  resolveRecipes em textRecipes
-    `isSuccessOr` (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
+  let f = "recipes.yaml"
+  mayFileName <- sendIO $ getDataFileNameSafe f
+  case mayFileName of
+    Nothing -> sendIO (dataNotFound f) >>= throwError
+    Just fileName -> do
+      res <- sendIO $ decodeFileEither @[Recipe Text] fileName
+      textRecipes <- res `isRightOr` (from @String @Text . prettyPrintParseException)
+      resolveRecipes em textRecipes
+        `isSuccessOr` (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
 
 ------------------------------------------------------------
 
@@ -164,16 +168,20 @@ buildRecipeMap select recipeList =
 outRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 outRecipeMap = buildRecipeMap recipeOutputs
 
+-- | Build a map of recipes indexed by input ingredients.
+inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
+inRecipeMap = buildRecipeMap recipeInputs
+
+-- | Build a map of recipes indexed by requirements.
+reqRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
+reqRecipeMap = buildRecipeMap recipeRequirements
+
 -- | Get a list of all the recipes for the given entity.  Look up an
 --   entity in either an 'inRecipeMap' or 'outRecipeMap' depending on
 --   whether you want to know recipes that consume or produce the
 --   given entity, respectively.
 recipesFor :: IntMap [Recipe Entity] -> Entity -> [Recipe Entity]
 recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
-
--- | Build a map of recipes indexed by input ingredients.
-inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
-inRecipeMap = buildRecipeMap recipeInputs
 
 data MissingIngredient = MissingIngredient MissingType Count Entity
   deriving (Show, Eq)

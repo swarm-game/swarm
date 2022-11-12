@@ -1,3 +1,4 @@
+version: 1
 name: Bind notation
 description: |
   Learn about command return types and how to bind the results.
@@ -6,25 +7,30 @@ objectives:
       - |
         Every command returns a value.  However, some simple commands, like
         `move`, do not have any meaningful
-        value to return.  Since the unit type `()` has only one value, also
-        written `()`, returning this value does not convey any information.
-        Thus, the type of `move` is `cmd ()`.
+        value to return.  Swarm has a special type, `unit`, with only one value,
+        called `()`. Since there is only one possible value of type
+        `unit`, returning it does not convey any information.
+        Thus, the type of `move` is `cmd unit`.
       - |
         Other commands do return a nontrivial value after executing.
         For example, `grab` has type
-        `cmd string`, and returns the name of the
-        grabbed entity as a string. Try it:
+        `cmd text`, and returns the name of the
+        grabbed entity as a text value. Try it:
       - |
         move; grab
       - |
-        To use the result of a command later, you need the bind notation:
+        To use the result of a command later, you need bind notation, which
+        consists of a variable name and a leftwards-pointing arrow
+        before the command.  For example:
       - |
         move; t <- grab; place t
       - |
-        This can be useful, for example, if you do not care what you
-        grabbed and just want to move it to another cell; or if you
+        In the above example, the result returned by `grab` is assigned
+        to the variable name `t`, which can then be used later.
+        This could be useful, for example, if you do not care what you
+        grabbed and just want to move it to another cell, or if you
         are not sure of the name of the thing being grabbed.
-      - Once you are done, do `place "Win"` to finish this challenge.
+      - Once you are done experimenting, do `place "Win"` to finish this challenge.
         (Note, you might need to `grab` the entity you are standing on
         or move to an empty cell first, since each cell can only
         contain at most one entity.)

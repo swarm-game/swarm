@@ -1,3 +1,4 @@
+version: 1
 name: Drowning results in destruction
 description: |
   Destroying robots doesn't work.
@@ -32,21 +33,12 @@ robots:
     devices:
       - treads
     program: "move"
-entities:
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
+known: [water]
 world:
   default: [blank]
   palette:
     '.': [grass]
-    ' ': [ice, knownwater]
+    ' ': [ice, water]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]

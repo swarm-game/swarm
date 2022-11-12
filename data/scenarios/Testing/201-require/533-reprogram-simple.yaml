@@ -1,3 +1,4 @@
+version: 1
 name: Install devices while reprogramming
 description: |
   While executing 'reprogram', we should install any required devices which
@@ -43,11 +44,12 @@ robots:
       - [2, treads]
       - [2, metal drill]
       - [50, rock]
+known: [water]
 world:
   default: [blank, null]
   palette:
     '.': [grass]
-    '~': [dirt, knownwater]
+    '~': [dirt, water]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
@@ -59,13 +61,3 @@ world:
     ┌───┐
     │.~.│
     └───┘
-entities:
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water

@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -40,6 +38,9 @@ module Swarm.TUI.Attr (
   highlightAttr,
   notifAttr,
   infoAttr,
+  boldAttr,
+  dimAttr,
+  cyanAttr,
   yellowAttr,
   blueAttr,
   greenAttr,
@@ -74,11 +75,14 @@ swarmAttrMap =
          , (infoAttr, fg (V.rgbColor @Int 50 50 50))
          , (buttonSelectedAttr, bg V.blue)
          , (notifAttr, fg V.yellow `V.withStyle` V.bold)
+         , (dimAttr, V.defAttr `V.withStyle` V.dim)
+         , (boldAttr, V.defAttr `V.withStyle` V.bold)
          , -- Basic colors
            (redAttr, fg V.red)
          , (greenAttr, fg V.green)
          , (blueAttr, fg V.blue)
          , (yellowAttr, fg V.yellow)
+         , (cyanAttr, fg V.cyan)
          , -- Default attribute
            (defAttr, V.defAttr)
          ]
@@ -87,14 +91,14 @@ entityAttr :: AttrName
 entityAttr = fst $ head worldAttributes
 
 worldPrefix :: AttrName
-worldPrefix = "world"
+worldPrefix = attrName "world"
 
 -- | Colors of entities in the world.
 --
 -- Also used to color messages, so water is special and excluded.
 worldAttributes :: [(AttrName, V.Attr)]
 worldAttributes =
-  bimap (worldPrefix <>) fg
+  bimap ((worldPrefix <>) . attrName) fg
     <$> [ ("entity", V.white)
         , ("device", V.brightYellow)
         , ("plant", V.green)
@@ -118,7 +122,7 @@ worldAttributes =
         ]
 
 terrainPrefix :: AttrName
-terrainPrefix = "terrain"
+terrainPrefix = attrName "terrain"
 
 terrainAttr :: [(AttrName, V.Attr)]
 terrainAttr =
@@ -130,34 +134,39 @@ terrainAttr =
 
 -- | The default robot attribute.
 robotAttr :: AttrName
-robotAttr = "robot"
+robotAttr = attrName "robot"
 
 dirtAttr, grassAttr, stoneAttr, iceAttr, waterAttr, rockAttr, plantAttr :: AttrName
-dirtAttr = terrainPrefix <> "dirt"
-grassAttr = terrainPrefix <> "grass"
-stoneAttr = terrainPrefix <> "stone"
-iceAttr = terrainPrefix <> "ice"
-waterAttr = worldPrefix <> "water"
-rockAttr = worldPrefix <> "rock"
-plantAttr = worldPrefix <> "plant"
+dirtAttr = terrainPrefix <> attrName "dirt"
+grassAttr = terrainPrefix <> attrName "grass"
+stoneAttr = terrainPrefix <> attrName "stone"
+iceAttr = terrainPrefix <> attrName "ice"
+waterAttr = worldPrefix <> attrName "water"
+rockAttr = worldPrefix <> attrName "rock"
+plantAttr = worldPrefix <> attrName "plant"
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr
   , notifAttr
   , infoAttr
+  , boldAttr
+  , dimAttr
   , defAttr ::
     AttrName
-highlightAttr = "highlight"
-notifAttr = "notif"
-infoAttr = "info"
-defAttr = "def"
+highlightAttr = attrName "highlight"
+notifAttr = attrName "notif"
+infoAttr = attrName "info"
+boldAttr = attrName "bold"
+dimAttr = attrName "dim"
+defAttr = attrName "def"
 
 -- | Some basic colors used in TUI.
-redAttr, greenAttr, blueAttr, yellowAttr :: AttrName
-redAttr = "red"
-greenAttr = "green"
-blueAttr = "blue"
-yellowAttr = "yellow"
+redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr :: AttrName
+redAttr = attrName "red"
+greenAttr = attrName "green"
+blueAttr = attrName "blue"
+yellowAttr = attrName "yellow"
+cyanAttr = attrName "cyan"
 
 instance ToJSON AttrName where
   toJSON = toJSON . head . attrNameComponents

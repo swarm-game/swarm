@@ -23,9 +23,10 @@ module Swarm.Language.Types (
   tyVars,
   pattern TyBase,
   pattern TyVar,
+  pattern TyVoid,
   pattern TyUnit,
   pattern TyInt,
-  pattern TyString,
+  pattern TyText,
   pattern TyDir,
   pattern TyBool,
   pattern TyRobot,
@@ -39,9 +40,10 @@ module Swarm.Language.Types (
   UType,
   pattern UTyBase,
   pattern UTyVar,
+  pattern UTyVoid,
   pattern UTyUnit,
   pattern UTyInt,
-  pattern UTyString,
+  pattern UTyText,
   pattern UTyDir,
   pattern UTyBool,
   pattern UTyRobot,
@@ -58,6 +60,7 @@ module Swarm.Language.Types (
   -- * Polytypes
   Poly (..),
   Polytype,
+  pattern PolyUnit,
   UPolytype,
 
   -- * Contexts
@@ -96,12 +99,14 @@ import Witch
 
 -- | Base types.
 data BaseTy
-  = -- | The unit type, with a single inhabitant.
+  = -- | The void type, with no inhabitants.
+    BVoid
+  | -- | The unit type, with a single inhabitant.
     BUnit
   | -- | Signed, arbitrary-size integers.
     BInt
   | -- | Unicode strings.
-    BString
+    BText
   | -- | Directions.
     BDir
   | -- | Booleans.
@@ -289,14 +294,17 @@ pattern TyBase b = Fix (TyBaseF b)
 pattern TyVar :: Var -> Type
 pattern TyVar v = Fix (TyVarF v)
 
+pattern TyVoid :: Type
+pattern TyVoid = Fix (TyBaseF BVoid)
+
 pattern TyUnit :: Type
 pattern TyUnit = Fix (TyBaseF BUnit)
 
 pattern TyInt :: Type
 pattern TyInt = Fix (TyBaseF BInt)
 
-pattern TyString :: Type
-pattern TyString = Fix (TyBaseF BString)
+pattern TyText :: Type
+pattern TyText = Fix (TyBaseF BText)
 
 pattern TyDir :: Type
 pattern TyDir = Fix (TyBaseF BDir)
@@ -334,14 +342,17 @@ pattern UTyBase b = UTerm (TyBaseF b)
 pattern UTyVar :: Var -> UType
 pattern UTyVar v = UTerm (TyVarF v)
 
+pattern UTyVoid :: UType
+pattern UTyVoid = UTerm (TyBaseF BVoid)
+
 pattern UTyUnit :: UType
 pattern UTyUnit = UTerm (TyBaseF BUnit)
 
 pattern UTyInt :: UType
 pattern UTyInt = UTerm (TyBaseF BInt)
 
-pattern UTyString :: UType
-pattern UTyString = UTerm (TyBaseF BString)
+pattern UTyText :: UType
+pattern UTyText = UTerm (TyBaseF BText)
 
 pattern UTyDir :: UType
 pattern UTyDir = UTerm (TyBaseF BDir)
@@ -366,6 +377,9 @@ pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
 
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty1 = UTerm (TyDelayF ty1)
+
+pattern PolyUnit :: Polytype
+pattern PolyUnit = Forall [] (TyCmd TyUnit)
 
 -- Derive aeson instances for type serialization
 deriving instance Generic Type

@@ -1,4 +1,5 @@
-name: Crafting, part 1
+version: 1
+name: Crafting
 description: |
   Learn how to make new things using recipes.
 #

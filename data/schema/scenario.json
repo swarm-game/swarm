@@ -5,12 +5,20 @@
     "description": "Scenario for the swarm game",
     "type": "object",
     "properties": {
+        "version": {
+            "description": "The version number of the scenario schema.  Currently, this should always be 1.",
+            "type": "number"
+        },
         "name": {
             "description": "The name of the scenario. For official scenarios, this is what shows up in the new game menu.",
             "type": "string"
         },
         "description": {
             "description": "A short description of the scenario. This shows up next to the new game menu when the scenario is selected.",
+            "type": "string"
+        },
+        "author": {
+            "description": "The author of the scenario (optional).  Typically this is a person's name, but it can be any string. It is displayed under the scenario description in the new game menu.",
             "type": "string"
         },
         "creative": {
@@ -32,6 +40,16 @@
             "description": "An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities. See description of Recipes.",
             "default": [],
             "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json"
+        },
+        "known": {
+            "description": "A list of names of standard or custom entities which should have the Known property added to them; that is, robots should know what they are without having to scan them.",
+            "default": [],
+            "type": "array",
+            "items": [
+                {
+                    "type": "string"
+                }
+            ]
         },
         "world": {
             "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json"
@@ -80,6 +98,7 @@
         }
     },
     "required": [
+        "version",
         "name",
         "world",
         "robots"

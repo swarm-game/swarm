@@ -1,3 +1,4 @@
+version: 1
 name: Farming
 description: |
   Learn how to build a farm to grow and harvest items.
@@ -47,8 +48,8 @@ objectives:
     condition: |
       try {as base {has "curry"}} {return false}
 solution: |
-  run "data/scenarios/Tutorials/farming.sw";
-  run "data/scenarios/Tutorials/make_curry.sw";
+  run "scenarios/Tutorials/farming.sw";
+  run "scenarios/Tutorials/make_curry.sw";
 robots:
   - name: base
     display:
