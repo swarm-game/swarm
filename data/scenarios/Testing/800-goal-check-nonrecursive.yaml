@@ -1,0 +1,61 @@
+version: 1
+name: Evaluate nearby count of an item
+description: |
+  Baseline for comparison against
+  801-goal-check-recursive
+creative: false
+objectives:
+  - goal:
+      - |
+        Be surrounded by 4 trees.
+    condition: |-
+      def boolToInt = \b. if (b) {return 1} {return 0}; end;
+
+      def hasTreeInDirection = \direction.
+        x <- scan direction;
+        case x (\_. return false;) (\y.
+          return $ y == "tree";
+        );
+        end;
+
+      def getTreeCount =
+        hereN <- hasTreeInDirection north;
+        hereCountN <- boolToInt hereN;
+
+        hereW <- hasTreeInDirection west;
+        hereCountW <- boolToInt hereW;
+
+        hereS <- hasTreeInDirection south;
+        hereCountS <- boolToInt hereS;
+
+        hereE <- hasTreeInDirection east;
+        hereCountE <- boolToInt hereE;
+
+        return $ hereCountN + hereCountW + hereCountS + hereCountE;
+        end;
+
+      as base {
+        itemCount <- getTreeCount;
+        return $ itemCount >= 4;
+      };
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - treads
+      - scanner
+      - grabber
+solution: |
+  noop;
+known: [tree]
+world:
+  default: [blank]
+  palette:
+    'B': [grass, null, base]
+    'w': [grass, tree]
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |-
+    .w.
+    wBw
+    .w.

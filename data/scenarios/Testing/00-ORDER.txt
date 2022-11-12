@@ -14,3 +14,5 @@
 684-swap.yaml
 699-movement-fail
 710-multi-robot.yaml
+800-goal-check-nonrecursive.yaml
+801-goal-check-recursive.yaml

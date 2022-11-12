@@ -1,0 +1,58 @@
+version: 1
+name: Evaluate nearby count of an item (recursive)
+description: |
+  The goal criteria is exactly the same as
+  800-goal-check-nonrecursive but evaluated
+  recursively instead.
+creative: false
+objectives:
+  - goal:
+      - |
+        Be surrounded by 4 trees.
+    condition: |-
+      def boolToInt = \b. if (b) {return 1} {return 0}; end;
+
+      def hasTreeInDirection = \direction.
+        x <- scan direction;
+        case x (\_. return false;) (\y.
+          return $ y == "tree";
+        );
+        end;
+
+      def getTreeCountRecursive = \i.
+        if (i > 0) {
+          turn left;
+          hasTreeForward <- hasTreeInDirection forward;
+          hereCount <- boolToInt hasTreeForward;
+          recursiveCount <- getTreeCountRecursive (i - 1);
+          return (hereCount + recursiveCount);
+        } {
+          return 0;
+        };
+        end;
+
+      as base {
+        itemCount <- getTreeCountRecursive 4;
+        return $ itemCount >= 4;
+      };
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - treads
+      - scanner
+      - grabber
+solution: |
+  noop;
+known: [tree]
+world:
+  default: [blank]
+  palette:
+    'B': [grass, null, base]
+    'w': [grass, tree]
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |-
+    .w.
+    wBw
+    .w.
