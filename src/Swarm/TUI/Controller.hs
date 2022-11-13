@@ -621,12 +621,22 @@ updateUI = do
     -- Otherwise, do nothing.
     _ -> pure False
 
-  -- If the focused robot's log has been updated, attempt to
-  -- automatically switch to it and scroll all the way down so the new
-  -- message can be seen.
+  -- If the focused robot's log has been updated and the UI focus
+  -- isn't currently on the inventory or info panels, attempt to
+  -- automatically switch to the logger and scroll all the way down so
+  -- the new message can be seen.
   uiState . uiScrollToEnd .= False
   logUpdated <- do
-    case maybe False (view robotLogUpdated) fr of
+    -- If the inventory or info panels are currently focused, it would
+    -- be rude to update them right under the user's nose, so consider
+    -- them "sticky".  They will be updated as soon as the player moves
+    -- the focus away.
+    fring <- use $ uiState . uiFocusRing
+    let sticky = focusGetCurrent fring `elem` [Just RobotPanel, Just InfoPanel]
+
+    -- Check if the robot log was updated and we are allowed to change
+    -- the inventory+info panels.
+    case maybe False (view robotLogUpdated) fr && not sticky of
       False -> pure False
       True -> do
         -- Reset the log updated flag
