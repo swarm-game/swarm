@@ -25,9 +25,6 @@ solution: |
   def rightBlocked = tR; b <- blocked; tL; return b end;
   def mazeStep = ifC rightBlocked {ifC blocked {tL} {move}} {tR; move} end;
   build {
-    require "treads"; require "branch predictor"; require "lambda";
-    require "strange loop"; require "scanner"; require "grabber";   // #540
-
     forever (mazeStep; ifC (ishere "goal") {grab; return ()} {})
   }
 robots:

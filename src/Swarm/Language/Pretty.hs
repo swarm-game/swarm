@@ -55,6 +55,7 @@ pparens True = parens
 pparens False = id
 
 instance PrettyPrec BaseTy where
+  prettyPrec _ BVoid = "void"
   prettyPrec _ BUnit = "unit"
   prettyPrec _ BInt = "int"
   prettyPrec _ BDir = "dir"

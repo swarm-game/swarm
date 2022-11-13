@@ -17,6 +17,7 @@
 -- interpreter for the Swarm language.
 module Swarm.Game.Step where
 
+import Control.Applicative (liftA2)
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
@@ -35,12 +36,13 @@ import Data.Functor (void)
 import Data.Int (Int64)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
-import Data.List (find)
+import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
+import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -65,6 +67,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Util
 import System.Clock (TimeSpec)
 import System.Clock qualified
@@ -110,10 +113,10 @@ gameTick = do
     Just r -> do
       res <- use replStatus
       case res of
-        REPLWorking ty Nothing -> case getResult r of
+        REPLWorking (Typed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
-            replStatus .= REPLWorking ty (Just v)
-            robotMap . ix 0 . robotContext . defStore .= s
+            replStatus .= REPLWorking (Typed (Just v) ty req)
+            baseRobot . robotContext . defStore .= s
           Nothing -> return ()
         _otherREPLStatus -> return ()
     Nothing -> return ()
@@ -940,11 +943,12 @@ execConst c vs s k = do
         inv <- use robotInventory
         ins <- use installedDevices
 
-        let toyDrill = lookupByName "drill" ins
-            metalDrill = lookupByName "metal drill" ins
-            insDrill = listToMaybe $ metalDrill <> toyDrill
+        let equippedDrills = extantElemsWithCapability CDrill ins
+            -- Heuristic: choose the drill with the more elaborate name.
+            -- E.g. "metal drill" vs. "drill"
+            preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills
 
-        drill <- insDrill `isJustOr` Fatal "Drill is required but not installed?!"
+        drill <- preferredDrill `isJustOr` Fatal "Drill is required but not installed?!"
 
         let directionText = case d of
               DDown -> "under"
@@ -1080,7 +1084,7 @@ execConst c vs s k = do
         m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
         emitMessage m
         let addLatestClosest rl = \case
-              Seq.Empty -> Seq.Empty
+              Seq.Empty -> Seq.singleton m
               es Seq.:|> e
                 | e ^. leTime < m ^. leTime -> es |> e |> m
                 | manhattan rl (e ^. leLocation) > manhattan rl (m ^. leLocation) -> es |> m
@@ -1103,14 +1107,16 @@ execConst c vs s k = do
     Listen -> do
       gs <- get @GameState
       loc <- use robotLocation
+      rid <- use robotID
       creative <- use creativeMode
       system <- use systemRobot
       mq <- use messageQueue
-      let recentAndClose e = system || creative || messageIsRecent gs e && messageIsFromNearby loc e
-          limitLast = \case
+      let isClose e = system || creative || messageIsFromNearby loc e
+      let notMine e = rid /= e ^. leRobotID
+      let limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-          mm = limitLast $ Seq.takeWhileR recentAndClose mq
+      let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
@@ -1335,8 +1341,9 @@ execConst c vs s k = do
         createdAt <- getNow
 
         -- Construct the new robot and add it to the world.
+        parentCtx <- use robotContext
         newRobot <-
-          addTRobot $
+          addTRobot . (trobotContext .~ parentCtx) $
             mkRobot
               ()
               (Just pid)
@@ -1344,7 +1351,7 @@ execConst c vs s k = do
               ["A robot built by the robot named " <> r ^. robotName <> "."]
               (Just (r ^. robotLocation))
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
-                  ? east
+                  ? north
               )
               defaultRobotDisplay
               (In cmd e s [FExec])
@@ -1429,9 +1436,15 @@ execConst c vs s k = do
           processTerm (into @Text f) `isRightOr` \err ->
             cmdExn Run ["Error in", fileName, "\n", err]
 
-        return $ case mt of
-          Nothing -> Out VUnit s k
-          Just t -> initMachine' t empty s k
+        case mt of
+          Nothing -> return $ Out VUnit s k
+          Just t@(ProcessedTerm _ _ _ reqCtx) -> do
+            -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
+            -- See #827 for an explanation of (1) why this is needed, (2) why
+            -- it's slightly technically incorrect, and (3) why it is still way
+            -- better than what we had before.
+            robotContext . defReqs <>= reqCtx
+            return $ initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
@@ -2009,7 +2022,7 @@ updateAvailableRecipes invs e = do
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
 updateAvailableCommands e = do
-  let newCaps = S.fromList (e ^. entityCapabilities)
+  let newCaps = e ^. entityCapabilities
       keepConsts = \case
         Just cap -> cap `S.member` newCaps
         Nothing -> False

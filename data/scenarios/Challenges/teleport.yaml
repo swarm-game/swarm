@@ -29,8 +29,6 @@ robots:
       - [0, lambda]
   - name: portkey1
     system: true
-    display:
-      invisible: true
     loc: [0,0]
     dir: [0,0]
     program: |
@@ -44,8 +42,6 @@ robots:
       );
   - name: portkey2
     system: true
-    display:
-      invisible: true
     loc: [16,0]
     dir: [0,0]
     program: |
@@ -62,6 +58,7 @@ known: [water, wavy water, flower, tree]
 world:
   default: [ice, water]
   palette:
+    ',': [ice, water]
     ' ': [ice, water]
     '~': [ice, wavy water]
     '*': [grass, flower]
@@ -78,9 +75,9 @@ world:
   upperleft: [-1, 3]
   map: |
     ~~   ~         ~    ~
-    ~┌─────┐~  ┌─────┐~  
+    ~┌─────┐~  ┌─────┐~ ,
     ┌┘.....└───┘T...*└┐ ~
-    │_....._   _..λ.._│  
+    │_....._   _..λ.._│ ,
     └┐.....┌───┐*...T┌┘ ~
-    ~└─────┘ ~~└─────┘~  
+    ~└─────┘ ~~└─────┘~ ,
     ~~~   ~        ~    ~

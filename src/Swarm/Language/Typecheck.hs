@@ -36,7 +36,7 @@ module Swarm.Language.Typecheck (
   skolemize,
   generalize,
 
-  -- * Type inferen
+  -- * Type inference
   inferTop,
   inferModule,
   infer,
@@ -44,6 +44,7 @@ module Swarm.Language.Typecheck (
   check,
   decomposeCmdTy,
   decomposeFunTy,
+  isSimpleUType,
 ) where
 
 import Control.Category ((>>>))
@@ -245,7 +246,7 @@ data TypeErr
 
 -- | Various reasons the body of an @atomic@ might be invalid.
 data InvalidAtomicReason
-  = -- | The arugment has too many tangible commands.
+  = -- | The argument has too many tangible commands.
     TooManyTicks Int
   | -- | The argument uses some way to duplicate code: @def@, @let@, or lambda.
     AtomicDupingThing

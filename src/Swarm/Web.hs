@@ -25,41 +25,51 @@ import Control.Exception (Exception (displayException), IOException, catch, thro
 import Control.Lens ((^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
+import Data.Foldable (toList)
 import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
+import Data.Text qualified as T
 import Network.Wai qualified
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.TUI.Model
 import System.Timeout (timeout)
 
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]
     :<|> "robot" :> Capture "id" Int :> Get '[JSON] (Maybe Robot)
+    :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
 
-mkApp :: IORef GameState -> Servant.Server SwarmApi
-mkApp gsRef =
+mkApp :: IORef AppState -> Servant.Server SwarmApi
+mkApp appStateRef =
   robotsHandler
     :<|> robotHandler
+    :<|> replHandler
  where
   robotsHandler = do
-    g <- liftIO (readIORef gsRef)
-    pure $ IM.elems $ g ^. robotMap
+    appState <- liftIO (readIORef appStateRef)
+    pure $ IM.elems $ appState ^. gameState . robotMap
   robotHandler rid = do
-    g <- liftIO (readIORef gsRef)
-    pure $ IM.lookup rid (g ^. robotMap)
+    appState <- liftIO (readIORef appStateRef)
+    pure $ IM.lookup rid (appState ^. gameState . robotMap)
+  replHandler = do
+    appState <- liftIO (readIORef appStateRef)
+    let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
+        items = [x | REPLEntry x <- toList replHistorySeq]
+    pure items
 
-webMain :: Maybe (MVar (Either String ())) -> Warp.Port -> IORef GameState -> IO ()
-webMain baton port gsRef = catch (Warp.runSettings settings app) handleErr
+webMain :: Maybe (MVar (Either String ())) -> Warp.Port -> IORef AppState -> IO ()
+webMain baton port appStateRef = catch (Warp.runSettings settings app) handleErr
  where
   settings = Warp.setPort port $ onReady Warp.defaultSettings
   onReady = case baton of
     Just mv -> Warp.setBeforeMainLoop $ putMVar mv (Right ())
     Nothing -> id
   app :: Network.Wai.Application
-  app = Servant.serve (Proxy @SwarmApi) (mkApp gsRef)
+  app = Servant.serve (Proxy @SwarmApi) (mkApp appStateRef)
   handleErr :: IOException -> IO ()
   handleErr e = case baton of
     Just mv -> putMVar mv (Left $ displayException e)
@@ -74,13 +84,13 @@ defaultPort = 5357
 --   startup doesn't work.  Otherwise, ignore the failure.  In any
 --   case, return a @Maybe Port@ value representing whether a web
 --   server is actually running, and if so, what port it is on.
-startWebThread :: Maybe Warp.Port -> IORef GameState -> IO (Either String Warp.Port)
+startWebThread :: Maybe Warp.Port -> IORef AppState -> IO (Either String Warp.Port)
 -- User explicitly provided port '0': don't run the web server
 startWebThread (Just 0) _ = pure $ Left "The web port has been turned off."
-startWebThread portM gsRef = do
+startWebThread portM appStateRef = do
   baton <- newEmptyMVar
   let port = fromMaybe defaultPort portM
-  void $ forkIO $ webMain (Just baton) port gsRef
+  void $ forkIO $ webMain (Just baton) port appStateRef
   res <- timeout 500_000 (takeMVar baton)
   case (portM, res) of
     -- User requested explicit port but server didn't start: fail

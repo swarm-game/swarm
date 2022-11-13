@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- Module      :  Swarm.Version
@@ -10,12 +9,6 @@
 --
 -- Query current and upstream Swarm version.
 module Swarm.Version (
-  -- * Git info
-  gitInfo,
-  commitInfo,
-  CommitHash,
-  tagVersion,
-
   -- * PVP version
   isSwarmReleaseTag,
   version,
@@ -29,17 +22,15 @@ module Swarm.Version (
 
 import Control.Exception (catch, displayException)
 import Data.Aeson (Array, Value (..), (.:))
-import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Char (isDigit)
 import Data.Either (lefts, rights)
 import Data.Foldable (toList)
-import Data.List.Extra (breakOnEnd)
 import Data.Maybe (listToMaybe)
 import Data.Version (Version (..), parseVersion, showVersion)
 import Data.Yaml (ParseException, Parser, decodeEither', parseEither)
-import GitHash (GitInfo, giBranch, giHash, giTag, tGitInfoCwdTry)
+import GitHash (GitInfo, giBranch)
 import Network.HTTP.Client (
   HttpException,
   Request (requestHeaders),
@@ -58,31 +49,11 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 -- >>> import Data.Version (Version (..), parseVersion)
 -- >>> import Text.ParserCombinators.ReadP (readP_to_S)
 
-gitInfo :: Either String GitInfo
-gitInfo = $$tGitInfoCwdTry
-
-commitInfo :: String
-commitInfo = case gitInfo of
-  Left _ -> ""
-  Right git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
-
-type CommitHash = String
-
 -- | Check that the tag follows the PVP versioning policy.
 --
 -- Note that this filters out VS Code plugin releases.
 isSwarmReleaseTag :: String -> Bool
 isSwarmReleaseTag = all (\c -> isDigit c || c == '.')
-
-tagVersion :: Maybe (CommitHash, String)
-tagVersion = case gitInfo of
-  Left _ -> Nothing
-  Right gi ->
-    let t = giTag gi
-        ((ta, _num), ghash) = first (first init . breakOnEnd "-" . init) $ breakOnEnd "-" t
-     in if isSwarmReleaseTag ta
-          then Just (ghash, ta)
-          else Nothing
 
 version :: String
 version =
@@ -177,12 +148,12 @@ tagToVersion = fst . last . readP_to_S parseVersion
 --
 -- This function can fail if the current branch is not main,
 -- if there is no Internet connection or no newer release.
-getNewerReleaseVersion :: IO (Either NewReleaseFailure String)
-getNewerReleaseVersion =
-  case gitInfo of
+getNewerReleaseVersion :: Maybe GitInfo -> IO (Either NewReleaseFailure String)
+getNewerReleaseVersion mgi =
+  case mgi of
     -- when using cabal install, the git info is unavailable, which is of no interest to players
-    Left _e -> (>>= getUpVer) <$> upstreamReleaseVersion
-    Right gi ->
+    Nothing -> (>>= getUpVer) <$> upstreamReleaseVersion
+    Just gi ->
       if giBranch gi /= "main"
         then return . Left . OnDevelopmentBranch $ giBranch gi
         else (>>= getUpVer) <$> upstreamReleaseVersion

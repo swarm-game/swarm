@@ -28,7 +28,7 @@ idleProgram :: ProcessedTerm
 idleProgram = [tmQ| {} |]
 
 -- | The program of a robot which waits a random number of ticks, changes its
---   appearence, then waits another random number of ticks, places a tree, and
+--   appearance, then waits another random number of ticks, places a tree, and
 --   then self-destructs.
 treeProgram :: ProcessedTerm
 treeProgram =

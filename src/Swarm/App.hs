@@ -13,7 +13,7 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens ((%~), (&), (?~), (^.))
+import Control.Lens ((%~), (&), (?~))
 import Control.Monad.Except
 import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
@@ -70,12 +70,12 @@ appMain opts = do
           writeBChan chan Frame
 
       _ <- forkIO $ do
-        upRel <- getNewerReleaseVersion
+        upRel <- getNewerReleaseVersion (repoGitInfo opts)
         writeBChan chan (UpstreamVersion upRel)
 
       -- Start the web service with a reference to the game state
-      gsRef <- newIORef (s ^. gameState)
-      eport <- Swarm.Web.startWebThread (userWebPort opts) gsRef
+      appStateRef <- newIORef s
+      eport <- Swarm.Web.startWebThread (userWebPort opts) appStateRef
 
       let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
       let logE e = logEvent ErrorTrace ("Web API", -2) (T.pack e)
@@ -88,13 +88,15 @@ appMain opts = do
       -- Update the reference for every event
       let eventHandler e = do
             curSt <- get
-            liftIO $ writeIORef gsRef (curSt ^. gameState)
+            liftIO $ writeIORef appStateRef curSt
             handleEvent e
 
-      -- Run the app.
-      let buildVty = V.mkVty V.defaultConfig
+      -- Setup virtual terminal
+      let buildVty = V.mkVty $ V.defaultConfig {V.colorMode = colorMode opts}
       initialVty <- buildVty
       V.setMode (V.outputIface initialVty) V.Mouse True
+
+      -- Run the app.
       void $ customMain initialVty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
@@ -108,15 +110,18 @@ demoWeb = do
         AppOpts
           { userSeed = Nothing
           , userScenario = demoScenario
-          , toRun = Nothing
+          , scriptToRun = Nothing
+          , autoPlay = False
           , cheatMode = False
+          , colorMode = Nothing
           , userWebPort = Nothing
+          , repoGitInfo = Nothing
           }
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
-      gsRef <- newIORef (s ^. gameState)
-      webMain Nothing demoPort gsRef
+      appStateRef <- newIORef s
+      webMain Nothing demoPort appStateRef
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 

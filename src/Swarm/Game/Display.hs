@@ -41,11 +41,13 @@ import Control.Lens hiding (Const, from, (.=))
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe, isJust)
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax (Direction (..))
 import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
 import Swarm.Util (maxOn, (?))
+import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
@@ -98,14 +100,21 @@ displayPriority :: Lens' Display Priority
 invisible :: Lens' Display Bool
 
 instance FromJSON Display where
-  parseJSON = withObject "Display" $ \v ->
-    Display
-      <$> v .:? "char" .!= ' '
-      <*> v .:? "orientationMap" .!= M.empty
-      <*> v .:? "curOrientation"
-      <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= entityAttr
-      <*> v .:? "priority" .!= 1
-      <*> v .:? "invisible" .!= False
+  parseJSON v = runE (parseJSONE v) (defaultEntityDisplay ' ')
+
+instance FromJSONE Display Display where
+  parseJSONE = withObjectE "Display" $ \v -> do
+    defD <- getE
+    mc <- liftE $ v .:? "char"
+    let c = fromMaybe (defD ^. defaultChar) mc
+    let dOM = if isJust mc then mempty else defD ^. orientationMap
+    liftE $
+      Display c
+        <$> v .:? "orientationMap" .!= dOM
+        <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
+        <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= (defD ^. displayAttr)
+        <*> v .:? "priority" .!= (defD ^. displayPriority)
+        <*> v .:? "invisible" .!= (defD ^. invisible)
 
 instance ToJSON Display where
   toJSON d =
@@ -158,7 +167,7 @@ defaultEntityDisplay c =
 --   priority 10.
 --
 --   Note that the 'defaultChar' is used for direction 'DDown'
---   and is overriden for the special base robot.
+--   and is overridden for the special base robot.
 defaultRobotDisplay :: Display
 defaultRobotDisplay =
   Display

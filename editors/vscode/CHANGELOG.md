@@ -2,6 +2,10 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.0.8
+- [Highlighter] update regex to recognize `void` and `text` types
+- [Highlighter] improve the coloring of types and lambda parameters
+
 ## version 0.0.7
 - [Highlighter] added `swap` command
 - [Highlighter] added `split` and `chars` functions

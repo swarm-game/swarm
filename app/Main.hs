@@ -1,20 +1,34 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
 import Data.Foldable qualified
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
+import Data.Text qualified as T
 import Data.Text.IO qualified as Text
+import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
-import Swarm.DocGen (EditorType (..), GenerateDocs (..), SheetType (..), generateDocs)
+import Swarm.DocGen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.TUI.Model (AppOpts (..))
+import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPrint, stderr)
+import Text.Read (readMaybe)
+
+gitInfo :: Maybe GitInfo
+gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
+
+commitInfo :: String
+commitInfo = case gitInfo of
+  Nothing -> ""
+  Just git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
 data CLI
   = Run AppOpts
@@ -33,7 +47,17 @@ cliParser =
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
     )
-    <|> Run <$> (AppOpts <$> seed <*> scenario <*> run <*> cheat <*> webPort)
+    <|> Run
+      <$> ( AppOpts
+              <$> seed
+              <*> scenario
+              <*> run
+              <*> autoplay
+              <*> cheat
+              <*> color
+              <*> webPort
+              <*> pure gitInfo
+          )
  where
   format :: Parser CLI
   format =
@@ -44,7 +68,7 @@ cliParser =
     subparser . mconcat $
       [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
-      , command "cheatsheet" (info (pure $ CheatSheet $ Just Commands) $ progDesc "Output nice Wiki tables")
+      , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
       ]
   editor :: Parser (Maybe EditorType)
   editor =
@@ -52,6 +76,27 @@ cliParser =
       [ pure Nothing
       , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
       , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
+      ]
+  address :: Parser PageAddress
+  address =
+    let replace a b = T.unpack . T.replace a b . T.pack
+        opt n =
+          fmap (fromMaybe "") . optional $
+            option
+              str
+              ( long n
+                  <> metavar "ADDRESS"
+                  <> help ("Set the address of " <> replace "-" " " n <> ". Default no link.")
+              )
+     in PageAddress <$> opt "entities-page" <*> opt "commands-page" <*> opt "capabilities-page" <*> opt "recipes-page"
+  cheatsheet :: Parser (Maybe SheetType)
+  cheatsheet =
+    Data.Foldable.asum
+      [ pure Nothing
+      , Just Entities <$ switch (long "entities" <> help "Generate entities page (uses data from entities.yaml)")
+      , Just Recipes <$ switch (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
+      , Just Capabilities <$ switch (long "capabilities" <> help "Generate capabilities page (uses entity map)")
+      , Just Commands <$ switch (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")
       ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
@@ -65,11 +110,24 @@ cliParser =
             <> help ("Set the web service port (or disable it with 0). Default to " <> show defaultPort <> ".")
         )
   scenario :: Parser (Maybe String)
-  scenario = optional $ strOption (long "scenario" <> short 'c' <> metavar "FILE" <> help "Name of a scenario to load")
+  scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  autoplay :: Parser Bool
+  autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   cheat :: Parser Bool
-  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode")
+  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
+  color :: Parser (Maybe ColorMode)
+  color = optional $ option colorModeParser (long "color" <> short 'c' <> metavar "MODE" <> help "Use none/8/16/full color mode.")
+  colorModeParser =
+    Data.Foldable.asum
+      [ ColorMode8 <$ text "8"
+      , ColorMode16 <$ text "16"
+      , ColorMode240 <$> maybeReader (\case ('2' : '4' : '0' : '_' : w) -> readMaybe w; _ -> Nothing)
+      , FullColor <$ text "full"
+      , NoColor <$ text "none"
+      ]
+  text t = maybeReader (\x -> if x == t then Just x else Nothing)
 
 cliInfo :: ParserInfo CLI
 cliInfo =
@@ -105,7 +163,7 @@ formatFile input = do
 showVersion :: IO ()
 showVersion = do
   putStrLn $ "Swarm game - " <> version <> commitInfo
-  up <- getNewerReleaseVersion
+  up <- getNewerReleaseVersion gitInfo
   either (hPrint stderr) (putStrLn . ("New upstream release: " <>)) up
 
 main :: IO ()

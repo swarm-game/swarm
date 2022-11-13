@@ -1,5 +1,6 @@
 classic.yaml
 creative.yaml
+blank.yaml
 Tutorials
 Challenges
 Fun

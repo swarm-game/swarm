@@ -25,6 +25,7 @@ module Swarm.Game.ScenarioInfo (
   scenarioBestTime,
   scenarioBestTicks,
   updateScenarioInfoOnQuit,
+  ScenarioInfoPair,
 
   -- * Scenario collection
   ScenarioCollection (..),
@@ -48,7 +49,7 @@ import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (unless, when)
+import Control.Monad (filterM, unless, when)
 import Data.Aeson (
   Options (..),
   defaultOptions,
@@ -58,7 +59,7 @@ import Data.Aeson (
  )
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
-import Data.List (intercalate, stripPrefix, (\\))
+import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
@@ -130,6 +131,8 @@ instance ToJSON ScenarioInfo where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
+type ScenarioInfoPair = (Scenario, ScenarioInfo)
+
 scenarioOptions :: Options
 scenarioOptions =
   defaultOptions
@@ -173,12 +176,12 @@ updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = cas
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
-data ScenarioItem = SISingle Scenario ScenarioInfo | SICollection Text ScenarioCollection
+data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollection
   deriving (Eq, Show)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
-scenarioItemName (SISingle s _ss) = s ^. scenarioName
+scenarioItemName (SISingle (s, _ss)) = s ^. scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name,
@@ -257,7 +260,7 @@ loadScenarioDir em dir = do
             <> ", using alphabetical order"
       return Nothing
     True -> Just . filter (not . null) . lines <$> sendIO (readFile orderFile)
-  fs <- sendIO $ keepYamlOrDirectory <$> listDirectory dir
+  fs <- sendIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
 
   case morder of
     Just order -> do
@@ -284,7 +287,17 @@ loadScenarioDir em dir = do
   let morder' = filter (`elem` fs) <$> morder
   SC morder' . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
  where
-  keepYamlOrDirectory = filter (\f -> takeExtensions f `elem` ["", ".yaml"])
+  -- Keep only files which are .yaml files or directories that start
+  -- with something other than an underscore.
+  keepYamlOrPublicDirectory = filterM . isCatalogEntry
+
+  -- Whether the directory or file should be included in the scenario catalog.
+  isCatalogEntry d f = do
+    isDir <- doesDirectoryExist $ d </> f
+    return $
+      if isDir
+        then not $ "_" `isPrefixOf` f
+        else takeExtensions f == ".yaml"
 
 -- | How to transform scenario path to save path.
 scenarioPathToSavePath :: FilePath -> FilePath -> FilePath
@@ -330,7 +343,7 @@ loadScenarioItem em path = do
     False -> do
       s <- loadScenarioFile em path
       si <- loadScenarioInfo path
-      return $ SISingle s si
+      return $ SISingle (s, si)
 
 ------------------------------------------------------------
 -- Some lenses + prisms

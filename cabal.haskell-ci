@@ -19,7 +19,7 @@ benchmarks: True
 
 -- Run HLint
 hlint: True
-hlint-job: 8.10.7
+hlint-job: 9.4.2
 hlint-yaml: .hlint.yaml
 hlint-download-binary: True
 

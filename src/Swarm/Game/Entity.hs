@@ -69,6 +69,7 @@ module Swarm.Game.Entity (
   isSubsetOf,
   isEmpty,
   inventoryCapabilities,
+  extantElemsWithCapability,
 
   -- ** Modification
   insert,
@@ -81,7 +82,7 @@ module Swarm.Game.Entity (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens (Getter, Lens', lens, to, view, (^.), _2)
+import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
 import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
@@ -97,7 +98,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Set (Set)
-import Data.Set.Lens (setOf)
+import Data.Set qualified as Set (fromList, member, toList, unions)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
@@ -219,9 +220,9 @@ data Entity = Entity
     -- grabbed.
     _entityYields :: Maybe Text
   , -- | Properties of the entity.
-    _entityProperties :: [EntityProperty]
+    _entityProperties :: Set EntityProperty
   , -- | Capabilities provided by this entity.
-    _entityCapabilities :: [Capability]
+    _entityCapabilities :: Set Capability
   , -- | Inventory of other entities held by this entity.
     _entityInventory :: Inventory
   }
@@ -274,7 +275,7 @@ mkEntity ::
   [Capability] ->
   Entity
 mkEntity disp nm descr props caps =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props caps empty
+  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing (Set.fromList props) (Set.fromList caps) empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -312,7 +313,7 @@ buildEntityMap :: [Entity] -> EntityMap
 buildEntityMap es =
   EntityMap
     { entitiesByName = M.fromList . map (view entityName &&& id) $ es
-    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (e ^. entityCapabilities)) $ es
+    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (Set.toList $ e ^. entityCapabilities)) $ es
     }
 
 ------------------------------------------------------------
@@ -330,8 +331,8 @@ instance FromJSON Entity where
               <*> v .:? "orientation"
               <*> v .:? "growth"
               <*> v .:? "yields"
-              <*> v .:? "properties" .!= []
-              <*> v .:? "capabilities" .!= []
+              <*> v .:? "properties" .!= mempty
+              <*> v .:? "capabilities" .!= mempty
               <*> pure empty
           )
 
@@ -431,7 +432,7 @@ entityYields :: Lens' Entity (Maybe Text)
 entityYields = hashedLens _entityYields (\e x -> e {_entityYields = x})
 
 -- | The properties enjoyed by this entity.
-entityProperties :: Lens' Entity [EntityProperty]
+entityProperties :: Lens' Entity (Set EntityProperty)
 entityProperties = hashedLens _entityProperties (\e x -> e {_entityProperties = x})
 
 -- | Test whether an entity has a certain property.
@@ -439,7 +440,7 @@ hasProperty :: Entity -> EntityProperty -> Bool
 hasProperty e p = p `elem` (e ^. entityProperties)
 
 -- | The capabilities this entity provides when installed.
-entityCapabilities :: Lens' Entity [Capability]
+entityCapabilities :: Lens' Entity (Set Capability)
 entityCapabilities = hashedLens _entityCapabilities (\e x -> e {_entityCapabilities = x})
 
 -- | The inventory of other entities carried by this entity.
@@ -566,7 +567,17 @@ isEmpty = all ((== 0) . fst) . elems
 
 -- | Compute the set of capabilities provided by the devices in an inventory.
 inventoryCapabilities :: Inventory -> Set Capability
-inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
+inventoryCapabilities = Set.unions . map (^. entityCapabilities) . nonzeroEntities
+
+-- | List elements that have at least one copy in the inventory.
+nonzeroEntities :: Inventory -> [Entity]
+nonzeroEntities = map snd . filter ((> 0) . fst) . elems
+
+-- | List elements that possess a given Capability and
+-- exist with nonzero count in the inventory.
+extantElemsWithCapability :: Capability -> Inventory -> [Entity]
+extantElemsWithCapability cap =
+  filter (Set.member cap . (^. entityCapabilities)) . nonzeroEntities
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory

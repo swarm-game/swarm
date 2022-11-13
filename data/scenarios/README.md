@@ -195,7 +195,7 @@ a key-value mapping described by the following table.
 | `curOrientation` | `null`   |           | TODO currently unused                                                                                                                                                                                  |
 | `attr`           | `entity` | `string`  | The name of the attribute that should be used to style the robot or entity.  A list of currently valid attributes can be found at https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/Attr.hs. |
 | `priority`       | `1`      | `int`     | When multiple entities and robots occupy the same cell, the one with the highest priority is drawn.  By default, entities have priority `1`, and robots have priority `10`.                            |
-| `invisible`      | `False`  | `boolean` | Whether the entity or robot should be invisible.  Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways.                                              |
+| `invisible`      | `False`  | `boolean` | Whether the entity or robot should be invisible.  Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways. System robots are invisible by default. |
 
 
 ### Recipes
@@ -268,8 +268,21 @@ table.
 | `program`     | `null`   | `string`              | This is the text of a Swarm program which the robot should initially run, and must be syntax- and type-error-free.  If omitted, the robot will simply be idle.                                                                                                                                                                                                                                                                 |
 | `devices`     | `[]`     | `string list`         | A list of entity names which should be *installed* as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs.                                                                                                                                                                                                                                                             |
 | `inventory`   | `[]`     | `(int × string) list` | A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each.                                                                                                                                                                                                                                                                                                       |
-| `system`      | `False`  | `boolean`             | Whether the robot is a "system" robot.  System robots can do anything, without regard for devices and capabilities.                                                                                                                                                                                                                                                                                                            |
+| `system`      | `False`  | `boolean`             | Whether the robot is a "system" robot.  System robots can do anything, without regard for devices and capabilities. System robots are invisible by default.                                                                                                                                                                                                                                                                                                            |
 | `heavy`       | `False`  | `boolean`             | Whether the robot is heavy.  Heavy robots require `tank treads` to `move` (rather than just `treads` for other robots).                                                                                                                                                                                                                                                                                                        |
+
+#### Base robot
+
+There must be at most one **base** robot in the world. Since concrete robots can be created
+either via the `loc` attribute or via the map and palette, use the following guide to
+ensure the base robot is the one you intended:
+
+1. Always list the intended **base** as the first robot definition in your scenario.
+2. The first robot with a `loc` attribute will become the base, even if other robots are defined earlier.
+3. Without any located robots, if multiple robots are instantiated on the map from
+   the first robot definition, the first robot in
+   [row-major order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
+   shall be the base.
 
 ### Objectives
 
