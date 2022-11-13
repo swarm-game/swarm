@@ -5,6 +5,7 @@
 module TestEval where
 
 import Control.Lens ((^.), _3)
+import Data.Char (ord)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
@@ -238,6 +239,23 @@ testEval g =
                  in T.concat ["(", t1, ",", t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
                       `evaluatesToP` VBool True
             )
+        , testProperty
+            "char"
+            $ \i (NonEmpty s) ->
+              let i' = i `mod` length s
+               in T.concat ["char ", from @String (show i'), " ", tquote s]
+                    `evaluatesToP` VInt (fromIntegral (ord (s !! i')))
+        , testCase
+            "mkText 0"
+            ("mkText 0 (\\x. 97)" `evaluatesTo` VText "")
+        , testCase
+            "mkText 5"
+            ("mkText 5 (\\x. x+97)" `evaluatesTo` VText "abcde")
+        , testProperty
+            "mkText/char"
+            $ \s ->
+              T.concat ["mkText ", from @String (show (length s)), " (\\i. char i ", tquote s, ") == ", tquote s]
+                `evaluatesToP` VBool True
         ]
     ]
  where
