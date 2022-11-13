@@ -326,12 +326,31 @@
     information, made of twisted cotton fibers.  Multiple strings can
     also be woven into larger configurations such as cloth or nets.
   - |
-    A string device enables two commands: the first, `format : a ->
-    text`, can turn any value into a suitable text representation.
-    The second is the infix operator `++ : text -> text -> text`
-    which can be used to concatenate two text values.  For example,
+    An installed `string` device enables a number of commands for working with
+    `text` values.
+  - |
+    `format : a -> text` can turn any value into a suitable text
+    representation.
+  - |
+    The infix operator `++ : text -> text -> text`
+    can be used to concatenate two text values.  For example,
   - |
     "Number of widgets: " ++ format numWidgets
+  - |
+    `chars : text -> int` computes the number of characters in a
+    `text` value.
+  - |
+    `char : int -> text -> int` returns the character at a specific
+    index in a (0-indexed) `text` value, represented as the numeric
+    value of a Unicode
+    codepoint.
+  - |
+    `mktext : int -> (int -> int) -> text` constructs a text value
+    from a length and an indexing function. That is, `chars (mktext n
+    f) == n`, and `char i (mktext n f) == f i` as long as `0 <= i < n`.
+  - |
+    `split : int -> text -> text * text` splits a `text` value into
+    two pieces, one before the given index and one after.
   properties: [portable]
   capabilities: [text]
 
