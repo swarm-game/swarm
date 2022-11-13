@@ -45,6 +45,8 @@
                "format"
                "chars"
                "split"
+               "char"
+               "mktext"
              ))
              (x-commands '(
                "noop"
