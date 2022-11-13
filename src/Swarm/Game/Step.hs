@@ -1497,7 +1497,7 @@ execConst c vs s k = do
     Char -> case vs of
       [VInt i, VText t]
         | i < 0 || i >= fromIntegral (T.length t) ->
-            raise Char ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
+          raise Char ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
         | otherwise -> return $ Out (VInt . fromIntegral . ord . T.index t . fromIntegral $ i) s k
       _ -> badConst
     MkText -> case vs of
