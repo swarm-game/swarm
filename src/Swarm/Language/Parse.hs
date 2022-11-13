@@ -35,6 +35,7 @@ module Swarm.Language.Parse (
   getLocRange,
 ) where
 
+import Control.Lens ((^.))
 import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
@@ -289,12 +290,12 @@ mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
 sLet :: Var -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet x ty t1 = SLet (x `S.member` setOf fv (sTerm t1)) x ty t1
+sLet x ty t1 = SLet (x `S.member` setOf fv t1) x ty t1
 
 -- | Construct an 'SDef', automatically filling in the Boolean field
 --   indicating whether it is recursive.
 sDef :: Var -> Maybe Polytype -> Syntax -> Term
-sDef x ty t = SDef (x `S.member` setOf fv (sTerm t)) x ty t
+sDef x ty t = SDef (x `S.member` setOf fv t) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
@@ -312,7 +313,7 @@ mkBindChain stmts = case last stmts of
  where
   mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
   mkBind (Binder x t1) t2 = loc t1 t2 $ SBind (Just x) t1 t2
-  loc a b = Syntax $ sLoc a <> sLoc b
+  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
 
 data Stmt
   = BareTerm Syntax
@@ -339,7 +340,7 @@ fixDefMissingSemis term =
     [] -> term
     defs -> foldr1 mkBind defs
  where
-  mkBind t1 t2 = Syntax (sLoc t1 <> sLoc t2) $ SBind Nothing t1 t2
+  mkBind t1 t2 = Syntax ((t1 ^. sLoc) <> (t2 ^. sLoc)) $ SBind Nothing t1 t2
   nestedDefs term' acc = case term' of
     def@(Syntax _ SDef {}) -> def : acc
     (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)
@@ -362,7 +363,7 @@ parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
   exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
   exprLoc2 p = do
     (l, f) <- parseLocG p
-    pure $ \s1 s2 -> Syntax (l <> sLoc s1 <> sLoc s2) $ f s1 s2
+    pure $ \s1 s2 -> Syntax (l <> (s1 ^. sLoc) <> (s2 ^. sLoc)) $ f s1 s2
 
 -- | Precedences and parsers of binary operators.
 --
@@ -405,7 +406,7 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
   exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
   exprLoc1 p = do
     (l, f) <- parseLocG p
-    pure $ \s -> Syntax (l <> sLoc s) $ f s
+    pure $ \s -> Syntax (l <> s ^. sLoc) $ f s
 
 operatorString :: Text -> Parser Text
 operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
