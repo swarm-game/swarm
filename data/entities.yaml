@@ -326,8 +326,8 @@
     information, made of twisted cotton fibers.  Multiple strings can
     also be woven into larger configurations such as cloth or nets.
   - |
-    An installed `string` device enables a number of commands for working with
-    `text` values.
+    An installed `string` device enables several commands for working with
+    `text` values:
   - |
     `format : a -> text` can turn any value into a suitable text
     representation.
@@ -340,19 +340,28 @@
     `chars : text -> int` computes the number of characters in a
     `text` value.
   - |
-    `char : int -> text -> int` returns the character at a specific
-    index in a (0-indexed) `text` value, represented as the numeric
-    value of a Unicode
-    codepoint.
-  - |
-    `mktext : int -> (int -> int) -> text` constructs a text value
-    from a length and an indexing function. That is, `chars (mktext n
-    f) == n`, and `char i (mktext n f) == f i` as long as `0 <= i < n`.
-  - |
     `split : int -> text -> text * text` splits a `text` value into
     two pieces, one before the given index and one after.
   properties: [portable]
   capabilities: [text]
+
+- name: decoder ring
+  display:
+    attr: silver
+    char: 'O'
+  description:
+  - |
+    A handy lookup table for converting from characters to numeric codes and
+    back, shaped for some reason into a ring.  When installed, it
+    enables two functions:
+  - |
+    `charAt : int -> text -> int` returns the numeric code of the
+    character at a specific index in a (0-indexed) `text` value.
+  - |
+    `toChar : int -> text` creates a singleton (length-1) `text`
+    value containing a character with the given numeric code.
+  properties: [portable]
+  capabilities: [code]
 
 - name: lambda
   display:
