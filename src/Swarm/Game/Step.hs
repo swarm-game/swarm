@@ -502,15 +502,6 @@ stepCESK cesk = case cesk of
   -- of a particular cell to the value we just finished computing.
   Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
   ------------------------------------------------------------
-  -- Text building
-  -- This is the mechanism used to implement the `mkText` primitive.
-
-  Out (VInt c) s (FMkText _ 0 cs : k) ->
-    return $ Out (VText (from @String (chr (fromIntegral c) : cs))) s k
-  Out (VInt c) s (FMkText f i cs : k) ->
-    return $ Out (VInt (i - 1)) s (FApp f : FMkText f (i - 1) (chr (fromIntegral c) : cs) : k)
-  Out _ s (FMkText {} : _) -> badMachineState s "FMkText frame with non-int value"
-  ------------------------------------------------------------
   -- Execution
 
   -- To execute a definition, we immediately turn the body into a
@@ -1494,17 +1485,18 @@ execConst c vs s k = do
     Concat -> case vs of
       [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
       _ -> badConst
-    Char -> case vs of
+    CharAt -> case vs of
       [VInt i, VText t]
         | i < 0 || i >= fromIntegral (T.length t) ->
-          raise Char ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
+            raise CharAt ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
         | otherwise -> return $ Out (VInt . fromIntegral . ord . T.index t . fromIntegral $ i) s k
       _ -> badConst
-    MkText -> case vs of
-      [VInt n, f]
-        | n < 0 -> raise MkText ["Length must be nonnegative:", prettyValue (VInt n)]
-        | n == 0 -> return $ Out (VText "") s k
-        | otherwise -> return $ Out (VInt (n - 1)) s (FApp f : FMkText f (n - 1) [] : k)
+    ToChar -> case vs of
+      [VInt i]
+        | i < 0 || i > fromIntegral (ord (maxBound :: Char)) ->
+            raise ToChar ["Value", prettyValue (VInt i), "is an invalid character code"]
+        | otherwise ->
+            return $ Out (VText . T.singleton . chr . fromIntegral $ i) s k
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"

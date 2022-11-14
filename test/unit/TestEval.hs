@@ -240,22 +240,26 @@ testEval g =
                       `evaluatesToP` VBool True
             )
         , testProperty
-            "char"
+            "charAt"
             $ \i (NonEmpty s) ->
               let i' = i `mod` length s
-               in T.concat ["char ", from @String (show i'), " ", tquote s]
+               in T.concat ["charAt ", from @String (show i'), " ", tquote s]
                     `evaluatesToP` VInt (fromIntegral (ord (s !! i')))
         , testCase
-            "mkText 0"
-            ("mkText 0 (\\x. 0)" `evaluatesTo` VText "")
-        , testCase
-            "mkText 5"
-            ("let a = char 0 \"a\" in mkText 5 (\\x. x+a)" `evaluatesTo` VText "abcde")
+            "toChar 97"
+            ("toChar 97 == \"a\"" `evaluatesTo` VBool True)
         , testProperty
-            "mkText/char"
-            $ \s ->
-              T.concat ["mkText ", from @String (show (length s)), " (\\i. char i ", tquote s, ") == ", tquote s]
-                `evaluatesToP` VBool True
+            "chars/toChar"
+            ( \(NonNegative (i :: Integer)) ->
+                T.concat ["chars (toChar ", from @String (show i), ")"]
+                  `evaluatesToP` VInt 1
+            )
+        , testProperty
+            "charAt/toChar"
+            ( \(NonNegative i) ->
+                T.concat ["charAt 0 (toChar ", from @String (show i), ")"]
+                  `evaluatesToP` VInt i
+            )
         ]
     ]
  where
