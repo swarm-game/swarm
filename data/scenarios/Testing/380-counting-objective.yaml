@@ -10,10 +10,13 @@ objectives:
       - |
         Get 1 tree.
     condition: |-
+      //t <- time;
+      //if (t < 0) {return false} {
       as base {
         itemCount <- count "tree";
         return $ itemCount > 0;
       };
+      //}
 robots:
   - name: base
     dir: [0, 1]
