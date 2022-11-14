@@ -186,7 +186,9 @@ testScenarioSolution _ci _em =
         , testGroup
             "Possession criteria (#858)"
             [ testSolution Default "Testing/379-possession-objective"
-            , testSolution Default "Testing/380-counting-objective"
+            , testSolution' Default "Testing/380-counting-objective" $ \g -> do
+                let msgs = g ^. messageQueue
+                mapM_ print msgs
             ]
         , testGroup
             "Require (#201)"
