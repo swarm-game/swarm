@@ -1039,7 +1039,8 @@ scenarioToAppState siPair@(scene, _) userSeed toRun = do
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState :: ScenarioInfoPair -> UIState -> IO UIState
-scenarioToUIState siPair u =
+scenarioToUIState siPair u = do
+  curTime <- getTime Monotonic
   return $
     u
       & uiPlaying .~ True
@@ -1053,3 +1054,4 @@ scenarioToUIState siPair u =
       & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
       & uiREPL . replHistory %~ restartREPLHistory
       & scenarioRef ?~ siPair
+      & lastFrameTime .~ curTime
