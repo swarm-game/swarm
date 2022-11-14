@@ -47,6 +47,7 @@ import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -187,6 +188,12 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/490-harvest"
         , testSolution Default "Testing/504-teleport-self"
         , testSolution Default "Testing/508-capability-subset"
+        , testGroup
+            "Possession criteria (#858)"
+            [ testSolution Default "Testing/858-inventory/858-possession-objective"
+            , expectFailBecause "Known bug #858" $
+                testSolution Default "Testing/858-inventory/858-counting-objective"
+            ]
         , testGroup
             "Require (#201)"
             [ testSolution Default "Testing/201-require/201-require-device"

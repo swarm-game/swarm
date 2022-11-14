@@ -13,4 +13,5 @@
 378-objectives.yaml
 684-swap.yaml
 699-movement-fail
+858-inventory
 710-multi-robot.yaml
