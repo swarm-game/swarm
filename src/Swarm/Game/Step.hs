@@ -143,9 +143,13 @@ gameTick = do
               hn = view robotName h
               farAway = V2 maxBound maxBound
           let m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
+          sendIO $ putStr "ERROR: "
+          sendIO $ print m
           emitMessage m
-        Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
-        _ -> return ()
+        Right (VBool True) -> do
+          sendIO $ putStrLn "WON"
+          winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
+        _ -> sendIO $ putStr "~"
     _ -> return ()
 
   -- Advance the game time by one.
