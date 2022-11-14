@@ -247,10 +247,10 @@ testEval g =
                     `evaluatesToP` VInt (fromIntegral (ord (s !! i')))
         , testCase
             "mkText 0"
-            ("mkText 0 (\\x. 97)" `evaluatesTo` VText "")
+            ("mkText 0 (\\x. 0)" `evaluatesTo` VText "")
         , testCase
             "mkText 5"
-            ("mkText 5 (\\x. x+97)" `evaluatesTo` VText "abcde")
+            ("let a = char 0 \"a\" in mkText 5 (\\x. x+a)" `evaluatesTo` VText "abcde")
         , testProperty
             "mkText/char"
             $ \s ->
