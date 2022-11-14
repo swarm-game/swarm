@@ -1,0 +1,536 @@
+version: 1
+name: Pastoral Island
+author: Karl Ostmo
+description: |
+  Start a wool industry from the local fauna.
+creative: false
+objectives:
+  - goal:
+      - |
+        You've homesteaded on a small island in the ocean.
+        It's time to gather resources to trade.
+      - |
+        You encounter some feral sheep (@). They slowly wander the island and eat grass.
+        Your mind wanders to textiles...
+      - |
+        First, paddock at least one sheep so they don't drown.
+        Make sure there are no gaps in the fence!
+      - |
+        Note that you can use the "drill" command (by way of the "post puller" tool)
+        to demolish a fence that has been "placed".
+    condition: |-
+      // Algorithm:
+      // ----------
+      // Maintain current direction until a wall is encountered.
+      // Then enter "wall-following mode".
+      // This mode presumes the wall is not a loop.
+      // Wall-following mode exploits recursion to keep track of how many left turns were made
+      // and then unwinds them again by ensuring each is paired with a right turn.
+      // Once the recursion is fully unwound, the robot proceeds along its original direction
+      // (though it may now be laterally displaced).
+      //
+      // (If it was a loop, then an "oriented breadcrumb" would need to be left.
+      // The breadcrumb is oriented in case a single-width passage is backtracked
+      // along the opposite wall.)
+
+      /** A "gate" is walkable, so we need to supplement the "blocked" check with this function.
+      Since fences are "unwalkable", they do not need to be mentioned in this function.
+      */
+      def isFenced =
+          s <- scan forward;
+          return (
+              case s
+                  (\_. false)
+                  (\x. x == "gate")
+          );
+          end;
+
+      def isBlockedOrFenced =
+          b <- blocked;
+          f <- isFenced;
+          return (b || f);
+          end;
+
+      // Returns true if we've already placed two
+      // breadcrumbs on a given tile, false otherwise.
+      def leaveBreadcrumbs =
+
+          let bc1 = "fresh breadcrumb" in
+          let bc2 = "treaded breadcrumb" in
+
+          wasTraversedOnce <- ishere bc1;
+          if wasTraversedOnce {
+              _crumb <- grab;
+              make bc2;
+              place bc2;
+              return false;
+          } {
+              wasTraversedTwice <- ishere bc2;
+              if wasTraversedTwice {
+                  return true;
+              } {
+                  // Make sure nothing's in the way before we place
+                  // our breadcrumb:
+                  x <- scan down;
+                  case x return (\y.
+                      // If we're on a water tile, get rid of
+                      // it with our special "drilling" recipe
+                      if (y == "water") {
+                          drill down;
+                          // Nothing will remain on the ground.
+                          // after making the "steam" via
+                          // the drilling recipe.
+                      } {
+                          grab;
+                          return ();
+                      };
+                  );
+
+                  make bc1;
+                  place bc1;
+                  return false;
+              };
+          };
+          end;
+
+      def goForwardToPatrol = \wasBlocked.
+          b <- isBlockedOrFenced;
+          if b {
+              turn left;
+              goForwardToPatrol true;
+              turn right;
+              goForwardToPatrol false;
+          } {
+              if wasBlocked {
+                  isLoop <- leaveBreadcrumbs;
+                  if isLoop {
+                      fail "loop";
+                  } {};
+              } {};
+              move;
+          };
+          end;
+
+      /**
+      There should only be one place in the
+      code where an exception is thrown: that is,
+      if a treaded breadcrumb is encountered.
+      */
+      def checkIsEnclosedInner =
+          try {
+              goForwardToPatrol false;
+              // Water is the outer boundary
+              hasWater <- ishere "water";
+              if hasWater {
+                  return false;
+              } {
+                  checkIsEnclosedInner;
+              };
+          } {
+              return true;
+          };
+          end;
+
+      def checkIsEnclosed =
+
+          // The "evaporator" drill is used
+          // to clear water tiles.
+          let specialDrill = "evaporator" in
+          create specialDrill;
+          install self specialDrill;
+
+          // NOTE: System robots can walk on water
+          // so we only need this if we want to
+          // demo the algorithm with a player robot.
+      //    create "boat";
+      //    install self "boat";
+
+          checkIsEnclosedInner;
+          end;
+
+      def boolToInt = \b. if (b) {return 1} {return 0}; end;
+
+      def countAdjacentBlockages =
+
+          turn left;
+          b1 <- isBlockedOrFenced;
+          c1 <- boolToInt b1;
+
+          turn left;
+          b2 <- isBlockedOrFenced;
+          c2 <- boolToInt b2;
+
+          turn left;
+          b3 <- isBlockedOrFenced;
+          c3 <- boolToInt b3;
+
+          turn left;
+          b4 <- isBlockedOrFenced;
+          c4 <- boolToInt b4;
+
+          return $ c1 + c2 + c3 + c4;
+          end;
+
+      // Step forward, observing left and right.
+      def observeLeftAndRight =
+          move;
+          turn left;
+          amBlockedLeft <- isBlockedOrFenced;
+          val1 <- boolToInt amBlockedLeft;
+
+          turn back;
+          amBlockedRight <- isBlockedOrFenced;
+          val2 <- boolToInt amBlockedRight;
+
+          turn right;
+          move;
+          return $ val1 + val2;
+          end;
+
+
+      /** If the four cardinal directions have at most
+      one blockage, then there will exist an orientation
+      where both that direction and its opposite direction
+      are clear.
+      So we can step that direction, check to the left and
+      right of us, then step in the opposite direction
+      and do the same. This allows us to check the 4
+      blocks that touch the corners of the center block.
+      */
+      def countDiagonalBlockages =
+          // First, orient to the clear front-to-back path
+          amBlocked <- isBlockedOrFenced;
+          if amBlocked {turn left;} {};
+
+          // Second, step to both sides
+          fwdCount <- observeLeftAndRight;
+          backCount <- observeLeftAndRight;
+          return $ fwdCount + backCount;
+          end;
+
+      def isStandingOnBridge =
+          onFence <- ishere "fence";
+          onGate <- ishere "gate";
+          if (onFence || onGate) {
+              adjCount <- countAdjacentBlockages;
+              if (adjCount > 1) {
+                  return true;
+              } {
+                  diagCount <- countDiagonalBlockages;
+                  return $ (adjCount + diagCount) > 1;
+              };
+          } {return false};
+          end;
+
+      def getValForSheepIndex = \predicateCmd. \i.
+          try {
+              // This will throw an exception if
+              // the sheep has already drowned.
+              r <- robotnumbered i;
+              didSucceed <- as r {predicateCmd};
+
+              boolToInt didSucceed;
+          } {
+              return 0;
+          }
+          end;
+
+      /**
+      There are 3 sheep.
+      They have indices 1, 2, 3.
+      (The base has index 0).
+
+      THIS DOES NOT WORK!
+      */
+      def countSheepWithRecursive = \predicateCmd. \i.
+
+          if (i > 0) {
+              val <- getValForSheepIndex predicateCmd i;
+              recursiveCount <- countSheepWithRecursive predicateCmd $ i - 1;
+              return $ val + recursiveCount;
+          } {
+              return 0;
+          }
+          end;
+
+
+      def countSheepWith = \predicateCmd.
+
+          val1 <- getValForSheepIndex predicateCmd 1;
+          val2 <- getValForSheepIndex predicateCmd 2;
+          val3 <- getValForSheepIndex predicateCmd 3;
+          return $ val1 + val2 + val3;
+
+          end;
+
+
+      justFilledGap <- as base {
+          isStandingOnBridge;
+      };
+
+      if (justFilledGap) {
+          enclosedCount <- countSheepWith checkIsEnclosed;
+          return $ enclosedCount >= 1;
+      } {
+          return false;
+      }
+  - goal:
+      - |
+        Safe! Your sheep are now hungry.
+        Offer them something tasty and you may be rewarded.
+      - |
+        The sheep will move toward something edible on
+        an adjacent tile and will eat it if they walk over it.
+      - |
+        You may want to add a gate to the fence
+        to give yourself easier access.
+    condition: |-
+      def getTruthForSheepIndex = \predicateCmd. \i.
+          try {
+              // This will throw an exception if
+              // the sheep has already drowned.
+              r <- robotnumbered i;
+              as r {predicateCmd};
+          } {
+              return false;
+          };
+          end;
+
+      def anySheep = \predicateCmd. \i.
+
+          if (i > 0) {
+              didSucceed <- getTruthForSheepIndex predicateCmd i;
+              if didSucceed {
+                  return true;
+              } {
+                  anySheep predicateCmd $ i - 1;
+              };
+          } {
+              return false;
+          };
+          end;
+
+      anySheep (has "clover") 3;
+  - goal:
+      - |
+        Yum! Contented, well-fed sheep may drop wool.
+      - |
+        Winter is coming! Collect three wool bundles to make a sweater.
+      - |
+        Each sheep drops a finite amount over
+        their lifetime.
+    condition: |-
+      as base {
+        has "sweater";
+      };
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - treads
+      - scanner
+      - dictionary
+      - branch predictor
+      - strange loop
+      - clock
+      - ADT calculator
+      - comparator
+      - workbench
+      - grabber
+      - lambda
+      - logger
+      - hearing aid
+      - counter
+      - mirror
+      - post puller
+    inventory:
+      - [0, fence]
+      - [0, gate]
+      - [10, hinge]
+  - name: sheep
+    description:
+      - meandering livestock
+    display:
+      invisible: false
+      char: '@'
+    system: true
+    dir: [0, 1]
+    inventory:
+      - [4, wool]
+    program: |
+      run "scenarios/Challenges/Ranching/_gated-paddock/meandering-sheep.sw";
+entities:
+  - name: fence
+    display:
+      char: '#'
+    description:
+      - Keeps sheep in. And some other things out.
+    properties: [known, portable, unwalkable]
+  - name: post puller
+    display:
+      char: 'P'
+      attr: rock
+    capabilities: [drill]
+    description:
+      - Good for dismantling fences.
+    properties: [known, portable]
+  - name: scrap wood
+    display:
+      char: '\'
+    description:
+      - Scrap wood. Can be reconditioned into boards.
+    properties: [known, portable]
+  - name: sweater
+    display:
+      attr: gold
+      char: 'S'
+    description:
+      - A warm wool sweater. Just in time for winter!
+    properties: [known, portable]
+  - name: clover
+    display:
+      attr: flower
+      char: '%'
+    description:
+      - A tasty stack for fluffy ruminants.
+    properties: [portable, growable]
+    growth: [80, 100]
+  - name: gate
+    display:
+      char: '/'
+      attr: rock
+    description:
+      - A gate permits the player to pass through, but sheep cannot.
+    properties: [known]
+  - name: hinge
+    display:
+      char: 'U'
+      attr: rock
+    description:
+      - Facilitates swinging action.
+    properties: [known, portable]
+  - name: cabin
+    display:
+      char: Π
+      attr: rock
+    description:
+      - Home sweet home.
+    properties: [known, unwalkable]
+  - name: pier
+    display:
+      char: 且
+      attr: rock
+    description:
+      - Docking area for ships
+    properties: [known]
+  - name: fresh breadcrumb
+    display:
+      char: '.'
+    description:
+      - A marker that can be put down and found again. Used only by judge robot.
+    properties: [portable]
+  - name: treaded breadcrumb
+    display:
+      char: 'x'
+    description:
+      - A marker that can be put down and found again (for a second time). Used only by judge robot.
+    properties: [portable]
+  - name: evaporator
+    display:
+      char: 'E'
+    description:
+      - A tool that allows clearing a water tile. Used only by judge robot.
+    properties: [portable]
+    capabilities: [drill]
+  - name: wool
+    display:
+      char: 'ω'
+      attr: gold
+    description:
+      - A bundle of raw animal fiber.
+    properties: [portable]
+  - name: steam
+    display:
+      char: 'Z'
+    description:
+      - What's left after evaporating water. Used only by judge robot.
+    properties: [portable]
+recipes:
+  - in:
+      - [2, board]
+    out:
+      - [1, fence]
+  - in:
+      - [3, wool]
+    out:
+      - [1, sweater]
+  - in:
+      - [1, scrap wood]
+    out:
+      - [1, board]
+  - in:
+      - [0, fresh breadcrumb]
+    out:
+      - [1, fresh breadcrumb]
+  - in:
+      - [1, fresh breadcrumb]
+    out:
+      - [1, treaded breadcrumb]
+  - in:
+      - [1, fence]
+    out:
+      - [1, scrap wood]
+    required:
+      - [1, post puller]
+  - in:
+      - [1, water]
+    out:
+      - [1, steam]
+    required:
+      - [1, evaporator]
+  - in:
+      - [1, hinge]
+      - [1, fence]
+    out:
+      - [1, gate]
+known: [mountain, tree, water]
+seed: 0
+solution: |
+  run "scenarios/Challenges/Ranching/_gated-paddock/fence-construction.sw"
+world:
+  default: [dirt, water]
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    't': [dirt, tree]
+    'x': [stone, mountain]
+    'c': [stone, cabin]
+    's': [grass, null, sheep]
+    '%': [grass, clover, null]
+    'H': [stone, pier, null]
+    '~': [dirt, water]
+  upperleft: [-34, 11]
+  map: |-
+    ~~~~.......~~~~~~~~~~~~~.......................~~~~~~
+    ~~.............~~~~.......%.%%%%%%..%%%%%.%.......~~~
+    ~........................%%%%%%%%%%%%%..%%%%.......~~
+    ~...................................................~
+    .............................x.xx........tttttttt...~
+    .........................................tttttttt...~
+    ..........................xxxxx..........tttttttt...~
+    .........................................tttttttt...~
+    ...........s.............................tttttttt....
+    ....x....................................tttttttt....
+    ...xx................................................
+    ..xx.....................................B......c....
+    ...x.................................................
+    ..............................s......................
+    .....................................................
+    ....................................................~
+    ~..............s...................................~~
+    ~~.......xxx...........x.........................~~~~
+    ~~~............xx............x............~~~~H~~~~~~
+    ~~~.....................................~~~~~~H~~~~~~
+    ~~.....................................~~~~~~~H~~~~~~
+    ~~..............................~~~~~~~~~~~~~~H~~~~~~
+    ~~~~...................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
