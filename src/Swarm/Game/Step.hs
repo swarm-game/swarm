@@ -933,6 +933,8 @@ execConst c vs s k = do
     Count -> case vs of
       [VText name] -> do
         inv <- use robotInventory
+        sendIO $ putStr "C:"
+        sendIO $ putStr . show $ countByName name inv
         return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
     Whereami -> do
