@@ -264,13 +264,15 @@ handleMainEvent ev = do
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
-      if h >= t
-        then -- ignore repeated keypresses
-          continueWithoutRedraw
-        else -- hide for two seconds
-        do
-          uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
-          invalidateCacheEntry WorldCache
+      let reappearanceTime =
+            if h > t
+              then -- a second keypress before the two seconds elapse will toggle the display back
+                t
+              else -- hide for two seconds
+                t + TimeSpec 2 0
+      do
+        uiState . uiHideRobotsUntil .= reappearanceTime
+        invalidateCacheEntry WorldCache
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
