@@ -20,7 +20,7 @@ module Swarm.Game.Scenario (
   IndexedTRobot,
 
   -- * Scenario
-  Scenario,
+  Scenario (..),
 
   -- ** Fields
   scenarioVersion,
@@ -45,7 +45,7 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
-import Control.Lens hiding (from, (<.>))
+import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM)
 import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
 import Control.Monad.Trans.Except (except)

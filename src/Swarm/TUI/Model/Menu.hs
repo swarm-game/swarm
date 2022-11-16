@@ -44,6 +44,8 @@ data ModalType
   | RecipesModal
   | CommandsModal
   | MessagesModal
+  | EntityPaletteModal
+  | TerrainPaletteModal
   | RobotsModal
   | ScenarioEndModal ScenarioOutcome
   | QuitModal

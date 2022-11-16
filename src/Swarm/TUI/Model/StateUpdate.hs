@@ -13,6 +13,7 @@ module Swarm.TUI.Model.StateUpdate (
 ) where
 
 import Brick.AttrMap (applyAttrMappings)
+import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
@@ -27,7 +28,7 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
-import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
+import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorld)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
@@ -41,6 +42,8 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
+import Swarm.TUI.Editor.Model qualified as EM
+import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
@@ -129,14 +132,15 @@ scenarioToAppState ::
   Maybe CodeToRun ->
   m ()
 scenarioToAppState siPair@(scene, _) userSeed toRun = do
-  withLensIO gameState $ scenarioToGameState scene userSeed toRun
-  withLensIO uiState $ scenarioToUIState siPair
+  newGameState <- withLensIO gameState $ scenarioToGameState scene userSeed toRun
+  void $ withLensIO uiState $ scenarioToUIState siPair newGameState
  where
-  withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m ()
+  withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m x
   withLensIO l a = do
     x <- use l
     x' <- liftIO $ a x
     l .= x'
+    return x'
 
 attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
 attainAchievement a = do
@@ -159,8 +163,8 @@ attainAchievement' t p a = do
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState :: ScenarioInfoPair -> UIState -> IO UIState
-scenarioToUIState siPair u = do
+scenarioToUIState :: ScenarioInfoPair -> GameState -> UIState -> IO UIState
+scenarioToUIState siPair@(scenario, _) gs u = do
   curTime <- getTime Monotonic
   return $
     u
@@ -177,3 +181,14 @@ scenarioToUIState siPair u = do
       & uiAttrMap .~ applyAttrMappings (map toAttrPair $ fst siPair ^. scenarioAttrs) swarmAttrMap
       & scenarioRef ?~ siPair
       & lastFrameTime .~ curTime
+      & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
+      & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
+ where
+  entityList = EU.getEntitiesForList $ gs ^. entityMap
+
+  myWorld = scenario ^. scenarioWorld
+  (isEmptyArea, newBounds) = EU.getEditingBounds myWorld
+  setNewBounds maybeOldBounds =
+    if isEmptyArea
+      then maybeOldBounds
+      else Just newBounds
