@@ -111,10 +111,15 @@ library
                       Swarm.Game.WorldGen
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
+                      Swarm.TUI.Controller.ControllerUtils
+                      Swarm.TUI.Editor.EditorController
+                      Swarm.TUI.Editor.Util
+                      Swarm.TUI.Editor.EditorView
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
                       Swarm.TUI.View
+                      Swarm.TUI.View.ViewUtils
                       Swarm.TUI.Controller
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
