@@ -30,7 +30,7 @@ module Swarm.Game.Scenario (
   IndexedTRobot,
 
   -- * Scenario
-  Scenario,
+  Scenario (..),
 
   -- ** Fields
   scenarioVersion,
@@ -57,7 +57,7 @@ module Swarm.Game.Scenario (
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
-import Control.Lens hiding (from, (<.>))
+import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)

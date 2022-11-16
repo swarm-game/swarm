@@ -39,6 +39,8 @@ data ModalType
   | RecipesModal
   | CommandsModal
   | MessagesModal
+  | EntityPaletteModal
+  | TerrainPaletteModal
   | RobotsModal
   | WinModal
   | QuitModal

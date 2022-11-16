@@ -1,10 +1,20 @@
 module Swarm.TUI.Model.Name where
 
+data WorldEditorFocusable
+  = BrushSelector
+  | EntitySelector
+  | AreaSelector
+  | OutputPathSelector
+  | MapSaveButton
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 data FocusablePanel
   = -- | The panel containing the REPL.
     REPLPanel
   | -- | The panel containing the world view.
     WorldPanel
+  | -- | The panel containing the world editor controls.
+    WorldEditorPanel
   | -- | The panel showing robot info and inventory on the top left.
     RobotPanel
   | -- | The info panel on the bottom left.
@@ -15,12 +25,22 @@ data FocusablePanel
 --   of the UI, such as forms, panels, caches, extents, and lists.
 data Name
   = FocusablePanel FocusablePanel
+  | -- | An individual control within the world editor panel.
+    WorldEditorPanelControl WorldEditorFocusable
   | -- | The REPL input form.
     REPLInput
   | -- | The render cache for the world view.
     WorldCache
   | -- | The cached extent for the world view.
     WorldExtent
+  | -- | The list of possible entities to paint a map with.
+    EntityPaintList
+  | -- | The entity paint item position in the EntityPaintList.
+    EntityPaintListItem Int
+  | -- | The list of possible terrain materials.
+    TerrainList
+  | -- | The terrain item position in the TerrainList.
+    TerrainListItem Int
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList

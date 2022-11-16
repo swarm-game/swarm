@@ -7,18 +7,22 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Scenario (scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
+import Swarm.Game.Terrain
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
+import Swarm.Util (listEnums)
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
@@ -76,10 +80,22 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
               Just (scenario, _) -> scenario ^. scenarioName
          in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
       KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
+      TerrainPaletteModal -> ("Terrain", Nothing, w)
+       where
+        wordLength = maximum $ map (length . show) (listEnums :: [TerrainType])
+        w = wordLength + 6
+      EntityPaletteModal -> ("Entity", Nothing, 30)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
 drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
+
+drawLabeledTerrainSwatch :: TerrainType -> Widget Name
+drawLabeledTerrainSwatch a =
+  tile <+> str materialName
+ where
+  tile = padRight (Pad 1) $ renderDisplay $ terrainMap M.! a
+  materialName = init $ show a
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "

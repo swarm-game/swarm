@@ -22,6 +22,7 @@ module Swarm.Util (
   getElemsInArea,
   manhattan,
   binTuples,
+  histogram,
 
   -- * Directory utilities
   readFileMay,
@@ -82,8 +83,8 @@ import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.Int (Int32)
-import Data.List (maximumBy, partition)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List (foldl', maximumBy, partition)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -214,6 +215,13 @@ binTuples ::
 binTuples = foldr f mempty
  where
   f = uncurry (M.insertWith (<>)) . fmap pure
+
+-- | Count occurrences of a value
+histogram ::
+  (Foldable t, Ord a) =>
+  t a ->
+  Map a Int
+histogram = foldl' (\m k -> M.insertWith (+) k 1 m) M.empty
 
 ------------------------------------------------------------
 -- Directory stuff

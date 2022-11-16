@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
@@ -9,26 +11,47 @@ import Data.Semigroup (sconcat)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
+import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.EditorView qualified as EV
+import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
+import Swarm.TUI.Model.UI
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: Bool -> GameState -> W.Coords -> Widget Name
-drawLoc showRobots g = renderDisplay . displayLoc showRobots g
-
-displayTerrainCell :: GameState -> W.Coords -> Display
-displayTerrainCell g coords = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
-
-displayEntityCell, displayRobotCell :: GameState -> W.Coords -> [Display]
-displayRobotCell g coords = map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
-displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
+drawLoc :: UIState -> GameState -> W.Coords -> Widget Name
+drawLoc ui g coords =
+  if EV.shouldHideWorldCell ui coords
+    then str " "
+    else drawCell
  where
-  displayForEntity :: Entity -> Display
-  displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
+  showRobots = ui ^. uiShowRobots
+  we = ui ^. uiWorldEditor
+  drawCell = renderDisplay $ displayLoc showRobots we g coords
 
-  known e =
+displayTerrainCell :: WorldEditor Name -> GameState -> W.Coords -> Display
+displayTerrainCell worldEditor g coords =
+  terrainMap M.! EU.getTerrainAt worldEditor (g ^. world) coords
+
+displayRobotCell :: GameState -> W.Coords -> [Display]
+displayRobotCell g coords =
+  map (view robotDisplay) $
+    robotsAtLocation (W.coordsToLoc coords) g
+
+displayEntityCell :: WorldEditor Name -> GameState -> W.Coords -> [Display]
+displayEntityCell worldEditor g coords =
+  maybeToList $ displayForEntity <$> maybeEntity
+ where
+  (_, maybeEntity) = EU.getContentAt worldEditor (g ^. world) coords
+
+  displayForEntity :: EntityPaint -> Display
+  displayForEntity e = (if known e then id else hidden) $ getDisplay e
+
+  known (Facade (EntityFacade _ _)) = True
+  known (Ref e) =
     e
       `hasProperty` Known
       || (e ^. entityName)
@@ -40,12 +63,12 @@ displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity co
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
-displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords =
+displayLoc :: Bool -> WorldEditor Name -> GameState -> W.Coords -> Display
+displayLoc showRobots worldEditor g coords =
   sconcat $ terrain NE.:| entity <> robots
  where
-  terrain = displayTerrainCell g coords
-  entity = displayEntityCell g coords
+  terrain = displayTerrainCell worldEditor g coords
+  entity = displayEntityCell worldEditor g coords
   robots =
     if showRobots
       then displayRobotCell g coords

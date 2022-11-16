@@ -98,6 +98,7 @@ library
                       Swarm.Game.CESK
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.EntityFacade
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.WorldDescription
@@ -115,6 +116,11 @@ library
                       Swarm.Game.WorldGen
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
+                      Swarm.TUI.Editor.EditorController
+                      Swarm.TUI.Editor.EditorJson
+                      Swarm.TUI.Editor.EditorModel
+                      Swarm.TUI.Editor.EditorView
+                      Swarm.TUI.Editor.Util
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
@@ -169,6 +175,7 @@ library
                       lsp                           >= 1.2 && < 1.7,
                       megaparsec                    >= 9.0 && < 9.3,
                       minimorph                     >= 0.3 && < 0.4,
+                      transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.3,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,

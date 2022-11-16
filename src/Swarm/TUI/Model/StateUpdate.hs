@@ -10,6 +10,7 @@ module Swarm.TUI.Model.StateUpdate (
   scenarioToAppState,
 ) where
 
+import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
@@ -18,7 +19,10 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
-import Swarm.Game.Scenario (loadScenario)
+import Data.Vector qualified as V
+import Swarm.Game.Entity as E
+import Swarm.Game.Scenario (area, loadScenario, scenarioWorld, ul)
+import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioInfoPair,
@@ -31,6 +35,8 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.World qualified as W
+import Swarm.TUI.Editor.EditorModel
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Attainment
@@ -38,6 +44,7 @@ import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.Util.Location
 import System.Clock
 
 -- | Initialize the 'AppState'.
@@ -95,14 +102,15 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
 -- | Modify the 'AppState' appropriately when starting a new scenario.
 scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe CodeToRun -> m ()
 scenarioToAppState siPair@(scene, _) userSeed toRun = do
-  withLensIO gameState $ scenarioToGameState scene userSeed toRun
-  withLensIO uiState $ scenarioToUIState siPair
+  newGameState <- withLensIO gameState $ scenarioToGameState scene userSeed toRun
+  void $ withLensIO uiState $ scenarioToUIState siPair newGameState
  where
-  withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m ()
+  withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m x
   withLensIO l a = do
     x <- use l
     x' <- liftIO $ a x
     l .= x'
+    return x'
 
 attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
 attainAchievement a = do
@@ -120,8 +128,8 @@ attainAchievement' t p a = do
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState :: ScenarioInfoPair -> UIState -> IO UIState
-scenarioToUIState siPair u = do
+scenarioToUIState :: ScenarioInfoPair -> GameState -> UIState -> IO UIState
+scenarioToUIState siPair@(scenario, _) gs u = do
   curTime <- getTime Monotonic
   return $
     u
@@ -137,3 +145,20 @@ scenarioToUIState siPair u = do
       & uiREPL . replHistory %~ restartREPLHistory
       & scenarioRef ?~ siPair
       & lastFrameTime .~ curTime
+      & uiWorldEditor . entityPaintList %~ BL.listReplace newList Nothing
+      & uiWorldEditor . editingBounds . boundsRect %~ setNewBounds
+ where
+  myWorld = scenario ^. scenarioWorld
+  Location left top = ul myWorld
+
+  setNewBounds maybeOldBounds =
+    if mapHeight /= 0 && mapWidth /= 0
+      then Just newBounds
+      else maybeOldBounds
+
+  -- TODO Note inversion of horizontal and vertical coordinates
+  newBounds = (W.Coords (-top, left), W.Coords (-top + mapHeight - 1, left + mapWidth - 1))
+  AreaDimensions mapWidth mapHeight = getAreaDimensions $ area myWorld
+
+  entities = M.elems $ entitiesByName $ gs ^. entityMap
+  newList = V.fromList $ map mkPaint entities

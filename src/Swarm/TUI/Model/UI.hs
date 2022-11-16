@@ -11,6 +11,7 @@ module Swarm.TUI.Model.UI (
   uiCheatMode,
   uiFocusRing,
   uiWorldCursor,
+  uiWorldEditor,
   uiREPL,
   uiInventory,
   uiInventorySort,
@@ -58,6 +59,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
+import Swarm.TUI.Editor.EditorModel
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
@@ -80,6 +82,7 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
+  , _uiWorldEditor :: WorldEditor Name
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
@@ -136,6 +139,9 @@ uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The last clicked position on the world view.
 uiWorldCursor :: Lens' UIState (Maybe W.Coords)
+
+-- | State of all World Editor widgets
+uiWorldEditor :: Lens' UIState (WorldEditor Name)
 
 -- | The state of REPL panel.
 uiREPL :: Lens' UIState REPLState
@@ -246,6 +252,9 @@ appData :: Lens' UIState (Map Text Text)
 -- UIState initialization
 
 -- | The initial state of the focus ring.
+-- NOTE: Normally, the Tab key might cycle through the members of the
+-- focus ring. However, the REPL already uses Tab. So, to is not used
+-- at all right now for navigating the toplevel focus ring.
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing $ map FocusablePanel listEnums
 
@@ -272,6 +281,7 @@ initUIState showMainMenu cheatMode = do
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiWorldCursor = Nothing
+      , _uiWorldEditor = initialWorldEditor startTime
       , _uiREPL = initREPLState $ newREPLHistory history
       , _uiInventory = Nothing
       , _uiInventorySort = defaultSortOptions

@@ -51,6 +51,7 @@ import Control.Lens.Extras (is)
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State
+import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int32)
@@ -68,6 +69,7 @@ import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
@@ -83,6 +85,9 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.TUI.Controller.Util
+import Swarm.TUI.Editor.EditorController qualified as EC
+import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
@@ -91,7 +96,7 @@ import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
-import Swarm.TUI.View (generateModal)
+import Swarm.TUI.View.Util (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
@@ -305,18 +310,72 @@ handleMainEvent ev = do
     VtyEvent vev
       | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- toggle creative mode if in "cheat mode"
+
+    MouseDown (TerrainListItem pos) V.BLeft _ _ ->
+      uiState . uiWorldEditor . terrainList %= BL.listMoveTo pos
+    MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
+      uiState . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
     ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
+    -- toggle world editor mode if in "cheat mode"
+    ControlChar 'e'
+      | s ^. uiState . uiCheatMode -> do
+          uiState . uiWorldEditor . isWorldEditorEnabled %= not
+          setFocus WorldEditorPanel
+    MouseDown n V.BRight _ mouseLoc -> do
+      let worldEditor = s ^. uiState . uiWorldEditor
+      case (n, worldEditor ^. isWorldEditorEnabled) of
+        -- "Eye Dropper" tool:
+        (FocusablePanel WorldPanel, True) -> do
+          mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+          whenJust mouseCoordsM setTerrainPaint
+         where
+          setTerrainPaint coords = do
+            uiState . uiWorldEditor . terrainList %= BL.listMoveToElement terrain
+
+            case maybeElementPaint of
+              Nothing -> return ()
+              Just elementPaint ->
+                uiState . uiWorldEditor . entityPaintList %= BL.listMoveToElement p
+               where
+                p = case elementPaint of
+                  Facade efd -> efd
+                  Ref r -> mkPaint r
+           where
+            (terrain, maybeElementPaint) =
+              EU.getContentAt
+                worldEditor
+                (s ^. gameState . world)
+                coords
+        _ -> continueWithoutRedraw
+    MouseDown (FocusablePanel WorldPanel) V.BLeft [V.MCtrl] mouseLoc -> do
+      worldEditor <- use $ uiState . uiWorldEditor
+      _ <- runMaybeT $ do
+        guard $ worldEditor ^. isWorldEditorEnabled
+        let getSelected x = snd <$> BL.listSelectedElement x
+            maybeTerrainType = getSelected $ worldEditor ^. terrainList
+            maybeEntityPaint = getSelected $ worldEditor ^. entityPaintList
+        terrain <- MaybeT . pure $ maybeTerrainType
+        mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+        uiState . uiWorldEditor . paintedTerrain %= M.insert mouseCoords (terrain, maybeEntityPaint)
+        uiState . uiWorldEditor . lastWorldEditorMessage .= Nothing
+      immediatelyRedrawWorld
+      return ()
     MouseDown n _ _ mouseLoc ->
       case n of
         FocusablePanel WorldPanel -> do
-          mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
-          uiState . uiWorldCursor .= mouseCoordsM
+          mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+          shouldUpdateCursor <- EC.updateAreaBounds mouseCoordsM
+          when shouldUpdateCursor $
+            uiState . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
+        x@(WorldEditorPanelControl y) -> do
+          uiState . uiWorldEditor . editorFocusRing %= focusSetCurrent x
+          EC.activateWorldEditorFunction y
         _ -> return ()
       flip whenJust setFocus $ case n of
         -- Adapt click event origin to their right panel.
@@ -327,6 +386,7 @@ handleMainEvent ev = do
         InventoryListItem _ -> Just RobotPanel
         InfoViewport -> Just InfoPanel
         REPLInput -> Just REPLPanel
+        WorldEditorPanelControl _ -> Just WorldEditorPanel
         _ -> Nothing
       case n of
         FocusablePanel x -> setFocus x
@@ -338,6 +398,7 @@ handleMainEvent ev = do
         Just (FocusablePanel x) -> ($ ev) $ case x of
           REPLPanel -> handleREPLEvent
           WorldPanel -> handleWorldEvent
+          WorldEditorPanel -> EC.handleWorldEditorPanelEvent
           RobotPanel -> handleRobotPanelEvent
           InfoPanel -> handleInfoPanelEvent infoScroll
         _ -> continueWithoutRedraw
@@ -354,6 +415,11 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           mx = snd mouseLoc' + fst regionStart
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ W.Coords (mx, my)
+
+immediatelyRedrawWorld :: EventM Name AppState ()
+immediatelyRedrawWorld = do
+  invalidateCacheEntry WorldCache
+  loadVisibleRegion
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
 --
@@ -398,8 +464,18 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
+      Just TerrainPaletteModal -> do
+        listWidget <- use $ uiState . uiWorldEditor . terrainList
+        newList <- refreshList listWidget
+        uiState . uiWorldEditor . terrainList .= newList
+      Just EntityPaletteModal -> do
+        listWidget <- use $ uiState . uiWorldEditor . entityPaintList
+        newList <- refreshList listWidget
+        uiState . uiWorldEditor . entityPaintList .= newList
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
+   where
+    refreshList listWidget = nestEventM' listWidget $ BL.handleListEvent ev
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()

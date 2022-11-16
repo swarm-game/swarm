@@ -4,15 +4,18 @@
 module Swarm.Game.Scenario.Cell (
   PCell (..),
   Cell,
+  CellPaintDisplay,
 ) where
 
-import Control.Lens hiding (from, (<.>))
+import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (when)
 import Control.Monad.Extra (mapMaybeM)
+import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text)
 import Data.Vector qualified as V
 import Data.Yaml as Y
 import Swarm.Game.Entity
+import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Terrain
 import Swarm.Util.Yaml
@@ -35,6 +38,15 @@ data PCell e = Cell
 -- | A single cell in a world map, which contains a terrain value,
 --   and optionally an entity and robot.
 type Cell = PCell Entity
+
+instance ToJSON Cell where
+  toJSON x =
+    toJSON $
+      catMaybes
+        [ Just $ toJSON $ getTerrainWord $ cellTerrain x
+        , toJSON . (^. entityName) <$> cellEntity x
+        , listToMaybe []
+        ]
 
 -- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
 --   entity and robot, if present, are immediately looked up and
@@ -60,3 +72,19 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
     robs <- mapMaybeM name2rob (drop 2 tup)
 
     return $ Cell terr ent robs
+
+------------------------------------------------------------
+-- World editor
+------------------------------------------------------------
+
+type CellPaintDisplay = PCell EntityFacade
+
+-- Note: This instance is used only for the purpose of WorldPalette
+instance ToJSON CellPaintDisplay where
+  toJSON x =
+    toJSON $
+      catMaybes
+        [ Just $ toJSON $ getTerrainWord $ cellTerrain x
+        , toJSON <$> cellEntity x
+        , listToMaybe []
+        ]
