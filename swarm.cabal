@@ -111,10 +111,15 @@ library
                       Swarm.Game.WorldGen
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
+                      Swarm.TUI.Controller.ControllerUtils
+                      Swarm.TUI.Editor.EditorController
+                      Swarm.TUI.Editor.Util
+                      Swarm.TUI.Editor.EditorView
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
                       Swarm.TUI.View
+                      Swarm.TUI.View.ViewUtils
                       Swarm.TUI.Controller
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
@@ -151,6 +156,7 @@ library
                       lsp                           >= 1.2 && < 1.7,
                       megaparsec                    >= 9.0 && < 9.3,
                       minimorph                     >= 0.3 && < 0.4,
+                      transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.3,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,

@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- Module      :  Swarm.TUI.Controller
@@ -38,6 +37,7 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
+import Control.Monad.Trans.Maybe (runMaybeT, MaybeT (..))
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Widgets.Dialog
@@ -81,32 +81,17 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.TUI.Controller.ControllerUtils
+import Swarm.TUI.Editor.EditorController qualified as EC
+import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.View (generateModal)
+import Swarm.TUI.View.ViewUtils (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
-
--- | Pattern synonyms to simplify brick event handler
-pattern Key :: V.Key -> BrickEvent n e
-pattern Key k = VtyEvent (V.EvKey k [])
-
-pattern CharKey, ControlChar, MetaChar :: Char -> BrickEvent n e
-pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
-pattern ControlChar c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
-pattern MetaChar c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
-
-pattern ShiftKey :: V.Key -> BrickEvent n e
-pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
-
-pattern EscapeKey :: BrickEvent n e
-pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
-
-pattern FKey :: Int -> BrickEvent n e
-pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -289,18 +274,64 @@ handleMainEvent ev = do
     VtyEvent vev
       | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- toggle creative mode if in "cheat mode"
+
+    MouseDown (TerrainListItem pos) V.BLeft _ _ ->
+      uiState . uiWorldEditor . terrainList %= BL.listMoveTo pos
     ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
+    -- toggle world editor mode if in "cheat mode"
+    ControlChar 'e'
+      | s ^. uiState . uiCheatMode ->
+        uiState . uiWorldEditor . isWorldEditorEnabled %= not
+    MouseDown n V.BRight _ mouseLoc -> do
+      let worldEditor = s ^. uiState . uiWorldEditor
+      case (n, worldEditor ^. isWorldEditorEnabled) of
+        -- "Eye Dropper" tool:
+        (FocusablePanel WorldPanel, True) -> do
+          mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+          whenJust mouseCoordsM setTerrainPaint
+          where
+            setTerrainPaint coords = uiState . uiWorldEditor . terrainList %=
+              BL.listMoveToElement (EU.getTerrainAt worldEditor (s ^. gameState . world) coords)
+        _ -> continueWithoutRedraw
+    MouseDown (FocusablePanel WorldPanel) V.BLeft [V.MCtrl] mouseLoc -> do
+      worldEditor <- use $ uiState . uiWorldEditor
+      _ <- runMaybeT $ do
+        guard $ worldEditor ^. isWorldEditorEnabled
+        let maybeTerrainType = fmap snd $ BL.listSelectedElement $ worldEditor ^. terrainList
+        terrain <- MaybeT . pure $ maybeTerrainType
+        mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+        -- TODO: Screen updates are laggy, and the needsRedraw flag doesn't seem to help
+        uiState . uiWorldEditor . paintedTerrain %= M.insert mouseCoords terrain
+      return ()
     MouseDown n _ _ mouseLoc ->
       case n of
         FocusablePanel WorldPanel -> do
-          mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
-          uiState . uiWorldCursor .= mouseCoordsM
+          mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+          case mouseCoordsM of
+            Nothing -> uiState . uiWorldCursor .= mouseCoordsM
+            Just mouseCoords -> do
+              selectorStage <- use $ uiState . uiWorldEditor . boundsSelectionStep
+              -- We swap the horizontal and vertical coordinate, and invert the vertical cooridnate.
+              -- TODO What is mouseLocToWorldCoords??
+              let toWorldCoords (W.Coords (mx, my)) = W.Coords (my, -mx)
+              case selectorStage of
+                UpperLeftPending -> uiState . uiWorldEditor . boundsSelectionStep .= LowerRightPending mouseCoords
+                -- TODO: Validate that the lower-right click is below and to the right of the top-left coord
+                LowerRightPending upperLeftMouseCoords -> do
+                  uiState . uiWorldEditor . editingBounds
+                    .= Just (toWorldCoords upperLeftMouseCoords, toWorldCoords mouseCoords)
+                  uiState . uiWorldEditor . boundsSelectionStep .= SelectionComplete
+                  setFocus WorldEditorPanel
+                SelectionComplete -> uiState . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
+        x@(WorldEditorPanelControl y) -> do
+          uiState . uiWorldEditor . editorFocusRing %= focusSetCurrent x
+          EC.activateWorldEditorFunction y
         _ -> return ()
       flip whenJust setFocus $ case n of
         -- Adapt click event origin to their right panel.
@@ -311,6 +342,7 @@ handleMainEvent ev = do
         InventoryListItem _ -> Just RobotPanel
         InfoViewport -> Just InfoPanel
         REPLInput -> Just REPLPanel
+        WorldEditorPanelControl _ -> Just WorldEditorPanel
         _ -> Nothing
       case n of
         FocusablePanel x -> setFocus x
@@ -322,6 +354,7 @@ handleMainEvent ev = do
         Just (FocusablePanel x) -> ($ ev) $ case x of
           REPLPanel -> handleREPLEvent
           WorldPanel -> handleWorldEvent
+          WorldEditorPanel -> EC.handleWorldEditorPanelEvent
           RobotPanel -> handleRobotPanelEvent
           InfoPanel -> handleInfoPanelEvent infoScroll
         _ -> continueWithoutRedraw
@@ -367,21 +400,8 @@ toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
   modal <- use $ uiState . uiModal
   case modal of
-    Nothing -> do
-      newModal <- gets $ flip generateModal mt
-      ensurePause
-      uiState . uiModal ?= newModal
+    Nothing -> openModal mt
     Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
- where
-  -- Set the game to AutoPause if needed
-  ensurePause = do
-    pause <- use $ gameState . paused
-    unless (pause || isRunningModal mt) $ do
-      gameState . runStatus .= AutoPause
-
--- | The running modals do not autopause the game.
-isRunningModal :: ModalType -> Bool
-isRunningModal mt = mt `elem` [RobotsModal, MessagesModal]
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
@@ -398,6 +418,10 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
+      Just TerrainPaletteModal -> do
+        listWidget <- use $ uiState . uiWorldEditor . terrainList
+        newList <- nestEventM' listWidget $ BL.handleListEvent ev
+        uiState . uiWorldEditor . terrainList .= newList
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 

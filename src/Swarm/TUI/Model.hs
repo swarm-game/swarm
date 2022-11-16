@@ -61,6 +61,16 @@ module Swarm.TUI.Model (
   _Separator,
   _InventoryEntry,
   _InstalledEntry,
+  WorldEditorFocusable (..),
+  BoundsSelectionStep (..),
+  WorldEditor (..),
+  isWorldEditorEnabled,
+  terrainList,
+  paintedTerrain,
+  editingBounds,
+  boundsSelectionStep,
+  editorFocusRing,
+  outputFilePath,
 
   -- ** UI Model
   UIState,
@@ -69,6 +79,7 @@ module Swarm.TUI.Model (
   uiCheatMode,
   uiFocusRing,
   uiWorldCursor,
+  uiWorldEditor,
   uiREPL,
   uiInventory,
   uiInventorySort,
@@ -200,6 +211,7 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Types
 import Swarm.TUI.Inventory.Sorting
@@ -225,11 +237,20 @@ data AppEvent
   | UpstreamVersion (Either NewReleaseFailure String)
   deriving (Show)
 
+data WorldEditorFocusable
+  = BrushSelector
+  | EntitySelector
+  | AreaSelector
+  | OutputPathSelector
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 data FocusablePanel
   = -- | The panel containing the REPL.
     REPLPanel
   | -- | The panel containing the world view.
     WorldPanel
+  | -- | The panel containing the world editor controls.
+    WorldEditorPanel
   | -- | The panel showing robot info and inventory on the top left.
     RobotPanel
   | -- | The info panel on the bottom left.
@@ -240,12 +261,18 @@ data FocusablePanel
 --   of the UI, such as forms, panels, caches, extents, and lists.
 data Name
   = FocusablePanel FocusablePanel
+  | -- | An individual control within the world editor panel.
+    WorldEditorPanelControl WorldEditorFocusable
   | -- | The REPL input form.
     REPLInput
   | -- | The render cache for the world view.
     WorldCache
   | -- | The cached extent for the world view.
     WorldExtent
+  | -- | The list of possible terrain materials.
+    TerrainList
+  | -- | The terrain item position in the TerrainList.
+    TerrainListItem Int
   | -- | The list of inventory items for the currently
     --   focused robot.
     InventoryList
@@ -488,6 +515,7 @@ data ModalType
   | KeepPlayingModal
   | DescriptionModal Entity
   | GoalModal [Text]
+  | TerrainPaletteModal
   deriving (Eq, Show)
 
 data ButtonSelection = CancelButton | KeepPlayingButton | StartOverButton Seed ScenarioInfoPair | QuitButton | NextButton ScenarioInfoPair
@@ -562,6 +590,37 @@ makePrisms ''InventoryListEntry
 -- UI state
 ------------------------------------------------------------
 
+data BoundsSelectionStep
+  = UpperLeftPending
+  | -- | Stores the *mouse coords* of the upper-left click
+    LowerRightPending W.Coords
+  | SelectionComplete
+
+data WorldEditor = WorldEditor
+  { _isWorldEditorEnabled :: Bool
+  , _terrainList :: BL.List Name TerrainType
+  , _paintedTerrain :: M.Map W.Coords TerrainType
+  , -- | Upper-left and lower-right coordinates
+    -- of the map to be saved.
+    _editingBounds :: Maybe (W.Coords, W.Coords)
+  , _boundsSelectionStep :: BoundsSelectionStep
+  , _editorFocusRing :: FocusRing Name
+  , _outputFilePath :: FilePath
+  }
+
+makeLenses ''WorldEditor
+
+initialWorldEditor :: WorldEditor
+initialWorldEditor =
+  WorldEditor
+    False
+    (BL.list TerrainList (V.fromList listEnums) 1)
+    mempty
+    (Just (W.Coords (-10, -10), W.Coords (10, 10)))
+    SelectionComplete
+    (focusRing $ map WorldEditorPanelControl listEnums)
+    "output.txt"
+
 -- | The main record holding the UI state.  For access to the fields,
 -- see the lenses below.
 data UIState = UIState
@@ -570,6 +629,7 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe W.Coords
+  , _uiWorldEditor :: WorldEditor
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
@@ -625,6 +685,9 @@ uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The last clicked position on the world view.
 uiWorldCursor :: Lens' UIState (Maybe W.Coords)
+
+-- | World editor mode
+uiWorldEditor :: Lens' UIState WorldEditor
 
 -- | The state of REPL panel.
 uiREPL :: Lens' UIState REPLState
@@ -824,6 +887,9 @@ focusedEntity =
 -- UIState initialization
 
 -- | The initial state of the focus ring.
+-- NOTE: Normally, the Tab key might cycle through the members of the
+-- focus ring. However, the REPL already uses Tab. So, to is not used
+-- at all right now for navigating the toplevel focus ring.
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing $ map FocusablePanel listEnums
 
@@ -849,6 +915,7 @@ initUIState showMainMenu cheatMode = liftIO $ do
       , _uiCheatMode = cheatMode
       , _uiFocusRing = initFocusRing
       , _uiWorldCursor = Nothing
+      , _uiWorldEditor = initialWorldEditor
       , _uiREPL = initREPLState $ newREPLHistory history
       , _uiInventory = Nothing
       , _uiInventorySort = defaultSortOptions

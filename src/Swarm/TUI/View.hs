@@ -14,7 +14,6 @@ module Swarm.TUI.View (
 
   -- * Dialog box
   drawDialog,
-  generateModal,
   chooseCursor,
 
   -- * Key hint menu
@@ -86,17 +85,19 @@ import Swarm.Game.ScenarioInfo (
   scenarioStatus,
  )
 import Swarm.Game.State
-import Swarm.Game.Terrain (terrainMap)
+import Swarm.Game.Terrain (TerrainType, terrainMap)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
+import Swarm.TUI.Editor.EditorView qualified as EV
+import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
+import Swarm.TUI.View.ViewUtils
 import Swarm.Util
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
@@ -295,21 +296,29 @@ drawGameUI s =
                     & addCursorPos
                     & addClock
                 )
-                (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
+                ( drawWorld
+                    (s ^. uiState . uiShowRobots)
+                    (s ^. uiState . uiWorldEditor)
+                    (s ^. gameState)
+                )
             , drawKeyMenu s
-            , clickable (FocusablePanel REPLPanel) $
-                panel
-                  highlightAttr
-                  fr
-                  (FocusablePanel REPLPanel)
-                  ( plainBorder
-                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
-                  )
-                  ( vLimit replHeight
-                      . padBottom Max
-                      . padLeftRight 1
-                      $ drawREPL s
-                  )
+            , hBox
+                [ clickable (FocusablePanel REPLPanel) $
+                    panel
+                      highlightAttr
+                      fr
+                      (FocusablePanel REPLPanel)
+                      ( plainBorder
+                          & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
+                      )
+                      ( vLimit replHeight
+                          . padBottom Max
+                          . padLeftRight 1
+                          $ drawREPL s
+                      )
+                , clickable (FocusablePanel WorldEditorPanel) $
+                    EV.drawWorldEditor fr $ s ^. uiState
+                ]
             ]
         ]
   ]
@@ -317,7 +326,7 @@ drawGameUI s =
   addCursorPos = case s ^. uiState . uiWorldCursor of
     Nothing -> id
     Just coord ->
-      let worldCursorInfo = drawWorldCursorInfo (s ^. gameState) coord
+      let worldCursorInfo = drawWorldCursorInfo (s ^. uiState . uiWorldEditor) (s ^. gameState) coord
        in bottomLabels . leftLabel ?~ padLeftRight 1 worldCursorInfo
   -- Add clock display in top right of the world view if focused robot
   -- has a clock installed
@@ -326,8 +335,8 @@ drawGameUI s =
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
 
-drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
-drawWorldCursorInfo g coords@(W.Coords (y, x)) =
+drawWorldCursorInfo :: WorldEditor -> GameState -> W.Coords -> Widget Name
+drawWorldCursorInfo worldEditor g coords@(W.Coords (y, x)) =
   hBox $ tileMemberWidgets ++ [coordsWidget]
  where
   coordsWidget =
@@ -346,7 +355,7 @@ drawWorldCursorInfo g coords@(W.Coords (y, x)) =
    where
     f cell preposition = [renderDisplay cell, txt preposition]
 
-  terrain = displayTerrainCell g coords
+  terrain = displayTerrainCell worldEditor g coords
   entity = displayEntityCell g coords
   robot = displayRobotCell g coords
 
@@ -389,10 +398,6 @@ drawTime t showTicks =
 maybeDrawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
 maybeDrawTime t showTicks gs = guard (clockInstalled gs) $> drawTime t showTicks
 
--- | Render the type of the current REPL input to be shown to the user.
-drawType :: Polytype -> Widget Name
-drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
-
 -- | Draw info about the current number of ticks per second.
 drawTPS :: AppState -> Widget Name
 drawTPS s = hBox (tpsInfo : rateInfo)
@@ -424,10 +429,6 @@ chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
 chooseCursor s locs = case s ^. uiState . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
-
--- | Width cap for modal and error message windows
-maxModalWindowWidth :: Int
-maxModalWindowWidth = 500
 
 -- | Render the error dialog window with a given error message
 renderErrorDialog :: Text -> Widget Name
@@ -471,77 +472,19 @@ drawModal s = \case
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal g -> padLeftRight 1 (displayParagraphs g)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
+  TerrainPaletteModal -> drawTerrainSelector s
 
-quitMsg :: Menu -> Text
-quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
- where
-  quitAction = case m of
-    NoMenu -> "quit"
-    _ -> "return to the menu"
+drawTerrainSelector :: AppState -> Widget Name
+drawTerrainSelector s =
+  padAll 1 $
+    hCenter $
+      vLimit (length (listEnums :: [TerrainType])) $
+        BL.renderListWithIndex listDrawTerrainElement True $
+          s ^. uiState . uiWorldEditor . terrainList
 
--- | Generate a fresh modal window of the requested type.
-generateModal :: AppState -> ModalType -> Modal
-generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
- where
-  currentScenario = s ^. uiState . scenarioRef
-  currentSeed = s ^. gameState . seed
-  haltingMessage = case s ^. uiState . uiMenu of
-    NoMenu -> Just "Quit"
-    _ -> Nothing
-  descriptionWidth = 100
-  helpWidth = 80
-  (title, buttons, requiredWidth) =
-    case mt of
-      HelpModal -> (" Help ", Nothing, helpWidth)
-      RobotsModal -> ("Robots", Nothing, descriptionWidth)
-      RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
-      CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
-      MessagesModal -> ("Messages", Nothing, descriptionWidth)
-      WinModal ->
-        let nextMsg = "Next challenge!"
-            stopMsg = fromMaybe "Return to the menu" haltingMessage
-            continueMsg = "Keep playing"
-         in ( ""
-            , Just
-                ( 0
-                , [ (nextMsg, NextButton scene)
-                  | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
-                  ]
-                    ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, KeepPlayingButton)
-                       ]
-                )
-            , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
-            )
-      DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
-      QuitModal ->
-        let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
-            maybeStartOver = sequenceA ("Start over", StartOverButton currentSeed <$> currentScenario)
-         in ( ""
-            , Just
-                ( 0
-                , catMaybes
-                    [ Just ("Keep playing", CancelButton)
-                    , maybeStartOver
-                    , Just (stopMsg, QuitButton)
-                    ]
-                )
-            , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
-            )
-      GoalModal _ ->
-        let goalModalTitle = case currentScenario of
-              Nothing -> "Goal"
-              Just (scenario, _) -> scenario ^. scenarioName
-         in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
-      KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
-
--- | Get the name of the current New Game menu.
-curMenuName :: AppState -> Maybe Text
-curMenuName s = case s ^. uiState . uiMenu of
-  NewGameMenu (_ :| (parentMenu : _)) ->
-    Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
-  NewGameMenu _ -> Just "Scenarios"
-  _ -> Nothing
+listDrawTerrainElement :: Int -> Bool -> TerrainType -> Widget Name
+listDrawTerrainElement pos _isSelected a =
+  clickable (TerrainListItem pos) $ drawLabeledTerrainSwatch a
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
@@ -594,7 +537,12 @@ robotsListWidget s = hCenter table
     locWidget = hBox [worldCell, txt $ " " <> locStr]
      where
       rloc@(V2 x y) = robot ^. robotLocation
-      worldCell = drawLoc (s ^. uiState . uiShowRobots) g (W.locToCoords rloc)
+      worldCell =
+        drawLoc
+          (s ^. uiState . uiShowRobots)
+          (s ^. uiState . uiWorldEditor)
+          g
+          (W.locToCoords rloc)
       locStr = from (show x) <> " " <> from (show y)
 
     statusWidget = case robot ^. machine of
@@ -712,9 +660,6 @@ drawConst c = hBox [padLeft (Pad $ 13 - T.length constName) (txt constName), txt
   constName = syntax . constInfo $ c
   constSig = " : " <> prettyText (inferConst c)
 
-descriptionTitle :: Entity -> String
-descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
-
 -- | Generate a pop-up widget to display the description of an entity.
 descriptionWidget :: AppState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry s e)
@@ -817,6 +762,7 @@ drawKeyMenu s =
     catMaybes
       [ may goal (NoHighlight, "^g", "goal")
       , may cheat (NoHighlight, "^v", "creative")
+      , may cheat (NoHighlight, "^e", "editor")
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
       , Just (NoHighlight, "^o", "step")
       , Just (NoHighlight, "^zx", "speed")
@@ -828,6 +774,8 @@ drawKeyMenu s =
     "pop out" | (s ^. uiState . uiMoreInfoBot) || (s ^. uiState . uiMoreInfoTop) -> Alert
     _ -> PanelSpecific
 
+  keyCmdsFor (Just (FocusablePanel WorldEditorPanel)) =
+    [("^s", "save map")]
   keyCmdsFor (Just (FocusablePanel REPLPanel)) =
     [ ("↓↑", "history")
     ]
@@ -868,8 +816,8 @@ drawKeyCmd (h, key, cmd) =
 ------------------------------------------------------------
 
 -- | Draw the current world view.
-drawWorld :: Bool -> GameState -> Widget Name
-drawWorld showRobots g =
+drawWorld :: Bool -> WorldEditor -> GameState -> Widget Name
+drawWorld showRobots we g =
   center
     . cached WorldCache
     . reportExtent WorldExtent
@@ -881,14 +829,15 @@ drawWorld showRobots g =
       let w = ctx ^. availWidthL
           h = ctx ^. availHeightL
           ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-      render . vBox . map hBox . chunksOf w . map (drawLoc showRobots g) $ ixs
+      render . vBox . map hBox . chunksOf w . map (drawLoc showRobots we g) $ ixs
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: Bool -> GameState -> W.Coords -> Widget Name
-drawLoc showRobots g = renderDisplay . displayLoc showRobots g
+drawLoc :: Bool -> WorldEditor -> GameState -> W.Coords -> Widget Name
+drawLoc showRobots we g = renderDisplay . displayLoc showRobots we g
 
-displayTerrainCell :: GameState -> W.Coords -> Display
-displayTerrainCell g coords = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
+displayTerrainCell :: WorldEditor -> GameState -> W.Coords -> Display
+displayTerrainCell worldEditor g coords =
+  terrainMap M.! EU.getTerrainAt worldEditor (g ^. world) coords
 
 displayEntityCell, displayRobotCell :: GameState -> W.Coords -> [Display]
 displayRobotCell g coords = map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
@@ -907,11 +856,11 @@ displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity co
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
-displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords =
+displayLoc :: Bool -> WorldEditor -> GameState -> W.Coords -> Display
+displayLoc showRobots worldEditor g coords =
   sconcat $ terrain NE.:| entity <> robots
  where
-  terrain = displayTerrainCell g coords
+  terrain = displayTerrainCell worldEditor g coords
   entity = displayEntityCell g coords
   robots =
     if showRobots
