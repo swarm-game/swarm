@@ -1,0 +1,33 @@
+version: 1
+name: Evaluate possession of an item
+description: |
+  test case
+creative: false
+objectives:
+  - goal:
+      - |
+        Get 1 tree.
+    condition: |-
+      as base {
+        has "tree";
+      };
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - treads
+      - scanner
+      - grabber
+solution: |
+  move;
+  grab;
+known: [tree]
+world:
+  default: [blank]
+  palette:
+    'B': [grass, null, base]
+    'w': [grass, tree]
+  upperleft: [0, 0]
+  map: |-
+    w
+    B
