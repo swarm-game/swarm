@@ -317,8 +317,8 @@ drawGameUI s =
   addCursorPos = case s ^. uiState . uiWorldCursor of
     Nothing -> id
     Just coord ->
-      let worlCursorInfo = drawWorldCursorInfo (s ^. uiState . uiShowRobots) (s ^. gameState) coord
-       in bottomLabels . leftLabel ?~ padLeftRight 1 worlCursorInfo
+      let worldCursorInfo = drawWorldCursorInfo (s ^. gameState) coord
+       in bottomLabels . leftLabel ?~ padLeftRight 1 worldCursorInfo
   -- Add clock display in top right of the world view if focused robot
   -- has a clock installed
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
@@ -326,9 +326,31 @@ drawGameUI s =
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
 
-drawWorldCursorInfo :: Bool -> GameState -> W.Coords -> Widget Name
-drawWorldCursorInfo showRobots g i@(W.Coords (y, x)) =
-  hBox [drawLoc showRobots g i, txt $ " at " <> from (show x) <> " " <> from (show (y * (-1)))]
+drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
+drawWorldCursorInfo g coords@(W.Coords (y, x)) =
+  hBox $ tileMemberWidgets ++ [coordsWidget]
+ where
+  coordsWidget =
+    txt $
+      T.unwords
+        [ from $ show x
+        , from $ show $ y * (-1)
+        ]
+
+  tileMembers = terrain : mapMaybe merge [entity, robot]
+  tileMemberWidgets =
+    map (padRight $ Pad 1) $
+      concat $
+        reverse $
+          zipWith f tileMembers ["at", "on", "with"]
+   where
+    f cell preposition = [renderDisplay cell, txt preposition]
+
+  terrain = displayTerrainCell g coords
+  entity = displayEntityCell g coords
+  robot = displayRobotCell g coords
+
+  merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.
@@ -865,19 +887,13 @@ drawWorld showRobots g =
 drawLoc :: Bool -> GameState -> W.Coords -> Widget Name
 drawLoc showRobots g = renderDisplay . displayLoc showRobots g
 
--- | Get the 'Display' for a specific location, by combining the
---   'Display's for the terrain, entity, and robots at the location.
-displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords =
-  sconcat $ terrain NE.:| entity <> robots
- where
-  terrain = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
-  entity = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
-  robots =
-    if showRobots
-      then map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
-      else []
+displayTerrainCell :: GameState -> W.Coords -> Display
+displayTerrainCell g coords = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
 
+displayEntityCell, displayRobotCell :: GameState -> W.Coords -> [Display]
+displayRobotCell g coords = map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
+displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
+ where
   displayForEntity :: Entity -> Display
   displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
 
@@ -888,6 +904,19 @@ displayLoc showRobots g coords =
         HideAllEntities -> False
         HideNoEntity -> True
         HideEntityUnknownTo ro -> ro `robotKnows` e
+
+-- | Get the 'Display' for a specific location, by combining the
+--   'Display's for the terrain, entity, and robots at the location.
+displayLoc :: Bool -> GameState -> W.Coords -> Display
+displayLoc showRobots g coords =
+  sconcat $ terrain NE.:| entity <> robots
+ where
+  terrain = displayTerrainCell g coords
+  entity = displayEntityCell g coords
+  robots =
+    if showRobots
+      then displayRobotCell g coords
+      else []
 
 data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
 
