@@ -505,7 +505,7 @@ data Menu
   | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
-mainMenu e = BL.list MenuList (V.fromList [minBound .. maxBound]) 1 & BL.listMoveToElement e
+mainMenu e = BL.list MenuList (V.fromList listEnums) 1 & BL.listMoveToElement e
 
 makePrisms ''Menu
 

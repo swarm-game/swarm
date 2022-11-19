@@ -86,6 +86,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear
 import Swarm.Language.Types
+import Swarm.Util qualified as Util
 import Witch.From (from)
 
 ------------------------------------------------------------
@@ -112,7 +113,7 @@ data DirInfo = DirInfo
   }
 
 allDirs :: [Direction]
-allDirs = [minBound .. maxBound]
+allDirs = Util.listEnums
 
 -- | Information about all directions
 dirInfo :: Direction -> DirInfo
@@ -380,7 +381,7 @@ data Const
   deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON)
 
 allConst :: [Const]
-allConst = [minBound .. maxBound]
+allConst = Util.listEnums
 
 data ConstInfo = ConstInfo
   { syntax :: Text

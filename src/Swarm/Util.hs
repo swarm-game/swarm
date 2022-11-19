@@ -17,6 +17,7 @@ module Swarm.Util (
   maxOn,
   maximum0,
   cycleEnum,
+  listEnums,
   uniq,
   getElemsInArea,
   manhattan,
@@ -147,6 +148,9 @@ cycleEnum :: (Eq e, Enum e, Bounded e) => e -> e
 cycleEnum e
   | e == maxBound = minBound
   | otherwise = succ e
+
+listEnums :: (Enum e, Bounded e) => [e]
+listEnums = [minBound .. maxBound]
 
 -- | Drop repeated elements that are adjacent to each other.
 --
