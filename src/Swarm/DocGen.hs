@@ -54,7 +54,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (getDataFileNameSafe, isRightOr)
+import Swarm.Util (getDataFileNameSafe, isRightOr, listEnums)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
@@ -105,7 +105,7 @@ generateDocs = \case
               putStrLn $ "-- " <> show et
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
-        mapM_ editorGen [minBound .. maxBound]
+        mapM_ editorGen listEnums
   CheatSheet address s -> case s of
     Nothing -> error "Not implemented for all Wikis"
     Just st -> case st of
@@ -306,7 +306,7 @@ capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRow
   header = [listToRow mw capabilityHeader, separatingLine mw]
 
 capabilityPage :: PageAddress -> EntityMap -> Text
-capabilityPage a em = capabilityTable a em [minBound .. maxBound]
+capabilityPage a em = capabilityTable a em listEnums
 
 -- ---------
 -- Entities
