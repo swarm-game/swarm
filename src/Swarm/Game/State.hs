@@ -339,7 +339,7 @@ runStatus :: Lens' GameState RunStatus
 paused :: Getter GameState Bool
 paused = to (\s -> s ^. runStatus /= Running)
 
--- | All the robots that currently exist in the game, indexed by name.
+-- | All the robots that currently exist in the game, indexed by ID.
 robotMap :: Lens' GameState (IntMap Robot)
 
 -- | The names of all robots that currently exist in the game, indexed by
