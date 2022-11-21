@@ -59,7 +59,6 @@ import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
-import Swarm.TUI.Editor.EditorView qualified as EV
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
@@ -93,17 +92,18 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
+import Swarm.TUI.Editor.EditorView qualified as EV
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Panel
+import Swarm.TUI.View.ViewUtils
 import Swarm.Util
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from, into)
-import Swarm.TUI.View.ViewUtils
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -261,7 +261,6 @@ drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $
   -- Turn blank lines into a space so they will take up vertical space as widgets
   nonblank "" = " "
   nonblank s = s
-
 
 -- | Draw the main game UI.  Generates a list of widgets, where each
 --   represents a layer.  Right now we just generate two layers: the
@@ -486,7 +485,6 @@ drawTerrainSelector s =
 listDrawTerrainElement :: Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement pos _isSelected a =
   clickable (TerrainListItem pos) $ drawLabeledTerrainSwatch a
-
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table

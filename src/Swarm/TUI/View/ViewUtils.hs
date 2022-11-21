@@ -129,13 +129,9 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
         wordLength = maximum $ map (length . show) (listEnums :: [TerrainType])
         w = wordLength + 6
 
-
-
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
 drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
-
-
 
 drawLabeledTerrainSwatch :: TerrainType -> Widget Name
 drawLabeledTerrainSwatch a =
@@ -144,16 +140,12 @@ drawLabeledTerrainSwatch a =
   tile = padRight (Pad 1) $ renderDisplay $ terrainMap M.! a
   materialName = init $ show a
 
-
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
-
 
 -- | Width cap for modal and error message windows
 maxModalWindowWidth :: Int
 maxModalWindowWidth = 500
-
-
 
 -- | Get the name of the current New Game menu.
 curMenuName :: AppState -> Maybe Text
@@ -162,8 +154,6 @@ curMenuName s = case s ^. uiState . uiMenu of
     Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
   NewGameMenu _ -> Just "Scenarios"
   _ -> Nothing
-
-
 
 quitMsg :: Menu -> Text
 quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"

@@ -1,6 +1,5 @@
 module Swarm.TUI.Editor.EditorView where
 
-
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Forms
@@ -93,8 +92,8 @@ drawWorldEditor toplevelFocusRing uis =
       hLimit 30 $
         vBox
           [ brushWidget
-          -- , entityWidget
-          , areaWidget
+          , -- , entityWidget
+            areaWidget
           , outputWidget
           ]
 

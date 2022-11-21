@@ -308,7 +308,7 @@ handleMainEvent ev = do
                   Nothing -> return ()
                   Just mouseCoords -> do
                     uiState . uiWorldEditor . paintedTerrain %= M.insert mouseCoords terrain
-                    -- TODO: Screen updates are laggy, and the needsRedraw flag doesn't seem to help
+        -- TODO: Screen updates are laggy, and the needsRedraw flag doesn't seem to help
         _ -> return ()
     MouseDown n _ _ mouseLoc ->
       case n of
