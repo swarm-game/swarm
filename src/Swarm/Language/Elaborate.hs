@@ -29,21 +29,26 @@ elaborate =
     . transform rewrite
  where
   rewrite :: Syntax' Polytype -> Syntax' Polytype
+  rewrite s@(Syntax' l t ty) = Syntax' l (rewriteTerm t) ty
+
+  rewriteTerm :: Term' Polytype -> Term' Polytype
   -- For recursive let bindings, rewrite any occurrences of x to
   -- (force x).  When interpreting t1, we will put a binding (x |->
   -- delay t1) in the context.
-  rewrite (TLet True x ty t1 t2) = TLet True x ty (wrapForce x t1) (wrapForce x t2)
+  rewriteTerm (TLet True x ty t1 t2) = TLet True x ty (wrapForce x t1) (wrapForce x t2)
   -- Rewrite any recursive occurrences of x inside t1 to (force x).
   -- When a TDef is encountered at runtime its body will immediately
   -- be wrapped in a VDelay. However, to make this work we also need
   -- to wrap all free variables in any term with 'force' --- since
   -- any such variables must in fact refer to things previously
   -- bound by 'def'.
-  rewrite (TDef True x ty t1) = TDef True x ty (mapFree1 x (TApp (TConst Force)) t1)
+  rewriteTerm (TDef True x ty t1) = TDef True x ty (mapFree1 x (TApp (TConst Force)) t1)
   -- Rewrite @f $ x@ to @f x@.
-  rewrite (TApp (TApp (TConst AppF) r) l) = TApp r l
+  rewriteTerm (TApp (TApp (TConst AppF) r) l) = TApp r l
   -- Leave any other subterms alone.
-  rewrite t = t
+  rewriteTerm t = t
 
 wrapForce :: Var -> Syntax' Polytype -> Syntax' Polytype
-wrapForce x = mapFree1 x (TApp (TConst Force))
+wrapForce x = mapFree1 x (\s@(Syntax' l _ ty) -> Syntax' l (SApp (Syntax' mempty (TConst Force) _) s) ty) -- XXX
+
+-- (TApp (TConst Force))
