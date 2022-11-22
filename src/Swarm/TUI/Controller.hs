@@ -37,7 +37,6 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
-import Control.Monad.Trans.Maybe (runMaybeT, MaybeT (..))
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Widgets.Dialog
@@ -51,6 +50,7 @@ import Control.Lens.Extras (is)
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State
+import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int64)
@@ -290,9 +290,10 @@ handleMainEvent ev = do
         (FocusablePanel WorldPanel, True) -> do
           mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
           whenJust mouseCoordsM setTerrainPaint
-          where
-            setTerrainPaint coords = uiState . uiWorldEditor . terrainList %=
-              BL.listMoveToElement (EU.getTerrainAt worldEditor (s ^. gameState . world) coords)
+         where
+          setTerrainPaint coords =
+            uiState . uiWorldEditor . terrainList
+              %= BL.listMoveToElement (EU.getTerrainAt worldEditor (s ^. gameState . world) coords)
         _ -> continueWithoutRedraw
     MouseDown (FocusablePanel WorldPanel) V.BLeft [V.MCtrl] mouseLoc -> do
       worldEditor <- use $ uiState . uiWorldEditor
