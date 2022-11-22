@@ -226,6 +226,11 @@ cd path/to/the/root/of/swarm/repo
 find src/ app/ test/ -name "*.hs" | xargs fourmolu --mode=inplace --cabal-default-extensions
 ```
 
+For convenience, one may alternatively execute this script:
+```
+scripts/reformat-code.sh
+```
+
 There is probably a way to configure your favorite editor to have `fourmolu`
 automatically applied to your code; but if you don't know how to set that up,
 don't worry!  The [`restyled.io` bot](https://restyled.io/) automatically
