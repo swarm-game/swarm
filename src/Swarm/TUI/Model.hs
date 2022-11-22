@@ -16,6 +16,7 @@ module Swarm.TUI.Model (
   -- * Custom UI label types
   -- $uilabel
   AppEvent (..),
+  FocusablePanel (..),
   Name (..),
 
   -- * Menus and dialogs
@@ -224,9 +225,7 @@ data AppEvent
   | UpstreamVersion (Either NewReleaseFailure String)
   deriving (Show)
 
--- | 'Name' represents names to uniquely identify various components
---   of the UI, such as forms, panels, caches, extents, and lists.
-data Name
+data FocusablePanel
   = -- | The panel containing the REPL.
     REPLPanel
   | -- | The panel containing the world view.
@@ -235,6 +234,12 @@ data Name
     RobotPanel
   | -- | The info panel on the bottom left.
     InfoPanel
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+-- | 'Name' represents names to uniquely identify various components
+--   of the UI, such as forms, panels, caches, extents, and lists.
+data Name
+  = FocusablePanel FocusablePanel
   | -- | The REPL input form.
     REPLInput
   | -- | The render cache for the world view.
@@ -820,7 +825,7 @@ focusedEntity =
 
 -- | The initial state of the focus ring.
 initFocusRing :: FocusRing Name
-initFocusRing = focusRing [REPLPanel, InfoPanel, RobotPanel, WorldPanel]
+initFocusRing = focusRing $ map FocusablePanel listEnums
 
 -- | The initial tick speed.
 initLgTicksPerSecond :: Int

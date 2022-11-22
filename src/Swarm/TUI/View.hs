@@ -271,11 +271,11 @@ drawGameUI s =
       hBox
         [ hLimitPercent 25 $
             vBox
-              [ vLimitPercent 50 $ panel highlightAttr fr RobotPanel plainBorder $ drawRobotPanel s
+              [ vLimitPercent 50 $ panel highlightAttr fr (FocusablePanel RobotPanel) plainBorder $ drawRobotPanel s
               , panel
                   highlightAttr
                   fr
-                  InfoPanel
+                  (FocusablePanel InfoPanel)
                   ( plainBorder
                       & topLabels . centerLabel
                       .~ (if moreTop then Just (txt " · · · ") else Nothing)
@@ -288,7 +288,7 @@ drawGameUI s =
             [ panel
                 highlightAttr
                 fr
-                WorldPanel
+                (FocusablePanel WorldPanel)
                 ( plainBorder
                     & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
                     & topLabels . leftLabel ?~ drawModalMenu s
@@ -297,11 +297,11 @@ drawGameUI s =
                 )
                 (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
             , drawKeyMenu s
-            , clickable REPLPanel $
+            , clickable (FocusablePanel REPLPanel) $
                 panel
                   highlightAttr
                   fr
-                  REPLPanel
+                  (FocusablePanel REPLPanel)
                   ( plainBorder
                       & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
                   )
@@ -828,24 +828,24 @@ drawKeyMenu s =
     "pop out" | (s ^. uiState . uiMoreInfoBot) || (s ^. uiState . uiMoreInfoTop) -> Alert
     _ -> PanelSpecific
 
-  keyCmdsFor (Just REPLPanel) =
+  keyCmdsFor (Just (FocusablePanel REPLPanel)) =
     [ ("↓↑", "history")
     ]
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
       ++ [("M-p", renderControlModeSwitch ctrlMode) | creative]
-  keyCmdsFor (Just WorldPanel) =
+  keyCmdsFor (Just (FocusablePanel WorldPanel)) =
     [ ("←↓↑→ / hjkl", "scroll") | creative
     ]
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]
-  keyCmdsFor (Just RobotPanel) =
+  keyCmdsFor (Just (FocusablePanel RobotPanel)) =
     [ ("Enter", "pop out")
     , ("m", "make")
     , ("0", (if showZero then "hide" else "show") <> " 0")
     , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
     ]
-  keyCmdsFor (Just InfoPanel) = []
+  keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
 
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
@@ -874,7 +874,7 @@ drawWorld showRobots g =
     . cached WorldCache
     . reportExtent WorldExtent
     -- Set the clickable request after the extent to play nice with the cache
-    . clickable WorldPanel
+    . clickable (FocusablePanel WorldPanel)
     . Widget Fixed Fixed
     $ do
       ctx <- getContext
@@ -1217,7 +1217,7 @@ renderREPLPrompt focus repl = ps1 <+> replE
   replE =
     renderEditor
       (color . vBox . map txt)
-      (focusGetCurrent focus `elem` [Nothing, Just REPLPanel, Just REPLInput])
+      (focusGetCurrent focus `elem` [Nothing, Just (FocusablePanel REPLPanel), Just REPLInput])
       replEditor
 
 -- | Draw the REPL.

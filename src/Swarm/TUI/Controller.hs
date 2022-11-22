@@ -49,6 +49,7 @@ import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
 import Control.Lens.Extras (is)
 import Control.Monad.Except
+import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
@@ -292,34 +293,37 @@ handleMainEvent ev = do
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
     MouseDown n _ _ mouseLoc ->
       case n of
-        WorldPanel -> do
+        FocusablePanel WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
           uiState . uiWorldCursor .= mouseCoordsM
-        REPLInput -> do
-          setFocus REPLPanel
-          handleREPLEvent ev
+        REPLInput -> handleREPLEvent ev
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
         _ -> return ()
-      setFocus $ case n of
+      flip whenJust setFocus $ case n of
         -- Adapt click event origin to their right panel.
         -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
         -- However this does not seems to work for the robot and info panel.
         -- Thus we force the destination focus here.
-        InventoryList -> RobotPanel
-        InventoryListItem _ -> RobotPanel
-        InfoViewport -> InfoPanel
-        _ -> n
+        InventoryList -> Just RobotPanel
+        InventoryListItem _ -> Just RobotPanel
+        InfoViewport -> Just InfoPanel
+        REPLInput -> Just REPLPanel
+        _ -> Nothing
+      case n of
+        FocusablePanel x -> setFocus x
+        _ -> return ()
     -- dispatch any other events to the focused panel handler
     _ev -> do
       fring <- use $ uiState . uiFocusRing
       case focusGetCurrent fring of
-        Just REPLPanel -> handleREPLEvent ev
-        Just WorldPanel -> handleWorldEvent ev
-        Just RobotPanel -> handleRobotPanelEvent ev
-        Just InfoPanel -> handleInfoPanelEvent infoScroll ev
+        Just (FocusablePanel x) -> ($ ev) $ case x of
+          REPLPanel -> handleREPLEvent
+          WorldPanel -> handleWorldEvent
+          RobotPanel -> handleRobotPanelEvent
+          InfoPanel -> handleInfoPanelEvent infoScroll
         _ -> continueWithoutRedraw
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe W.Coords)
@@ -335,8 +339,8 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ W.Coords (mx, my)
 
-setFocus :: Name -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent name
+setFocus :: FocusablePanel -> EventM Name AppState ()
+setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
 --
@@ -632,7 +636,7 @@ updateUI = do
     -- them "sticky".  They will be updated as soon as the player moves
     -- the focus away.
     fring <- use $ uiState . uiFocusRing
-    let sticky = focusGetCurrent fring `elem` [Just RobotPanel, Just InfoPanel]
+    let sticky = focusGetCurrent fring `elem` map (Just . FocusablePanel) [RobotPanel, InfoPanel]
 
     -- Check if the robot log was updated and we are allowed to change
     -- the inventory+info panels.
