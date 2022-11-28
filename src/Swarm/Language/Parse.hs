@@ -50,7 +50,7 @@ import Data.Text qualified as T
 import Data.Void
 import Swarm.Language.Syntax
 import Swarm.Language.Types
-import Text.Megaparsec hiding (runParser)
+import Text.Megaparsec hiding (runParser, runParser')
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
@@ -69,7 +69,7 @@ import Witch
 data Antiquoting = AllowAntiquoting | DisallowAntiquoting
   deriving (Eq, Ord, Show)
 
-type Parser = ReaderT Antiquoting (Parsec Void Text)
+type Parser = ReaderT Antiquoting (ParsecT Void Text IO)
 
 type ParserError = ParseErrorBundle Text Void
 
@@ -134,7 +134,7 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
     | toLower t `elem` reservedWords =
-      fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+        fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
     | otherwise = return t
    where
     t = into @Text s
@@ -185,11 +185,11 @@ parsePolytype =
     -- Otherwise, require all variables to be explicitly quantified
     | S.null free = return $ Forall xs ty
     | otherwise =
-      fail $
-        unlines
-          [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
-          , "  Try adding them to the 'forall'."
-          ]
+        fail $
+          unlines
+            [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
+            , "  Try adding them to the 'forall'."
+            ]
    where
     free = tyVars ty `S.difference` S.fromList xs
 
@@ -255,18 +255,22 @@ parseTermAtom =
           *> ( ( TRequireDevice
                   <$> (textLiteral <?> "device name in double quotes")
                )
-                <|> ( TRequire <$> (fromIntegral <$> integer)
+                <|> ( TRequire
+                        <$> (fromIntegral <$> integer)
                         <*> (textLiteral <?> "entity name in double quotes")
                     )
              )
-        <|> SLam <$> (symbol "\\" *> identifier)
+        <|> SLam
+          <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> sLet <$> (reserved "let" *> identifier)
+        <|> sLet
+          <$> (reserved "let" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> sDef <$> (reserved "def" *> identifier)
+        <|> sDef
+          <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))
@@ -420,16 +424,22 @@ operatorSymbol = T.singleton <$> oneOf opChars
 -- Utilities
 
 -- | Run a parser on some input text, returning either the result or a
---   pretty-printed parse error message.
-runParser :: Parser a -> Text -> Either Text a
-runParser p t = first (from . errorBundlePretty) (parse (runReaderT p DisallowAntiquoting) "" t)
+--   megaparsec error bundle.
+runParser' :: MonadIO m => Parser a -> Text -> m (Either ParserError a)
+runParser' p t = liftIO (runParserT (runReaderT p DisallowAntiquoting) "" t)
 
--- | A utility for running a parser in an arbitrary 'MonadFail' (which
+-- | Run a parser on some input text, returning either the result or a
+--   pretty-printed parse error message.
+runParser :: MonadIO m => Parser a -> Text -> m (Either Text a)
+runParser p t = first (from . errorBundlePretty) <$> runParser' p t
+
+-- | A utility for running a parser in an arbitrary 'MonadFail'+'MonadIO' (which
 --   is going to be the TemplateHaskell 'Q' monad --- see
 --   "Swarm.Language.Parse.QQ"), with a specified source position.
-runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
-runParserTH (file, line, col) p s =
-  case snd (runParser' (runReaderT (fully p) AllowAntiquoting) initState) of
+runParserTH :: (MonadIO m, Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
+runParserTH (file, line, col) p s = do
+  (_, res) <- liftIO $ runParserT' (runReaderT (fully p) AllowAntiquoting) initState
+  case res of
     Left err -> fail $ errorBundlePretty err
     Right e -> return e
  where
@@ -469,13 +479,13 @@ fullyMaybe = fully . optional
 --   end of the input 'Text'.  Returns either the resulting 'Term' (or
 --   @Nothing@ if the input was only whitespace) or a pretty-printed
 --   parse error message.
-readTerm :: Text -> Either Text (Maybe Syntax)
+readTerm :: MonadIO m => Text -> m (Either Text (Maybe Syntax))
 readTerm = runParser (fullyMaybe parseTerm)
 
 -- | A lower-level `readTerm` which returns the megaparsec bundle error
 --   for precise error reporting.
-readTerm' :: Text -> Either ParserError (Maybe Syntax)
-readTerm' = parse (runReaderT (fullyMaybe parseTerm) DisallowAntiquoting) ""
+readTerm' :: MonadIO m => Text -> m (Either ParserError (Maybe Syntax))
+readTerm' = runParser' (fullyMaybe parseTerm)
 
 -- | A utility for converting a ParserError into a one line message:
 --   <line-nr>: <error-msg>

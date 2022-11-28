@@ -21,6 +21,7 @@ module Swarm.Language.Pipeline (
   showTypeErrorPos,
 ) where
 
+import Control.Monad.Trans (MonadIO)
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
@@ -71,7 +72,7 @@ instance ToJSON ProcessedTerm where
 --
 --   Return either the end result (or @Nothing@ if the input was only
 --   whitespace) or a pretty-printed error message.
-processTerm :: Text -> Either Text (Maybe ProcessedTerm)
+processTerm :: MonadIO m => Text -> m (Either Text (Maybe ProcessedTerm))
 processTerm = processTerm' empty empty
 
 -- | Like 'processTerm', but use a term that has already been parsed.
@@ -79,10 +80,10 @@ processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
-processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
+processTerm' :: MonadIO m => TCtx -> ReqCtx -> Text -> m (Either Text (Maybe ProcessedTerm))
 processTerm' ctx capCtx txt = do
-  mt <- readTerm txt
-  first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
+  emt <- readTerm txt
+  return $ emt >>= (first (prettyTypeErr txt) . traverse (processParsedTerm' ctx capCtx))
 
 prettyTypeErr :: Text -> TypeErr -> Text
 prettyTypeErr code te = teLoc <> prettyText te
