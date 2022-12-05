@@ -11,6 +11,7 @@
 module Swarm.App where
 
 import Brick
+import Swarm.TUI.Model.StateUpdates
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Lens ((%~), (&), (?~))

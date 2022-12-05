@@ -60,6 +60,7 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String (fromString)
 import Data.Text qualified as T
+import Swarm.TUI.Model.StateUpdates
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
 import Graphics.Vty qualified as V

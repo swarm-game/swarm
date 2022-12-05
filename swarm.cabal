@@ -114,6 +114,8 @@ library
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
+                      Swarm.TUI.Model.Names
+                      Swarm.TUI.Model.StateUpdates
                       Swarm.TUI.View
                       Swarm.TUI.Controller
                       Swarm.TUI.Inventory.Sorting

@@ -129,17 +129,13 @@ module Swarm.TUI.Model (
   logEvent,
 
   -- * App state
-  AppState,
+  AppState (AppState),
   gameState,
   uiState,
   runtimeState,
 
   -- ** Initialization
   AppOpts (..),
-  initAppState,
-  startGame,
-  restartGame,
-  scenarioToAppState,
   Seed,
 
   -- *** Re-exported types used in options
@@ -158,7 +154,7 @@ import Brick.Focus
 import Brick.Widgets.Dialog (Dialog)
 import Brick.Widgets.Edit (Editor, applyEdit, editorText, getEditContents)
 import Brick.Widgets.List qualified as BL
-import Control.Applicative (Applicative (liftA2), (<|>))
+import Control.Applicative (Applicative (liftA2))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
@@ -170,12 +166,12 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
+import Swarm.TUI.Model.Names
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
-import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
@@ -183,20 +179,13 @@ import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (loadScenario)
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfo (..),
   ScenarioInfoPair,
   ScenarioItem (..),
-  ScenarioStatus (..),
-  normalizeScenarioPath,
   scMap,
   scenarioCollectionToList,
-  scenarioItemByPath,
-  scenarioPath,
-  scenarioSolution,
-  scenarioStatus,
   _SISingle,
  )
 import Swarm.Game.State
@@ -225,41 +214,6 @@ data AppEvent
   | UpstreamVersion (Either NewReleaseFailure String)
   deriving (Show)
 
-data FocusablePanel
-  = -- | The panel containing the REPL.
-    REPLPanel
-  | -- | The panel containing the world view.
-    WorldPanel
-  | -- | The panel showing robot info and inventory on the top left.
-    RobotPanel
-  | -- | The info panel on the bottom left.
-    InfoPanel
-  deriving (Eq, Ord, Show, Read, Bounded, Enum)
-
--- | 'Name' represents names to uniquely identify various components
---   of the UI, such as forms, panels, caches, extents, and lists.
-data Name
-  = FocusablePanel FocusablePanel
-  | -- | The REPL input form.
-    REPLInput
-  | -- | The render cache for the world view.
-    WorldCache
-  | -- | The cached extent for the world view.
-    WorldExtent
-  | -- | The list of inventory items for the currently
-    --   focused robot.
-    InventoryList
-  | -- | The inventory item position in the InventoryList.
-    InventoryListItem Int
-  | -- | The list of main menu choices.
-    MenuList
-  | -- | The list of scenario choices.
-    ScenarioList
-  | -- | The scrollable viewport for the info panel.
-    InfoViewport
-  | -- | The scrollable viewport for any modal dialog.
-    ModalViewport
-  deriving (Eq, Ord, Show, Read)
 
 infoScroll :: ViewportScroll Name
 infoScroll = viewportScroll InfoViewport
@@ -951,56 +905,6 @@ data AppOpts = AppOpts
   -- ^ Information about the Git repository (not present in release).
   }
 
--- | Initialize the 'AppState'.
-initAppState :: AppOpts -> ExceptT Text IO AppState
-initAppState AppOpts {..} = do
-  let isRunningInitialProgram = isJust scriptToRun || autoPlay
-      skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
-  gs <- initGameState
-  ui <- initUIState (not skipMenu) cheatMode
-  let rs = initRuntimeState
-  case skipMenu of
-    False -> return $ AppState gs ui rs
-    True -> do
-      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
-
-      let maybeAutoplay = do
-            guard autoPlay
-            soln <- scenario ^. scenarioSolution
-            return $ SuggestedSolution soln
-      let realToRun = maybeAutoplay <|> (ScriptPath <$> scriptToRun)
-
-      execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) realToRun)
-        (AppState gs ui rs)
-
--- | Load a 'Scenario' and start playing the game.
-startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
-startGame = startGameWithSeed Nothing
-
--- | Re-initialize the game from the stored reference to the current scenario.
---
--- Note that "restarting" is intended only for "scenarios";
--- with some scenarios, it may be possible to get stuck so that it is
--- either impossible or very annoying to win, so being offered an
--- option to restart is more user-friendly.
---
--- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
--- case upstream so that the Scenario passed to this function definitely exists.
-restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
-restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Nothing
-
--- | Load a 'Scenario' and start playing the game, with the
---   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
-startGameWithSeed userSeed siPair@(_scene, si) toRun = do
-  t <- liftIO getZonedTime
-  ss <- use $ gameState . scenarios
-  p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
-  gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
-  scenarioToAppState siPair userSeed toRun
-
 -- | Extract the scenario which would come next in the menu from the
 --   currently selected scenario (if any).  Can return @Nothing@ if
 --   either we are not in the @NewGameMenu@, or the current scenario
@@ -1027,36 +931,3 @@ topContext s = ctxPossiblyWithIt
   ctxPossiblyWithIt = case s ^. gameState . replStatus of
     REPLDone (Just p) -> ctx & at "it" ?~ p
     _ -> ctx
-
--- XXX do we need to keep an old entity map around???
-
--- | Modify the 'AppState' appropriately when starting a new scenario.
-scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe CodeToRun -> m ()
-scenarioToAppState siPair@(scene, _) userSeed toRun = do
-  withLensIO gameState $ scenarioToGameState scene userSeed toRun
-  withLensIO uiState $ scenarioToUIState siPair
- where
-  withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m ()
-  withLensIO l a = do
-    x <- use l
-    x' <- liftIO $ a x
-    l .= x'
-
--- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState :: ScenarioInfoPair -> UIState -> IO UIState
-scenarioToUIState siPair u = do
-  curTime <- getTime Monotonic
-  return $
-    u
-      & uiPlaying .~ True
-      & uiGoal .~ Nothing
-      & uiFocusRing .~ initFocusRing
-      & uiInventory .~ Nothing
-      & uiInventorySort .~ defaultSortOptions
-      & uiShowFPS .~ False
-      & uiShowZero .~ True
-      & lgTicksPerSecond .~ initLgTicksPerSecond
-      & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
-      & uiREPL . replHistory %~ restartREPLHistory
-      & scenarioRef ?~ siPair
-      & lastFrameTime .~ curTime
