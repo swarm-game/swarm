@@ -445,31 +445,32 @@ recipesToDot classic emap recipes = do
     Dot.attribute ("color", "forestgreen")
     mapM_ ((uncurry (Dot..->.) . (world,)) . getE) (toList testWorld2Entites)
   -- --------------------------------------------------------------------------
-  let -- put a hidden node above and below entities and connect them by hidden edges
-      wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
-      wrapBelowAbove ns = do
-        b <- hiddenNode
-        t <- hiddenNode
-        let ns' = map nid $ toList ns
-        mapM_ (b .~>.) ns'
-        mapM_ (.~>. t) ns'
-        return (b, t)
-      -- put set of entities in nice
-      subLevel :: Int -> Set Entity -> Dot (NodeId, NodeId)
-      subLevel i ns = fmap snd . Dot.cluster $ do
-        Dot.attribute ("style", "filled")
-        Dot.attribute ("color", "khaki")
-        bt <- wrapBelowAbove ns
-        Dot.attribute ("rank", "sink")
-        -- the normal label for cluster would be cover by lines
-        _bigLabel <-
-          Dot.node
-            [ ("shape", "plain")
-            , ("label", "Bottom Label")
-            , ("fontsize", "20pt")
-            , ("label", "Level #" <> show i)
-            ]
-        return bt
+  let
+    -- put a hidden node above and below entities and connect them by hidden edges
+    wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
+    wrapBelowAbove ns = do
+      b <- hiddenNode
+      t <- hiddenNode
+      let ns' = map nid $ toList ns
+      mapM_ (b .~>.) ns'
+      mapM_ (.~>. t) ns'
+      return (b, t)
+    -- put set of entities in nice
+    subLevel :: Int -> Set Entity -> Dot (NodeId, NodeId)
+    subLevel i ns = fmap snd . Dot.cluster $ do
+      Dot.attribute ("style", "filled")
+      Dot.attribute ("color", "khaki")
+      bt <- wrapBelowAbove ns
+      Dot.attribute ("rank", "sink")
+      -- the normal label for cluster would be cover by lines
+      _bigLabel <-
+        Dot.node
+          [ ("shape", "plain")
+          , ("label", "Bottom Label")
+          , ("fontsize", "20pt")
+          , ("label", "Level #" <> show i)
+          ]
+      return bt
   -- --------------------------------------------------------------------------
   -- order entities into clusters based on how "far" they are from
   -- what is available at the start - see 'recipeLevels'.
