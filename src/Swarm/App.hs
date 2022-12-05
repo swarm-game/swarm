@@ -11,7 +11,6 @@
 module Swarm.App where
 
 import Brick
-import Swarm.TUI.Model.StateUpdates
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Lens ((%~), (&), (?~))
@@ -24,6 +23,7 @@ import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
+import Swarm.TUI.Model.StateUpdates
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web

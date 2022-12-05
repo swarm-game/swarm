@@ -29,9 +29,9 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.TUI.Inventory.Sorting
-import System.Clock
 import Swarm.TUI.Model
-
+import Swarm.TUI.Model.Repl
+import System.Clock
 
 -- | Initialize the 'AppState'.
 initAppState :: AppOpts -> ExceptT Text IO AppState
@@ -82,8 +82,6 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   gameState . currentScenarioPath .= Just p
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
   scenarioToAppState siPair userSeed toRun
-
-
 
 -- XXX do we need to keep an old entity map around???
 

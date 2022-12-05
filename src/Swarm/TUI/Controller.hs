@@ -60,7 +60,6 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String (fromString)
 import Data.Text qualified as T
-import Swarm.TUI.Model.StateUpdates
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
 import Graphics.Vty qualified as V
@@ -85,6 +84,8 @@ import Swarm.Language.Types
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.StateUpdates
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Version (NewReleaseFailure (..))
