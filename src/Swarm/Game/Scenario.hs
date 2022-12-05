@@ -56,25 +56,18 @@ import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (filterM, when)
-import Control.Monad.Extra (mapMaybeM)
-import Data.Aeson.Key qualified as Key
-import Data.Aeson.KeyMap (KeyMap)
-import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Map (Map)
-import Data.Map qualified as M
+import Control.Monad (filterM)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Vector qualified as V
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import GHC.Int (Int64)
-import Linear.V2
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
-import Swarm.Game.Robot (TRobot, trobotName)
-import Swarm.Game.Terrain
+import Swarm.Game.Robot (TRobot)
+import Swarm.Game.Scenario.Cells
+import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (getDataFileNameSafe, reflow)
 import Swarm.Util.Yaml
@@ -111,126 +104,6 @@ instance FromJSON Objective where
     Objective
       <$> (fmap . map) reflow (v .:? "goal" .!= [])
       <*> (v .: "condition")
-
-------------------------------------------------------------
--- Robot map
-------------------------------------------------------------
-
--- | A robot template paired with its definition's index within
--- the Scenario file
-type IndexedTRobot = (Int, TRobot)
-
--- | A map from names to robots, used to look up robots in scenario
---   descriptions.
-type RobotMap = Map Text IndexedTRobot
-
--- | Create a 'RobotMap' from a list of robot templates.
-buildRobotMap :: [TRobot] -> RobotMap
-buildRobotMap rs = M.fromList $ zipWith (\x y -> (view trobotName y, (x, y))) [0 ..] rs
-
-------------------------------------------------------------
--- Lookup utilities
-------------------------------------------------------------
-
--- | Look up a thing by name, throwing a parse error if it is not
---   found.
-getThing :: String -> (Text -> m -> Maybe a) -> Text -> ParserE m a
-getThing thing lkup name = do
-  m <- getE
-  case lkup name m of
-    Nothing -> fail $ "Unknown " <> thing <> " name: " ++ show name
-    Just a -> return a
-
--- | Look up an entity by name in an 'EntityMap', throwing a parse
---   error if it is not found.
-getEntity :: Text -> ParserE EntityMap Entity
-getEntity = getThing "entity" lookupEntityName
-
--- | Look up a robot by name in a 'RobotMap', throwing a parse error
---   if it is not found.
-getRobot :: Text -> ParserE RobotMap IndexedTRobot
-getRobot = getThing "robot" M.lookup
-
-------------------------------------------------------------
--- World cells
-------------------------------------------------------------
-
--- | A single cell in a world map, which contains a terrain value,
---   and optionally an entity and robot.
-data Cell = Cell
-  { cellTerrain :: TerrainType
-  , cellEntity :: Maybe Entity
-  , cellRobots :: [IndexedTRobot]
-  }
-  deriving (Eq, Show)
-
--- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
---   entity and robot, if present, are immediately looked up and
---   converted into 'Entity' and 'TRobot' values.  If they are not
---   found, a parse error results.
-instance FromJSONE (EntityMap, RobotMap) Cell where
-  parseJSONE = withArrayE "tuple" $ \v -> do
-    let tup = V.toList v
-    when (null tup) $ fail "palette entry must nonzero length (terrain, optional entity and then robots if any)"
-
-    terr <- liftE $ parseJSON (head tup)
-
-    ent <- case tup ^? ix 1 of
-      Nothing -> return Nothing
-      Just e -> do
-        meName <- liftE $ parseJSON @(Maybe Text) e
-        traverse (localE fst . getEntity) meName
-
-    let name2rob r = do
-          mrName <- liftE $ parseJSON @(Maybe Text) r
-          traverse (localE snd . getRobot) mrName
-
-    robs <- mapMaybeM name2rob (drop 2 tup)
-
-    return $ Cell terr ent robs
-
-------------------------------------------------------------
--- World description
-------------------------------------------------------------
-
--- | A world palette maps characters to 'Cell' values.
-newtype WorldPalette = WorldPalette
-  {unPalette :: KeyMap Cell}
-  deriving (Eq, Show)
-
-instance FromJSONE (EntityMap, RobotMap) WorldPalette where
-  parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
-
--- | A description of a world parsed from a YAML file.
-data WorldDescription = WorldDescription
-  { defaultTerrain :: Maybe Cell
-  , offsetOrigin :: Bool
-  , palette :: WorldPalette
-  , ul :: V2 Int64
-  , area :: [[Cell]]
-  }
-  deriving (Eq, Show)
-
-instance FromJSONE (EntityMap, RobotMap) WorldDescription where
-  parseJSONE = withObjectE "world description" $ \v -> do
-    pal <- v ..:? "palette" ..!= WorldPalette mempty
-    WorldDescription
-      <$> v ..:? "default"
-      <*> liftE (v .:? "offset" .!= False)
-      <*> pure pal
-      <*> liftE (v .:? "upperleft" .!= V2 0 0)
-      <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)
-
--- | "Paint" a world map using a 'WorldPalette', turning it from a raw
---   string into a nested list of 'Cell' values by looking up each
---   character in the palette, failing if any character in the raw map
---   is not contained in the palette.
-paintMap :: MonadFail m => WorldPalette -> Text -> m [[Cell]]
-paintMap pal = traverse (traverse toCell . into @String) . T.lines
- where
-  toCell c = case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
-    Nothing -> fail $ "Char not in world palette: " ++ show c
-    Just cell -> return cell
 
 ------------------------------------------------------------
 -- Scenario
