@@ -84,6 +84,7 @@ import Swarm.Language.Types
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.StateUpdates
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Version (NewReleaseFailure (..))
