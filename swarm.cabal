@@ -115,7 +115,9 @@ library
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
                       Swarm.TUI.View
+                      Swarm.TUI.View.Utils
                       Swarm.TUI.Controller
+                      Swarm.TUI.Controller.Utils
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
                       Swarm.Version
