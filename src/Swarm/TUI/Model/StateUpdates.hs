@@ -30,6 +30,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Repl
 import System.Clock
 
 -- | Initialize the 'AppState'.
