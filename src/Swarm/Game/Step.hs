@@ -18,13 +18,14 @@
 module Swarm.Game.Step where
 
 import Control.Applicative (liftA2)
+import Control.Arrow ((&&&))
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
+import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
@@ -1566,44 +1567,70 @@ execConst c vs s k = do
         -- See #349
         (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentContext cmd
 
-    -- Check that all required device names exist, and fail with
-    -- an exception if not
+    -- Check that all required device names exist (fail with
+    -- an exception if not) and convert them to 'Entity' values.
+
+    -- devs :: [Entity]
     devs <- forM devNames $ \devName ->
       E.lookupEntityName devName em `isJustOrFail` ["Unknown device required: " <> devName]
 
-    -- Check that all required inventory entity names exist, and fail
-    -- with an exception if not
+    -- Check that all required inventory entity names exist (fail with
+    -- an exception if not) and convert them to 'Entity' values, with
+    -- an associated count for each.
+
+    -- reqElems :: [(Int, Entity)]
     reqElems <- forM (M.assocs reqInvNames) $ \(eName, n) ->
       (n,)
         <$> ( E.lookupEntityName eName em
                 `isJustOrFail` ["Unknown entity required: " <> eName]
             )
-    let reqInv = E.fromElems reqElems
+    let reqInv :: Inventory
+        reqInv = E.fromElems reqElems
 
-    let -- List of possible devices per requirement.  Devices for
-        -- required capabilities come first, then singleton devices
-        -- that are required directly.  This order is important since
-        -- later we zip required capabilities with this list to figure
-        -- out which capabilities are missing.
-        capDevices = map (`deviceForCap` em) caps ++ map (: []) devs
+    let -- List of possible devices per requirement.  For the
+        -- requirements that step from a required capability, we
+        -- remember the capability alongside the possible devices, to
+        -- help with later error message generation.
+        possibleDevices :: [(Maybe Capability, [Entity])]
+        possibleDevices =
+          map (Just &&& (`deviceForCap` em)) caps -- Possible devices for capabilities
+            ++ map ((Nothing,) . (: [])) devs -- Outright required devices
 
         -- A device is OK if it is available in the inventory of the
         -- parent robot, or already installed in the child robot.
+        deviceOK :: Entity -> Bool
         deviceOK d = parentInventory `E.contains` d || childDevices `E.contains` d
 
-        -- take a pair of device sets providing capabilities that is
-        -- split into (AVAIL,MISSING) and if there are some available
-        -- ignore missing because we only need them for error message
+        -- Take a pair of device sets, where the first set is
+        -- available devices and the second is missing ones; if there
+        -- are some available, ignore the missing ones because we only
+        -- need one device for a given capability.  The missing ones
+        -- are only relevant for suggesting what devices to install if
+        -- none are available.
+        ignoreOK :: ([a], [a]) -> ([a], [a])
         ignoreOK ([], miss) = ([], miss)
         ignoreOK (ds, _miss) = (ds, [])
 
-        (deviceSets, missingDeviceSets) =
-          Lens.over both (nubOrd . map S.fromList) . unzip $
-            map (ignoreOK . L.partition deviceOK) capDevices
+        distrib :: (x, (y, z)) -> ((x, y), (x, z))
+        distrib (x, (y, z)) = ((x, y), (x, z))
 
+        -- Split out into sets of devices that can provide required
+        -- capabilities, and sets of devices that could potentially
+        -- provide a required capability where none of them is available.
+        deviceSets, missingDeviceSets :: [(Maybe Capability, Set Entity)]
+        (deviceSets, missingDeviceSets) =
+          Lens.over both (nubOrd . (map . second) S.fromList)
+            . unzip
+            . map (distrib . second (ignoreOK . L.partition deviceOK))
+            $ possibleDevices
+
+        -- Format a set of suggested devices for use in an error message
+        formatDevices :: Set Entity -> Text
         formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
-        -- capabilities not provided by any device in inventory
-        missingCaps = S.fromList . map fst . filter (null . snd) $ zip caps deviceSets
+
+        -- Capabilities which are not provided by any device in the inventory,
+        -- i.e. those capabilities for which the corresponding device set is empty.
+        missingCaps = S.fromList [cap | (Just cap, ds) <- deviceSets, null ds]
 
         alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
 
@@ -1612,19 +1639,20 @@ execConst c vs s k = do
 
     if creative
       then -- In creative mode, just return ALL the devices
-        return (S.unions (map S.fromList capDevices) `S.difference` alreadyInstalled, missingChildInv)
+        return (S.unions (map (S.fromList . snd) possibleDevices) `S.difference` alreadyInstalled, missingChildInv)
       else do
         -- check if robot has all devices to execute new command
-        all null missingDeviceSets
-          `holdsOrFail` ( singularSubjectVerb subject "do" :
-                          "not have required devices, please" :
-                          formatIncapableFix fixI <> ":" :
-                          (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
+        let missingDevices = map snd missingDeviceSets
+        all null missingDevices
+          `holdsOrFail` ( singularSubjectVerb subject "do"
+                            : "not have required devices, please"
+                            : formatIncapableFix fixI <> ":"
+                            : (("\n  - " <>) . formatDevices <$> filter (not . null) missingDevices)
                         )
         -- check that there are in fact devices to provide every required capability
         not (any null deviceSets) `holdsOr` Incapable fixI (R.Requirements missingCaps S.empty M.empty) cmd
 
-        let minimalInstallSet = smallHittingSet (filter (S.null . S.intersection alreadyInstalled) deviceSets)
+        let minimalInstallSet = smallHittingSet (filter (S.null . S.intersection alreadyInstalled) (map snd deviceSets))
 
             -- Check that we have enough in our inventory to cover the
             -- required installs PLUS what's missing from the child
