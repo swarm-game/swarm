@@ -2,5 +2,6 @@ chess_horse.yaml
 teleport.yaml
 2048.yaml
 hanoi.yaml
+bucket-brigade.yaml
 Mazes
 Ranching
