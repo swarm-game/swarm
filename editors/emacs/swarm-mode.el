@@ -59,6 +59,8 @@
                "place"
                "give"
                "install"
+               "equip"
+               "unequip"
                "make"
                "has"
                "installed"
