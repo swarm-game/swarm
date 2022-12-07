@@ -835,6 +835,25 @@ execConst c vs s k = do
 
         return $ Out VUnit s k
       _ -> badConst
+    Equip -> case vs of
+      [VText itemName] -> do
+        item <- ensureItem itemName "equip"
+        myID <- use robotID
+        focusedID <- use focusedRobotID
+        installSelf item focusedID myID
+        return $ Out VUnit s k
+      _ -> badConst
+    Unequip -> case vs of
+      [VText itemName] -> do
+        item <- ensureEquipped itemName
+        myID <- use robotID
+        focusedID <- use focusedRobotID
+        installedDevices %= delete item
+        robotInventory %= insert item
+        -- Flag the UI for a redraw if we are currently showing our inventory
+        when (focusedID == myID) flagRedraw
+        return $ Out VUnit s k
+      _ -> badConst
     Install -> case vs of
       [VRobot otherID, VText itemName] -> do
         -- Make sure the other robot exists and is close
@@ -847,15 +866,7 @@ execConst c vs s k = do
         case otherID == myID of
           -- We have to special case installing something on ourselves
           -- for the same reason as Give.
-          True -> do
-            -- Don't do anything if the robot already has the device.
-            already <- use (installedDevices . to (`E.contains` item))
-            unless already $ do
-              installedDevices %= insert item
-              robotInventory %= delete item
-
-              -- Flag the UI for a redraw if we are currently showing our inventory
-              when (focusedID == myID) flagRedraw
+          True -> installSelf item focusedID myID
           False -> do
             let otherDevices = robotMap . at otherID . _Just . installedDevices
             already <- use $ pre (otherDevices . to (`E.contains` item))
@@ -1488,6 +1499,17 @@ execConst c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
+  installSelf :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Entity -> RID -> RID -> m ()
+  installSelf item focusedID myID = do
+    -- Don't do anything if the robot already has the device.
+    already <- use (installedDevices . to (`E.contains` item))
+    unless already $ do
+      installedDevices %= insert item
+      robotInventory %= delete item
+
+      -- Flag the UI for a redraw if we are currently showing our inventory
+      when (focusedID == myID) flagRedraw
+
   badConst :: HasRobotStepState sig m => m a
   badConst = throwError $ Fatal badConstMsg
 
@@ -1512,6 +1534,13 @@ execConst c vs s k = do
     when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
     let nextLoc = loc ^+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
+
+  ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
+  ensureEquipped itemName = do
+    inst <- use installedDevices
+    listToMaybe (lookupByName itemName inst)
+      `isJustOrFail` ["What is", indefinite itemName <> "?"]
+
   ensureItem :: HasRobotStepState sig m => Text -> Text -> m Entity
   ensureItem itemName action = do
     -- First, make sure we know about the entity.

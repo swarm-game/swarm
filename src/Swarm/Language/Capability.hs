@@ -51,7 +51,7 @@ data Capability
     CPlace
   | -- | Execute the 'Give' command
     CGive
-  | -- | Execute the 'Install' command
+  | -- | Execute the 'Install/Equip/Unequip' commands
     CInstall
   | -- | Execute the 'Make' command
     CMake
@@ -176,6 +176,8 @@ constCaps = \case
   Place -> Just CPlace
   Give -> Just CGive
   Install -> Just CInstall
+  Equip -> Just CInstall
+  Unequip -> Just CInstall
   Make -> Just CMake
   Count -> Just CCount
   If -> Just CCond
