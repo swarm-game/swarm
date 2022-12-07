@@ -2,5 +2,4 @@ restylers_version: dev
 restylers:
   - fourmolu:
       arguments:
-        [ '--cabal-default-extensions'
-        ]
+        []
