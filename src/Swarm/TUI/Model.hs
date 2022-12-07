@@ -889,22 +889,26 @@ populateInventoryList (Just r) = do
   sortOptions <- use uiInventorySort
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = InstalledEntry e
-      itemList mk label =
+      itemList isInventoryDisplay mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
           . sortInventory sortOptions
           . filter shouldDisplay
           . elems
-
-      -- Display items if we have a positive number of them, or they
-      -- aren't an installed device.  In other words we don't need to
-      -- display installed devices twice unless we actually have some
-      -- in our inventory in addition to being installed.
-      shouldDisplay (n, e) = n > 0 || showZero && not ((r ^. installedDevices) `E.contains` e)
+       where
+        -- Display items if we have a positive number of them, or they
+        -- aren't an installed device.  In other words we don't need to
+        -- display installed devices twice unless we actually have some
+        -- in our inventory in addition to being installed.
+        shouldDisplay (n, e) =
+          n > 0
+            || isInventoryDisplay
+              && showZero
+              && not ((r ^. installedDevices) `E.contains` e)
 
       items =
-        (r ^. robotInventory . to (itemList mkInvEntry "Inventory"))
-          ++ (r ^. installedDevices . to (itemList mkInstEntry "Installed devices"))
+        (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
+          ++ (r ^. installedDevices . to (itemList False mkInstEntry "Installed devices"))
 
       -- Attempt to keep the selected element steady.
       sel = mList >>= BL.listSelectedElement -- Get the currently selected element+index.

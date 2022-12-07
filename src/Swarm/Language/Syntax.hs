@@ -223,6 +223,10 @@ data Const
     Give
   | -- | Install a device on a robot.
     Install
+  | -- | Equip a device on oneself.
+    Equip
+  | -- | Unequip an equipped device, returning to inventory.
+    Unequip
   | -- | Make an item.
     Make
   | -- | Sense whether we have a certain item.
@@ -542,6 +546,8 @@ constInfo c = case c of
       ["The current location has to be empty for this to work."]
   Give -> command 2 short "Give an item to another robot nearby."
   Install -> command 2 short "Install a device from inventory on a robot."
+  Equip -> command 1 short "Equip a device on oneself."
+  Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
   Make -> command 1 long "Make an item using a recipe."
   Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
   Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."

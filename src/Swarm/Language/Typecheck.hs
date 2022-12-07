@@ -471,6 +471,8 @@ inferConst c = case c of
   Place -> [tyQ| text -> cmd unit |]
   Give -> [tyQ| robot -> text -> cmd unit |]
   Install -> [tyQ| robot -> text -> cmd unit |]
+  Equip -> [tyQ| text -> cmd unit |]
+  Unequip -> [tyQ| text -> cmd unit |]
   Make -> [tyQ| text -> cmd unit |]
   Has -> [tyQ| text -> cmd bool |]
   Installed -> [tyQ| text -> cmd bool |]
