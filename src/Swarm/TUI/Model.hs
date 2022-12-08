@@ -933,22 +933,22 @@ populateInventoryList (Just r) = do
 
 -- | Command-line options for configuring the app.
 data AppOpts = AppOpts
-  { -- | Explicit seed chosen by the user.
-    userSeed :: Maybe Seed
-  , -- | Scenario the user wants to play.
-    userScenario :: Maybe FilePath
-  , -- | Code to be run on base.
-    scriptToRun :: Maybe FilePath
-  , -- | Automatically run the solution defined in the scenario file
-    autoPlay :: Bool
-  , -- | Should cheat mode be enabled?
-    cheatMode :: Bool
-  , -- | What colour mode should be used?
-    colorMode :: Maybe ColorMode
-  , -- | Explicit port on which to run the web API
-    userWebPort :: Maybe Port
-  , -- | Information about the Git repository (not present in release).
-    repoGitInfo :: Maybe GitInfo
+  { userSeed :: Maybe Seed
+  -- ^ Explicit seed chosen by the user.
+  , userScenario :: Maybe FilePath
+  -- ^ Scenario the user wants to play.
+  , scriptToRun :: Maybe FilePath
+  -- ^ Code to be run on base.
+  , autoPlay :: Bool
+  -- ^ Automatically run the solution defined in the scenario file
+  , cheatMode :: Bool
+  -- ^ Should cheat mode be enabled?
+  , colorMode :: Maybe ColorMode
+  -- ^ What colour mode should be used?
+  , userWebPort :: Maybe Port
+  -- ^ Explicit port on which to run the web API
+  , repoGitInfo :: Maybe GitInfo
+  -- ^ Information about the Git repository (not present in release).
   }
 
 -- | Initialize the 'AppState'.

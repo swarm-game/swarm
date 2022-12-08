@@ -243,11 +243,11 @@ handleMainEvent ev = do
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do
-        safeAutoUnpause
-        uiState . uiModal .= Nothing
-        -- message modal is not autopaused, so update notifications when leaving it
-        when (m ^. modalType == MessagesModal) $ do
-          gameState . lastSeenMessageTime .= s ^. gameState . ticks
+          safeAutoUnpause
+          uiState . uiModal .= Nothing
+          -- message modal is not autopaused, so update notifications when leaving it
+          when (m ^. modalType == MessagesModal) $ do
+            gameState . lastSeenMessageTime .= s ^. gameState . ticks
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -833,8 +833,8 @@ handleREPLEventTyping = \case
             Just found
               | T.null uinput -> uiState %= resetREPL "" (CmdPrompt [])
               | otherwise -> do
-                uiState %= resetREPL found (CmdPrompt [])
-                modify validateREPLForm
+                  uiState %= resetREPL found (CmdPrompt [])
+                  modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
@@ -900,12 +900,12 @@ tabComplete names em repl = case repl ^. replPromptType of
     -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
     -- repopulates them.
     | otherwise -> case candidateMatches of
-      [] -> setCmd t []
-      [m] -> setCmd (completeWith m) []
-      -- Perform completion with the first candidate, then populate the list
-      -- of all candidates with the current completion moved to the back
-      -- of the queue.
-      (m : ms) -> setCmd (completeWith m) (ms ++ [m])
+        [] -> setCmd t []
+        [m] -> setCmd (completeWith m) []
+        -- Perform completion with the first candidate, then populate the list
+        -- of all candidates with the current completion moved to the back
+        -- of the queue.
+        (m : ms) -> setCmd (completeWith m) (ms ++ [m])
  where
   -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
   hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
@@ -941,17 +941,17 @@ validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
-        let theType = s ^. gameState . replStatus . replActiveType
-         in s & uiState . uiREPL . replType .~ theType
+          let theType = s ^. gameState . replStatus . replActiveType
+           in s & uiState . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-        let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
-            theType = case result of
-              Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
-              _ -> Nothing
-         in s
-              & uiState . uiREPL . replValid .~ isRight result
-              & uiState . uiREPL . replType .~ theType
+          let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
+              theType = case result of
+                Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+                _ -> Nothing
+           in s
+                & uiState . uiREPL . replValid .~ isRight result
+                & uiState . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
   uinput = s ^. uiState . uiREPL . replPromptText

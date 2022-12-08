@@ -135,32 +135,32 @@ formatIncapableFix = \case
 formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
 formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
-    unlinesExText
-      [ "Thou shalt not utter such blasphemy:"
-      , squote $ prettyText tm
-      , "If God in troth thou wantest to play, try thou a Creative game."
-      ]
+      unlinesExText
+        [ "Thou shalt not utter such blasphemy:"
+        , squote $ prettyText tm
+        , "If God in troth thou wantest to play, try thou a Creative game."
+        ]
   | not (null capsNone) =
-    unlinesExText
-      [ "Missing the " <> capMsg <> " for:"
-      , squote $ prettyText tm
-      , "but no device yet provides it. See"
-      , "https://github.com/swarm-game/swarm/issues/26"
-      ]
+      unlinesExText
+        [ "Missing the " <> capMsg <> " for:"
+        , squote $ prettyText tm
+        , "but no device yet provides it. See"
+        , "https://github.com/swarm-game/swarm/issues/26"
+        ]
   | not (S.null caps) =
-    unlinesExText
-      ( "You do not have the devices required for:" :
-        squote (prettyText tm) :
-        "Please " <> formatIncapableFix f <> ":" :
-        (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
-      )
+      unlinesExText
+        ( "You do not have the devices required for:"
+            : squote (prettyText tm)
+            : "Please " <> formatIncapableFix f <> ":"
+            : (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
+        )
   | otherwise =
-    unlinesExText
-      ( "You are missing required inventory for:" :
-        squote (prettyText tm) :
-        "Please obtain:" :
-        (("- " <>) . formatEntity <$> M.assocs inv)
-      )
+      unlinesExText
+        ( "You are missing required inventory for:"
+            : squote (prettyText tm)
+            : "Please obtain:"
+            : (("- " <>) . formatEntity <$> M.assocs inv)
+        )
  where
   capList = S.toList caps
   deviceSets = map (`deviceForCap` em) capList
