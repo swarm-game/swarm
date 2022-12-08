@@ -350,9 +350,9 @@ indefiniteQ w = MM.indefiniteDet w <+> squote w
 singularSubjectVerb :: Text -> Text -> Text
 singularSubjectVerb sub verb
   | verb == "be" = case toUpper sub of
-    "I" -> "I am"
-    "YOU" -> sub <+> "are"
-    _ -> sub <+> "is"
+      "I" -> "I am"
+      "YOU" -> sub <+> "are"
+      _ -> sub <+> "is"
   | otherwise = sub <+> (if is3rdPerson then verb3rd else verb)
  where
   is3rdPerson = toUpper sub `notElem` ["I", "YOU"]

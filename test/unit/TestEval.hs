@@ -251,7 +251,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-          ++ from @Text @String err
+            ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do

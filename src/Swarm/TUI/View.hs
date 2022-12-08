@@ -110,13 +110,13 @@ drawUI :: AppState -> [Widget Name]
 drawUI s
   | s ^. uiState . uiPlaying = drawGameUI s
   | otherwise = case s ^. uiState . uiMenu of
-    -- We should never reach the NoMenu case if uiPlaying is false; we would have
-    -- quit the app instead.  But just in case, we display the main menu anyway.
-    NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
-    MainMenu l -> [drawMainMenuUI s l]
-    NewGameMenu stk -> [drawNewGameMenuUI stk]
-    MessagesMenu -> [drawMainMessages s]
-    AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+      -- We should never reach the NoMenu case if uiPlaying is false; we would have
+      -- quit the app instead.  But just in case, we display the main menu anyway.
+      NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
+      MainMenu l -> [drawMainMenuUI s l]
+      NewGameMenu stk -> [drawNewGameMenuUI stk]
+      MessagesMenu -> [drawMainMessages s]
+      AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
@@ -169,7 +169,8 @@ drawNewGameMenuUI (l :| ls) =
       [ vBox
           [ withAttr boldAttr . txt $ breadcrumbs ls
           , txt " "
-          , vLimit 20 . hLimit 35
+          , vLimit 20
+              . hLimit 35
               . BL.renderList (const $ padRight Max . drawScenarioItem) True
               $ l
           ]
@@ -278,9 +279,9 @@ drawGameUI s =
                   (FocusablePanel InfoPanel)
                   ( plainBorder
                       & topLabels . centerLabel
-                      .~ (if moreTop then Just (txt " · · · ") else Nothing)
+                        .~ (if moreTop then Just (txt " · · · ") else Nothing)
                       & bottomLabels . centerLabel
-                      .~ (if moreBot then Just (txt " · · · ") else Nothing)
+                        .~ (if moreBot then Just (txt " · · · ") else Nothing)
                   )
                   $ drawInfoPanel s
               ]
@@ -403,12 +404,12 @@ drawTPS s = hBox (tpsInfo : rateInfo)
 
   rateInfo
     | s ^. uiState . uiShowFPS =
-      [ txt " ("
-      , str (printf "%0.1f" (s ^. uiState . uiTPF))
-      , txt " tpf, "
-      , str (printf "%0.1f" (s ^. uiState . uiFPS))
-      , txt " fps)"
-      ]
+        [ txt " ("
+        , str (printf "%0.1f" (s ^. uiState . uiTPF))
+        , txt " tpf, "
+        , str (printf "%0.1f" (s ^. uiState . uiFPS))
+        , txt " fps)"
+        ]
     | otherwise = []
 
   l = s ^. uiState . lgTicksPerSecond
@@ -692,8 +693,8 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
   (news, knowns) = splitAt count (gs ^. notifLens . notificationsContent)
   notifSep
     | count > 0 && not (null knowns) =
-      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
-      ]
+        [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+        ]
     | otherwise = []
 
 constHeader :: Widget Name
@@ -753,10 +754,10 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
   notificationKey notifLens key name
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
-      let highlight
-            | s ^. gameState . notifLens . notificationsCount > 0 = Alert
-            | otherwise = NoHighlight
-       in Just (highlight, key, name)
+        let highlight
+              | s ^. gameState . notifLens . notificationsCount > 0 = Alert
+              | otherwise = NoHighlight
+         in Just (highlight, key, name)
 
   globalKeyCmds =
     catMaybes
@@ -787,7 +788,9 @@ drawKeyMenu s =
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   focusedPanelCmds =
     map highlightKeyCmds $
-      keyCmdsFor $ focusGetCurrent $ view (uiState . uiFocusRing) s
+      keyCmdsFor $
+        focusGetCurrent $
+          view (uiState . uiFocusRing) s
 
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
@@ -807,7 +810,8 @@ drawKeyMenu s =
     Typing -> "pilot"
 
   gameModeWidget =
-    padLeft Max . padLeftRight 1
+    padLeft Max
+      . padLeftRight 1
       . txt
       . (<> " mode")
       $ case creative of
@@ -898,8 +902,10 @@ displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity co
   displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
 
   known e =
-    e `hasProperty` Known
-      || (e ^. entityName) `elem` (g ^. knownEntities)
+    e
+      `hasProperty` Known
+      || (e ^. entityName)
+      `elem` (g ^. knownEntities)
       || case hidingMode g of
         HideAllEntities -> False
         HideNoEntity -> True
@@ -1038,13 +1044,13 @@ explainRecipes :: AppState -> Entity -> Widget Name
 explainRecipes s e
   | null recipes = emptyWidget
   | otherwise =
-    vBox
-      [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
-      , padLeftRight 2 $
-          hCenter $
-            vBox $
-              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
-      ]
+      vBox
+        [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
+        , padLeftRight 2 $
+            hCenter $
+              vBox $
+                map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
+        ]
  where
   recipes = recipesWith s e
 
@@ -1099,11 +1105,11 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
   connector
     | null reqs = hLimit 5 hBorder
     | otherwise =
-      hBox
-        [ hLimit 2 hBorder
-        , joinableBorder (Edges True False True True)
-        , hLimit 2 hBorder
-        ]
+        hBox
+          [ hLimit 2 hBorder
+          , joinableBorder (Edges True False True True)
+          , hLimit 2 hBorder
+          ]
   inLen = length ins + length times
   outLen = length outs
   times = [(fromIntegral time, timeE) | time /= 1]
