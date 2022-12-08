@@ -1601,36 +1601,23 @@ execConst c vs s k = do
         deviceOK :: Entity -> Bool
         deviceOK d = parentInventory `E.contains` d || childDevices `E.contains` d
 
-        -- Take a pair of device sets, where the first set is
-        -- available devices and the second is missing ones; if there
-        -- are some available, ignore the missing ones because we only
-        -- need one device for a given capability.  The missing ones
-        -- are only relevant for suggesting what devices to install if
-        -- none are available.
-        ignoreOK :: ([a], [a]) -> ([a], [a])
-        ignoreOK ([], miss) = ([], miss)
-        ignoreOK (ds, _miss) = (ds, [])
-
-        distrib :: (x, (y, z)) -> ((x, y), (x, z))
-        distrib (x, (y, z)) = ((x, y), (x, z))
-
-        -- Split out into sets of devices that can provide required
-        -- capabilities, and sets of devices that could potentially
-        -- provide a required capability where none of them is available.
-        deviceSets, missingDeviceSets :: [(Maybe Capability, Set Entity)]
-        (deviceSets, missingDeviceSets) =
-          Lens.over both (nubOrd . (map . second) S.fromList)
-            . unzip
-            . map (distrib . second (ignoreOK . L.partition deviceOK))
-            $ possibleDevices
+        -- Refine each list of possible devices into a set of
+        -- available devices and a set of unavailable devices.
+        -- There's a problem if some capability is required but no
+        -- devices that provide it are available.  In that case we can
+        -- use the second set of unavailable devices to print an
+        -- appropriate error message.
+        deviceSets :: [(Maybe Capability, (Set Entity, Set Entity))]
+        deviceSets =
+          map (second (Lens.over both S.fromList . L.partition deviceOK)) possibleDevices
 
         -- Format a set of suggested devices for use in an error message
         formatDevices :: Set Entity -> Text
         formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 
-        -- Capabilities which are not provided by any device in the inventory,
-        -- i.e. those capabilities for which the corresponding device set is empty.
-        missingCaps = S.fromList [cap | (Just cap, ds) <- deviceSets, null ds]
+        -- -- Capabilities which are not provided by any device in the inventory,
+        -- -- i.e. those capabilities for which the corresponding device set is empty.
+        -- missingCaps = S.fromList [cap | (Just cap, ds) <- deviceSets, null ds]
 
         alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
 
@@ -1642,8 +1629,7 @@ execConst c vs s k = do
         return (S.unions (map (S.fromList . snd) possibleDevices) `S.difference` alreadyInstalled, missingChildInv)
       else do
         -- check if robot has all devices to execute new command
-        let missingDevices = map snd missingDeviceSets
-        all null missingDevices
+        not (any (null . fst . snd) deviceSets)
           `holdsOrFail` ( singularSubjectVerb subject "do"
                             : "not have required devices, please"
                             : formatIncapableFix fixI <> ":"
