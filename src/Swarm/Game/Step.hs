@@ -1558,14 +1558,13 @@ execConst c vs s k = do
     currentContext <- use $ robotContext . defReqs
     em <- use entityMap
     creative <- use creativeMode
-    let
-      -- Note that _capCtx must be empty: at least at the
-      -- moment, definitions are only allowed at the top level,
-      -- so there can't be any inside the argument to build.
-      -- (Though perhaps there is an argument that this ought to be
-      -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
-      -- See #349
-      (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentContext cmd
+    let -- Note that _capCtx must be empty: at least at the
+        -- moment, definitions are only allowed at the top level,
+        -- so there can't be any inside the argument to build.
+        -- (Though perhaps there is an argument that this ought to be
+        -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
+        -- See #349
+        (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentContext cmd
 
     -- Check that all required device names exist, and fail with
     -- an exception if not
@@ -1581,36 +1580,35 @@ execConst c vs s k = do
             )
     let reqInv = E.fromElems reqElems
 
-    let
-      -- List of possible devices per requirement.  Devices for
-      -- required capabilities come first, then singleton devices
-      -- that are required directly.  This order is important since
-      -- later we zip required capabilities with this list to figure
-      -- out which capabilities are missing.
-      capDevices = map (`deviceForCap` em) caps ++ map (: []) devs
+    let -- List of possible devices per requirement.  Devices for
+        -- required capabilities come first, then singleton devices
+        -- that are required directly.  This order is important since
+        -- later we zip required capabilities with this list to figure
+        -- out which capabilities are missing.
+        capDevices = map (`deviceForCap` em) caps ++ map (: []) devs
 
-      -- A device is OK if it is available in the inventory of the
-      -- parent robot, or already installed in the child robot.
-      deviceOK d = parentInventory `E.contains` d || childDevices `E.contains` d
+        -- A device is OK if it is available in the inventory of the
+        -- parent robot, or already installed in the child robot.
+        deviceOK d = parentInventory `E.contains` d || childDevices `E.contains` d
 
-      -- take a pair of device sets providing capabilities that is
-      -- split into (AVAIL,MISSING) and if there are some available
-      -- ignore missing because we only need them for error message
-      ignoreOK ([], miss) = ([], miss)
-      ignoreOK (ds, _miss) = (ds, [])
+        -- take a pair of device sets providing capabilities that is
+        -- split into (AVAIL,MISSING) and if there are some available
+        -- ignore missing because we only need them for error message
+        ignoreOK ([], miss) = ([], miss)
+        ignoreOK (ds, _miss) = (ds, [])
 
-      (deviceSets, missingDeviceSets) =
-        Lens.over both (nubOrd . map S.fromList) . unzip $
-          map (ignoreOK . L.partition deviceOK) capDevices
+        (deviceSets, missingDeviceSets) =
+          Lens.over both (nubOrd . map S.fromList) . unzip $
+            map (ignoreOK . L.partition deviceOK) capDevices
 
-      formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
-      -- capabilities not provided by any device in inventory
-      missingCaps = S.fromList . map fst . filter (null . snd) $ zip caps deviceSets
+        formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
+        -- capabilities not provided by any device in inventory
+        missingCaps = S.fromList . map fst . filter (null . snd) $ zip caps deviceSets
 
-      alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
+        alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
 
-      -- Figure out what is missing from the required inventory
-      missingChildInv = reqInv `E.difference` childInventory
+        -- Figure out what is missing from the required inventory
+        missingChildInv = reqInv `E.difference` childInventory
 
     if creative
       then -- In creative mode, just return ALL the devices
