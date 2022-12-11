@@ -88,6 +88,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
+import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
@@ -465,7 +466,7 @@ drawModal s = \case
   HelpModal -> helpWidget (s ^. gameState . seed) (s ^. runtimeState . webPort)
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
-  CommandsModal -> availableListWidget (s ^. gameState) CommandList
+  CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
@@ -672,18 +673,16 @@ helpWidget theSeed mport =
     , ("Meta-t", "focus on the info panel")
     ]
 
-data NotificationList = RecipeList | CommandList | MessageList
+data NotificationList = RecipeList | MessageList
 
 availableListWidget :: GameState -> NotificationList -> Widget Name
 availableListWidget gs nl = padTop (Pad 1) $ vBox widgetList
  where
   widgetList = case nl of
     RecipeList -> mkAvailableList gs availableRecipes renderRecipe
-    CommandList -> mkAvailableList gs availableCommands renderCommand & (<> constWiki) . (padLeftRight 18 constHeader :)
     MessageList -> messagesWidget gs
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
-  renderCommand = padLeftRight 18 . drawConst
 
 mkAvailableList :: GameState -> Lens' GameState (Notifications a) -> (a -> Widget Name) -> [Widget Name]
 mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map padRender knowns
@@ -697,21 +696,55 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
         ]
     | otherwise = []
 
-constHeader :: Widget Name
-constHeader = padBottom (Pad 1) $ withAttr robotAttr $ padLeft (Pad 1) $ txt "command name : type"
-
-constWiki :: [Widget Name]
-constWiki =
-  padLeftRight 13
-    <$> [ padTop (Pad 2) $ txt "For the full list of available commands see the Wiki at:"
-        , txt "https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet"
-        ]
-
-drawConst :: Const -> Widget Name
-drawConst c = hBox [padLeft (Pad $ 13 - T.length constName) (txt constName), txt constSig]
+commandsListWidget :: GameState -> Widget Name
+commandsListWidget gs =
+  hCenter $
+    vBox
+      [ table
+      , padTop (Pad 1) $ txt "For the full list of available commands see the Wiki at:"
+      , txt "https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet"
+      ]
  where
-  constName = syntax . constInfo $ c
-  constSig = " : " <> prettyText (inferConst c)
+  commands = gs ^. availableCommands . notificationsContent
+  table =
+    BT.renderTable
+      . BT.surroundingBorder False
+      . BT.columnBorders False
+      . BT.rowBorders False
+      . BT.setDefaultColAlignment BT.AlignLeft
+      . BT.alignRight 0
+      . BT.table
+      $ headers : commandsTable
+  headers =
+    withAttr robotAttr
+      <$> [ txt "command name"
+          , txt " : type"
+          , txt "Enabled by"
+          ]
+
+  commandsTable = mkCmdRow <$> commands
+  mkCmdRow cmd =
+    map
+      (padTop $ Pad 1)
+      [ txt $ syntax $ constInfo cmd
+      , padRight (Pad 2) $ txt $ " : " <> prettyText (inferConst cmd)
+      , listDevices cmd
+      ]
+
+  base = gs ^? baseRobot
+  entsByCap = case base of
+    Just r ->
+      M.map NE.toList $
+        entitiesByCapability $
+          (r ^. installedDevices) `union` (r ^. robotInventory)
+    Nothing -> mempty
+
+  listDevices cmd = vBox $ map drawLabelledEntityName providerDevices
+   where
+    providerDevices =
+      concatMap (flip (M.findWithDefault []) entsByCap) $
+        maybeToList $
+          constCaps cmd
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
