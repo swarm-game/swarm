@@ -117,15 +117,15 @@ library
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.Menus
-                      Swarm.TUI.Model.Names
+                      Swarm.TUI.Model.Menu
+                      Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
-                      Swarm.TUI.Model.StateUpdates
+                      Swarm.TUI.Model.StateUpdate
                       Swarm.TUI.Model.UI
                       Swarm.TUI.View
-                      Swarm.TUI.View.Utils
+                      Swarm.TUI.View.Util
                       Swarm.TUI.Controller
-                      Swarm.TUI.Controller.Utils
+                      Swarm.TUI.Controller.Util
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
                       Swarm.Version

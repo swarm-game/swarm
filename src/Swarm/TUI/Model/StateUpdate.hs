@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Swarm.TUI.Model.StateUpdates (
+module Swarm.TUI.Model.StateUpdate (
   initAppState,
   startGame,
   restartGame,
@@ -31,6 +31,7 @@ import Swarm.Game.State
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.UI
 import System.Clock
 
 -- | Initialize the 'AppState'.

@@ -98,7 +98,7 @@ import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Panel
-import Swarm.TUI.View.Utils
+import Swarm.TUI.View.Util
 import Swarm.Util
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.View.Utils where
+module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction)
 import Brick.Widgets.Dialog

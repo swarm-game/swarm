@@ -36,22 +36,30 @@ module Swarm.TUI.Model.UI (
   uiFPS,
   scenarioRef,
   appData,
+
+  -- ** Initialization
+  initFocusRing,
+  initLgTicksPerSecond,
+  initUIState,
 ) where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
+import Control.Monad.Except
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Map (Map)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Model.Menus
-import Swarm.TUI.Model.Names
+import Swarm.TUI.Model.Menu
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
+import Swarm.Util
 import System.Clock
 
 ------------------------------------------------------------
@@ -223,3 +231,58 @@ accumulatedTime :: Lens' UIState TimeSpec
 -- | Free-form data loaded from the @data@ directory, for things like
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' UIState (Map Text Text)
+
+--------------------------------------------------
+-- UIState initialization
+
+-- | The initial state of the focus ring.
+initFocusRing :: FocusRing Name
+initFocusRing = focusRing $ map FocusablePanel listEnums
+
+-- | The initial tick speed.
+initLgTicksPerSecond :: Int
+initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
+
+-- | Initialize the UI state.  This needs to be in the IO monad since
+--   it involves reading a REPL history file, getting the current
+--   time, and loading text files from the data directory.  The @Bool@
+--   parameter indicates whether we should start off by showing the
+--   main menu.
+initUIState :: Bool -> Bool -> ExceptT Text IO UIState
+initUIState showMainMenu cheatMode = liftIO $ do
+  historyT <- readFileMayT =<< getSwarmHistoryPath False
+  appDataMap <- readAppData
+  let history = maybe [] (map REPLEntry . T.lines) historyT
+  startTime <- getTime Monotonic
+  return $
+    UIState
+      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      , _uiPlaying = not showMainMenu
+      , _uiCheatMode = cheatMode
+      , _uiFocusRing = initFocusRing
+      , _uiWorldCursor = Nothing
+      , _uiREPL = initREPLState $ newREPLHistory history
+      , _uiInventory = Nothing
+      , _uiInventorySort = defaultSortOptions
+      , _uiMoreInfoTop = False
+      , _uiMoreInfoBot = False
+      , _uiScrollToEnd = False
+      , _uiError = Nothing
+      , _uiModal = Nothing
+      , _uiGoal = Nothing
+      , _uiShowFPS = False
+      , _uiShowZero = True
+      , _uiHideRobotsUntil = startTime - 1
+      , _uiInventoryShouldUpdate = False
+      , _uiTPF = 0
+      , _uiFPS = 0
+      , _lgTicksPerSecond = initLgTicksPerSecond
+      , _lastFrameTime = startTime
+      , _accumulatedTime = 0
+      , _lastInfoTime = 0
+      , _tickCount = 0
+      , _frameCount = 0
+      , _frameTickCount = 0
+      , _appData = appDataMap
+      , _scenarioRef = Nothing
+      }
