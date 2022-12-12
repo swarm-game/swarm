@@ -97,6 +97,9 @@ library
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
                       Swarm.Game.Scenario
+                      Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.Display
                       Swarm.Game.Entity
