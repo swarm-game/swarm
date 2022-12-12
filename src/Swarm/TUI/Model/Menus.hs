@@ -44,9 +44,14 @@ data ModalType
   | KeepPlayingModal
   | DescriptionModal Entity
   | GoalModal [Text]
-  deriving (Eq, Show)
+  deriving (Show)
 
-data ButtonSelection = CancelButton | KeepPlayingButton | StartOverButton Seed ScenarioInfoPair | QuitButton | NextButton ScenarioInfoPair
+data ButtonSelection
+  = CancelButton
+  | KeepPlayingButton
+  | StartOverButton Seed ScenarioInfoPair
+  | QuitButton
+  | NextButton ScenarioInfoPair
 
 data Modal = Modal
   { _modalType :: ModalType
