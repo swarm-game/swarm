@@ -2,7 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Swarm.Game.Scenario.Cell (
-  Cell (..),
+  PCell (..),
+  Cell,
 ) where
 
 import Control.Lens hiding (from, (<.>))
@@ -22,12 +23,18 @@ import Swarm.Util.Yaml
 
 -- | A single cell in a world map, which contains a terrain value,
 --   and optionally an entity and robot.
-data Cell = Cell
+--   It is parameterized on the Entity type to facilitate less
+--   stateful versions of the Entity type in rendering scenario data.
+data PCell e = Cell
   { cellTerrain :: TerrainType
-  , cellEntity :: Maybe Entity
+  , cellEntity :: Maybe e
   , cellRobots :: [IndexedTRobot]
   }
   deriving (Eq, Show)
+
+-- | A single cell in a world map, which contains a terrain value,
+--   and optionally an entity and robot.
+type Cell = PCell Entity
 
 -- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
 --   entity and robot, if present, are immediately looked up and

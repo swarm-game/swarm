@@ -23,8 +23,10 @@ module Swarm.Game.Scenario (
   objectiveCondition,
 
   -- * WorldDescription
-  Cell (..),
-  WorldDescription (..),
+  PCell (..),
+  Cell,
+  PWorldDescription (..),
+  WorldDescription,
   IndexedTRobot,
 
   -- * Scenario
