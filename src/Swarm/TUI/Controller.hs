@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- Module      :  Swarm.TUI.Controller
@@ -81,6 +80,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.TUI.Controller.Utils
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
@@ -91,24 +91,6 @@ import Swarm.Util hiding ((<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
-
--- | Pattern synonyms to simplify brick event handler
-pattern Key :: V.Key -> BrickEvent n e
-pattern Key k = VtyEvent (V.EvKey k [])
-
-pattern CharKey, ControlChar, MetaChar :: Char -> BrickEvent n e
-pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
-pattern ControlChar c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
-pattern MetaChar c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
-
-pattern ShiftKey :: V.Key -> BrickEvent n e
-pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
-
-pattern EscapeKey :: BrickEvent n e
-pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
-
-pattern FKey :: Int -> BrickEvent n e
-pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()

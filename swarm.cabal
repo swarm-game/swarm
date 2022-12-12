@@ -123,7 +123,9 @@ library
                       Swarm.TUI.Model.StateUpdates
                       Swarm.TUI.Model.UI
                       Swarm.TUI.View
+                      Swarm.TUI.View.Utils
                       Swarm.TUI.Controller
+                      Swarm.TUI.Controller.Utils
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
                       Swarm.Version
