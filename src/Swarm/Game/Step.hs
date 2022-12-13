@@ -1499,11 +1499,11 @@ execConst c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
-  installSelf
-    :: (HasRobotStepState sig m, Has (Lift IO) sig m)
-    => Entity
-    -> Bool
-    -> m ()
+  installSelf ::
+    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    Entity ->
+    Bool ->
+    m ()
   installSelf item viewingSelf = do
     -- Don't do anything if the robot already has the device.
     already <- use (installedDevices . to (`E.contains` item))
