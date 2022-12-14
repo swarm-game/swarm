@@ -222,11 +222,10 @@ make ::
   -- a function to add results and the recipe repeated
   Either
     [MissingIngredient]
-    (Inventory, Inventory -> Inventory, Recipe Entity)
+    (Inventory, IngredientList Entity, Recipe Entity)
 make invs r = finish <$> make' invs r
  where
-  finish (invTaken, out) = (invTaken, addOuts out, r)
-  addOuts out inv' = foldl' (flip $ uncurry insertCount) inv' out
+  finish (invTaken, out) = (invTaken, out, r)
 
 -- | Try to make a recipe, but do not insert it yet.
 make' :: (Inventory, Inventory) -> Recipe Entity -> Either [MissingIngredient] (Inventory, IngredientList Entity)

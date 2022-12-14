@@ -91,22 +91,23 @@ module Swarm.Game.CESK (
 
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson qualified
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
+import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Swarm.Game.Entity (Entity, Inventory)
+import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
-import Swarm.Game.World (World)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Types
 import Witch (from)
+import Swarm.Util.Location (Location)
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -167,7 +168,7 @@ data Frame
     --   a command.
     FDiscardEnv
   | -- | Apply specific updates to the world and current robot.
-    FImmediate WorldUpdate RobotUpdate
+    FImmediate Const [WorldUpdate] [RobotUpdate]
   | -- | Update the memory cell at a certain location with the computed value.
     FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
@@ -358,40 +359,23 @@ prettyFrame FExec = "exec _"
 prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
 prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FDiscardEnv = "discardEnv"
-prettyFrame FImmediate {} = "(_ : cmd a)"
+prettyFrame (FImmediate c w r) = unwords ["immediate@" <> T.unpack (Syntax.syntax $ Syntax.constInfo c), show w, show r]
 prettyFrame (FUpdate loc) = "store@" ++ show loc ++ "(_)"
 prettyFrame FFinishAtomic = "finishAtomic"
 prettyFrame (FMeetAll _f _rs) = "meetAll"
 
 --------------------------------------------------------------
 -- Wrappers for functions in FImmediate
---
--- NOTE: we can not use GameState and Robot directly, as it
--- would create a cyclic dependency. The alternative is
--- making CESK, Cont and Frame polymorphic which just muddies
--- the picture too much for one little game feature.
---
--- BEWARE: the types do not follow normal laws for Show and Eq
 --------------------------------------------------------------
 
-newtype WorldUpdate = WorldUpdate
-  { worldUpdate :: World Int Entity -> Either Exn (World Int Entity)
+data WorldUpdate = ReplaceEntity
+  { updatedLoc :: Location
+  , originalEntity :: Entity
+  , newEntity :: Maybe Entity
   }
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
-newtype RobotUpdate = RobotUpdate
-  { robotUpdateInventory :: Inventory -> Inventory
-  }
-
-instance Show WorldUpdate where show _ = "WorldUpdate {???}"
-
-instance Show RobotUpdate where show _ = "RobotUpdate {???}"
-
-instance Eq WorldUpdate where _ == _ = True
-
-instance Eq RobotUpdate where _ == _ = True
-
--- TODO: remove these instances once Update fields are concret
-instance FromJSON WorldUpdate where parseJSON _ = pure $ WorldUpdate $ \w -> Right w
-instance ToJSON WorldUpdate where toJSON _ = Data.Aeson.Null
-instance FromJSON RobotUpdate where parseJSON _ = pure $ RobotUpdate id
-instance ToJSON RobotUpdate where toJSON _ = Data.Aeson.Null
+data RobotUpdate
+  = AddEntity Count Entity
+  | LearnEntity Entity
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
