@@ -21,6 +21,7 @@ module Swarm.Util (
   uniq,
   getElemsInArea,
   manhattan,
+  binTuples,
 
   -- * Directory utilities
   readFileMay,
@@ -84,6 +85,7 @@ import Data.Either.Validation
 import Data.Int (Int64)
 import Data.List (maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -203,6 +205,16 @@ getElemsInArea o@(V2 x y) d m = M.elems sm'
       & M.split (V2 (x + d) (y + 1)) -- B
       & fst -- B>
   sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
+
+-- | Place the second element of the tuples into bins by
+-- the value of the first element.
+binTuples ::
+  (Foldable t, Ord a) =>
+  t (a, b) ->
+  Map a (NE.NonEmpty b)
+binTuples = foldr f mempty
+ where
+  f = uncurry (M.insertWith (<>)) . fmap pure
 
 ------------------------------------------------------------
 -- Directory stuff

@@ -137,9 +137,9 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/place"
         , testSolution Default "Tutorials/types"
         , testSolution Default "Tutorials/type-errors"
-        , testSolution Default "Tutorials/bind"
         , testSolution Default "Tutorials/install"
         , testSolution Default "Tutorials/build"
+        , testSolution Default "Tutorials/bind2"
         , testSolution' Default "Tutorials/crash" $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
