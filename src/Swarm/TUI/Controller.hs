@@ -230,8 +230,10 @@ handleMainEvent ev = do
           safeAutoUnpause
           uiState . uiModal .= Nothing
           -- message modal is not autopaused, so update notifications when leaving it
-          when (m ^. modalType == MessagesModal) $ do
-            gameState . lastSeenMessageTime .= s ^. gameState . ticks
+          case m ^. modalType of
+            MessagesModal -> do
+              gameState . lastSeenMessageTime .= s ^. gameState . ticks
+            _ -> return ()
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -351,11 +353,14 @@ toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
   modal <- use $ uiState . uiModal
   case modal of
-    Nothing -> do
-      newModal <- gets $ flip generateModal mt
-      ensurePause
-      uiState . uiModal ?= newModal
+    Nothing -> openModal mt
     Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
+
+openModal :: ModalType -> EventM Name AppState ()
+openModal mt = do
+  newModal <- gets $ flip generateModal mt
+  ensurePause
+  uiState . uiModal ?= newModal
  where
   -- Set the game to AutoPause if needed
   ensurePause = do
@@ -365,7 +370,10 @@ toggleModal mt = do
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
-isRunningModal mt = mt `elem` [RobotsModal, MessagesModal]
+isRunningModal = \case
+  RobotsModal -> True
+  MessagesModal -> True
+  _ -> False
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
