@@ -18,14 +18,14 @@ objectives:
       - |
         You win by building your first robot:
       - |
-        build {log "Hello World!"}
+        build {}
     condition: |
       try {
         _ <- robotNumbered 1;
         return true;
       } { return false }
 solution: |
-  turn south; move; grab; install base "3D printer"; build {log "Hello World!"};
+  turn south; move; grab; install base "3D printer"; build {};
 robots:
   - name: base
     dir: [1,0]
