@@ -737,6 +737,23 @@
   capabilities: [grab, swap, give, place, install, atomic]
   properties: [portable]
 
+- name: welder
+  display:
+    attr: device
+    char: 'f'
+  description:
+  - |
+    A welder can be used to affix other gadgets to one's robot, providing
+    the `equip` and `unequip` commands.
+  - |
+    The `equip` command takes one argument: the name of the device to equip.
+    Raises an exception if the device is not in your inventory.
+  - |
+    The `unequip` command takes one argument: the name of the device to unequip.
+    Raises an exception if the device is not equipped.
+  capabilities: [equip, unequip]
+  properties: [portable]
+
 - name: harvester
   display:
     attr: device
