@@ -230,7 +230,8 @@ requirements' = go
     -- lambda.
     TLet r x _ t1 t2 ->
       (if r then insert (ReqCap CRecursion) else id) $
-        insert (ReqCap CEnv) $ go (Ctx.delete x ctx) t1 <> go (Ctx.delete x ctx) t2
+        insert (ReqCap CEnv) $
+          go (Ctx.delete x ctx) t1 <> go (Ctx.delete x ctx) t2
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
     TBind mx t1 t2 -> go ctx t1 <> go (maybe id Ctx.delete mx ctx) t2

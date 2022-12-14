@@ -1,7 +1,7 @@
 ## Developing
 
 > The extension was created using [`yo code`](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide#developing-a-new-grammar-extension)
-> and further extended to suport LSP by including modified
+> and further extended to support LSP by including modified
 > [Microsoft lsp-sample](https://github.com/microsoft/vscode-extension-samples/tree/main/lsp-sample).
 >
 > As a note, this is deliberately a separate file from `README.md` which shows in the VSCode extension view.

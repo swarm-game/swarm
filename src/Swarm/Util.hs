@@ -17,9 +17,11 @@ module Swarm.Util (
   maxOn,
   maximum0,
   cycleEnum,
+  listEnums,
   uniq,
   getElemsInArea,
   manhattan,
+  binTuples,
 
   -- * Directory utilities
   readFileMay,
@@ -83,6 +85,7 @@ import Data.Either.Validation
 import Data.Int (Int64)
 import Data.List (maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -148,6 +151,9 @@ cycleEnum e
   | e == maxBound = minBound
   | otherwise = succ e
 
+listEnums :: (Enum e, Bounded e) => [e]
+listEnums = [minBound .. maxBound]
+
 -- | Drop repeated elements that are adjacent to each other.
 --
 -- >>> uniq []
@@ -199,6 +205,16 @@ getElemsInArea o@(V2 x y) d m = M.elems sm'
       & M.split (V2 (x + d) (y + 1)) -- B
       & fst -- B>
   sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
+
+-- | Place the second element of the tuples into bins by
+-- the value of the first element.
+binTuples ::
+  (Foldable t, Ord a) =>
+  t (a, b) ->
+  Map a (NE.NonEmpty b)
+binTuples = foldr f mempty
+ where
+  f = uncurry (M.insertWith (<>)) . fmap pure
 
 ------------------------------------------------------------
 -- Directory stuff
@@ -346,9 +362,9 @@ indefiniteQ w = MM.indefiniteDet w <+> squote w
 singularSubjectVerb :: Text -> Text -> Text
 singularSubjectVerb sub verb
   | verb == "be" = case toUpper sub of
-    "I" -> "I am"
-    "YOU" -> sub <+> "are"
-    _ -> sub <+> "is"
+      "I" -> "I am"
+      "YOU" -> sub <+> "are"
+      _ -> sub <+> "is"
   | otherwise = sub <+> (if is3rdPerson then verb3rd else verb)
  where
   is3rdPerson = toUpper sub `notElem` ["I", "YOU"]

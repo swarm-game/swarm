@@ -90,20 +90,20 @@ instance Ord ZonedTime where
 data ScenarioStatus
   = NotStarted
   | InProgress
-      { -- | Time when the scenario was started including time zone.
-        _scenarioStarted :: ZonedTime
-      , -- | Time elapsed until quitting the scenario.
-        _scenarioElapsed :: NominalDiffTime
-      , -- | Ticks elapsed until quitting the scenario.
-        _scenarioElapsedTicks :: Integer
+      { _scenarioStarted :: ZonedTime
+      -- ^ Time when the scenario was started including time zone.
+      , _scenarioElapsed :: NominalDiffTime
+      -- ^ Time elapsed until quitting the scenario.
+      , _scenarioElapsedTicks :: Integer
+      -- ^ Ticks elapsed until quitting the scenario.
       }
   | Complete
-      { -- | Time when the scenario was started including time zone.
-        _scenarioStarted :: ZonedTime
-      , -- | Time elapsed until quitting the scenario.
-        _scenarioElapsed :: NominalDiffTime
-      , -- | Ticks elapsed until quitting the scenario.
-        _scenarioElapsedTicks :: Integer
+      { _scenarioStarted :: ZonedTime
+      -- ^ Time when the scenario was started including time zone.
+      , _scenarioElapsed :: NominalDiffTime
+      -- ^ Time elapsed until quitting the scenario.
+      , _scenarioElapsedTicks :: Integer
+      -- ^ Ticks elapsed until quitting the scenario.
       }
   deriving (Eq, Ord, Show, Read, Generic)
 
@@ -256,7 +256,10 @@ loadScenarioDir em dir = do
     False -> do
       when (dirName /= "Testing") $
         sendIO . putStrLn $
-          "Warning: no " <> orderFileName <> " file found in " <> dirName
+          "Warning: no "
+            <> orderFileName
+            <> " file found in "
+            <> dirName
             <> ", using alphabetical order"
       return Nothing
     True -> Just . filter (not . null) . lines <$> sendIO (readFile orderFile)
@@ -269,18 +272,21 @@ loadScenarioDir em dir = do
 
       unless (null missing) $
         sendIO . putStr . unlines $
-          ( "Warning: while processing " <> (dirName </> orderFileName) <> ": files not listed in "
+          ( "Warning: while processing "
+              <> (dirName </> orderFileName)
+              <> ": files not listed in "
               <> orderFileName
               <> " will be ignored"
-          ) :
-          map ("  - " <>) missing
+          )
+            : map ("  - " <>) missing
 
       unless (null dangling) $
         sendIO . putStr . unlines $
-          ( "Warning: while processing " <> (dirName </> orderFileName)
+          ( "Warning: while processing "
+              <> (dirName </> orderFileName)
               <> ": nonexistent files will be ignored"
-          ) :
-          map ("  - " <>) dangling
+          )
+            : map ("  - " <>) dangling
     Nothing -> pure ()
 
   -- Only keep the files from 00-ORDER.txt that actually exist.

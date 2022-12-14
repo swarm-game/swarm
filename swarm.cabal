@@ -97,6 +97,9 @@ library
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
                       Swarm.Game.Scenario
+                      Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.Display
                       Swarm.Game.Entity
@@ -114,8 +117,15 @@ library
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
+                      Swarm.TUI.Model.Menu
+                      Swarm.TUI.Model.Name
+                      Swarm.TUI.Model.Repl
+                      Swarm.TUI.Model.StateUpdate
+                      Swarm.TUI.Model.UI
                       Swarm.TUI.View
+                      Swarm.TUI.View.Util
                       Swarm.TUI.Controller
+                      Swarm.TUI.Controller.Util
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
                       Swarm.Version

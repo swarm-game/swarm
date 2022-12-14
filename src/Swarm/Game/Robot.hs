@@ -111,20 +111,20 @@ import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
 -- | A record that stores the information
---   for all defintions stored in a 'Robot'
+--   for all definitions stored in a 'Robot'
 data RobotContext = RobotContext
-  { -- | Map definition names to their types.
-    _defTypes :: TCtx
-  , -- | Map defintion names to the capabilities
-    --   required to evaluate/execute them.
-    _defReqs :: ReqCtx
-  , -- | Map defintion names to their values. Note that since
-    --   definitions are delayed, the values will just consist of
-    --   'VRef's pointing into the store.
-    _defVals :: Env
-  , -- | A store containing memory cells allocated to hold
-    --   definitions.
-    _defStore :: Store
+  { _defTypes :: TCtx
+  -- ^ Map definition names to their types.
+  , _defReqs :: ReqCtx
+  -- ^ Map definition names to the capabilities
+  --   required to evaluate/execute them.
+  , _defVals :: Env
+  -- ^ Map definition names to their values. Note that since
+  --   definitions are delayed, the values will just consist of
+  --   'VRef's pointing into the store.
+  , _defStore :: Store
+  -- ^ A store containing memory cells allocated to hold
+  --   definitions.
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -147,11 +147,13 @@ instance At RobotContext where
         req <- Ctx.lookup name (ctx ^. defReqs)
         return $ Typed val typ req
     setter ctx Nothing =
-      ctx & defTypes %~ Ctx.delete name
+      ctx
+        & defTypes %~ Ctx.delete name
         & defVals %~ Ctx.delete name
         & defReqs %~ Ctx.delete name
     setter ctx (Just (Typed val typ req)) =
-      ctx & defTypes %~ Ctx.addBinding name typ
+      ctx
+        & defTypes %~ Ctx.addBinding name typ
         & defVals %~ Ctx.addBinding name val
         & defReqs %~ Ctx.addBinding name req
 
@@ -160,19 +162,19 @@ data LogSource = Said | Logged | ErrorTrace
 
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
-  { -- | The time at which the entry was created.
-    --   Note that this is the first field we sort on.
-    _leTime :: Integer
-  , -- | Whether this log records a said message.
-    _leSaid :: LogSource
-  , -- | The name of the robot that generated the entry.
-    _leRobotName :: Text
-  , -- | The ID of the robot that generated the entry.
-    _leRobotID :: Int
-  , -- | Location of the robot at log entry creation.
-    _leLocation :: V2 Int64
-  , -- | The text of the log entry.
-    _leText :: Text
+  { _leTime :: Integer
+  -- ^ The time at which the entry was created.
+  --   Note that this is the first field we sort on.
+  , _leSaid :: LogSource
+  -- ^ Whether this log records a said message.
+  , _leRobotName :: Text
+  -- ^ The name of the robot that generated the entry.
+  , _leRobotID :: Int
+  -- ^ The ID of the robot that generated the entry.
+  , _leLocation :: V2 Int64
+  -- ^ Location of the robot at log entry creation.
+  , _leText :: Text
+  -- ^ The text of the log entry.
   }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
@@ -207,9 +209,9 @@ type family RobotID (phase :: RobotPhase) :: * where
 data RobotR (phase :: RobotPhase) = RobotR
   { _robotEntity :: Entity
   , _installedDevices :: Inventory
-  , -- | A cached view of the capabilities this robot has.
-    --   Automatically generated from '_installedDevices'.
-    _robotCapabilities :: Set Capability
+  , _robotCapabilities :: Set Capability
+  -- ^ A cached view of the capabilities this robot has.
+  --   Automatically generated from '_installedDevices'.
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
   , _robotLocation :: RobotLocation phase

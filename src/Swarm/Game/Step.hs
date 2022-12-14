@@ -371,7 +371,7 @@ tickRobot r = do
 tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobotRec r
   | isActive r && (r ^. runningAtomic || r ^. tickSteps > 0) =
-    stepRobot r >>= tickRobotRec
+      stepRobot r >>= tickRobotRec
   | otherwise = return r
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
@@ -460,7 +460,7 @@ stepCESK cesk = case cesk of
   Out v2 s (FApp (VCApp c args) : k)
     | not (isCmd c)
         && arity c == length args + 1 ->
-      evalConst c (reverse (v2 : args)) s k
+        evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
   -- To evaluate non-recursive let expressions, we start by focusing on the
@@ -1630,10 +1630,10 @@ execConst c vs s k = do
       else do
         -- check if robot has all devices to execute new command
         all null missingDeviceSets
-          `holdsOrFail` ( singularSubjectVerb subject "do" :
-                          "not have required devices, please" :
-                          formatIncapableFix fixI <> ":" :
-                          (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
+          `holdsOrFail` ( singularSubjectVerb subject "do"
+                            : "not have required devices, please"
+                            : formatIncapableFix fixI <> ":"
+                            : (("\n  - " <>) . formatDevices <$> filter (not . null) missingDeviceSets)
                         )
         -- check that there are in fact devices to provide every required capability
         not (any null deviceSets) `holdsOr` Incapable fixI (R.Requirements missingCaps S.empty M.empty) cmd
@@ -1697,20 +1697,20 @@ execConst c vs s k = do
       Just e
         | systemRob -> return ()
         | otherwise -> do
-          -- robots can not walk through walls
-          when (e `hasProperty` Unwalkable) $
-            case failIfBlocked of
-              Destroy -> destroyIfNotBase
-              ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
-              IgnoreFail -> return ()
+            -- robots can not walk through walls
+            when (e `hasProperty` Unwalkable) $
+              case failIfBlocked of
+                Destroy -> destroyIfNotBase
+                ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
+                IgnoreFail -> return ()
 
-          -- robots drown if they walk over liquid without boat
-          caps <- use robotCapabilities
-          when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
-            case failIfDrown of
-              Destroy -> destroyIfNotBase
-              ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
-              IgnoreFail -> return ()
+            -- robots drown if they walk over liquid without boat
+            caps <- use robotCapabilities
+            when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
+              case failIfDrown of
+                Destroy -> destroyIfNotBase
+                ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+                IgnoreFail -> return ()
 
   getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
   getRobotWithinTouch rid = do
@@ -1869,11 +1869,11 @@ updateRobotLocation ::
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()
   | otherwise = do
-    rid <- use robotID
-    robotsByLocation . at oldLoc %= deleteOne rid
-    robotsByLocation . at newLoc . non Empty %= IS.insert rid
-    modify (unsafeSetRobotLocation newLoc)
-    flagRedraw
+      rid <- use robotID
+      robotsByLocation . at oldLoc %= deleteOne rid
+      robotsByLocation . at newLoc . non Empty %= IS.insert rid
+      modify (unsafeSetRobotLocation newLoc)
+      flagRedraw
  where
   -- Make sure empty sets don't hang around in the
   -- robotsByLocation map.  We don't want a key with an

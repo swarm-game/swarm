@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- Module      :  Swarm.TUI.Controller
@@ -49,6 +48,7 @@ import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
 import Control.Lens.Extras (is)
 import Control.Monad.Except
+import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
@@ -80,32 +80,17 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
-
--- | Pattern synonyms to simplify brick event handler
-pattern Key :: V.Key -> BrickEvent n e
-pattern Key k = VtyEvent (V.EvKey k [])
-
-pattern CharKey, ControlChar, MetaChar :: Char -> BrickEvent n e
-pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
-pattern ControlChar c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
-pattern MetaChar c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
-
-pattern ShiftKey :: V.Key -> BrickEvent n e
-pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
-
-pattern EscapeKey :: BrickEvent n e
-pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
-
-pattern FKey :: Int -> BrickEvent n e
-pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -242,11 +227,13 @@ handleMainEvent ev = do
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do
-        safeAutoUnpause
-        uiState . uiModal .= Nothing
-        -- message modal is not autopaused, so update notifications when leaving it
-        when (m ^. modalType == MessagesModal) $ do
-          gameState . lastSeenMessageTime .= s ^. gameState . ticks
+          safeAutoUnpause
+          uiState . uiModal .= Nothing
+          -- message modal is not autopaused, so update notifications when leaving it
+          case m ^. modalType of
+            MessagesModal -> do
+              gameState . lastSeenMessageTime .= s ^. gameState . ticks
+            _ -> return ()
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -292,34 +279,37 @@ handleMainEvent ev = do
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
     MouseDown n _ _ mouseLoc ->
       case n of
-        WorldPanel -> do
+        FocusablePanel WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
           uiState . uiWorldCursor .= mouseCoordsM
-        REPLInput -> do
-          setFocus REPLPanel
-          handleREPLEvent ev
+        REPLInput -> handleREPLEvent ev
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
         _ -> return ()
-      setFocus $ case n of
+      flip whenJust setFocus $ case n of
         -- Adapt click event origin to their right panel.
         -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
         -- However this does not seems to work for the robot and info panel.
         -- Thus we force the destination focus here.
-        InventoryList -> RobotPanel
-        InventoryListItem _ -> RobotPanel
-        InfoViewport -> InfoPanel
-        _ -> n
+        InventoryList -> Just RobotPanel
+        InventoryListItem _ -> Just RobotPanel
+        InfoViewport -> Just InfoPanel
+        REPLInput -> Just REPLPanel
+        _ -> Nothing
+      case n of
+        FocusablePanel x -> setFocus x
+        _ -> return ()
     -- dispatch any other events to the focused panel handler
     _ev -> do
       fring <- use $ uiState . uiFocusRing
       case focusGetCurrent fring of
-        Just REPLPanel -> handleREPLEvent ev
-        Just WorldPanel -> handleWorldEvent ev
-        Just RobotPanel -> handleRobotPanelEvent ev
-        Just InfoPanel -> handleInfoPanelEvent infoScroll ev
+        Just (FocusablePanel x) -> ($ ev) $ case x of
+          REPLPanel -> handleREPLEvent
+          WorldPanel -> handleWorldEvent
+          RobotPanel -> handleRobotPanelEvent
+          InfoPanel -> handleInfoPanelEvent infoScroll
         _ -> continueWithoutRedraw
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe W.Coords)
@@ -335,8 +325,8 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ W.Coords (mx, my)
 
-setFocus :: Name -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent name
+setFocus :: FocusablePanel -> EventM Name AppState ()
+setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
 --
@@ -363,11 +353,14 @@ toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
   modal <- use $ uiState . uiModal
   case modal of
-    Nothing -> do
-      newModal <- gets $ flip generateModal mt
-      ensurePause
-      uiState . uiModal ?= newModal
+    Nothing -> openModal mt
     Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
+
+openModal :: ModalType -> EventM Name AppState ()
+openModal mt = do
+  newModal <- gets $ flip generateModal mt
+  ensurePause
+  uiState . uiModal ?= newModal
  where
   -- Set the game to AutoPause if needed
   ensurePause = do
@@ -377,7 +370,10 @@ toggleModal mt = do
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
-isRunningModal mt = mt `elem` [RobotsModal, MessagesModal]
+isRunningModal = \case
+  RobotsModal -> True
+  MessagesModal -> True
+  _ -> False
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
@@ -621,12 +617,22 @@ updateUI = do
     -- Otherwise, do nothing.
     _ -> pure False
 
-  -- If the focused robot's log has been updated, attempt to
-  -- automatically switch to it and scroll all the way down so the new
-  -- message can be seen.
+  -- If the focused robot's log has been updated and the UI focus
+  -- isn't currently on the inventory or info panels, attempt to
+  -- automatically switch to the logger and scroll all the way down so
+  -- the new message can be seen.
   uiState . uiScrollToEnd .= False
   logUpdated <- do
-    case maybe False (view robotLogUpdated) fr of
+    -- If the inventory or info panels are currently focused, it would
+    -- be rude to update them right under the user's nose, so consider
+    -- them "sticky".  They will be updated as soon as the player moves
+    -- the focus away.
+    fring <- use $ uiState . uiFocusRing
+    let sticky = focusGetCurrent fring `elem` map (Just . FocusablePanel) [RobotPanel, InfoPanel]
+
+    -- Check if the robot log was updated and we are allowed to change
+    -- the inventory+info panels.
+    case maybe False (view robotLogUpdated) fr && not sticky of
       False -> pure False
       True -> do
         -- Reset the log updated flag
@@ -819,8 +825,8 @@ handleREPLEventTyping = \case
             Just found
               | T.null uinput -> uiState %= resetREPL "" (CmdPrompt [])
               | otherwise -> do
-                uiState %= resetREPL found (CmdPrompt [])
-                modify validateREPLForm
+                  uiState %= resetREPL found (CmdPrompt [])
+                  modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
@@ -886,12 +892,12 @@ tabComplete names em repl = case repl ^. replPromptType of
     -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
     -- repopulates them.
     | otherwise -> case candidateMatches of
-      [] -> setCmd t []
-      [m] -> setCmd (completeWith m) []
-      -- Perform completion with the first candidate, then populate the list
-      -- of all candidates with the current completion moved to the back
-      -- of the queue.
-      (m : ms) -> setCmd (completeWith m) (ms ++ [m])
+        [] -> setCmd t []
+        [m] -> setCmd (completeWith m) []
+        -- Perform completion with the first candidate, then populate the list
+        -- of all candidates with the current completion moved to the back
+        -- of the queue.
+        (m : ms) -> setCmd (completeWith m) (ms ++ [m])
  where
   -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
   hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
@@ -927,17 +933,17 @@ validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
-        let theType = s ^. gameState . replStatus . replActiveType
-         in s & uiState . uiREPL . replType .~ theType
+          let theType = s ^. gameState . replStatus . replActiveType
+           in s & uiState . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-        let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
-            theType = case result of
-              Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
-              _ -> Nothing
-         in s
-              & uiState . uiREPL . replValid .~ isRight result
-              & uiState . uiREPL . replType .~ theType
+          let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
+              theType = case result of
+                Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+                _ -> Nothing
+           in s
+                & uiState . uiREPL . replValid .~ isRight result
+                & uiState . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
   uinput = s ^. uiState . uiREPL . replPromptText

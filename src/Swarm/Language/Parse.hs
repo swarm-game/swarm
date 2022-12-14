@@ -134,7 +134,7 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
     | toLower t `elem` reservedWords =
-      fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+        fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
     | otherwise = return t
    where
     t = into @Text s
@@ -185,11 +185,11 @@ parsePolytype =
     -- Otherwise, require all variables to be explicitly quantified
     | S.null free = return $ Forall xs ty
     | otherwise =
-      fail $
-        unlines
-          [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
-          , "  Try adding them to the 'forall'."
-          ]
+        fail $
+          unlines
+            [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
+            , "  Try adding them to the 'forall'."
+            ]
    where
     free = tyVars ty `S.difference` S.fromList xs
 
@@ -255,18 +255,22 @@ parseTermAtom =
           *> ( ( TRequireDevice
                   <$> (textLiteral <?> "device name in double quotes")
                )
-                <|> ( TRequire <$> (fromIntegral <$> integer)
+                <|> ( TRequire
+                        <$> (fromIntegral <$> integer)
                         <*> (textLiteral <?> "entity name in double quotes")
                     )
              )
-        <|> SLam <$> (symbol "\\" *> identifier)
+        <|> SLam
+          <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> sLet <$> (reserved "let" *> identifier)
+        <|> sLet
+          <$> (reserved "let" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> sDef <$> (reserved "def" *> identifier)
+        <|> sDef
+          <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))

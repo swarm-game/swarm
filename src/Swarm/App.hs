@@ -23,6 +23,7 @@ import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
+import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
@@ -80,10 +81,11 @@ appMain opts = do
       let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
       let logE e = logEvent ErrorTrace ("Web API", -2) (T.pack e)
       let s' =
-            s & runtimeState
-              %~ case eport of
-                Right p -> (webPort ?~ p) . (eventLog %~ logP p)
-                Left e -> eventLog %~ logE e
+            s
+              & runtimeState
+                %~ case eport of
+                  Right p -> (webPort ?~ p) . (eventLog %~ logP p)
+                  Left e -> eventLog %~ logE e
 
       -- Update the reference for every event
       let eventHandler e = do
@@ -91,10 +93,12 @@ appMain opts = do
             liftIO $ writeIORef appStateRef curSt
             handleEvent e
 
-      -- Run the app.
-      let buildVty = V.mkVty V.defaultConfig
+      -- Setup virtual terminal
+      let buildVty = V.mkVty $ V.defaultConfig {V.colorMode = colorMode opts}
       initialVty <- buildVty
       V.setMode (V.outputIface initialVty) V.Mouse True
+
+      -- Run the app.
       void $ customMain initialVty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
@@ -111,6 +115,7 @@ demoWeb = do
           , scriptToRun = Nothing
           , autoPlay = False
           , cheatMode = False
+          , colorMode = Nothing
           , userWebPort = Nothing
           , repoGitInfo = Nothing
           }
