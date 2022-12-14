@@ -353,6 +353,10 @@ data Const
     Chars
   | -- | Split string into two parts.
     Split
+  | -- | Get the character at an index.
+    CharAt
+  | -- | Create a singleton text value with the given character code.
+    ToChar
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -644,6 +648,15 @@ constInfo c = case c of
       [ "To be more specific, the following holds for all `text` values `s1` and `s2`:"
       , "`(s1,s2) == split (chars s1) (s1 ++ s2)`"
       , "So split can be used to undo concatenation if you know the length of the original string."
+      ]
+  CharAt ->
+    function 2 . doc "Get the character at a given index." $
+      [ "Gets the character (as an `int` representing a Unicode codepoint) at a specific index in a `text` value.  Valid indices are 0 through `chars t - 1`."
+      , "Throws an exception if given an out-of-bounds index."
+      ]
+  ToChar ->
+    function 1 . doc "Create a singleton `text` value from the given character code." $
+      [ "That is, `chars (toChar c) == 1` and `charAt 0 (toChar c) == c`."
       ]
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $

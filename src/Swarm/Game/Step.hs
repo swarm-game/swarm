@@ -29,6 +29,7 @@ import Control.Monad (forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
+import Data.Char (chr, ord)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, traverse_)
@@ -1483,6 +1484,19 @@ execConst c vs s k = do
       _ -> badConst
     Concat -> case vs of
       [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) s k
+      _ -> badConst
+    CharAt -> case vs of
+      [VInt i, VText t]
+        | i < 0 || i >= fromIntegral (T.length t) ->
+          raise CharAt ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
+        | otherwise -> return $ Out (VInt . fromIntegral . ord . T.index t . fromIntegral $ i) s k
+      _ -> badConst
+    ToChar -> case vs of
+      [VInt i]
+        | i < 0 || i > fromIntegral (ord (maxBound :: Char)) ->
+          raise ToChar ["Value", prettyValue (VInt i), "is an invalid character code"]
+        | otherwise ->
+          return $ Out (VText . T.singleton . chr . fromIntegral $ i) s k
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"

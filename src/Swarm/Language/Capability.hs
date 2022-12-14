@@ -83,6 +83,8 @@ data Capability
     CLog
   | -- | Manipulate text values
     CText
+  | -- | Convert between characters/text and Unicode values
+    CCode
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
@@ -205,6 +207,8 @@ constCaps = \case
   Concat -> Just CText
   Split -> Just CText
   Chars -> Just CText
+  CharAt -> Just CCode
+  ToChar -> Just CCode
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
