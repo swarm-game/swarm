@@ -1,4 +1,4 @@
-module Swarm.TUI.Model.Names where
+module Swarm.TUI.Model.Name where
 
 data FocusablePanel
   = -- | The panel containing the REPL.

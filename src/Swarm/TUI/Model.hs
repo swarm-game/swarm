@@ -108,11 +108,6 @@ module Swarm.TUI.Model (
   replHistory,
   newREPLEditor,
 
-  -- ** Initialization
-  initFocusRing,
-  initLgTicksPerSecond,
-  initUIState,
-
   -- ** Updating
   populateInventoryList,
   infoScroll,
@@ -147,7 +142,6 @@ module Swarm.TUI.Model (
 ) where
 
 import Brick
-import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
@@ -156,7 +150,6 @@ import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
@@ -170,13 +163,11 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Model.Menus
-import Swarm.TUI.Model.Names
+import Swarm.TUI.Model.Menu
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
-import Swarm.Util
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
-import System.Clock
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -291,61 +282,6 @@ focusedEntity =
     Separator _ -> Nothing
     InventoryEntry _ e -> Just e
     InstalledEntry e -> Just e
-
---------------------------------------------------
--- UIState initialization
-
--- | The initial state of the focus ring.
-initFocusRing :: FocusRing Name
-initFocusRing = focusRing $ map FocusablePanel listEnums
-
--- | The initial tick speed.
-initLgTicksPerSecond :: Int
-initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
-
--- | Initialize the UI state.  This needs to be in the IO monad since
---   it involves reading a REPL history file, getting the current
---   time, and loading text files from the data directory.  The @Bool@
---   parameter indicates whether we should start off by showing the
---   main menu.
-initUIState :: Bool -> Bool -> ExceptT Text IO UIState
-initUIState showMainMenu cheatMode = liftIO $ do
-  historyT <- readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- readAppData
-  let history = maybe [] (map REPLEntry . T.lines) historyT
-  startTime <- getTime Monotonic
-  return $
-    UIState
-      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
-      , _uiPlaying = not showMainMenu
-      , _uiCheatMode = cheatMode
-      , _uiFocusRing = initFocusRing
-      , _uiWorldCursor = Nothing
-      , _uiREPL = initREPLState $ newREPLHistory history
-      , _uiInventory = Nothing
-      , _uiInventorySort = defaultSortOptions
-      , _uiMoreInfoTop = False
-      , _uiMoreInfoBot = False
-      , _uiScrollToEnd = False
-      , _uiError = Nothing
-      , _uiModal = Nothing
-      , _uiGoal = Nothing
-      , _uiShowFPS = False
-      , _uiShowZero = True
-      , _uiHideRobotsUntil = startTime - 1
-      , _uiInventoryShouldUpdate = False
-      , _uiTPF = 0
-      , _uiFPS = 0
-      , _lgTicksPerSecond = initLgTicksPerSecond
-      , _lastFrameTime = startTime
-      , _accumulatedTime = 0
-      , _lastInfoTime = 0
-      , _tickCount = 0
-      , _frameCount = 0
-      , _frameTickCount = 0
-      , _appData = appDataMap
-      , _scenarioRef = Nothing
-      }
 
 ------------------------------------------------------------
 -- Functions for updating the UI state

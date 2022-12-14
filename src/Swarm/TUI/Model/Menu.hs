@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Swarm.TUI.Model.Menus where
+module Swarm.TUI.Model.Menu where
 
 import Brick.Widgets.Dialog (Dialog)
 import Brick.Widgets.List qualified as BL
@@ -24,7 +24,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
  )
 import Swarm.Game.State
-import Swarm.TUI.Model.Names
+import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
 import Witch (into)

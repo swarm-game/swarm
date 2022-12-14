@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 
-module Swarm.TUI.Controller.Utils where
+module Swarm.TUI.Controller.Util where
 
 import Brick hiding (Direction)
 import Graphics.Vty qualified as V

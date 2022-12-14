@@ -57,7 +57,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Swarm.Language.Types
-import Swarm.TUI.Model.Names
+import Swarm.TUI.Model.Name
 
 ------------------------------------------------------------
 -- REPL History
