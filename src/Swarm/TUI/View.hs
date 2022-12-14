@@ -91,13 +91,13 @@ import Swarm.Game.World qualified as W
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.TUI.View.Achievement
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Panel
+import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Utils
 import Swarm.Util
 import Swarm.Version (NewReleaseFailure (..))

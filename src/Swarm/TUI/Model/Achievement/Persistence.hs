@@ -2,10 +2,10 @@
 
 module Swarm.TUI.Model.Achievement.Persistence where
 
-import System.FilePath
 import Data.Text (Text)
 import Data.Time (ZonedTime)
 import Swarm.Util
+import System.FilePath
 
 -- | Get path to swarm achievements, optionally creating necessary
 --   directories.
@@ -29,7 +29,6 @@ loadAchievementsInfo p = do
     else
       sendIO (decodeFileEither infoPath)
         >>= either (throwError . pack . prettyPrintParseException) return
-
 
 -- | Save info about achievements to XDG data directory.
 saveAchievementsInfo ::

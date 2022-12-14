@@ -2,12 +2,6 @@
 
 module Swarm.TUI.Model.Achievement.Attainment where
 
-import GHC.Generics (Generic)
-import Data.Text (Text)
-import Data.Time (ZonedTime)
-import Data.Yaml as Y
-import Data.Char (toLower)
-import Swarm.TUI.Model.Achievement.Definitions
 import Control.Lens hiding (from, (<.>))
 import Data.Aeson (
   Options (..),
@@ -16,13 +10,20 @@ import Data.Aeson (
   genericToEncoding,
   genericToJSON,
  )
+import Data.Char (toLower)
+import Data.Text (Text)
+import Data.Time (ZonedTime)
+import Data.Yaml as Y
+import GHC.Generics (Generic)
+import Swarm.TUI.Model.Achievement.Definitions
 
 data Attainment = Attainment
   { _achievement :: CategorizedAchievement
   , _maybeScenarioPath :: Maybe Text
   -- ^ which scenario was it obtained?
   , _obtainedAt :: ZonedTime
-  } deriving (Generic)
+  }
+  deriving (Generic)
 
 makeLenses ''Attainment
 

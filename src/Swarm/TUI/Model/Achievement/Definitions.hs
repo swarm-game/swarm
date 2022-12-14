@@ -17,12 +17,13 @@ data ExpectedEffort
 data Quotation = Quotation
   { attribution :: Text
   , content :: Text
-  } deriving Show
+  }
+  deriving (Show)
 
 data FlavorText
   = Freeform Text
   | FTQuotation Quotation
-  deriving Show
+  deriving (Show)
 
 data AchievementInfo = AchievementInfo
   { title :: Text
@@ -39,7 +40,8 @@ data AchievementInfo = AchievementInfo
   -- ^ Precisely what must be done to obtain this achievement.
   , difficulty :: ExpectedEffort
   , isHidden :: Bool
-  } deriving Show
+  }
+  deriving (Show)
 
 data CategorizedAchievement
   = GlobalAchievement GlobalAchievement
@@ -71,7 +73,7 @@ instance ToJSON GameplayAchievement
 listAchievements :: [CategorizedAchievement]
 listAchievements =
   map GlobalAchievement listEnums
-  <> map GameplayAchievement listEnums
+    <> map GameplayAchievement listEnums
 
 describe :: CategorizedAchievement -> AchievementInfo
 describe (GlobalAchievement CompletedTutorials) =
