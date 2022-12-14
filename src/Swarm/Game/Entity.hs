@@ -70,6 +70,7 @@ module Swarm.Game.Entity (
   isEmpty,
   inventoryCapabilities,
   extantElemsWithCapability,
+  entitiesByCapability,
 
   -- ** Modification
   insert,
@@ -94,6 +95,7 @@ import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.List (foldl')
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
@@ -106,7 +108,7 @@ import GHC.Generics (Generic)
 import Linear (V2)
 import Swarm.Game.Display
 import Swarm.Language.Capability
-import Swarm.Util (dataNotFound, getDataFileNameSafe, plural, reflow, (?))
+import Swarm.Util (binTuples, dataNotFound, getDataFileNameSafe, plural, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -579,6 +581,14 @@ nonzeroEntities = map snd . filter ((> 0) . fst) . elems
 extantElemsWithCapability :: Capability -> Inventory -> [Entity]
 extantElemsWithCapability cap =
   filter (Set.member cap . (^. entityCapabilities)) . nonzeroEntities
+
+-- | Groups entities by the capabilities they offer.
+entitiesByCapability :: Inventory -> Map Capability (NE.NonEmpty Entity)
+entitiesByCapability inv =
+  binTuples entityCapabilityPairs
+ where
+  getCaps = Set.toList . (^. entityCapabilities)
+  entityCapabilityPairs = concatMap ((\e -> map (,e) $ getCaps e) . snd) $ elems inv
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory

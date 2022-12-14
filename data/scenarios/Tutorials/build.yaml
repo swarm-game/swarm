@@ -17,9 +17,6 @@ objectives:
       - Build a robot to harvest the flower and place it next
         to the water.
       - |
-        TIP: You can use the name of the flower directly ("pickerelweed"),
-        or you can use bind notation: `f <- harvest; ... ; place f;`.
-      - |
         TIP: Newly built robots start out facing the same
         direction as their parent, which in the tutorials will always be north.
     condition: |
