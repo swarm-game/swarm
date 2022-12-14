@@ -1499,15 +1499,15 @@ execConst c vs s k = do
     CharAt -> case vs of
       [VInt i, VText t]
         | i < 0 || i >= fromIntegral (T.length t) ->
-          raise CharAt ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
+            raise CharAt ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
         | otherwise -> return $ Out (VInt . fromIntegral . ord . T.index t . fromIntegral $ i) s k
       _ -> badConst
     ToChar -> case vs of
       [VInt i]
         | i < 0 || i > fromIntegral (ord (maxBound :: Char)) ->
-          raise ToChar ["Value", prettyValue (VInt i), "is an invalid character code"]
+            raise ToChar ["Value", prettyValue (VInt i), "is an invalid character code"]
         | otherwise ->
-          return $ Out (VText . T.singleton . chr . fromIntegral $ i) s k
+            return $ Out (VText . T.singleton . chr . fromIntegral $ i) s k
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
