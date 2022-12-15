@@ -9,11 +9,10 @@ import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
-import GHC.Int (Int64)
-import Linear.V2
 import Swarm.Game.Entity
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Util.Location
 import Swarm.Util.Yaml
 import Witch (into)
 
@@ -34,7 +33,7 @@ data WorldDescription = WorldDescription
   { defaultTerrain :: Maybe Cell
   , offsetOrigin :: Bool
   , palette :: WorldPalette
-  , ul :: V2 Int64
+  , ul :: Location
   , area :: [[Cell]]
   }
   deriving (Eq, Show)
@@ -46,7 +45,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
       <$> v ..:? "default"
       <*> liftE (v .:? "offset" .!= False)
       <*> pure pal
-      <*> liftE (v .:? "upperleft" .!= V2 0 0)
+      <*> liftE (v .:? "upperleft" .!= origin)
       <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)
 
 -- | "Paint" a world map using a 'WorldPalette', turning it from a raw

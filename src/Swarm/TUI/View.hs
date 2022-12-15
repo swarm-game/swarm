@@ -38,7 +38,7 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
-import Brick hiding (Direction)
+import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
@@ -70,6 +70,7 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Graphics.Vty qualified as V
 import Linear
+import Linear.Affine (Point)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
@@ -100,6 +101,7 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Util
 import Swarm.Util
+import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
@@ -517,7 +519,7 @@ robotsListWidget s = hCenter table
 
     locWidget = hBox [worldCell, txt $ " " <> locStr]
      where
-      rloc@(V2 x y) = robot ^. robotLocation
+      rloc@(Location x y) = robot ^. robotLocation
       worldCell = drawLoc (s ^. uiState . uiShowRobots) g (W.locToCoords rloc)
       locStr = from (show x) <> " " <> from (show y)
 
@@ -527,8 +529,8 @@ robotsListWidget s = hCenter table
         | isActive robot -> withAttr notifAttr $ txt "busy"
         | otherwise -> withAttr greenAttr $ txt "idle"
 
-  basePos :: V2 Double
-  basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? baseRobot . robotLocation)
+  basePos :: Point V2 Double
+  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation)
   -- Keep the base and non system robot (e.g. no seed)
   isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base
@@ -892,7 +894,7 @@ hidingMode g
 drawRobotPanel :: AppState -> Widget Name
 drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
   (Just r, Just (_, lst)) ->
-    let V2 x y = r ^. robotLocation
+    let Location x y = r ^. robotLocation
         drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
      in padBottom Max $
           vBox

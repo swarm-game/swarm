@@ -128,11 +128,12 @@ library
                       Swarm.TUI.Controller.Util
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
-                      Swarm.Version
                       Swarm.Web
-                      Swarm.Util
                       Swarm.DocGen
+                      Swarm.Util
+                      Swarm.Util.Location
                       Swarm.Util.Yaml
+                      Swarm.Version
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
 

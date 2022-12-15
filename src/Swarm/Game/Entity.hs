@@ -89,7 +89,6 @@ import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Hashable
-import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
@@ -105,10 +104,10 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
-import Linear (V2)
 import Swarm.Game.Display
 import Swarm.Language.Capability
 import Swarm.Util (binTuples, dataNotFound, getDataFileNameSafe, plural, reflow, (?))
+import Swarm.Util.Location
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -213,7 +212,7 @@ data Entity = Entity
   , _entityDescription :: [Text]
   -- ^ A longer-form description. Each 'Text' value is one
   --   paragraph.
-  , _entityOrientation :: Maybe (V2 Int64)
+  , _entityOrientation :: Maybe Heading
   -- ^ The entity's orientation (if it has one).  For example, when
   --   a robot moves, it moves in the direction of its orientation.
   , _entityGrowth :: Maybe GrowthTime
@@ -422,7 +421,7 @@ entityDescription :: Lens' Entity [Text]
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
 
 -- | The direction this entity is facing (if it has one).
-entityOrientation :: Lens' Entity (Maybe (V2 Int64))
+entityOrientation :: Lens' Entity (Maybe Heading)
 entityOrientation = hashedLens _entityOrientation (\e x -> e {_entityOrientation = x})
 
 -- | How long this entity takes to grow, if it regrows.

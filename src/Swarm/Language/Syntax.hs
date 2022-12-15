@@ -76,7 +76,6 @@ import Data.Aeson.Types
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
-import Data.Int (Int64)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
@@ -87,6 +86,7 @@ import GHC.Generics (Generic)
 import Linear
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
+import Swarm.Util.Location (Heading)
 import Witch.From (from)
 
 ------------------------------------------------------------
@@ -107,9 +107,9 @@ instance FromJSONKey Direction where
 data DirInfo = DirInfo
   { dirSyntax :: Text
   , -- absolute direction if it exists
-    dirAbs :: Maybe (V2 Int64)
+    dirAbs :: Maybe Heading
   , -- the turning for the direction
-    dirApplyTurn :: V2 Int64 -> V2 Int64
+    dirApplyTurn :: Heading -> Heading
   }
 
 allDirs :: [Direction]
@@ -139,49 +139,49 @@ isCardinal :: Direction -> Bool
 isCardinal = isJust . dirAbs . dirInfo
 
 -- | The cardinal direction north = @V2 0 1@.
-north :: V2 Int64
+north :: Heading
 north = V2 0 1
 
 -- | The cardinal direction south = @V2 0 (-1)@.
-south :: V2 Int64
+south :: Heading
 south = V2 0 (-1)
 
 -- | The cardinal direction east = @V2 1 0@.
-east :: V2 Int64
+east :: Heading
 east = V2 1 0
 
 -- | The cardinal direction west = @V2 (-1) 0@.
-west :: V2 Int64
+west :: Heading
 west = V2 (-1) 0
 
 -- | The direction for viewing the current cell = @V2 0 0@.
-down :: V2 Int64
+down :: Heading
 down = V2 0 0
 
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
---   turning relative to the given vector or by turning to an absolute
---   direction vector.
-applyTurn :: Direction -> V2 Int64 -> V2 Int64
+--   turning relative to the given heading or by turning to an absolute
+--   heading
+applyTurn :: Direction -> Heading -> Heading
 applyTurn = dirApplyTurn . dirInfo
 
--- | Mapping from heading to their corresponding cardinal directions
---   only directions with a 'dirAbs` value are mapped
-cardinalDirs :: M.Map (V2 Int64) Direction
+-- | Mapping from heading to their corresponding cardinal directions.
+--   Only directions with a 'dirAbs' value are mapped.
+cardinalDirs :: M.Map Heading Direction
 cardinalDirs =
   M.fromList
     . mapMaybe (\d -> (,d) <$> (dirAbs . dirInfo $ d))
     $ allDirs
 
--- | Possibly convert a vector into a 'Direction'---that is, if the
+-- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
 --   directions.
-toDirection :: V2 Int64 -> Maybe Direction
+toDirection :: Heading -> Maybe Direction
 toDirection v = M.lookup v cardinalDirs
 
--- | Convert a 'Direction' into a corresponding vector.  Note that
+-- | Convert a 'Direction' into a corresponding heading.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
 --   and 'DWest'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> V2 Int64
+fromDirection :: Direction -> Heading
 fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
 
 -- | Constants, representing various built-in functions and commands.
@@ -194,9 +194,10 @@ fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
 --   5. the emacs mode syntax highlighter (@contribs/swarm-mode.el@)
 --
 --   GHC will warn you about incomplete pattern matches for the first
---   four, so it's not really possible to forget.  Note you do not
---   need to update the parser or pretty-printer, since they are
---   auto-generated from 'constInfo'.
+--   four, and CI will warn you about the last, so in theory it's not
+--   really possible to forget.  Note you do not need to update the
+--   parser or pretty-printer, since they are auto-generated from
+--   'constInfo'.
 data Const
   = -- Trivial actions
 
