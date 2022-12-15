@@ -229,15 +229,15 @@ parseConst = asum (map alternative consts) <?> "built-in user function"
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
--- | Add 'Location' to a parser
-parseLocG :: Parser a -> Parser (Location, a)
+-- | Add 'SrcLoc' to a parser
+parseLocG :: Parser a -> Parser (SrcLoc, a)
 parseLocG pa = do
   start <- getOffset
   a <- pa
   end <- getOffset
-  pure (Location start end, a)
+  pure (SrcLoc start end, a)
 
--- | Add 'Location' to a 'Term' parser
+-- | Add 'SrcLoc' to a 'Term' parser
 parseLoc :: Parser Term -> Parser Syntax
 parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
@@ -518,7 +518,7 @@ getLineCol ps = (line, col)
   line = unPos $ sourceLine $ pstateSourcePos ps
   col = unPos $ sourceColumn $ pstateSourcePos ps
 
--- | A utility for converting a Location into a range
+-- | A utility for converting a SrcLoc into a range
 getLocRange :: Text -> (Int, Int) -> ((Int, Int), (Int, Int))
 getLocRange code (locStart, locEnd) = (start, end)
  where

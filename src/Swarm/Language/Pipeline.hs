@@ -87,8 +87,8 @@ processTerm' ctx capCtx txt = do
 prettyTypeErr :: Text -> TypeErr -> Text
 prettyTypeErr code te = teLoc <> prettyText te
  where
-  teLoc = case getTypeErrLocation te of
-    Just (Location s e) -> (from . show . fst . fst $ getLocRange code (s, e)) <> ": "
+  teLoc = case getTypeErrSrcLoc te of
+    Just (SrcLoc s e) -> (from . show . fst . fst $ getLocRange code (s, e)) <> ": "
     _anyOtherLoc -> ""
 
 showTypeErrorPos :: Text -> TypeErr -> ((Int, Int), (Int, Int), Text)
@@ -96,8 +96,8 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
  where
   minusOne (x, y) = (x - 1, y - 1)
 
-  (start, end) = case getTypeErrLocation te of
-    Just (Location s e) -> getLocRange code (s, e)
+  (start, end) = case getTypeErrSrcLoc te of
+    Just (SrcLoc s e) -> getLocRange code (s, e)
     _anyOtherLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
   msg = prettyText te
 

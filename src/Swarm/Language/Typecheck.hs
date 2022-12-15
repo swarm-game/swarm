@@ -18,7 +18,7 @@ module Swarm.Language.Typecheck (
   -- * Type errors
   TypeErr (..),
   InvalidAtomicReason (..),
-  getTypeErrLocation,
+  getTypeErrSrcLoc,
 
   -- * Inference monad
   Infer,
@@ -89,7 +89,7 @@ runInfer ctx =
 --   an 'UnboundVar' error if it is not found, or opening its
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
-lookup :: Location -> Var -> Infer UType
+lookup :: SrcLoc -> Var -> Infer UType
 lookup loc x = do
   ctx <- ask
   maybe (throwError $ UnboundVar loc x) instantiate (Ctx.lookup x ctx)
@@ -212,20 +212,20 @@ generalize uty = do
 --   separately be pretty-printed to display them to the user.
 data TypeErr
   = -- | An undefined variable was encountered.
-    UnboundVar Location Var
+    UnboundVar SrcLoc Var
   | -- | A Skolem variable escaped its local context.
-    EscapedSkolem Location Var
+    EscapedSkolem SrcLoc Var
   | Infinite IntVar UType
   | -- | The given term was expected to have a certain type, but has a
     -- different type instead.
-    Mismatch Location (TypeF UType) (TypeF UType)
+    Mismatch SrcLoc (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
-    DefNotTopLevel Location Term
+    DefNotTopLevel SrcLoc Term
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
-    CantInfer Location Term
+    CantInfer SrcLoc Term
   | -- | An invalid argument was provided to @atomic@.
-    InvalidAtomic Location InvalidAtomicReason Term
+    InvalidAtomic SrcLoc InvalidAtomicReason Term
   deriving (Show)
 
 -- | Various reasons the body of an @atomic@ might be invalid.
@@ -246,8 +246,8 @@ instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
   mismatchFailure = Mismatch NoLoc
 
-getTypeErrLocation :: TypeErr -> Maybe Location
-getTypeErrLocation te = case te of
+getTypeErrSrcLoc :: TypeErr -> Maybe SrcLoc
+getTypeErrSrcLoc te = case te of
   UnboundVar l _ -> Just l
   EscapedSkolem l _ -> Just l
   Infinite _ _ -> Nothing

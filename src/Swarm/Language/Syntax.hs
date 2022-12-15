@@ -46,7 +46,7 @@ module Swarm.Language.Syntax (
 
   -- * Syntax
   Syntax (..),
-  Location (..),
+  SrcLoc (..),
   noLoc,
   pattern STerm,
   pattern TPair,
@@ -736,18 +736,18 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
 -- | The surface syntax for the language
-data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
+data Syntax = Syntax {sLoc :: SrcLoc, sTerm :: Term}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
-data Location = NoLoc | Location Int Int
+data SrcLoc = NoLoc | SrcLoc Int Int
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
-instance Semigroup Location where
+instance Semigroup SrcLoc where
   NoLoc <> l = l
   l <> NoLoc = l
-  Location s1 e1 <> Location s2 e2 = Location (min s1 s2) (max e1 e2)
+  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
 
-instance Monoid Location where
+instance Monoid SrcLoc where
   mempty = NoLoc
 
 noLoc :: Term -> Syntax
