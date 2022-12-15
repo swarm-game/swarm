@@ -1,10 +1,10 @@
 module Swarm.TUI.Model.Achievement.Definitions where
 
+import Data.Aeson
 import Data.Text (Text)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Util
-import Data.Aeson
 
 data ExpectedEffort
   = Trivial

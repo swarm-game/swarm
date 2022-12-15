@@ -58,9 +58,9 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl

@@ -17,7 +17,6 @@ describe (GlobalAchievement CompletedTutorials) =
     "Complete all of the tutorials."
     Moderate
     False
-
 describe (GlobalAchievement LookedAtAboutScreen) =
   AchievementInfo
     "About time!"
@@ -25,7 +24,6 @@ describe (GlobalAchievement LookedAtAboutScreen) =
     "View the About screen."
     Trivial
     True
-
 describe (GameplayAchievement RobotIntoWater) =
   AchievementInfo
     "Watery Grave"
@@ -33,7 +31,6 @@ describe (GameplayAchievement RobotIntoWater) =
     "Destroy a robot by sending it into the water."
     Easy
     True
-
 describe (GameplayAchievement DestroyedBase) =
   AchievementInfo
     "That Could Have Gone Better"

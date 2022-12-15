@@ -3,16 +3,16 @@
 module Swarm.TUI.Model.Achievement.Persistence where
 
 import Control.Arrow (left)
-import Data.Text (Text, pack)
-import Data.Yaml.Aeson (prettyPrintParseException)
 import Control.Carrier.Lift (sendIO)
+import Data.Text (Text, pack)
 import Data.Yaml qualified as Y
+import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.Util
-import System.FilePath
 import System.Directory (
   doesFileExist,
  )
+import System.FilePath
 
 -- | Get path to swarm achievements, optionally creating necessary
 --   directories.
@@ -29,8 +29,8 @@ loadAchievementsInfo = do
   if not hasSavedAchievements
     then return $ pure []
     else
-      left (pack . prettyPrintParseException) <$>
-        sendIO (Y.decodeFileEither savedAchievementsPath)
+      left (pack . prettyPrintParseException)
+        <$> sendIO (Y.decodeFileEither savedAchievementsPath)
 
 -- | Save info about achievements to XDG data directory.
 saveAchievementsInfo ::
