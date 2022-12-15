@@ -29,10 +29,10 @@ module Swarm.Game.Robot (
   leRobotID,
 
   -- * Robots
-  RobotPhase (..),
   RID,
   RobotR,
   Robot,
+  RRobot,
   TRobot,
 
   -- * Robot context
@@ -99,6 +99,7 @@ import Linear
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Phase
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
@@ -183,30 +184,30 @@ makeLenses ''LogEntry
 -- | A unique identifier for a robot.
 type RID = Int
 
--- | The phase of a robot description record.
-data RobotPhase
-  = -- | The robot record has just been read in from a scenario
-    --   description; it represents a /template/ that may later be
-    --   instantiated as one or more concrete robots.
-    TemplateRobot
-  | -- | The robot record represents a concrete robot in the world.
-    ConcreteRobot
-
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
-type family RobotLocation (phase :: RobotPhase) :: * where
-  RobotLocation 'TemplateRobot = Maybe (V2 Int64)
-  RobotLocation 'ConcreteRobot = V2 Int64
+type family RobotLocation (phase :: Phase) :: * where
+  RobotLocation 'Raw = Maybe (V2 Int64)
+  RobotLocation 'Template = Maybe (V2 Int64)
+  RobotLocation 'Concrete = V2 Int64
 
 -- | Robot templates have no ID; concrete robots definitely do.
-type family RobotID (phase :: RobotPhase) :: * where
-  RobotID 'TemplateRobot = ()
-  RobotID 'ConcreteRobot = RID
+type family RobotID (phase :: Phase) :: * where
+  RobotID 'Raw = ()
+  RobotID 'Template = ()
+  RobotID 'Concrete = RID
+
+-- | A raw robot has unprocessed @Text@ as its program (if any).
+--   Robot templates and concrete robots have an actual @CESK@ machine.
+type family RobotMachine (phase :: Phase) :: * where
+  RobotMachine 'Raw = Maybe Text
+  RobotMachine 'Template = CESK
+  RobotMachine 'Concrete = CESK
 
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
 --   the robot has been assigned a unique ID.
-data RobotR (phase :: RobotPhase) = RobotR
+data RobotR (phase :: Phase) = RobotR
   { _robotEntity :: Entity
   , _installedDevices :: Inventory
   , _robotCapabilities :: Set Capability
@@ -219,7 +220,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
   , _robotHeavy :: Bool
-  , _machine :: CESK
+  , _machine :: RobotMachine phase
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _tickSteps :: Int
@@ -228,10 +229,10 @@ data RobotR (phase :: RobotPhase) = RobotR
   }
   deriving (Generic)
 
-deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
-deriving instance (Eq (RobotLocation phase), Eq (RobotID phase)) => Eq (RobotR phase)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase)) => Eq (RobotR phase)
 
-deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJSON (RobotR phase)
+deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase), ToJSON (RobotMachine phase)) => ToJSON (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -245,12 +246,16 @@ let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog]
       )
       ''RobotR
 
+-- | A raw robot, i.e. a template robot record without an ID number or
+-- (possibly) location, and an unprocessed program.
+type RRobot = RobotR 'Raw
+
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
-type TRobot = RobotR 'TemplateRobot
+type TRobot = RobotR 'Template
 
 -- | A concrete robot, with a unique ID number and a specific location.
-type Robot = RobotR 'ConcreteRobot
+type Robot = RobotR 'Concrete
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice
@@ -346,6 +351,7 @@ instantiateRobot i r =
   r
     { _robotID = i
     , _robotLocation = fromMaybe (V2 0 0) (_robotLocation r)
+    , _machine = _machine r
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -482,8 +488,8 @@ mkRobot ::
   V2 Int64 ->
   -- | Robot display.
   Display ->
-  -- | Initial CESK machine.
-  CESK ->
+  -- | Initial program / CESK machine.
+  RobotMachine phase ->
   -- | Installed devices.
   [Entity] ->
   -- | Initial inventory.
@@ -522,7 +528,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
 
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
-instance FromJSONE EntityMap TRobot where
+instance FromJSONE EntityMap RRobot where
   parseJSONE = withObjectE "robot" $ \v -> do
     -- Note we can't generate a unique ID here since we don't have
     -- access to a 'State GameState' effect; a unique ID will be
@@ -536,15 +542,16 @@ instance FromJSONE EntityMap TRobot where
       <*> liftE (v .:? "loc")
       <*> liftE (v .:? "dir" .!= zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
-      <*> liftE (mkMachine <$> (v .:? "program"))
+      <*> liftE (v .:? "program")
       <*> v ..:? "devices" ..!= []
       <*> v ..:? "inventory" ..!= []
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
       <*> pure 0
-   where
-    mkMachine Nothing = Out VUnit emptyStore []
-    mkMachine (Just pt) = initMachine pt mempty emptyStore
+
+-- where
+--  mkMachine Nothing = Out VUnit emptyStore []
+--  mkMachine (Just pt) = initMachine pt mempty emptyStore
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool

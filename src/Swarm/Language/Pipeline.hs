@@ -50,14 +50,14 @@ data ProcessedTerm
       -- ^ Capability context for any definitions embedded in the term
   deriving (Data, Show, Eq, Generic)
 
-instance FromJSON ProcessedTerm where
-  parseJSON = withText "Term" tryProcess
-   where
-    tryProcess :: Text -> Y.Parser ProcessedTerm
-    tryProcess t = case processTerm t of
-      Left err -> fail $ "Could not parse term: " ++ from err
-      Right Nothing -> fail "Term was only whitespace"
-      Right (Just pt) -> return pt
+-- instance FromJSON ProcessedTerm where
+--   parseJSON = withText "Term" tryProcess
+--    where
+--     tryProcess :: Text -> Y.Parser ProcessedTerm
+--     tryProcess t = case processTerm t of
+--       Left err -> fail $ "Could not parse term: " ++ from err
+--       Right Nothing -> fail "Term was only whitespace"
+--       Right (Just pt) -> return pt
 
 instance ToJSON ProcessedTerm where
   toJSON (ProcessedTerm t _ _ _) = String $ prettyText t

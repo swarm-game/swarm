@@ -96,6 +96,7 @@ library
                       Swarm.Language.Pipeline
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
+                      Swarm.Game.Phase
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
                       Swarm.Game.Scenario.RobotLookup
@@ -253,6 +254,7 @@ test-suite swarm-integration
                       containers,
                       directory,
                       filepath,
+                      fused-effects,
                       lens,
                       linear,
                       mtl,

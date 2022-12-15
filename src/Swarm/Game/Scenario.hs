@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingVia #-}
@@ -5,6 +6,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      :  Swarm.Game.Scenario
@@ -63,12 +66,13 @@ import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
+import Swarm.Game.Phase
 import Swarm.Game.Recipe
-import Swarm.Game.Robot (TRobot)
+import Swarm.Game.Robot (RRobot, RobotR, TRobot)
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.WorldDescription
-import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pipeline (ProcessedTerm, processTerm)
 import Swarm.Util (getDataFileNameSafe, reflow)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
@@ -81,25 +85,35 @@ import Witch (from, into)
 
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
-data Objective = Objective
+data Objective' r = Objective
   { _objectiveGoal :: [Text]
-  , _objectiveCondition :: ProcessedTerm
+  , _objectiveCondition :: ScenarioProgram r
   }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving (Generic)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
+deriving instance Show (ScenarioProgram r) => Show (Objective' r)
+deriving instance Eq (ScenarioProgram r) => Eq (Objective' r)
+deriving instance ToJSON (ScenarioProgram r) => ToJSON (Objective' r)
+
+type family ScenarioProgram (phase :: Phase) :: * where
+  ScenarioProgram 'Raw = Text
+  ScenarioProgram 'Template = ProcessedTerm
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''Objective'
+
+type Objective = Objective' Template
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
-objectiveGoal :: Lens' Objective [Text]
+objectiveGoal :: Lens' (Objective' r) [Text]
 
 -- | A winning condition for the objective, expressed as a
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-objectiveCondition :: Lens' Objective ProcessedTerm
+objectiveCondition :: Lens' (Objective' r) (ScenarioProgram r)
 
-instance FromJSON Objective where
+instance FromJSON (ScenarioProgram r) => FromJSON (Objective' r) where
   parseJSON = withObject "objective" $ \v ->
     Objective
       <$> (fmap . map) reflow (v .:? "goal" .!= [])
@@ -109,9 +123,9 @@ instance FromJSON Objective where
 -- Scenario
 ------------------------------------------------------------
 
--- | A 'Scenario' contains all the information to describe a
---   scenario.
-data Scenario = Scenario
+-- | A 'Scenario' contains all the information to describe a scenario.
+--   The type parameter @r@ is the robot phase XXX
+data Scenario' phase = Scenario
   { _scenarioVersion :: Int
   , _scenarioName :: Text
   , _scenarioAuthor :: Maybe Text
@@ -122,16 +136,20 @@ data Scenario = Scenario
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: [Text]
   , _scenarioWorld :: WorldDescription
-  , _scenarioRobots :: [TRobot]
-  , _scenarioObjectives :: [Objective]
-  , _scenarioSolution :: Maybe ProcessedTerm
+  , _scenarioRobots :: [RobotR phase]
+  , _scenarioObjectives :: [Objective' phase]
+  , _scenarioSolution :: Maybe (ScenarioProgram phase)
   , _scenarioStepsPerTick :: Maybe Int
   }
-  deriving (Eq, Show)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
+deriving instance (Show (ScenarioProgram phase), Show (RobotR phase)) => Show (Scenario' phase)
+deriving instance (Eq (ScenarioProgram phase), Eq (RobotR phase)) => Eq (Scenario' phase)
 
-instance FromJSONE EntityMap Scenario where
+makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario'
+
+type Scenario = Scenario' 'Template
+
+instance FromJSONE EntityMap (Scenario' 'Raw) where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
@@ -166,6 +184,16 @@ instance FromJSONE EntityMap Scenario where
         <*> liftE (v .:? "solution")
         <*> liftE (v .:? "stepsPerTick")
 
+resolveScenario :: (Has (Lift IO) sig m, Has (Throw Text) sig m) => Scenario' 'Raw -> m Scenario
+resolveScenario = undefined
+
+--  mapM process
+-- where
+--  process t = case processTerm t of
+--    Left err -> throwError err
+--    Right Nothing -> throwError @Text "Term was only whitespace"
+--    Right (Just pt) -> return pt
+
 --------------------------------------------------
 -- Lenses
 
@@ -173,53 +201,53 @@ instance FromJSONE EntityMap Scenario where
 --   should always be 1, but it is ignored.  In the future, this may
 --   be used to convert older formats to newer ones, or simply to
 --   print a nice error message when we can't read an older format.
-scenarioVersion :: Lens' Scenario Int
+scenarioVersion :: Lens' (Scenario' r) Int
 
 -- | The name of the scenario.
-scenarioName :: Lens' Scenario Text
+scenarioName :: Lens' (Scenario' r) Text
 
 -- | The author of the scenario.
-scenarioAuthor :: Lens' Scenario (Maybe Text)
+scenarioAuthor :: Lens' (Scenario' r) (Maybe Text)
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
-scenarioDescription :: Lens' Scenario Text
+scenarioDescription :: Lens' (Scenario' phase) Text
 
 -- | Whether the scenario should start in creative mode.
-scenarioCreative :: Lens' Scenario Bool
+scenarioCreative :: Lens' (Scenario' phase) Bool
 
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed / prompt the user for the seed.
-scenarioSeed :: Lens' Scenario (Maybe Int)
+scenarioSeed :: Lens' (Scenario' phase) (Maybe Int)
 
 -- | Any custom entities used for this scenario.
-scenarioEntities :: Lens' Scenario EntityMap
+scenarioEntities :: Lens' (Scenario' phase) EntityMap
 
 -- | Any custom recipes used in this scenario.
-scenarioRecipes :: Lens' Scenario [Recipe Entity]
+scenarioRecipes :: Lens' (Scenario' phase) [Recipe Entity]
 
 -- | List of entities that should be considered "known", so robots do
 --   not have to scan them.
-scenarioKnown :: Lens' Scenario [Text]
+scenarioKnown :: Lens' (Scenario' phase) [Text]
 
 -- | The starting world for the scenario.
-scenarioWorld :: Lens' Scenario WorldDescription
+scenarioWorld :: Lens' (Scenario' phase) WorldDescription
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.
-scenarioRobots :: Lens' Scenario [TRobot]
+scenarioRobots :: Lens' (Scenario' phase) [RobotR phase]
 
 -- | A sequence of objectives for the scenario (if any).
-scenarioObjectives :: Lens' Scenario [Objective]
+scenarioObjectives :: Lens' (Scenario' phase) [Objective' phase]
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' Scenario (Maybe ProcessedTerm)
+scenarioSolution :: Lens' (Scenario' phase) (Maybe (ScenarioProgram phase))
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
-scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
+scenarioStepsPerTick :: Lens' (Scenario' phase) (Maybe Int)
 ------------------------------------------------------------
 -- Loading scenarios
 ------------------------------------------------------------
@@ -256,4 +284,4 @@ loadScenarioFile em fileName = do
   res <- sendIO $ decodeFileEitherE em fileName
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
-    Right c -> return c
+    Right c -> resolveScenario c

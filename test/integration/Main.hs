@@ -5,8 +5,10 @@
 -- | Swarm integration tests
 module Main where
 
+import Control.Carrier.Error.Either (runError)
+import Control.Carrier.Lift (runM)
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^?!))
-import Control.Monad (filterM, forM_, unless, void, when)
+import Control.Monad (filterM, forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Char (isSpace)
@@ -18,13 +20,12 @@ import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
 import Swarm.Game.Robot (defReqs, leText, machine, robotContext, robotLog, waitingUntil)
-import Swarm.Game.Scenario (Scenario)
+import Swarm.Game.Scenario (Scenario, loadScenario)
 import Swarm.Game.State (
   GameState,
   WinCondition (Won),
@@ -41,7 +42,6 @@ import Swarm.Game.State (
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
-import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
@@ -86,14 +86,16 @@ scenarioTests em inputs = testGroup "Test scenarios" (map (scenarioTest em) inpu
 
 scenarioTest :: EntityMap -> (FilePath, String) -> TestTree
 scenarioTest em (path, _) =
-  testCase ("parse scenario " ++ show path) (void $ getScenario em path)
+  testCase ("parse scenario " ++ show path) $ do
+    (runM (runError (loadScenario path em)) :: IO (Either Text (Scenario, FilePath))) >>= either (assertFailure . into @String) (const (return ()))
 
-getScenario :: EntityMap -> FilePath -> IO Scenario
-getScenario em p = do
-  res <- decodeFileEitherE em p :: IO (Either ParseException Scenario)
-  case res of
-    Left err -> assertFailure (prettyPrintParseException err)
-    Right s -> return s
+-- getScenario :: EntityMap -> FilePath -> IO Scenario
+-- getScenario em p = do
+--   runError $ loadScenario p em
+--   res <- decodeFileEitherE em p :: IO (Either ParseException (Scenario' Text))
+--   case res of
+--     Left err -> assertFailure (prettyPrintParseException err)
+--     Right s -> return s
 
 acquire :: FilePath -> String -> IO [(FilePath, String)]
 acquire dir ext = do
