@@ -21,7 +21,12 @@ import Linear.Affine (Affine (..), Point (..), origin)
 
 -- | A Location is a pair of (x,y) coordinates, both up to 32 bits.
 --   The positive x-axis points east and the positive y-axis points
---   north.
+--   north.  These are the coordinates that are shown to players.
+--
+--   See also the 'Coords' type defined in "Swarm.Game.World", which
+--   use a (row, column) format instead, which is more convenient for
+--   internal use.  The "Swarm.Game.World" module also defines
+--   conversions between 'Location' and 'Coords'.
 type Location = Point V2 Int32
 
 -- | A convenient way to pattern-match on 'Location' values.

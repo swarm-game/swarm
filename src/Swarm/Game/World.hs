@@ -65,19 +65,23 @@ import Prelude hiding (lookup)
 ------------------------------------------------------------
 
 -- | World coordinates use (row,column) format, with the row
---   increasing as we move down the screen.  This format plays nicely
---   with drawing the screen.
+--   increasing as we move down the screen.  We use this format for
+--   indexing worlds internally, since it plays nicely with things
+--   like drawing the screen, and reading maps from configuration
+--   files. The 'locToCoords' and 'coordsToLoc' functions convert back
+--   and forth between this type and 'Location', which is used when
+--   presenting coordinates externally to the player.
 newtype Coords = Coords {unCoords :: (Int32, Int32)}
   deriving (Eq, Ord, Show, Ix, Generic)
 
 instance Rewrapped Coords t
 instance Wrapped Coords
 
--- | Convert an (x,y) location to a 'Coords' value.
+-- | Convert an external (x,y) location to an internal 'Coords' value.
 locToCoords :: Location -> Coords
 locToCoords (Location x y) = Coords (-y, x)
 
--- | Convert 'Coords' to an (x,y) location.
+-- | Convert an internal 'Coords' value to an external (x,y) location.
 coordsToLoc :: Coords -> Location
 coordsToLoc (Coords (r, c)) = Location c (-r)
 
