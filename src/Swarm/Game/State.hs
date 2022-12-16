@@ -362,7 +362,8 @@ robotsAtLocation loc gs =
     . view robotsByLocation
     $ gs
 
--- | Get all the robots within a given Manhattan distastance from a location.
+-- | Get all the robots within a given Manhattan distance from a
+--   location.
 robotsInArea :: Location -> Int32 -> GameState -> [Robot]
 robotsInArea o d gs = map (rm IM.!) rids
  where
