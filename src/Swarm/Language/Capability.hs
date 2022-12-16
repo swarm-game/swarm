@@ -109,6 +109,8 @@ data Capability
     CRecursion
   | -- | Execute the 'Reprogram' command
     CReprogram
+  | -- | Execute the `meet` and `meetAll` commands.
+    CMeet
   | -- | Capability to introspect and see its own name
     CWhoami
   | -- | Capability to set its own name
@@ -194,6 +196,8 @@ constCaps = \case
   Build -> Just CBuild
   Salvage -> Just CSalvage
   Reprogram -> Just CReprogram
+  Meet -> Just CMeet
+  MeetAll -> Just CMeet
   Drill -> Just CDrill
   Neg -> Just CArith
   Add -> Just CArith

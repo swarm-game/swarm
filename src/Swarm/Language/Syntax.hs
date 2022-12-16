@@ -278,6 +278,10 @@ data Const
     Parent
   | -- | Get a reference to the base
     Base
+  | -- | Meet a nearby robot
+    Meet
+  | -- | Meet all nearby robots
+    MeetAll
   | -- | Get the robot's display name
     Whoami
   | -- | Set the robot's display name
@@ -613,6 +617,8 @@ constInfo c = case c of
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."
+  Meet -> command 0 Intangible "Get a reference to a nearby robot, if there is one."
+  MeetAll -> command 0 long "Run a command for each nearby robot."
   Whoami -> command 0 Intangible "Get the robot's display name."
   Setname -> command 1 short "Set the robot's display name."
   Random ->

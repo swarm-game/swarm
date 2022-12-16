@@ -41,7 +41,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -1199,6 +1199,12 @@ execConst c vs s k = do
       rid <- use robotID
       return $ Out (VRobot (fromMaybe rid mp)) s k
     Base -> return $ Out (VRobot 0) s k
+    Meet -> do
+      loc <- use robotLocation
+      rid <- use robotID
+      g <- get @GameState
+      let neighbor = find ((/= rid) . (^. robotID)) $ robotsInArea loc 1 g
+      return $ Out (VInj (isJust neighbor) (maybe VUnit (VRobot . (^. robotID)) neighbor)) s k
     Whoami -> case vs of
       [] -> do
         name <- use robotName

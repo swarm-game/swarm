@@ -496,6 +496,8 @@ inferConst c = case c of
   Self -> [tyQ| robot |]
   Parent -> [tyQ| robot |]
   Base -> [tyQ| robot |]
+  Meet -> [tyQ| cmd (unit + robot) |]
+  MeetAll -> [tyQ| (robot -> b -> cmd b) -> b -> cmd b |]
   Whoami -> [tyQ| cmd text |]
   Setname -> [tyQ| text -> cmd unit |]
   Random -> [tyQ| int -> cmd int |]
