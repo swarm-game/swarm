@@ -37,7 +37,8 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
-import Brick hiding (Direction)
+import Brick hiding (Direction, Location)
+import Brick qualified
 import Brick.Focus
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
@@ -52,7 +53,7 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
-import Data.Int (Int64)
+import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -88,6 +89,7 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
@@ -199,7 +201,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
-  uiState . uiMenu
+  uiState
+    . uiMenu
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
       Just stk' -> NewGameMenu stk'
@@ -978,7 +981,7 @@ adjReplHistIndex d s =
 -- World events
 ------------------------------------------------------------
 
-worldScrollDist :: Int64
+worldScrollDist :: Int32
 worldScrollDist = 8
 
 onlyCreative :: MonadState AppState m => m () -> m ()
@@ -990,7 +993,7 @@ onlyCreative a = do
 handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 -- scrolling the world view in Creative mode
 handleWorldEvent = \case
-  Key k | k `elem` moveKeys -> onlyCreative $ scrollView (^+^ (worldScrollDist *^ keyToDir k))
+  Key k | k `elem` moveKeys -> onlyCreative $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
     gameState . viewCenterRule .= VCRobot 0
@@ -1011,7 +1014,7 @@ handleWorldEvent = \case
     ]
 
 -- | Manually scroll the world view.
-scrollView :: (V2 Int64 -> V2 Int64) -> EventM Name AppState ()
+scrollView :: (Location -> Location) -> EventM Name AppState ()
 scrollView update = do
   -- Manually invalidate the 'WorldCache' instead of just setting
   -- 'needsRedraw'.  I don't quite understand why the latter doesn't
@@ -1021,7 +1024,7 @@ scrollView update = do
   gameState %= modifyViewCenter update
 
 -- | Convert a directional key into a direction.
-keyToDir :: V.Key -> V2 Int64
+keyToDir :: V.Key -> Heading
 keyToDir V.KUp = north
 keyToDir V.KDown = south
 keyToDir V.KRight = east
@@ -1030,7 +1033,7 @@ keyToDir (V.KChar 'h') = west
 keyToDir (V.KChar 'j') = south
 keyToDir (V.KChar 'k') = north
 keyToDir (V.KChar 'l') = east
-keyToDir _ = V2 0 0
+keyToDir _ = zero
 
 -- | Adjust the ticks per second speed.
 adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState

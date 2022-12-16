@@ -114,7 +114,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Foldable (toList)
-import Data.Int (Int64)
+import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
@@ -134,7 +134,6 @@ import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
-import Linear
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe (
@@ -159,6 +158,7 @@ import Swarm.Language.Syntax (Const, Term (TText), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
+import Swarm.Util.Location
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)
@@ -175,7 +175,7 @@ data CodeToRun
 --   world viewport.
 data ViewCenterRule
   = -- | The view should be centered on an absolute position.
-    VCLocation (V2 Int64)
+    VCLocation Location
   | -- | The view should be centered on a certain robot.
     VCRobot RID
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
@@ -272,7 +272,7 @@ data GameState = GameState
     -- Waiting robots for a given time are a list because it is cheaper to
     -- append to a list than to a Set.
     _waitingRobots :: Map Integer [RID]
-  , _robotsByLocation :: Map (V2 Int64) IntSet
+  , _robotsByLocation :: Map Location IntSet
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
@@ -290,7 +290,7 @@ data GameState = GameState
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
   , _viewCenterRule :: ViewCenterRule
-  , _viewCenter :: V2 Int64
+  , _viewCenter :: Location
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
@@ -351,10 +351,10 @@ robotMap :: Lens' GameState (IntMap Robot)
 --   location of a robot changes, or a robot is created or destroyed.
 --   Fortunately, there are relatively few ways for these things to
 --   happen.
-robotsByLocation :: Lens' GameState (Map (V2 Int64) IntSet)
+robotsByLocation :: Lens' GameState (Map Location IntSet)
 
 -- | Get a list of all the robots at a particular location.
-robotsAtLocation :: V2 Int64 -> GameState -> [Robot]
+robotsAtLocation :: Location -> GameState -> [Robot]
 robotsAtLocation loc gs =
   mapMaybe (`IM.lookup` (gs ^. robotMap))
     . maybe [] IS.toList
@@ -362,8 +362,9 @@ robotsAtLocation loc gs =
     . view robotsByLocation
     $ gs
 
--- | Get robots in manhattan distastance from location.
-robotsInArea :: V2 Int64 -> Int64 -> GameState -> [Robot]
+-- | Get all the robots within a given Manhattan distance from a
+--   location.
+robotsInArea :: Location -> Int32 -> GameState -> [Robot]
 robotsInArea o d gs = map (rm IM.!) rids
  where
   rm = gs ^. robotMap
@@ -446,7 +447,7 @@ world :: Lens' GameState (W.World Int Entity)
 --   modified directly, since it is calculated automatically from the
 --   'viewCenterRule'.  To modify the view center, either set the
 --   'viewCenterRule', or use 'modifyViewCenter'.
-viewCenter :: Getter GameState (V2 Int64)
+viewCenter :: Getter GameState Location
 viewCenter = to _viewCenter
 
 -- | Whether the world view needs to be redrawn.
@@ -549,14 +550,14 @@ messageNotifications = to getNotif
 messageIsRecent :: GameState -> LogEntry -> Bool
 messageIsRecent gs e = e ^. leTime >= gs ^. ticks - 1
 
-messageIsFromNearby :: V2 Int64 -> LogEntry -> Bool
+messageIsFromNearby :: Location -> LogEntry -> Bool
 messageIsFromNearby l e = manhattan l (e ^. leLocation) <= hearingDistance
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
 --   is @Maybe@ because the rule may refer to a robot which does not
 --   exist.
-applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (V2 Int64)
+applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe Location
 applyViewCenterRule (VCLocation l) _ = Just l
 applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 
@@ -579,7 +580,7 @@ recalcViewCenter g =
 --   current value.  Note that this also modifies the 'viewCenterRule'
 --   to match.  After calling this function the 'viewCenterRule' will
 --   specify a particular location, not a robot.
-modifyViewCenter :: (V2 Int64 -> V2 Int64) -> GameState -> GameState
+modifyViewCenter :: (Location -> Location) -> GameState -> GameState
 modifyViewCenter update g =
   g
     & case g ^. viewCenterRule of
@@ -588,10 +589,10 @@ modifyViewCenter update g =
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int64, Int64) -> (W.Coords, W.Coords)
+viewingRegion :: GameState -> (Int32, Int32) -> (W.Coords, W.Coords)
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
-  V2 cx cy = g ^. viewCenter
+  Location cx cy = g ^. viewCenter
   (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
@@ -727,7 +728,7 @@ initGameState = do
       , _knownEntities = []
       , _world = W.emptyWorld (fromEnum StoneT)
       , _viewCenterRule = VCRobot 0
-      , _viewCenter = V2 0 0
+      , _viewCenter = origin
       , _needsRedraw = False
       , _replStatus = REPLDone Nothing
       , _replNextValueIndex = 0
@@ -775,7 +776,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _knownEntities = scenario ^. scenarioKnown
       , _world = theWorld theSeed
       , _viewCenterRule = VCRobot baseID
-      , _viewCenter = V2 0 0
+      , _viewCenter = origin
       , _needsRedraw = False
       , -- When the base starts out running a program, the REPL status must be set to working,
         -- otherwise the store of definition cells is not saved (see #333, #838)
@@ -880,7 +881,7 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
   worldGrid :: [[(TerrainType, Maybe Entity)]]
   worldGrid = (map . map) (cellTerrain &&& cellEntity) area
 
-  worldArray :: Array (Int64, Int64) (TerrainType, Maybe Entity)
+  worldArray :: Array (Int32, Int32) (TerrainType, Maybe Entity)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
   wf = case defaultTerrain of

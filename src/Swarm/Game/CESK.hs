@@ -64,7 +64,7 @@ module Swarm.Game.CESK (
 
   -- * Store
   Store,
-  Loc,
+  Addr,
   emptyStore,
   Cell (..),
   allocate,
@@ -166,7 +166,7 @@ data Frame
   | -- | Apply specific updates to the world and current robot.
     FImmediate WorldUpdate RobotUpdate
   | -- | Update the memory cell at a certain location with the computed value.
-    FUpdate Loc
+    FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
     FFinishAtomic
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -178,10 +178,10 @@ type Cont = [Frame]
 -- Store
 ------------------------------------------------------------
 
-type Loc = Int
+type Addr = Int
 
 -- | 'Store' represents a store, indexing integer locations to 'Cell's.
-data Store = Store {next :: Loc, mu :: IntMap Cell} deriving (Show, Eq, Generic, FromJSON, ToJSON)
+data Store = Store {next :: Addr, mu :: IntMap Cell} deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 -- | A memory cell can be in one of three states.
 data Cell
@@ -213,15 +213,15 @@ emptyStore = Store 0 IM.empty
 -- | Allocate a new memory cell containing an unevaluated expression
 --   with the current environment.  Return the index of the allocated
 --   cell.
-allocate :: Env -> Term -> Store -> (Loc, Store)
+allocate :: Env -> Term -> Store -> (Addr, Store)
 allocate e t (Store n m) = (n, Store (n + 1) (IM.insert n (E t e) m))
 
 -- | Look up the cell at a given index.
-lookupCell :: Loc -> Store -> Maybe Cell
+lookupCell :: Addr -> Store -> Maybe Cell
 lookupCell n = IM.lookup n . mu
 
 -- | Set the cell at a given index.
-setCell :: Loc -> Cell -> Store -> Store
+setCell :: Addr -> Cell -> Store -> Store
 setCell n c (Store nxt m) = Store nxt (IM.insert n c m)
 
 ------------------------------------------------------------

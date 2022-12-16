@@ -34,7 +34,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
-import Data.Int (Int64)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
@@ -50,7 +49,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
-import Linear (V2 (..), zero, (^+^))
+import Linear (V2 (..), zero)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -70,6 +69,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Util
+import Swarm.Util.Location
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
@@ -142,7 +142,7 @@ gameTick = do
           let h = hypotheticalRobot (Out VUnit emptyStore []) 0
               hid = view robotID h
               hn = view robotName h
-              farAway = V2 maxBound maxBound
+              farAway = Location maxBound maxBound
           let m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
           emitMessage m
         Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
@@ -208,12 +208,12 @@ zoomWorld n = do
   return a
 
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => V2 Int64 -> m (Maybe Entity)
+entityAt :: (Has (State GameState) sig m) => Location -> m (Maybe Entity)
 entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
-  (Has (State GameState) sig m) => V2 Int64 -> (Maybe Entity -> Maybe Entity) -> m ()
+  (Has (State GameState) sig m) => Location -> (Maybe Entity -> Maybe Entity) -> m ()
 updateEntityAt loc upd = zoomWorld (W.updateM @Int (W.locToCoords loc) upd)
 
 -- | Get the robot with a given ID.
@@ -683,7 +683,7 @@ seedProgram minTime randTime thing =
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
 --   by placed entities.
-addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> TimeSpec -> m ()
+addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> Location -> TimeSpec -> m ()
 addSeedBot e (minT, maxT) loc ts =
   void $
     addTRobot $
@@ -743,7 +743,7 @@ execConst c vs s k = do
       -- Figure out where we're going
       loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc ^+^ (orient ? zero)
+      let nextLoc = loc .+^ (orient ? zero)
       checkMoveAhead nextLoc $
         MoveFailure
           { failIfBlocked = ThrowExn
@@ -757,7 +757,7 @@ execConst c vs s k = do
         target <- getRobotWithinTouch rid
         -- either change current robot or one in robot map
         let oldLoc = target ^. robotLocation
-            nextLoc = V2 (fromIntegral x) (fromIntegral y)
+            nextLoc = Location (fromIntegral x) (fromIntegral y)
 
         onTarget rid $ do
           checkMoveAhead nextLoc $
@@ -944,7 +944,8 @@ execConst c vs s k = do
         return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
     Whereami -> do
-      V2 x y <- use robotLocation
+      loc <- use robotLocation
+      let Location x y = loc
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
     Time -> do
       t <- use ticks
@@ -1000,7 +1001,7 @@ execConst c vs s k = do
     Blocked -> do
       loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc ^+^ (orient ? zero)
+      let nextLoc = loc .+^ (orient ? zero)
       me <- entityAt nextLoc
       return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) s k
     Scan -> case vs of
@@ -1424,7 +1425,10 @@ execConst c vs s k = do
                 giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
-            robotMap . at (target ^. robotID) . traverse . machine
+            robotMap
+              . at (target ^. robotID)
+              . traverse
+              . machine
               .= In giveInventory empty emptyStore [FExec]
             activateRobot (target ^. robotID)
 
@@ -1545,12 +1549,12 @@ execConst c vs s k = do
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
 
-  lookInDirection :: HasRobotStepState sig m => Direction -> m (V2 Int64, Maybe Entity)
+  lookInDirection :: HasRobotStepState sig m => Direction -> m (Location, Maybe Entity)
   lookInDirection d = do
     loc <- use robotLocation
     orient <- use robotOrientation
     when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
-    let nextLoc = loc ^+^ applyTurn d (orient ? zero)
+    let nextLoc = loc .+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
 
   ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
@@ -1700,7 +1704,7 @@ execConst c vs s k = do
   -- replace some entity in the world with another entity
   changeWorld' ::
     Entity ->
-    V2 Int64 ->
+    Location ->
     IngredientList Entity ->
     W.World Int Entity ->
     Either Exn (W.World Int Entity)
@@ -1721,7 +1725,7 @@ execConst c vs s k = do
     selfDestruct .= True
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
-  checkMoveAhead :: HasRobotStepState sig m => V2 Int64 -> MoveFailure -> m ()
+  checkMoveAhead :: HasRobotStepState sig m => Location -> MoveFailure -> m ()
   checkMoveAhead nextLoc MoveFailure {..} = do
     me <- entityAt nextLoc
     systemRob <- use systemRobot
@@ -1896,8 +1900,8 @@ provisionChild childID toInstall toGive = do
 --   of a robot.
 updateRobotLocation ::
   (HasRobotStepState sig m) =>
-  V2 Int64 ->
-  V2 Int64 ->
+  Location ->
+  Location ->
   m ()
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()
