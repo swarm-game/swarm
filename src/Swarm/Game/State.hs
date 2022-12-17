@@ -32,6 +32,7 @@ module Swarm.Game.State (
   creativeMode,
   winCondition,
   winSolution,
+  gameAchievements,
   runStatus,
   paused,
   robotMap,
@@ -131,6 +132,8 @@ import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
+import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Achievement.Attainment
 import Data.Text.IO qualified as T (readFile)
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
@@ -256,6 +259,7 @@ data GameState = GameState
   { _creativeMode :: Bool
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
+  , _gameAchievements :: Map GameplayAchievement Attainment
   , _runStatus :: RunStatus
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -331,6 +335,9 @@ winCondition :: Lens' GameState WinCondition
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
 winSolution :: Lens' GameState (Maybe ProcessedTerm)
+
+-- | Map of in-game achievements that were attained
+gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
 
 -- | The current 'RunStatus'.
 runStatus :: Lens' GameState RunStatus
@@ -706,6 +713,9 @@ initGameState = do
       { _creativeMode = False
       , _winCondition = NoWinCondition
       , _winSolution = Nothing
+        -- This does not need to be initialized with anything,
+        -- since the master list of achievements is stored in UIState
+      , _gameAchievements = mempty
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty

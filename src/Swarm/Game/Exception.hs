@@ -34,6 +34,7 @@ import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
 import Swarm.Util
 import Witch (from)
+import Swarm.TUI.Model.Achievement.Definitions
 
 -- ------------------------------------------------------------------
 -- SETUP FOR DOCTEST
@@ -74,7 +75,7 @@ data Exn
   | -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
     --   grab, /etc./).
-    CmdFailed Const Text
+    CmdFailed Const Text (Maybe GameplayAchievement)
   | -- | The user program explicitly called 'Undefined' or 'Fail'.
     User Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -89,7 +90,7 @@ formatExn em = \case
       , "<https://github.com/swarm-game/swarm/issues/new>."
       ]
   InfiniteLoop -> "Infinite loop detected!"
-  (CmdFailed c t) -> T.concat [prettyText c, ": ", t]
+  (CmdFailed c t _) -> T.concat [prettyText c, ": ", t]
   (User t) -> "Player exception: " <> t
   (Incapable f caps tm) -> formatIncapable em f caps tm
 

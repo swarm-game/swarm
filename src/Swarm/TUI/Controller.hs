@@ -47,6 +47,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
+import Swarm.TUI.Model.UI (uiAchievements)
 import Control.Lens.Extras (is)
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
@@ -584,7 +585,19 @@ zoomGameState f = do
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: EventM Name AppState ()
-runGameTick = zoomGameState gameTick
+runGameTick = do
+  zoomGameState gameTick
+
+  -- Merge the in-game achievements with the master list in UIState
+  achievementsFromGame <- use $ gameState . gameAchievements
+  let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
+
+  masterAchievementsList <- use $ uiState . uiAchievements
+  let _newAchievements = wrappedGameAchievements `M.difference` masterAchievementsList
+  -- TODO: This is where new achievements would be displayed in
+  -- a popup (see #916)
+
+  uiState . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
