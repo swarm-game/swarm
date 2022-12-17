@@ -48,6 +48,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (V2 (..), zero)
 import Swarm.Game.CESK
@@ -68,6 +69,8 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
+import Swarm.TUI.Model.Achievement.Attainment
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
 import Swarm.Util.Location
 import System.Clock (TimeSpec)
@@ -336,7 +339,11 @@ hasCapabilityFor cap term = do
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
-cmdExn c parts = CmdFailed c (T.unwords parts)
+cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
+
+-- | Create an exception about a command failing, with an achievement
+cmdExnWithAchievement :: Const -> [Text] -> GameplayAchievement -> Exn
+cmdExnWithAchievement c parts a = CmdFailed c (T.unwords parts) $ Just a
 
 -- | Raise an exception about a command failing with a formatted error message.
 raise :: (Has (Throw Exn) sig m) => Const -> [Text] -> m a
@@ -596,15 +603,27 @@ stepCESK cesk = case cesk of
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
   Out v s (FTry {} : k) -> return $ Out v s k
-  -- If an exception rises all the way to the top level without being
-  -- handled, turn it into an error message.
-
-  -- HOWEVER, we have to make sure to check that the robot has the
-  -- 'log' capability which is required to collect and view logs.
-  --
-  -- Notice how we call resetBlackholes on the store, so that any
-  -- cells which were in the middle of being evaluated will be reset.
   Up exn s [] -> do
+    -- Here, an exception has risen all the way to the top level without being
+    -- handled.
+    case exn of
+      CmdFailed _ _ (Just a) -> do
+        currentTime <- sendIO getZonedTime
+        gameAchievements
+          %= M.insertWith
+            (<>)
+            a
+            (Attainment (GameplayAchievement a) Nothing currentTime)
+      _ -> return ()
+
+    -- If an exception rises all the way to the top level without being
+    -- handled, turn it into an error message.
+
+    -- HOWEVER, we have to make sure to check that the robot has the
+    -- 'log' capability which is required to collect and view logs.
+    --
+    -- Notice how we call resetBlackholes on the store, so that any
+    -- cells which were in the middle of being evaluated will be reset.
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use entityMap
@@ -736,7 +755,7 @@ execConst c vs s k = do
         return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
-      destroyIfNotBase
+      destroyIfNotBase $ Just AttemptSelfDestructBase
       flagRedraw
       return $ Out VUnit s k
     Move -> do
@@ -1718,10 +1737,13 @@ execConst c vs s k = do
               [de] -> Right $ Just $ snd de
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
-  destroyIfNotBase :: HasRobotStepState sig m => m ()
-  destroyIfNotBase = do
+  destroyIfNotBase :: HasRobotStepState sig m => Maybe GameplayAchievement -> m ()
+  destroyIfNotBase mAch = do
     rid <- use robotID
-    (rid /= 0) `holdsOrFail` ["You consider destroying your base, but decide not to do it after all."]
+    holdsOrFailWithAchievement
+      (rid /= 0)
+      ["You consider destroying your base, but decide not to do it after all."]
+      mAch
     selfDestruct .= True
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
@@ -1737,7 +1759,7 @@ execConst c vs s k = do
             -- robots can not walk through walls
             when (e `hasProperty` Unwalkable) $
               case failIfBlocked of
-                Destroy -> destroyIfNotBase
+                Destroy -> destroyIfNotBase Nothing
                 ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
                 IgnoreFail -> return ()
 
@@ -1745,7 +1767,7 @@ execConst c vs s k = do
             caps <- use robotCapabilities
             when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
               case failIfDrown of
-                Destroy -> destroyIfNotBase
+                Destroy -> destroyIfNotBase Nothing
                 ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
                 IgnoreFail -> return ()
 
@@ -1769,6 +1791,11 @@ execConst c vs s k = do
 
   holdsOrFail :: (Has (Throw Exn) sig m) => Bool -> [Text] -> m ()
   holdsOrFail a ts = a `holdsOr` cmdExn c ts
+
+  holdsOrFailWithAchievement :: (Has (Throw Exn) sig m) => Bool -> [Text] -> Maybe GameplayAchievement -> m ()
+  holdsOrFailWithAchievement a ts mAch = case mAch of
+    Nothing -> holdsOrFail a ts
+    Just ach -> a `holdsOr` cmdExnWithAchievement c ts ach
 
   isJustOrFail :: (Has (Throw Exn) sig m) => Maybe a -> [Text] -> m a
   isJustOrFail a ts = a `isJustOr` cmdExn c ts
@@ -2003,8 +2030,9 @@ incompatCmp v1 v2 =
 incomparable :: Has (Throw Exn) sig m => Value -> Value -> m a
 incomparable v1 v2 =
   throwError $
-    CmdFailed Lt $
-      T.unwords ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
+    cmdExn
+      Lt
+      ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
 ------------------------------------------------------------
 -- Arithmetic
@@ -2027,13 +2055,13 @@ evalArith = \case
 -- | Perform an integer division, but return @Nothing@ for division by
 --   zero.
 safeDiv :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
-safeDiv _ 0 = throwError $ CmdFailed Div "Division by zero"
+safeDiv _ 0 = throwError $ cmdExn Div $ pure "Division by zero"
 safeDiv a b = return $ a `div` b
 
 -- | Perform exponentiation, but return @Nothing@ if the power is negative.
 safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
-  | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
+  | b < 0 = throwError $ cmdExn Exp $ pure "Negative exponent"
   | otherwise = return $ a ^ b
 
 ------------------------------------------------------------
