@@ -54,6 +54,7 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int32)
+import Swarm.TUI.Model.Achievement.Persistence
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -89,6 +90,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
+import Swarm.TUI.Model.UI (uiAchievements)
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Util.Location
@@ -584,7 +586,23 @@ zoomGameState f = do
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: EventM Name AppState ()
-runGameTick = zoomGameState gameTick
+runGameTick = do
+  zoomGameState gameTick
+
+  -- Merge the in-game achievements with the master list in UIState
+  achievementsFromGame <- use $ gameState . gameAchievements
+  let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
+
+  oldMasterAchievementsList <- use $ uiState . uiAchievements
+  uiState . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
+
+  -- Don't save to disk unless there was a change in the attainment list.
+  let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
+  unless (null incrementalAchievements) $ do
+    -- TODO: This is where new achievements would be displayed in
+    -- a popup (see #916)
+    newAchievements <- use $ uiState . uiAchievements
+    liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
