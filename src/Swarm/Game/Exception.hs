@@ -32,9 +32,9 @@ import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
 import Witch (from)
-import Swarm.TUI.Model.Achievement.Definitions
 
 -- ------------------------------------------------------------------
 -- SETUP FOR DOCTEST

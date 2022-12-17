@@ -12,11 +12,11 @@ import Data.Map qualified as M
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
-import Text.Wrap
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Description
 import Swarm.TUI.Model.UI
+import Text.Wrap
 
 padAllEvenly :: Int -> Widget Name -> Widget Name
 padAllEvenly x w = padTopBottom x $ padLeftRight (2 * x) w
@@ -30,13 +30,15 @@ drawAchievementsMenuUI :: AppState -> BL.List Name CategorizedAchievement -> Wid
 drawAchievementsMenuUI s l =
   vBox
     [ hCenter $ padTopBottom 1 $ str "🏆  Achievements 🏆 "
-    , hCenter $ hBox
-        [ hLimitPercent 30 $
-            padAll 2 $
-              BL.renderList (const $ drawAchievementListItem attainedMap) True l
-        , hLimitPercent 50 $
-            maybe emptyWidget (singleAchievementDetails attainedMap . snd) $ BL.listSelectedElement l
-        ]
+    , hCenter $
+        hBox
+          [ hLimitPercent 30 $
+              padAll 2 $
+                BL.renderList (const $ drawAchievementListItem attainedMap) True l
+          , hLimitPercent 50 $
+              maybe emptyWidget (singleAchievementDetails attainedMap . snd) $
+                BL.listSelectedElement l
+          ]
     ]
  where
   attainedMap = s ^. uiState . uiAchievements
@@ -66,8 +68,10 @@ singleAchievementDetails attainedMap x =
   renderFlavorTextWidget (FTQuotation (Quotation author quoteContent)) =
     vBox
       [ txtWrap quoteContent
-      , padLeft Max $ padRight (Pad 2) $
-          txtWrapWith (defaultWrapSettings {fillStrategy = FillIndent 2}) $ "--" <> author
+      , padLeft Max $
+          padRight (Pad 2) $
+            txtWrapWith (defaultWrapSettings {fillStrategy = FillIndent 2}) $
+              "--" <> author
       ]
 
   innerContent =

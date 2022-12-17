@@ -132,8 +132,6 @@ import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Attainment
 import Data.Text.IO qualified as T (readFile)
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
@@ -160,6 +158,8 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Term (TText), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
+import Swarm.TUI.Model.Achievement.Attainment
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Location
 import System.Clock qualified as Clock
@@ -713,9 +713,9 @@ initGameState = do
       { _creativeMode = False
       , _winCondition = NoWinCondition
       , _winSolution = Nothing
-        -- This does not need to be initialized with anything,
+      , -- This does not need to be initialized with anything,
         -- since the master list of achievements is stored in UIState
-      , _gameAchievements = mempty
+        _gameAchievements = mempty
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty

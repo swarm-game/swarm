@@ -19,11 +19,8 @@ module Swarm.Game.Step where
 
 import Control.Applicative (liftA2)
 import Control.Carrier.Error.Either (runError)
-import Swarm.TUI.Model.Achievement.Attainment
-import Data.Time (getZonedTime)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
-import Swarm.TUI.Model.Achievement.Definitions
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -51,6 +48,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (V2 (..), zero)
 import Swarm.Game.CESK
@@ -71,6 +69,8 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
+import Swarm.TUI.Model.Achievement.Attainment
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
 import Swarm.Util.Location
 import System.Clock (TimeSpec)
@@ -604,25 +604,26 @@ stepCESK cesk = case cesk of
   -- just ignore the try block and continue.
   Out v s (FTry {} : k) -> return $ Out v s k
   Up exn s [] -> do
-  -- Here, an exception has risen all the way to the top level without being
-  -- handled.
+    -- Here, an exception has risen all the way to the top level without being
+    -- handled.
     case exn of
       CmdFailed _ _ (Just a) -> do
         currentTime <- sendIO getZonedTime
-        gameAchievements %= M.insertWith
-          (<>)
-          a
-          (Attainment (GameplayAchievement a) Nothing currentTime)
+        gameAchievements
+          %= M.insertWith
+            (<>)
+            a
+            (Attainment (GameplayAchievement a) Nothing currentTime)
       _ -> return ()
 
-  -- If an exception rises all the way to the top level without being
-  -- handled, turn it into an error message.
+    -- If an exception rises all the way to the top level without being
+    -- handled, turn it into an error message.
 
-  -- HOWEVER, we have to make sure to check that the robot has the
-  -- 'log' capability which is required to collect and view logs.
-  --
-  -- Notice how we call resetBlackholes on the store, so that any
-  -- cells which were in the middle of being evaluated will be reset.
+    -- HOWEVER, we have to make sure to check that the robot has the
+    -- 'log' capability which is required to collect and view logs.
+    --
+    -- Notice how we call resetBlackholes on the store, so that any
+    -- cells which were in the middle of being evaluated will be reset.
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use entityMap
@@ -1736,7 +1737,7 @@ execConst c vs s k = do
               [de] -> Right $ Just $ snd de
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
-  destroyIfNotBase :: HasRobotStepState sig m => Maybe GameplayAchievement-> m ()
+  destroyIfNotBase :: HasRobotStepState sig m => Maybe GameplayAchievement -> m ()
   destroyIfNotBase mAch = do
     rid <- use robotID
     holdsOrFailWithAchievement
@@ -2029,7 +2030,8 @@ incompatCmp v1 v2 =
 incomparable :: Has (Throw Exn) sig m => Value -> Value -> m a
 incomparable v1 v2 =
   throwError $
-    cmdExn Lt
+    cmdExn
+      Lt
       ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
 ------------------------------------------------------------

@@ -104,7 +104,7 @@ scenarioToAppState siPair@(scene, _) userSeed toRun = do
     x' <- liftIO $ a x
     l .= x'
 
-attainAchievement ::  CategorizedAchievement -> EventM Name AppState ()
+attainAchievement :: CategorizedAchievement -> EventM Name AppState ()
 attainAchievement a = do
   currentTime <- liftIO getZonedTime
   (uiState . uiAchievements)

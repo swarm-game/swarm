@@ -47,7 +47,6 @@ import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
-import Swarm.TUI.Model.UI (uiAchievements)
 import Control.Lens.Extras (is)
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
@@ -90,6 +89,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
+import Swarm.TUI.Model.UI (uiAchievements)
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Util.Location
