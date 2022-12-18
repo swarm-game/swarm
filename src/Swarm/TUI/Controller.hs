@@ -62,6 +62,7 @@ import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
+import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
@@ -85,8 +86,11 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
+import Swarm.TUI.Model.UI (uiAchievements)
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Util.Location
@@ -118,6 +122,7 @@ handleEvent = \case
           MainMenu l -> handleMainMenuEvent l
           NewGameMenu l -> handleNewGameMenuEvent l
           MessagesMenu -> handleMainMessagesEvent
+          AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
@@ -152,10 +157,13 @@ handleMainMenuEvent menu = \case
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
           startGame firstTutorial Nothing
+        Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
         Messages -> do
           runtimeState . eventLog . notificationsCount .= 0
           uiState . uiMenu .= MessagesMenu
-        About -> uiState . uiMenu .= AboutMenu
+        About -> do
+          uiState . uiMenu .= AboutMenu
+          attainAchievement $ GlobalAchievement LookedAtAboutScreen
         Quit -> halt
   CharKey 'q' -> halt
   ControlChar 'q' -> halt
@@ -172,6 +180,21 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
+
+handleMainAchievementsEvent ::
+  BL.List Name CategorizedAchievement ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
+handleMainAchievementsEvent l e = case e of
+  Key V.KEsc -> returnToMainMenu
+  CharKey 'q' -> returnToMainMenu
+  ControlChar 'q' -> returnToMainMenu
+  VtyEvent ev -> do
+    l' <- nestEventM' l (handleListEvent ev)
+    uiState . uiMenu .= AchievementsMenu l'
+  _ -> continueWithoutRedraw
+ where
+  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMessagesEvent = \case
@@ -558,12 +581,31 @@ zoomGameState f = do
   gs' <- liftIO (Fused.runM (Fused.execState gs f))
   gameState .= gs'
 
+updateAchievements :: EventM Name AppState ()
+updateAchievements = do
+  -- Merge the in-game achievements with the master list in UIState
+  achievementsFromGame <- use $ gameState . gameAchievements
+  let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
+
+  oldMasterAchievementsList <- use $ uiState . uiAchievements
+  uiState . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
+
+  -- Don't save to disk unless there was a change in the attainment list.
+  let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
+  unless (null incrementalAchievements) $ do
+    -- TODO: This is where new achievements would be displayed in
+    -- a popup (see #916)
+    newAchievements <- use $ uiState . uiAchievements
+    liftIO $ saveAchievementsInfo $ M.elems newAchievements
+
 -- | Run the game for a single tick (/without/ updating the UI).
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: EventM Name AppState ()
-runGameTick = zoomGameState gameTick
+runGameTick = do
+  zoomGameState gameTick
+  updateAchievements
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
