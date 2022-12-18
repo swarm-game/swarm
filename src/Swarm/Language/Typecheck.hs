@@ -226,6 +226,8 @@ data TypeErr
     CantInfer SrcLoc Term
   | -- | An invalid argument was provided to @atomic@.
     InvalidAtomic SrcLoc InvalidAtomicReason Term
+  | -- | XXX
+    WhileChecking Syntax TypeErr
   deriving (Show)
 
 -- | Various reasons the body of an @atomic@ might be invalid.
@@ -255,6 +257,7 @@ getTypeErrSrcLoc te = case te of
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
   InvalidAtomic l _ _ -> Just l
+  WhileChecking _ te' -> getTypeErrSrcLoc te'
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -554,7 +557,7 @@ inferConst c = case c of
 
 -- | @check t ty@ checks that @t@ has type @ty@.
 check :: Syntax -> UType -> Infer ()
-check s@(Syntax _ t) ty = case t of
+check s@(Syntax _ t) ty = (`catchError` wrapCheck s) $ case t of
   SPair s1 s2 -> do
     (ty1, ty2) <- decomposeProdTy ty
     check s1 ty1
@@ -563,6 +566,10 @@ check s@(Syntax _ t) ty = case t of
     ty' <- infer s
     _ <- ty =:= ty'
     return ()
+
+-- | XXX
+wrapCheck :: Syntax -> TypeErr -> Infer ()
+wrapCheck s te = throwError $ WhileChecking s te
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are

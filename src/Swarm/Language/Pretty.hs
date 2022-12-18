@@ -111,6 +111,9 @@ instance PrettyPrec Capability where
 instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
+instance PrettyPrec Syntax where
+  prettyPrec p (Syntax _ t) = prettyPrec p t
+
 instance PrettyPrec Term where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c
@@ -200,6 +203,8 @@ instance PrettyPrec TypeErr where
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
   prettyPrec _ (InvalidAtomic _ reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
+  prettyPrec _ (WhileChecking s te) =
+    "While checking" <+> ppr s <> ":" <> line <> nest 2 (ppr te)
 
 instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"
