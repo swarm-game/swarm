@@ -458,6 +458,14 @@ decomposeFunTy ty = do
   ty =:= UTyFun ty1 ty2
   return (ty1, ty2)
 
+decomposeProdTy :: UType -> Infer (UType, UType)
+decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  ty =:= UTyProd ty1 ty2
+  return (ty1, ty2)
+
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
 inferConst c = case c of
@@ -546,10 +554,15 @@ inferConst c = case c of
 
 -- | @check t ty@ checks that @t@ has type @ty@.
 check :: Syntax -> UType -> Infer ()
-check t ty = do
-  ty' <- infer t
-  _ <- ty =:= ty'
-  return ()
+check s@(Syntax _ t) ty = case t of
+  SPair s1 s2 -> do
+    (ty1, ty2) <- decomposeProdTy ty
+    check s1 ty1
+    check s2 ty2
+  _ -> do
+    ty' <- infer s
+    _ <- ty =:= ty'
+    return ()
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
