@@ -37,7 +37,8 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
-import Brick hiding (Direction)
+import Brick hiding (Direction, Location)
+import Brick qualified
 import Brick.Focus
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
@@ -52,7 +53,7 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
-import Data.Int (Int64)
+import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -61,6 +62,7 @@ import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
+import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
@@ -84,10 +86,14 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
+import Swarm.TUI.Model.UI (uiAchievements)
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Witch (into)
@@ -116,6 +122,7 @@ handleEvent = \case
           MainMenu l -> handleMainMenuEvent l
           NewGameMenu l -> handleNewGameMenuEvent l
           MessagesMenu -> handleMainMessagesEvent
+          AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
@@ -150,10 +157,13 @@ handleMainMenuEvent menu = \case
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
           startGame firstTutorial Nothing
+        Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
         Messages -> do
           runtimeState . eventLog . notificationsCount .= 0
           uiState . uiMenu .= MessagesMenu
-        About -> uiState . uiMenu .= AboutMenu
+        About -> do
+          uiState . uiMenu .= AboutMenu
+          attainAchievement $ GlobalAchievement LookedAtAboutScreen
         Quit -> halt
   CharKey 'q' -> halt
   ControlChar 'q' -> halt
@@ -170,6 +180,21 @@ getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
+
+handleMainAchievementsEvent ::
+  BL.List Name CategorizedAchievement ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
+handleMainAchievementsEvent l e = case e of
+  Key V.KEsc -> returnToMainMenu
+  CharKey 'q' -> returnToMainMenu
+  ControlChar 'q' -> returnToMainMenu
+  VtyEvent ev -> do
+    l' <- nestEventM' l (handleListEvent ev)
+    uiState . uiMenu .= AchievementsMenu l'
+  _ -> continueWithoutRedraw
+ where
+  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMessagesEvent = \case
@@ -199,7 +224,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
-  uiState . uiMenu
+  uiState
+    . uiMenu
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
       Just stk' -> NewGameMenu stk'
@@ -555,12 +581,31 @@ zoomGameState f = do
   gs' <- liftIO (Fused.runM (Fused.execState gs f))
   gameState .= gs'
 
+updateAchievements :: EventM Name AppState ()
+updateAchievements = do
+  -- Merge the in-game achievements with the master list in UIState
+  achievementsFromGame <- use $ gameState . gameAchievements
+  let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
+
+  oldMasterAchievementsList <- use $ uiState . uiAchievements
+  uiState . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
+
+  -- Don't save to disk unless there was a change in the attainment list.
+  let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
+  unless (null incrementalAchievements) $ do
+    -- TODO: This is where new achievements would be displayed in
+    -- a popup (see #916)
+    newAchievements <- use $ uiState . uiAchievements
+    liftIO $ saveAchievementsInfo $ M.elems newAchievements
+
 -- | Run the game for a single tick (/without/ updating the UI).
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: EventM Name AppState ()
-runGameTick = zoomGameState gameTick
+runGameTick = do
+  zoomGameState gameTick
+  updateAchievements
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -978,7 +1023,7 @@ adjReplHistIndex d s =
 -- World events
 ------------------------------------------------------------
 
-worldScrollDist :: Int64
+worldScrollDist :: Int32
 worldScrollDist = 8
 
 onlyCreative :: MonadState AppState m => m () -> m ()
@@ -990,7 +1035,7 @@ onlyCreative a = do
 handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 -- scrolling the world view in Creative mode
 handleWorldEvent = \case
-  Key k | k `elem` moveKeys -> onlyCreative $ scrollView (^+^ (worldScrollDist *^ keyToDir k))
+  Key k | k `elem` moveKeys -> onlyCreative $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
     gameState . viewCenterRule .= VCRobot 0
@@ -1011,7 +1056,7 @@ handleWorldEvent = \case
     ]
 
 -- | Manually scroll the world view.
-scrollView :: (V2 Int64 -> V2 Int64) -> EventM Name AppState ()
+scrollView :: (Location -> Location) -> EventM Name AppState ()
 scrollView update = do
   -- Manually invalidate the 'WorldCache' instead of just setting
   -- 'needsRedraw'.  I don't quite understand why the latter doesn't
@@ -1021,7 +1066,7 @@ scrollView update = do
   gameState %= modifyViewCenter update
 
 -- | Convert a directional key into a direction.
-keyToDir :: V.Key -> V2 Int64
+keyToDir :: V.Key -> Heading
 keyToDir V.KUp = north
 keyToDir V.KDown = south
 keyToDir V.KRight = east
@@ -1030,7 +1075,7 @@ keyToDir (V.KChar 'h') = west
 keyToDir (V.KChar 'j') = south
 keyToDir (V.KChar 'k') = north
 keyToDir (V.KChar 'l') = east
-keyToDir _ = V2 0 0
+keyToDir _ = zero
 
 -- | Adjust the ticks per second speed.
 adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState

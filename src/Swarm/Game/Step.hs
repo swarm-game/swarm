@@ -34,7 +34,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
-import Data.Int (Int64)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
@@ -49,8 +48,9 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (getZonedTime)
 import Data.Tuple (swap)
-import Linear (V2 (..), zero, (^+^))
+import Linear (V2 (..), zero)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -69,7 +69,10 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
+import Swarm.TUI.Model.Achievement.Attainment
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
+import Swarm.Util.Location
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
@@ -142,7 +145,7 @@ gameTick = do
           let h = hypotheticalRobot (Out VUnit emptyStore []) 0
               hid = view robotID h
               hn = view robotName h
-              farAway = V2 maxBound maxBound
+              farAway = Location maxBound maxBound
           let m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
           emitMessage m
         Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
@@ -208,12 +211,12 @@ zoomWorld n = do
   return a
 
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => V2 Int64 -> m (Maybe Entity)
+entityAt :: (Has (State GameState) sig m) => Location -> m (Maybe Entity)
 entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
-  (Has (State GameState) sig m) => V2 Int64 -> (Maybe Entity -> Maybe Entity) -> m ()
+  (Has (State GameState) sig m) => Location -> (Maybe Entity -> Maybe Entity) -> m ()
 updateEntityAt loc upd = zoomWorld (W.updateM @Int (W.locToCoords loc) upd)
 
 -- | Get the robot with a given ID.
@@ -336,7 +339,11 @@ hasCapabilityFor cap term = do
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
-cmdExn c parts = CmdFailed c (T.unwords parts)
+cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
+
+-- | Create an exception about a command failing, with an achievement
+cmdExnWithAchievement :: Const -> [Text] -> GameplayAchievement -> Exn
+cmdExnWithAchievement c parts a = CmdFailed c (T.unwords parts) $ Just a
 
 -- | Raise an exception about a command failing with a formatted error message.
 raise :: (Has (Throw Exn) sig m) => Const -> [Text] -> m a
@@ -596,15 +603,27 @@ stepCESK cesk = case cesk of
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
   Out v s (FTry {} : k) -> return $ Out v s k
-  -- If an exception rises all the way to the top level without being
-  -- handled, turn it into an error message.
-
-  -- HOWEVER, we have to make sure to check that the robot has the
-  -- 'log' capability which is required to collect and view logs.
-  --
-  -- Notice how we call resetBlackholes on the store, so that any
-  -- cells which were in the middle of being evaluated will be reset.
   Up exn s [] -> do
+    -- Here, an exception has risen all the way to the top level without being
+    -- handled.
+    case exn of
+      CmdFailed _ _ (Just a) -> do
+        currentTime <- sendIO getZonedTime
+        gameAchievements
+          %= M.insertWith
+            (<>)
+            a
+            (Attainment (GameplayAchievement a) Nothing currentTime)
+      _ -> return ()
+
+    -- If an exception rises all the way to the top level without being
+    -- handled, turn it into an error message.
+
+    -- HOWEVER, we have to make sure to check that the robot has the
+    -- 'log' capability which is required to collect and view logs.
+    --
+    -- Notice how we call resetBlackholes on the store, so that any
+    -- cells which were in the middle of being evaluated will be reset.
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use entityMap
@@ -683,7 +702,7 @@ seedProgram minTime randTime thing =
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
 --   by placed entities.
-addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> V2 Int64 -> TimeSpec -> m ()
+addSeedBot :: Has (State GameState) sig m => Entity -> (Integer, Integer) -> Location -> TimeSpec -> m ()
 addSeedBot e (minT, maxT) loc ts =
   void $
     addTRobot $
@@ -736,14 +755,14 @@ execConst c vs s k = do
         return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
-      destroyIfNotBase
+      destroyIfNotBase $ Just AttemptSelfDestructBase
       flagRedraw
       return $ Out VUnit s k
     Move -> do
       -- Figure out where we're going
       loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc ^+^ (orient ? zero)
+      let nextLoc = loc .+^ (orient ? zero)
       checkMoveAhead nextLoc $
         MoveFailure
           { failIfBlocked = ThrowExn
@@ -757,7 +776,7 @@ execConst c vs s k = do
         target <- getRobotWithinTouch rid
         -- either change current robot or one in robot map
         let oldLoc = target ^. robotLocation
-            nextLoc = V2 (fromIntegral x) (fromIntegral y)
+            nextLoc = Location (fromIntegral x) (fromIntegral y)
 
         onTarget rid $ do
           checkMoveAhead nextLoc $
@@ -944,7 +963,8 @@ execConst c vs s k = do
         return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
     Whereami -> do
-      V2 x y <- use robotLocation
+      loc <- use robotLocation
+      let Location x y = loc
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
     Time -> do
       t <- use ticks
@@ -1000,7 +1020,7 @@ execConst c vs s k = do
     Blocked -> do
       loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc ^+^ (orient ? zero)
+      let nextLoc = loc .+^ (orient ? zero)
       me <- entityAt nextLoc
       return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) s k
     Scan -> case vs of
@@ -1424,7 +1444,10 @@ execConst c vs s k = do
                 giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
-            robotMap . at (target ^. robotID) . traverse . machine
+            robotMap
+              . at (target ^. robotID)
+              . traverse
+              . machine
               .= In giveInventory empty emptyStore [FExec]
             activateRobot (target ^. robotID)
 
@@ -1545,12 +1568,12 @@ execConst c vs s k = do
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out VUnit s (FImmediate wf rf : k)
 
-  lookInDirection :: HasRobotStepState sig m => Direction -> m (V2 Int64, Maybe Entity)
+  lookInDirection :: HasRobotStepState sig m => Direction -> m (Location, Maybe Entity)
   lookInDirection d = do
     loc <- use robotLocation
     orient <- use robotOrientation
     when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
-    let nextLoc = loc ^+^ applyTurn d (orient ? zero)
+    let nextLoc = loc .+^ applyTurn d (orient ? zero)
     (nextLoc,) <$> entityAt nextLoc
 
   ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
@@ -1700,7 +1723,7 @@ execConst c vs s k = do
   -- replace some entity in the world with another entity
   changeWorld' ::
     Entity ->
-    V2 Int64 ->
+    Location ->
     IngredientList Entity ->
     W.World Int Entity ->
     Either Exn (W.World Int Entity)
@@ -1714,14 +1737,17 @@ execConst c vs s k = do
               [de] -> Right $ Just $ snd de
               _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
 
-  destroyIfNotBase :: HasRobotStepState sig m => m ()
-  destroyIfNotBase = do
+  destroyIfNotBase :: HasRobotStepState sig m => Maybe GameplayAchievement -> m ()
+  destroyIfNotBase mAch = do
     rid <- use robotID
-    (rid /= 0) `holdsOrFail` ["You consider destroying your base, but decide not to do it after all."]
+    holdsOrFailWithAchievement
+      (rid /= 0)
+      ["You consider destroying your base, but decide not to do it after all."]
+      mAch
     selfDestruct .= True
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
-  checkMoveAhead :: HasRobotStepState sig m => V2 Int64 -> MoveFailure -> m ()
+  checkMoveAhead :: HasRobotStepState sig m => Location -> MoveFailure -> m ()
   checkMoveAhead nextLoc MoveFailure {..} = do
     me <- entityAt nextLoc
     systemRob <- use systemRobot
@@ -1733,7 +1759,7 @@ execConst c vs s k = do
             -- robots can not walk through walls
             when (e `hasProperty` Unwalkable) $
               case failIfBlocked of
-                Destroy -> destroyIfNotBase
+                Destroy -> destroyIfNotBase Nothing
                 ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
                 IgnoreFail -> return ()
 
@@ -1741,7 +1767,7 @@ execConst c vs s k = do
             caps <- use robotCapabilities
             when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
               case failIfDrown of
-                Destroy -> destroyIfNotBase
+                Destroy -> destroyIfNotBase Nothing
                 ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
                 IgnoreFail -> return ()
 
@@ -1765,6 +1791,11 @@ execConst c vs s k = do
 
   holdsOrFail :: (Has (Throw Exn) sig m) => Bool -> [Text] -> m ()
   holdsOrFail a ts = a `holdsOr` cmdExn c ts
+
+  holdsOrFailWithAchievement :: (Has (Throw Exn) sig m) => Bool -> [Text] -> Maybe GameplayAchievement -> m ()
+  holdsOrFailWithAchievement a ts mAch = case mAch of
+    Nothing -> holdsOrFail a ts
+    Just ach -> a `holdsOr` cmdExnWithAchievement c ts ach
 
   isJustOrFail :: (Has (Throw Exn) sig m) => Maybe a -> [Text] -> m a
   isJustOrFail a ts = a `isJustOr` cmdExn c ts
@@ -1896,8 +1927,8 @@ provisionChild childID toInstall toGive = do
 --   of a robot.
 updateRobotLocation ::
   (HasRobotStepState sig m) =>
-  V2 Int64 ->
-  V2 Int64 ->
+  Location ->
+  Location ->
   m ()
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()
@@ -1999,8 +2030,9 @@ incompatCmp v1 v2 =
 incomparable :: Has (Throw Exn) sig m => Value -> Value -> m a
 incomparable v1 v2 =
   throwError $
-    CmdFailed Lt $
-      T.unwords ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
+    cmdExn
+      Lt
+      ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
 ------------------------------------------------------------
 -- Arithmetic
@@ -2023,13 +2055,13 @@ evalArith = \case
 -- | Perform an integer division, but return @Nothing@ for division by
 --   zero.
 safeDiv :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
-safeDiv _ 0 = throwError $ CmdFailed Div "Division by zero"
+safeDiv _ 0 = throwError $ cmdExn Div $ pure "Division by zero"
 safeDiv a b = return $ a `div` b
 
 -- | Perform exponentiation, but return @Nothing@ if the power is negative.
 safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
 safeExp a b
-  | b < 0 = throwError $ CmdFailed Exp "Negative exponent"
+  | b < 0 = throwError $ cmdExn Exp $ pure "Negative exponent"
   | otherwise = return $ a ^ b
 
 ------------------------------------------------------------

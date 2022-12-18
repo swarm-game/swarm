@@ -9,8 +9,6 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Criterion.Main (Benchmark, bench, bgroup, defaultConfig, defaultMainWith, whnfAppIO)
 import Criterion.Types (Config (timeLimit))
-import Data.Int (Int64)
-import Linear.V2 (V2 (V2))
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Robot (TRobot, mkRobot)
@@ -22,6 +20,7 @@ import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (north)
+import Swarm.Util.Location
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
@@ -70,14 +69,14 @@ circlerProgram =
   |]
 
 -- | Initializes a robot with program prog at location loc facing north.
-initRobot :: ProcessedTerm -> V2 Int64 -> TRobot
-initRobot prog loc = mkRobot () Nothing "" [] (Just north) loc defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False 0
+initRobot :: ProcessedTerm -> Location -> TRobot
+initRobot prog loc = mkRobot () Nothing "" [] (Just loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
-mkGameState :: (V2 Int64 -> TRobot) -> Int -> IO GameState
+mkGameState :: (Location -> TRobot) -> Int -> IO GameState
 mkGameState robotMaker numRobots = do
-  let robots = [robotMaker (V2 (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
+  let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
   Right initState <- runExceptT classicGame0
   execStateT
     (mapM addTRobot robots)
