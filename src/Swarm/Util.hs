@@ -118,7 +118,7 @@ import Witch
 
 -- $setup
 -- >>> import qualified Data.Map as M
--- >>> import Linear.V2
+-- >>> import Swarm.Util.Location
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -174,10 +174,10 @@ manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 
 -- | Get elements that are in manhattan distance from location.
 --
--- >>> v2s i = [(v, manhattan (V2 0 0) v) | x <- [-i..i], y <- [-i..i], let v = V2 x y]
+-- >>> v2s i = [(p, manhattan origin p) | x <- [-i..i], y <- [-i..i], let p = Location x y]
 -- >>> v2s 0
--- [(V2 0 0,0)]
--- >>> map (\i -> length (getElemsInArea (V2 0 0) i (M.fromList $ v2s i))) [0..8]
+-- [(P (V2 0 0),0)]
+-- >>> map (\i -> length (getElemsInArea origin i (M.fromList $ v2s i))) [0..8]
 -- [1,5,13,25,41,61,85,113,145]
 --
 -- The last test is the sequence "Centered square numbers":
@@ -268,7 +268,8 @@ dataNotFound f = do
       ]
 
 -- | Get path to swarm data, optionally creating necessary
---   directories.
+--   directories. This could fail if user has bad permissions
+--   on his own $HOME or $XDG_DATA_HOME which is unlikely.
 getSwarmDataPath :: Bool -> IO FilePath
 getSwarmDataPath createDirs = do
   swarmData <- getXdgDirectory XdgData "swarm"
@@ -279,13 +280,10 @@ getSwarmDataPath createDirs = do
 --   directories.
 getSwarmSavePath :: Bool -> IO FilePath
 getSwarmSavePath createDirs = do
-  swarmSave <- getXdgDirectory XdgData ("swarm" </> "saves")
-  when createDirs (createDirectoryIfMissing True swarmSave)
-  pure swarmSave
+  (</> "saves") <$> getSwarmDataPath createDirs
 
 -- | Get path to swarm history, optionally creating necessary
---   directories. This could fail if user has bad permissions
---   on his own $HOME or $XDG_DATA_HOME which is unlikely.
+--   directories.
 getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs =
   (</> "history") <$> getSwarmDataPath createDirs
