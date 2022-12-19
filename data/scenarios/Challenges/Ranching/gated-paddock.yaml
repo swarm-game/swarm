@@ -274,6 +274,7 @@ objectives:
       } {
           return false;
       }
+    id: enclose_sheep
   - goal:
       - |
         Safe! Your sheep are now hungry.
@@ -311,6 +312,10 @@ objectives:
           end;
 
       anySheep (has "clover") 3;
+    id: feed_sheep
+    prerequisite:
+      logic:
+        id: enclose_sheep
   - goal:
       - |
         Yum! Contented, well-fed sheep may drop wool.
@@ -323,6 +328,9 @@ objectives:
       as base {
         has "sweater";
       };
+    prerequisite:
+      logic:
+        id: feed_sheep
 robots:
   - name: base
     dir: [0, 1]

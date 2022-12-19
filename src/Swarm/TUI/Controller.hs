@@ -53,6 +53,7 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
+import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -68,6 +69,8 @@ import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective.Presentation.Model
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
@@ -251,7 +254,8 @@ handleMainEvent ev = do
     -- ctrl-q works everywhere
     ControlChar 'q' ->
       case s ^. gameState . winCondition of
-        Won _ -> toggleModal WinModal
+        WinConditions (Won _) _ -> toggleModal WinModal
+        WinConditions (Unwinnable _) _ -> toggleModal LoseModal
         _ -> toggleModal QuitModal
     VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
     Key V.KEsc
@@ -275,9 +279,10 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
-    ControlChar 'g' -> case s ^. uiState . uiGoal of
-      Just g | g /= [] -> toggleModal (GoalModal g)
-      _ -> continueWithoutRedraw
+    ControlChar 'g' ->
+      if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
+        then toggleModal GoalModal
+        else continueWithoutRedraw
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
@@ -398,8 +403,14 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
+      Just GoalModal -> do
+        lw <- use $ uiState . uiGoal . listWidget
+        newList <- refreshList lw
+        uiState . uiGoal . listWidget .= newList
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
+   where
+    refreshList lw = nestEventM' lw $ BL.handleListEvent ev
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
@@ -415,7 +426,10 @@ saveScenarioInfoOnQuit = do
         gs <- use $ gameState . scenarios
         p <- liftIO $ normalizeScenarioPath gs p'
         t <- liftIO getZonedTime
-        won <- isJust <$> preuse (gameState . winCondition . _Won)
+        wc <- use $ gameState . winCondition
+        let won = case wc of
+              WinConditions (Won _) _ -> True
+              _ -> False
         ts <- use $ gameState . ticks
         let currentScenarioInfo :: Traversal' AppState ScenarioInfo
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
@@ -701,34 +715,71 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
-  -- Decide whether we need to update the current goal text, and pop
-  -- up a modal dialog.
-  curGoal <- use (uiState . uiGoal)
-  newGoal <-
-    preuse (gameState . winCondition . _WinConditions . _NonEmpty . _1 . objectiveGoal)
+  goalOrWinUpdated <- doGoalUpdates
 
-  let goalUpdated = curGoal /= newGoal
-  when goalUpdated $ do
-    uiState . uiGoal .= newGoal
-    case newGoal of
-      Just goal | goal /= [] -> do
-        toggleModal (GoalModal goal)
-      _ -> return ()
-
-  -- Decide whether to show a pop-up modal congratulating the user on
-  -- successfully completing the current challenge.
-  winModalUpdated <- do
-    w <- use (gameState . winCondition)
-    case w of
-      Won False -> do
-        gameState . winCondition .= Won True
-        toggleModal WinModal
-        uiState . uiMenu %= advanceMenu
-        return True
-      _ -> return False
-
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || goalUpdated || winModalUpdated
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || goalOrWinUpdated
   pure redraw
+
+-- | Either pops up the updated Goals modal
+-- or pops up the Congratulations (Win) modal, or pops
+-- up the Condolences (Lose) modal.
+-- The Win modal will take precendence if the player
+-- has met the necessary conditions to win the game.
+--
+-- If the player chooses to "Keep Playing" from the Win modal, the
+-- updated Goals will then immediately appear.
+-- This is desirable for:
+-- * feedback as to the final goal the player accomplished,
+-- * as a summary of all of the goals of the game
+-- * shows the player more "optional" goals they can continue to pursue
+doGoalUpdates :: EventM Name AppState Bool
+doGoalUpdates = do
+  curGoal <- use (uiState . uiGoal . goalsContent)
+  isCheating <- use (uiState . uiCheatMode)
+  curWinCondition <- use (gameState . winCondition)
+  announcementsSeq <- use (gameState . announcementQueue)
+  let announcementsList = toList announcementsSeq
+
+  -- Decide whether we need to update the current goal text and pop
+  -- up a modal dialog.
+  case curWinCondition of
+    NoWinCondition -> return False
+    WinConditions (Unwinnable False) x -> do
+      -- This clears the "flag" that the Lose dialog needs to pop up
+      gameState . winCondition .= WinConditions (Unwinnable True) x
+      openModal LoseModal
+
+      uiState . uiMenu %= advanceMenu
+      return True
+    WinConditions (Won False) x -> do
+      -- This clears the "flag" that the Win dialog needs to pop up
+      gameState . winCondition .= WinConditions (Won True) x
+      openModal WinModal
+
+      uiState . uiMenu %= advanceMenu
+      return True
+    WinConditions _ oc -> do
+      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
+          -- The "uiGoal" field is intialized with empty members, so we know that
+          -- this will be the first time showing it if it will be nonempty after previously
+          -- being empty.
+          isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)
+          goalWasUpdated = isFirstGoalDisplay || not (null announcementsList)
+
+      -- Decide whether to show a pop-up modal congratulating the user on
+      -- successfully completing the current challenge.
+      when goalWasUpdated $ do
+        -- The "uiGoal" field is necessary at least to "persist" the data that is needed
+        -- if the player chooses to later "recall" the goals dialog with CTRL+g.
+        uiState . uiGoal .= GoalDisplay newGoalTracking (GR.makeListWidget newGoalTracking)
+
+        -- This clears the "flag" that indicate that the goals dialog needs to be
+        -- automatically popped up.
+        gameState . announcementQueue .= mempty
+
+        openModal GoalModal
+
+      return goalWasUpdated
 
 -- | Make sure all tiles covering the visible part of the world are
 --   loaded.

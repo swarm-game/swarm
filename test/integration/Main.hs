@@ -13,6 +13,7 @@ import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
 import Data.IntSet qualified as IS
+import Data.List (partition)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Sequence (Seq)
@@ -28,7 +29,8 @@ import Swarm.Game.Robot (LogEntry, defReqs, leText, machine, robotContext, robot
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
-  WinCondition (Won),
+  WinCondition (WinConditions),
+  WinStatus (Won),
   activeRobots,
   baseRobot,
   initGameStateForScenario,
@@ -45,16 +47,22 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
+import System.FilePath (splitDirectories)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
+
+isUnparseableTest :: (FilePath, String) -> Bool
+isUnparseableTest (fp, _) = "_Validation" `elem` splitDirectories fp
 
 main :: IO ()
 main = do
   examplePaths <- acquire "example" "sw"
   scenarioPaths <- acquire "data/scenarios" "yaml"
+  let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
   scenarioPrograms <- acquire "data/scenarios" "sw"
   ci <- any (("CI" ==) . fst) <$> getEnvironment
   entities <- loadEntities
@@ -66,7 +74,8 @@ main = do
           "Tests"
           [ exampleTests examplePaths
           , exampleTests scenarioPrograms
-          , scenarioTests em scenarioPaths
+          , scenarioParseTests em parseableScenarios
+          , scenarioParseInvalidTests em unparseableScenarios
           , testScenarioSolution ci em
           , testEditorFiles
           ]
@@ -81,8 +90,14 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioTests em inputs = testGroup "Test scenarios" (map (scenarioTest em) inputs)
+scenarioParseTests :: EntityMap -> [(FilePath, String)] -> TestTree
+scenarioParseTests em inputs = testGroup "Test scenarios" (map (scenarioTest em) inputs)
+
+scenarioParseInvalidTests :: EntityMap -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests em inputs =
+  testGroup
+    "Parse Validation Test scenarios"
+    (map (expectFailBecause "Invalid scenario file" . scenarioTest em) inputs)
 
 scenarioTest :: EntityMap -> (FilePath, String) -> TestTree
 scenarioTest em (path, _) =
@@ -272,7 +287,7 @@ testScenarioSolution _ci _em =
     w <- use winCondition
     b <- gets badErrorsInLogs
     when (null b) $ case w of
-      Won _ -> return ()
+      WinConditions (Won _) _ -> return ()
       _ -> gameTick >> playUntilWin
 
 noBadErrors :: GameState -> Assertion

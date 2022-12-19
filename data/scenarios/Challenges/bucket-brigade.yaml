@@ -66,6 +66,7 @@ objectives:
         You'll have to make do...
     condition: |
       as base {has "coal lump"}
+    id: deliver_coal_lump
   - goal:
       - Your base got some coal!
       - Now fashion more of it into a "coal briquette", and place it
@@ -75,6 +76,9 @@ objectives:
     condition: |
       hauler <- robotnamed "hauler";
       as hauler {has "coal briquette"}
+    prerequisite:
+      logic:
+        id: deliver_coal_lump
 solution: |
   run "scenarios/Challenges/_bucket-brigade/brigade.sw"
 entities:

@@ -19,6 +19,7 @@ objectives:
         w <- as p {ishere "Hastur"};
         return (not w);
       } { return false }
+    id: grab_artifact
   - goal:
       - |
         Your robot obtained the misplaced artifact! Next you need to put it back
@@ -56,6 +57,9 @@ objectives:
         w <- as p {ishere "Hastur"};
         return w;
       } { return false }
+    prerequisite:
+      logic:
+        id: grab_artifact
 solution: |
   run "data/scenarios/Tutorials/bind2-solution.sw"
 entities:
