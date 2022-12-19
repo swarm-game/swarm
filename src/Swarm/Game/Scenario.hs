@@ -21,6 +21,9 @@ module Swarm.Game.Scenario (
   Objective,
   objectiveGoal,
   objectiveCondition,
+  objectiveId,
+  objectiveOptional,
+  objectivePrerequisite,
 
   -- * WorldDescription
   Cell (..),
@@ -52,7 +55,10 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
+import Data.Aeson
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Control.Algebra (Has)
+import Data.Char (toLower)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
@@ -74,16 +80,47 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)
+import Data.Semigroup
 
 ------------------------------------------------------------
 -- Scenario objectives
 ------------------------------------------------------------
+
+type ObjectiveId = Text
+
+data Prerequisite a
+  = And (NonEmpty (Prerequisite a))
+  | Or (NonEmpty (Prerequisite a))
+  | Not (Prerequisite a)
+  | Id a
+  deriving (Eq, Show, Generic, Functor)
+
+met :: Prerequisite Bool -> Bool
+met (And x) = getAll $ sconcat $ fmap (All . met) x
+met (Or x) = getAny $ sconcat $ fmap (Any . met) x
+met (Not x) = not $ met x
+met (Id x) = x
+
+prerequisiteOptions :: Options
+prerequisiteOptions = defaultOptions {
+    sumEncoding = ObjectWithSingleField
+  , constructorTagModifier = map toLower
+  }
+
+instance ToJSON (Prerequisite ObjectiveId) where
+  toJSON = genericToJSON prerequisiteOptions
+
+instance FromJSON (Prerequisite ObjectiveId) where
+  parseJSON = genericParseJSON prerequisiteOptions
 
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
 data Objective = Objective
   { _objectiveGoal :: [Text]
   , _objectiveCondition :: ProcessedTerm
+  , _objectiveId :: Maybe ObjectiveId
+  , _objectiveOptional :: Bool
+  , _objectivePrerequisite :: Maybe (Prerequisite ObjectiveId)
   }
   deriving (Eq, Show, Generic, ToJSON)
 
@@ -99,11 +136,31 @@ objectiveGoal :: Lens' Objective [Text]
 --   of CESK steps per tick do not apply).
 objectiveCondition :: Lens' Objective ProcessedTerm
 
+-- | Optional name by which this objective may be referenced
+-- as a prerequisite for other objectives.
+objectiveId :: Lens' Objective (Maybe Text)
+
+-- | Indicates whether the objective is not required in order
+-- to "win" the scenario. Useful for (potentially hidden) achievements.
+-- If the field is not supplied, it defaults to False (i.e. the
+-- objective is mandatory to "win").
+objectiveOptional :: Lens' Objective Bool
+
+-- | Boolean expression the represents the condition dependencies which also
+-- must have been evaluated to True.
+-- Note that the achievement of these objective dependencies is
+-- persistent; once achieved, it still counts even if the "condition"
+-- might not still hold. The condition is never re-evaluated once True.
+objectivePrerequisite :: Lens' Objective (Maybe (Prerequisite ObjectiveId))
+
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->
     Objective
       <$> (fmap . map) reflow (v .:? "goal" .!= [])
       <*> (v .: "condition")
+      <*> (v .:? "id")
+      <*> (v .:? "optional" .!= False)
+      <*> (v .:? "prerequisite")
 
 ------------------------------------------------------------
 -- Scenario
@@ -253,7 +310,19 @@ loadScenarioFile ::
   FilePath ->
   m Scenario
 loadScenarioFile em fileName = do
+
+  -- FIXME This is just a rendering experiment:
+  sendIO $ Y.encodeFile "foo.yaml" demo
+
   res <- sendIO $ decodeFileEitherE em fileName
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
     Right c -> return c
+
+  where
+    demo :: NonEmpty (Prerequisite ObjectiveId)
+    demo = Id "a" :| [
+        Not $ And (Id "e" :| pure (Id "f"))
+      , Id "d"
+      , Or (Id "b" :| pure (Not $ Id "c"))
+      ]
