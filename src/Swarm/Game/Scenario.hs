@@ -55,15 +55,16 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
-import Data.Aeson
-import Data.List.NonEmpty (NonEmpty ((:|)))
 import Control.Algebra (Has)
-import Data.Char (toLower)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Data.Aeson
+import Data.Char (toLower)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
+import Data.Semigroup
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
@@ -80,7 +81,6 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)
-import Data.Semigroup
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -102,10 +102,11 @@ met (Not x) = not $ met x
 met (Id x) = x
 
 prerequisiteOptions :: Options
-prerequisiteOptions = defaultOptions {
-    sumEncoding = ObjectWithSingleField
-  , constructorTagModifier = map toLower
-  }
+prerequisiteOptions =
+  defaultOptions
+    { sumEncoding = ObjectWithSingleField
+    , constructorTagModifier = map toLower
+    }
 
 instance ToJSON (Prerequisite ObjectiveId) where
   toJSON = genericToJSON prerequisiteOptions
@@ -310,7 +311,6 @@ loadScenarioFile ::
   FilePath ->
   m Scenario
 loadScenarioFile em fileName = do
-
   -- FIXME This is just a rendering experiment:
   sendIO $ Y.encodeFile "foo.yaml" demo
 
@@ -318,11 +318,11 @@ loadScenarioFile em fileName = do
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
     Right c -> return c
-
-  where
-    demo :: NonEmpty (Prerequisite ObjectiveId)
-    demo = Id "a" :| [
-        Not $ And (Id "e" :| pure (Id "f"))
-      , Id "d"
-      , Or (Id "b" :| pure (Not $ Id "c"))
-      ]
+ where
+  demo :: NonEmpty (Prerequisite ObjectiveId)
+  demo =
+    Id "a"
+      :| [ Not $ And (Id "e" :| pure (Id "f"))
+         , Id "d"
+         , Or (Id "b" :| pure (Not $ Id "c"))
+         ]
