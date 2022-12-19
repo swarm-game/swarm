@@ -30,6 +30,7 @@ objectives:
           return (n >= 256)
         }
       } { return false }
+    id: get_many_lambdas
   - goal:
       - Congratulations!  You have completed the most difficult simulated exercise and
         are ready to begin exploring the new planet in earnest.  Of course there
@@ -47,6 +48,9 @@ objectives:
       - Now go forth and build your swarm!
     condition: |
       try {as base {has "curry"}} {return false}
+    prerequisite:
+      logic:
+        id: get_many_lambdas
 solution: |
   run "scenarios/Tutorials/farming.sw";
   run "scenarios/Tutorials/make_curry.sw";
