@@ -10,6 +10,7 @@ objectives:
         n <- as base {count "tree"};
         return (n >= 3)
       } { return false }
+    id: "0"
   - goal:
       - Nice job.  Now, build a harvester.
     condition: |

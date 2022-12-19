@@ -21,6 +21,7 @@ module Swarm.Game.State (
   ViewCenterRule (..),
   REPLStatus (..),
   WinCondition (..),
+  ObjectiveCompletion (..),
   _NoWinCondition,
   _WinConditions,
   _Won,
@@ -122,7 +123,6 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -145,6 +145,7 @@ import Swarm.Game.Recipe (
   reqRecipeMap,
  )
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Value (Value)
@@ -202,7 +203,7 @@ data WinCondition
     NoWinCondition
   | -- | There are one or more objectives remaining that the player
     --   has not yet accomplished.
-    WinConditions (NonEmpty Objective)
+    WinConditions ObjectiveCompletion
   | -- | The player has won. The boolean indicates whether they have
     --   already been congratulated.
     Won Bool
@@ -875,7 +876,12 @@ scenarioToGameState scenario userSeed toRun g = do
 
   (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
   theWorld = W.newWorld . wf
-  theWinCondition = maybe NoWinCondition WinConditions (NE.nonEmpty (scenario ^. scenarioObjectives))
+  theWinCondition =
+    maybe
+      NoWinCondition
+      (\(x, _y) -> WinConditions (ObjectiveCompletion x mempty))
+      (sequenceA (scenario ^. scenarioObjectiveLookup, NE.nonEmpty (scenario ^. scenarioObjectives)))
+
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
 

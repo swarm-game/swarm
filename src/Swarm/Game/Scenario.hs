@@ -17,11 +17,6 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * Objectives
-  Objective,
-  objectiveGoal,
-  objectiveCondition,
-
   -- * WorldDescription
   PCell (..),
   Cell,
@@ -45,6 +40,7 @@ module Swarm.Game.Scenario (
   scenarioWorld,
   scenarioRobots,
   scenarioObjectives,
+  scenarioObjectiveLookup,
   scenarioSolution,
   scenarioStepsPerTick,
 
@@ -59,6 +55,9 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Data.Aeson
+import Data.Foldable (toList)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -67,6 +66,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Scenario.Cell
+import Swarm.Game.Scenario.Logic
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.WorldDescription
@@ -95,7 +95,8 @@ data Scenario = Scenario
   , _scenarioKnown :: [Text]
   , _scenarioWorld :: WorldDescription
   , _scenarioRobots :: [TRobot]
-  , _scenarioObjectives :: [Objective]
+  , _scenarioObjectives :: [Objective] -- deprecated
+  , _scenarioObjectiveLookup :: ObjectiveLookup
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
   }
@@ -108,6 +109,10 @@ instance FromJSONE EntityMap Scenario where
     -- parse custom entities
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     -- extend ambient EntityMap with custom entities
+
+    objectives <- liftE (v .:? "objectives" .!= [])
+    objectivesLookup <- processObjectives objectives
+
     withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
@@ -121,7 +126,6 @@ instance FromJSONE EntityMap Scenario where
       -- parse robots and build RobotMap
       rs <- v ..: "robots"
       let rsMap = buildRobotMap rs
-
       Scenario
         <$> liftE (v .: "version")
         <*> liftE (v .: "name")
@@ -134,7 +138,8 @@ instance FromJSONE EntityMap Scenario where
         <*> pure known
         <*> localE (,rsMap) (v ..: "world")
         <*> pure rs
-        <*> liftE (v .:? "objectives" .!= [])
+        <*> pure objectives
+        <*> pure objectivesLookup
         <*> liftE (v .:? "solution")
         <*> liftE (v .:? "stepsPerTick")
 
@@ -182,7 +187,11 @@ scenarioWorld :: Lens' Scenario WorldDescription
 scenarioRobots :: Lens' Scenario [TRobot]
 
 -- | A sequence of objectives for the scenario (if any).
+-- DEPRECATED!
 scenarioObjectives :: Lens' Scenario [Objective]
+
+-- | Replacement for 'scenarioObjectives'
+scenarioObjectiveLookup :: Lens' Scenario ObjectiveLookup
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
@@ -225,7 +234,20 @@ loadScenarioFile ::
   FilePath ->
   m Scenario
 loadScenarioFile em fileName = do
+  -- FIXME This is just a rendering experiment:
+  sendIO $ Y.encodeFile "foo.yaml" demo
+  sendIO $ writeFile "blarg.txt" $ show $ toList demo
+
   res <- sendIO $ decodeFileEitherE em fileName
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
     Right c -> return c
+ where
+  demo :: Prerequisite ObjectiveLabel
+  demo =
+    And $
+      Id "a"
+        :| [ Not $ And (Id "e" :| pure (Id "f"))
+           , Id "d"
+           , Or (Id "b" :| pure (Not $ Id "c"))
+           ]

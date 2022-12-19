@@ -54,7 +54,7 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Int (Int32)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
@@ -68,6 +68,7 @@ import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective (objectiveGoal, getActiveObjectives)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
@@ -704,8 +705,16 @@ updateUI = do
   -- Decide whether we need to update the current goal text, and pop
   -- up a modal dialog.
   curGoal <- use (uiState . uiGoal)
-  newGoal <-
-    preuse (gameState . winCondition . _WinConditions . _NonEmpty . _1 . objectiveGoal)
+  curWinCondition <- use (gameState . winCondition)
+  let newGoal :: Maybe [T.Text]
+      newGoal = case curWinCondition of
+        -- TODO: Render multiple goals at once
+        WinConditions objectiveCompletion -> case nonEmpty activeGoals of
+          Just goals -> Just (NE.head goals ^. objectiveGoal)
+          Nothing -> Nothing
+          where
+            activeGoals = getActiveObjectives objectiveCompletion
+        _ -> Nothing
 
   let goalUpdated = curGoal /= newGoal
   when goalUpdated $ do
