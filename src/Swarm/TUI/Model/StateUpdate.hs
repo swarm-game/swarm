@@ -19,6 +19,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Scenario (loadScenario)
+import Swarm.Game.Scenario.Objective.Presentation.Model (emptyGoalDisplay)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioInfoPair,
@@ -126,7 +127,7 @@ scenarioToUIState siPair u = do
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ Nothing
+      & uiGoal .~ emptyGoalDisplay
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiInventorySort .~ defaultSortOptions

@@ -14,5 +14,6 @@
 684-swap.yaml
 699-movement-fail
 858-inventory
+795-prerequisite
 710-multi-robot.yaml
 920-meet.yaml

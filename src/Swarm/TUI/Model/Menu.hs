@@ -41,10 +41,11 @@ data ModalType
   | MessagesModal
   | RobotsModal
   | WinModal
+  | LoseModal
   | QuitModal
   | KeepPlayingModal
   | DescriptionModal Entity
-  | GoalModal [Text]
+  | GoalModal
   deriving (Show)
 
 data ButtonSelection

@@ -57,7 +57,6 @@ common ghc2021-extensions
     ghc-options:  -Wprepositive-qualified-module
     default-extensions:
       BangPatterns
-      DeriveAnyClass
       DeriveDataTypeable
       DeriveFunctor
       DeriveGeneric
@@ -81,7 +80,8 @@ common ghc2021-extensions
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Swarm.Language.Context
+    exposed-modules:  Data.BoolExpr
+                      Swarm.Language.Context
                       Swarm.Language.Types
                       Swarm.Language.Syntax
                       Swarm.Language.Capability
@@ -98,6 +98,13 @@ library
                       Swarm.Game.CESK
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Objective.Logic
+                      Swarm.Game.Scenario.Objective.Graph
+                      Swarm.Game.Scenario.Objective.Presentation.Model
+                      Swarm.Game.Scenario.Objective.Presentation.Render
+                      Swarm.Game.Scenario.Objective.Simplify
+                      Swarm.Game.Scenario.Objective.Validation
+                      Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.WorldDescription
@@ -225,6 +232,7 @@ test-suite swarm-unit
                       TestNotification
                       TestLanguagePipeline
                       TestPretty
+                      TestBoolExpr
                       TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,

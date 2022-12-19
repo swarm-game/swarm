@@ -20,6 +20,7 @@ import Test.Tasty.QuickCheck (
   testProperty,
   (==>),
  )
+import TestBoolExpr (testBoolExpr)
 import TestEval (testEval)
 import TestInventory (testInventory)
 import TestLanguagePipeline (testLanguagePipeline)
@@ -41,6 +42,7 @@ tests g =
     "Tests"
     [ testLanguagePipeline
     , testPrettyConst
+    , testBoolExpr
     , testEval g
     , testModel
     , testInventory
