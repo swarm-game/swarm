@@ -25,7 +25,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, forM_, guard, msum, unless, when)
+import Control.Monad (foldM, forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
@@ -38,8 +38,6 @@ import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
 import Data.List qualified as L
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Ord (Down (Down))
@@ -58,7 +56,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (objectiveCondition)
+import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.State
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -131,29 +129,94 @@ gameTick = do
   -- Possibly see if the winning condition for the current objective is met.
   wc <- use winCondition
   case wc of
-    WinConditions (obj :| objs) -> do
+    WinConditions winState oc -> do
       g <- get @GameState
-
-      -- Execute the win condition check *hypothetically*: i.e. in a
-      -- fresh CESK machine, using a copy of the current game state.
-      v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
-      case v of
-        -- Log exceptions in the message queue so we can check for them in tests
-        Left exn -> do
-          em <- use entityMap
-          time <- use ticks
-          let h = hypotheticalRobot (Out VUnit emptyStore []) 0
-              hid = view robotID h
-              hn = view robotName h
-              farAway = Location maxBound maxBound
-          let m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
-          emitMessage m
-        Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
-        _ -> return ()
+      hypotheticalWinCheck g winState oc
     _ -> return ()
 
   -- Advance the game time by one.
   ticks += 1
+
+-- | An accumulator for folding over the incomplete
+-- objectives to evaluate for their completion
+data CompletionsWithExceptions = CompletionsWithExceptions
+  { exceptions :: [Exn]
+  , completions :: ObjectiveCompletion
+  }
+
+-- | Execute the win condition check *hypothetically*: i.e. in a
+-- fresh CESK machine, using a copy of the current game state.
+--
+-- The win check is performed only on "active" goals; that is,
+-- the goals that are currently unmet and have had all of their
+-- prerequisites satisfied.
+-- Note that it may be possible, while traversing through the
+-- goal list, for one goal to be met earlier in the list that
+-- happens to be a prerequisite later in the traversal. This
+-- is why:
+-- 1) We must not pre-filter the goals to be traversed based
+--    on satisfied prerequisites (i.e. we cannot use the
+--    "getActiveObjectives" function).
+-- 2) The traversal order must be "reverse topological" order, so
+--    that prerequisites are evaluated before dependent goals.
+-- 3) The iteration needs to be a "fold", so that state is updated
+--    after each element.
+hypotheticalWinCheck ::
+  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  GameState ->
+  WinStatus ->
+  ObjectiveCompletion ->
+  m ()
+hypotheticalWinCheck g ws oc = do
+  -- We can fully and accurately evaluate the new state of the objectives DAG
+  -- in a single pass, so long as we visit it in reverse topological order.
+  --
+  -- N.B. The "reverse" is essential due to the re-population of the
+  -- "incomplete" goal list by cons-ing.
+  finalAccumulator <-
+    foldM foldFunc initialAccumulator $
+      reverse incompleteGoals
+
+  let newWinState = case ws of
+        Ongoing ->
+          if OB.didWin $ completions finalAccumulator
+            then Won False
+            else Ongoing
+        _ -> ws
+
+  winCondition .= WinConditions newWinState (completions finalAccumulator)
+
+  mapM_ handleException $ exceptions finalAccumulator
+ where
+  (withoutIncomplete, incompleteGoals) = OB.extractIncomplete oc
+  initialAccumulator = CompletionsWithExceptions [] withoutIncomplete
+
+  -- All of the "incomplete" goals have been emptied from the initial accumulator, and
+  -- these are what we iterate over with the fold.
+  -- Each iteration, we either place the goal back into the "incomplete" bucket, or
+  -- we determine that it has been met and place it into the "completed" bucket.
+  foldFunc (CompletionsWithExceptions exns currentCompletions) obj = do
+    v <-
+      if OB.isPrereqsSatisfied currentCompletions obj
+        then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
+        else return $ Right $ VBool False
+    return $ case v of
+      Left exn -> CompletionsWithExceptions (exn : exns) currentCompletions
+      Right (VBool True) ->
+        CompletionsWithExceptions exns $
+          OB.addCompleted currentCompletions obj
+      _ -> CompletionsWithExceptions exns $ OB.addIncomplete obj currentCompletions
+
+  -- Log exceptions in the message queue so we can check for them in tests
+  handleException exn = do
+    em <- use entityMap
+    time <- use ticks
+    let h = hypotheticalRobot (Out VUnit emptyStore []) 0
+        hid = view robotID h
+        hn = view robotName h
+        farAway = Location maxBound maxBound
+        m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
+    emitMessage m
 
 evalPT ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>

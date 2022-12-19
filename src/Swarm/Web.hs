@@ -34,6 +34,7 @@ import Network.Wai qualified
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective
 import Swarm.Game.State
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
@@ -42,12 +43,18 @@ import System.Timeout (timeout)
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]
     :<|> "robot" :> Capture "id" Int :> Get '[JSON] (Maybe Robot)
+    :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
+    :<|> "goals" :> "active" :> Get '[JSON] [Objective]
+    :<|> "goals" :> Get '[JSON] WinCondition
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
 
 mkApp :: IORef AppState -> Servant.Server SwarmApi
 mkApp appStateRef =
   robotsHandler
     :<|> robotHandler
+    :<|> prereqsHandler
+    :<|> activeGoalsHandler
+    :<|> goalsHandler
     :<|> replHandler
  where
   robotsHandler = do
@@ -56,6 +63,19 @@ mkApp appStateRef =
   robotHandler rid = do
     appState <- liftIO (readIORef appStateRef)
     pure $ IM.lookup rid (appState ^. gameState . robotMap)
+  prereqsHandler = do
+    appState <- liftIO (readIORef appStateRef)
+    case appState ^. gameState . winCondition of
+      WinConditions _winState completion -> return $ getSatisfaction completion
+      _ -> return []
+  activeGoalsHandler = do
+    appState <- liftIO (readIORef appStateRef)
+    case appState ^. gameState . winCondition of
+      WinConditions _winState completion -> return $ getActiveObjectives completion
+      _ -> return []
+  goalsHandler = do
+    appState <- liftIO (readIORef appStateRef)
+    return $ appState ^. gameState . winCondition
   replHandler = do
     appState <- liftIO (readIORef appStateRef)
     let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq

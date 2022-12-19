@@ -1,0 +1,24 @@
+name:            boolexpr
+cabal-Version:   >=1.8
+version:         0.1
+license:         BSD3
+license-File:    LICENSE
+copyright:       (c) Nicolas Pouillard
+author:          Nicolas Pouillard
+maintainer:      Nicolas Pouillard <nicolas.pouillard@gmail.com>
+category:        Search, Data Structures, Parsing
+synopsis:        Boolean expressions with various representations and search queries.
+description:     Boolean expressions with various representations and search queries.
+stability:       Provisional
+build-type:      Simple
+
+library
+  build-depends:   base>=3.0&&<5, parsec, extra
+  exposed-modules: Data.BoolExpr,
+                   Data.BoolExpr.Parser,
+                   Data.BoolExpr.Printer
+  ghc-options:     -Wall
+
+source-repository head
+  type:     git
+  location: https://github.com/np/boolexpr.git

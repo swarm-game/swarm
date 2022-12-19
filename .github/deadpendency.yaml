@@ -2,6 +2,7 @@ ignore-failures:
     haskell:
       # there is no new alternative 
       - hsnoise
+      - boolexpr
       # does not need any new updates
       - tasty-expected-failure
       - fused-effects-lens
