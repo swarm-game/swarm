@@ -20,10 +20,12 @@ module Swarm.Game.State (
   -- * Game state record and related types
   ViewCenterRule (..),
   REPLStatus (..),
+  WinStatus (..),
   WinCondition (..),
+  ObjectiveCompletion (..),
   _NoWinCondition,
   _WinConditions,
-  _Won,
+  Announcement (..),
   RunStatus (..),
   Seed,
   GameState,
@@ -33,6 +35,7 @@ module Swarm.Game.State (
   winCondition,
   winSolution,
   gameAchievements,
+  announcementQueue,
   runStatus,
   paused,
   robotMap,
@@ -122,7 +125,6 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -145,6 +147,8 @@ import Swarm.Game.Recipe (
   reqRecipeMap,
  )
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Value (Value)
@@ -197,15 +201,28 @@ data REPLStatus
     REPLWorking (Typed (Maybe Value))
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+data WinStatus
+  = -- | There are one or more objectives remaining that the player
+    -- has not yet accomplished.
+    Ongoing
+  | -- | The player has won.
+    -- The boolean indicates whether they have
+    -- already been congratulated.
+    Won Bool
+  | -- | The player has completed certain "goals" that preclude
+    -- (via NOT prerequisites) the completion of all of the
+    -- required goals.
+    -- The boolean indicates whether they have
+    -- already been informed.
+    Unwinnable Bool
+  deriving (Show, Generic, FromJSON, ToJSON)
+
 data WinCondition
   = -- | There is no winning condition.
     NoWinCondition
-  | -- | There are one or more objectives remaining that the player
-    --   has not yet accomplished.
-    WinConditions (NonEmpty Objective)
-  | -- | The player has won. The boolean indicates whether they have
-    --   already been congratulated.
-    Won Bool
+  | -- | NOTE: It is possible to continue to achieve "optional" objectives
+    -- even after the game has been won (or deemed unwinnable).
+    WinConditions WinStatus ObjectiveCompletion
   deriving (Show, Generic, FromJSON, ToJSON)
 
 makePrisms ''WinCondition
@@ -260,6 +277,7 @@ data GameState = GameState
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _gameAchievements :: Map GameplayAchievement Attainment
+  , _announcementQueue :: Seq Announcement
   , _runStatus :: RunStatus
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -338,6 +356,13 @@ winSolution :: Lens' GameState (Maybe ProcessedTerm)
 
 -- | Map of in-game achievements that were attained
 gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
+
+-- | A queue of global announcments.
+-- Note that this is distinct from the "messageQueue",
+-- which is for messages emitted by robots.
+--
+-- Note that we put the newest entry to the right.
+announcementQueue :: Lens' GameState (Seq Announcement)
 
 -- | The current 'RunStatus'.
 runStatus :: Lens' GameState RunStatus
@@ -716,6 +741,7 @@ initGameState = do
       , -- This does not need to be initialized with anything,
         -- since the master list of achievements is stored in UIState
         _gameAchievements = mempty
+      , _announcementQueue = mempty
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty
@@ -875,7 +901,12 @@ scenarioToGameState scenario userSeed toRun g = do
 
   (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
   theWorld = W.newWorld . wf
-  theWinCondition = maybe NoWinCondition WinConditions (NE.nonEmpty (scenario ^. scenarioObjectives))
+  theWinCondition =
+    maybe
+      NoWinCondition
+      (\x -> WinConditions Ongoing (ObjectiveCompletion (CompletionBuckets (NE.toList x) mempty mempty) mempty))
+      (NE.nonEmpty (scenario ^. scenarioObjectives))
+
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
 
