@@ -81,6 +81,8 @@
                "scan"
                "upload"
                "ishere"
+               "meet"
+               "meetall"
                "whoami"
                "setname"
                "random"
