@@ -163,12 +163,18 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) Term Env
+  | -- | XXX
+    FDiscardEnv
   | -- | Apply specific updates to the world and current robot.
     FImmediate WorldUpdate RobotUpdate
   | -- | Update the memory cell at a certain location with the computed value.
     FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
     FFinishAtomic
+  | -- | We are in the middle of running a computation for all the
+    --   nearby robots.  We have the function to run, and the list of
+    --   robot IDs to run it on.
+    FMeetAll Value [Int]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.
@@ -353,6 +359,7 @@ prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
 prettyFrame FImmediate {} = "(_ : cmd a)"
 prettyFrame (FUpdate loc) = "store@" ++ show loc ++ "(_)"
 prettyFrame FFinishAtomic = "finishAtomic"
+prettyFrame (FMeetAll _f _rs) = "meetAll"
 
 --------------------------------------------------------------
 -- Wrappers for functions in FImmediate
