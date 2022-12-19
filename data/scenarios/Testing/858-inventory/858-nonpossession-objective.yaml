@@ -1,0 +1,35 @@
+version: 1
+name: Evaluate possession of an item
+description: |
+  Opposite test case of 858-possession-objective
+creative: false
+objectives:
+  - goal:
+      - |
+        Get rid of 1 tree.
+    condition: |-
+      as base {
+        x <- has "tree";
+        return $ not x;
+      };
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - treads
+      - scanner
+      - grabber
+    inventory:
+      - [1, tree]
+solution: |
+  place "tree";
+known: [tree]
+world:
+  default: [blank]
+  palette:
+    'B': [grass, null, base]
+    'w': [grass]
+  upperleft: [0, 0]
+  map: |-
+    w
+    B
