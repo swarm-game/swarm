@@ -26,6 +26,7 @@ objectives:
         n <- as base {count "tree"};
         return (n >= 3)
       } { return false }
+    id: get_trees
   - goal:
       - Nice work!  Now, use the trees to make a harvester device.
         This will require several intermediate products; try making
@@ -34,6 +35,10 @@ objectives:
         you may end up needing some additional trees.
     condition: |
       try { as base {has "harvester"} } {return false}
+    id: get_harvester
+    prerequisite:
+      logic:
+        id: get_trees
   - goal:
       - Now that you have a harvester, you can use `harvest` instead of `grab`
         whenever you pick up a growing item (check for the word "growing" at the
@@ -50,6 +55,9 @@ objectives:
         coordinates."
     condition: |
       try { as base {has "lambda"} } {return false}
+    prerequisite:
+      logic:
+        id: get_harvester
 robots:
   - name: base
     display:

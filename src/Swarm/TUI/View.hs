@@ -78,6 +78,8 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -468,9 +470,17 @@ drawModal s = \case
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
+  LoseModal ->
+    padBottom (Pad 1) $
+      vBox $
+        map
+          (hCenter . txt)
+          [ "Condolences!"
+          , "This scenario is no longer winnable."
+          ]
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
-  GoalModal g -> padLeftRight 1 (displayParagraphs g)
+  GoalModal -> padLeftRight 1 $ GR.renderGoalsDisplay (s ^. uiState . uiGoal)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 robotsListWidget :: AppState -> Widget Name
@@ -759,9 +769,7 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = case s ^. uiState . uiGoal of
-    Just g | g /= [] -> True
-    _ -> False
+  goal = hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode
@@ -1160,12 +1168,3 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt]
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
-
-------------------------------------------------------------
--- Utility
-------------------------------------------------------------
-
--- | Display a list of text-wrapped paragraphs with one blank line after
---   each.
-displayParagraphs :: [Text] -> Widget Name
-displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)

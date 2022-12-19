@@ -30,6 +30,8 @@ data Name
     MenuList
   | -- | The list of achievements.
     AchievementList
+  | -- | The list of goals/ojbectives.
+    ObjectivesList
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.

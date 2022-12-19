@@ -177,7 +177,7 @@ updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = cas
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
 data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollection
-  deriving (Eq, Show)
+  deriving (Show)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
@@ -191,7 +191,7 @@ data ScenarioCollection = SC
   { scOrder :: Maybe [FilePath]
   , scMap :: Map FilePath ScenarioItem
   }
-  deriving (Eq, Show)
+  deriving (Show)
 
 -- | Access and modify ScenarioItems in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
