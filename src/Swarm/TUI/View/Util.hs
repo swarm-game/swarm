@@ -18,6 +18,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
+import Swarm.TUI.Model.UI
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
