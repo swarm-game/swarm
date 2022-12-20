@@ -1234,7 +1234,10 @@ execConst c vs s k = do
       loc <- use robotLocation
       rid <- use robotID
       g <- get @GameState
-      let neighbor = find ((/= rid) . (^. robotID)) $ robotsInArea loc 1 g
+      let neighbor =
+            find ((/= rid) . (^. robotID)) -- pick one other than ourself
+              . sortOn (manhattan loc . (^. robotLocation)) -- prefer closer
+              $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
       return $ Out (VInj (isJust neighbor) (maybe VUnit (VRobot . (^. robotID)) neighbor)) s k
     MeetAll -> case vs of
       [f, b] -> do
