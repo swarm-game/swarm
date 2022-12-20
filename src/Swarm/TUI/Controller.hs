@@ -90,7 +90,7 @@ import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
-import Swarm.TUI.Model.UI (uiAchievements)
+import Swarm.TUI.Model.UI
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Util.Location
@@ -355,9 +355,6 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ W.Coords (mx, my)
 
-setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
-
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
 --
 -- Also resets the last frame time to now. If we are pausing, it
@@ -385,25 +382,6 @@ toggleModal mt = do
   case modal of
     Nothing -> openModal mt
     Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
-
-openModal :: ModalType -> EventM Name AppState ()
-openModal mt = do
-  newModal <- gets $ flip generateModal mt
-  ensurePause
-  uiState . uiModal ?= newModal
- where
-  -- Set the game to AutoPause if needed
-  ensurePause = do
-    pause <- use $ gameState . paused
-    unless (pause || isRunningModal mt) $ do
-      gameState . runStatus .= AutoPause
-
--- | The running modals do not autopause the game.
-isRunningModal :: ModalType -> Bool
-isRunningModal = \case
-  RobotsModal -> True
-  MessagesModal -> True
-  _ -> False
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case

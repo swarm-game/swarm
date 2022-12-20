@@ -36,6 +36,7 @@ import Servant
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.TUI.Model
+import Swarm.TUI.Model.UI
 import System.Timeout (timeout)
 
 type SwarmApi =
