@@ -537,7 +537,12 @@ stepCESK cesk = case cesk of
     return $ Out v s k
 
   -- Machinery for implementing the 'meetAll' command.
+  -- First case: done meeting everyone.
   Out b s (FMeetAll _ [] : k) -> return $ Out b s k
+  -- More still to meet: apply the function to the current value b and
+  -- then the next robot id.  This will result in a command which we
+  -- execute, discard any generated environment, and then pass the
+  -- result to continue meeting the rest of the robots.
   Out b s (FMeetAll f (rid : rids) : k) ->
     return $ Out b s (FApp f : FArg (TRobot rid) empty : FExec : FDiscardEnv : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
@@ -1232,7 +1237,7 @@ execConst c vs s k = do
       let neighbor = find ((/= rid) . (^. robotID)) $ robotsInArea loc 1 g
       return $ Out (VInj (isJust neighbor) (maybe VUnit (VRobot . (^. robotID)) neighbor)) s k
     MeetAll -> case vs of
-      [f {- : b -> robot -> cmd b -}, b] -> do
+      [f, b] -> do
         loc <- use robotLocation
         rid <- use robotID
         g <- get @GameState
