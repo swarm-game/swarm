@@ -21,22 +21,26 @@ import Witch (into)
 ------------------------------------------------------------
 
 -- | A world palette maps characters to 'Cell' values.
-newtype WorldPalette = WorldPalette
-  {unPalette :: KeyMap Cell}
+newtype WorldPalette e = WorldPalette
+  {unPalette :: KeyMap (PCell e)}
   deriving (Eq, Show)
 
-instance FromJSONE (EntityMap, RobotMap) WorldPalette where
+instance FromJSONE (EntityMap, RobotMap) (WorldPalette Entity) where
   parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
 
 -- | A description of a world parsed from a YAML file.
-data WorldDescription = WorldDescription
-  { defaultTerrain :: Maybe Cell
+-- This type is parameterized to accommodate Cells that
+-- utilize a less stateful Entity type.
+data PWorldDescription e = WorldDescription
+  { defaultTerrain :: Maybe (PCell e)
   , offsetOrigin :: Bool
-  , palette :: WorldPalette
+  , palette :: WorldPalette e
   , ul :: Location
-  , area :: [[Cell]]
+  , area :: [[PCell e]]
   }
   deriving (Eq, Show)
+
+type WorldDescription = PWorldDescription Entity
 
 instance FromJSONE (EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
@@ -52,7 +56,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
 --   string into a nested list of 'Cell' values by looking up each
 --   character in the palette, failing if any character in the raw map
 --   is not contained in the palette.
-paintMap :: MonadFail m => WorldPalette -> Text -> m [[Cell]]
+paintMap :: MonadFail m => WorldPalette e -> Text -> m [[PCell e]]
 paintMap pal = traverse (traverse toCell . into @String) . T.lines
  where
   toCell c = case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
