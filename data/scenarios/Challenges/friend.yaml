@@ -1,0 +1,92 @@
+version: 1
+name: Make a Friend
+author: Brent Yorgey
+description: |
+  Win the trust of a furry companion.
+creative: false
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    heavy: true
+    dir: [0, 1]
+    devices:
+      - 3D printer
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - clock
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - hearing aid
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - string
+      - toolkit
+      - workbench
+    inventory:
+      - [10, ADT calculator]
+      - [10, antenna]
+      - [10, treads]
+      - [10, branch predictor]
+      - [10, fish]
+      - [10, solar panel]
+      - [10, grabber]
+      - [10, lambda]
+      - [10, strange loop]
+      - [10, logger]
+      - [10, clock]
+      - [10, comparator]
+      - [10, calculator]
+  - name: cat
+    system: true
+    dir: [-1, 0]
+    display:
+      invisible: false
+      char: 'c'
+      attr: sand
+    program: |
+      run "scenarios/Challenges/_friend/cat.sw"
+objectives:
+  - goal:
+      - There's a cat wandering around in the field.  Bring it back to
+        your base.  If you give it something it likes, perhaps you can
+        get it to follow you.
+    condition: |
+      c <- robotNamed "cat";
+      catLoc <- as c {whereami};
+      baseLoc <- as base {whereami};
+      return (catLoc == baseLoc)
+solution: |
+  run "scenarios/Challenges/_friend/friend-solution.sw"
+entities:
+  - name: fish
+    display:
+      char: 'f'
+    description:
+      - A smelly fish. Doesn't seem very useful.
+    properties: [known, portable]
+
+known: [fish]
+seed: 0
+world:
+  offset: true
+  palette:
+    'Ω': [grass, null, base]
+    '.': [stone]
+    ',': [grass]
+    'c': [grass, null, cat]
+    '*': [grass, flower]
+    '@': [stone, boulder]
+  upperleft: [-20, 2]
+  map: |-
+    c,..,,,,,,..,,,,...,.
+    ,..,,,,,,,...........
+    *,.,@,,,,,,,.....,..Ω

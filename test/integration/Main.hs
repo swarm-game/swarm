@@ -159,6 +159,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Challenges/teleport"
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 10) "Challenges/hanoi"
+        , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"

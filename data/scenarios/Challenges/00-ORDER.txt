@@ -3,5 +3,6 @@ teleport.yaml
 2048.yaml
 hanoi.yaml
 bucket-brigade.yaml
+friend.yaml
 Mazes
 Ranching
