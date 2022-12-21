@@ -1,0 +1,52 @@
+version: 1
+name: Test meet and meetAll commands
+description: |
+  Make sure meet prefers a robot on the same cell, and test meetAll
+  by giving everyone a boat.
+objectives:
+  - condition: |
+      r0 <- robotNamed "other0";
+      b0 <- as r0 { has "boat" };
+      teleport self (0,0);
+      b1 <- meetAll (\b. \r. b0 <- as r {has "boat"}; return (b && b0)) true;
+      n2 <- as r0 { count "boat" };
+      return (b0 && b1 && (n2 == 2))
+solution: |
+  mr0 <- meet;
+  case mr0 (\_. return ()) (\r0. give r0 "boat");
+  meetAll (\_. \r. give r "boat") ()
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - scanner
+      - ADT calculator
+      - grabber
+    inventory:
+      - [7, boat]
+  - name: other0
+    loc: [0,0]
+    dir: [1,0]
+  - name: other
+    dir: [1,0]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'Ω': [grass, null]
+    'o': [grass, null, other]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-2, 2]
+  map: |
+    ┌───┐
+    │.o.│
+    │oΩo│
+    │.o.│
+    └───┘
