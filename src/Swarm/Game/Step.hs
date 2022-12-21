@@ -1089,7 +1089,7 @@ execConst c vs s k = do
     As -> case vs of
       [VRobot rid, prog] -> do
         -- Get the named robot and current game state
-        r <- robotWithID rid >>= (`isJustOrFail` ["There is no robot with ID", from (show rid)])
+        r <- robotWithID rid >>= (`isJustOrFail` ["There is no actor with ID", from (show rid)])
         g <- get @GameState
 
         -- Execute the given program *hypothetically*: i.e. in a fresh
@@ -1175,7 +1175,7 @@ execConst c vs s k = do
       [VRobot rid] -> do
         _ <-
           robotWithID rid
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show rid), "to view."])
+            >>= (`isJustOrFail` ["There is no actor with ID", from (show rid), "to view."])
 
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
@@ -1321,7 +1321,7 @@ execConst c vs s k = do
         -- check if robot exists
         childRobot <-
           robotWithID childRobotID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show childRobotID) <> "."])
+            >>= (`isJustOrFail` ["There is no actor with ID", from (show childRobotID) <> "."])
 
         -- check that current robot is not trying to reprogram self
         myID <- use robotID
