@@ -917,11 +917,10 @@
   - "A scanner also enables the `blocked` command, which returns a
      boolean value indicating whether the robot's path is blocked
      (i.e. whether executing a `move` command would fail)."
-  - "XXX meet and meetAll"
   - "Finally, robots can use the `upload` command to copy their accumulated
     knowledge to another nearby robot; for example, `upload base`."
   properties: [portable]
-  capabilities: [scan, sensefront, sensehere, meet]
+  capabilities: [scan, sensefront, sensehere]
 
 - name: flash memory
   display:
@@ -1115,3 +1114,28 @@
   - will attempt to move, but if that fails, turn left instead.
   properties: [portable]
   capabilities: [try]
+
+- name: antenna
+  display:
+    attr: silver
+    char: 'Y'
+  description:
+  - A device for transforming electric current into radio waves, and
+    vice versa.
+  - |
+    It can be used to locate nearby actors, by bouncing radio
+    waves off them and listening for the echo.  This capability can be
+    accessed via two commands:
+  - |
+    `meet : cmd (() + actor)` tries to locate a
+    nearby actor (a robot, or... something else?) up to one cell away.
+    It returns a reference to the nearest actor, or a unit value if
+    none are found.
+  - |
+    `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
+    every nearby actor (other than oneself), folding over the results
+    to compute a final result of type `b`.  For example, if `x`, `y`,
+    and `z` are nearby actors, then `meetAll f b0` is equivalent to
+    `b1 <- f b0 x; b2 <- f b1 y; f b2 z`.
+  properties: [portable]
+  capabilities: [meet]
