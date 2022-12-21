@@ -21,7 +21,7 @@ robots:
     dir: [1,0]
     devices:
       - logger
-      - scanner
+      - antenna
       - ADT calculator
       - grabber
     inventory:
