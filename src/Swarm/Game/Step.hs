@@ -41,7 +41,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -536,6 +536,15 @@ stepCESK cesk = case cesk of
     runningAtomic .= False
     return $ Out v s k
 
+  -- Machinery for implementing the 'meetAll' command.
+  -- First case: done meeting everyone.
+  Out b s (FMeetAll _ [] : k) -> return $ Out b s k
+  -- More still to meet: apply the function to the current value b and
+  -- then the next robot id.  This will result in a command which we
+  -- execute, discard any generated environment, and then pass the
+  -- result to continue meeting the rest of the robots.
+  Out b s (FMeetAll f (rid : rids) : k) ->
+    return $ Out b s (FApp f : FArg (TRobot rid) empty : FExec : FDiscardEnv : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
   Out (VBind mx c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx c2 e : k)
@@ -567,6 +576,9 @@ stepCESK cesk = case cesk of
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.
   Out v s (FUnionEnv e : k) -> return $ Out (VResult v e) s k
+  -- If there's an explicit DiscardEnv frame, throw away any returned environment.
+  Out (VResult v _) s (FDiscardEnv : k) -> return $ Out v s k
+  Out v s (FDiscardEnv : k) -> return $ Out v s k
   -- If the top of the continuation stack contains a 'FLoadEnv' frame,
   -- it means we are supposed to load up the resulting definition
   -- environment, store, and type and capability contexts into the robot's
@@ -1077,7 +1089,7 @@ execConst c vs s k = do
     As -> case vs of
       [VRobot rid, prog] -> do
         -- Get the named robot and current game state
-        r <- robotWithID rid >>= (`isJustOrFail` ["There is no robot with ID", from (show rid)])
+        r <- robotWithID rid >>= (`isJustOrFail` ["There is no actor with ID", from (show rid)])
         g <- get @GameState
 
         -- Execute the given program *hypothetically*: i.e. in a fresh
@@ -1163,7 +1175,7 @@ execConst c vs s k = do
       [VRobot rid] -> do
         _ <-
           robotWithID rid
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show rid), "to view."])
+            >>= (`isJustOrFail` ["There is no actor with ID", from (show rid), "to view."])
 
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
@@ -1218,6 +1230,23 @@ execConst c vs s k = do
       rid <- use robotID
       return $ Out (VRobot (fromMaybe rid mp)) s k
     Base -> return $ Out (VRobot 0) s k
+    Meet -> do
+      loc <- use robotLocation
+      rid <- use robotID
+      g <- get @GameState
+      let neighbor =
+            find ((/= rid) . (^. robotID)) -- pick one other than ourself
+              . sortOn (manhattan loc . (^. robotLocation)) -- prefer closer
+              $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
+      return $ Out (VInj (isJust neighbor) (maybe VUnit (VRobot . (^. robotID)) neighbor)) s k
+    MeetAll -> case vs of
+      [f, b] -> do
+        loc <- use robotLocation
+        rid <- use robotID
+        g <- get @GameState
+        let neighborIDs = filter (/= rid) . map (^. robotID) $ robotsInArea loc 1 g
+        return $ Out b s (FMeetAll f neighborIDs : k)
+      _ -> badConst
     Whoami -> case vs of
       [] -> do
         name <- use robotName
@@ -1292,7 +1321,7 @@ execConst c vs s k = do
         -- check if robot exists
         childRobot <-
           robotWithID childRobotID
-            >>= (`isJustOrFail` ["There is no robot with ID", from (show childRobotID) <> "."])
+            >>= (`isJustOrFail` ["There is no actor with ID", from (show childRobotID) <> "."])
 
         -- check that current robot is not trying to reprogram self
         myID <- use robotID
@@ -1558,6 +1587,8 @@ execConst c vs s k = do
   badConstMsg =
     T.unlines
       [ "Bad application of execConst:"
+      , T.pack (show c)
+      , T.pack (show (reverse vs))
       , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
       ]
 

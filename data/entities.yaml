@@ -106,7 +106,7 @@
     char: 'Å'
     priority: 11
   description:
-  - A tunnel in a mountain through which robots can freely move.
+  - A tunnel in a mountain through which anything can freely move.
   properties: []
 
 - name: copper ore
@@ -710,10 +710,10 @@
     place.  The item is removed from the robot's inventory and placed
     in the robot's current cell (which must be empty).  Raises an
     exception if the operation fails.
-  - "The `give` command takes two arguments: the robot to
+  - "The `give` command takes two arguments: the actor to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
-  - "The `install` command takes two arguments: the robot
+  - "The `install` command takes two arguments: the actor
     on which to install a device (which can be at most 1 cell away),
     and the name of the device to install."
   capabilities: [grab, give, place, install]
@@ -966,9 +966,9 @@
     attr: device
     char: '@'
   description:
-  - "Allows a robot to hear what nearby robots are saying."
+  - "Allows a robot to hear anything being said nearby."
   - "Simply having this device installed will automatically
-     add messages said by nearby robots to this robot's log,
+     add messages said by nearby actors to this robot's log,
      assuming it has a logger installed."
   - "That way you can view any heard message later either in
      the logger or the message window."
@@ -1076,7 +1076,7 @@
     attr: device
     char: 'Ю'
   description:
-  - An I/O cable can be used to communicate with an adjacent robot.
+  - An I/O cable can be used to communicate with adjacent actors.
   properties: [portable]
 
 - name: rubber band
@@ -1093,7 +1093,7 @@
   - "This seems like a safe way to execute `grab` only when there is a
     rock to grab.  However, it is actually possible for the `grab` to
     fail, if some other robot B snatches the rock right after robot A sensed
-    it and before robot A got around to grab it on the next game tick."
+    it and before robot A got around to grabbing it on the next game tick."
   - "This will make robot A very sad and it will crash."
   - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
   - |
@@ -1114,3 +1114,28 @@
   - will attempt to move, but if that fails, turn left instead.
   properties: [portable]
   capabilities: [try]
+
+- name: antenna
+  display:
+    attr: silver
+    char: 'Y'
+  description:
+  - A device for transforming electric current into radio waves, and
+    vice versa.
+  - |
+    It can be used to locate nearby actors, by bouncing radio
+    waves off them and listening for the echo.  This capability can be
+    accessed via two commands:
+  - |
+    `meet : cmd (() + actor)` tries to locate a
+    nearby actor (a robot, or... something else?) up to one cell away.
+    It returns a reference to the nearest actor, or a unit value if
+    none are found.
+  - |
+    `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
+    every nearby actor (other than oneself), folding over the results
+    to compute a final result of type `b`.  For example, if `x`, `y`,
+    and `z` are nearby actors, then `meetAll f b0` is equivalent to
+    `b1 <- f b0 x; b2 <- f b1 y; f b2 z`.
+  properties: [portable]
+  capabilities: [meet]

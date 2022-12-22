@@ -278,6 +278,10 @@ data Const
     Parent
   | -- | Get a reference to the base
     Base
+  | -- | Meet a nearby robot
+    Meet
+  | -- | Meet all nearby robots
+    MeetAll
   | -- | Get the robot's display name
     Whoami
   | -- | Set the robot's display name
@@ -381,9 +385,9 @@ data Const
     Teleport
   | -- | Run a command as if you were another robot.
     As
-  | -- | Find a robot by name.
+  | -- | Find an actor by name.
     RobotNamed
-  | -- | Find a robot by number.
+  | -- | Find an actor by number.
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
@@ -534,7 +538,7 @@ constInfo c = case c of
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    command 0 short . doc "Self-destruct the robot." $
+    command 0 short . doc "Self-destruct a robot." $
       [ "Useful to not clutter the world."
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
@@ -549,8 +553,8 @@ constInfo c = case c of
   Place ->
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Give -> command 2 short "Give an item to another robot nearby."
-  Install -> command 2 short "Install a device from inventory on a robot."
+  Give -> command 2 short "Give an item to another actor nearby."
+  Install -> command 2 short "Install a device from inventory on another actor nearby."
   Equip -> command 1 short "Equip a device on oneself."
   Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
   Make -> command 1 long "Make an item using a recipe."
@@ -576,7 +580,7 @@ constInfo c = case c of
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
     command 1 short . doc "Emit a message." $
-      [ "The message will be in the robots log (if it has one) and the global log."
+      [ "The message will be in the robot's log (if it has one) and the global log."
       , "You can view the message that would be picked by `listen` from the global log "
           <> "in the messages panel, along with your own messages and logs."
       , "This means that to see messages from other robots you have to be able to listen for them, "
@@ -584,14 +588,14 @@ constInfo c = case c of
       , "In creative mode, there is of course no such limitation."
       ]
   Listen ->
-    command 1 long . doc "Listen for a message from other robots." $
-      [ "It will take the first message said by the closest robot."
+    command 1 long . doc "Listen for a message from other actors." $
+      [ "It will take the first message said by the closest actor."
       , "You do not need to actively listen for the message to be logged though, "
           <> "that is done automatically once you have a listening device installed."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
-  View -> command 1 short "View the given robot."
+  View -> command 1 short "View the given actor."
   Appear ->
     command 1 short . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
@@ -605,7 +609,7 @@ constInfo c = case c of
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
     command 0 Intangible . doc "Scan a nearby location for entities." $
-      [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
+      [ "Adds the entity (not actor) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
   Upload -> command 1 short "Upload a robot's known entities and log to another robot."
@@ -613,6 +617,8 @@ constInfo c = case c of
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."
+  Meet -> command 0 Intangible "Get a reference to a nearby actor, if there is one."
+  MeetAll -> command 0 long "Run a command for each nearby actor."
   Whoami -> command 0 Intangible "Get the robot's display name."
   Setname -> command 1 short "Set the robot's display name."
   Random ->
@@ -682,8 +688,8 @@ constInfo c = case c of
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
   As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
-  RobotNamed -> command 1 Intangible "Find a robot by name."
-  RobotNumbered -> command 1 Intangible "Find a robot by number."
+  RobotNamed -> command 1 Intangible "Find an actor by name."
+  RobotNumbered -> command 1 Intangible "Find an actor by number."
   Knows -> command 1 Intangible "Check if the robot knows about an entity."
  where
   doc b ls = ConstDoc b (T.unlines ls)
@@ -836,7 +842,7 @@ data Term
     TAntiText Text
   | -- | A Boolean literal.
     TBool Bool
-  | -- | A robot value.  These never show up in surface syntax, but are
+  | -- | A robot reference.  These never show up in surface syntax, but are
     --   here so we can factor pretty-printing for Values through
     --   pretty-printing for Terms.
     TRobot Int
