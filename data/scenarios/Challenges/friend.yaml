@@ -73,7 +73,7 @@ entities:
     display:
       char: 'f'
     description:
-      - A smelly fish. Doesn't seem very useful.
+      - A smelly fish. Rather unappetizing to a robot.
     properties: [known, portable]
 
 known: [fish]
