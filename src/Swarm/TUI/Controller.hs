@@ -90,13 +90,17 @@ import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
-import Swarm.TUI.Model.UI (uiAchievements)
+import Swarm.TUI.Model.UI
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
 import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
+import System.FilePath (splitDirectories)
 import Witch (into)
+
+tutorialsDirname :: FilePath
+tutorialsDirname = "Tutorials"
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -144,7 +148,7 @@ handleMainMenuEvent menu = \case
           let tutorialCollection = getTutorials ss
               topMenu =
                 BL.listFindBy
-                  ((== "Tutorials") . scenarioItemName)
+                  ((== tutorialsDirname) . T.unpack . scenarioItemName)
                   (mkScenarioList cheat ss)
               tutorialMenu = mkScenarioList cheat tutorialCollection
               menuStack = NE.fromList [tutorialMenu, topMenu]
@@ -173,7 +177,7 @@ handleMainMenuEvent menu = \case
   _ -> continueWithoutRedraw
 
 getTutorials :: ScenarioCollection -> ScenarioCollection
-getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
+getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
   Just (SICollection _ c) -> c
   _ -> error "No tutorials exist!"
 
@@ -351,9 +355,6 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ W.Coords (mx, my)
 
-setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
-
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
 --
 -- Also resets the last frame time to now. If we are pausing, it
@@ -381,25 +382,6 @@ toggleModal mt = do
   case modal of
     Nothing -> openModal mt
     Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
-
-openModal :: ModalType -> EventM Name AppState ()
-openModal mt = do
-  newModal <- gets $ flip generateModal mt
-  ensurePause
-  uiState . uiModal ?= newModal
- where
-  -- Set the game to AutoPause if needed
-  ensurePause = do
-    pause <- use $ gameState . paused
-    unless (pause || isRunningModal mt) $ do
-      gameState . runStatus .= AutoPause
-
--- | The running modals do not autopause the game.
-isRunningModal :: ModalType -> Bool
-isRunningModal = \case
-  RobotsModal -> True
-  MessagesModal -> True
-  _ -> False
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
@@ -441,7 +423,14 @@ saveScenarioInfoOnQuit = do
         status <- preuse currentScenarioInfo
         case status of
           Nothing -> return ()
-          Just si -> liftIO $ saveScenarioInfo p si
+          Just si -> do
+            let segments = splitDirectories p
+            case segments of
+              firstDir : _ -> do
+                when (won && firstDir == tutorialsDirname) $
+                  attainAchievement' t (Just $ T.pack p) (GlobalAchievement CompletedSingleTutorial)
+              _ -> return ()
+            liftIO $ saveScenarioInfo p si
 
         -- See what scenario is currently focused in the menu.  Depending on how the
         -- previous scenario ended (via quit vs. via win), it might be the same as

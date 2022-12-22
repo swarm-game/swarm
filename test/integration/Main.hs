@@ -192,8 +192,10 @@ testScenarioSolution _ci _em =
         , testGroup
             "Possession criteria (#858)"
             [ testSolution Default "Testing/858-inventory/858-possession-objective"
-            , expectFailBecause "Known bug #858" $
+            , expectFailBecause "Known bug #858 - count" $
                 testSolution Default "Testing/858-inventory/858-counting-objective"
+            , expectFailBecause "Known bug #858 - has" $
+                testSolution Default "Testing/858-inventory/858-nonpossession-objective"
             ]
         , testGroup
             "Require (#201)"

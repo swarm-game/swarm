@@ -23,8 +23,10 @@ module Swarm.Game.Scenario (
   objectiveCondition,
 
   -- * WorldDescription
-  Cell (..),
-  WorldDescription (..),
+  PCell (..),
+  Cell,
+  PWorldDescription (..),
+  WorldDescription,
   IndexedTRobot,
 
   -- * Scenario
@@ -61,49 +63,19 @@ import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
-import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Scenario.Cell
+import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (getDataFileNameSafe, reflow)
+import Swarm.Util (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)
-
-------------------------------------------------------------
--- Scenario objectives
-------------------------------------------------------------
-
--- | An objective is a condition to be achieved by a player in a
---   scenario.
-data Objective = Objective
-  { _objectiveGoal :: [Text]
-  , _objectiveCondition :: ProcessedTerm
-  }
-  deriving (Eq, Show, Generic, ToJSON)
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
-
--- | An explanation of the goal of the objective, shown to the player
---   during play.  It is represented as a list of paragraphs.
-objectiveGoal :: Lens' Objective [Text]
-
--- | A winning condition for the objective, expressed as a
---   program of type @cmd bool@.  By default, this program will be
---   run to completion every tick (the usual limits on the number
---   of CESK steps per tick do not apply).
-objectiveCondition :: Lens' Objective ProcessedTerm
-
-instance FromJSON Objective where
-  parseJSON = withObject "objective" $ \v ->
-    Objective
-      <$> (fmap . map) reflow (v .:? "goal" .!= [])
-      <*> (v .: "condition")
 
 ------------------------------------------------------------
 -- Scenario

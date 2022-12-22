@@ -3,7 +3,14 @@
 module Swarm.TUI.Controller.Util where
 
 import Brick hiding (Direction)
+import Brick.Focus
+import Control.Lens
+import Control.Monad (unless)
 import Graphics.Vty qualified as V
+import Swarm.Game.State
+import Swarm.TUI.Model
+import Swarm.TUI.Model.UI
+import Swarm.TUI.View.Util (generateModal)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
@@ -22,3 +29,25 @@ pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
 
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
+
+openModal :: ModalType -> EventM Name AppState ()
+openModal mt = do
+  newModal <- gets $ flip generateModal mt
+  ensurePause
+  uiState . uiModal ?= newModal
+ where
+  -- Set the game to AutoPause if needed
+  ensurePause = do
+    pause <- use $ gameState . paused
+    unless (pause || isRunningModal mt) $ do
+      gameState . runStatus .= AutoPause
+
+-- | The running modals do not autopause the game.
+isRunningModal :: ModalType -> Bool
+isRunningModal = \case
+  RobotsModal -> True
+  MessagesModal -> True
+  _ -> False
+
+setFocus :: FocusablePanel -> EventM Name AppState ()
+setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
