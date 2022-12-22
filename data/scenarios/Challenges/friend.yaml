@@ -52,6 +52,8 @@ robots:
       invisible: false
       char: 'c'
       attr: sand
+    devices:
+      - logger
     program: |
       run "scenarios/Challenges/_friend/cat.sw"
 objectives:

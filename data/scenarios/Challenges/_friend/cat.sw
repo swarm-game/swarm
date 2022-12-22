@@ -19,24 +19,23 @@ def randdir : cmd dir =
   )
 end
 
+def chooseWait : cmd int =
+  t <- random (16*2);
+  return (16 + t)
+end
+
 def wander =
-  n <- random (16*4);
-  wait (16*2 + n);
   d <- randdir;
   turn d;
   dist <- random 2;
   try {repeat dist move} {};
   r <- random 5;
   if (r == 0) { say "meow" } {}
-end;
-
-def disappointed = \cat.
-  say "meow??";
-  n <- count "fish";
-  cat n
 end
 
-def follow : (int -> cmd unit) -> actor -> cmd unit = \cat. \r.
+def disappointed = \cat. say "meow??"; cat end
+
+def follow : cmd unit -> actor -> cmd unit = \cat. \r.
   rLoc <- as r {whereami};
   myLoc <- whereami;
   let dx = fst rLoc - fst myLoc in
@@ -53,18 +52,24 @@ def love = \cat.
   say "purr";
   fishGiver <- meet;
   case fishGiver
-    (\_. say "meow??"; n <- count "fish"; cat n)
+    (\_. disappointed cat)
     (\r. follow cat r)
 end
 
-def cat = \fishCount.
+def cat = \start. \fishCount. \waitTime.
+  if (waitTime == 0) { wander; start } { wait 1 };
   n <- count "fish";
   if (n > fishCount)
   { say "yum!";
-    if (n >= 3) { love cat } { cat n }
-  } {};
-  wander;
-  cat fishCount
+    if (n >= 3) { love start } { cat start n (waitTime - 1) }
+  }
+  { cat start fishCount (waitTime - 1) }
+end
+
+def startCat =
+  n <- count "fish";
+  w <- chooseWait;
+  cat startCat n w
 end;
 
-cat 0
+startCat

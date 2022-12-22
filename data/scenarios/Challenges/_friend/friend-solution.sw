@@ -14,6 +14,5 @@ build {
   require 3 "fish";
   m2; turn left; m20;
   give_fish 3;
-  wait 64;
   turn back; m20; turn right; m2
 }
