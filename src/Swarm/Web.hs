@@ -34,11 +34,11 @@ import Network.Wai qualified
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective
 import Swarm.Game.State
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import System.Timeout (timeout)
-import Swarm.Game.Scenario.Objective
 
 type SwarmApi =
   "robots" :> Get '[JSON] [Robot]

@@ -68,7 +68,7 @@ import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario.Objective (objectiveGoal, getActiveObjectives)
+import Swarm.Game.Scenario.Objective (getActiveObjectives, objectiveGoal)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
@@ -712,8 +712,8 @@ updateUI = do
         WinConditions objectiveCompletion -> case nonEmpty activeGoals of
           Just goals -> Just (NE.head goals ^. objectiveGoal)
           Nothing -> Nothing
-          where
-            activeGoals = getActiveObjectives objectiveCompletion
+         where
+          activeGoals = getActiveObjectives objectiveCompletion
         _ -> Nothing
 
   let goalUpdated = curGoal /= newGoal

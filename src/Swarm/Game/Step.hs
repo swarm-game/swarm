@@ -25,7 +25,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, forM_, guard, msum, unless, when, foldM)
+import Control.Monad (foldM, forM, forM_, guard, msum, unless, when)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
@@ -137,9 +137,8 @@ gameTick = do
   -- Advance the game time by one.
   ticks += 1
 
-
-data CompletionsWithExceptions = CompletionsWithExceptions {
-    exceptions :: [Exn]
+data CompletionsWithExceptions = CompletionsWithExceptions
+  { exceptions :: [Exn]
   , completions :: ObjectiveCompletion
   }
 
@@ -171,16 +170,20 @@ hypotheticalWinCheck g oc = do
   finalAccumulator <- foldM foldFunc initialAccumulator incompleteGoals
 
   -- We have "won" if all of the remaining incomplete objectives are "optional".
-  let didWin = all (^. OB.objectiveOptional) $ OB.incomplete $ OB.completionBuckets $
-        objectiveLookup $ completions finalAccumulator
-  winCondition .= if didWin
-    then Won False
-    else WinConditions $ completions finalAccumulator
+  let didWin =
+        all (^. OB.objectiveOptional) $
+          OB.incomplete $
+            OB.completionBuckets $
+              objectiveLookup $
+                completions finalAccumulator
+  winCondition
+    .= if didWin
+      then Won False
+      else WinConditions $ completions finalAccumulator
 
   mapM_ handleException $ exceptions finalAccumulator
-
  where
-  -- N.B. The "reverse" is essential due to the re-population of the 
+  -- N.B. The "reverse" is essential due to the re-population of the
   -- "incomplete" goal list by cons-ing.
   incompleteGoals = reverse $ OB.incomplete $ OB.completionBuckets $ objectiveLookup oc
 
@@ -191,9 +194,10 @@ hypotheticalWinCheck g oc = do
   -- Each iteration, we either place the goal back into the "incomplete" bucket, or
   -- we determine that it has been met and place it into the "completed" bucket.
   foldFunc (CompletionsWithExceptions exns currentCompletions) obj = do
-    v <- if OB.isPrereqsSatisfied currentCompletions obj
-      then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
-      else return $ Right $ VBool False
+    v <-
+      if OB.isPrereqsSatisfied currentCompletions obj
+        then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
+        else return $ Right $ VBool False
     return $ case v of
       Left exn -> CompletionsWithExceptions (exn : exns) currentCompletions
       Right (VBool True) -> CompletionsWithExceptions exns $ OB.addCompleted currentCompletions obj
@@ -209,7 +213,6 @@ hypotheticalWinCheck g oc = do
         farAway = Location maxBound maxBound
         m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
     emitMessage m
-
 
 evalPT ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>

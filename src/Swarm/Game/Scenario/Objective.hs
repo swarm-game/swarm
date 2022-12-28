@@ -77,10 +77,11 @@ instance FromJSON Objective where
       <*> (v .:? "optional" .!= False)
       <*> (v .:? "prerequisite")
 
-data CompletionBuckets = CompletionBuckets {
-    incomplete :: [Objective]
+data CompletionBuckets = CompletionBuckets
+  { incomplete :: [Objective]
   , completed :: [Objective]
-  } deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  }
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 -- | TODO: Should use a "smart constructor"
 -- on this so that all ObjectId references
@@ -92,14 +93,14 @@ data CompletionBuckets = CompletionBuckets {
 data ObjectiveLookup = ObjectiveLookup
   { byId :: Map ObjectiveLabel Objective
   , completionBuckets :: CompletionBuckets
-    -- ^ This is the authoritative "completion status"
-    -- for all objectives.
-    -- Note that there is a separate Map to store the
-    -- completion status of prerequisite objectives.
-    -- Those prerequisite objectives are required to have
-    -- labels, but other objectives are not.
-    -- Therefore only prerequisites exist in the completion
-    -- map keyed by label.
+  -- ^ This is the authoritative "completion status"
+  -- for all objectives.
+  -- Note that there is a separate Map to store the
+  -- completion status of prerequisite objectives.
+  -- Those prerequisite objectives are required to have
+  -- labels, but other objectives are not.
+  -- Therefore only prerequisites exist in the completion
+  -- map keyed by label.
   }
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
@@ -115,27 +116,29 @@ data ObjectiveCompletion = ObjectiveCompletion
 addCompleted :: ObjectiveCompletion -> Objective -> ObjectiveCompletion
 addCompleted (ObjectiveCompletion (ObjectiveLookup objsById buckets) cmplById) obj =
   ObjectiveCompletion newObjLookup newCmplById
-  where
-    newBuckets = buckets {
-      completed = obj : completed buckets
-    }
-    newObjLookup = ObjectiveLookup objsById newBuckets
-    newCmplById = case _objectiveId obj of
-      Nothing -> cmplById
-      Just lbl -> Set.insert lbl cmplById
+ where
+  newBuckets =
+    buckets
+      { completed = obj : completed buckets
+      }
+  newObjLookup = ObjectiveLookup objsById newBuckets
+  newCmplById = case _objectiveId obj of
+    Nothing -> cmplById
+    Just lbl -> Set.insert lbl cmplById
 
 setIncomplete :: ([Objective] -> [Objective]) -> ObjectiveCompletion -> ObjectiveCompletion
 setIncomplete f (ObjectiveCompletion (ObjectiveLookup objsById buckets) cmplById) =
   ObjectiveCompletion newObjLookup cmplById
-  where
-    newBuckets = buckets {
-      incomplete = f $ incomplete buckets
-    }
-    newObjLookup = ObjectiveLookup objsById newBuckets
+ where
+  newBuckets =
+    buckets
+      { incomplete = f $ incomplete buckets
+      }
+  newObjLookup = ObjectiveLookup objsById newBuckets
 
 addIncomplete :: ObjectiveCompletion -> Objective -> ObjectiveCompletion
 addIncomplete oc obj =
-  setIncomplete (obj:) oc
+  setIncomplete (obj :) oc
 
 isPrereqsSatisfied :: ObjectiveCompletion -> Objective -> Bool
 isPrereqsSatisfied completions obj = case _objectivePrerequisite obj of
@@ -149,22 +152,28 @@ isPrereqsSatisfied completions obj = case _objectivePrerequisite obj of
 getActiveObjectives :: ObjectiveCompletion -> [Objective]
 getActiveObjectives oc =
   activeObjectives
-  where
-  (activeObjectives, _inactiveObjectives) = partition (isPrereqsSatisfied oc) $
-    incomplete $ completionBuckets $ objectiveLookup oc
+ where
+  (activeObjectives, _inactiveObjectives) =
+    partition (isPrereqsSatisfied oc) $
+      incomplete $
+        completionBuckets $
+          objectiveLookup oc
 
 -- | For debugging only
-data PrereqSatisfaction = PrereqSatisfaction {
-    objective :: Objective
+data PrereqSatisfaction = PrereqSatisfaction
+  { objective :: Objective
   , prereqsSatisfied :: Bool
-  } deriving (Generic, ToJSON)
+  }
+  deriving (Generic, ToJSON)
 
 getSatisfaction :: ObjectiveCompletion -> [PrereqSatisfaction]
 getSatisfaction x =
   map f $
-    listAllObjectives $ completionBuckets $ objectiveLookup x
-  where
-    f y = PrereqSatisfaction y (isPrereqsSatisfied x y)
+    listAllObjectives $
+      completionBuckets $
+        objectiveLookup x
+ where
+  f y = PrereqSatisfaction y (isPrereqsSatisfied x y)
 
 -- | Uses the textual labels for those objectives that
 -- have them, and assigns arbitrary integer IDs for
