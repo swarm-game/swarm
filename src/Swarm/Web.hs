@@ -35,6 +35,7 @@ import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.State
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
@@ -45,6 +46,7 @@ type SwarmApi =
     :<|> "robot" :> Capture "id" Int :> Get '[JSON] (Maybe Robot)
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
     :<|> "goals" :> "active" :> Get '[JSON] [Objective]
+    :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
     :<|> "goals" :> Get '[JSON] WinCondition
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
 
@@ -54,6 +56,7 @@ mkApp appStateRef =
     :<|> robotHandler
     :<|> prereqsHandler
     :<|> activeGoalsHandler
+    :<|> goalsGraphHandler
     :<|> goalsHandler
     :<|> replHandler
  where
@@ -66,13 +69,18 @@ mkApp appStateRef =
   prereqsHandler = do
     appState <- liftIO (readIORef appStateRef)
     case appState ^. gameState . winCondition of
-      WinConditions _winState completion -> return $ getSatisfaction completion
+      WinConditions _winState oc -> return $ getSatisfaction oc
       _ -> return []
   activeGoalsHandler = do
     appState <- liftIO (readIORef appStateRef)
     case appState ^. gameState . winCondition of
-      WinConditions _winState completion -> return $ getActiveObjectives completion
+      WinConditions _winState oc -> return $ getActiveObjectives oc
       _ -> return []
+  goalsGraphHandler = do
+    appState <- liftIO (readIORef appStateRef)
+    return $ case appState ^. gameState . winCondition of
+      WinConditions _winState oc -> Just $ makeGraphInfo oc
+      _ -> Nothing
   goalsHandler = do
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition

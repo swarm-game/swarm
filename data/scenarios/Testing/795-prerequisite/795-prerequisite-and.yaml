@@ -1,15 +1,15 @@
 version: 1
 name: |
-  Prerequisite objectives: OR
+  Prerequisite objectives: AND
 description: |
   Complete an objective with a prerequisite of either of two other objectives.
 objectives:
   - goal:
-      - Achieve one of two other objectives
+      - Achieve both of two other objectives
     condition: |
       return true;
     prerequisite:
-      or:
+      and:
         - id: have_furnace
         - id: have_gear
   - goal:
@@ -25,7 +25,8 @@ objectives:
     id: have_gear
     optional: true
 solution: |
-  make "wooden gear"
+  make "furnace";
+  make "wooden gear";
 robots:
   - name: base
     display:

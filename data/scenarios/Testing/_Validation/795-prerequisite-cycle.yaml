@@ -1,29 +1,23 @@
 version: 1
 name: |
-  Prerequisite objectives: OR
+  Prerequisite objectives: dependency cycle
 description: |
-  Complete an objective with a prerequisite of either of two other objectives.
+  This should be rejected by the parser.
 objectives:
-  - goal:
-      - Achieve one of two other objectives
-    condition: |
-      return true;
-    prerequisite:
-      or:
-        - id: have_furnace
-        - id: have_gear
   - goal:
       - Make a "furnace".
     condition: |
       as base {has "furnace"};
     id: have_furnace
-    optional: true
+    prerequisite:
+      id: have_gear
   - goal:
       - Make a "wooden gear".
     condition: |
       as base {has "wooden gear"};
     id: have_gear
-    optional: true
+    prerequisite:
+      id: have_furnace
 solution: |
   make "wooden gear"
 robots:

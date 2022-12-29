@@ -4,27 +4,18 @@
 
 module Swarm.Game.Scenario.Objective where
 
-import Control.Arrow ((&&&))
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (unless)
 import Data.Aeson
 import Data.BoolExpr qualified as BE
-import Data.Foldable (for_, toList)
-import Data.Graph (Graph, graphFromEdges)
 import Data.List (partition)
-import Data.Map (Map)
-import Data.Map.Strict qualified as M
-import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Swarm.Game.Scenario.Logic as L
+import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (quote, reflow)
-import Witch (into)
+import Swarm.Util (reflow)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -195,79 +186,3 @@ getConstFromSigned :: BE.Signed a -> a
 getConstFromSigned = \case
   BE.Positive x -> x
   BE.Negative x -> x
-
--- | Uses the textual labels for those objectives that
--- have them, and assigns arbitrary integer IDs for
--- the remaining.
---
--- Only necessary for constructing a "Graph".
-assignIds :: [Objective] -> Map ObjectiveId Objective
-assignIds objs =
-  unlabeledObjsMap <> labeledObjsMap
- where
-  objectivesById =
-    M.fromList $
-      map swap $
-        mapMaybe (sequenceA . (id &&& _objectiveId)) objs
-
-  allPrereqExpressions = mapMaybe _objectivePrerequisite objs
-  allConstants = Set.unions $ map getDistinctConstants allPrereqExpressions
-  labeledObjsMap = M.fromList $ mapMaybe f $ Set.toList allConstants
-  f = sequenceA . \x -> (Label x, M.lookup (getConstFromSigned x) objectivesById)
-
-  unlabeledObjs = filter (null . _objectiveId) objs
-  unlabeledObjsMap = M.fromList $ zipWith (\x y -> (Ordinal x, y)) [0 ..] unlabeledObjs
-
--- | NOTE: Based strictly on the goal labels, the graph could
--- potentially contain a cycle, if there exist
--- mutually-exclusive goals. That is, if goal A depends on the NOT
--- of "goal B".  Goal B could then also depend on "NOT Goal A" (re-enforcing the
--- mutual-exclusivity), or it could mandate a completion order, e.g.:
--- Goal A and Goal B are simultaneously available to pursue.  However, if the
--- player completes Goal B first, then it closes off the option to complete
--- Goal A.  However, if Goal A is completed first, then the user is also allowed
--- to complete Goal B.
---
--- To avoid a "cycle" in this circumstance, "A" needs to exist as a distinct node
--- from "NOT A" in the graph.
-makeGraph :: [Objective] -> Graph
-makeGraph objectives =
-  myGraph
- where
-  f (k, v) = (v, k, maybe [] (map Label . g) $ _objectivePrerequisite v)
-  g = Set.toList . getDistinctConstants
-  (myGraph, _, _) = graphFromEdges $ map f $ M.toList $ assignIds objectives
-
--- | Performs monadic validation before returning
--- the "pure" construction of a wrapper record.
--- This validation entails:
--- 1) Ensuring that all goal references utilized in prerequisites
---    actually exist
--- 2) TODO: Ensuring that the graph of dependencies is acyclic.
-validateObjectives ::
-  MonadFail m =>
-  [Objective] ->
-  m [Objective]
-validateObjectives objectives = do
-  for_ objectives $ \x -> case _objectivePrerequisite x of
-    Just p ->
-      unless (null remaining) $
-        fail . into @String $
-          T.unwords
-            [ "Reference to undefined objective(s)"
-            , T.intercalate ", " (map quote $ Set.toList remaining) <> "."
-            , "Defined are:"
-            , T.intercalate ", " (map quote $ Set.toList allIds)
-            ]
-     where
-      refs = Set.fromList $ toList p
-      remaining = Set.difference refs allIds
-    Nothing -> return ()
-
-  -- TODO: Ensure that the graph of dependencies is acyclic.
-
-  return objectives
- where
-  allIds = Set.fromList $ mapMaybe _objectiveId objectives
-
-  foo = makeGraph objectives

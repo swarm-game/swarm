@@ -10,8 +10,13 @@ objectives:
       return true;
     prerequisite:
       or:
-        - id: have_furnace
-        - id: have_gear
+        - and:
+          - id: have_furnace
+          - not:
+              id: have_flower
+        - and:
+          - id: have_gear
+          - id: have_flower
   - goal:
       - Make a "furnace".
     condition: |
@@ -24,8 +29,14 @@ objectives:
       as base {has "wooden gear"};
     id: have_gear
     optional: true
+  - goal:
+      - Possess a "flower".
+    condition: |
+      as base {has "flower"};
+    id: have_flower
+    optional: true
 solution: |
-  make "wooden gear"
+  make "furnace"
 robots:
   - name: base
     display:

@@ -65,8 +65,9 @@ import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Scenario.Cell
-import Swarm.Game.Scenario.Logic
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Logic
+import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)

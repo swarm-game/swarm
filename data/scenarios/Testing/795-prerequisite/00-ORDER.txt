@@ -1,1 +1,3 @@
 795-prerequisite-or.yaml
+795-prerequisite-and.yaml
+795-prerequisite-mutually-exclusive.yaml

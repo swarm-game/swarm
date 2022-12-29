@@ -1,4 +1,4 @@
-module Swarm.Game.Scenario.Logic where
+module Swarm.Game.Scenario.Objective.Logic where
 
 import Data.Aeson
 import Data.BoolExpr
