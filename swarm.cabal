@@ -98,6 +98,7 @@ library
                       Swarm.Game.CESK
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Objective.Display
                       Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Validation

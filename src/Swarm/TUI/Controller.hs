@@ -277,7 +277,7 @@ handleMainEvent ev = do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
     ControlChar 'g' -> case s ^. uiState . uiGoal of
-      Just g | g /= [] -> toggleModal (GoalModal g)
+      Just (GoalDisplay _announcement g) | g /= [] -> toggleModal (GoalModal g)
       _ -> continueWithoutRedraw
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
@@ -705,12 +705,12 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
-  -- Decide whether we need to update the current goal text, and pop
+  -- Decide whether we need to update the current goal text and pop
   -- up a modal dialog.
   curGoal <- use (uiState . uiGoal)
   curWinCondition <- use (gameState . winCondition)
-  let newGoal :: Maybe [T.Text]
-      newGoal = case curWinCondition of
+  let newGoalProse :: Maybe [T.Text]
+      newGoalProse = case curWinCondition of
         -- TODO: Render multiple goals at once
         WinConditions _ objectiveCompletion -> case nonEmpty activeGoals of
           Just goals -> Just (NE.head goals ^. objectiveGoal)
@@ -719,10 +719,10 @@ updateUI = do
           activeGoals = getActiveObjectives objectiveCompletion
         _ -> Nothing
 
-  let goalUpdated = curGoal /= newGoal
+  let goalUpdated = (prose <$> curGoal) /= newGoalProse
   when goalUpdated $ do
-    uiState . uiGoal .= newGoal
-    case newGoal of
+    uiState . uiGoal .= (GoalDisplay [] <$> newGoalProse)
+    case newGoalProse of
       Just goal | goal /= [] -> do
         toggleModal (GoalModal goal)
       _ -> return ()

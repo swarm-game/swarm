@@ -25,6 +25,7 @@ module Swarm.Game.State (
   ObjectiveCompletion (..),
   _NoWinCondition,
   _WinConditions,
+  Announcement (..),
   RunStatus (..),
   Seed,
   GameState,
@@ -34,6 +35,7 @@ module Swarm.Game.State (
   winCondition,
   winSolution,
   gameAchievements,
+  announcementQueue,
   runStatus,
   paused,
   robotMap,
@@ -120,6 +122,7 @@ import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
+import Swarm.Game.Scenario.Objective.Display
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
@@ -274,6 +277,7 @@ data GameState = GameState
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _gameAchievements :: Map GameplayAchievement Attainment
+  , _announcementQueue :: Seq Announcement
   , _runStatus :: RunStatus
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -352,6 +356,13 @@ winSolution :: Lens' GameState (Maybe ProcessedTerm)
 
 -- | Map of in-game achievements that were attained
 gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
+
+-- | A queue of global announcments.
+-- Note that this is distinct from the "messageQueue",
+-- which is for messages emitted by robots.
+--
+-- Note that we put the newest entry to the right.
+announcementQueue :: Lens' GameState (Seq Announcement)
 
 -- | The current 'RunStatus'.
 runStatus :: Lens' GameState RunStatus
@@ -730,6 +741,7 @@ initGameState = do
       , -- This does not need to be initialized with anything,
         -- since the master list of achievements is stored in UIState
         _gameAchievements = mempty
+      , _announcementQueue = mempty
       , _runStatus = Running
       , _robotMap = IM.empty
       , _robotsByLocation = M.empty

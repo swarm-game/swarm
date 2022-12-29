@@ -6,6 +6,7 @@
 
 module Swarm.TUI.Model.UI (
   UIState (..),
+  GoalDisplay (..),
   uiMenu,
   uiPlaying,
   uiCheatMode,
@@ -67,6 +68,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.Util
 import System.Clock
+import Swarm.Game.Scenario.Objective.Display
 
 ------------------------------------------------------------
 -- UI state
@@ -88,7 +90,7 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
-  , _uiGoal :: Maybe [Text]
+  , _uiGoal :: Maybe GoalDisplay
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
@@ -168,7 +170,7 @@ uiModal :: Lens' UIState (Maybe Modal)
 
 -- | Status of the scenario goal: whether there is one, and whether it
 --   has been displayed to the user initially.
-uiGoal :: Lens' UIState (Maybe [Text])
+uiGoal :: Lens' UIState (Maybe GoalDisplay)
 
 -- | Map of achievements that were attained
 uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)

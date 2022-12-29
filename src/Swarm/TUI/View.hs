@@ -756,7 +756,7 @@ drawKeyMenu s =
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
   goal = case s ^. uiState . uiGoal of
-    Just g | g /= [] -> True
+    Just (GoalDisplay _announcements g) | g /= [] -> True
     _ -> False
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
