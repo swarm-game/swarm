@@ -181,8 +181,3 @@ getSatisfaction oc =
 
 getDistinctConstants :: (Ord a) => Prerequisite a -> Set (BE.Signed a)
 getDistinctConstants = Set.fromList . BE.constants . toBoolExpr
-
-getConstFromSigned :: BE.Signed a -> a
-getConstFromSigned = \case
-  BE.Positive x -> x
-  BE.Negative x -> x

@@ -10,14 +10,6 @@ import GHC.Generics (Generic)
 
 type ObjectiveLabel = Text
 
--- | This is only needed for constructing a Graph,
--- which requires all nodes to have a key.
-data ObjectiveId
-  = Label (Signed ObjectiveLabel)
-  | -- | for unlabeled objectives
-    Ordinal Int
-  deriving (Eq, Ord, Show)
-
 -- | In contrast with the "BoolExpr" type,
 -- "And" and "Or" can have zero or more children
 -- instead of exactly two.

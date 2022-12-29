@@ -1,8 +1,10 @@
 version: 1
 name: |
-  Prerequisite objectives: dependency cycle
+  Prerequisite objectives: non-dependency cycle due to the NOT
 description: |
-  This should be rejected by the parser.
+  This should NOT be rejected by the parser.
+  The two objectives do reference each other,
+  but the NOT is a distinct reference from the non-negated goal.
 objectives:
   - goal:
       - Make a "furnace".
@@ -10,7 +12,8 @@ objectives:
       as base {has "furnace"};
     id: have_furnace
     prerequisite:
-      id: have_gear
+      not:
+        id: have_gear
   - goal:
       - Make a "wooden gear".
     condition: |
@@ -19,7 +22,8 @@ objectives:
     prerequisite:
       id: have_furnace
 solution: |
-  make "wooden gear"
+  make "wooden gear";
+  make "furnace";
 robots:
   - name: base
     display:
