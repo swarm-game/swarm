@@ -347,6 +347,7 @@ loadScenarioItem em path = do
   case isDir of
     True -> SICollection collectionName <$> loadScenarioDir em path
     False -> do
+      sendIO $ putStrLn $ unwords ["Loading path:", path]
       s <- loadScenarioFile em path
       si <- loadScenarioInfo path
       return $ SISingle (s, si)
