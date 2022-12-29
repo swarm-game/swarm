@@ -5,7 +5,9 @@ description: |
   the target robot doesn't have.
   https://github.com/swarm-game/swarm/pulls/533
 objectives:
-  - condition: |
+  - goal:
+      - Reprogram
+    condition: |
       try {
         base_boats <- as base {count "boat"};
         base_solar <- as base {count "solar panel"};

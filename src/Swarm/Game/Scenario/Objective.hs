@@ -7,6 +7,8 @@ module Swarm.Game.Scenario.Objective where
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Data.Aeson
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -60,7 +62,7 @@ instance FromJSON PrerequisiteConfig where
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
 data Objective = Objective
-  { _objectiveGoal :: [Text]
+  { _objectiveGoal :: NonEmpty Text
   , _objectiveTeaser :: Maybe Text
   , _objectiveCondition :: ProcessedTerm
   , _objectiveId :: Maybe ObjectiveLabel
@@ -75,7 +77,7 @@ makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
-objectiveGoal :: Lens' Objective [Text]
+objectiveGoal :: Lens' Objective (NonEmpty Text)
 
 -- | A very short (3-5 words) description of the goal for
 -- displaying on the left side of the Objectives modal.
@@ -113,7 +115,7 @@ objectiveAchievement :: Lens' Objective (Maybe AchievementInfo)
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->
     Objective
-      <$> (fmap . map) reflow (v .:? "goal" .!= [])
+      <$> (fmap . NE.map) reflow (v .: "goal")
       <*> (v .:? "teaser")
       <*> (v .: "condition")
       <*> (v .:? "id")

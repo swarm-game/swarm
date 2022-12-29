@@ -10,7 +10,7 @@ import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
-import Data.Maybe (listToMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Presentation.Model
@@ -71,10 +71,10 @@ drawGoalListItem = \case
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
-    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> listToMaybe (obj ^. objectiveGoal)
-    titleWidget = maybe (txt "?") withEllipsis textSource
+    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId
+    titleWidget = withEllipsis $ fromMaybe (NE.head $ obj ^. objectiveGoal) textSource
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Header _gs -> displayParagraphs [" "]
-  Goal _gs obj -> displayParagraphs $ obj ^. objectiveGoal
+  Header _gs -> str " "
+  Goal _gs obj -> displayParagraphs $ NE.toList $ obj ^. objectiveGoal
