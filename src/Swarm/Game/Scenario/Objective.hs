@@ -4,13 +4,13 @@
 module Swarm.Game.Scenario.Objective where
 
 import Control.Lens hiding (from, (<.>))
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
 
 ------------------------------------------------------------
 -- Scenario objectives
