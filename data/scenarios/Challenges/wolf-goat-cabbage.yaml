@@ -41,7 +41,7 @@ objectives:
   - goal:
       - |
         Ferry all three of the wolf, goat, and cabbage across the lake.
-        However, only one of these can be held in the inventory at a time.
+        However, only one of these can be carried at a time.
       - |
         Furthermore, if left unattended together, the wolf will eat the goat,
         or the goat will eat the cabbage.

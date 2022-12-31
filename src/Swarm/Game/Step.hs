@@ -182,10 +182,7 @@ hypotheticalWinCheck g ws oc = do
       reverse incompleteGoals
 
   let newWinState = case ws of
-        Ongoing ->
-          if OB.didWin $ completions finalAccumulator
-            then Won False
-            else Ongoing
+        Ongoing -> getNextWinState $ completions finalAccumulator
         _ -> ws
 
   winCondition .= WinConditions newWinState (completions finalAccumulator)
@@ -193,6 +190,11 @@ hypotheticalWinCheck g ws oc = do
 
   mapM_ handleException $ exceptions finalAccumulator
  where
+  getNextWinState comps
+    | OB.didWin comps = Won False
+    | OB.didLose comps = Unwinnable False
+    | otherwise = Ongoing
+
   (withoutIncomplete, incompleteGoals) = OB.extractIncomplete oc
   initialAccumulator = CompletionsWithExceptions [] withoutIncomplete []
 
@@ -213,12 +215,17 @@ hypotheticalWinCheck g ws oc = do
       Right (VBool True) ->
         CompletionsWithExceptions
           exns
-          (OB.addCompleted currentCompletions obj)
+          (OB.addCompleted obj currentCompletions)
           (obj:announcements)
       _ -> CompletionsWithExceptions
             exns
-            (OB.addIncomplete obj currentCompletions)
+            (txform obj currentCompletions)
             announcements
+           where
+            txform = if OB.isUnwinnable currentCompletions obj
+              then OB.addUnwinnable
+              else OB.addIncomplete
+
 
   -- Log exceptions in the message queue so we can check for them in tests
   handleException exn = do

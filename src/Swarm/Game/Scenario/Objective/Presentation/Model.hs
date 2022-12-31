@@ -50,7 +50,7 @@ constructGoalMap isCheating objectiveCompletion@(ObjectiveCompletion buckets _) 
       (Upcoming, displayableInactives)
     , (Active, suppressHidden activeGoals)
     , (Completed, completed buckets)
-    , (Failed, []) -- TODO
+    , (Failed, unwinnable buckets)
     ]
 
   displayableInactives = suppressHidden $

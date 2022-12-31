@@ -1,5 +1,6 @@
 module Data.BoolExpr.Simplify (
-  cannotBeTrue
+  cannotBeTrue,
+  replace
   ) where
 
 import Data.BoolExpr
@@ -26,3 +27,19 @@ isAlwaysFalse (DNF (Disj disjunctions)) = L.null disjunctions
 
 cannotBeTrue :: Ord a => BoolExpr a -> Bool
 cannotBeTrue = isAlwaysFalse . simplifyDNF . boolTreeToDNF
+
+replace :: Ord a => Map a Bool -> BoolExpr a -> BoolExpr a
+replace f (BAnd a b) = BAnd (replace f a) (replace f b)
+replace f (BOr a b)  = BOr (replace f a) (replace f b)
+replace f (BNot t)   = BNot (replace f t)
+replace _ BTrue      = BTrue
+replace _ BFalse     = BFalse
+replace m c@(BConst x) = case M.lookup varname m of
+  Nothing -> c
+  Just val -> if txform val
+    then BTrue
+    else BFalse
+  where
+    (varname, isPositive) = extractConstFromSigned x
+    txform = if isPositive then id else not
+

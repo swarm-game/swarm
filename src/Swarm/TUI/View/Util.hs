@@ -55,6 +55,18 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
+      LoseModal ->
+        let stopMsg = fromMaybe "Return to the menu" haltingMessage
+            continueMsg = "Keep playing"
+         in ( ""
+            , Just
+                ( 0
+                , [ (stopMsg, QuitButton)
+                       , (continueMsg, KeepPlayingButton)
+                       ]
+                )
+            , sum (map length [stopMsg, continueMsg]) + 32
+            )
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
         let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage

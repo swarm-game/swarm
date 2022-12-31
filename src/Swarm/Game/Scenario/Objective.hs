@@ -12,10 +12,12 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Data.Map qualified as M
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
 import Swarm.TUI.Model.Achievement.Definitions
+import Data.BoolExpr.Simplify qualified as Simplify
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -110,6 +112,7 @@ instance FromJSON Objective where
 data CompletionBuckets = CompletionBuckets
   { incomplete :: [Objective]
   , completed :: [Objective]
+  , unwinnable :: [Objective]
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
@@ -130,14 +133,22 @@ data ObjectiveCompletion = ObjectiveCompletion
 
 -- | Concatenates all incomplete and completed objectives.
 listAllObjectives :: CompletionBuckets -> [Objective]
-listAllObjectives (CompletionBuckets x y) = x <> y
+listAllObjectives (CompletionBuckets x y z) = x <> y <> z
 
--- | We have "won" if all of the remaining incomplete objectives are "optional".
+-- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
 didWin :: ObjectiveCompletion -> Bool
-didWin = all _objectiveOptional . incomplete . completionBuckets
+didWin oc = all _objectiveOptional $ incomplete buckets <> unwinnable buckets
+  where
+    buckets = completionBuckets oc
 
-addCompleted :: ObjectiveCompletion -> Objective -> ObjectiveCompletion
-addCompleted (ObjectiveCompletion buckets cmplIds) obj =
+-- | We have "lost" if any of the "unwinnable" objectives not "optional".
+didLose :: ObjectiveCompletion -> Bool
+didLose oc = not $ all _objectiveOptional $ unwinnable buckets
+  where
+    buckets = completionBuckets oc
+
+addCompleted :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
+addCompleted obj (ObjectiveCompletion buckets cmplIds) =
   ObjectiveCompletion newBuckets newCmplById
  where
   newBuckets =
@@ -147,6 +158,20 @@ addCompleted (ObjectiveCompletion buckets cmplIds) obj =
   newCmplById = case _objectiveId obj of
     Nothing -> cmplIds
     Just lbl -> Set.insert lbl cmplIds
+
+addUnwinnable :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
+addUnwinnable obj (ObjectiveCompletion buckets cmplIds) =
+  ObjectiveCompletion newBuckets newCmplById
+ where
+  newBuckets =
+    buckets
+      { unwinnable = obj : unwinnable buckets
+      }
+  -- TODO Should we also have a set that represents the unwinnable?
+  newCmplById = cmplIds
+  -- newCmplById = case _objectiveId obj of
+  --   Nothing -> cmplIds
+  --   Just lbl -> Set.insert lbl cmplIds
 
 setIncomplete ::
   ([Objective] -> [Objective]) ->
@@ -181,6 +206,15 @@ isPrereqsSatisfied completions =
 
   getTruth :: ObjectiveLabel -> Bool
   getTruth label = Set.member label $ completedIDs completions
+
+isUnwinnable :: ObjectiveCompletion -> Objective -> Bool
+isUnwinnable completions obj =
+  maybe False f $ _objectivePrerequisite obj
+ where
+  f = Simplify.cannotBeTrue . Simplify.replace boolMap . L.toBoolExpr . logic
+
+  boolMap = M.fromList $ map (, True) $
+    Set.toList $ completedIDs completions
 
 partitionActiveObjectives :: ObjectiveCompletion -> ([Objective], [Objective])
 partitionActiveObjectives oc =

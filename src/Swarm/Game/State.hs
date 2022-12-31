@@ -904,7 +904,7 @@ scenarioToGameState scenario userSeed toRun g = do
   theWinCondition =
     maybe
       NoWinCondition
-      (\x -> WinConditions Ongoing (ObjectiveCompletion (CompletionBuckets (NE.toList x) mempty) mempty))
+      (\x -> WinConditions Ongoing (ObjectiveCompletion (CompletionBuckets (NE.toList x) mempty mempty) mempty))
       (NE.nonEmpty (scenario ^. scenarioObjectives))
 
   initGensym = length robotList - 1

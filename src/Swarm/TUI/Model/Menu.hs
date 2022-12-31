@@ -41,6 +41,7 @@ data ModalType
   | MessagesModal
   | RobotsModal
   | WinModal
+  | LoseModal
   | QuitModal
   | KeepPlayingModal
   | DescriptionModal Entity

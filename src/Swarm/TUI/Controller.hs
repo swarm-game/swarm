@@ -254,6 +254,7 @@ handleMainEvent ev = do
     ControlChar 'q' ->
       case s ^. gameState . winCondition of
         WinConditions (Won _) _ -> toggleModal WinModal
+        WinConditions (Unwinnable _) _ -> toggleModal LoseModal
         _ -> toggleModal QuitModal
     VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
     Key V.KEsc
@@ -734,6 +735,15 @@ doGoalUpdates = do
   -- up a modal dialog.
   case curWinCondition of
     NoWinCondition -> return False
+
+    WinConditions (Unwinnable False) x -> do
+
+      -- This clears the "flag" that the Lose dialog needs to pop up
+      gameState . winCondition .= WinConditions (Unwinnable True) x
+      openModal LoseModal
+
+      uiState . uiMenu %= advanceMenu
+      return True
 
     WinConditions (Won False) x -> do
 
