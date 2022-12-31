@@ -53,23 +53,23 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
+import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Foldable (toList)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
@@ -278,9 +278,10 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
-    ControlChar 'g' -> if hasAnythingToShow $ s ^. uiState . uiGoal
-      then toggleModal GoalModal
-      else continueWithoutRedraw
+    ControlChar 'g' ->
+      if hasAnythingToShow $ s ^. uiState . uiGoal
+        then toggleModal GoalModal
+        else continueWithoutRedraw
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
@@ -730,32 +731,26 @@ doGoalUpdates = do
   curWinCondition <- use (gameState . winCondition)
   announcementsSeq <- use (gameState . announcementQueue)
   let announcementsList = toList announcementsSeq
-          
+
   -- Decide whether we need to update the current goal text and pop
   -- up a modal dialog.
   case curWinCondition of
     NoWinCondition -> return False
-
     WinConditions (Unwinnable False) x -> do
-
       -- This clears the "flag" that the Lose dialog needs to pop up
       gameState . winCondition .= WinConditions (Unwinnable True) x
       openModal LoseModal
 
       uiState . uiMenu %= advanceMenu
       return True
-
     WinConditions (Won False) x -> do
-
       -- This clears the "flag" that the Win dialog needs to pop up
       gameState . winCondition .= WinConditions (Won True) x
       openModal WinModal
 
       uiState . uiMenu %= advanceMenu
       return True
-
     WinConditions _ oc -> do
-      
       let newGoalDisplay = GoalDisplay announcementsList $ constructGoalMap isCheating oc
           -- The "uiGoal" field is intialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
@@ -766,7 +761,6 @@ doGoalUpdates = do
       -- Decide whether to show a pop-up modal congratulating the user on
       -- successfully completing the current challenge.
       when goalWasUpdated $ do
-
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
         uiState . uiGoal .= newGoalDisplay
@@ -778,7 +772,6 @@ doGoalUpdates = do
         openModal GoalModal
 
       return goalWasUpdated
-
 
 -- | Make sure all tiles covering the visible part of the world are
 --   loaded.

@@ -1,24 +1,24 @@
 module Swarm.Game.Scenario.Objective.Presentation.Model where
 
-import Swarm.Game.Scenario.Objective
-import Data.Map (Map)
+import Data.Aeson
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
-import Data.Aeson
 import GHC.Generics (Generic)
+import Swarm.Game.Scenario.Objective
 
 -- | These are intended to be used as keys in a map
 -- of lists of goals.
 data GoalStatus
-  = Upcoming
-    -- ^ Goals in this category have other goals as prerequisites.
+  = -- | Goals in this category have other goals as prerequisites.
     -- However, they are only displayed if the "previewable" attribute
     -- is `true`.
-  | Active
-    -- ^ Goals in this category may be pursued in parallel.
+    Upcoming
+  | -- | Goals in this category may be pursued in parallel.
     -- However, they are only displayed if the "hidden" attribute
     -- is `false`.
+    Active
   | Completed
   | Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
@@ -30,10 +30,11 @@ newtype Announcement
 
 type CategorizedGoals = Map GoalStatus (NonEmpty Objective)
 
-data GoalDisplay = GoalDisplay {
-    announcements :: [Announcement]
+data GoalDisplay = GoalDisplay
+  { announcements :: [Announcement]
   , goals :: CategorizedGoals
-  } deriving (Show, Generic, ToJSON)
+  }
+  deriving (Show, Generic, ToJSON)
 
 emptyGoalDisplay :: GoalDisplay
 emptyGoalDisplay = GoalDisplay mempty mempty
@@ -45,19 +46,21 @@ constructGoalMap :: Bool -> ObjectiveCompletion -> CategorizedGoals
 constructGoalMap isCheating objectiveCompletion@(ObjectiveCompletion buckets _) =
   M.fromList $
     mapMaybe (traverse nonEmpty) categoryList
-  where
-  categoryList = [
-      (Upcoming, displayableInactives)
+ where
+  categoryList =
+    [ (Upcoming, displayableInactives)
     , (Active, suppressHidden activeGoals)
     , (Completed, completed buckets)
     , (Failed, unwinnable buckets)
     ]
 
-  displayableInactives = suppressHidden $
-    filter (maybe False previewable . _objectivePrerequisite) inactiveGoals
+  displayableInactives =
+    suppressHidden $
+      filter (maybe False previewable . _objectivePrerequisite) inactiveGoals
 
-  suppressHidden = if isCheating
-    then id
-    else filter $ not . _objectiveHidden
+  suppressHidden =
+    if isCheating
+      then id
+      else filter $ not . _objectiveHidden
 
   (activeGoals, inactiveGoals) = partitionActiveObjectives objectiveCompletion

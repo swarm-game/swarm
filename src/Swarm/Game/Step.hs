@@ -41,8 +41,8 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Ord (Down (Down))
-import Data.Sequence qualified as Seq
 import Data.Sequence ((><))
+import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -144,8 +144,8 @@ data CompletionsWithExceptions = CompletionsWithExceptions
   { exceptions :: [Exn]
   , completions :: ObjectiveCompletion
   , completionAnnouncementQueue :: [OB.Objective]
-    -- ^ Upon completion, an objective is enqueued.
-    -- It is dequeued when displayed on the UI.
+  -- ^ Upon completion, an objective is enqueued.
+  -- It is dequeued when displayed on the UI.
   }
 
 -- | Execute the win condition check *hypothetically*: i.e. in a
@@ -219,24 +219,26 @@ hypotheticalWinCheck g ws oc = do
         then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
         else return $ Right $ VBool False
     return $ case v of
-      Left exn -> CompletionsWithExceptions
-        (exn : exns)
-        currentCompletions
-        announcements
+      Left exn ->
+        CompletionsWithExceptions
+          (exn : exns)
+          currentCompletions
+          announcements
       Right (VBool True) ->
         CompletionsWithExceptions
           exns
           (OB.addCompleted obj currentCompletions)
-          (obj:announcements)
-      _ -> CompletionsWithExceptions
-            exns
-            (txform obj currentCompletions)
-            announcements
-           where
-            txform = if OB.isUnwinnable currentCompletions obj
-              then OB.addUnwinnable
-              else OB.addIncomplete
-
+          (obj : announcements)
+      _ ->
+        CompletionsWithExceptions
+          exns
+          (txform obj currentCompletions)
+          announcements
+       where
+        txform =
+          if OB.isUnwinnable currentCompletions obj
+            then OB.addUnwinnable
+            else OB.addIncomplete
 
   -- Log exceptions in the message queue so we can check for them in tests
   handleException exn = do

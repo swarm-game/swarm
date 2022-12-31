@@ -55,6 +55,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
@@ -68,7 +69,6 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.Util
 import System.Clock
-import Swarm.Game.Scenario.Objective.Presentation.Model
 
 ------------------------------------------------------------
 -- UI state

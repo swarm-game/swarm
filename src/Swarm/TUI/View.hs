@@ -78,6 +78,8 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario.Objective.Presentation.Model (hasAnythingToShow)
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -109,8 +111,6 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from, into)
-import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
-import Swarm.Game.Scenario.Objective.Presentation.Model (hasAnythingToShow)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -470,10 +470,14 @@ drawModal s = \case
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
-  LoseModal -> padBottom (Pad 1) $ vBox $ map (hCenter .txt)
-      [ "Condolences!"
-      , "This scenario is no longer winnable."
-      ]
+  LoseModal ->
+    padBottom (Pad 1) $
+      vBox $
+        map
+          (hCenter . txt)
+          [ "Condolences!"
+          , "This scenario is no longer winnable."
+          ]
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal -> padLeftRight 1 $ GR.renderGoalsDisplay (s ^. uiState . uiGoal)

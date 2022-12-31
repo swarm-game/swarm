@@ -7,42 +7,42 @@ module Swarm.Game.Scenario.Objective where
 import Control.Lens hiding (from, (<.>))
 import Data.Aeson
 import Data.BoolExpr qualified as BE
+import Data.BoolExpr.Simplify qualified as Simplify
 import Data.List (partition)
+import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Data.Map qualified as M
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (reflow)
 import Swarm.TUI.Model.Achievement.Definitions
-import Data.BoolExpr.Simplify qualified as Simplify
+import Swarm.Util (reflow)
 
 ------------------------------------------------------------
 -- Scenario objectives
 ------------------------------------------------------------
 
-data PrerequisiteConfig = PrerequisiteConfig {
-    previewable :: Bool
-    -- ^ Typically, only the currently "active" objectives are
-    -- displayed to the user in the Goals dialog. An objective
-    -- is "active" if all of its prerequisites are met.
-    -- 
-    -- However, some objectives may be "high-level", in that they may
-    -- explain the broader intention behind potentially multiple
-    -- prerequisites.
-    -- 
-    -- Set this to option True to display this goal in the "upcoming" section even
-    -- if the objective has currently unmet prerequisites.
+data PrerequisiteConfig = PrerequisiteConfig
+  { previewable :: Bool
+  -- ^ Typically, only the currently "active" objectives are
+  -- displayed to the user in the Goals dialog. An objective
+  -- is "active" if all of its prerequisites are met.
+  --
+  -- However, some objectives may be "high-level", in that they may
+  -- explain the broader intention behind potentially multiple
+  -- prerequisites.
+  --
+  -- Set this to option True to display this goal in the "upcoming" section even
+  -- if the objective has currently unmet prerequisites.
   , logic :: Prerequisite ObjectiveLabel
-    -- ^ Boolean expression the represents the condition dependencies which also
-    -- must have been evaluated to True.
-    -- Note that the achievement of these objective dependencies is
-    -- persistent; once achieved, it still counts even if the "condition"
-    -- might not still hold. The condition is never re-evaluated once True.
-  } deriving (Eq, Show, Generic, ToJSON)
-
+  -- ^ Boolean expression the represents the condition dependencies which also
+  -- must have been evaluated to True.
+  -- Note that the achievement of these objective dependencies is
+  -- persistent; once achieved, it still counts even if the "condition"
+  -- might not still hold. The condition is never re-evaluated once True.
+  }
+  deriving (Eq, Show, Generic, ToJSON)
 
 instance FromJSON PrerequisiteConfig where
   parseJSON = withObject "prerequisite" $ \v ->
@@ -138,14 +138,14 @@ listAllObjectives (CompletionBuckets x y z) = x <> y <> z
 -- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
 didWin :: ObjectiveCompletion -> Bool
 didWin oc = all _objectiveOptional $ incomplete buckets <> unwinnable buckets
-  where
-    buckets = completionBuckets oc
+ where
+  buckets = completionBuckets oc
 
 -- | We have "lost" if any of the "unwinnable" objectives not "optional".
 didLose :: ObjectiveCompletion -> Bool
 didLose oc = not $ all _objectiveOptional $ unwinnable buckets
-  where
-    buckets = completionBuckets oc
+ where
+  buckets = completionBuckets oc
 
 addCompleted :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addCompleted obj (ObjectiveCompletion buckets cmplIds) =
@@ -169,9 +169,10 @@ addUnwinnable obj (ObjectiveCompletion buckets cmplIds) =
       }
   -- TODO Should we also have a set that represents the unwinnable?
   newCmplById = cmplIds
-  -- newCmplById = case _objectiveId obj of
-  --   Nothing -> cmplIds
-  --   Just lbl -> Set.insert lbl cmplIds
+
+-- newCmplById = case _objectiveId obj of
+--   Nothing -> cmplIds
+--   Just lbl -> Set.insert lbl cmplIds
 
 setIncomplete ::
   ([Objective] -> [Objective]) ->
@@ -213,8 +214,11 @@ isUnwinnable completions obj =
  where
   f = Simplify.cannotBeTrue . Simplify.replace boolMap . L.toBoolExpr . logic
 
-  boolMap = M.fromList $ map (, True) $
-    Set.toList $ completedIDs completions
+  boolMap =
+    M.fromList $
+      map (,True) $
+        Set.toList $
+          completedIDs completions
 
 partitionActiveObjectives :: ObjectiveCompletion -> ([Objective], [Objective])
 partitionActiveObjectives oc =

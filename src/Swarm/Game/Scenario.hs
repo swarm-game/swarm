@@ -55,6 +55,7 @@ import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
 import Data.Aeson
+import Data.BoolExpr qualified as BE
 import Data.Foldable (toList)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
@@ -76,7 +77,6 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)
-import Data.BoolExpr qualified as BE
 
 ------------------------------------------------------------
 -- Scenario
@@ -242,22 +242,17 @@ loadScenarioFile em fileName = do
 
   -- sendIO $ writeFile "foo2.yaml" $ show $ toBoolExpr demo
 
-
   sendIO $ Y.encodeFile "demo00input.yaml" demo00input
   sendIO $ Y.encodeFile "demo00.yaml" demo00
 
   sendIO $ Y.encodeFile "demo01input.yaml" demo01input
   sendIO $ Y.encodeFile "demo01.yaml" demo01
 
-
   sendIO $ Y.encodeFile "demo0input.yaml" demo0input
   sendIO $ Y.encodeFile "demo0.yaml" demo0
 
   sendIO $ Y.encodeFile "demo1input.yaml" demo1input
   sendIO $ Y.encodeFile "demo1.yaml" demo1
-
-
-
 
   sendIO $ Y.encodeFile "demo2input.yaml" demo2input
   sendIO $ Y.encodeFile "demo2.yaml" demo2
@@ -271,10 +266,8 @@ loadScenarioFile em fileName = do
   sendIO $ Y.encodeFile "demo5input.yaml" demo5input
   sendIO $ Y.encodeFile "demo5.yaml" demo5
 
-
   sendIO $ Y.encodeFile "demo6input.yaml" demo6input
   sendIO $ Y.encodeFile "demo6.yaml" demo6
-
 
   sendIO $ Y.encodeFile "demo7input.yaml" demo7input
   sendIO $ Y.encodeFile "demo7.yaml" demo7
@@ -290,7 +283,6 @@ loadScenarioFile em fileName = do
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
     Right c -> return c
  where
-
   demo00input :: BE.BoolExpr String
   demo00input = BE.BOr BE.BFalse BE.BFalse
   demo00 = BE.boolTreeToDNF demo00input
@@ -307,11 +299,9 @@ loadScenarioFile em fileName = do
   demo1input = BE.BFalse
   demo1 = BE.boolTreeToDNF demo1input
 
-
   demo2input :: BE.BoolExpr String
   demo2input = BE.BOr BE.BFalse (BE.BConst (BE.Positive "foo"))
   demo2 = BE.boolTreeToDNF demo2input
-
 
   demo3input :: BE.BoolExpr String
   demo3input = BE.BOr (BE.BConst (BE.Positive "foo")) BE.BTrue
@@ -325,23 +315,19 @@ loadScenarioFile em fileName = do
   demo5input = BE.BAnd (BE.BConst (BE.Positive "foo")) BE.BTrue
   demo5 = BE.boolTreeToDNF demo5input
 
-
-
   demo6input :: BE.BoolExpr String
-  demo6input = BE.BOr
-    (BE.BAnd BE.BFalse (BE.BConst (BE.Positive "foo")))
-    (BE.BAnd (BE.BConst (BE.Positive "bar")) BE.BFalse)
+  demo6input =
+    BE.BOr
+      (BE.BAnd BE.BFalse (BE.BConst (BE.Positive "foo")))
+      (BE.BAnd (BE.BConst (BE.Positive "bar")) BE.BFalse)
   demo6 = BE.boolTreeToDNF demo6input
 
-
-
-
   demo7input :: BE.BoolExpr String
-  demo7input = BE.BOr
-    (BE.BAnd (BE.BNot BE.BTrue) (BE.BNot (BE.BNot (BE.BNot (BE.BConst (BE.Positive "foo"))))))
-    (BE.BAnd (BE.BConst (BE.Positive "bar")) (BE.BNot (BE.BNot BE.BFalse)))
+  demo7input =
+    BE.BOr
+      (BE.BAnd (BE.BNot BE.BTrue) (BE.BNot (BE.BNot (BE.BNot (BE.BConst (BE.Positive "foo"))))))
+      (BE.BAnd (BE.BConst (BE.Positive "bar")) (BE.BNot (BE.BNot BE.BFalse)))
   demo7 = BE.boolTreeToDNF demo7input
-
 
   demo8input :: BE.BoolExpr String
   demo8input = BE.BAnd (BE.BNot (BE.BConst (BE.Positive "foo"))) (BE.BConst (BE.Positive "foo"))
@@ -350,9 +336,6 @@ loadScenarioFile em fileName = do
   demo9input :: BE.BoolExpr String
   demo9input = BE.BAnd (BE.BConst (BE.Positive "foo")) (BE.BConst (BE.Negative "foo"))
   demo9 = BE.boolTreeToDNF demo9input
-
-
-
 
   demo :: Prerequisite ObjectiveLabel
   demo =

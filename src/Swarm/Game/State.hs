@@ -122,7 +122,6 @@ import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
@@ -149,6 +148,7 @@ import Swarm.Game.Recipe (
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Value (Value)

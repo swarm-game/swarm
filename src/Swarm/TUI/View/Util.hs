@@ -61,9 +61,10 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
          in ( ""
             , Just
                 ( 0
-                , [ (stopMsg, QuitButton)
-                       , (continueMsg, KeepPlayingButton)
-                       ]
+                ,
+                  [ (stopMsg, QuitButton)
+                  , (continueMsg, KeepPlayingButton)
+                  ]
                 )
             , sum (map length [stopMsg, continueMsg]) + 32
             )
