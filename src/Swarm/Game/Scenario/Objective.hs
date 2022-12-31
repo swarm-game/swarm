@@ -11,7 +11,6 @@ import Data.List (partition)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
@@ -200,9 +199,6 @@ data PrereqSatisfaction = PrereqSatisfaction
   , prereqsSatisfied :: Bool
   }
   deriving (Generic, ToJSON)
-
-instance ToJSON (BE.Signed ObjectiveLabel) where
-  toJSON = String . T.pack . show
 
 -- | Used only by the web interface for debugging
 getSatisfaction :: ObjectiveCompletion -> [PrereqSatisfaction]

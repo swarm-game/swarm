@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
 
 --------------------------------------------------------------------
@@ -68,9 +69,13 @@ where
 import Control.Monad (ap)
 import Data.Traversable
 
+import GHC.Generics (Generic)
+import Data.Aeson
+import Data.Char (toLower)
+
 -- | Signed values are either positive or negative.
 data Signed a = Positive a | Negative a
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Generic, Show, Read)
 
 instance Functor Signed where
   fmap f (Positive x) = Positive (f x)
@@ -129,7 +134,33 @@ data BoolExpr a
   | BTrue
   | BFalse
   | BConst (Signed a)
-  deriving (Eq, Ord, Show {-! derive : Arbitrary !-})
+  deriving (Eq, Ord, Generic, Show {-! derive : Arbitrary !-})
+
+
+prerequisiteOptions :: Options
+prerequisiteOptions =
+  defaultOptions
+    { sumEncoding = ObjectWithSingleField
+    , constructorTagModifier = map toLower
+    }
+
+instance (ToJSON a) => ToJSON (Signed a) where
+  toJSON = genericToJSON prerequisiteOptions
+
+instance (ToJSON a) => ToJSON (BoolExpr a) where
+  toJSON = genericToJSON prerequisiteOptions
+
+instance (ToJSON a) => ToJSON (DNF a) where
+  toJSON = genericToJSON prerequisiteOptions
+
+instance (ToJSON a) => ToJSON (CNF a) where
+  toJSON = genericToJSON prerequisiteOptions
+
+instance (ToJSON a) => ToJSON (Conj a) where
+  toJSON = genericToJSON prerequisiteOptions
+
+instance (ToJSON a) => ToJSON (Disj a) where
+  toJSON = genericToJSON prerequisiteOptions
 
 instance Functor BoolExpr where
   fmap f (BAnd a b) = BAnd (fmap f a) (fmap f b)
@@ -188,19 +219,19 @@ fromBoolExpr (BConst c) = bConst c
 
 --- | Disjunction of atoms ('a')
 newtype Disj a = Disj {unDisj :: [a]}
-  deriving (Show, Functor, Semigroup, Monoid)
+  deriving (Show, Generic, Functor, Semigroup, Monoid)
 
 --- | Conjunction of atoms ('a')
 newtype Conj a = Conj {unConj :: [a]}
-  deriving (Show, Functor, Semigroup, Monoid)
+  deriving (Show, Generic, Functor, Semigroup, Monoid)
 
 --- | Conjunctive Normal Form
 newtype CNF a = CNF {unCNF :: Conj (Disj (Signed a))}
-  deriving (Show, Semigroup, Monoid)
+  deriving (Show, Generic, Semigroup, Monoid)
 
 --- | Disjunctive Normal Form
 newtype DNF a = DNF {unDNF :: Disj (Conj (Signed a))}
-  deriving (Show, Semigroup, Monoid)
+  deriving (Show, Generic, Semigroup, Monoid)
 
 instance Functor CNF where
   fmap f (CNF x) = CNF (fmap (fmap (fmap f)) x)

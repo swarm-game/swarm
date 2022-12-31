@@ -76,6 +76,7 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)
+import Data.BoolExpr qualified as BE
 
 ------------------------------------------------------------
 -- Scenario
@@ -233,11 +234,126 @@ loadScenarioFile em fileName = do
   sendIO $ Y.encodeFile "foo.yaml" demo
   sendIO $ writeFile "blarg.txt" $ show $ toList demo
 
+  sendIO $ Y.encodeFile "foo2.yaml" $ toBoolExpr demo
+
+  -- let newBoolExpr :: BE.boolTreeToDNF
+  --     newBoolExpr = BE.pushNotInwards $ toBoolExpr demo
+  sendIO $ Y.encodeFile "foo3.yaml" $ BE.boolTreeToDNF $ toBoolExpr demo
+
+  -- sendIO $ writeFile "foo2.yaml" $ show $ toBoolExpr demo
+
+
+  sendIO $ Y.encodeFile "demo00input.yaml" demo00input
+  sendIO $ Y.encodeFile "demo00.yaml" demo00
+
+  sendIO $ Y.encodeFile "demo01input.yaml" demo01input
+  sendIO $ Y.encodeFile "demo01.yaml" demo01
+
+
+  sendIO $ Y.encodeFile "demo0input.yaml" demo0input
+  sendIO $ Y.encodeFile "demo0.yaml" demo0
+
+  sendIO $ Y.encodeFile "demo1input.yaml" demo1input
+  sendIO $ Y.encodeFile "demo1.yaml" demo1
+
+
+
+
+  sendIO $ Y.encodeFile "demo2input.yaml" demo2input
+  sendIO $ Y.encodeFile "demo2.yaml" demo2
+
+  sendIO $ Y.encodeFile "demo3input.yaml" demo3input
+  sendIO $ Y.encodeFile "demo3.yaml" demo3
+
+  sendIO $ Y.encodeFile "demo4input.yaml" demo4input
+  sendIO $ Y.encodeFile "demo4.yaml" demo4
+
+  sendIO $ Y.encodeFile "demo5input.yaml" demo5input
+  sendIO $ Y.encodeFile "demo5.yaml" demo5
+
+
+  sendIO $ Y.encodeFile "demo6input.yaml" demo6input
+  sendIO $ Y.encodeFile "demo6.yaml" demo6
+
+
+  sendIO $ Y.encodeFile "demo7input.yaml" demo7input
+  sendIO $ Y.encodeFile "demo7.yaml" demo7
+
+  sendIO $ Y.encodeFile "demo8input.yaml" demo8input
+  sendIO $ Y.encodeFile "demo8.yaml" demo8
+
+  sendIO $ Y.encodeFile "demo9input.yaml" demo9input
+  sendIO $ Y.encodeFile "demo9.yaml" demo9
+
   res <- sendIO $ decodeFileEitherE em fileName
   case res of
     Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
     Right c -> return c
  where
+
+  demo00input :: BE.BoolExpr String
+  demo00input = BE.BOr BE.BFalse BE.BFalse
+  demo00 = BE.boolTreeToDNF demo00input
+
+  demo01input :: BE.BoolExpr String
+  demo01input = BE.BOr BE.BFalse BE.BTrue
+  demo01 = BE.boolTreeToDNF demo01input
+
+  demo0input :: BE.BoolExpr String
+  demo0input = BE.BTrue
+  demo0 = BE.boolTreeToDNF demo0input
+
+  demo1input :: BE.BoolExpr String
+  demo1input = BE.BFalse
+  demo1 = BE.boolTreeToDNF demo1input
+
+
+  demo2input :: BE.BoolExpr String
+  demo2input = BE.BOr BE.BFalse (BE.BConst (BE.Positive "foo"))
+  demo2 = BE.boolTreeToDNF demo2input
+
+
+  demo3input :: BE.BoolExpr String
+  demo3input = BE.BOr (BE.BConst (BE.Positive "foo")) BE.BTrue
+  demo3 = BE.boolTreeToDNF demo3input
+
+  demo4input :: BE.BoolExpr String
+  demo4input = BE.BAnd BE.BFalse (BE.BConst (BE.Positive "foo"))
+  demo4 = BE.boolTreeToDNF demo4input
+
+  demo5input :: BE.BoolExpr String
+  demo5input = BE.BAnd (BE.BConst (BE.Positive "foo")) BE.BTrue
+  demo5 = BE.boolTreeToDNF demo5input
+
+
+
+  demo6input :: BE.BoolExpr String
+  demo6input = BE.BOr
+    (BE.BAnd BE.BFalse (BE.BConst (BE.Positive "foo")))
+    (BE.BAnd (BE.BConst (BE.Positive "bar")) BE.BFalse)
+  demo6 = BE.boolTreeToDNF demo6input
+
+
+
+
+  demo7input :: BE.BoolExpr String
+  demo7input = BE.BOr
+    (BE.BAnd (BE.BNot BE.BTrue) (BE.BNot (BE.BNot (BE.BNot (BE.BConst (BE.Positive "foo"))))))
+    (BE.BAnd (BE.BConst (BE.Positive "bar")) (BE.BNot (BE.BNot BE.BFalse)))
+  demo7 = BE.boolTreeToDNF demo7input
+
+
+  demo8input :: BE.BoolExpr String
+  demo8input = BE.BAnd (BE.BNot (BE.BConst (BE.Positive "foo"))) (BE.BConst (BE.Positive "foo"))
+  demo8 = BE.boolTreeToDNF demo8input
+
+  demo9input :: BE.BoolExpr String
+  demo9input = BE.BAnd (BE.BConst (BE.Positive "foo")) (BE.BConst (BE.Negative "foo"))
+  demo9 = BE.boolTreeToDNF demo9input
+
+
+
+
   demo :: Prerequisite ObjectiveLabel
   demo =
     And $
