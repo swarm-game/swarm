@@ -445,7 +445,7 @@ saveScenarioInfoOnQuit = do
             case segments of
               firstDir : _ -> do
                 when (won && firstDir == tutorialsDirname) $
-                  attainAchievement' t (Just $ T.pack p) (GlobalAchievement CompletedSingleTutorial)
+                  attainAchievement' t (Just p) (GlobalAchievement CompletedSingleTutorial)
               _ -> return ()
             liftIO $ saveScenarioInfo p si
 
