@@ -32,17 +32,18 @@ isPrereqsSatisfied completions =
   getTruth :: ObjectiveLabel -> Bool
   getTruth label = Set.member label $ completedIDs completions
 
-isUnwinnable :: ObjectiveCompletion -> Objective -> Bool
-isUnwinnable completions obj =
-  maybe False f $ _objectivePrerequisite obj
+isUnwinnablePrereq :: Set ObjectiveLabel -> Prerequisite ObjectiveLabel -> Bool
+isUnwinnablePrereq completedObjectives =
+  Simplify.cannotBeTrue . Simplify.replace boolMap . L.toBoolExpr
  where
-  f = Simplify.cannotBeTrue . Simplify.replace boolMap . L.toBoolExpr . logic
-
   boolMap =
     M.fromList $
       map (,True) $
-        Set.toList $
-          completedIDs completions
+        Set.toList completedObjectives
+
+isUnwinnable :: ObjectiveCompletion -> Objective -> Bool
+isUnwinnable completions obj =
+  maybe False (isUnwinnablePrereq (completedIDs completions) . logic) $ _objectivePrerequisite obj
 
 partitionActiveObjectives :: ObjectiveCompletion -> ([Objective], [Objective])
 partitionActiveObjectives oc =

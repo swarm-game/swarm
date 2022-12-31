@@ -7,7 +7,7 @@ creative: false
 robots:
   - name: base
     display:
-      char: '⏢'
+      char: 'U'
       attr: wood
     dir: [0, 1]
     devices:
@@ -55,7 +55,7 @@ objectives:
             - id: unattended_disaster
             - id: carrying_two_items
   - goal:
-      - Carry two items at once. Not allowed!
+      - Carry two items at once is not allowed!
     condition: |
       as base {
         run "data/scenarios/Challenges/_wolf-goat-cabbage/multi-item-possession.sw";
@@ -64,7 +64,7 @@ objectives:
     optional: true
     hidden: true
   - goal:
-      - Leave a predator alone with prey. Not allowed!
+      - Leaving a predator alone with prey is not allowed!
     condition: |
       run "data/scenarios/Challenges/_wolf-goat-cabbage/unattended-together.sw";
     id: unattended_disaster
@@ -76,14 +76,14 @@ entities:
   - name: wolf
     display:
       char: 'w'
-      attr: rock
+      attr: silver
     description:
       - A wolf. Likes to eat goats.
     properties: [known, portable]
   - name: goat
     display:
       char: 'g'
-      attr: snow
+      attr: sand
     description:
       - A goat. Likes to eat cabbage.
     properties: [known, portable]
@@ -94,13 +94,13 @@ entities:
     description:
       - A cabbage.
     properties: [known, portable]
-known: [water, mountain]
+known: [water, boulder]
 seed: 0
 world:
   default: [blank]
   palette:
-    'A': [stone, mountain]
-    'B': [stone, mountain, base]
+    'A': [stone, boulder]
+    'B': [stone, boulder, base]
     '.': [grass]
     'e': [grass, null, east_detector]
     '~': [dirt, water]

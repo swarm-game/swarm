@@ -11,7 +11,7 @@ import GHC.Generics (Generic)
 type ObjectiveLabel = Text
 
 -- | In contrast with the "BoolExpr" type,
--- "And" and "Or" can have zero or more children
+-- "And" and "Or" can have one or more children
 -- instead of exactly two.
 data Prerequisite a
   = And (NonEmpty (Prerequisite a))

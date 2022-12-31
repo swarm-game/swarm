@@ -123,9 +123,9 @@ getStronglyConnectedComponents objectives =
 
 isAcyclicGraph :: [Objective] -> Bool
 isAcyclicGraph objectives =
-  all isSingleVertex $ getStronglyConnectedComponents objectives
+  all isAcyclicVerex $ getStronglyConnectedComponents objectives
  where
-  isSingleVertex = \case
+  isAcyclicVerex = \case
     AcyclicSCC _ -> True
     _ -> False
 

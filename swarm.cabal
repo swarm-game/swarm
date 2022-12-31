@@ -234,6 +234,7 @@ test-suite swarm-unit
                       TestNotification
                       TestLanguagePipeline
                       TestPretty
+                      TestBoolExpr
                       TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
@@ -243,6 +244,7 @@ test-suite swarm-unit
                       -- Imports shared with the library don't need bounds
                       aeson,
                       base,
+                      boolexpr,
                       containers,
                       filepath,
                       hashable,
