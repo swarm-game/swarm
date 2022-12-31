@@ -10,11 +10,14 @@ objectives:
         n <- as base {count "tree"};
         return (n >= 3)
       } { return false }
-    id: "0"
+    id: get_trees
   - goal:
       - Nice job.  Now, build a harvester.
     condition: |
       try { as base {has "harvester"} } {return false}
+    prerequisite:
+      logic:
+        id: get_trees
 solution: |
   build {turn right; move; move; grab; move; grab; move; grab; turn back; move; move; move; move};
   wait 16;
