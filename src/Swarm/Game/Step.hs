@@ -186,6 +186,17 @@ hypotheticalWinCheck g ws oc = do
         _ -> ws
 
   winCondition .= WinConditions newWinState (completions finalAccumulator)
+
+  case newWinState of
+    Unwinnable _ -> do
+      currentTime <- sendIO getZonedTime
+      gameAchievements
+        %= M.insertWith
+          (<>)
+          LoseScenario
+          (Attainment (GameplayAchievement LoseScenario) Nothing currentTime)
+    _ -> return ()
+
   announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
 
   mapM_ handleException $ exceptions finalAccumulator
