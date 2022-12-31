@@ -36,6 +36,7 @@ import Servant
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
+import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI

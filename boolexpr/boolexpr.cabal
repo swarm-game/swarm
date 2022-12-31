@@ -14,12 +14,10 @@ build-type:      Simple
 
 library
   build-depends:   base>=3.0&&<5,
-                   containers,
                    parsec,
                    extra,
                    aeson                         >= 2 && < 2.2
   exposed-modules: Data.BoolExpr,
-                   Data.BoolExpr.Simplify,
                    Data.BoolExpr.Parser,
                    Data.BoolExpr.Printer
   ghc-options:     -Wall

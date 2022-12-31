@@ -17,6 +17,7 @@ import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
+import Swarm.Game.Scenario.Objective.WinCheck
 
 -- | This is only needed for constructing a Graph,
 -- which requires all nodes to have a key.

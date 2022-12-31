@@ -58,6 +58,7 @@ import Swarm.Game.Exception
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
+import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -202,8 +203,8 @@ hypotheticalWinCheck g ws oc = do
   mapM_ handleException $ exceptions finalAccumulator
  where
   getNextWinState comps
-    | OB.didWin comps = Won False
-    | OB.didLose comps = Unwinnable False
+    | WC.didWin comps = Won False
+    | WC.didLose comps = Unwinnable False
     | otherwise = Ongoing
 
   (withoutIncomplete, incompleteGoals) = OB.extractIncomplete oc
@@ -215,7 +216,7 @@ hypotheticalWinCheck g ws oc = do
   -- we determine that it has been met and place it into the "completed" bucket.
   foldFunc (CompletionsWithExceptions exns currentCompletions announcements) obj = do
     v <-
-      if OB.isPrereqsSatisfied currentCompletions obj
+      if WC.isPrereqsSatisfied currentCompletions obj
         then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
         else return $ Right $ VBool False
     return $ case v of
@@ -236,7 +237,7 @@ hypotheticalWinCheck g ws oc = do
           announcements
        where
         txform =
-          if OB.isUnwinnable currentCompletions obj
+          if WC.isUnwinnable currentCompletions obj
             then OB.addUnwinnable
             else OB.addIncomplete
 

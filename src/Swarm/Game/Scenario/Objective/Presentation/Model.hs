@@ -7,6 +7,7 @@ import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.WinCheck
 
 -- | These are intended to be used as keys in a map
 -- of lists of goals.
