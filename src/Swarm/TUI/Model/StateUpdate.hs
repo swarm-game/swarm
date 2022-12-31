@@ -39,6 +39,7 @@ import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.Clock
+import Swarm.Game.Scenario.Objective.Presentation.Model (emptyGoalDisplay)
 
 -- | Initialize the 'AppState'.
 initAppState :: AppOpts -> ExceptT Text IO AppState
@@ -126,7 +127,7 @@ scenarioToUIState siPair u = do
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ Nothing
+      & uiGoal .~ emptyGoalDisplay
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiInventorySort .~ defaultSortOptions

@@ -9,14 +9,16 @@ objectives:
     condition: |
       return true;
     prerequisite:
-      or:
-        - and:
-          - id: have_furnace
-          - not:
-              id: have_flower
-        - and:
-          - id: have_gear
-          - id: have_flower
+      previewable: true
+      logic:
+        or:
+          - and:
+            - id: have_furnace
+            - not:
+                id: have_flower
+          - and:
+            - id: have_gear
+            - id: have_flower
   - goal:
       - Make a "furnace".
     condition: |

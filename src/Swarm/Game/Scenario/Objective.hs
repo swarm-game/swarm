@@ -16,10 +16,38 @@ import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
+import Swarm.TUI.Model.Achievement.Definitions
 
 ------------------------------------------------------------
 -- Scenario objectives
 ------------------------------------------------------------
+
+data PrerequisiteConfig = PrerequisiteConfig {
+    previewable :: Bool
+    -- ^ Typically, only the currently "active" objectives are
+    -- displayed to the user in the Goals dialog. An objective
+    -- is "active" if all of its prerequisites are met.
+    -- 
+    -- However, some objectives may be "high-level", in that they may
+    -- explain the broader intention behind potentially multiple
+    -- prerequisites.
+    -- 
+    -- Set this to option True to display this goal in the "upcoming" section even
+    -- if the objective has currently unmet prerequisites.
+  , logic :: Prerequisite ObjectiveLabel
+    -- ^ Boolean expression the represents the condition dependencies which also
+    -- must have been evaluated to True.
+    -- Note that the achievement of these objective dependencies is
+    -- persistent; once achieved, it still counts even if the "condition"
+    -- might not still hold. The condition is never re-evaluated once True.
+  } deriving (Eq, Show, Generic, ToJSON)
+
+
+instance FromJSON PrerequisiteConfig where
+  parseJSON = withObject "prerequisite" $ \v ->
+    PrerequisiteConfig
+      <$> (v .:? "previewable" .!= False)
+      <*> (v .: "logic")
 
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
@@ -28,9 +56,11 @@ data Objective = Objective
   , _objectiveCondition :: ProcessedTerm
   , _objectiveId :: Maybe ObjectiveLabel
   , _objectiveOptional :: Bool
-  , _objectivePrerequisite :: Maybe (Prerequisite ObjectiveLabel)
+  , _objectivePrerequisite :: Maybe PrerequisiteConfig
+  , _objectiveHidden :: Bool
+  , _objectiveAchievement :: Maybe AchievementInfo
   }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving (Show, Generic, ToJSON)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
 
@@ -54,12 +84,18 @@ objectiveId :: Lens' Objective (Maybe Text)
 -- objective is mandatory to "win").
 objectiveOptional :: Lens' Objective Bool
 
--- | Boolean expression the represents the condition dependencies which also
--- must have been evaluated to True.
--- Note that the achievement of these objective dependencies is
--- persistent; once achieved, it still counts even if the "condition"
--- might not still hold. The condition is never re-evaluated once True.
-objectivePrerequisite :: Lens' Objective (Maybe (Prerequisite ObjectiveLabel))
+-- | Dependencies upon other objectives
+objectivePrerequisite :: Lens' Objective (Maybe PrerequisiteConfig)
+
+-- | Whether the goal is displayed in the UI before completion.
+-- The goal will always be revealed after it is completed.
+--
+-- This attribute often goes along with an Achievement.
+objectiveHidden :: Lens' Objective Bool
+
+-- | An optional Achievement that is to be registered globally
+-- when this objective is completed.
+objectiveAchievement :: Lens' Objective (Maybe AchievementInfo)
 
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->
@@ -69,12 +105,14 @@ instance FromJSON Objective where
       <*> (v .:? "id")
       <*> (v .:? "optional" .!= False)
       <*> (v .:? "prerequisite")
+      <*> (v .:? "hidden" .!= False)
+      <*> (v .:? "achievement")
 
 data CompletionBuckets = CompletionBuckets
   { incomplete :: [Objective]
   , completed :: [Objective]
   }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 data ObjectiveCompletion = ObjectiveCompletion
   { completionBuckets :: CompletionBuckets
@@ -89,7 +127,7 @@ data ObjectiveCompletion = ObjectiveCompletion
   -- map keyed by label.
   , completedIDs :: Set.Set ObjectiveLabel
   }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 -- | Concatenates all incomplete and completed objectives.
 listAllObjectives :: CompletionBuckets -> [Objective]
@@ -140,20 +178,20 @@ isPrereqsSatisfied :: ObjectiveCompletion -> Objective -> Bool
 isPrereqsSatisfied completions =
   maybe True f . _objectivePrerequisite
  where
-  f = BE.evalBoolExpr getTruth . L.toBoolExpr
+  f = BE.evalBoolExpr getTruth . L.toBoolExpr . logic
 
   getTruth :: ObjectiveLabel -> Bool
   getTruth label = Set.member label $ completedIDs completions
 
--- | TODO: Do we need this? Explain why in this comment.
+partitionActiveObjectives :: ObjectiveCompletion -> ([Objective], [Objective])
+partitionActiveObjectives oc =
+  partition (isPrereqsSatisfied oc) $
+    incomplete $
+      completionBuckets oc
+
 getActiveObjectives :: ObjectiveCompletion -> [Objective]
-getActiveObjectives oc =
-  activeObjectives
- where
-  (activeObjectives, _inactiveObjectives) =
-    partition (isPrereqsSatisfied oc) $
-      incomplete $
-        completionBuckets oc
+getActiveObjectives =
+  fst . partitionActiveObjectives
 
 -- | For debugging only
 data PrereqSatisfaction = PrereqSatisfaction
@@ -176,7 +214,7 @@ getSatisfaction oc =
   f y =
     PrereqSatisfaction
       y
-      (maybe mempty getDistinctConstants $ _objectivePrerequisite y)
+      (maybe mempty (getDistinctConstants . logic) $ _objectivePrerequisite y)
       (isPrereqsSatisfied oc y)
 
 getDistinctConstants :: (Ord a) => Prerequisite a -> Set (BE.Signed a)

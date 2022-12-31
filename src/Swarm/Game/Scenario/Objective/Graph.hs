@@ -32,7 +32,7 @@ data GraphInfo = GraphInfo
   , sccInfo :: [SCC Objective]
   , nodeIDs :: [ObjectiveId]
   }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving (Show, Generic, ToJSON)
 
 instance ToJSON (SCC Objective) where
   toJSON = String . T.pack . show
@@ -56,7 +56,7 @@ getNegatedIds objs =
     mapMaybe onlyNegative $
       Set.toList $
         Set.unions $
-          map getDistinctConstants allPrereqExpressions
+          map (getDistinctConstants . logic) allPrereqExpressions
 
   f = sequenceA . \x -> (x, M.lookup x objectivesById)
 
@@ -114,7 +114,7 @@ makeGraphEdges objectives =
   gg (k, v) = (v, Label $ BE.Negative k, [])
 
   f (k, v) = (v, k, maybe [] (map Label . g) $ _objectivePrerequisite v)
-  g = Set.toList . getDistinctConstants
+  g = Set.toList . getDistinctConstants . logic
 
 getStronglyConnectedComponents :: [Objective] -> [SCC Objective]
 getStronglyConnectedComponents objectives =

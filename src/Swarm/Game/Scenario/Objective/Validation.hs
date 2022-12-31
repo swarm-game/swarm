@@ -34,7 +34,7 @@ validateObjectives objectives = do
             , T.intercalate ", " (map quote $ Set.toList allIds)
             ]
      where
-      refs = Set.fromList $ toList p
+      refs = Set.fromList $ toList $ logic p
       remaining = Set.difference refs allIds
     Nothing -> return ()
 

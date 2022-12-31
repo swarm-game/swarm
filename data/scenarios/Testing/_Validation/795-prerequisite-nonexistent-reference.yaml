@@ -9,7 +9,8 @@ objectives:
     condition: |
       return true;
     prerequisite:
-      id: shave_furnace
+      logic:
+        id: shave_furnace
   - goal:
       - Make a "furnace".
     condition: |

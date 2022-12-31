@@ -109,6 +109,8 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from, into)
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
+import Swarm.Game.Scenario.Objective.Presentation.Model (hasAnythingToShow)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -470,7 +472,7 @@ drawModal s = \case
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
-  GoalModal g -> padLeftRight 1 (displayParagraphs g)
+  GoalModal -> padLeftRight 1 $ GR.renderGoalsDisplay (s ^. uiState . uiGoal)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 robotsListWidget :: AppState -> Widget Name
@@ -755,9 +757,7 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = case s ^. uiState . uiGoal of
-    Just (GoalDisplay _announcements g) | g /= [] -> True
-    _ -> False
+  goal = hasAnythingToShow (s ^. uiState . uiGoal)
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode
@@ -1200,12 +1200,3 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt]
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
-
-------------------------------------------------------------
--- Utility
-------------------------------------------------------------
-
--- | Display a list of text-wrapped paragraphs with one blank line after
---   each.
-displayParagraphs :: [Text] -> Widget Name
-displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)

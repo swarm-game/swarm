@@ -47,6 +47,7 @@ type SwarmApi =
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
     :<|> "goals" :> "active" :> Get '[JSON] [Objective]
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
+    :<|> "goals" :> "uigoal" :> Get '[JSON] GoalDisplay
     :<|> "goals" :> Get '[JSON] WinCondition
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
 
@@ -57,6 +58,7 @@ mkApp appStateRef =
     :<|> prereqsHandler
     :<|> activeGoalsHandler
     :<|> goalsGraphHandler
+    :<|> uiGoalHandler
     :<|> goalsHandler
     :<|> replHandler
  where
@@ -81,6 +83,11 @@ mkApp appStateRef =
     return $ case appState ^. gameState . winCondition of
       WinConditions _winState oc -> Just $ makeGraphInfo oc
       _ -> Nothing
+
+  uiGoalHandler = do
+    appState <- liftIO (readIORef appStateRef)
+    return $ appState ^. uiState . uiGoal
+
   goalsHandler = do
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition

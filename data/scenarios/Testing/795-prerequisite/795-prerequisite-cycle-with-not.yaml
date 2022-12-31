@@ -12,15 +12,17 @@ objectives:
       as base {has "furnace"};
     id: have_furnace
     prerequisite:
-      not:
-        id: have_gear
+      logic:
+        not:
+          id: have_gear
   - goal:
       - Make a "wooden gear".
     condition: |
       as base {has "wooden gear"};
     id: have_gear
     prerequisite:
-      id: have_furnace
+      logic:
+        id: have_furnace
 solution: |
   make "wooden gear";
   make "furnace";

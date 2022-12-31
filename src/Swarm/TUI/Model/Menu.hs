@@ -44,7 +44,7 @@ data ModalType
   | QuitModal
   | KeepPlayingModal
   | DescriptionModal Entity
-  | GoalModal [Text]
+  | GoalModal
   deriving (Show)
 
 data ButtonSelection

@@ -9,9 +9,11 @@ objectives:
     condition: |
       return true;
     prerequisite:
-      and:
-        - id: have_furnace
-        - id: have_gear
+      previewable: true
+      logic:
+        and:
+          - id: have_furnace
+          - id: have_gear
   - goal:
       - Make a "furnace".
     condition: |
@@ -42,7 +44,7 @@ robots:
 world:
   default: [blank]
   palette:
-    'x': [grass, flower, base]
+    'x': [grass, null, base]
   upperleft: [0, 0]
   map: |
     x

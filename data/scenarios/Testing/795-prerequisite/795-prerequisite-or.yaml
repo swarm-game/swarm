@@ -9,9 +9,11 @@ objectives:
     condition: |
       return true;
     prerequisite:
-      or:
-        - id: have_furnace
-        - id: have_gear
+      previewable: true
+      logic:
+        or:
+          - id: have_furnace
+          - id: have_gear
   - goal:
       - Make a "furnace".
     condition: |

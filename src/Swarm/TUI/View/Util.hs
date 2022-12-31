@@ -70,7 +70,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                 )
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
-      GoalModal _ ->
+      GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
               Just (scenario, _) -> scenario ^. scenarioName
@@ -102,3 +102,8 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
   quitAction = case m of
     NoMenu -> "quit"
     _ -> "return to the menu"
+
+-- | Display a list of text-wrapped paragraphs with one blank line after
+--   each.
+displayParagraphs :: [Text] -> Widget Name
+displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
