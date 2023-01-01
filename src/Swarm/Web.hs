@@ -37,6 +37,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.State
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
@@ -48,7 +49,7 @@ type SwarmApi =
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
     :<|> "goals" :> "active" :> Get '[JSON] [Objective]
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
-    :<|> "goals" :> "uigoal" :> Get '[JSON] GoalDisplay
+    :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
 
@@ -84,11 +85,9 @@ mkApp appStateRef =
     return $ case appState ^. gameState . winCondition of
       WinConditions _winState oc -> Just $ makeGraphInfo oc
       _ -> Nothing
-
   uiGoalHandler = do
     appState <- liftIO (readIORef appStateRef)
-    return $ appState ^. uiState . uiGoal
-
+    return $ appState ^. uiState . uiGoal . goalsContent
   goalsHandler = do
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition

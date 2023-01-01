@@ -4,6 +4,8 @@ module Swarm.Game.Scenario.Objective.Presentation.Render where
 
 import Data.Vector qualified as V
 import Brick hiding (Direction, Location)
+import Data.Text (Text)
+import Data.Text qualified as T
 import Control.Lens hiding (Const, from)
 import Data.Maybe (listToMaybe)
 import Brick.Widgets.List qualified as BL
@@ -13,49 +15,61 @@ import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Util
-import Swarm.TUI.Attr (greenAttr, boldAttr)
+import Swarm.TUI.Attr
+import Brick.Widgets.Center
 
-data GoalEntry
-  = Header GoalStatus
-  | Goal GoalStatus Objective
-
-makeListWidget :: GoalDisplay -> BL.List Name GoalEntry
-makeListWidget (GoalDisplay _announcements categorizedObjs) =
+makeListWidget :: GoalTracking -> BL.List Name GoalEntry
+makeListWidget (GoalTracking _announcements categorizedObjs) =
   BL.listMoveTo 1 $ BL.list ObjectivesList (V.fromList objList) 1
   where
     objList = concatMap f $ M.toList categorizedObjs
     f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
-
 renderGoalsDisplay :: GoalDisplay -> Widget Name
 renderGoalsDisplay gd =
-  hBox
-    [ padAll 2 $
-          BL.renderList (const drawAchievementListItem) True listWidget
-    , maybe emptyWidget (singleGoalDetails . snd) $
-          BL.listSelectedElement listWidget
+  padAll 1 $ hBox
+    [ hLimitPercent 30 $ vBox [
+        hCenter $ str "Goals"
+      , padAll 1 $
+          vLimit 10 $ BL.renderList (const drawGoalListItem) True lw
+      ]
+    , hLimitPercent 70 $ padLeft (Pad 2) $ maybe emptyWidget (singleGoalDetails . snd) $
+          BL.listSelectedElement lw
     ]
   where
-    listWidget = makeListWidget gd
+    lw = _listWidget gd
 
-getCompletionIcon :: Bool -> Widget Name
+withEllipsis :: Text -> Widget Name
+withEllipsis t =
+  Widget Greedy Fixed $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+        ellipsis = T.replicate 3 $ T.singleton '.'
+        tLength = T.length t
+        newText = if tLength > w
+          then T.take (w - T.length ellipsis) t <> ellipsis
+          else t
+    render $ txt newText
+
+getCompletionIcon :: GoalStatus -> Widget Name
 getCompletionIcon = \case
-  False -> txt " ○  "
-  True -> withAttr greenAttr $ txt " ●  "
+  Upcoming -> withAttr yellowAttr $ txt " ○  "
+  Active -> txt " ○  "
+  Failed -> withAttr redAttr $ txt " ●  "
+  Completed -> withAttr greenAttr $ txt " ●  "
 
-drawAchievementListItem ::
+drawGoalListItem ::
   GoalEntry ->
   Widget Name
-drawAchievementListItem = \case
+drawGoalListItem = \case
   Header gs -> withAttr boldAttr $ str $ show gs
-  Goal _gs obj -> getCompletionIcon True <+> titleWidget
+  Goal gs obj -> getCompletionIcon gs <+> titleWidget
     where
       titleWidget = case listToMaybe $ obj ^. objectiveGoal of
         Nothing -> txt "?"
-        Just x -> txt x
-
+        Just x -> withEllipsis x
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Header gs -> emptyWidget
+  Header gs -> displayParagraphs [" "]
   Goal gs obj -> displayParagraphs $ obj ^. objectiveGoal

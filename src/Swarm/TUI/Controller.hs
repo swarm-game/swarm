@@ -54,6 +54,7 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Foldable (toList)
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -279,7 +280,7 @@ handleMainEvent ev = do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
     ControlChar 'g' ->
-      if hasAnythingToShow $ s ^. uiState . uiGoal
+      if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
         then toggleModal GoalModal
         else continueWithoutRedraw
     MetaChar 'h' -> do
@@ -402,12 +403,14 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
-      Just TerrainPaletteModal -> do
-        listWidget <- use $ uiState . uiWorldEditor . terrainList
-        newList <- refreshList listWidget
-        uiState . uiWorldEditor . terrainList .= newList
+      Just GoalModal -> do
+        lw <- use $ uiState . uiGoal . listWidget
+        newList <- refreshList lw
+        uiState . uiGoal . listWidget .= newList
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
+   where
+    refreshList lw = nestEventM' lw $ BL.handleListEvent ev
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
@@ -730,7 +733,7 @@ updateUI = do
 -- * shows the player more "optional" goals they can continue to pursue
 doGoalUpdates :: EventM Name AppState Bool
 doGoalUpdates = do
-  curGoal <- use (uiState . uiGoal)
+  curGoal <- use (uiState . uiGoal . goalsContent)
   isCheating <- use (uiState . uiCheatMode)
   curWinCondition <- use (gameState . winCondition)
   announcementsSeq <- use (gameState . announcementQueue)
@@ -755,11 +758,11 @@ doGoalUpdates = do
       uiState . uiMenu %= advanceMenu
       return True
     WinConditions _ oc -> do
-      let newGoalDisplay = GoalDisplay announcementsList $ constructGoalMap isCheating oc
+      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
           -- The "uiGoal" field is intialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
-          isFirstGoalDisplay = hasAnythingToShow newGoalDisplay && not (hasAnythingToShow curGoal)
+          isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)
           goalWasUpdated = isFirstGoalDisplay || not (null announcementsList)
 
       -- Decide whether to show a pop-up modal congratulating the user on
@@ -767,7 +770,7 @@ doGoalUpdates = do
       when goalWasUpdated $ do
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState . uiGoal .= newGoalDisplay
+        uiState . uiGoal .= GoalDisplay newGoalTracking (GR.makeListWidget newGoalTracking)
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.

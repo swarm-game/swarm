@@ -87,7 +87,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
               Just (scenario, _) -> scenario ^. scenarioName
-         in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
+         in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
       KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
 
 -- | Render the type of the current REPL input to be shown to the user.

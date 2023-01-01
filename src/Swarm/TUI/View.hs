@@ -78,7 +78,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.Game.Scenario.Objective.Presentation.Model (hasAnythingToShow)
+import Swarm.Game.Scenario.Objective.Presentation.Model (hasAnythingToShow, goalsContent)
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
@@ -765,7 +765,7 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = hasAnythingToShow (s ^. uiState . uiGoal)
+  goal = hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode

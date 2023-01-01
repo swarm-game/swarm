@@ -1,6 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Swarm.Game.Scenario.Objective.Presentation.Model where
 
 import Data.Aeson
+import Control.Lens (makeLenses)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -8,6 +11,8 @@ import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.TUI.Model.Name
+import Brick.Widgets.List qualified as BL
 
 -- | These are intended to be used as keys in a map
 -- of lists of goals.
@@ -31,17 +36,31 @@ newtype Announcement
 
 type CategorizedGoals = Map GoalStatus (NonEmpty Objective)
 
-data GoalDisplay = GoalDisplay
+data GoalEntry
+  = Header GoalStatus
+  | Goal GoalStatus Objective
+
+data GoalTracking = GoalTracking
   { announcements :: [Announcement]
   , goals :: CategorizedGoals
   }
-  deriving (Show, Generic, ToJSON)
+  deriving (Generic, ToJSON)
+
+data GoalDisplay = GoalDisplay
+  { _goalsContent :: GoalTracking
+  , _listWidget :: BL.List Name GoalEntry
+    -- ^ required for maintaining the selection/navigation
+    -- state among list items
+  }
+
+makeLenses ''GoalDisplay
 
 emptyGoalDisplay :: GoalDisplay
-emptyGoalDisplay = GoalDisplay mempty mempty
+emptyGoalDisplay = GoalDisplay (GoalTracking mempty mempty) $
+  BL.list ObjectivesList mempty 1
 
-hasAnythingToShow :: GoalDisplay -> Bool
-hasAnythingToShow (GoalDisplay ann g) = not (null ann && null g)
+hasAnythingToShow :: GoalTracking -> Bool
+hasAnythingToShow (GoalTracking ann g) = not (null ann && null g)
 
 constructGoalMap :: Bool -> ObjectiveCompletion -> CategorizedGoals
 constructGoalMap isCheating objectiveCompletion@(ObjectiveCompletion buckets _) =
