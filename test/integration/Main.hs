@@ -47,7 +47,6 @@ import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -192,10 +191,8 @@ testScenarioSolution _ci _em =
         , testGroup
             "Possession criteria (#858)"
             [ testSolution Default "Testing/858-inventory/858-possession-objective"
-            , expectFailBecause "Known bug #858 - count" $
-                testSolution Default "Testing/858-inventory/858-counting-objective"
-            , expectFailBecause "Known bug #858 - has" $
-                testSolution Default "Testing/858-inventory/858-nonpossession-objective"
+            , testSolution Default "Testing/858-inventory/858-counting-objective"
+            , testSolution Default "Testing/858-inventory/858-nonpossession-objective"
             ]
         , testGroup
             "Require (#201)"
