@@ -78,7 +78,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.Game.Scenario.Objective.Presentation.Model (hasAnythingToShow, goalsContent)
+import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),

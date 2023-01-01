@@ -1,5 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
 --------------------------------------------------------------------
@@ -69,9 +69,9 @@ where
 import Control.Monad (ap)
 import Data.Traversable
 
-import GHC.Generics (Generic)
 import Data.Aeson
 import Data.Char (toLower)
+import GHC.Generics (Generic)
 
 -- | Signed values are either positive or negative.
 data Signed a = Positive a | Negative a
@@ -135,7 +135,6 @@ data BoolExpr a
   | BFalse
   | BConst (Signed a)
   deriving (Eq, Ord, Generic, Show {-! derive : Arbitrary !-})
-
 
 prerequisiteOptions :: Options
 prerequisiteOptions =

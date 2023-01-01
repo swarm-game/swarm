@@ -2,8 +2,9 @@
 
 module Swarm.Game.Scenario.Objective.Presentation.Model where
 
-import Data.Aeson
+import Brick.Widgets.List qualified as BL
 import Control.Lens (makeLenses)
+import Data.Aeson
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -12,7 +13,6 @@ import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.TUI.Model.Name
-import Brick.Widgets.List qualified as BL
 
 -- | These are intended to be used as keys in a map
 -- of lists of goals.
@@ -49,15 +49,16 @@ data GoalTracking = GoalTracking
 data GoalDisplay = GoalDisplay
   { _goalsContent :: GoalTracking
   , _listWidget :: BL.List Name GoalEntry
-    -- ^ required for maintaining the selection/navigation
-    -- state among list items
+  -- ^ required for maintaining the selection/navigation
+  -- state among list items
   }
 
 makeLenses ''GoalDisplay
 
 emptyGoalDisplay :: GoalDisplay
-emptyGoalDisplay = GoalDisplay (GoalTracking mempty mempty) $
-  BL.list ObjectivesList mempty 1
+emptyGoalDisplay =
+  GoalDisplay (GoalTracking mempty mempty) $
+    BL.list ObjectivesList mempty 1
 
 hasAnythingToShow :: GoalTracking -> Bool
 hasAnythingToShow (GoalTracking ann g) = not (null ann && null g)

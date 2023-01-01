@@ -54,7 +54,6 @@ import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
 import Data.Foldable (toList)
-import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -71,6 +70,7 @@ import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective.Presentation.Model
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
