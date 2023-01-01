@@ -392,7 +392,7 @@ stepRobot r = do
 updateWorld ::
   (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
   Const ->
-  WorldUpdate ->
+  WorldUpdate Entity ->
   m ()
 updateWorld c (ReplaceEntity loc eThen down) = do
   w <- use world
@@ -1617,7 +1617,7 @@ execConst c vs s k = do
       , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
       ]
 
-  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> [WorldUpdate] -> [RobotUpdate] -> m CESK
+  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> [WorldUpdate Entity] -> [RobotUpdate] -> m CESK
   finishCookingRecipe r wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime

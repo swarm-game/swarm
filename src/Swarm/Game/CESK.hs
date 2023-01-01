@@ -107,7 +107,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Types
 import Witch (from)
-import Swarm.Util.Location (Location)
+import Swarm.Game.World (WorldUpdate(..))
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -168,7 +168,9 @@ data Frame
     --   a command.
     FDiscardEnv
   | -- | Apply specific updates to the world and current robot.
-    FImmediate Const [WorldUpdate] [RobotUpdate]
+    --
+    -- The 'Const' is used to track the original command for error messages. 
+    FImmediate Const [WorldUpdate Entity] [RobotUpdate]
   | -- | Update the memory cell at a certain location with the computed value.
     FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
@@ -365,16 +367,16 @@ prettyFrame FFinishAtomic = "finishAtomic"
 prettyFrame (FMeetAll _f _rs) = "meetAll"
 
 --------------------------------------------------------------
--- Wrappers for functions in FImmediate
+-- Runtime robot update
 --------------------------------------------------------------
 
-data WorldUpdate = ReplaceEntity
-  { updatedLoc :: Location
-  , originalEntity :: Entity
-  , newEntity :: Maybe Entity
-  }
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
-
+-- | Update the robot in an inspectable way.
+--
+-- This type is used for changes by e.g. the drill command at later
+-- tick. Using ADT allows us to serialize and inspect the updates.
+--
+-- Note that this can not be in 'Swarm.Game.Robot' as it would create
+-- a cyclic dependency.
 data RobotUpdate
   = AddEntity Count Entity
   | LearnEntity Entity
