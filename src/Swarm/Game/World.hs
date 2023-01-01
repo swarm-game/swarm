@@ -42,6 +42,9 @@ module Swarm.Game.World (
   lookupTerrainM,
   lookupEntityM,
   updateM,
+
+  -- ** Runtime updates
+  WorldUpdate (..),
 ) where
 
 import Control.Algebra (Has)
@@ -55,6 +58,7 @@ import Data.Bits
 import Data.Foldable (foldl')
 import Data.Int (Int32)
 import Data.Map.Strict qualified as M
+import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Util
 import Swarm.Util.Location
@@ -278,3 +282,18 @@ loadRegion reg (World f t m) = World f t' m
    where
     tileCorner = tileOrigin tc
     (terrain, entities) = unzip $ map (runWF f . plusOffset tileCorner) (range tileBounds)
+
+-- ------------------------------------------------------------------
+-- Runtime world update
+-- ------------------------------------------------------------------
+
+-- | Update world in an inspectable way.
+--
+-- This type is used for changes by e.g. the drill command at later
+-- tick. Using ADT allows us to serialize and inspect the updates.
+data WorldUpdate e = ReplaceEntity
+  { updatedLoc :: Location
+  , originalEntity :: e
+  , newEntity :: Maybe e
+  }
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
