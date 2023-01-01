@@ -44,7 +44,7 @@ module Swarm.Game.World (
   updateM,
 
   -- ** Runtime updates
-  WorldUpdate(..),
+  WorldUpdate (..),
 ) where
 
 import Control.Algebra (Has)
@@ -58,11 +58,11 @@ import Data.Bits
 import Data.Foldable (foldl')
 import Data.Int (Int32)
 import Data.Map.Strict qualified as M
+import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Util
 import Swarm.Util.Location
 import Prelude hiding (lookup)
-import Data.Yaml (FromJSON, ToJSON)
 
 ------------------------------------------------------------
 -- World coordinates

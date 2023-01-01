@@ -99,6 +99,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
+import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
@@ -107,7 +108,6 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Types
 import Witch (from)
-import Swarm.Game.World (WorldUpdate(..))
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -169,7 +169,7 @@ data Frame
     FDiscardEnv
   | -- | Apply specific updates to the world and current robot.
     --
-    -- The 'Const' is used to track the original command for error messages. 
+    -- The 'Const' is used to track the original command for error messages.
     FImmediate Const [WorldUpdate Entity] [RobotUpdate]
   | -- | Update the memory cell at a certain location with the computed value.
     FUpdate Addr
