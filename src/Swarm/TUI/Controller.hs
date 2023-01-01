@@ -402,6 +402,10 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
+      Just TerrainPaletteModal -> do
+        listWidget <- use $ uiState . uiWorldEditor . terrainList
+        newList <- refreshList listWidget
+        uiState . uiWorldEditor . terrainList .= newList
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
 
