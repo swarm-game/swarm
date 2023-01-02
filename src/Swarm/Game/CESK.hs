@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -85,8 +86,7 @@ module Swarm.Game.CESK (
 
   -- ** Pretty-printing
   prettyFrame,
-  prettyCont,
-  prettyCESK,
+  prettyCont
 ) where
 
 import Control.Lens.Combinators (pattern Empty)
@@ -96,6 +96,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (intercalate)
 import GHC.Generics (Generic)
+import Prettyprinter (Doc, Pretty (..), hsep, (<+>))
 import Swarm.Game.Entity (Entity, Inventory)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
@@ -313,31 +314,40 @@ resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
   resetBlackhole (Blackhole t e) = E t e
   resetBlackhole c = c
 
-------------------------------------------------------------
--- Very crude pretty-printing of CESK states.  Should really make a
--- nicer version of this code...
-------------------------------------------------------------
+instance PrettyPrec CESK where
+  prettyPrec _ (In c _ _ k) = prettyCont' k (11, "▶" <> ppr c <> "◀")
+  prettyPrec _ (Out v _ k) = prettyCont' k (11, "◀" <> ppr (valueToTerm v) <> "▶")
+  prettyPrec _ (Up e _ k) = prettyCont' k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
+  prettyPrec _ (Waiting t cesk) = "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
 
--- | Very poor pretty-printing of CESK machine states, really just for
---   debugging. At some point we should make a nicer version.
-prettyCESK :: CESK -> String
-prettyCESK (In c _ _ k) =
-  unlines
-    [ "▶ " ++ prettyString c
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Out v _ k) =
-  unlines
-    [ "◀ " ++ from (prettyValue v)
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Up e _ k) =
-  unlines
-    [ "! " ++ from (formatExn mempty e)
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Waiting t cek) =
-  "🕑" <> show t <> " " <> show cek
+-- XXX takes pretty-printed inner thing with precedence of top-level construct
+prettyCont' :: Cont -> (Int, Doc ann) -> Doc ann
+prettyCont' [] (_, inner) = inner
+prettyCont' (f : k) inner = prettyCont' k (prettyFrame' f inner)
+
+-- First argument represents precedence of the pretty-printed *inner* focus;
+-- we also return the precedence level of the outermost thing we just pretty-printed.
+prettyFrame' :: Frame -> (Int, Doc ann) -> (Int, Doc ann)
+prettyFrame' (FSnd t _) (_, inner) = (11, "(" <> inner <> "," <+> ppr t <> ")")
+prettyFrame' (FFst v) (_, inner) = (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
+prettyFrame' (FArg t _) (p, inner) = (10, pparens (p < 10) inner <+> prettyPrec 11 t)
+prettyFrame' (FApp v) (p, inner) = (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
+prettyFrame' (FLet x t _) (_, inner) = (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
+prettyFrame' (FTry v) (p, inner) = (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
+prettyFrame' (FUnionEnv _) inner = prettyPrefix "∪·" inner
+prettyFrame' (FLoadEnv _ _) inner = prettyPrefix "L·" inner
+prettyFrame' (FDef x) (_, inner) = (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
+prettyFrame' FExec inner = prettyPrefix "E·" inner
+prettyFrame' (FBind Nothing t _) (p, inner) = (0, pparens (p < 1) inner <+> ";" <+> ppr t)
+prettyFrame' (FBind (Just x) t _) (p, inner) = (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
+prettyFrame' FDiscardEnv inner = prettyPrefix "D·" inner
+prettyFrame' (FImmediate _ _) inner = prettyPrefix "I·" inner
+prettyFrame' (FUpdate loc) inner = prettyPrefix ("S@" <> pretty loc) inner
+prettyFrame' FFinishAtomic inner = prettyPrefix "A·" inner
+prettyFrame' (FMeetAll _ _) inner = prettyPrefix "M·" inner
+
+prettyPrefix :: Doc ann -> (Int, Doc ann) -> (Int, Doc ann)
+prettyPrefix pre (p, inner) = (11, pre <+> pparens (p < 11) inner)
 
 -- | Poor pretty-printing of continuations.
 prettyCont :: Cont -> String

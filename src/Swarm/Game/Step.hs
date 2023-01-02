@@ -66,6 +66,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Pretty (prettyString, prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
@@ -1589,7 +1590,7 @@ execConst c vs s k = do
       [ "Bad application of execConst:"
       , T.pack (show c)
       , T.pack (show (reverse vs))
-      , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
+      , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
   finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> WorldUpdate -> RobotUpdate -> m CESK
