@@ -1,6 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module      :  Swarm.Game.World
