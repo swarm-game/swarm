@@ -1,0 +1,40 @@
+def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+def crossRiver =
+    doN 18 move;
+    end;
+
+move;
+move;
+goat <- grab;
+turn east;
+crossRiver;
+place goat;
+turn back;
+crossRiver;
+turn right;
+move;
+wolf <- grab;
+turn right;
+crossRiver;
+place wolf;
+turn right;
+move;
+goat2 <- grab;
+turn right;
+crossRiver;
+place goat2;
+turn left;
+move;
+cabbage <- grab;
+turn left;
+crossRiver;
+place cabbage;
+turn back;
+crossRiver;
+turn right;
+move;
+goat3 <- grab;
+turn right;
+crossRiver;
+place goat3;
