@@ -66,7 +66,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Pretty (prettyString, prettyText)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
@@ -393,7 +393,7 @@ stepRobot r = do
 --   machine state and figure out a single next step.
 stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CESK -> m CESK
 stepCESK cesk = case cesk of
-  -- (sendIO $ appendFile "out.txt" (prettyCESK cesk)) >>
+  -- (sendIO $ appendFile "out.txt" (prettyString cesk)) >>
 
   ------------------------------------------------------------
   -- Evaluation
@@ -664,7 +664,7 @@ stepCESK cesk = case cesk of
     let msg' =
           T.unlines
             [ T.append "Bad machine state in stepRobot: " msg
-            , from (prettyCESK cesk)
+            , prettyText cesk
             ]
      in return $ Up (Fatal msg') s []
 
