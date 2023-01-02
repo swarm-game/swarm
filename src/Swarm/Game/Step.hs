@@ -387,6 +387,7 @@ tickRobotRec r
 stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 stepRobot r = do
   (r', cesk') <- runState (r & tickSteps -~ 1) (stepCESK (r ^. machine))
+  -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
   return $ r' & machine .~ cesk'
 
 -- replace some entity in the world with another entity
@@ -408,8 +409,6 @@ updateWorld c (ReplaceEntity loc eThen down) = do
 --   machine state and figure out a single next step.
 stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CESK -> m CESK
 stepCESK cesk = case cesk of
-  -- (sendIO $ appendFile "out.txt" (prettyString cesk)) >>
-
   ------------------------------------------------------------
   -- Evaluation
 
