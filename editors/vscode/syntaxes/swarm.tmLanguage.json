@@ -89,7 +89,7 @@
 			"patterns": [
 				{
 				"name": "variable.language.dir",
-				"match": "\\b(?i)(left|right|back|forward|north|south|east|west|down)\\b"
+				"match": "\\b(?i)(north|south|east|west|left|right|back|forward|down)\\b"
 				},
 				{
 				"name": "variable.parameter",

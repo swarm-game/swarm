@@ -1011,9 +1011,9 @@ execConst c vs s k = do
         drill <- preferredDrill `isJustOr` Fatal "Drill is required but not installed?!"
 
         let directionText = case d of
-              DDown -> "under"
-              DForward -> "ahead of"
-              DBack -> "behind"
+              DRelative DDown -> "under"
+              DRelative DForward -> "ahead of"
+              DRelative DBack -> "behind"
               _ -> dirSyntax (dirInfo d) <> " of"
 
         (nextLoc, nextME) <- lookInDirection d

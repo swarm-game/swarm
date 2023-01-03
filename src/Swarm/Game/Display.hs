@@ -44,9 +44,9 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Yaml
 import GHC.Generics (Generic)
-import Swarm.Language.Syntax (Direction (..))
+import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..))
 import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
-import Swarm.Util (maxOn, (?))
+import Swarm.Util (maxOn)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
 -- | Display priority.  Entities with higher priority will be drawn on
@@ -60,7 +60,7 @@ instance Hashable AttrName
 -- | A record explaining how to display an entity in the TUI.
 data Display = Display
   { _defaultChar :: Char
-  , _orientationMap :: Map Direction Char
+  , _orientationMap :: Map AbsoluteDir Char
   , _curOrientation :: Maybe Direction
   , _displayAttr :: AttrName
   , _displayPriority :: Priority
@@ -83,7 +83,7 @@ defaultChar :: Lens' Display Char
 --   optionally associates different display characters with
 --   different orientations.  If an orientation is not in the map,
 --   the 'defaultChar' will be used.
-orientationMap :: Lens' Display (Map Direction Char)
+orientationMap :: Lens' Display (Map AbsoluteDir Char)
 
 -- | The display caches the current orientation of the entity, so we
 --   know which character to use from the orientation map.
@@ -128,9 +128,11 @@ instance ToJSON Display where
 
 -- | Look up the character that should be used for a display.
 displayChar :: Display -> Char
-displayChar disp = case disp ^. curOrientation of
-  Nothing -> disp ^. defaultChar
-  Just dir -> M.lookup dir (disp ^. orientationMap) ? (disp ^. defaultChar)
+displayChar disp = fromMaybe (disp ^. defaultChar) $ do
+  dir <- disp ^. curOrientation
+  case dir of
+    DAbsolute d -> M.lookup d (disp ^. orientationMap)
+    _ -> Nothing
 
 -- | Render a display as a UI widget.
 renderDisplay :: Display -> Widget n

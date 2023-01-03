@@ -15,6 +15,8 @@
 module Swarm.Language.Syntax (
   -- * Directions
   Direction (..),
+  AbsoluteDir (..),
+  RelativeDir (..),
   DirInfo (..),
   applyTurn,
   toDirection,
@@ -71,13 +73,14 @@ module Swarm.Language.Syntax (
   mapFree1,
 ) where
 
+import Control.Arrow (Arrow ((&&&)))
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Aeson.Types
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
 import Data.Text hiding (filter, map)
@@ -93,16 +96,22 @@ import Witch.From (from)
 -- Constants
 ------------------------------------------------------------
 
--- | The type of directions. Used /e.g./ to indicate which way a robot
---   will turn.
-data Direction = DLeft | DRight | DBack | DForward | DNorth | DSouth | DEast | DWest | DDown
+data AbsoluteDir = DNorth | DSouth | DEast | DWest
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
-instance ToJSONKey Direction where
+instance ToJSONKey AbsoluteDir where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
 
-instance FromJSONKey Direction where
+instance FromJSONKey AbsoluteDir where
   fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
+
+data RelativeDir = DLeft | DRight | DBack | DForward | DDown
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+
+-- | The type of directions. Used /e.g./ to indicate which way a robot
+--   will turn.
+data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 data DirInfo = DirInfo
   { dirSyntax :: Text
@@ -113,30 +122,40 @@ data DirInfo = DirInfo
   }
 
 allDirs :: [Direction]
-allDirs = Util.listEnums
+allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
+
+toHeading :: AbsoluteDir -> Heading
+toHeading = \case
+  DNorth -> north
+  DSouth -> south
+  DEast -> east
+  DWest -> west
 
 -- | Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  DLeft -> relative (\(V2 x y) -> V2 (-y) x)
-  DRight -> relative (\(V2 x y) -> V2 y (-x))
-  DBack -> relative (\(V2 x y) -> V2 (-x) (-y))
-  DDown -> relative (const down)
-  DForward -> relative id
-  DNorth -> cardinal north
-  DSouth -> cardinal south
-  DEast -> cardinal east
-  DWest -> cardinal west
+  DRelative e -> case e of
+    DLeft -> relative (\(V2 x y) -> V2 (-y) x)
+    DRight -> relative (\(V2 x y) -> V2 y (-x))
+    DBack -> relative (\(V2 x y) -> V2 (-x) (-y))
+    DDown -> relative (const down)
+    DForward -> relative id
+  DAbsolute e -> cardinal $ toHeading e
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
-  directionSyntax = toLower . T.tail . from . show $ d
+  directionSyntax = toLower . T.tail . from $ case d of
+    DAbsolute x -> show x
+    DRelative x -> show x
+
   cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
   relative = DirInfo directionSyntax Nothing
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
-isCardinal = isJust . dirAbs . dirInfo
+isCardinal = \case
+  DAbsolute _ -> True
+  _ -> False
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: Heading
@@ -168,9 +187,7 @@ applyTurn = dirApplyTurn . dirInfo
 --   Only directions with a 'dirAbs' value are mapped.
 cardinalDirs :: M.Map Heading Direction
 cardinalDirs =
-  M.fromList
-    . mapMaybe (\d -> (,d) <$> (dirAbs . dirInfo $ d))
-    $ allDirs
+  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
 
 -- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
