@@ -96,14 +96,14 @@
                "robotnamed"
                "robotnumbered"
                "knows"
-               "left"
-               "right"
-               "back"
-               "forward"
                "north"
                "south"
                "east"
                "west"
+               "left"
+               "right"
+               "back"
+               "forward"
                "down"
              ))
              (x-types '("int" "text" "dir" "bool" "cmd" "void" "unit" "actor"))
