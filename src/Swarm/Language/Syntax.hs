@@ -80,7 +80,6 @@ import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
 import Data.Text hiding (filter, map)
@@ -115,10 +114,8 @@ data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
 
 data DirInfo = DirInfo
   { dirSyntax :: Text
-  , -- absolute direction if it exists
-    dirAbs :: Maybe Heading
-  , -- the turning for the direction
-    dirApplyTurn :: Heading -> Heading
+  , dirApplyTurn :: Heading -> Heading
+  -- ^ the turning for the direction
   }
 
 allDirs :: [Direction]
@@ -148,8 +145,8 @@ dirInfo d = case d of
     DAbsolute x -> show x
     DRelative x -> show x
 
-  cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative = DirInfo directionSyntax Nothing
+  cardinal = DirInfo directionSyntax . const
+  relative = DirInfo directionSyntax
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
@@ -184,7 +181,7 @@ applyTurn :: Direction -> Heading -> Heading
 applyTurn = dirApplyTurn . dirInfo
 
 -- | Mapping from heading to their corresponding cardinal directions.
---   Only directions with a 'dirAbs' value are mapped.
+--   Only absolute directions are mapped.
 cardinalDirs :: M.Map Heading Direction
 cardinalDirs =
   M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
@@ -199,7 +196,9 @@ toDirection v = M.lookup v cardinalDirs
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
 --   and 'DWest'---other 'Direction's return the zero vector.
 fromDirection :: Direction -> Heading
-fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
+fromDirection = \case
+  DAbsolute x -> toHeading x
+  _ -> V2 0 0
 
 -- | Constants, representing various built-in functions and commands.
 --
