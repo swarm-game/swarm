@@ -132,9 +132,9 @@ toHeading = \case
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
   DRelative e -> case e of
-    DLeft -> relative (\(V2 x y) -> V2 (-y) x)
-    DRight -> relative (\(V2 x y) -> V2 y (-x))
-    DBack -> relative (\(V2 x y) -> V2 (-x) (-y))
+    DLeft -> relative perp
+    DRight -> relative (fmap negate . perp)
+    DBack -> relative (fmap negate)
     DDown -> relative (const down)
     DForward -> relative id
   DAbsolute e -> cardinal $ toHeading e
@@ -172,7 +172,7 @@ west = V2 (-1) 0
 
 -- | The direction for viewing the current cell = @V2 0 0@.
 down :: Heading
-down = V2 0 0
+down = zero
 
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given heading or by turning to an absolute
@@ -198,7 +198,7 @@ toDirection v = M.lookup v cardinalDirs
 fromDirection :: Direction -> Heading
 fromDirection = \case
   DAbsolute x -> toHeading x
-  _ -> V2 0 0
+  _ -> zero
 
 -- | Constants, representing various built-in functions and commands.
 --
