@@ -129,10 +129,8 @@ instance ToJSON Display where
 -- | Look up the character that should be used for a display.
 displayChar :: Display -> Char
 displayChar disp = fromMaybe (disp ^. defaultChar) $ do
-  dir <- disp ^. curOrientation
-  case dir of
-    DAbsolute d -> M.lookup d (disp ^. orientationMap)
-    _ -> Nothing
+  DAbsolute d <- disp ^. curOrientation
+  M.lookup d (disp ^. orientationMap)
 
 -- | Render a display as a UI widget.
 renderDisplay :: Display -> Widget n
