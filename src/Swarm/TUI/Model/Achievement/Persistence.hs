@@ -11,8 +11,8 @@ import Data.Text qualified as T
 import Data.Yaml qualified as Y
 import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.Util
 import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.Util
 import System.Directory (
   createDirectoryIfMissing,
   doesDirectoryExist,

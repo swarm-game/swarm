@@ -18,6 +18,7 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
+import Swarm.Game.Robot
 import Swarm.Game.Scenario (loadScenario)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
@@ -39,7 +40,6 @@ import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.Clock
-import Swarm.Game.Robot
 
 -- | Initialize the 'AppState'.
 initAppState :: AppOpts -> ExceptT Text IO AppState
