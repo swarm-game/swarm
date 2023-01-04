@@ -1139,3 +1139,15 @@
     `b1 <- f b0 x; b2 <- f b1 y; f b2 z`.
   properties: [portable]
   capabilities: [meet]
+
+- name: GPS receiver
+  display:
+    attr: device
+    char: 'G'
+  description:
+  - |
+    A GPS receiver triangulates your current (x,y) coordinates from
+    some convenient satellite signals,
+    enabling the command `whereami : cmd (int * int)`.
+  properties: [portable]
+  capabilities: [senseloc]
