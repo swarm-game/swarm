@@ -148,7 +148,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/def"
         , testSolution Default "Tutorials/lambda"
         , testSolution Default "Tutorials/require"
-        , testSolution Default "Tutorials/requireinv"
+        , testSolution (Sec 3) "Tutorials/requireinv"
         , testSolution Default "Tutorials/conditionals"
         , testSolution (Sec 5) "Tutorials/farming"
         ]
