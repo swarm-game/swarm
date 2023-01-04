@@ -50,7 +50,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
-import Linear (V2 (..), zero)
+import Linear (zero)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -740,7 +740,7 @@ addSeedBot e (minT, maxT) loc ts =
         "seed"
         ["A growing seed."]
         (Just loc)
-        (V2 0 0)
+        zero
         ( defaultEntityDisplay '.'
             & displayAttr .~ (e ^. entityDisplay . displayAttr)
             & displayPriority .~ 0
