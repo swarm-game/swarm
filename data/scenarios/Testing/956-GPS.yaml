@@ -1,0 +1,42 @@
+version: 1
+name: Test GPS receiver device
+description: |
+  Test the `whereami` command and GPS receiver device.
+  https://github.com/swarm-game/swarm/issues/956
+objectives:
+  - condition: |
+      loc <- as base {whereami};
+      return $ loc == (0,0)
+solution: |
+  def x = \n. \c. if (n == 0) {} {c ; x (n-1) c} end;
+  loc <- whereami;
+  turn east; x (-fst loc) move;
+  turn south; x (snd loc) move;
+robots:
+  - name: base
+    dir: [0,1]
+    devices:
+      - dictionary
+      - GPS receiver
+      - treads
+      - compass
+      - ADT calculator
+      - strange loop
+      - comparator
+      - calculator
+      - branch predictor
+      - logger
+world:
+  default: [blank]
+  palette:
+    '^': [grass, null, base]
+    '.': [grass]
+  upperleft: [-6, 4]
+  map: |
+    ^..........
+    ...........
+    ...........
+    ...........
+    ...........
+    ...........
+    ...........
