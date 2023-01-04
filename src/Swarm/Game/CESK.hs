@@ -354,7 +354,7 @@ prettyFrame (FBind Nothing t _) (p, inner) = (0, pparens (p < 1) inner <+> ";" <
 prettyFrame (FBind (Just x) t _) (p, inner) = (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
 prettyFrame FDiscardEnv inner = prettyPrefix "D·" inner
 prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> ppr c <> "]·") inner
-prettyFrame (FUpdate loc) inner = prettyPrefix ("S@" <> pretty loc) inner
+prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner
 prettyFrame FFinishAtomic inner = prettyPrefix "A·" inner
 prettyFrame (FMeetAll _ _) inner = prettyPrefix "M·" inner
 
