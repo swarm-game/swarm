@@ -50,7 +50,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
-import Linear (V2 (..), zero)
+import Linear (zero)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -66,6 +66,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
@@ -395,14 +396,28 @@ tickRobotRec r
 stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 stepRobot r = do
   (r', cesk') <- runState (r & tickSteps -~ 1) (stepCESK (r ^. machine))
+  -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
   return $ r' & machine .~ cesk'
+
+-- replace some entity in the world with another entity
+updateWorld ::
+  (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
+  Const ->
+  WorldUpdate Entity ->
+  m ()
+updateWorld c (ReplaceEntity loc eThen down) = do
+  w <- use world
+  let eNow = W.lookupEntity (W.locToCoords loc) w
+  if Just eThen /= eNow
+    then throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
+    else do
+      world %= W.update (W.locToCoords loc) (const down)
+      pure ()
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
 stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CESK -> m CESK
 stepCESK cesk = case cesk of
-  -- (sendIO $ appendFile "out.txt" (prettyCESK cesk)) >>
-
   ------------------------------------------------------------
   -- Evaluation
 
@@ -413,13 +428,14 @@ stepCESK cesk = case cesk of
     if wakeupTime <= time
       then stepCESK cesk'
       else return cesk
-  Out v s (FImmediate wf rf : k) -> do
-    wc <- worldUpdate wf <$> use world
+  Out v s (FImmediate cmd wf rf : k) -> do
+    wc <- runError $ mapM_ (updateWorld cmd) wf
     case wc of
       Left exn -> return $ Up exn s k
-      Right wo -> do
-        robotInventory %= robotUpdateInventory rf
-        world .= wo
+      Right () -> do
+        forM_ rf $ \case
+          AddEntity c e -> robotInventory %= E.insertCount c e
+          LearnEntity e -> robotInventory %= E.insertCount 0 e
         needsRedraw .= True
         stepCESK (Out v s k)
 
@@ -672,7 +688,7 @@ stepCESK cesk = case cesk of
     let msg' =
           T.unlines
             [ T.append "Bad machine state in stepRobot: " msg
-            , from (prettyCESK cesk)
+            , prettyText cesk
             ]
      in return $ Up (Fatal msg') s []
 
@@ -733,7 +749,7 @@ addSeedBot e (minT, maxT) loc ts =
         "seed"
         ["A growing seed."]
         (Just loc)
-        (V2 0 0)
+        zero
         ( defaultEntityDisplay '.'
             & displayAttr .~ (e ^. entityDisplay . displayAttr)
             & displayPriority .~ 0
@@ -966,7 +982,7 @@ execConst c vs s k = do
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
-        finishCookingRecipe recipe (WorldUpdate Right) (RobotUpdate changeInv)
+        finishCookingRecipe recipe [] (map (uncurry AddEntity) changeInv)
       _ -> badConst
     Has -> case vs of
       [VText name] -> do
@@ -1004,9 +1020,9 @@ execConst c vs s k = do
         drill <- preferredDrill `isJustOr` Fatal "Drill is required but not installed?!"
 
         let directionText = case d of
-              DDown -> "under"
-              DForward -> "ahead of"
-              DBack -> "behind"
+              DRelative DDown -> "under"
+              DRelative DForward -> "ahead of"
+              DRelative DBack -> "behind"
               _ -> dirSyntax (dirInfo d) <> " of"
 
         (nextLoc, nextME) <- lookInDirection d
@@ -1029,14 +1045,23 @@ execConst c vs s k = do
             `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
 
         let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
-            changeInv =
-              flip (L.foldl' (flip $ uncurry insertCount)) out
-                . flip (L.foldl' (flip $ insertCount 0)) (map snd down)
-            changeWorld = changeWorld' nextE nextLoc down
+        let learn = map (LearnEntity . snd) down
+        let gain = map (uncurry AddEntity) out
+
+        newEntity <- case down of
+          [] -> pure Nothing
+          [(1, de)] -> pure $ Just de
+          _ -> throwError $ Fatal "Bad recipe:\n more than one unmovable entity produced."
+        let changeWorld =
+              ReplaceEntity
+                { updatedLoc = nextLoc
+                , originalEntity = nextE
+                , newEntity = newEntity
+                }
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
-        finishCookingRecipe recipe (WorldUpdate changeWorld) (RobotUpdate changeInv)
+        finishCookingRecipe recipe [changeWorld] (learn <> gain)
       _ -> badConst
     Blocked -> do
       loc <- use robotLocation
@@ -1598,15 +1623,15 @@ execConst c vs s k = do
       [ "Bad application of execConst:"
       , T.pack (show c)
       , T.pack (show (reverse vs))
-      , from (prettyCESK (Out (VCApp c (reverse vs)) s k))
+      , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
-  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> WorldUpdate -> RobotUpdate -> m CESK
+  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> [WorldUpdate Entity] -> [RobotUpdate] -> m CESK
   finishCookingRecipe r wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-      Out VUnit s (FImmediate wf rf : k)
+      Out VUnit s (FImmediate c wf rf : k)
 
   lookInDirection :: HasRobotStepState sig m => Direction -> m (Location, Maybe Entity)
   lookInDirection d = do
@@ -1760,23 +1785,6 @@ execConst c vs s k = do
 
         return (minimalInstallSet, missingChildInv)
 
-  -- replace some entity in the world with another entity
-  changeWorld' ::
-    Entity ->
-    Location ->
-    IngredientList Entity ->
-    W.World Int Entity ->
-    Either Exn (W.World Int Entity)
-  changeWorld' eThen loc down w =
-    let eNow = W.lookupEntity (W.locToCoords loc) w
-     in if Just eThen /= eNow
-          then Left $ cmdExn c ["The", eThen ^. entityName, "is not there."]
-          else
-            w `updateLoc` loc <$> case down of
-              [] -> Right Nothing
-              [de] -> Right $ Just $ snd de
-              _ -> Left $ Fatal "Bad recipe:\n more than one unmovable entity produced."
-
   destroyIfNotBase :: HasRobotStepState sig m => Maybe GameplayAchievement -> m ()
   destroyIfNotBase mAch = do
     rid <- use robotID
@@ -1825,9 +1833,6 @@ execConst c vs s k = do
         (omni || (other ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
         return other
-
-  -- update some tile in the world setting it to entity or making it empty
-  updateLoc w loc res = W.update (W.locToCoords loc) (const res) w
 
   holdsOrFail :: (Has (Throw Exn) sig m) => Bool -> [Text] -> m ()
   holdsOrFail a ts = a `holdsOr` cmdExn c ts

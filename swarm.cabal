@@ -129,6 +129,7 @@ library
                       Swarm.TUI.Model.UI
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
+                      Swarm.TUI.View.CellDisplay
                       Swarm.TUI.View.Util
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
