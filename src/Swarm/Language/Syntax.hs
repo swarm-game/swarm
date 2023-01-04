@@ -95,6 +95,9 @@ import Witch.From (from)
 -- Constants
 ------------------------------------------------------------
 
+-- | An absolute direction is one which is defined with respect to an
+--   external frame of reference; robots need a compass in order to
+--   use them.
 data AbsoluteDir = DNorth | DSouth | DEast | DWest
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
@@ -104,6 +107,9 @@ instance ToJSONKey AbsoluteDir where
 instance FromJSONKey AbsoluteDir where
   fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
 
+-- | A relative direction is one which is defined with respect to the
+--   robot's frame of reference; no special capability is needed to
+--   use them.
 data RelativeDir = DLeft | DRight | DBack | DForward | DDown
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
@@ -280,6 +286,8 @@ data Const
     Time
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the current heading.
+    Heading
   | -- | See if we can move forward or not.
     Blocked
   | -- | Scan a nearby cell
@@ -622,6 +630,7 @@ constInfo c = case c of
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
     command 0 Intangible . doc "Scan a nearby location for entities." $

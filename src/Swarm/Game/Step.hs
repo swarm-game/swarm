@@ -1003,6 +1003,17 @@ execConst c vs s k = do
       loc <- use robotLocation
       let Location x y = loc
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
+    Heading -> do
+      mh <- use robotOrientation
+      -- In general, (1) entities might not have an orientation, and
+      -- (2) even if they do, orientation is a general vector, which
+      -- might not correspond to a cardinal direction.  We could make
+      -- 'heading' return a 'maybe dir' i.e. 'unit + dir', or return a
+      -- vector of type 'int * int', but those would both be annoying
+      -- for players in the vast majority of cases.  We rather choose
+      -- to just return the direction 'down' in any case where we don't
+      -- otherwise have anything reasonable to return.
+      return $ Out (VDir (fromMaybe (DRelative DDown) $ mh >>= toDirection)) s k
     Time -> do
       t <- use ticks
       return $ Out (VInt t) s k
