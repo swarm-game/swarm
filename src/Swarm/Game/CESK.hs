@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -82,20 +83,14 @@ module Swarm.Game.CESK (
 
   -- ** Extracting information
   finalValue,
-
-  -- ** Pretty-printing
-  prettyFrame,
-  prettyCont,
-  prettyCESK,
 ) where
 
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.List (intercalate)
-import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Prettyprinter (Doc, Pretty (..), hsep, (<+>))
 import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
@@ -105,9 +100,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
-import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Types
-import Witch (from)
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -317,54 +310,60 @@ resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
   resetBlackhole c = c
 
 ------------------------------------------------------------
--- Very crude pretty-printing of CESK states.  Should really make a
--- nicer version of this code...
+-- Pretty printing CESK machine states
 ------------------------------------------------------------
 
--- | Very poor pretty-printing of CESK machine states, really just for
---   debugging. At some point we should make a nicer version.
-prettyCESK :: CESK -> String
-prettyCESK (In c _ _ k) =
-  unlines
-    [ "▶ " ++ prettyString c
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Out v _ k) =
-  unlines
-    [ "◀ " ++ from (prettyValue v)
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Up e _ k) =
-  unlines
-    [ "! " ++ from (formatExn mempty e)
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Waiting t cek) =
-  "🕑" <> show t <> " " <> show cek
+instance PrettyPrec CESK where
+  prettyPrec _ (In c _ _ k) = prettyCont k (11, "▶" <> ppr c <> "◀")
+  prettyPrec _ (Out v _ k) = prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
+  prettyPrec _ (Up e _ k) = prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
+  prettyPrec _ (Waiting t cesk) = "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
 
--- | Poor pretty-printing of continuations.
-prettyCont :: Cont -> String
-prettyCont = ("[" ++) . (++ "]") . intercalate " | " . map prettyFrame
+-- | Take a continuation, and the pretty-printed expression which is
+--   the focus of the continuation (i.e. the expression whose value
+--   will be given to the continuation) along with its top-level
+--   precedence, and pretty-print the whole thing.
+--
+--   As much as possible, we try to print to look like an *expression*
+--   with a currently focused part, that is, we print the continuation
+--   from the inside out instead of as a list of frames.  This makes
+--   it much more intuitive to read.
+prettyCont :: Cont -> (Int, Doc ann) -> Doc ann
+prettyCont [] (_, inner) = inner
+prettyCont (f : k) inner = prettyCont k (prettyFrame f inner)
 
--- | Poor pretty-printing of frames.
-prettyFrame :: Frame -> String
-prettyFrame (FSnd t _) = "(_, " ++ prettyString t ++ ")"
-prettyFrame (FFst v) = "(" ++ from (prettyValue v) ++ ", _)"
-prettyFrame (FArg t _) = "_ " ++ prettyString t
-prettyFrame (FApp v) = prettyString (valueToTerm v) ++ " _"
-prettyFrame (FLet x t _) = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FTry t) = "try _ (" ++ prettyString (valueToTerm t) ++ ")"
-prettyFrame FUnionEnv {} = "_ ∪ <Env>"
-prettyFrame FLoadEnv {} = "loadEnv"
-prettyFrame (FDef x) = "def " ++ from x ++ " = _"
-prettyFrame FExec = "exec _"
-prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
-prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
-prettyFrame FDiscardEnv = "discardEnv"
-prettyFrame (FImmediate c w r) = unwords ["immediate@" <> T.unpack (Syntax.syntax $ Syntax.constInfo c), show w, show r]
-prettyFrame (FUpdate loc) = "store@" ++ show loc ++ "(_)"
-prettyFrame FFinishAtomic = "finishAtomic"
-prettyFrame (FMeetAll _f _rs) = "meetAll"
+-- | Pretty-print a single continuation frame, given its already
+--   pretty-printed focus.  In particular, given a frame and its
+--   "inside" (i.e. the expression or other frames being focused on,
+--   whose value will eventually be passed to this frame), with the
+--   precedence of the inside's top-level construct, return a
+--   pretty-printed version of the entire frame along with its
+--   top-level precedence.
+prettyFrame :: Frame -> (Int, Doc ann) -> (Int, Doc ann)
+prettyFrame (FSnd t _) (_, inner) = (11, "(" <> inner <> "," <+> ppr t <> ")")
+prettyFrame (FFst v) (_, inner) = (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
+prettyFrame (FArg t _) (p, inner) = (10, pparens (p < 10) inner <+> prettyPrec 11 t)
+prettyFrame (FApp v) (p, inner) = (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
+prettyFrame (FLet x t _) (_, inner) = (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
+prettyFrame (FTry v) (p, inner) = (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
+prettyFrame (FUnionEnv _) inner = prettyPrefix "∪·" inner
+prettyFrame (FLoadEnv _ _) inner = prettyPrefix "L·" inner
+prettyFrame (FDef x) (_, inner) = (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
+prettyFrame FExec inner = prettyPrefix "E·" inner
+prettyFrame (FBind Nothing t _) (p, inner) = (0, pparens (p < 1) inner <+> ";" <+> ppr t)
+prettyFrame (FBind (Just x) t _) (p, inner) = (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
+prettyFrame FDiscardEnv inner = prettyPrefix "D·" inner
+prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> ppr c <> "]·") inner
+prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner
+prettyFrame FFinishAtomic inner = prettyPrefix "A·" inner
+prettyFrame (FMeetAll _ _) inner = prettyPrefix "M·" inner
+
+-- | Pretty-print a special "prefix application" frame, i.e. a frame
+--   formatted like @X· inner@.  Unlike typical applications, these
+--   associate to the *right*, so that we can print something like @X·
+--   Y· Z· inner@ with no parens.
+prettyPrefix :: Doc ann -> (Int, Doc ann) -> (Int, Doc ann)
+prettyPrefix pre (p, inner) = (11, pre <+> pparens (p < 11) inner)
 
 --------------------------------------------------------------
 -- Runtime robot update

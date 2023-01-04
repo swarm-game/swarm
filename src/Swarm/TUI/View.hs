@@ -87,7 +87,6 @@ import Swarm.Game.ScenarioInfo (
   scenarioStatus,
  )
 import Swarm.Game.State
-import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Pretty (prettyText)
@@ -101,6 +100,7 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
+import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Util
 import Swarm.Util
 import Swarm.Util.Location
@@ -844,50 +844,6 @@ drawWorld showRobots g =
           h = ctx ^. availHeightL
           ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
       render . vBox . map hBox . chunksOf w . map (drawLoc showRobots g) $ ixs
-
--- | Render the 'Display' for a specific location.
-drawLoc :: Bool -> GameState -> W.Coords -> Widget Name
-drawLoc showRobots g = renderDisplay . displayLoc showRobots g
-
-displayTerrainCell :: GameState -> W.Coords -> Display
-displayTerrainCell g coords = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
-
-displayEntityCell, displayRobotCell :: GameState -> W.Coords -> [Display]
-displayRobotCell g coords = map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
-displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
- where
-  displayForEntity :: Entity -> Display
-  displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
-
-  known e =
-    e
-      `hasProperty` Known
-      || (e ^. entityName)
-      `elem` (g ^. knownEntities)
-      || case hidingMode g of
-        HideAllEntities -> False
-        HideNoEntity -> True
-        HideEntityUnknownTo ro -> ro `robotKnows` e
-
--- | Get the 'Display' for a specific location, by combining the
---   'Display's for the terrain, entity, and robots at the location.
-displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords =
-  sconcat $ terrain NE.:| entity <> robots
- where
-  terrain = displayTerrainCell g coords
-  entity = displayEntityCell g coords
-  robots =
-    if showRobots
-      then displayRobotCell g coords
-      else []
-
-data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
-
-hidingMode :: GameState -> HideEntity
-hidingMode g
-  | g ^. creativeMode = HideNoEntity
-  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
 
 ------------------------------------------------------------
 -- Robot inventory panel
