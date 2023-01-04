@@ -211,6 +211,7 @@ constCaps = \case
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText
