@@ -1,0 +1,28 @@
+version: 1
+name: Test heading command
+description: |
+  Test the `heading` command.
+  https://github.com/swarm-game/swarm/issues/955
+objectives:
+  - condition: |
+      loc <- as base {whereami};
+      h <- as base {heading};
+      return $ loc == (1,-1) && h == north
+solution: |
+  h <- heading; turn east; move; move; turn right; move; move; turn h
+robots:
+  - name: base
+    dir: [0,1]
+    devices:
+      - treads
+      - compass
+world:
+  default: [blank]
+  palette:
+    '^': [grass, null, base]
+    '.': [grass]
+  upperleft: [-1, 1]
+  map: |
+    ^..
+    ...
+    ...

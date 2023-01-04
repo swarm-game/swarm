@@ -18,7 +18,7 @@ import Data.Bool
 import Data.ByteString (ByteString)
 import Data.Enumeration
 import Data.Hash.Murmur
-import Data.Int (Int64)
+import Data.Int (Int32)
 import Data.List (find)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
@@ -102,9 +102,9 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
       | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
       | h `mod` 30 == 0 = (StoneT, Just "boulder")
       | sample ix cl0 > 0 =
-        case h `mod` 30 of
-          1 -> (DirtT, Just "LaTeX")
-          _ -> (DirtT, Just "tree")
+          case h `mod` 30 of
+            1 -> (DirtT, Just "LaTeX")
+            _ -> (DirtT, Just "tree")
       | otherwise = (GrassT, Nothing)
     genBiome Small Hard Natural
       | h `mod` 100 == 0 = (StoneT, Just "lodestone")
@@ -153,7 +153,7 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
 
 -- | Create a world function from a finite array of specified cells
 --   plus a seed to randomly generate the rest.
-testWorld2FromArray :: EntityMap -> Array (Int64, Int64) (TerrainType, Maybe Entity) -> Seed -> WorldFun TerrainType Entity
+testWorld2FromArray :: EntityMap -> Array (Int32, Int32) (TerrainType, Maybe Entity) -> Seed -> WorldFun TerrainType Entity
 testWorld2FromArray em arr seed = WF $ \co@(Coords (r, c)) ->
   if inRange bnds (r, c)
     then arr ! (r, c)
@@ -167,7 +167,7 @@ testWorld2FromArray em arr seed = WF $ \co@(Coords (r, c)) ->
 findOffset :: Integer -> ((Coords -> (t, Maybe e)) -> Bool) -> WorldFun t e -> WorldFun t e
 findOffset skip isGood (WF f) = WF f'
  where
-  offset :: Enumeration Int64
+  offset :: Enumeration Int32
   offset = fromIntegral . (skip *) <$> int
 
   f' =

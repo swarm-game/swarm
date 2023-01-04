@@ -47,7 +47,6 @@ import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -137,9 +136,9 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/place"
         , testSolution Default "Tutorials/types"
         , testSolution Default "Tutorials/type-errors"
-        , testSolution Default "Tutorials/bind"
         , testSolution Default "Tutorials/install"
         , testSolution Default "Tutorials/build"
+        , testSolution Default "Tutorials/bind2"
         , testSolution' Default "Tutorials/crash" $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
@@ -149,7 +148,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/def"
         , testSolution Default "Tutorials/lambda"
         , testSolution Default "Tutorials/require"
-        , testSolution Default "Tutorials/requireinv"
+        , testSolution (Sec 3) "Tutorials/requireinv"
         , testSolution Default "Tutorials/conditionals"
         , testSolution (Sec 5) "Tutorials/farming"
         ]
@@ -159,6 +158,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Challenges/teleport"
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 10) "Challenges/hanoi"
+        , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
@@ -191,8 +191,8 @@ testScenarioSolution _ci _em =
         , testGroup
             "Possession criteria (#858)"
             [ testSolution Default "Testing/858-inventory/858-possession-objective"
-            , expectFailBecause "Known bug #858" $
-                testSolution Default "Testing/858-inventory/858-counting-objective"
+            , testSolution Default "Testing/858-inventory/858-counting-objective"
+            , testSolution Default "Testing/858-inventory/858-nonpossession-objective"
             ]
         , testGroup
             "Require (#201)"
@@ -214,6 +214,8 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/699-movement-fail/699-move-liquid"
         , testSolution Default "Testing/699-movement-fail/699-teleport-blocked"
         , testSolution Default "Testing/710-multi-robot"
+        , testSolution Default "Testing/920-meet"
+        , testSolution Default "Testing/955-heading"
         ]
     ]
  where

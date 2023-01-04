@@ -87,7 +87,7 @@ reservedWords =
        , "text"
        , "dir"
        , "bool"
-       , "robot"
+       , "actor"
        , "cmd"
        , "delay"
        , "let"
@@ -134,7 +134,7 @@ identifier = (lexeme . try) (p >>= check) <?> "variable name"
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
     | toLower t `elem` reservedWords =
-      fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+        fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
     | otherwise = return t
    where
     t = into @Text s
@@ -185,11 +185,11 @@ parsePolytype =
     -- Otherwise, require all variables to be explicitly quantified
     | S.null free = return $ Forall xs ty
     | otherwise =
-      fail $
-        unlines
-          [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
-          , "  Try adding them to the 'forall'."
-          ]
+        fail $
+          unlines
+            [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
+            , "  Try adding them to the 'forall'."
+            ]
    where
     free = tyVars ty `S.difference` S.fromList xs
 
@@ -212,7 +212,7 @@ parseTypeAtom =
     <|> TyText <$ reserved "text"
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
-    <|> TyRobot <$ reserved "robot"
+    <|> TyActor <$ reserved "actor"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> parens parseType
@@ -229,15 +229,15 @@ parseConst = asum (map alternative consts) <?> "built-in user function"
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
--- | Add 'Location' to a parser
-parseLocG :: Parser a -> Parser (Location, a)
+-- | Add 'SrcLoc' to a parser
+parseLocG :: Parser a -> Parser (SrcLoc, a)
 parseLocG pa = do
   start <- getOffset
   a <- pa
   end <- getOffset
-  pure (Location start end, a)
+  pure (SrcLoc start end, a)
 
--- | Add 'Location' to a 'Term' parser
+-- | Add 'SrcLoc' to a 'Term' parser
 parseLoc :: Parser Term -> Parser Syntax
 parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
@@ -255,18 +255,22 @@ parseTermAtom =
           *> ( ( TRequireDevice
                   <$> (textLiteral <?> "device name in double quotes")
                )
-                <|> ( TRequire <$> (fromIntegral <$> integer)
+                <|> ( TRequire
+                        <$> (fromIntegral <$> integer)
                         <*> (textLiteral <?> "entity name in double quotes")
                     )
              )
-        <|> SLam <$> (symbol "\\" *> identifier)
+        <|> SLam
+          <$> (symbol "\\" *> identifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> sLet <$> (reserved "let" *> identifier)
+        <|> sLet
+          <$> (reserved "let" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> sDef <$> (reserved "def" *> identifier)
+        <|> sDef
+          <$> (reserved "def" *> identifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))
@@ -514,7 +518,7 @@ getLineCol ps = (line, col)
   line = unPos $ sourceLine $ pstateSourcePos ps
   col = unPos $ sourceColumn $ pstateSourcePos ps
 
--- | A utility for converting a Location into a range
+-- | A utility for converting a SrcLoc into a range
 getLocRange :: Text -> (Int, Int) -> ((Int, Int), (Int, Int))
 getLocRange code (locStart, locEnd) = (start, end)
  where

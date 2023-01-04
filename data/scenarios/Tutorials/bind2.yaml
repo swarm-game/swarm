@@ -1,0 +1,108 @@
+version: 1
+name: Bind notation
+creative: false
+description: |
+  Learn about command return types and how to bind the results.
+objectives:
+  - goal:
+      - |
+        A pedestal stands conspicuously empty in the center of the room.
+        Perhaps its intended contents lie nearby?
+      - |
+        Build a robot to retrieve and restore the mystery artifact to its proper place!
+      - |
+        Note: If you find yourself stuck, you can select "Start over" from
+        the "Quit" (CTRL+q) dialog.
+    condition: |
+      try {
+        p <- robotnamed "floorspot";
+        w <- as p {ishere "Hastur"};
+        return (not w);
+      } { return false }
+  - goal:
+      - |
+        Your robot obtained the misplaced artifact! Next you need to put it back
+        on the pedestal.  But neither you nor your robot knows the
+        artifact's name.  How can it be placed?
+      - |
+        Every command returns a value.  However, some simple commands, like
+        `move`, do not have any meaningful
+        value to return.  Swarm has a special type, `unit`, with only one value,
+        called `()`. Since there is only one possible value of type
+        `unit`, returning it does not convey any information.
+        Thus, the type of `move` is `cmd unit`.
+      - |
+        Other commands do return a nontrivial value after executing.
+        For example, `grab` has type `cmd text`, and returns the name of the
+        grabbed entity as a text value.
+      - |
+        To use the result of a command later, you need "bind notation", which
+        consists of a variable name and a leftwards-pointing arrow
+        before the command.  For example:
+      - |
+        move; t <- grab; place t
+      - |
+        In the above example, the result returned by `grab` is assigned
+        to the variable name `t`, which can then be used later.
+        This is useful, for example, if you do not care what you
+        grabbed and just want to move it to another cell, or if you
+        are not sure of the name of the thing being grabbed.
+      - |
+        Reminder: if you need to start over, your previous commands are
+        accessible in the REPL history (up-arrow).
+    condition: |
+      try {
+        p <- robotnamed "pedestal";
+        w <- as p {ishere "Hastur"};
+        return w;
+      } { return false }
+solution: |
+  run "data/scenarios/Tutorials/bind2-solution.sw"
+entities:
+  - name: Hastur
+    display:
+      attr: gold
+      char: 'H'
+    description:
+      - The Unspeakable One
+    properties: [portable]
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - 3D printer
+    inventory:
+      - [1, solar panel]
+      - [1, treads]
+      - [1, grabber]
+  - name: floorspot
+    system: true
+  - name: pedestal
+    system: true
+world:
+  default: [blank]
+  palette:
+    '.': [blank, null]
+    'Ω': [blank, null, base]
+    'x': [dirt, null]
+    'H': [blank, Hastur, floorspot]
+    's': [stone, null, pedestal]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, -3]
+  map: |
+    ┌─────────┐
+    │.........│
+    │...xxx...│
+    │...xsx...│
+    │...xxxH..│
+    │.........│
+    │Ω┌───────┘
+    └─┘........

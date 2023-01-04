@@ -53,6 +53,10 @@ data Capability
     CGive
   | -- | Execute the 'Install' command
     CInstall
+  | -- | Execute the 'Equip' command
+    CEquip
+  | -- | Execute the 'Unequip' command
+    CUnequip
   | -- | Execute the 'Make' command
     CMake
   | -- | Execute the 'Count' command
@@ -83,6 +87,8 @@ data Capability
     CLog
   | -- | Manipulate text values
     CText
+  | -- | Convert between characters/text and Unicode values
+    CCode
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
@@ -103,6 +109,8 @@ data Capability
     CRecursion
   | -- | Execute the 'Reprogram' command
     CReprogram
+  | -- | Execute the `meet` and `meetAll` commands.
+    CMeet
   | -- | Capability to introspect and see its own name
     CWhoami
   | -- | Capability to set its own name
@@ -176,6 +184,8 @@ constCaps = \case
   Place -> Just CPlace
   Give -> Just CGive
   Install -> Just CInstall
+  Equip -> Just CEquip
+  Unequip -> Just CUnequip
   Make -> Just CMake
   Count -> Just CCount
   If -> Just CCond
@@ -186,6 +196,8 @@ constCaps = \case
   Build -> Just CBuild
   Salvage -> Just CSalvage
   Reprogram -> Just CReprogram
+  Meet -> Just CMeet
+  MeetAll -> Just CMeet
   Drill -> Just CDrill
   Neg -> Just CArith
   Add -> Just CArith
@@ -199,12 +211,15 @@ constCaps = \case
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText
   Concat -> Just CText
   Split -> Just CText
   Chars -> Just CText
+  CharAt -> Just CCode
+  ToChar -> Just CCode
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod

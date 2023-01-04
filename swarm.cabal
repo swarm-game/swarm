@@ -97,6 +97,10 @@ library
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
                       Swarm.Game.Scenario
+                      Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Objective
+                      Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.Display
                       Swarm.Game.Entity
@@ -114,15 +118,29 @@ library
                       Swarm.TUI.List
                       Swarm.TUI.Panel
                       Swarm.TUI.Model
+                      Swarm.TUI.Model.Achievement.Attainment
+                      Swarm.TUI.Model.Achievement.Definitions
+                      Swarm.TUI.Model.Achievement.Description
+                      Swarm.TUI.Model.Achievement.Persistence
+                      Swarm.TUI.Model.Menu
+                      Swarm.TUI.Model.Name
+                      Swarm.TUI.Model.Repl
+                      Swarm.TUI.Model.StateUpdate
+                      Swarm.TUI.Model.UI
                       Swarm.TUI.View
+                      Swarm.TUI.View.Achievement
+                      Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.Util
                       Swarm.TUI.Controller
+                      Swarm.TUI.Controller.Util
                       Swarm.TUI.Inventory.Sorting
                       Swarm.App
-                      Swarm.Version
                       Swarm.Web
-                      Swarm.Util
                       Swarm.DocGen
+                      Swarm.Util
+                      Swarm.Util.Location
                       Swarm.Util.Yaml
+                      Swarm.Version
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
 

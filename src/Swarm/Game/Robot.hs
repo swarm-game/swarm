@@ -35,6 +35,9 @@ module Swarm.Game.Robot (
   Robot,
   TRobot,
 
+  -- ** Runtime robot update
+  RobotUpdate (..),
+
   -- * Robot context
   RobotContext,
   defTypes,
@@ -87,7 +90,6 @@ module Swarm.Game.Robot (
 import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (hashWithSalt)
-import Data.Int (Int64)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -106,25 +108,25 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
-import Swarm.Util ()
+import Swarm.Util.Location
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
 -- | A record that stores the information
 --   for all definitions stored in a 'Robot'
 data RobotContext = RobotContext
-  { -- | Map definition names to their types.
-    _defTypes :: TCtx
-  , -- | Map definition names to the capabilities
-    --   required to evaluate/execute them.
-    _defReqs :: ReqCtx
-  , -- | Map definition names to their values. Note that since
-    --   definitions are delayed, the values will just consist of
-    --   'VRef's pointing into the store.
-    _defVals :: Env
-  , -- | A store containing memory cells allocated to hold
-    --   definitions.
-    _defStore :: Store
+  { _defTypes :: TCtx
+  -- ^ Map definition names to their types.
+  , _defReqs :: ReqCtx
+  -- ^ Map definition names to the capabilities
+  --   required to evaluate/execute them.
+  , _defVals :: Env
+  -- ^ Map definition names to their values. Note that since
+  --   definitions are delayed, the values will just consist of
+  --   'VRef's pointing into the store.
+  , _defStore :: Store
+  -- ^ A store containing memory cells allocated to hold
+  --   definitions.
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -147,11 +149,13 @@ instance At RobotContext where
         req <- Ctx.lookup name (ctx ^. defReqs)
         return $ Typed val typ req
     setter ctx Nothing =
-      ctx & defTypes %~ Ctx.delete name
+      ctx
+        & defTypes %~ Ctx.delete name
         & defVals %~ Ctx.delete name
         & defReqs %~ Ctx.delete name
     setter ctx (Just (Typed val typ req)) =
-      ctx & defTypes %~ Ctx.addBinding name typ
+      ctx
+        & defTypes %~ Ctx.addBinding name typ
         & defVals %~ Ctx.addBinding name val
         & defReqs %~ Ctx.addBinding name req
 
@@ -160,19 +164,19 @@ data LogSource = Said | Logged | ErrorTrace
 
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
-  { -- | The time at which the entry was created.
-    --   Note that this is the first field we sort on.
-    _leTime :: Integer
-  , -- | Whether this log records a said message.
-    _leSaid :: LogSource
-  , -- | The name of the robot that generated the entry.
-    _leRobotName :: Text
-  , -- | The ID of the robot that generated the entry.
-    _leRobotID :: Int
-  , -- | Location of the robot at log entry creation.
-    _leLocation :: V2 Int64
-  , -- | The text of the log entry.
-    _leText :: Text
+  { _leTime :: Integer
+  -- ^ The time at which the entry was created.
+  --   Note that this is the first field we sort on.
+  , _leSaid :: LogSource
+  -- ^ Whether this log records a said message.
+  , _leRobotName :: Text
+  -- ^ The name of the robot that generated the entry.
+  , _leRobotID :: Int
+  -- ^ The ID of the robot that generated the entry.
+  , _leLocation :: Location
+  -- ^ Location of the robot at log entry creation.
+  , _leText :: Text
+  -- ^ The text of the log entry.
   }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
@@ -193,8 +197,8 @@ data RobotPhase
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
 type family RobotLocation (phase :: RobotPhase) :: * where
-  RobotLocation 'TemplateRobot = Maybe (V2 Int64)
-  RobotLocation 'ConcreteRobot = V2 Int64
+  RobotLocation 'TemplateRobot = Maybe Location
+  RobotLocation 'ConcreteRobot = Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
 type family RobotID (phase :: RobotPhase) :: * where
@@ -207,9 +211,9 @@ type family RobotID (phase :: RobotPhase) :: * where
 data RobotR (phase :: RobotPhase) = RobotR
   { _robotEntity :: Entity
   , _installedDevices :: Inventory
-  , -- | A cached view of the capabilities this robot has.
-    --   Automatically generated from '_installedDevices'.
-    _robotCapabilities :: Set Capability
+  , _robotCapabilities :: Set Capability
+  -- ^ A cached view of the capabilities this robot has.
+  --   Automatically generated from '_installedDevices'.
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
   , _robotLocation :: RobotLocation phase
@@ -300,23 +304,23 @@ robotDisplay = lens getDisplay setDisplay
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
 --   'updateRobotLocation' function for this purpose.
-robotLocation :: Getter Robot (V2 Int64)
+robotLocation :: Getter Robot Location
 
 -- | Set a robot's location.  This is unsafe and should never be
 --   called directly except by the 'updateRobotLocation' function.
 --   The reason is that we need to make sure the 'robotsByLocation'
 --   map stays in sync.
-unsafeSetRobotLocation :: V2 Int64 -> Robot -> Robot
+unsafeSetRobotLocation :: Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
 --   'robotsByLocation' map to keep up-to-date.
-trobotLocation :: Lens' TRobot (Maybe (V2 Int64))
+trobotLocation :: Lens' TRobot (Maybe Location)
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.
-robotOrientation :: Lens' Robot (Maybe (V2 Int64))
+robotOrientation :: Lens' Robot (Maybe Heading)
 robotOrientation = robotEntity . entityOrientation
 
 -- | The robot's inventory.
@@ -343,7 +347,7 @@ instantiateRobot :: RID -> TRobot -> Robot
 instantiateRobot i r =
   r
     { _robotID = i
-    , _robotLocation = fromMaybe (V2 0 0) (_robotLocation r)
+    , _robotLocation = fromMaybe zero (_robotLocation r)
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -477,7 +481,7 @@ mkRobot ::
   -- | Initial location.
   RobotLocation phase ->
   -- | Initial heading/direction.
-  V2 Int64 ->
+  Heading ->
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.

@@ -106,7 +106,7 @@
     char: 'Å'
     priority: 11
   description:
-  - A tunnel in a mountain through which robots can freely move.
+  - A tunnel in a mountain through which anything can freely move.
   properties: []
 
 - name: copper ore
@@ -326,14 +326,42 @@
     information, made of twisted cotton fibers.  Multiple strings can
     also be woven into larger configurations such as cloth or nets.
   - |
-    A string device enables two commands: the first, `format : a ->
-    text`, can turn any value into a suitable text representation.
-    The second is the infix operator `++ : text -> text -> text`
-    which can be used to concatenate two text values.  For example,
+    An installed `string` device enables several commands for working with
+    `text` values:
+  - |
+    `format : a -> text` can turn any value into a suitable text
+    representation.
+  - |
+    The infix operator `++ : text -> text -> text`
+    can be used to concatenate two text values.  For example,
   - |
     "Number of widgets: " ++ format numWidgets
+  - |
+    `chars : text -> int` computes the number of characters in a
+    `text` value.
+  - |
+    `split : int -> text -> text * text` splits a `text` value into
+    two pieces, one before the given index and one after.
   properties: [portable]
   capabilities: [text]
+
+- name: decoder ring
+  display:
+    attr: silver
+    char: 'O'
+  description:
+  - |
+    A handy lookup table for converting from characters to numeric codes and
+    back, shaped for some reason into a ring.  When installed, it
+    enables two functions:
+  - |
+    `charAt : int -> text -> int` returns the numeric code of the
+    character at a specific index in a (0-indexed) `text` value.
+  - |
+    `toChar : int -> text` creates a singleton (length-1) `text`
+    value containing a character with the given numeric code.
+  properties: [portable]
+  capabilities: [code]
 
 - name: lambda
   display:
@@ -682,10 +710,10 @@
     place.  The item is removed from the robot's inventory and placed
     in the robot's current cell (which must be empty).  Raises an
     exception if the operation fails.
-  - "The `give` command takes two arguments: the robot to
+  - "The `give` command takes two arguments: the actor to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
-  - "The `install` command takes two arguments: the robot
+  - "The `install` command takes two arguments: the actor
     on which to install a device (which can be at most 1 cell away),
     and the name of the device to install."
   capabilities: [grab, give, place, install]
@@ -707,6 +735,23 @@
     with which you can implement other commands that are safe when
     run in parallel.
   capabilities: [grab, swap, give, place, install, atomic]
+  properties: [portable]
+
+- name: welder
+  display:
+    attr: device
+    char: 'f'
+  description:
+  - |
+    A welder can be used to affix other gadgets to one's robot, providing
+    the `equip` and `unequip` commands.
+  - |
+    The `equip` command takes one argument: the name of the device to equip.
+    Raises an exception if the device is not in your inventory.
+  - |
+    The `unequip` command takes one argument: the name of the device to unequip.
+    Raises an exception if the device is not equipped.
+  capabilities: [equip, unequip]
   properties: [portable]
 
 - name: harvester
@@ -921,9 +966,9 @@
     attr: device
     char: '@'
   description:
-  - "Allows a robot to hear what nearby robots are saying."
+  - "Allows a robot to hear anything being said nearby."
   - "Simply having this device installed will automatically
-     add messages said by nearby robots to this robot's log,
+     add messages said by nearby actors to this robot's log,
      assuming it has a logger installed."
   - "That way you can view any heard message later either in
      the logger or the message window."
@@ -996,9 +1041,16 @@
     attr: device
     char: 'N'
   description:
-  - "A compass gives a robot the ability to orient using cardinal directions: north, south, west, and east."
-  - "Example:"
-  - "turn west; move; turn north"
+  - |
+    A compass gives a robot the ability to orient using the cardinal
+    directions north, south, west, and east; for example, `turn west;
+    move; turn north`.
+  - |
+    It also enables the `heading : cmd dir` command, which returns the
+    robot's current heading. For example, the following code moves
+    east and then restores the same heading as before:
+  - |
+    d <- heading; turn east; move; turn d
   properties: [portable]
   capabilities: [orient]
 
@@ -1031,7 +1083,7 @@
     attr: device
     char: 'Ю'
   description:
-  - An I/O cable can be used to communicate with an adjacent robot.
+  - An I/O cable can be used to communicate with adjacent actors.
   properties: [portable]
 
 - name: rubber band
@@ -1048,7 +1100,7 @@
   - "This seems like a safe way to execute `grab` only when there is a
     rock to grab.  However, it is actually possible for the `grab` to
     fail, if some other robot B snatches the rock right after robot A sensed
-    it and before robot A got around to grab it on the next game tick."
+    it and before robot A got around to grabbing it on the next game tick."
   - "This will make robot A very sad and it will crash."
   - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
   - |
@@ -1069,3 +1121,28 @@
   - will attempt to move, but if that fails, turn left instead.
   properties: [portable]
   capabilities: [try]
+
+- name: antenna
+  display:
+    attr: silver
+    char: 'Y'
+  description:
+  - A device for transforming electric current into radio waves, and
+    vice versa.
+  - |
+    It can be used to locate nearby actors, by bouncing radio
+    waves off them and listening for the echo.  This capability can be
+    accessed via two commands:
+  - |
+    `meet : cmd (() + actor)` tries to locate a
+    nearby actor (a robot, or... something else?) up to one cell away.
+    It returns a reference to the nearest actor, or a unit value if
+    none are found.
+  - |
+    `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
+    every nearby actor (other than oneself), folding over the results
+    to compute a final result of type `b`.  For example, if `x`, `y`,
+    and `z` are nearby actors, then `meetAll f b0` is equivalent to
+    `b1 <- f b0 x; b2 <- f b1 y; f b2 z`.
+  properties: [portable]
+  capabilities: [meet]

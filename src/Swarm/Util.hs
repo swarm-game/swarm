@@ -21,6 +21,7 @@ module Swarm.Util (
   uniq,
   getElemsInArea,
   manhattan,
+  binTuples,
 
   -- * Directory utilities
   readFileMay,
@@ -77,13 +78,13 @@ import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
 import Control.Lens.Lens ((&))
 import Control.Monad (forM, unless, when)
-import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
-import Data.Int (Int64)
+import Data.Int (Int32)
 import Data.List (maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -97,10 +98,10 @@ import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
-import Linear (V2 (V2))
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import Paths_swarm (getDataDir)
+import Swarm.Util.Location
 import System.Clock (TimeSpec)
 import System.Directory (
   XdgDirectory (XdgData),
@@ -117,7 +118,7 @@ import Witch
 
 -- $setup
 -- >>> import qualified Data.Map as M
--- >>> import Linear.V2
+-- >>> import Swarm.Util.Location
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -168,21 +169,21 @@ uniq = \case
   (x : xs) -> x : uniq (dropWhile (== x) xs)
 
 -- | Manhattan distance between world locations.
-manhattan :: V2 Int64 -> V2 Int64 -> Int64
-manhattan (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+manhattan :: Location -> Location -> Int32
+manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 
 -- | Get elements that are in manhattan distance from location.
 --
--- >>> v2s i = [(v, manhattan (V2 0 0) v) | x <- [-i..i], y <- [-i..i], let v = V2 x y]
+-- >>> v2s i = [(p, manhattan origin p) | x <- [-i..i], y <- [-i..i], let p = Location x y]
 -- >>> v2s 0
--- [(V2 0 0,0)]
--- >>> map (\i -> length (getElemsInArea (V2 0 0) i (M.fromList $ v2s i))) [0..8]
+-- [(P (V2 0 0),0)]
+-- >>> map (\i -> length (getElemsInArea origin i (M.fromList $ v2s i))) [0..8]
 -- [1,5,13,25,41,61,85,113,145]
 --
 -- The last test is the sequence "Centered square numbers":
 -- https://oeis.org/A001844
-getElemsInArea :: V2 Int64 -> Int64 -> Map (V2 Int64) e -> [e]
-getElemsInArea o@(V2 x y) d m = M.elems sm'
+getElemsInArea :: Location -> Int32 -> Map Location e -> [e]
+getElemsInArea o@(Location x y) d m = M.elems sm'
  where
   -- to be more efficient we basically split on first coordinate
   -- (which is logarithmic) and then we have to linearly filter
@@ -198,11 +199,21 @@ getElemsInArea o@(V2 x y) d m = M.elems sm'
   --          ▼▼▼▼
   sm =
     m
-      & M.split (V2 (x - d) (y - 1)) -- A
+      & M.split (Location (x - d) (y - 1)) -- A
       & snd -- A<
-      & M.split (V2 (x + d) (y + 1)) -- B
+      & M.split (Location (x + d) (y + 1)) -- B
       & fst -- B>
   sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
+
+-- | Place the second element of the tuples into bins by
+-- the value of the first element.
+binTuples ::
+  (Foldable t, Ord a) =>
+  t (a, b) ->
+  Map a (NE.NonEmpty b)
+binTuples = foldr f mempty
+ where
+  f = uncurry (M.insertWith (<>)) . fmap pure
 
 ------------------------------------------------------------
 -- Directory stuff
@@ -257,7 +268,8 @@ dataNotFound f = do
       ]
 
 -- | Get path to swarm data, optionally creating necessary
---   directories.
+--   directories. This could fail if user has bad permissions
+--   on his own $HOME or $XDG_DATA_HOME which is unlikely.
 getSwarmDataPath :: Bool -> IO FilePath
 getSwarmDataPath createDirs = do
   swarmData <- getXdgDirectory XdgData "swarm"
@@ -268,13 +280,10 @@ getSwarmDataPath createDirs = do
 --   directories.
 getSwarmSavePath :: Bool -> IO FilePath
 getSwarmSavePath createDirs = do
-  swarmSave <- getXdgDirectory XdgData ("swarm" </> "saves")
-  when createDirs (createDirectoryIfMissing True swarmSave)
-  pure swarmSave
+  (</> "saves") <$> getSwarmDataPath createDirs
 
 -- | Get path to swarm history, optionally creating necessary
---   directories. This could fail if user has bad permissions
---   on his own $HOME or $XDG_DATA_HOME which is unlikely.
+--   directories.
 getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs =
   (</> "history") <$> getSwarmDataPath createDirs
@@ -350,9 +359,9 @@ indefiniteQ w = MM.indefiniteDet w <+> squote w
 singularSubjectVerb :: Text -> Text -> Text
 singularSubjectVerb sub verb
   | verb == "be" = case toUpper sub of
-    "I" -> "I am"
-    "YOU" -> sub <+> "are"
-    _ -> sub <+> "is"
+      "I" -> "I am"
+      "YOU" -> sub <+> "are"
+      _ -> sub <+> "is"
   | otherwise = sub <+> (if is3rdPerson then verb3rd else verb)
  where
   is3rdPerson = toUpper sub `notElem` ["I", "YOU"]
@@ -392,12 +401,6 @@ commaList ts = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
 
 ------------------------------------------------------------
 -- Some orphan instances
-
-deriving instance ToJSON (V2 Int64)
-deriving instance FromJSON (V2 Int64)
-
-deriving instance FromJSONKey (V2 Int64)
-deriving instance ToJSONKey (V2 Int64)
 
 deriving instance FromJSON TimeSpec
 deriving instance ToJSON TimeSpec

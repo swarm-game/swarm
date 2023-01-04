@@ -11,7 +11,7 @@ end;
 def while : cmd bool -> {cmd a} -> cmd unit = \test. \body.
   ifC test {force body ; while test body} {}
 end;
-def giveall : robot -> text -> cmd unit = \r. \thing.
+def giveall : actor -> text -> cmd unit = \r. \thing.
   while (has thing) {give r thing}
 end;
 def x4 = \c. c; c; c; c end;

@@ -18,7 +18,7 @@ module Swarm.Language.Typecheck (
   -- * Type errors
   TypeErr (..),
   InvalidAtomicReason (..),
-  getTypeErrLocation,
+  getTypeErrSrcLoc,
 
   -- * Inference monad
   Infer,
@@ -89,7 +89,7 @@ runInfer ctx =
 --   an 'UnboundVar' error if it is not found, or opening its
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
-lookup :: Location -> Var -> Infer UType
+lookup :: SrcLoc -> Var -> Infer UType
 lookup loc x = do
   ctx <- ask
   maybe (throwError $ UnboundVar loc x) instantiate (Ctx.lookup x ctx)
@@ -212,20 +212,20 @@ generalize uty = do
 --   separately be pretty-printed to display them to the user.
 data TypeErr
   = -- | An undefined variable was encountered.
-    UnboundVar Location Var
+    UnboundVar SrcLoc Var
   | -- | A Skolem variable escaped its local context.
-    EscapedSkolem Location Var
+    EscapedSkolem SrcLoc Var
   | Infinite IntVar UType
   | -- | The given term was expected to have a certain type, but has a
     -- different type instead.
-    Mismatch Location (TypeF UType) (TypeF UType)
+    Mismatch SrcLoc (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
-    DefNotTopLevel Location Term
+    DefNotTopLevel SrcLoc Term
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
-    CantInfer Location Term
+    CantInfer SrcLoc Term
   | -- | An invalid argument was provided to @atomic@.
-    InvalidAtomic Location InvalidAtomicReason Term
+    InvalidAtomic SrcLoc InvalidAtomicReason Term
   deriving (Show)
 
 -- | Various reasons the body of an @atomic@ might be invalid.
@@ -246,8 +246,8 @@ instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
   mismatchFailure = Mismatch NoLoc
 
-getTypeErrLocation :: TypeErr -> Maybe Location
-getTypeErrLocation te = case te of
+getTypeErrSrcLoc :: TypeErr -> Maybe SrcLoc
+getTypeErrSrcLoc te = case te of
   UnboundVar l _ -> Just l
   EscapedSkolem l _ -> Just l
   Infinite _ _ -> Nothing
@@ -336,7 +336,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TText _ -> return UTyText
   TAntiText _ -> return UTyText
   TBool _ -> return UTyBool
-  TRobot _ -> return UTyRobot
+  TRobot _ -> return UTyActor
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
@@ -433,7 +433,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
             upty'
         ftyvs = tyvs `S.difference` S.fromList xs
     unless (S.null ftyvs) $
-      throwError $ EscapedSkolem l (head (S.toList ftyvs))
+      throwError $
+        EscapedSkolem l (head (S.toList ftyvs))
 
 addLocToTypeErr :: Syntax -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
@@ -468,31 +469,36 @@ inferConst c = case c of
   Grab -> [tyQ| cmd text |]
   Harvest -> [tyQ| cmd text |]
   Place -> [tyQ| text -> cmd unit |]
-  Give -> [tyQ| robot -> text -> cmd unit |]
-  Install -> [tyQ| robot -> text -> cmd unit |]
+  Give -> [tyQ| actor -> text -> cmd unit |]
+  Install -> [tyQ| actor -> text -> cmd unit |]
+  Equip -> [tyQ| text -> cmd unit |]
+  Unequip -> [tyQ| text -> cmd unit |]
   Make -> [tyQ| text -> cmd unit |]
   Has -> [tyQ| text -> cmd bool |]
   Installed -> [tyQ| text -> cmd bool |]
   Count -> [tyQ| text -> cmd int |]
-  Reprogram -> [tyQ| robot -> {cmd a} -> cmd unit |]
-  Build -> [tyQ| {cmd a} -> cmd robot |]
+  Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
+  Build -> [tyQ| {cmd a} -> cmd actor |]
   Drill -> [tyQ| dir -> cmd unit |]
   Salvage -> [tyQ| cmd unit |]
   Say -> [tyQ| text -> cmd unit |]
   Listen -> [tyQ| cmd text |]
   Log -> [tyQ| text -> cmd unit |]
-  View -> [tyQ| robot -> cmd unit |]
+  View -> [tyQ| actor -> cmd unit |]
   Appear -> [tyQ| text -> cmd unit |]
   Create -> [tyQ| text -> cmd unit |]
   Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
+  Heading -> [tyQ| cmd dir |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (unit + text) |]
-  Upload -> [tyQ| robot -> cmd unit |]
+  Upload -> [tyQ| actor -> cmd unit |]
   Ishere -> [tyQ| text -> cmd bool |]
-  Self -> [tyQ| robot |]
-  Parent -> [tyQ| robot |]
-  Base -> [tyQ| robot |]
+  Self -> [tyQ| actor |]
+  Parent -> [tyQ| actor |]
+  Base -> [tyQ| actor |]
+  Meet -> [tyQ| cmd (unit + actor) |]
+  MeetAll -> [tyQ| (b -> actor -> cmd b) -> b -> cmd b |]
   Whoami -> [tyQ| cmd text |]
   Setname -> [tyQ| text -> cmd unit |]
   Random -> [tyQ| int -> cmd int |]
@@ -527,13 +533,15 @@ inferConst c = case c of
   Concat -> [tyQ| text -> text -> text |]
   Chars -> [tyQ| text -> int |]
   Split -> [tyQ| int -> text -> (text * text) |]
+  CharAt -> [tyQ| int -> text -> int |]
+  ToChar -> [tyQ| int -> text |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| text -> cmd text |]
   Atomic -> [tyQ| cmd a -> cmd a |]
-  Teleport -> [tyQ| robot -> (int * int) -> cmd unit |]
-  As -> [tyQ| robot -> {cmd a} -> cmd a |]
-  RobotNamed -> [tyQ| text -> cmd robot |]
-  RobotNumbered -> [tyQ| int -> cmd robot |]
+  Teleport -> [tyQ| actor -> (int * int) -> cmd unit |]
+  As -> [tyQ| actor -> {cmd a} -> cmd a |]
+  RobotNamed -> [tyQ| text -> cmd actor |]
+  RobotNumbered -> [tyQ| int -> cmd actor |]
   Knows -> [tyQ| text -> cmd bool |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]
@@ -619,32 +627,32 @@ analyzeAtomic locals (Syntax l t) = case t of
   TVar x
     | x `S.member` locals -> return 0
     | otherwise -> do
-      mxTy <- asks $ Ctx.lookup x
-      case mxTy of
-        -- If the variable is undefined, return 0 to indicate the
-        -- atomic block is valid, because we'd rather have the error
-        -- caught by the real name+type checking.
-        Nothing -> return 0
-        Just xTy -> do
-          -- Use applyBindings to make sure that we apply as much
-          -- information as unification has learned at this point.  In
-          -- theory, continuing to typecheck other terms elsewhere in
-          -- the program could give us further information about xTy,
-          -- so we might have incomplete information at this point.
-          -- However, since variables referenced in an atomic block
-          -- must necessarily have simple types, it's unlikely this
-          -- will really make a difference.  The alternative, more
-          -- "correct" way to do this would be to simply emit some
-          -- constraints at this point saying that xTy must be a
-          -- simple type, and check later that the constraint holds,
-          -- after performing complete type inference.  However, since
-          -- the current approach is much simpler, we'll stick with
-          -- this until such time as we have concrete examples showing
-          -- that the more correct, complex way is necessary.
-          xTy' <- applyBindings xTy
-          if isSimpleUPolytype xTy'
-            then return 0
-            else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
+        mxTy <- asks $ Ctx.lookup x
+        case mxTy of
+          -- If the variable is undefined, return 0 to indicate the
+          -- atomic block is valid, because we'd rather have the error
+          -- caught by the real name+type checking.
+          Nothing -> return 0
+          Just xTy -> do
+            -- Use applyBindings to make sure that we apply as much
+            -- information as unification has learned at this point.  In
+            -- theory, continuing to typecheck other terms elsewhere in
+            -- the program could give us further information about xTy,
+            -- so we might have incomplete information at this point.
+            -- However, since variables referenced in an atomic block
+            -- must necessarily have simple types, it's unlikely this
+            -- will really make a difference.  The alternative, more
+            -- "correct" way to do this would be to simply emit some
+            -- constraints at this point saying that xTy must be a
+            -- simple type, and check later that the constraint holds,
+            -- after performing complete type inference.  However, since
+            -- the current approach is much simpler, we'll stick with
+            -- this until such time as we have concrete examples showing
+            -- that the more correct, complex way is necessary.
+            xTy' <- applyBindings xTy
+            if isSimpleUPolytype xTy'
+              then return 0
+              else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
   -- No lambda, `let` or `def` allowed!
   SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
   SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)

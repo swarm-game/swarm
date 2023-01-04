@@ -42,6 +42,9 @@ module Swarm.Game.World (
   lookupTerrainM,
   lookupEntityM,
   updateM,
+
+  -- ** Runtime updates
+  WorldUpdate (..),
 ) where
 
 import Control.Algebra (Has)
@@ -53,11 +56,12 @@ import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Bits
 import Data.Foldable (foldl')
-import Data.Int (Int64)
+import Data.Int (Int32)
 import Data.Map.Strict qualified as M
+import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Linear
 import Swarm.Util
+import Swarm.Util.Location
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
@@ -65,21 +69,25 @@ import Prelude hiding (lookup)
 ------------------------------------------------------------
 
 -- | World coordinates use (row,column) format, with the row
---   increasing as we move down the screen.  This format plays nicely
---   with drawing the screen.
-newtype Coords = Coords {unCoords :: (Int64, Int64)}
+--   increasing as we move down the screen.  We use this format for
+--   indexing worlds internally, since it plays nicely with things
+--   like drawing the screen, and reading maps from configuration
+--   files. The 'locToCoords' and 'coordsToLoc' functions convert back
+--   and forth between this type and 'Location', which is used when
+--   presenting coordinates externally to the player.
+newtype Coords = Coords {unCoords :: (Int32, Int32)}
   deriving (Eq, Ord, Show, Ix, Generic)
 
 instance Rewrapped Coords t
 instance Wrapped Coords
 
--- | Convert an (x,y) location to a 'Coords' value.
-locToCoords :: V2 Int64 -> Coords
-locToCoords (V2 x y) = Coords (-y, x)
+-- | Convert an external (x,y) location to an internal 'Coords' value.
+locToCoords :: Location -> Coords
+locToCoords (Location x y) = Coords (-y, x)
 
--- | Convert 'Coords' to an (x,y) location.
-coordsToLoc :: Coords -> V2 Int64
-coordsToLoc (Coords (r, c)) = V2 c (-r)
+-- | Convert an internal 'Coords' value to an external (x,y) location.
+coordsToLoc :: Coords -> Location
+coordsToLoc (Coords (r, c)) = Location c (-r)
 
 ------------------------------------------------------------
 -- World function
@@ -95,7 +103,7 @@ instance Bifunctor WorldFun where
 
 -- | Create a world function from a finite array of specified cells
 --   plus a single default cell to use everywhere else.
-worldFunFromArray :: Array (Int64, Int64) (t, Maybe e) -> (t, Maybe e) -> WorldFun t e
+worldFunFromArray :: Array (Int32, Int32) (t, Maybe e) -> (t, Maybe e) -> WorldFun t e
 worldFunFromArray arr def = WF $ \(Coords (r, c)) ->
   if inRange bnds (r, c)
     then arr ! (r, c)
@@ -120,7 +128,7 @@ tileBits = 6
 
 -- | The number consisting of 'tileBits' many 1 bits.  We can use this
 --   to mask out the tile offset of a coordinate.
-tileMask :: Int64
+tileMask :: Int32
 tileMask = (1 `shiftL` tileBits) - 1
 
 -- | If we think of the world as a grid of /tiles/, we can assign each
@@ -274,3 +282,18 @@ loadRegion reg (World f t m) = World f t' m
    where
     tileCorner = tileOrigin tc
     (terrain, entities) = unzip $ map (runWF f . plusOffset tileCorner) (range tileBounds)
+
+-- ------------------------------------------------------------------
+-- Runtime world update
+-- ------------------------------------------------------------------
+
+-- | Update world in an inspectable way.
+--
+-- This type is used for changes by e.g. the drill command at later
+-- tick. Using ADT allows us to serialize and inspect the updates.
+data WorldUpdate e = ReplaceEntity
+  { updatedLoc :: Location
+  , originalEntity :: e
+  , newEntity :: Maybe e
+  }
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)

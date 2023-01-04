@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- Module      :  Swarm.TUI.Controller
@@ -38,7 +37,8 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
-import Brick hiding (Direction)
+import Brick hiding (Direction, Location)
+import Brick qualified
 import Brick.Focus
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
@@ -53,7 +53,7 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
-import Data.Int (Int64)
+import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -62,6 +62,7 @@ import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
+import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
@@ -81,32 +82,25 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.StateUpdate
+import Swarm.TUI.Model.UI
 import Swarm.TUI.View (generateModal)
 import Swarm.Util hiding ((<<.=))
+import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
+import System.FilePath (splitDirectories)
 import Witch (into)
 
--- | Pattern synonyms to simplify brick event handler
-pattern Key :: V.Key -> BrickEvent n e
-pattern Key k = VtyEvent (V.EvKey k [])
-
-pattern CharKey, ControlChar, MetaChar :: Char -> BrickEvent n e
-pattern CharKey c = VtyEvent (V.EvKey (V.KChar c) [])
-pattern ControlChar c = VtyEvent (V.EvKey (V.KChar c) [V.MCtrl])
-pattern MetaChar c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
-
-pattern ShiftKey :: V.Key -> BrickEvent n e
-pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
-
-pattern EscapeKey :: BrickEvent n e
-pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
-
-pattern FKey :: Int -> BrickEvent n e
-pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
+tutorialsDirname :: FilePath
+tutorialsDirname = "Tutorials"
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -132,6 +126,7 @@ handleEvent = \case
           MainMenu l -> handleMainMenuEvent l
           NewGameMenu l -> handleNewGameMenuEvent l
           MessagesMenu -> handleMainMessagesEvent
+          AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
@@ -153,7 +148,7 @@ handleMainMenuEvent menu = \case
           let tutorialCollection = getTutorials ss
               topMenu =
                 BL.listFindBy
-                  ((== "Tutorials") . scenarioItemName)
+                  ((== tutorialsDirname) . T.unpack . scenarioItemName)
                   (mkScenarioList cheat ss)
               tutorialMenu = mkScenarioList cheat tutorialCollection
               menuStack = NE.fromList [tutorialMenu, topMenu]
@@ -166,10 +161,13 @@ handleMainMenuEvent menu = \case
                   _ -> error "No first tutorial found!"
                 _ -> error "No first tutorial found!"
           startGame firstTutorial Nothing
+        Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
         Messages -> do
           runtimeState . eventLog . notificationsCount .= 0
           uiState . uiMenu .= MessagesMenu
-        About -> uiState . uiMenu .= AboutMenu
+        About -> do
+          uiState . uiMenu .= AboutMenu
+          attainAchievement $ GlobalAchievement LookedAtAboutScreen
         Quit -> halt
   CharKey 'q' -> halt
   ControlChar 'q' -> halt
@@ -179,13 +177,28 @@ handleMainMenuEvent menu = \case
   _ -> continueWithoutRedraw
 
 getTutorials :: ScenarioCollection -> ScenarioCollection
-getTutorials sc = case M.lookup "Tutorials" (scMap sc) of
+getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
   Just (SICollection _ c) -> c
   _ -> error "No tutorials exist!"
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
+
+handleMainAchievementsEvent ::
+  BL.List Name CategorizedAchievement ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
+handleMainAchievementsEvent l e = case e of
+  Key V.KEsc -> returnToMainMenu
+  CharKey 'q' -> returnToMainMenu
+  ControlChar 'q' -> returnToMainMenu
+  VtyEvent ev -> do
+    l' <- nestEventM' l (handleListEvent ev)
+    uiState . uiMenu .= AchievementsMenu l'
+  _ -> continueWithoutRedraw
+ where
+  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMessagesEvent = \case
@@ -215,7 +228,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
-  uiState . uiMenu
+  uiState
+    . uiMenu
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
       Just stk' -> NewGameMenu stk'
@@ -243,11 +257,13 @@ handleMainEvent ev = do
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do
-        safeAutoUnpause
-        uiState . uiModal .= Nothing
-        -- message modal is not autopaused, so update notifications when leaving it
-        when (m ^. modalType == MessagesModal) $ do
-          gameState . lastSeenMessageTime .= s ^. gameState . ticks
+          safeAutoUnpause
+          uiState . uiModal .= Nothing
+          -- message modal is not autopaused, so update notifications when leaving it
+          case m ^. modalType of
+            MessagesModal -> do
+              gameState . lastSeenMessageTime .= s ^. gameState . ticks
+            _ -> return ()
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
     FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
@@ -339,9 +355,6 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ W.Coords (mx, my)
 
-setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
-
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
 --
 -- Also resets the last frame time to now. If we are pausing, it
@@ -367,21 +380,8 @@ toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
   modal <- use $ uiState . uiModal
   case modal of
-    Nothing -> do
-      newModal <- gets $ flip generateModal mt
-      ensurePause
-      uiState . uiModal ?= newModal
+    Nothing -> openModal mt
     Just _ -> uiState . uiModal .= Nothing >> safeAutoUnpause
- where
-  -- Set the game to AutoPause if needed
-  ensurePause = do
-    pause <- use $ gameState . paused
-    unless (pause || isRunningModal mt) $ do
-      gameState . runStatus .= AutoPause
-
--- | The running modals do not autopause the game.
-isRunningModal :: ModalType -> Bool
-isRunningModal mt = mt `elem` [RobotsModal, MessagesModal]
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
@@ -423,7 +423,14 @@ saveScenarioInfoOnQuit = do
         status <- preuse currentScenarioInfo
         case status of
           Nothing -> return ()
-          Just si -> liftIO $ saveScenarioInfo p si
+          Just si -> do
+            let segments = splitDirectories p
+            case segments of
+              firstDir : _ -> do
+                when (won && firstDir == tutorialsDirname) $
+                  attainAchievement' t (Just $ T.pack p) (GlobalAchievement CompletedSingleTutorial)
+              _ -> return ()
+            liftIO $ saveScenarioInfo p si
 
         -- See what scenario is currently focused in the menu.  Depending on how the
         -- previous scenario ended (via quit vs. via win), it might be the same as
@@ -563,12 +570,31 @@ zoomGameState f = do
   gs' <- liftIO (Fused.runM (Fused.execState gs f))
   gameState .= gs'
 
+updateAchievements :: EventM Name AppState ()
+updateAchievements = do
+  -- Merge the in-game achievements with the master list in UIState
+  achievementsFromGame <- use $ gameState . gameAchievements
+  let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
+
+  oldMasterAchievementsList <- use $ uiState . uiAchievements
+  uiState . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
+
+  -- Don't save to disk unless there was a change in the attainment list.
+  let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
+  unless (null incrementalAchievements) $ do
+    -- TODO: This is where new achievements would be displayed in
+    -- a popup (see #916)
+    newAchievements <- use $ uiState . uiAchievements
+    liftIO $ saveAchievementsInfo $ M.elems newAchievements
+
 -- | Run the game for a single tick (/without/ updating the UI).
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
 runGameTick :: EventM Name AppState ()
-runGameTick = zoomGameState gameTick
+runGameTick = do
+  zoomGameState gameTick
+  updateAchievements
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -833,8 +859,8 @@ handleREPLEventTyping = \case
             Just found
               | T.null uinput -> uiState %= resetREPL "" (CmdPrompt [])
               | otherwise -> do
-                uiState %= resetREPL found (CmdPrompt [])
-                modify validateREPLForm
+                  uiState %= resetREPL found (CmdPrompt [])
+                  modify validateREPLForm
       else continueWithoutRedraw
   Key V.KUp -> modify $ adjReplHistIndex Older
   Key V.KDown -> modify $ adjReplHistIndex Newer
@@ -900,12 +926,12 @@ tabComplete names em repl = case repl ^. replPromptType of
     -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
     -- repopulates them.
     | otherwise -> case candidateMatches of
-      [] -> setCmd t []
-      [m] -> setCmd (completeWith m) []
-      -- Perform completion with the first candidate, then populate the list
-      -- of all candidates with the current completion moved to the back
-      -- of the queue.
-      (m : ms) -> setCmd (completeWith m) (ms ++ [m])
+        [] -> setCmd t []
+        [m] -> setCmd (completeWith m) []
+        -- Perform completion with the first candidate, then populate the list
+        -- of all candidates with the current completion moved to the back
+        -- of the queue.
+        (m : ms) -> setCmd (completeWith m) (ms ++ [m])
  where
   -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
   hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
@@ -941,17 +967,17 @@ validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
-        let theType = s ^. gameState . replStatus . replActiveType
-         in s & uiState . uiREPL . replType .~ theType
+          let theType = s ^. gameState . replStatus . replActiveType
+           in s & uiState . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-        let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
-            theType = case result of
-              Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
-              _ -> Nothing
-         in s
-              & uiState . uiREPL . replValid .~ isRight result
-              & uiState . uiREPL . replType .~ theType
+          let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
+              theType = case result of
+                Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+                _ -> Nothing
+           in s
+                & uiState . uiREPL . replValid .~ isRight result
+                & uiState . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
   uinput = s ^. uiState . uiREPL . replPromptText
@@ -986,7 +1012,7 @@ adjReplHistIndex d s =
 -- World events
 ------------------------------------------------------------
 
-worldScrollDist :: Int64
+worldScrollDist :: Int32
 worldScrollDist = 8
 
 onlyCreative :: MonadState AppState m => m () -> m ()
@@ -998,7 +1024,7 @@ onlyCreative a = do
 handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 -- scrolling the world view in Creative mode
 handleWorldEvent = \case
-  Key k | k `elem` moveKeys -> onlyCreative $ scrollView (^+^ (worldScrollDist *^ keyToDir k))
+  Key k | k `elem` moveKeys -> onlyCreative $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
     gameState . viewCenterRule .= VCRobot 0
@@ -1019,7 +1045,7 @@ handleWorldEvent = \case
     ]
 
 -- | Manually scroll the world view.
-scrollView :: (V2 Int64 -> V2 Int64) -> EventM Name AppState ()
+scrollView :: (Location -> Location) -> EventM Name AppState ()
 scrollView update = do
   -- Manually invalidate the 'WorldCache' instead of just setting
   -- 'needsRedraw'.  I don't quite understand why the latter doesn't
@@ -1029,7 +1055,7 @@ scrollView update = do
   gameState %= modifyViewCenter update
 
 -- | Convert a directional key into a direction.
-keyToDir :: V.Key -> V2 Int64
+keyToDir :: V.Key -> Heading
 keyToDir V.KUp = north
 keyToDir V.KDown = south
 keyToDir V.KRight = east
@@ -1038,7 +1064,7 @@ keyToDir (V.KChar 'h') = west
 keyToDir (V.KChar 'j') = south
 keyToDir (V.KChar 'k') = north
 keyToDir (V.KChar 'l') = east
-keyToDir _ = V2 0 0
+keyToDir _ = zero
 
 -- | Adjust the ticks per second speed.
 adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState

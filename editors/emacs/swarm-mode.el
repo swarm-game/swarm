@@ -45,6 +45,8 @@
                "format"
                "chars"
                "split"
+               "charat"
+               "tochar"
              ))
              (x-commands '(
                "noop"
@@ -57,6 +59,8 @@
                "place"
                "give"
                "install"
+               "equip"
+               "unequip"
                "make"
                "has"
                "installed"
@@ -73,10 +77,13 @@
                "create"
                "time"
                "whereami"
+               "heading"
                "blocked"
                "scan"
                "upload"
                "ishere"
+               "meet"
+               "meetall"
                "whoami"
                "setname"
                "random"
@@ -90,17 +97,17 @@
                "robotnamed"
                "robotnumbered"
                "knows"
-               "left"
-               "right"
-               "back"
-               "forward"
                "north"
                "south"
                "east"
                "west"
+               "left"
+               "right"
+               "back"
+               "forward"
                "down"
              ))
-             (x-types '("int" "text" "dir" "bool" "cmd" "void" "unit"))
+             (x-types '("int" "text" "dir" "bool" "cmd" "void" "unit" "actor"))
 
              (x-keywords-regexp (regexp-opt x-keywords 'words))
              (x-builtins-regexp (regexp-opt x-builtins 'words))

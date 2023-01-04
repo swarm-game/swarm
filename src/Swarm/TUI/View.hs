@@ -38,7 +38,7 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
-import Brick hiding (Direction)
+import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
@@ -70,6 +70,7 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Graphics.Vty qualified as V
 import Linear
+import Linear.Affine (Point)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
@@ -86,18 +87,23 @@ import Swarm.Game.ScenarioInfo (
   scenarioStatus,
  )
 import Swarm.Game.State
-import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
+import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
+import Swarm.TUI.View.Achievement
+import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Util
 import Swarm.Util
+import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
@@ -110,13 +116,14 @@ drawUI :: AppState -> [Widget Name]
 drawUI s
   | s ^. uiState . uiPlaying = drawGameUI s
   | otherwise = case s ^. uiState . uiMenu of
-    -- We should never reach the NoMenu case if uiPlaying is false; we would have
-    -- quit the app instead.  But just in case, we display the main menu anyway.
-    NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
-    MainMenu l -> [drawMainMenuUI s l]
-    NewGameMenu stk -> [drawNewGameMenuUI stk]
-    MessagesMenu -> [drawMainMessages s]
-    AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+      -- We should never reach the NoMenu case if uiPlaying is false; we would have
+      -- quit the app instead.  But just in case, we display the main menu anyway.
+      NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
+      MainMenu l -> [drawMainMenuUI s l]
+      NewGameMenu stk -> [drawNewGameMenuUI stk]
+      AchievementsMenu l -> [drawAchievementsMenuUI s l]
+      MessagesMenu -> [drawMainMessages s]
+      AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
@@ -131,7 +138,7 @@ drawMainMenuUI s l =
   vBox . catMaybes $
     [ drawLogo <$> logo
     , hCenter . padTopBottom 2 <$> newVersionWidget version
-    , Just . centerLayer . vLimit 5 . hLimit 20 $
+    , Just . centerLayer . vLimit 6 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
  where
@@ -169,7 +176,8 @@ drawNewGameMenuUI (l :| ls) =
       [ vBox
           [ withAttr boldAttr . txt $ breadcrumbs ls
           , txt " "
-          , vLimit 20 . hLimit 35
+          , vLimit 20
+              . hLimit 35
               . BL.renderList (const $ padRight Max . drawScenarioItem) True
               $ l
           ]
@@ -244,6 +252,7 @@ drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
 drawMainMenuEntry s = \case
   NewGame -> txt "New game"
   Tutorial -> txt "Tutorial"
+  Achievements -> txt "Achievements"
   About -> txt "About"
   Messages -> highlightMessages $ txt "Messages"
   Quit -> txt "Quit"
@@ -278,9 +287,9 @@ drawGameUI s =
                   (FocusablePanel InfoPanel)
                   ( plainBorder
                       & topLabels . centerLabel
-                      .~ (if moreTop then Just (txt " · · · ") else Nothing)
+                        .~ (if moreTop then Just (txt " · · · ") else Nothing)
                       & bottomLabels . centerLabel
-                      .~ (if moreBot then Just (txt " · · · ") else Nothing)
+                        .~ (if moreBot then Just (txt " · · · ") else Nothing)
                   )
                   $ drawInfoPanel s
               ]
@@ -389,10 +398,6 @@ drawTime t showTicks =
 maybeDrawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
 maybeDrawTime t showTicks gs = guard (clockInstalled gs) $> drawTime t showTicks
 
--- | Render the type of the current REPL input to be shown to the user.
-drawType :: Polytype -> Widget Name
-drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
-
 -- | Draw info about the current number of ticks per second.
 drawTPS :: AppState -> Widget Name
 drawTPS s = hBox (tpsInfo : rateInfo)
@@ -403,12 +408,12 @@ drawTPS s = hBox (tpsInfo : rateInfo)
 
   rateInfo
     | s ^. uiState . uiShowFPS =
-      [ txt " ("
-      , str (printf "%0.1f" (s ^. uiState . uiTPF))
-      , txt " tpf, "
-      , str (printf "%0.1f" (s ^. uiState . uiFPS))
-      , txt " fps)"
-      ]
+        [ txt " ("
+        , str (printf "%0.1f" (s ^. uiState . uiTPF))
+        , txt " tpf, "
+        , str (printf "%0.1f" (s ^. uiState . uiFPS))
+        , txt " fps)"
+        ]
     | otherwise = []
 
   l = s ^. uiState . lgTicksPerSecond
@@ -424,10 +429,6 @@ chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
 chooseCursor s locs = case s ^. uiState . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
-
--- | Width cap for modal and error message windows
-maxModalWindowWidth :: Int
-maxModalWindowWidth = 500
 
 -- | Render the error dialog window with a given error message
 renderErrorDialog :: Text -> Widget Name
@@ -464,84 +465,13 @@ drawModal s = \case
   HelpModal -> helpWidget (s ^. gameState . seed) (s ^. runtimeState . webPort)
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
-  CommandsModal -> availableListWidget (s ^. gameState) CommandList
+  CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal g -> padLeftRight 1 (displayParagraphs g)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
-
-quitMsg :: Menu -> Text
-quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
- where
-  quitAction = case m of
-    NoMenu -> "quit"
-    _ -> "return to the menu"
-
--- | Generate a fresh modal window of the requested type.
-generateModal :: AppState -> ModalType -> Modal
-generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
- where
-  currentScenario = s ^. uiState . scenarioRef
-  currentSeed = s ^. gameState . seed
-  haltingMessage = case s ^. uiState . uiMenu of
-    NoMenu -> Just "Quit"
-    _ -> Nothing
-  descriptionWidth = 100
-  helpWidth = 80
-  (title, buttons, requiredWidth) =
-    case mt of
-      HelpModal -> (" Help ", Nothing, helpWidth)
-      RobotsModal -> ("Robots", Nothing, descriptionWidth)
-      RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
-      CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
-      MessagesModal -> ("Messages", Nothing, descriptionWidth)
-      WinModal ->
-        let nextMsg = "Next challenge!"
-            stopMsg = fromMaybe "Return to the menu" haltingMessage
-            continueMsg = "Keep playing"
-         in ( ""
-            , Just
-                ( 0
-                , [ (nextMsg, NextButton scene)
-                  | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
-                  ]
-                    ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, KeepPlayingButton)
-                       ]
-                )
-            , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
-            )
-      DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
-      QuitModal ->
-        let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
-            maybeStartOver = sequenceA ("Start over", StartOverButton currentSeed <$> currentScenario)
-         in ( ""
-            , Just
-                ( 0
-                , catMaybes
-                    [ Just ("Keep playing", CancelButton)
-                    , maybeStartOver
-                    , Just (stopMsg, QuitButton)
-                    ]
-                )
-            , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
-            )
-      GoalModal _ ->
-        let goalModalTitle = case currentScenario of
-              Nothing -> "Goal"
-              Just (scenario, _) -> scenario ^. scenarioName
-         in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
-      KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
-
--- | Get the name of the current New Game menu.
-curMenuName :: AppState -> Maybe Text
-curMenuName s = case s ^. uiState . uiMenu of
-  NewGameMenu (_ :| (parentMenu : _)) ->
-    Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
-  NewGameMenu _ -> Just "Scenarios"
-  _ -> Nothing
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
@@ -593,7 +523,7 @@ robotsListWidget s = hCenter table
 
     locWidget = hBox [worldCell, txt $ " " <> locStr]
      where
-      rloc@(V2 x y) = robot ^. robotLocation
+      rloc@(Location x y) = robot ^. robotLocation
       worldCell = drawLoc (s ^. uiState . uiShowRobots) g (W.locToCoords rloc)
       locStr = from (show x) <> " " <> from (show y)
 
@@ -603,8 +533,8 @@ robotsListWidget s = hCenter table
         | isActive robot -> withAttr notifAttr $ txt "busy"
         | otherwise -> withAttr greenAttr $ txt "idle"
 
-  basePos :: V2 Double
-  basePos = realToFrac <$> fromMaybe (V2 0 0) (g ^? baseRobot . robotLocation)
+  basePos :: Point V2 Double
+  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation)
   -- Keep the base and non system robot (e.g. no seed)
   isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base
@@ -671,18 +601,16 @@ helpWidget theSeed mport =
     , ("Meta-t", "focus on the info panel")
     ]
 
-data NotificationList = RecipeList | CommandList | MessageList
+data NotificationList = RecipeList | MessageList
 
 availableListWidget :: GameState -> NotificationList -> Widget Name
 availableListWidget gs nl = padTop (Pad 1) $ vBox widgetList
  where
   widgetList = case nl of
     RecipeList -> mkAvailableList gs availableRecipes renderRecipe
-    CommandList -> mkAvailableList gs availableCommands renderCommand & (<> constWiki) . (padLeftRight 18 constHeader :)
     MessageList -> messagesWidget gs
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
-  renderCommand = padLeftRight 18 . drawConst
 
 mkAvailableList :: GameState -> Lens' GameState (Notifications a) -> (a -> Widget Name) -> [Widget Name]
 mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map padRender knowns
@@ -692,28 +620,59 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
   (news, knowns) = splitAt count (gs ^. notifLens . notificationsContent)
   notifSep
     | count > 0 && not (null knowns) =
-      [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
-      ]
+        [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
+        ]
     | otherwise = []
 
-constHeader :: Widget Name
-constHeader = padBottom (Pad 1) $ withAttr robotAttr $ padLeft (Pad 1) $ txt "command name : type"
-
-constWiki :: [Widget Name]
-constWiki =
-  padLeftRight 13
-    <$> [ padTop (Pad 2) $ txt "For the full list of available commands see the Wiki at:"
-        , txt "https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet"
-        ]
-
-drawConst :: Const -> Widget Name
-drawConst c = hBox [padLeft (Pad $ 13 - T.length constName) (txt constName), txt constSig]
+commandsListWidget :: GameState -> Widget Name
+commandsListWidget gs =
+  hCenter $
+    vBox
+      [ table
+      , padTop (Pad 1) $ txt "For the full list of available commands see the Wiki at:"
+      , txt "https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet"
+      ]
  where
-  constName = syntax . constInfo $ c
-  constSig = " : " <> prettyText (inferConst c)
+  commands = gs ^. availableCommands . notificationsContent
+  table =
+    BT.renderTable
+      . BT.surroundingBorder False
+      . BT.columnBorders False
+      . BT.rowBorders False
+      . BT.setDefaultColAlignment BT.AlignLeft
+      . BT.alignRight 0
+      . BT.table
+      $ headers : commandsTable
+  headers =
+    withAttr robotAttr
+      <$> [ txt "command name"
+          , txt " : type"
+          , txt "Enabled by"
+          ]
 
-descriptionTitle :: Entity -> String
-descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
+  commandsTable = mkCmdRow <$> commands
+  mkCmdRow cmd =
+    map
+      (padTop $ Pad 1)
+      [ txt $ syntax $ constInfo cmd
+      , padRight (Pad 2) $ txt $ " : " <> prettyText (inferConst cmd)
+      , listDevices cmd
+      ]
+
+  base = gs ^? baseRobot
+  entsByCap = case base of
+    Just r ->
+      M.map NE.toList $
+        entitiesByCapability $
+          (r ^. installedDevices) `union` (r ^. robotInventory)
+    Nothing -> mempty
+
+  listDevices cmd = vBox $ map drawLabelledEntityName providerDevices
+   where
+    providerDevices =
+      concatMap (flip (M.findWithDefault []) entsByCap) $
+        maybeToList $
+          constCaps cmd
 
 -- | Generate a pop-up widget to display the description of an entity.
 descriptionWidget :: AppState -> Entity -> Widget Name
@@ -753,10 +712,10 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
   notificationKey notifLens key name
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
-      let highlight
-            | s ^. gameState . notifLens . notificationsCount > 0 = Alert
-            | otherwise = NoHighlight
-       in Just (highlight, key, name)
+        let highlight
+              | s ^. gameState . notifLens . notificationsCount > 0 = Alert
+              | otherwise = NoHighlight
+         in Just (highlight, key, name)
 
   globalKeyCmds =
     catMaybes
@@ -787,7 +746,9 @@ drawKeyMenu s =
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   focusedPanelCmds =
     map highlightKeyCmds $
-      keyCmdsFor $ focusGetCurrent $ view (uiState . uiFocusRing) s
+      keyCmdsFor $
+        focusGetCurrent $
+          view (uiState . uiFocusRing) s
 
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
@@ -807,7 +768,8 @@ drawKeyMenu s =
     Typing -> "pilot"
 
   gameModeWidget =
-    padLeft Max . padLeftRight 1
+    padLeft Max
+      . padLeftRight 1
       . txt
       . (<> " mode")
       $ case creative of
@@ -883,48 +845,6 @@ drawWorld showRobots g =
           ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
       render . vBox . map hBox . chunksOf w . map (drawLoc showRobots g) $ ixs
 
--- | Render the 'Display' for a specific location.
-drawLoc :: Bool -> GameState -> W.Coords -> Widget Name
-drawLoc showRobots g = renderDisplay . displayLoc showRobots g
-
-displayTerrainCell :: GameState -> W.Coords -> Display
-displayTerrainCell g coords = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
-
-displayEntityCell, displayRobotCell :: GameState -> W.Coords -> [Display]
-displayRobotCell g coords = map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
-displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
- where
-  displayForEntity :: Entity -> Display
-  displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
-
-  known e =
-    e `hasProperty` Known
-      || (e ^. entityName) `elem` (g ^. knownEntities)
-      || case hidingMode g of
-        HideAllEntities -> False
-        HideNoEntity -> True
-        HideEntityUnknownTo ro -> ro `robotKnows` e
-
--- | Get the 'Display' for a specific location, by combining the
---   'Display's for the terrain, entity, and robots at the location.
-displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords =
-  sconcat $ terrain NE.:| entity <> robots
- where
-  terrain = displayTerrainCell g coords
-  entity = displayEntityCell g coords
-  robots =
-    if showRobots
-      then displayRobotCell g coords
-      else []
-
-data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
-
-hidingMode :: GameState -> HideEntity
-hidingMode g
-  | g ^. creativeMode = HideNoEntity
-  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
-
 ------------------------------------------------------------
 -- Robot inventory panel
 ------------------------------------------------------------
@@ -934,7 +854,7 @@ hidingMode g
 drawRobotPanel :: AppState -> Widget Name
 drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
   (Just r, Just (_, lst)) ->
-    let V2 x y = r ^. robotLocation
+    let Location x y = r ^. robotLocation
         drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
      in padBottom Max $
           vBox
@@ -1038,13 +958,13 @@ explainRecipes :: AppState -> Entity -> Widget Name
 explainRecipes s e
   | null recipes = emptyWidget
   | otherwise =
-    vBox
-      [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
-      , padLeftRight 2 $
-          hCenter $
-            vBox $
-              map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
-      ]
+      vBox
+        [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
+        , padLeftRight 2 $
+            hCenter $
+              vBox $
+                map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
+        ]
  where
   recipes = recipesWith s e
 
@@ -1099,11 +1019,11 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
   connector
     | null reqs = hLimit 5 hBorder
     | otherwise =
-      hBox
-        [ hLimit 2 hBorder
-        , joinableBorder (Edges True False True True)
-        , hLimit 2 hBorder
-        ]
+        hBox
+          [ hLimit 2 hBorder
+          , joinableBorder (Edges True False True True)
+          , hLimit 2 hBorder
+          ]
   inLen = length ins + length times
   outLen = length outs
   times = [(fromIntegral time, timeE) | time /= 1]

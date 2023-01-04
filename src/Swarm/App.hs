@@ -23,6 +23,7 @@ import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
+import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
@@ -80,10 +81,11 @@ appMain opts = do
       let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
       let logE e = logEvent ErrorTrace ("Web API", -2) (T.pack e)
       let s' =
-            s & runtimeState
-              %~ case eport of
-                Right p -> (webPort ?~ p) . (eventLog %~ logP p)
-                Left e -> eventLog %~ logE e
+            s
+              & runtimeState
+                %~ case eport of
+                  Right p -> (webPort ?~ p) . (eventLog %~ logP p)
+                  Left e -> eventLog %~ logE e
 
       -- Update the reference for every event
       let eventHandler e = do
