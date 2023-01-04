@@ -12,6 +12,7 @@ import Data.Yaml qualified as Y
 import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.Util
+import Swarm.TUI.Model.Achievement.Definitions
 import System.Directory (
   createDirectoryIfMissing,
   doesDirectoryExist,
@@ -19,7 +20,6 @@ import System.Directory (
   listDirectory,
  )
 import System.FilePath
-import System.IO (hPutStrLn, stderr)
 
 -- | Get path to swarm achievements, optionally creating necessary
 --   directories.
@@ -31,8 +31,9 @@ getSwarmAchievementsPath createDirs = do
   return achievementsDir
 
 -- | Load saved info about achievements from XDG data directory.
+-- Returns a tuple of warnings and attained achievements.
 loadAchievementsInfo ::
-  IO (Either Text [Attainment])
+  IO ([Text], [Attainment])
 loadAchievementsInfo = do
   savedAchievementsPath <- getSwarmAchievementsPath False
   doesParentExist <- doesDirectoryExist savedAchievementsPath
@@ -54,11 +55,8 @@ loadAchievementsInfo = do
                   , quote $ T.pack fullPath
                   , "is not a file!"
                   ]
-      let (bads, goods) = partitionEithers eithersList
-      forM_ bads $ \b ->
-        hPutStrLn stderr $ T.unpack b
-      return $ pure goods
-    else return $ pure []
+      return $ partitionEithers eithersList
+    else return (["No saved achievements directory."], [])
 
 -- | Save info about achievements to XDG data directory.
 saveAchievementsInfo ::
@@ -67,10 +65,8 @@ saveAchievementsInfo ::
 saveAchievementsInfo attainmentList = do
   savedAchievementsPath <- getSwarmAchievementsPath True
   forM_ attainmentList $ \x -> do
-    let achievementName =
-          T.unpack $
-            T.takeWhileEnd (/= ' ') $
-              T.pack $
-                show (_achievement x)
+    let achievementName = case _achievement x of
+          GlobalAchievement y -> show y
+          GameplayAchievement y -> show y
         fullPath = savedAchievementsPath </> achievementName
     Y.encodeFile fullPath x

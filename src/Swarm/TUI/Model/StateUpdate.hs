@@ -39,6 +39,7 @@ import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.Clock
+import Swarm.Game.Robot
 
 -- | Initialize the 'AppState'.
 initAppState :: AppOpts -> ExceptT Text IO AppState
@@ -46,8 +47,10 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   gs <- initGameState
-  ui <- initUIState (not skipMenu) cheatMode
+  (warnings, ui) <- initUIState (not skipMenu) cheatMode
   let rs = initRuntimeState
+  forM_ warnings $ \x ->
+    rs . eventLog %= logEvent ErrorTrace ("Loading", -7) x
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
