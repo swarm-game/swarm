@@ -138,19 +138,28 @@ gameTick = do
       -- Execute the win condition check *hypothetically*: i.e. in a
       -- fresh CESK machine, using a copy of the current game state.
       v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
+      let markWin = winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
       case v of
         -- Log exceptions in the message queue so we can check for them in tests
         Left exn -> do
-          em <- use entityMap
-          time <- use ticks
           let h = hypotheticalRobot (Out VUnit emptyStore []) 0
-              hid = view robotID h
-              hn = view robotName h
-              farAway = Location maxBound maxBound
-          let m = LogEntry time ErrorTrace hn hid farAway $ formatExn em exn
+          em <- use entityMap
+          m <- evalState @Robot h $ createLogEntry ErrorTrace (formatExn em exn)
           emitMessage m
-        Right (VBool True) -> winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
-        _ -> return ()
+        Right (VBool res) -> when res markWin
+        Right (VResult (VBool res) _env) -> when res markWin
+        Right val -> do
+          let h = hypotheticalRobot (Out VUnit emptyStore []) 0
+          m <-
+            evalState @Robot h $
+              createLogEntry ErrorTrace $
+                T.unwords
+                  [ "Non boolean value:"
+                  , prettyValue val
+                  , "real:"
+                  , T.pack (show val)
+                  ]
+          emitMessage m
     _ -> return ()
 
   -- Advance the game time by one.

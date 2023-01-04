@@ -1,5 +1,5 @@
 version: 1
-name: Evaluate possession of an item
+name: Evaluate nonpossession of an item
 description: |
   Opposite test case of 858-possession-objective
 creative: false
