@@ -77,6 +77,7 @@
                "create"
                "time"
                "whereami"
+               "heading"
                "blocked"
                "scan"
                "upload"
