@@ -31,7 +31,6 @@ import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
-import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
@@ -42,7 +41,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -1715,26 +1714,20 @@ execConst c vs s k = do
 
     -- Check that all required device names exist (fail with
     -- an exception if not) and convert them to 'Entity' values.
-
-    -- devs :: [Entity]
-    devs <- forM devNames $ \devName ->
+    (devs :: [Entity]) <- forM devNames $ \devName ->
       E.lookupEntityName devName em `isJustOrFail` ["Unknown device required: " <> devName]
 
     -- Check that all required inventory entity names exist (fail with
     -- an exception if not) and convert them to 'Entity' values, with
     -- an associated count for each.
-
-    -- reqElems :: [(Int, Entity)]
-    reqElems <- forM (M.assocs reqInvNames) $ \(eName, n) ->
+    (reqInv :: Inventory) <- fmap E.fromElems . forM (M.assocs reqInvNames) $ \(eName, n) ->
       (n,)
         <$> ( E.lookupEntityName eName em
                 `isJustOrFail` ["Unknown entity required: " <> eName]
             )
-    let reqInv :: Inventory
-        reqInv = E.fromElems reqElems
 
     let -- List of possible devices per requirement.  For the
-        -- requirements that step from a required capability, we
+        -- requirements that stem from a required capability, we
         -- remember the capability alongside the possible devices, to
         -- help with later error message generation.
         possibleDevices :: [(Maybe Capability, [Entity])]
@@ -1747,44 +1740,57 @@ execConst c vs s k = do
         deviceOK :: Entity -> Bool
         deviceOK d = parentInventory `E.contains` d || childDevices `E.contains` d
 
-        -- Refine each list of possible devices into a set of
+        -- Partition each list of possible devices into a set of
         -- available devices and a set of unavailable devices.
         -- There's a problem if some capability is required but no
         -- devices that provide it are available.  In that case we can
-        -- use the second set of unavailable devices to print an
-        -- appropriate error message.
-        deviceSets :: [(Maybe Capability, (Set Entity, Set Entity))]
-        deviceSets =
-          map (second (Lens.over both S.fromList . L.partition deviceOK)) possibleDevices
+        -- print an error message, using the second set as a list of
+        -- suggestions.
+        partitionedDevices :: [(Set Entity, Set Entity)]
+        partitionedDevices =
+          map (Lens.over both S.fromList . L.partition deviceOK . snd) possibleDevices
 
-        -- Format a set of suggested devices for use in an error message
-        formatDevices :: Set Entity -> Text
-        formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
-
-        -- -- Capabilities which are not provided by any device in the inventory,
-        -- -- i.e. those capabilities for which the corresponding device set is empty.
-        -- missingCaps = S.fromList [cap | (Just cap, ds) <- deviceSets, null ds]
-
+        -- Devices installed on the child, as a Set instead of an
+        -- Inventory for convenience.
+        alreadyInstalled :: Set Entity
         alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
 
-        -- Figure out what is missing from the required inventory
+        -- Figure out what is still missing of the required inventory:
+        -- the required inventory, less any inventory the child robot
+        -- already has.
         missingChildInv = reqInv `E.difference` childInventory
 
     if creative
-      then -- In creative mode, just return ALL the devices
-        return (S.unions (map (S.fromList . snd) possibleDevices) `S.difference` alreadyInstalled, missingChildInv)
+      then
+        return
+          ( -- In creative mode, just install ALL the devices
+            -- providing each required capability (because, why
+            -- not?). But don't reinstall any that are already
+            -- installed.
+            S.unions (map (S.fromList . snd) possibleDevices) `S.difference` alreadyInstalled
+          , -- Conjure the necessary missing inventory out of thin
+            -- air.
+            missingChildInv
+          )
       else do
-        -- check if robot has all devices to execute new command
-        not (any (null . fst . snd) deviceSets)
+        -- First, check that devices actually exist AT ALL to provide every
+        -- required capability.  If not, we will generate an error message saying
+        -- something like "missing capability X but no device yet provides it".
+        let capsWithNoDevice = mapMaybe fst . filter (null . snd) $ possibleDevices
+        null capsWithNoDevice
+          `holdsOr` Incapable fixI (R.Requirements (S.fromList capsWithNoDevice) S.empty M.empty) cmd
+
+        -- Now, ensure there is at least one device available to be
+        -- installed for each requirement.
+        let missingDevices = map snd . filter (null . fst) $ partitionedDevices
+        null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"
                             : "not have required devices, please"
                             : formatIncapableFix fixI <> ":"
-                            : (("\n  - " <>) . formatDevices <$> filter (not . null) missingDevices)
+                            : (("\n  - " <>) . formatDevices <$> missingDevices)
                         )
-        -- check that there are in fact devices to provide every required capability
-        not (any null deviceSets) `holdsOr` Incapable fixI (R.Requirements missingCaps S.empty M.empty) cmd
 
-        let minimalInstallSet = smallHittingSet (filter (S.null . S.intersection alreadyInstalled) (map snd deviceSets))
+        let minimalInstallSet = smallHittingSet (filter (S.null . S.intersection alreadyInstalled) (map fst partitionedDevices))
 
             -- Check that we have enough in our inventory to cover the
             -- required installs PLUS what's missing from the child
@@ -1964,6 +1970,11 @@ verbedGrabbingCmd = \case
   Harvest' -> "harvested"
   Grab' -> "grabbed"
   Swap' -> "swapped"
+
+-- | Format a set of suggested devices for use in an error message,
+--   in the format @device1 or device2 or ... or deviceN@.
+formatDevices :: Set Entity -> Text
+formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented
