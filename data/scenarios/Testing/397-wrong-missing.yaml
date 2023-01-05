@@ -13,7 +13,7 @@ objectives:
     - |
       This is a dummy condition that just ensures the base has
       finished trying to run the problematic `build` command.  The
-      scenario *should* generate an error message; what really care
+      scenario *should* generate an error message; what we really care
       about is whether the generated error message is correct, which
       is checked in test/integration/Main.hs .
 solution: |
