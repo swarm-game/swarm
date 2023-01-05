@@ -1,4 +1,4 @@
-module Swarm.TUI.Editor.EditorView where
+module Swarm.TUI.Editor.View where
 
 import Brick hiding (Direction)
 import Brick.Focus
@@ -13,13 +13,14 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
-import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.Area qualified as EA
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
-import Swarm.TUI.View.Util
+import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (listEnums)
 
 drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
@@ -73,7 +74,7 @@ drawWorldEditor toplevelFocusRing uis =
   brushWidget =
     mkFormControl (WorldEditorPanelControl BrushSelector) $
       padRight (Pad 1) (str "Brush:")
-        <+> swatchContent (worldEditor ^. terrainList) drawLabeledTerrainSwatch
+        <+> swatchContent (worldEditor ^. terrainList) VU.drawLabeledTerrainSwatch
 
   entityWidget =
     mkFormControl (WorldEditorPanelControl EntitySelector) $
@@ -92,18 +93,18 @@ drawWorldEditor toplevelFocusRing uis =
         , areaContent
         ]
 
-  renderBounds (W.Coords (x1, y1), W.Coords (x2, y2)) =
+  renderBounds (upperLeftCoord, lowerRightCoord) =
     str $
-      L.intercalate
-        " @ "
-        [ rectSize
-        , show (y1, x1) -- Note the inverted coords!
-        ]
+      unwords $
+        L.intersperse
+          "@"
+          [ EA.renderRectDimensions rectArea
+          , VU.locationToString upperLeftLoc
+          ]
    where
-    -- Note that the width and height are swapped!
-    myHeight = x2 - x1
-    myWidth = y2 - y1
-    rectSize = L.intercalate "x" [show myWidth, show myHeight]
+    upperLeftLoc = W.coordsToLoc upperLeftCoord
+    lowerRightLoc = W.coordsToLoc lowerRightCoord
+    rectArea = EA.cornersToArea upperLeftLoc lowerRightLoc
 
   outputWidget =
     mkFormControl (WorldEditorPanelControl OutputPathSelector) $
@@ -157,7 +158,7 @@ drawTerrainSelector s =
 
 listDrawTerrainElement :: Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement pos _isSelected a =
-  clickable (TerrainListItem pos) $ drawLabeledTerrainSwatch a
+  clickable (TerrainListItem pos) $ VU.drawLabeledTerrainSwatch a
 
 drawEntityPaintSelector :: AppState -> Widget Name
 drawEntityPaintSelector s =

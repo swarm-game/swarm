@@ -139,8 +139,8 @@ dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
   DRelative e -> case e of
     DLeft -> relative perp
-    DRight -> relative (fmap negate . perp)
-    DBack -> relative (fmap negate)
+    DRight -> relative (negated . perp)
+    DBack -> relative negated
     DDown -> relative (const down)
     DForward -> relative id
   DAbsolute e -> cardinal $ toHeading e

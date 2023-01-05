@@ -93,8 +93,8 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
-import Swarm.TUI.Editor.EditorModel
-import Swarm.TUI.Editor.EditorView qualified as EV
+import Swarm.TUI.Editor.Model
+import Swarm.TUI.Editor.View qualified as EV
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Repl
@@ -102,7 +102,7 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.CellDisplay
-import Swarm.TUI.View.Util
+import Swarm.TUI.View.Util as VU
 import Swarm.Util
 import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
@@ -346,15 +346,11 @@ drawGameUI s =
   moreBot = s ^. uiState . uiMoreInfoBot
 
 drawWorldCursorInfo :: WorldEditor Name -> GameState -> W.Coords -> Widget Name
-drawWorldCursorInfo worldEditor g coords@(W.Coords (y, x)) =
+drawWorldCursorInfo worldEditor g coords =
   hBox $ tileMemberWidgets ++ [coordsWidget]
  where
   coordsWidget =
-    txt $
-      T.unwords
-        [ from $ show x
-        , from $ show $ y * (-1)
-        ]
+    str $ VU.locationToString $ W.coordsToLoc coords
 
   tileMembers = terrain : mapMaybe merge [entity, robot]
   tileMemberWidgets =

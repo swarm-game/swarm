@@ -59,7 +59,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions

@@ -1,14 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Swarm.TUI.Editor.EditorModel where
+module Swarm.TUI.Editor.Model where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (.=), (<.>))
-import Data.Int (Int32)
 import Data.Map qualified as M
-import Data.Maybe (listToMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Display (Display)
 import Swarm.Game.Entity qualified as E
@@ -18,22 +16,11 @@ import Swarm.Game.World qualified as W
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.Clock
-
-data AreaDimensions = AreaDimensions
-  { rectWidth :: Int32
-  , rectHeight :: Int32
-  }
-
-getAreaDimensions :: [[a]] -> AreaDimensions
-getAreaDimensions cellGrid =
-  AreaDimensions w h
- where
-  w = fromIntegral $ maybe 0 length $ listToMaybe cellGrid -- column count
-  h = fromIntegral $ length cellGrid -- row count
+import Swarm.Game.Scenario.WorldDescription
 
 data BoundsSelectionStep
   = UpperLeftPending
-  | -- | Stores the *mouse coords* of the upper-left click
+  | -- | Stores the *world coords* of the upper-left click
     LowerRightPending W.Coords
   | SelectionComplete
 
@@ -70,7 +57,7 @@ data WorldEditor n = WorldEditor
   , _entityPaintList :: BL.List n EntityFacade
   -- ^ This field has deferred initialization; it gets populated when a game
   -- is initialized.
-  , _paintedTerrain :: M.Map W.Coords (TerrainType, Maybe EntityFacade)
+  , _paintedTerrain :: M.Map W.Coords TerrainEntityFacadePair
   , _editingBounds :: MapEditingBounds
   , _editorFocusRing :: FocusRing n
   , _outputFilePath :: FilePath
@@ -93,6 +80,8 @@ initialWorldEditor ts =
  where
   bounds =
     MapEditingBounds
+      -- Note that these are in "world coordinates",
+      -- not in player-facing "Location" coordinates
       (Just (W.Coords (-10, -20), W.Coords (10, 20)))
       (ts - 1)
       SelectionComplete

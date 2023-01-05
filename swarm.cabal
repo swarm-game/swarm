@@ -116,10 +116,11 @@ library
                       Swarm.Game.WorldGen
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
-                      Swarm.TUI.Editor.EditorController
-                      Swarm.TUI.Editor.EditorJson
-                      Swarm.TUI.Editor.EditorModel
-                      Swarm.TUI.Editor.EditorView
+                      Swarm.TUI.Editor.Area
+                      Swarm.TUI.Editor.Controller
+                      Swarm.TUI.Editor.Json
+                      Swarm.TUI.Editor.Model
+                      Swarm.TUI.Editor.View
                       Swarm.TUI.Editor.Util
                       Swarm.TUI.List
                       Swarm.TUI.Panel

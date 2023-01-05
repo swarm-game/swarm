@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.Editor.EditorController where
+module Swarm.TUI.Editor.Controller where
 
 import Brick hiding (Direction (..), Location (..))
 import Brick.Focus
@@ -30,8 +30,8 @@ import Swarm.Game.State
 import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Controller.Util
-import Swarm.TUI.Editor.EditorJson (SkeletonScenario (SkeletonScenario))
-import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
@@ -40,6 +40,7 @@ import Swarm.Util (binTuples, histogram)
 import Swarm.Util qualified as U
 import Swarm.Util.Location
 import System.Clock
+import Swarm.TUI.Editor.Area (AreaDimensions (..), getAreaDimensions)
 
 ------------------------------------------------------------
 -- World Editor panel events

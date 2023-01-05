@@ -2,7 +2,7 @@
 
 module Swarm.TUI.View.Util where
 
-import Brick hiding (Direction)
+import Brick hiding (Direction, Location)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
@@ -23,6 +23,7 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.Util (listEnums)
+import Swarm.Util.Location
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
@@ -118,3 +119,7 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
   quitAction = case m of
     NoMenu -> "quit"
     _ -> "return to the menu"
+
+locationToString :: Location -> String
+locationToString (Location x y) =
+  unwords $ map show [x, y]

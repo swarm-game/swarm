@@ -1,4 +1,4 @@
-module Swarm.TUI.Editor.EditorJson where
+module Swarm.TUI.Editor.Json where
 
 import Data.Text (Text)
 import Data.Yaml as Y

@@ -36,7 +36,8 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.Model qualified as EM
+import Swarm.TUI.Editor.Area qualified as EA
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Attainment
@@ -44,7 +45,6 @@ import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
-import Swarm.Util.Location
 import System.Clock
 
 -- | Initialize the 'AppState'.
@@ -145,20 +145,20 @@ scenarioToUIState siPair@(scenario, _) gs u = do
       & uiREPL . replHistory %~ restartREPLHistory
       & scenarioRef ?~ siPair
       & lastFrameTime .~ curTime
-      & uiWorldEditor . entityPaintList %~ BL.listReplace newList Nothing
-      & uiWorldEditor . editingBounds . boundsRect %~ setNewBounds
+      & uiWorldEditor . EM.entityPaintList %~ BL.listReplace newList Nothing
+      & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
  where
   myWorld = scenario ^. scenarioWorld
-  Location left top = ul myWorld
+  upperLeftLoc = ul myWorld
+
+  a = EA.getAreaDimensions $ area myWorld
+  lowerRightLoc = EA.upperLeftToBottomRight a upperLeftLoc
+  newBounds = (W.locToCoords upperLeftLoc, W.locToCoords lowerRightLoc)
 
   setNewBounds maybeOldBounds =
-    if mapHeight /= 0 && mapWidth /= 0
-      then Just newBounds
-      else maybeOldBounds
-
-  -- TODO Note inversion of horizontal and vertical coordinates
-  newBounds = (W.Coords (-top, left), W.Coords (-top + mapHeight - 1, left + mapWidth - 1))
-  AreaDimensions mapWidth mapHeight = getAreaDimensions $ area myWorld
+    if EA.isEmpty a
+      then maybeOldBounds
+      else Just newBounds
 
   entities = M.elems $ entitiesByName $ gs ^. entityMap
   newList = V.fromList $ map mkPaint entities

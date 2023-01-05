@@ -85,8 +85,8 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.TUI.Controller.Util
-import Swarm.TUI.Editor.EditorController qualified as EC
-import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.Controller qualified as EC
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List

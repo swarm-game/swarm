@@ -10,7 +10,7 @@ import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Editor.EditorModel
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
 
 getContentAt ::
@@ -47,13 +47,22 @@ getTerrainAt ::
 getTerrainAt editor w coords = fst $ getContentAt editor w coords
 
 isOutsideTopLeftCorner ::
-  -- | corner coords
+  -- | top left corner coords
   W.Coords ->
   -- | current coords
   W.Coords ->
   Bool
-isOutsideTopLeftCorner (W.Coords (xLeft, yTop)) (W.Coords (x, y)) =
+isOutsideTopLeftCorner (W.Coords (yTop, xLeft)) (W.Coords (y, x)) =
   x < xLeft || y < yTop
+
+isOutsideBottomRightCorner ::
+  -- | bottom right corner coords
+  W.Coords ->
+  -- | current coords
+  W.Coords ->
+  Bool
+isOutsideBottomRightCorner (W.Coords (yBottom, xRight)) (W.Coords (y, x)) =
+  x > xRight || y > yBottom
 
 isOutsideRegion ::
   -- | full bounds
@@ -61,9 +70,8 @@ isOutsideRegion ::
   -- | current coords
   W.Coords ->
   Bool
-isOutsideRegion (tl, W.Coords (xRight, yBottom)) c@(W.Coords (x, y)) =
-  isOutsideTopLeftCorner tl c
-    || (x > xRight || y > yBottom)
+isOutsideRegion (tl, br) coord =
+  isOutsideTopLeftCorner tl coord || isOutsideBottomRightCorner br coord
 
 getEditedMapRectangle ::
   WorldEditor Name ->
@@ -71,15 +79,10 @@ getEditedMapRectangle ::
   W.World Int Entity ->
   [[CellPaintDisplay]]
 getEditedMapRectangle _ Nothing _ = []
-getEditedMapRectangle worldEditor (Just (tl, br)) w =
+getEditedMapRectangle worldEditor (Just coords) w =
   map renderRow [yTop .. yBottom]
  where
-  -- We swap the horizontal and vertical coordinate.
-  -- TODO If this is necessary, then what is mouseLocToWorldCoords for?
-  toWorldCoords (W.Coords (mx, my)) = W.Coords (my, mx)
-
-  W.Coords (xLeft, yTop) = toWorldCoords tl
-  W.Coords (xRight, yBottom) = toWorldCoords br
+  (W.Coords (yTop, xLeft), W.Coords (yBottom, xRight)) = coords
 
   getContent = getContentAt worldEditor w
 
