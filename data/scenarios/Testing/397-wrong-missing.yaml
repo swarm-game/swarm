@@ -8,16 +8,15 @@ description: |
   https://github.com/swarm-game/swarm/issues/397
 objectives:
   - condition: |
-      as base { ishere "rock" }
+      t <- time; return (t == 2)
     goal:
     - |
-      This is a dummy condition that just ensures the base has
-      finished trying to run the problematic `build` command.  The
-      scenario *should* generate an error message; what we really care
-      about is whether the generated error message is correct, which
-      is checked in test/integration/Main.hs .
+      This is a dummy condition that just ensures the base has had
+      time to run the problematic `build` command.  The scenario
+      *should* generate an error message; what we really care about is
+      whether the generated error message is correct, which is checked
+      in test/integration/Main.hs .
 solution: |
-  build {require 1 "rock"; wait 4; place "rock"};
   build {move; turn right; loc <- whereami}
 robots:
   - name: base
@@ -26,11 +25,8 @@ robots:
       - 3D printer
       - logger
     inventory:
-      - [1, clock]
-      - [1, grabber]
       - [1, treads]
-      - [2, solar panel]
-      - [1, rock]
+      - [1, solar panel]
 world:
   default: [blank]
   palette:
