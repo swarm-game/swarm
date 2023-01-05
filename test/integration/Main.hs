@@ -5,7 +5,7 @@
 -- | Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^..), (^?!))
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
 import Control.Monad (filterM, forM_, unless, void, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
@@ -249,10 +249,10 @@ testScenarioSolution _ci _em =
         Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
           let gs' =
                 gs
-                  -- See #827 for an explanation of why it's important to set
+                  -- See #827 for an explanation of why it's important to add to
                   -- the robotContext defReqs here (and also why this will,
                   -- hopefully, eventually, go away).
-                  & baseRobot . robotContext . defReqs .~ reqCtx
+                  & baseRobot . robotContext . defReqs <>~ reqCtx
                   & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
           m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
           case m of
