@@ -36,8 +36,8 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Area qualified as EA
+import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Attainment

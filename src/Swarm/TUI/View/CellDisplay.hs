@@ -16,8 +16,8 @@ import Swarm.Game.State
 import Swarm.Game.Terrain (terrainMap)
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Model
-import Swarm.TUI.Editor.View qualified as EV
 import Swarm.TUI.Editor.Util qualified as EU
+import Swarm.TUI.Editor.View qualified as EV
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 

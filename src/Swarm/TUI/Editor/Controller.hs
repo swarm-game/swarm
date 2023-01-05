@@ -30,6 +30,7 @@ import Swarm.Game.State
 import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Controller.Util
+import Swarm.TUI.Editor.Area (AreaDimensions (..), getAreaDimensions)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
@@ -40,7 +41,6 @@ import Swarm.Util (binTuples, histogram)
 import Swarm.Util qualified as U
 import Swarm.Util.Location
 import System.Clock
-import Swarm.TUI.Editor.Area (AreaDimensions (..), getAreaDimensions)
 
 ------------------------------------------------------------
 -- World Editor panel events

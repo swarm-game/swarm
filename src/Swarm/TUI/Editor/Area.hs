@@ -2,11 +2,11 @@
 
 module Swarm.TUI.Editor.Area where
 
-import Linear (V2 (..))
-import Swarm.Util.Location
-import Data.Maybe (listToMaybe)
 import Data.Int (Int32)
 import Data.List qualified as L
+import Data.Maybe (listToMaybe)
+import Linear (V2 (..))
+import Swarm.Util.Location
 
 data AreaDimensions = AreaDimensions
   { rectWidth :: Int32
@@ -25,8 +25,8 @@ invertVecY (V2 x y) = V2 x (-y)
 upperLeftToBottomRight :: AreaDimensions -> Location -> Location
 upperLeftToBottomRight (AreaDimensions w h) upperLeft =
   upperLeft .+^ displacement
-  where
-    displacement = invertVecY $ subtract 1 <$> V2 w h
+ where
+  displacement = invertVecY $ subtract 1 <$> V2 w h
 
 -- | Converts the displacement vector between the two
 -- diagonal corners of the rectangle into an "AreaDimensions" record.
@@ -35,7 +35,7 @@ cornersToArea :: Location -> Location -> AreaDimensions
 cornersToArea upperLeft lowerRight =
   AreaDimensions x y
  where
-  V2 x y = (+1) <$> invertVecY (lowerRight .-. upperLeft)
+  V2 x y = (+ 1) <$> invertVecY (lowerRight .-. upperLeft)
 
 isEmpty :: AreaDimensions -> Bool
 isEmpty (AreaDimensions w h) = w == 0 || h == 0
