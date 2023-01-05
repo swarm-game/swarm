@@ -836,7 +836,7 @@ handleREPLEventTyping = \case
             -- `reprogram` at runtime.  See the discussion at
             -- https://github.com/swarm-game/swarm/pull/827 for more
             -- details.
-            . (gameState . baseRobot . robotContext . defReqs .~ reqCtx)
+            . (gameState . baseRobot . robotContext . defReqs <>~ reqCtx)
             -- Set up the robot's CESK machine to evaluate/execute the
             -- given term, being sure to initialize the CESK machine
             -- environment and store from the top-level context.
