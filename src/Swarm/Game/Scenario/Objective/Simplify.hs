@@ -9,6 +9,12 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
 
+-- | Used only by "hasContradiction".
+-- Note that the Booleans returned in this tuple are not actually used
+-- as conditions, and therefore their semantic convention (e.g. associating
+-- True = Positive and False = Negative) is irrelevant.
+-- Rather, they are collected into sets
+-- to determine whether both True and False exist for a key.
 extractConstFromSigned :: Signed a -> (a, Bool)
 extractConstFromSigned v = case v of
   Negative x -> (x, False)
