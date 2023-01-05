@@ -5,7 +5,7 @@
 -- | Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^?!))
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^..), (^?!))
 import Control.Monad (filterM, forM_, unless, void, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
@@ -15,6 +15,7 @@ import Data.Foldable (Foldable (toList), find)
 import Data.IntSet qualified as IS
 import Data.Map qualified as M
 import Data.Maybe (isJust)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -23,7 +24,7 @@ import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (defReqs, leText, machine, robotContext, robotLog, waitingUntil)
+import Swarm.Game.Robot (LogEntry, defReqs, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -123,6 +124,8 @@ time = \case
   sec :: Int
   sec = 10 ^ (6 :: Int)
 
+data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
+
 testScenarioSolution :: Bool -> EntityMap -> TestTree
 testScenarioSolution _ci _em =
   testGroup
@@ -139,7 +142,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/install"
         , testSolution Default "Tutorials/build"
         , testSolution Default "Tutorials/bind2"
-        , testSolution' Default "Tutorials/crash" $ \g -> do
+        , testSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints rs
@@ -176,7 +179,7 @@ testScenarioSolution _ci _em =
         [ testSolution Default "Testing/394-build-drill"
         , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
-        , testSolution' Default "Testing/475-wait-one" $ \g -> do
+        , testSolution' Default "Testing/475-wait-one" CheckForBadErrors $ \g -> do
             let t = g ^. ticks
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
@@ -216,6 +219,16 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/710-multi-robot"
         , testSolution Default "Testing/920-meet"
         , testSolution Default "Testing/955-heading"
+        , testSolution' Default "Testing/397-wrong-missing" AllowBadErrors $ \g -> do
+            let msgs =
+                  (g ^. messageQueue . to seqToTexts)
+                    <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
+
+            assertBool "Should be some messages" (not (null msgs))
+            assertBool "Error messages should not mention treads" $
+              not (any ("treads" `T.isInfixOf`) msgs)
+            assertBool "Error message should mention no device provides senseloc" $
+              any ("senseloc" `T.isInfixOf`) msgs
         ]
     ]
  where
@@ -223,10 +236,10 @@ testScenarioSolution _ci _em =
   -- expectFailIf b = if b then expectFailBecause else (\_ x -> x)
 
   testSolution :: Time -> FilePath -> TestTree
-  testSolution s p = testSolution' s p (const $ pure ())
+  testSolution s p = testSolution' s p CheckForBadErrors (const $ pure ())
 
-  testSolution' :: Time -> FilePath -> (GameState -> Assertion) -> TestTree
-  testSolution' s p verify = testCase p $ do
+  testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
+  testSolution' s p shouldCheckBadErrors verify = testCase p $ do
     out <- runExceptT $ initGameStateForScenario p Nothing Nothing
     case out of
       Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
@@ -246,7 +259,7 @@ testScenarioSolution _ci _em =
             Just g -> do
               -- When debugging, try logging all robot messages.
               -- printAllLogs
-              noBadErrors g
+              when (shouldCheckBadErrors == CheckForBadErrors) $ noBadErrors g
               verify g
 
   playUntilWin :: StateT GameState IO ()
@@ -269,8 +282,10 @@ badErrorsInLogs g =
     (g ^. robotMap)
     <> filter isBad (seqToTexts $ g ^. messageQueue)
  where
-  seqToTexts = map (view leText) . toList
   isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
+
+seqToTexts :: Seq LogEntry -> [Text]
+seqToTexts = map (view leText) . toList
 
 printAllLogs :: GameState -> IO ()
 printAllLogs g =
