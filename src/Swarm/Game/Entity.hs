@@ -293,7 +293,7 @@ data EntityMap = EntityMap
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 instance Semigroup EntityMap where
-  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)
+  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (M.unionWith (<>) c1 c2)
 
 instance Monoid EntityMap where
   mempty = EntityMap M.empty M.empty
