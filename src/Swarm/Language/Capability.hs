@@ -212,6 +212,7 @@ constCaps = \case
   Time -> Just CTime
   Wait -> Just CTime
   Whereami -> Just CSenseloc
+  Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText

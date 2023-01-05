@@ -1041,9 +1041,16 @@
     attr: device
     char: 'N'
   description:
-  - "A compass gives a robot the ability to orient using cardinal directions: north, south, west, and east."
-  - "Example:"
-  - "turn west; move; turn north"
+  - |
+    A compass gives a robot the ability to orient using the cardinal
+    directions north, south, west, and east; for example, `turn west;
+    move; turn north`.
+  - |
+    It also enables the `heading : cmd dir` command, which returns the
+    robot's current heading. For example, the following code moves
+    east and then restores the same heading as before:
+  - |
+    d <- heading; turn east; move; turn d
   properties: [portable]
   capabilities: [orient]
 
