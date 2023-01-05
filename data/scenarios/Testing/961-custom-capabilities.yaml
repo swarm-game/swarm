@@ -1,0 +1,42 @@
+version: 1
+name: Test issue 961 (custom entities providing capabilities)
+description: |
+  Test that custom entities providing a capability are considered
+  for installation.
+  https://github.com/swarm-game/swarm/issues/961
+objectives:
+  - condition: |
+      mover <- robotNumbered 1;
+      as mover { loc <- whereami; return $ loc == (0,1) }
+    goal:
+    - |
+      Get a robot to (0,1)!
+solution: |
+  build {move}
+entities:
+  - name: wheels
+    display:
+      attr: device
+      char: 'o'
+    description:
+    - A non-traditional means of locomotion.
+    properties: [known, portable]
+    capabilities: [move]
+robots:
+  - name: base
+    dir: [0,1]
+    devices:
+      - 3D printer
+      - logger
+    inventory:
+      - [1, wheels]
+      - [1, solar panel]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+  upperleft: [0,1]
+  map: |
+    .
+    Ω
