@@ -55,9 +55,9 @@ module Data.BoolExpr (
 where
 
 import Control.Monad (ap)
-import Data.Traversable
 import Data.Aeson
 import Data.Char (toLower)
+import Data.Traversable
 import GHC.Generics (Generic)
 
 -- | Signed values are either positive or negative.
