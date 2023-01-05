@@ -830,7 +830,7 @@ handleREPLEventTyping = \case
             -- term (by `def` statements) to their requirements.
             -- E.g. if we had `def m = move end`, the reqCtx would
             -- record the fact that `m` needs the `move` capability.
-            -- We simply dump the entire `reqCtx` into the robot's
+            -- We simply add the entire `reqCtx` to the robot's
             -- context, so we can look up requirements if we later
             -- need to requirements-check an argument to `build` or
             -- `reprogram` at runtime.  See the discussion at
