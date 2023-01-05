@@ -229,6 +229,7 @@ testScenarioSolution _ci _em =
               not (any ("treads" `T.isInfixOf`) msgs)
             assertBool "Error message should mention no device provides senseloc" $
               any ("senseloc" `T.isInfixOf`) msgs
+        , testSolution Default "Testing/961-custom-capabilities"
         ]
     ]
  where
