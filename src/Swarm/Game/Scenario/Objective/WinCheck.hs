@@ -47,6 +47,8 @@ isUnwinnable :: ObjectiveCompletion -> Objective -> Bool
 isUnwinnable completions obj =
   maybe False (isUnwinnablePrereq (completedIDs completions) . logic) $ _objectivePrerequisite obj
 
+-- | The first element of the returned tuple consists of "active" objectives,
+-- the second element "inactive".
 partitionActiveObjectives :: ObjectiveCompletion -> ([Objective], [Objective])
 partitionActiveObjectives oc =
   partition (isPrereqsSatisfied oc) $
@@ -57,7 +59,7 @@ getActiveObjectives :: ObjectiveCompletion -> [Objective]
 getActiveObjectives =
   fst . partitionActiveObjectives
 
--- | For debugging only
+-- | For debugging only (via Web API)
 data PrereqSatisfaction = PrereqSatisfaction
   { objective :: Objective
   , deps :: Set (BE.Signed ObjectiveLabel)
