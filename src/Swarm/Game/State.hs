@@ -211,7 +211,7 @@ data WinStatus
     -- already been congratulated.
     Won Bool
   | -- | The player has completed certain "goals" that preclude
-    -- (via NOT prerequisites) the completion of all of the
+    -- (via negative prerequisites) the completion of all of the
     -- required goals.
     -- The boolean indicates whether they have
     -- already been informed.

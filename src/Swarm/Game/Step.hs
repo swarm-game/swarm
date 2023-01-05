@@ -194,9 +194,9 @@ hypotheticalWinCheck em g ws oc = do
 
   mapM_ handleException $ exceptions finalAccumulator
  where
-  getNextWinState comps
-    | WC.didWin comps = Won False
-    | WC.didLose comps = Unwinnable False
+  getNextWinState completedObjs
+    | WC.didWin completedObjs = Won False
+    | WC.didLose completedObjs = Unwinnable False
     | otherwise = Ongoing
 
   (withoutIncomplete, incompleteGoals) = OB.extractIncomplete oc

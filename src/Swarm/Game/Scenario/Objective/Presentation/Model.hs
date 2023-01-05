@@ -35,7 +35,7 @@ data GoalStatus
     -- also "Loses" the scenario.
     --
     -- Note that currently the only way to "Fail" a goal is by way
-    -- of a NOT prerequisite that was completed.
+    -- of a negative prerequisite that was completed.
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
 
@@ -53,7 +53,7 @@ data GoalEntry
 data GoalTracking = GoalTracking
   { announcements :: [Announcement]
   -- ^ TODO the actual contents of these are not used yet,
-  -- other than as flags to pop up the Goal dialog.
+  -- other than as a flag to pop up the Goal dialog.
   , goals :: CategorizedGoals
   }
   deriving (Generic, ToJSON)
