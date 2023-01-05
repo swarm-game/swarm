@@ -19,3 +19,4 @@
 955-heading.yaml
 397-wrong-missing.yaml
 961-custom-capabilities.yaml
+956-GPS.yaml

@@ -219,7 +219,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/710-multi-robot"
         , testSolution Default "Testing/920-meet"
         , testSolution Default "Testing/955-heading"
-        , testSolution' Default "Testing/397-wrong-missing" AllowBadErrors $ \g -> do
+        , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
             let msgs =
                   (g ^. messageQueue . to seqToTexts)
                     <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
@@ -227,9 +227,10 @@ testScenarioSolution _ci _em =
             assertBool "Should be some messages" (not (null msgs))
             assertBool "Error messages should not mention treads" $
               not (any ("treads" `T.isInfixOf`) msgs)
-            assertBool "Error message should mention no device provides senseloc" $
-              any ("senseloc" `T.isInfixOf`) msgs
+            assertBool "Error message should mention GPS receiver" $
+              any ("GPS receiver" `T.isInfixOf`) msgs
         , testSolution Default "Testing/961-custom-capabilities"
+        , testSolution Default "Testing/956-GPS"
         ]
     ]
  where

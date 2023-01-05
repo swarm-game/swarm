@@ -211,6 +211,7 @@ constCaps = \case
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  Whereami -> Just CSenseloc
   Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations
@@ -257,7 +258,6 @@ constCaps = \case
   -- which conveys their capability. TODO: #26
   Teleport -> Just CTeleport -- Some space-time machine like Tardis?
   Appear -> Just CAppear -- paint?
-  Whereami -> Just CSenseloc -- GPS?
   Random -> Just CRandom -- randomness device (with bitcoins)?
   -- ----------------------------------------------------------------
   -- Some more constants which *ought* to have their own capability but

@@ -508,6 +508,20 @@
   out:
   - [1, bitcoin]
 
+- in:
+  - [2, silver]
+  - [2, copper wire]
+  out:
+  - [1, antenna]
+
+- in:
+  - [1, antenna]
+  - [1, clock]
+  - [1, circuit]
+  - [1, compass]
+  out:
+  - [1, GPS receiver]
+
 ## MAGIC
 
 - in:
@@ -669,12 +683,6 @@
   - [1, silver]
   out:
   - [1, mirror]
-
-- in:
-  - [2, silver]
-  - [2, copper wire]
-  out:
-  - [1, antenna]
 
 #########################################
 ##                 LAMBDA              ##
