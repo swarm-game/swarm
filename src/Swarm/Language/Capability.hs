@@ -71,7 +71,7 @@ data Capability
     CSenseloc
   | -- | Execute the 'Blocked' command
     CSensefront
-  | -- | Execute the 'Ishere' command
+  | -- | Execute the 'Ishere' and 'Isempty' commands
     CSensehere
   | -- | Execute the 'Scan' command
     CScan
@@ -192,6 +192,7 @@ constCaps = \case
   Blocked -> Just CSensefront
   Scan -> Just CScan
   Ishere -> Just CSensehere
+  Isempty -> Just CSensehere
   Upload -> Just CScan
   Build -> Just CBuild
   Salvage -> Just CSalvage

@@ -294,8 +294,10 @@ data Const
     Scan
   | -- | Upload knowledge to another robot
     Upload
-  | -- | See if a specific entity is here. (This may be removed.)
+  | -- | See if a specific entity is here.
     Ishere
+  | -- | Check whether the current cell is empty
+    Isempty
   | -- | Get a reference to oneself
     Self
   | -- | Get the robot's parent
@@ -633,12 +635,17 @@ constInfo c = case c of
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
-    command 0 Intangible . doc "Scan a nearby location for entities." $
+    command 1 Intangible . doc "Scan a nearby location for entities." $
       [ "Adds the entity (not actor) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
   Upload -> command 1 short "Upload a robot's known entities and log to another robot."
   Ishere -> command 1 Intangible "See if a specific entity is in the current location."
+  Isempty ->
+    command 0 Intangible . doc "Check if the current location is empty." $
+      [ "Detects whether or not the current location contains an entity."
+      , "Does not detect robots or other actors."
+      ]
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."

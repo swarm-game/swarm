@@ -231,6 +231,7 @@ testScenarioSolution _ci _em =
               any ("GPS receiver" `T.isInfixOf`) msgs
         , testSolution Default "Testing/961-custom-capabilities"
         , testSolution Default "Testing/956-GPS"
+        , testSolution Default "Testing/958-isempty"
         ]
     ]
  where

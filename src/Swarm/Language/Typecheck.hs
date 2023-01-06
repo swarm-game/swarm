@@ -494,6 +494,7 @@ inferConst c = case c of
   Scan -> [tyQ| dir -> cmd (unit + text) |]
   Upload -> [tyQ| actor -> cmd unit |]
   Ishere -> [tyQ| text -> cmd bool |]
+  Isempty -> [tyQ| cmd bool |]
   Self -> [tyQ| actor |]
   Parent -> [tyQ| actor |]
   Base -> [tyQ| actor |]
