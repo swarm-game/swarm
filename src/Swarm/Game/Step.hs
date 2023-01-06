@@ -1267,6 +1267,10 @@ execConst c vs s k = do
           Nothing -> return $ Out (VBool False) s k
           Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower name)) s k
       _ -> badConst
+    Isempty -> do
+      loc <- use robotLocation
+      me <- entityAt loc
+      return $ Out (VBool (isNothing me)) s k
     Self -> do
       rid <- use robotID
       return $ Out (VRobot rid) s k
