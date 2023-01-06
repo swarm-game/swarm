@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-
 -- |
 -- Module      :  Swarm.Language.Requirement
 -- Copyright   :  Brent Yorgey
