@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-
 module Swarm.TUI.Model.Achievement.Definitions where
 
 import Data.Aeson

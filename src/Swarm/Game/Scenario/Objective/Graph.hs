@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Swarm.Game.Scenario.Objective.Graph where

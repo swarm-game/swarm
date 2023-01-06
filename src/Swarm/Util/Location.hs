@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 

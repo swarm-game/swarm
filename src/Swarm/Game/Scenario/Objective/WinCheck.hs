@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-
 module Swarm.Game.Scenario.Objective.WinCheck where
 
 import Data.Aeson

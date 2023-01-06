@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
