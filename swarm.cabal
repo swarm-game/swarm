@@ -57,6 +57,7 @@ common ghc2021-extensions
     ghc-options:  -Wprepositive-qualified-module
     default-extensions:
       BangPatterns
+      DeriveAnyClass
       DeriveDataTypeable
       DeriveFunctor
       DeriveGeneric

@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
