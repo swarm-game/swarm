@@ -10,12 +10,12 @@ objectives:
         The goal is to pick up the thing right after the empty
         spot in the row.
 solution: |
-  def find_flower =
+  def find_thing =
     e <- isempty;
     move;
-    if e {} {find_flower}
+    if e {} {find_thing}
   end;
-  find_flower;
+  find_thing;
   grab
 robots:
   - name: base
