@@ -78,9 +78,11 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
 import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
+import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
+  scenarioBestCodeSize,
   scenarioBestTicks,
   scenarioBestTime,
   scenarioItemName,
@@ -222,11 +224,7 @@ drawNewGameMenuUI (l :| ls) =
 
   drawDescription :: ScenarioItem -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle (s, si)) = do
-    let oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
-    let bestRealTime = if oneBest then "best:" else "best real time:"
-    let noSame = if oneBest then const Nothing else Just
-    let lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
+  drawDescription (SISingle (s, si)) =
     vBox . catMaybes $
       [ Just $ txtWrap (nonBlank (s ^. scenarioDescription))
       , padTop (Pad 1)
@@ -243,7 +241,24 @@ drawNewGameMenuUI (l :| ls) =
       , Just $
           padTop (Pad 1) $
             padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
+      , sizeDisplay <$> si ^. scenarioBestCodeSize
       ]
+   where
+    sizeDisplay (ScenarioCodeMetrics myCharCount myAstSize) =
+      padTop (Pad 1) $
+        padRight (Pad 1) sizeText <+> details
+     where
+      details =
+        withAttr greenAttr . vBox $
+          [ str $ unwords ["Character count:", show myCharCount]
+          , str $ unwords ["AST size:", show myAstSize]
+          ]
+
+    oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
+    bestRealTime = if oneBest then "best:" else "best real time:"
+    noSame = if oneBest then const Nothing else Just
+    lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
+    sizeText = let la = "size:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
 
   nonBlank "" = " "
   nonBlank t = t

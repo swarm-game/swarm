@@ -69,7 +69,7 @@ initAppState AppOpts {..} = do
       let codeToRun = maybeAutoplay <|> maybeRunScript
 
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) codeToRun)
+        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted Nothing) codeToRun)
         (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.
@@ -90,7 +90,12 @@ restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Not
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
+startGameWithSeed ::
+  (MonadIO m, MonadState AppState m) =>
+  Maybe Seed ->
+  ScenarioInfoPair ->
+  Maybe CodeToRun ->
+  m ()
 startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios

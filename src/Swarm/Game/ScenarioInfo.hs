@@ -24,6 +24,8 @@ module Swarm.Game.ScenarioInfo (
   scenarioStatus,
   scenarioBestTime,
   scenarioBestTicks,
+  scenarioBestCodeSize,
+  CodeSizeDeterminators (CodeSizeDeterminators),
   updateScenarioInfoOnQuit,
   ScenarioInfoPair,
 
@@ -69,6 +71,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
+import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Util (dataNotFound, getDataDirSafe, getSwarmSavePath)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
@@ -107,6 +110,9 @@ data ScenarioStatus
       }
   deriving (Eq, Ord, Show, Read, Generic)
 
+-- TODO Define a semigroup instance that encodes the
+-- "best" precedence logic, factoring in the completion state.
+
 instance FromJSON ScenarioStatus where
   parseJSON = genericParseJSON scenarioOptions
 
@@ -121,6 +127,7 @@ data ScenarioInfo = ScenarioInfo
   , _scenarioStatus :: ScenarioStatus
   , _scenarioBestTime :: ScenarioStatus
   , _scenarioBestTicks :: ScenarioStatus
+  , _scenarioBestCodeSize :: Maybe ScenarioCodeMetrics
   }
   deriving (Eq, Ord, Show, Read, Generic)
 
@@ -153,22 +160,37 @@ scenarioBestTime :: Lens' ScenarioInfo ScenarioStatus
 -- | The best status of the scenario, measured in game ticks.
 scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
 
+-- | The best code size of the scenario, measured both in character count and AST size.
+scenarioBestCodeSize :: Lens' ScenarioInfo (Maybe ScenarioCodeMetrics)
+
 -- | Update the current @ScenarioInfo@ record when quitting a game.
 --
 -- Note that when comparing "best" times, shorter is not always better!
 -- As long as the scenario is not completed (e.g. some do not have win condition)
 -- we consider having fun _longer_ to be better.
-updateScenarioInfoOnQuit :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
-updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
-  InProgress start _ _ ->
-    let el = (diffUTCTime `on` zonedTimeToUTC) z start
-        cur = (if completed then Complete else InProgress) start el ticks
-        best f b = case b of
-          Complete {} | not completed || f b <= f cur -> b -- keep faster completed
-          InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
-          _ -> cur -- otherwise update with current
-     in ScenarioInfo p cur (best _scenarioElapsed bTime) (best _scenarioElapsedTicks bTicks)
-  _ -> error "Logical error: trying to quit scenario which is not in progress!"
+updateScenarioInfoOnQuit ::
+  CodeSizeDeterminators ->
+  ZonedTime ->
+  Integer ->
+  Bool ->
+  ScenarioInfo ->
+  ScenarioInfo
+updateScenarioInfoOnQuit
+  csd
+  z
+  ticks
+  completed
+  (ScenarioInfo p s bTime bTicks _prevCodeSize) = case s of
+    InProgress start _ _ ->
+      let el = (diffUTCTime `on` zonedTimeToUTC) z start
+          cur = (if completed then Complete else InProgress) start el ticks
+          -- TODO Offload this logic to a Semigroup instance of ScenarioStatus
+          best f b = case b of
+            Complete {} | not completed || f b <= f cur -> b -- keep faster completed
+            InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
+            _ -> cur -- otherwise update with current
+       in ScenarioInfo p cur (best _scenarioElapsed bTime) (best _scenarioElapsedTicks bTicks) (codeSizeFromDeterminator csd)
+    _ -> error "Logical error: trying to quit scenario which is not in progress!"
 
 -- ----------------------------------------------------------------------------
 -- Scenario Item
@@ -320,7 +342,7 @@ loadScenarioInfo p = do
   hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
     then do
-      return $ ScenarioInfo path NotStarted NotStarted NotStarted
+      return $ ScenarioInfo path NotStarted NotStarted NotStarted Nothing
     else
       sendIO (decodeFileEither infoPath)
         >>= either (throwError . pack . prettyPrintParseException) return
