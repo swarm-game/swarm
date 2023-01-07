@@ -2,7 +2,9 @@
 
 module Swarm.Language.LSP.Hover where
 
+import Control.Applicative ((<|>))
 import Data.Graph
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Utf16.Rope qualified as R
@@ -54,32 +56,15 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
       R.splitAtPosition (lspToRopePosition p) myRope
 
 descend ::
-  -- | default
-  Syntax ->
   -- | position
   Int ->
   -- | next element to inspect
   Syntax ->
-  Syntax
-descend s0 pos s1@(Syntax l1 _) =
+  Maybe Syntax
+descend pos s1@(Syntax l1 _) =
   if withinBound pos l1
-    then narrowToPosition s1 pos
-    else s0
-
-descend2 ::
-  -- | default
-  Syntax ->
-  -- | position
-  Int ->
-  -- | next element to inspect
-  Syntax ->
-  -- | alternate element to inspect
-  Syntax ->
-  Syntax
-descend2 s0 pos s1@(Syntax l1 _) s2 =
-  if withinBound pos l1
-    then narrowToPosition s1 pos
-    else descend s0 pos s2
+    then Just $ narrowToPosition s1 pos
+    else Nothing
 
 -- | Find the most specific term for a given
 -- position within the code.
@@ -97,15 +82,15 @@ narrowToPosition ::
   -- | absolute offset within the file
   Int ->
   Syntax
-narrowToPosition s0@(Syntax _ t) pos = case t of
-  SLam _ _ s -> descend s0 pos s
-  SApp s1 s2 -> descend2 s0 pos s1 s2
-  SLet _ _ _ s1 s2 -> descend2 s0 pos s1 s2
-  SPair s1 s2 -> descend2 s0 pos s1 s2
-  SDef _ _ _ s -> descend s0 pos s
-  SBind _ s1 s2 -> descend2 s0 pos s1 s2
-  SDelay _ s -> descend s0 pos s
-  _ -> s0
+narrowToPosition s0@(Syntax _ t) pos = fromMaybe s0 $ case t of
+  SLam _ _ s -> descend pos s
+  SApp s1 s2 -> descend pos s1 <|> descend pos s2
+  SLet _ _ _ s1 s2 -> descend pos s1 <|> descend pos s2
+  SPair s1 s2 -> descend pos s1 <|> descend pos s2
+  SDef _ _ _ s -> descend pos s
+  SBind _ s1 s2 -> descend pos s1 <|> descend pos s2
+  SDelay _ s -> descend pos s
+  _ -> Nothing
 
 -- | Markdown line that captures tree depth
 data DocLine a = DocLine
