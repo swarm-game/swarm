@@ -13,6 +13,7 @@
 module Swarm.Game.Value (
   -- * Values
   Value (..),
+  stripVResult,
   prettyValue,
   valueToTerm,
 
@@ -86,6 +87,11 @@ data Value where
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+-- | Ensure that a value is not wrapped in 'VResult'.
+stripVResult :: Value -> Value
+stripVResult (VResult v _) = v
+stripVResult v = v
 
 -- | Pretty-print a value.
 prettyValue :: Value -> Text

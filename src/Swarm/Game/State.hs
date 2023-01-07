@@ -189,6 +189,7 @@ makePrisms ''ViewCenterRule
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
+    --   INVARIANT: the Value stored here is not a VResult.
     REPLDone (Maybe (Typed Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
