@@ -27,6 +27,8 @@ import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import System.IO (stderr)
 import Witch
+import Language.LSP.Types (Hover(Hover))
+import Swarm.Language.LSP.Hover qualified as H
 
 lspMain :: IO ()
 lspMain =
@@ -111,4 +113,17 @@ handlers =
           Just vf@(VirtualFile _ version _rope) -> do
             validateSwarmCode doc (Just $ fromIntegral version) (virtualFileText vf)
           _ -> debug $ "No virtual file found for: " <> from (show msg)
+    , requestHandler J.STextDocumentHover $ \req responder -> do
+        debug $ "I am in hover handler: " <> from (show req)
+        let doc = req ^. J.params . J.textDocument . J.uri . to J.toNormalizedUri
+        let pos = req ^. J.params . J.position
+        mdoc <- getVirtualFile doc
+        let maybeMarkdownText = do
+              vf <- mdoc
+              H.showHoverInfo doc Nothing pos vf
+        case maybeMarkdownText of
+          Nothing -> pure ()
+          Just markdownText ->
+            responder $ Right $ Just $
+              Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) Nothing
     ]
