@@ -778,7 +778,10 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 data Syntax = Syntax {sLoc :: SrcLoc, sTerm :: Term}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
-data SrcLoc = NoLoc | SrcLoc Int Int
+data SrcLoc
+  = NoLoc
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup SrcLoc where
