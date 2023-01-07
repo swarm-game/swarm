@@ -1,0 +1,146 @@
+version: 1
+name: Word search
+author: Karl Ostmo
+description: |
+  Find the word
+creative: false
+objectives:
+  - goal:
+      - Mark the sequence of letters that spells COW
+      - |
+        The sequence may appear horizontally from left to right,
+        vertically from top to bottom, or diagonally from
+        top-left to bottom-right.
+      - No other letters may be picked up.
+    condition: |
+      as base {run "scenarios/Challenges/_word-search/verify-solution.sw"}
+robots:
+  - name: base
+    dir: [-1, 0]
+    devices:
+      - treads
+      - 3D printer
+      - ADT calculator
+      - branch predictor
+      - clock
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - hearing aid
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - string
+      - workbench
+      - highlighter
+  - name: lettersetter
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: false
+    inventory:
+      - [600, capital C]
+      - [600, capital O]
+      - [600, capital W]
+    program: |
+      run "scenarios/Challenges/_word-search/create-puzzle.sw"
+solution: |
+  run "scenarios/Challenges/_word-search/solution.sw"
+entities:
+  - name: capital C
+    display:
+      char: 'C'
+    description:
+      - C is for California
+  - name: capital O
+    display:
+      char: 'O'
+    description:
+      - O is for Oklahoma
+  - name: capital W
+    display:
+      char: 'W'
+    description:
+      - W is for Washington
+  - name: lowercase c
+    display:
+      char: 'c'
+      attr: gold
+    description:
+      - c is for cantaloupe
+  - name: lowercase o
+    display:
+      char: 'o'
+      attr: gold
+    description:
+      - o is for orange
+  - name: lowercase w
+    display:
+      char: 'w'
+      attr: gold
+    description:
+      - w is for watermelon
+  - name: highlighter
+    display:
+      char: 'P'
+      attr: gold
+    capabilities: [drill]
+    description:
+      - Used for marking found words
+    properties: [known, portable]
+recipes:
+  - in:
+      - [1, capital C]
+    out:
+      - [1, lowercase c]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, capital O]
+    out:
+      - [1, lowercase o]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, capital W]
+    out:
+      - [1, lowercase w]
+    required:
+      - [1, highlighter]
+known: [boulder, capital C, capital O, capital W]
+seed: 0
+world:
+  default: [dirt]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '@': [stone, boulder]
+    '.': [grass]
+    'a': [grass, null, lettersetter]
+    '#': [dirt]
+    Ω: [dirt, null, base]
+  map: |
+    a.............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................@@@
+    ..............................@Ω@
+    ..............................@@@
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
+    ..............................###
