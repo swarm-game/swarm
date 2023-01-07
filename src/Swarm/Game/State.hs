@@ -51,6 +51,7 @@ module Swarm.Game.State (
   gensym,
   seed,
   randGen,
+  initiallyRunCode,
   adjList,
   nameList,
   entityMap,
@@ -170,6 +171,9 @@ import Swarm.Game.Recipe (
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Scoring.Metrics
+import Swarm.Game.Scenario.Scoring.Progress
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -385,6 +389,7 @@ data GameState = GameState
   , _gensym :: Int
   , _seed :: Seed
   , _randGen :: StdGen
+  , _initiallyRunCode :: Maybe ProcessedTerm
   , _adjList :: Array Int Text
   , _nameList :: Array Int Text
   , _entityMap :: EntityMap
@@ -446,7 +451,7 @@ winSolution :: Lens' GameState (Maybe ProcessedTerm)
 -- | Map of in-game achievements that were attained
 gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
 
--- | A queue of global announcments.
+-- | A queue of global announcements.
 -- Note that this is distinct from the "messageQueue",
 -- which is for messages emitted by robots.
 --
@@ -527,6 +532,10 @@ seed :: Lens' GameState Seed
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
+
+-- | Code that is run upon scenario start, before any
+-- REPL interaction.
+initiallyRunCode :: Lens' GameState (Maybe ProcessedTerm)
 
 -- | Read-only list of words, for use in building random robot names.
 adjList :: Getter GameState (Array Int Text)
@@ -990,7 +999,8 @@ initGameState = do
         , _gensym = 0
         , _seed = 0
         , _randGen = mkStdGen 0
-        , _adjList = listArray (0, length adjs - 1) adjs
+        , _initiallyRunCode = Nothing
+      , _adjList = listArray (0, length adjs - 1) adjs
         , _nameList = listArray (0, length names - 1) names
         , _entityMap = entities
         , _recipesOut = outRecipeMap recipes
@@ -1016,7 +1026,12 @@ initGameState = do
     )
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
-scenarioToGameState :: Scenario -> Maybe Seed -> Maybe CodeToRun -> GameState -> IO GameState
+scenarioToGameState ::
+  Scenario ->
+  Maybe Seed ->
+  Maybe CodeToRun ->
+  GameState ->
+  IO GameState
 scenarioToGameState scenario userSeed toRun g = do
   -- Decide on a seed.  In order of preference, we will use:
   --   1. seed value provided by the user
@@ -1045,6 +1060,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _gensym = initGensym
       , _seed = theSeed
       , _randGen = mkStdGen theSeed
+      , _initiallyRunCode = initialCodeToRun
       , _entityMap = em
       , _recipesOut = addRecipesWith outRecipeMap recipesOut
       , _recipesIn = addRecipesWith inRecipeMap recipesIn
@@ -1102,6 +1118,8 @@ scenarioToGameState scenario userSeed toRun g = do
   --        prefer the one closest to the upper-left of the screen, with higher rows given precedence over columns.
   robotsByBasePrecedence = locatedRobots ++ map snd (sortOn fst genRobots)
 
+  initialCodeToRun = getCodeToRun <$> toRun
+
   robotList =
     zipWith instantiateRobot [baseID ..] robotsByBasePrecedence
       -- If the  --run flag was used, use it to replace the CESK machine of the
@@ -1110,7 +1128,7 @@ scenarioToGameState scenario userSeed toRun g = do
       -- would have run (i.e. any program specified in the program: field
       -- of the scenario description).
       & ix baseID . machine
-        %~ case getCodeToRun <$> toRun of
+        %~ case initialCodeToRun of
           Nothing -> id
           Just pt -> const $ initMachine pt Ctx.empty emptyStore
       -- If we are in creative mode, give base all the things
@@ -1186,6 +1204,9 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
 -- Note that this function is used only for unit tests, integration tests, and benchmarks.
 --
 -- In normal play, the code path that gets executed is scenarioToAppState.
+--
+-- Note: Some of the code in this function is duplicated
+-- with "startGameWithSeed".
 initGameStateForScenario ::
   String ->
   Maybe Seed ->
@@ -1207,7 +1228,8 @@ initGameStateForScenario sceneName userSeed toRun = do
   return $
     gs
       & currentScenarioPath ?~ normalPath
-      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress t 0 0
+      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus
+        .~ Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.

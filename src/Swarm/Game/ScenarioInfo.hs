@@ -1,6 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-partial-fields #-}
 
 -- -Wno-orphans is for the Eq/Ord Time instances
 
@@ -13,13 +11,14 @@ module Swarm.Game.ScenarioInfo (
   -- * Scenario info
   ScenarioStatus (..),
   _NotStarted,
-  _InProgress,
-  _Complete,
   ScenarioInfo (..),
   scenarioPath,
   scenarioStatus,
-  scenarioBestTime,
-  scenarioBestTicks,
+  scenarioBestByTime,
+  scenarioBestByTicks,
+  scenarioBestByCharCount,
+  scenarioBestByAstSize,
+  CodeSizeDeterminators (CodeSizeDeterminators),
   updateScenarioInfoOnFinish,
   ScenarioInfoPair,
 
@@ -61,113 +60,17 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
-import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
-import GHC.Generics (Generic)
 import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
+import Swarm.Game.Scenario.Scoring.CodeSize
+import Swarm.Game.Scenario.Status
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
-
--- Some orphan ZonedTime instances
-
-instance Eq ZonedTime where
-  (==) = (==) `on` zonedTimeToUTC
-
-instance Ord ZonedTime where
-  (<=) = (<=) `on` zonedTimeToUTC
-
--- | A @ScenarioStatus@ stores the status of a scenario along with
---   appropriate metadata: not started, in progress, or complete.
---   Note that "in progress" is currently a bit of a misnomer since
---   games cannot be saved; at the moment it really means more like
---   "you played this scenario before but didn't win".
-data ScenarioStatus
-  = NotStarted
-  | InProgress
-      { _scenarioStarted :: ZonedTime
-      -- ^ Time when the scenario was started including time zone.
-      , _scenarioElapsed :: NominalDiffTime
-      -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: TickNumber
-      -- ^ Ticks elapsed until quitting the scenario.
-      }
-  | Complete
-      { _scenarioStarted :: ZonedTime
-      -- ^ Time when the scenario was started including time zone.
-      , _scenarioElapsed :: NominalDiffTime
-      -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: TickNumber
-      -- ^ Ticks elapsed until quitting the scenario.
-      }
-  deriving (Eq, Ord, Show, Read, Generic)
-
-instance FromJSON ScenarioStatus where
-  parseJSON = genericParseJSON scenarioOptions
-
-instance ToJSON ScenarioStatus where
-  toEncoding = genericToEncoding scenarioOptions
-  toJSON = genericToJSON scenarioOptions
-
--- | A @ScenarioInfo@ record stores metadata about a scenario: its
---   canonical path, most recent status, and best-ever status.
-data ScenarioInfo = ScenarioInfo
-  { _scenarioPath :: FilePath
-  , _scenarioStatus :: ScenarioStatus
-  , _scenarioBestTime :: ScenarioStatus
-  , _scenarioBestTicks :: ScenarioStatus
-  }
-  deriving (Eq, Ord, Show, Read, Generic)
-
-instance FromJSON ScenarioInfo where
-  parseJSON = genericParseJSON scenarioOptions
-
-instance ToJSON ScenarioInfo where
-  toEncoding = genericToEncoding scenarioOptions
-  toJSON = genericToJSON scenarioOptions
-
-type ScenarioInfoPair = (Scenario, ScenarioInfo)
-
-scenarioOptions :: Options
-scenarioOptions =
-  defaultOptions
-    { fieldLabelModifier = map toLower . drop (length "_scenario")
-    }
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''ScenarioInfo
-
--- | The path of the scenario, relative to @data/scenarios@.
-scenarioPath :: Lens' ScenarioInfo FilePath
-
--- | The status of the scenario.
-scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
-
--- | The best status of the scenario, measured in real world time.
-scenarioBestTime :: Lens' ScenarioInfo ScenarioStatus
-
--- | The best status of the scenario, measured in game ticks.
-scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
-
--- | Update the current @ScenarioInfo@ record when finishing a game.
---
--- Note that when comparing "best" times, shorter is not always better!
--- As long as the scenario is not completed (e.g. some do not have win condition)
--- we consider having fun _longer_ to be better.
-updateScenarioInfoOnFinish :: ZonedTime -> TickNumber -> Bool -> ScenarioInfo -> ScenarioInfo
-updateScenarioInfoOnFinish z ticks completed si@(ScenarioInfo p s bTime bTicks) = case s of
-  InProgress start _ _ ->
-    let el = (diffUTCTime `on` zonedTimeToUTC) z start
-        cur = (if completed then Complete else InProgress) start el ticks
-        best f b = case b of
-          Complete {} | not completed || f b <= f cur -> b -- keep faster completed
-          InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
-          _ -> cur -- otherwise update with current
-     in ScenarioInfo p cur (best _scenarioElapsed bTime) (best _scenarioElapsedTicks bTicks)
-  _ -> si
 
 -- ----------------------------------------------------------------------------
 -- Scenario Item
@@ -348,7 +251,8 @@ loadScenarioInfo p = do
   hasInfo <- liftIO $ doesFileExist infoPath
   if not hasInfo
     then do
-      return $ ScenarioInfo path NotStarted NotStarted NotStarted
+      return $
+        ScenarioInfo path NotStarted
     else
       withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParse)
         . ExceptT
