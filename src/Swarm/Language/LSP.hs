@@ -20,15 +20,15 @@ import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
 import Language.LSP.Server
+import Language.LSP.Types (Hover (Hover))
 import Language.LSP.Types qualified as J
 import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
+import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import System.IO (stderr)
 import Witch
-import Language.LSP.Types (Hover(Hover))
-import Swarm.Language.LSP.Hover qualified as H
 
 lspMain :: IO ()
 lspMain =
@@ -124,6 +124,8 @@ handlers =
         case maybeMarkdownText of
           Nothing -> pure ()
           Just markdownText ->
-            responder $ Right $ Just $
-              Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) Nothing
+            responder $
+              Right $
+                Just $
+                  Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) Nothing
     ]

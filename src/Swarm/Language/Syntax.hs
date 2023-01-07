@@ -780,8 +780,8 @@ data Syntax = Syntax {sLoc :: SrcLoc, sTerm :: Term}
 
 data SrcLoc
   = NoLoc
-  | SrcLoc Int Int
-    -- ^ Half-open interval from start (inclusive) to end (exclusive)
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup SrcLoc where
