@@ -114,13 +114,12 @@ handlers =
             validateSwarmCode doc (Just $ fromIntegral version) (virtualFileText vf)
           _ -> debug $ "No virtual file found for: " <> from (show msg)
     , requestHandler J.STextDocumentHover $ \req responder -> do
-        debug $ "I am in hover handler: " <> from (show req)
         let doc = req ^. J.params . J.textDocument . J.uri . to J.toNormalizedUri
             pos = req ^. J.params . J.position
         mdoc <- getVirtualFile doc
         let maybeHover = do
               vf <- mdoc
-              markdownText <- H.showHoverInfo doc Nothing pos vf
-              return $ Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) Nothing
+              (markdownText, maybeRange) <- H.showHoverInfo doc Nothing pos vf
+              return $ Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) maybeRange
         responder $ Right maybeHover
     ]

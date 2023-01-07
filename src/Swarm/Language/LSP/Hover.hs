@@ -2,62 +2,84 @@
 
 module Swarm.Language.LSP.Hover where
 
+import Data.Graph
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Utf16.Rope qualified as R
 import Language.LSP.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Parse (readTerm')
 import Swarm.Language.Syntax
+import Swarm.Util qualified as U
 
 withinBound :: Int -> SrcLoc -> Bool
 withinBound pos (SrcLoc s e) = pos >= s && pos < e
 withinBound _ NoLoc = False
+
+ropeToLspPosition :: R.Position -> J.Position
+ropeToLspPosition (R.Position l c) =
+  J.Position (fromIntegral l) (fromIntegral c)
+
+lspToRopePosition :: J.Position -> R.Position
+lspToRopePosition (J.Position myLine myCol) =
+  R.Position (fromIntegral myLine) (fromIntegral myCol)
 
 showHoverInfo ::
   J.NormalizedUri ->
   J.TextDocumentVersion ->
   J.Position ->
   VirtualFile ->
-  Maybe Text
-showHoverInfo _ _ (J.Position myLine myCol) vf@(VirtualFile _ _ myRope) =
-  astSize
+  Maybe (Text, Maybe J.Range)
+showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
+  case readTerm' content of
+    Left _ -> Nothing
+    Right Nothing -> Nothing
+    Right (Just stx) -> Just (treeToMarkdown 0 $ explain term, finalPos)
+     where
+      Syntax sloc term = narrowToPosition stx $ fromIntegral absolutePos
+      finalPos = do
+        (s, e) <- case sloc of
+          SrcLoc s e -> Just (s, e)
+          _ -> Nothing
+        (startRope, _) <- R.splitAt (fromIntegral s) myRope
+        (endRope, _) <- R.splitAt (fromIntegral e) myRope
+        return $
+          J.Range
+            (ropeToLspPosition $ R.lengthAsPosition startRope)
+            (ropeToLspPosition $ R.lengthAsPosition endRope)
  where
   content = virtualFileText vf
   absolutePos =
     maybe 0 (R.length . fst) $
-      R.splitAtPosition (R.Position (fromIntegral myLine) (fromIntegral myCol)) myRope
-  astSize = case readTerm' content of
-    Right Nothing -> Nothing
-    Right (Just (Syntax _ term)) -> Just $ explain $ narrowToPosition term $ fromIntegral absolutePos
-    Left _ -> Nothing
+      R.splitAtPosition (lspToRopePosition p) myRope
 
 descend ::
   -- | default
-  Term ->
+  Syntax ->
   -- | position
   Int ->
   -- | next element to inspect
   Syntax ->
-  Term
-descend t pos (Syntax l1 t1) =
+  Syntax
+descend s0 pos s1@(Syntax l1 _) =
   if withinBound pos l1
-    then narrowToPosition t1 pos
-    else t
+    then narrowToPosition s1 pos
+    else s0
 
 descend2 ::
   -- | default
-  Term ->
+  Syntax ->
   -- | position
   Int ->
   -- | next element to inspect
   Syntax ->
   -- | alternate element to inspect
   Syntax ->
-  Term
-descend2 t pos (Syntax l1 t1) s2 =
+  Syntax
+descend2 s0 pos s1@(Syntax l1 _) s2 =
   if withinBound pos l1
-    then narrowToPosition t1 pos
-    else descend t pos s2
+    then narrowToPosition s1 pos
+    else descend s0 pos s2
 
 -- | Find the most specific term for a given
 -- position within the code.
@@ -71,39 +93,75 @@ descend2 t pos (Syntax l1 t1) s2 =
 -- compiler won't warn us about missing cases.
 narrowToPosition ::
   -- | parent term
-  Term ->
+  Syntax ->
   -- | absolute offset within the file
   Int ->
-  Term
-narrowToPosition t pos = case t of
-  SLam _ _ s -> descend t pos s
-  SApp s1 s2 -> descend2 t pos s1 s2
-  SLet _ _ _ s1 s2 -> descend2 t pos s1 s2
-  SPair s1 s2 -> descend2 t pos s1 s2
-  SDef _ _ _ s -> descend t pos s
-  SBind _ s1 s2 -> descend2 t pos s1 s2
-  SDelay _ s -> descend t pos s
-  x -> x
+  Syntax
+narrowToPosition s0@(Syntax _ t) pos = case t of
+  SLam _ _ s -> descend s0 pos s
+  SApp s1 s2 -> descend2 s0 pos s1 s2
+  SLet _ _ _ s1 s2 -> descend2 s0 pos s1 s2
+  SPair s1 s2 -> descend2 s0 pos s1 s2
+  SDef _ _ _ s -> descend s0 pos s
+  SBind _ s1 s2 -> descend2 s0 pos s1 s2
+  SDelay _ s -> descend s0 pos s
+  _ -> s0
 
-explain :: Term -> Text
+-- | Markdown line that captures tree depth
+data DocLine a = DocLine
+  { depth :: Int
+  , txt :: a
+  }
+
+renderDoc :: DocLine Text -> Text
+renderDoc (DocLine d t)
+  | d == 0 = t
+  | d == 1 = "* " <> t
+  | otherwise = indent (d - 1) <> "* " <> t
+ where
+  indent x = T.replicate (4 * x) " "
+
+instance Functor DocLine where
+  fmap f (DocLine d x) = DocLine d $ f x
+
+pureDoc :: a -> DocLine a
+pureDoc = DocLine 0
+
+treeToMarkdown :: Int -> Tree (DocLine Text) -> Text
+treeToMarkdown d (Node (DocLine _n t) children) =
+  T.unlines $ renderDoc (DocLine d t) : map (treeToMarkdown $ d + 1) children
+
+explain :: Term -> Tree (DocLine Text)
 explain = \case
-  TUnit -> "The unit value."
-  TConst c -> briefDoc $ constDoc $ constInfo c
-  TDir {} -> "A direction literal."
-  TInt {} -> "An integer literal."
-  TAntiInt {} -> "An antiquoted Haskell variable name of type Integer."
-  TText {} -> "A text literal."
-  TAntiText {} -> "An antiquoted Haskell variable name of type Text."
-  TBool {} -> "A Boolean literal."
-  TRobot {} -> "A robot reference.  These never show up in surface syntax, but are here so we can factor pretty-printing for Values through pretty-printing for Terms."
-  TRef {} -> "A memory reference.  These likewise never show up in surface syntax but are here to facilitate pretty-printing."
-  TRequireDevice {} -> "Require a specific device to be installed."
-  TRequire {} -> "Require a certain number of an entity."
-  TVar {} -> "A variable."
-  SLam {} -> "A lambda expression, with or without a type annotation on the binder."
-  SApp {} -> "Function application."
-  SLet {} -> "A (recursive) let expression, with or without a type annotation on the variable. The @Bool@ indicates whether it is known to be recursive."
-  SPair {} -> "A pair."
-  SDef {} -> "A (recursive) definition command, which binds a variable to a value in subsequent commands. The @Bool@ indicates whether the definition is known to be recursive."
-  SBind {} -> "A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@."
-  SDelay {} -> "Delay evaluation of a term, written @{...}@.  Swarm is an eager language, but in some cases (e.g. for @if@ statements and recursive bindings) we need to delay evaluation.  The counterpart to @{...}@ is @force@, where @force {t} = t@. Note that 'Force' is just a constant, whereas 'SDelay' has to be a special syntactic form so its argument can get special treatment during evaluation."
+  TUnit -> pure $ pureDoc "The unit value."
+  TConst c -> pure $ pureDoc $ briefDoc $ constDoc $ constInfo c
+  TDir {} -> pure $ pureDoc "A direction literal."
+  TInt {} -> pure $ pureDoc "An integer literal."
+  TAntiInt {} -> pure $ pureDoc "An antiquoted Haskell variable name of type Integer."
+  TText {} -> pure $ pureDoc "A text literal."
+  TAntiText {} -> pure $ pureDoc "An antiquoted Haskell variable name of type Text."
+  TBool {} -> pure $ pureDoc "A Boolean literal."
+  TRobot {} -> pure $ pureDoc "A robot reference.  These never show up in surface syntax, but are here so we can factor pretty-printing for Values through pretty-printing for Terms."
+  TRef {} -> pure $ pureDoc "A memory reference.  These likewise never show up in surface syntax but are here to facilitate pretty-printing."
+  TRequireDevice {} -> pure $ pureDoc "Require a specific device to be installed."
+  TRequire {} -> pure $ pureDoc "Require a certain number of an entity."
+  TVar x -> pure $ pureDoc $ "var: " <> U.bquote x
+  SLam {} -> pure $ pureDoc "A lambda expression, with or without a type annotation on the binder."
+  SApp (Syntax _ t1) (Syntax _ t2) ->
+    Node
+      (pureDoc "Function application of:")
+      [explain t1, explain t2]
+  SLet isRecursive _ maybeTypeAnnotation _ _ ->
+    pure $
+      pureDoc $
+        T.unwords
+          [ "A"
+          , (if isRecursive then "" else "non-") <> "recursive"
+          , "let expression"
+          , if null maybeTypeAnnotation then "without" else "with"
+          , "a type annotation on the variable."
+          ]
+  SPair {} -> pure $ pureDoc "A pair."
+  SDef {} -> pure $ pureDoc "A (recursive) definition command, which binds a variable to a value in subsequent commands."
+  SBind {} -> pure $ pureDoc "A monadic bind for commands, of the form `c1 ; c2` or `x <- c1; c2`."
+  SDelay {} -> pure $ pureDoc "Delay evaluation of a term, written `{...}`.  Swarm is an eager language, but in some cases (e.g. for `if` statements and recursive bindings) we need to delay evaluation.  The counterpart to `{...}` is `force`, where `force {t} = t`. Note that 'Force' is just a constant, whereas 'SDelay' has to be a special syntactic form so its argument can get special treatment during evaluation."
