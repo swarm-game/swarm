@@ -25,15 +25,12 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
+import Swarm.Game.Scenario.Scoring.Metrics
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
-  ScenarioInfo (..),
-  ScenarioInfoPair,
-  ScenarioStatus (..),
   normalizeScenarioPath,
   scenarioItemByPath,
-  scenarioPath,
   scenarioSolution,
-  scenarioStatus,
   _SISingle,
  )
 import Swarm.Game.State
@@ -68,8 +65,9 @@ initAppState AppOpts {..} = do
             return $ CodeToRun ScenarioSuggested soln
       let codeToRun = maybeAutoplay <|> maybeRunScript
 
+      let si = ScenarioInfo path NotStarted $ BestRecords NotStarted NotStarted NotStarted NotStarted
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) codeToRun)
+        (startGameWithSeed userSeed (scenario, si) codeToRun)
         (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.
@@ -90,13 +88,21 @@ restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Not
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
+--
+-- Note: Some of the code in this function is duplicated
+-- with "initGameStateForScenario".
+startGameWithSeed ::
+  (MonadIO m, MonadState AppState m) =>
+  Maybe Seed ->
+  ScenarioInfoPair ->
+  Maybe CodeToRun ->
+  m ()
 startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
+  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress (ProgressMetric t emptyAttemptMetric)
   scenarioToAppState siPair userSeed toRun
 
 -- TODO: #516 do we need to keep an old entity map around???
