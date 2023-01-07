@@ -39,6 +39,7 @@ module Swarm.Util (
   reflow,
   quote,
   squote,
+  bquote,
   commaList,
   indefinite,
   indefiniteQ,
@@ -391,6 +392,10 @@ squote t = T.concat ["'", t, "'"]
 -- | Surround some text in double quotes.
 quote :: Text -> Text
 quote t = T.concat ["\"", t, "\""]
+
+-- | Surround some text in backticks.
+bquote :: Text -> Text
+bquote t = T.concat ["`", t, "`"]
 
 -- | Make a list of things with commas and the word "and".
 commaList :: [Text] -> Text

@@ -20,9 +20,11 @@ import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
 import Language.LSP.Server
+import Language.LSP.Types (Hover (Hover))
 import Language.LSP.Types qualified as J
 import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
+import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import System.IO (stderr)
@@ -111,4 +113,13 @@ handlers =
           Just vf@(VirtualFile _ version _rope) -> do
             validateSwarmCode doc (Just $ fromIntegral version) (virtualFileText vf)
           _ -> debug $ "No virtual file found for: " <> from (show msg)
+    , requestHandler J.STextDocumentHover $ \req responder -> do
+        let doc = req ^. J.params . J.textDocument . J.uri . to J.toNormalizedUri
+            pos = req ^. J.params . J.position
+        mdoc <- getVirtualFile doc
+        let maybeHover = do
+              vf <- mdoc
+              (markdownText, maybeRange) <- H.showHoverInfo doc Nothing pos vf
+              return $ Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) maybeRange
+        responder $ Right maybeHover
     ]

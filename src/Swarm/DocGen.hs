@@ -54,7 +54,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (getDataFileNameSafe, isRightOr, listEnums)
+import Swarm.Util (getDataFileNameSafe, isRightOr, listEnums, quote)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
@@ -161,8 +161,6 @@ editorList :: EditorType -> [Text] -> Text
 editorList = \case
   Emacs -> T.unlines . map (("  " <>) . quote)
   VSCode -> T.intercalate "|"
- where
-  quote = T.cons '"' . flip T.snoc '"'
 
 constSyntax :: Const -> Text
 constSyntax = Syntax.syntax . Syntax.constInfo
