@@ -139,7 +139,7 @@ gameTick = do
       -- fresh CESK machine, using a copy of the current game state.
       v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
       let markWin = winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
-      case v of
+      case stripVResult <$> v of
         -- Log exceptions in the message queue so we can check for them in tests
         Left exn -> do
           let h = hypotheticalRobot (Out VUnit emptyStore []) 0
@@ -147,7 +147,6 @@ gameTick = do
           m <- evalState @Robot h $ createLogEntry ErrorTrace (formatExn em exn)
           emitMessage m
         Right (VBool res) -> when res markWin
-        Right (VResult (VBool res) _env) -> when res markWin
         Right val -> do
           let h = hypotheticalRobot (Out VUnit emptyStore []) 0
           m <-

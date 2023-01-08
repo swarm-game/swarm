@@ -71,7 +71,7 @@ import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
-import Swarm.Game.Value (Value (VUnit), prettyValue)
+import Swarm.Game.Value (Value (VUnit), prettyValue, stripVResult)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CMake))
 import Swarm.Language.Context
@@ -638,7 +638,7 @@ updateUI = do
     -- result as a REPL output, with its type, and reset the replStatus.
     REPLWorking (Typed (Just v) pty reqs) -> do
       let finalType = stripCmd pty
-      let val = Typed v finalType reqs
+      let val = Typed (stripVResult v) finalType reqs
       itIx <- use (gameState . replNextValueIndex)
       let itName = fromString $ "it" ++ show itIx
       let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
