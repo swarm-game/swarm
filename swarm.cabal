@@ -81,67 +81,69 @@ common ghc2021-extensions
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Swarm.Language.Context
-                      Swarm.Language.Types
-                      Swarm.Language.Syntax
-                      Swarm.Language.Capability
-                      Swarm.Language.Requirement
-                      Swarm.Language.Parse
-                      Swarm.Language.Parse.QQ
-                      Swarm.Language.Pretty
-                      Swarm.Language.Typecheck
-                      Swarm.Language.Typed
-                      Swarm.Language.Elaborate
-                      Swarm.Language.LSP
-                      Swarm.Language.LSP.Hover
-                      Swarm.Language.Pipeline
-                      Swarm.Language.Pipeline.QQ
+    exposed-modules:  Swarm.App
+                      Swarm.DocGen
                       Swarm.Game.CESK
+                      Swarm.Game.Display
+                      Swarm.Game.Entity
+                      Swarm.Game.Exception
+                      Swarm.Game.Log
+                      Swarm.Game.Recipe
+                      Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
-                      Swarm.Game.Display
-                      Swarm.Game.Entity
-                      Swarm.Game.Exception
-                      Swarm.Game.Recipe
-                      Swarm.Game.Robot
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
                       Swarm.Game.WorldGen
+                      Swarm.Language.Context
+                      Swarm.Language.Capability
+                      Swarm.Language.Elaborate
+                      Swarm.Language.LSP
+                      Swarm.Language.LSP.Hover
+                      Swarm.Language.Parse
+                      Swarm.Language.Parse.QQ
+                      Swarm.Language.Pipeline
+                      Swarm.Language.Pipeline.QQ
+                      Swarm.Language.Pretty
+                      Swarm.Language.Requirement
+                      Swarm.Language.Syntax
+                      Swarm.Language.Typecheck
+                      Swarm.Language.Typed
+                      Swarm.Language.Types
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
+                      Swarm.TUI.Controller
+                      Swarm.TUI.Controller.Util
+                      Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
-                      Swarm.TUI.Panel
                       Swarm.TUI.Model
                       Swarm.TUI.Model.Achievement.Attainment
                       Swarm.TUI.Model.Achievement.Definitions
                       Swarm.TUI.Model.Achievement.Description
                       Swarm.TUI.Model.Achievement.Persistence
+                      Swarm.TUI.Model.Failure
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
                       Swarm.TUI.Model.StateUpdate
                       Swarm.TUI.Model.UI
+                      Swarm.TUI.Panel
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
                       Swarm.TUI.View.Util
-                      Swarm.TUI.Controller
-                      Swarm.TUI.Controller.Util
-                      Swarm.TUI.Inventory.Sorting
-                      Swarm.App
-                      Swarm.Web
-                      Swarm.DocGen
                       Swarm.Util
                       Swarm.Util.Location
                       Swarm.Util.Yaml
                       Swarm.Version
+                      Swarm.Web
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
 

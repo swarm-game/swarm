@@ -109,8 +109,8 @@ handleEvent = \case
   AppEvent (UpstreamVersion ev) -> do
     let logReleaseEvent l e = runtimeState . eventLog %= logEvent l ("Release", -7) (T.pack $ show e)
     case ev of
-      Left e@(FailedReleaseQuery _e) -> logReleaseEvent ErrorTrace e
-      Left e -> logReleaseEvent Said e
+      Left e@(FailedReleaseQuery _e) -> logReleaseEvent (ErrorTrace Error) e
+      Left e -> logReleaseEvent (ErrorTrace Warning) e
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do

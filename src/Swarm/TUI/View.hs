@@ -697,7 +697,11 @@ colorLogs :: LogEntry -> AttrName
 colorLogs e = case e ^. leSaid of
   Said -> robotColor (e ^. leRobotID)
   Logged -> notifAttr
-  ErrorTrace -> redAttr
+  ErrorTrace l -> case l of
+    Debug -> dimAttr
+    Warning -> yellowAttr
+    Error -> redAttr
+    Critical -> redAttr
  where
   -- color each robot message with different color of the world
   robotColor rid = fgCols !! (rid `mod` fgColLen)

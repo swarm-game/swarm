@@ -19,14 +19,7 @@ module Swarm.Game.Robot (
   -- * Robots data
 
   -- * Robot log entries
-  LogSource (..),
-  LogEntry (..),
-  leText,
-  leSaid,
-  leRobotName,
-  leTime,
-  leLocation,
-  leRobotID,
+  module Swarm.Game.Log,
 
   -- * Robots
   RobotPhase (..),
@@ -101,6 +94,7 @@ import Linear
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Log
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
@@ -158,29 +152,6 @@ instance At RobotContext where
         & defTypes %~ Ctx.addBinding name typ
         & defVals %~ Ctx.addBinding name val
         & defReqs %~ Ctx.addBinding name req
-
-data LogSource = Said | Logged | ErrorTrace
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
-
--- | An entry in a robot's log.
-data LogEntry = LogEntry
-  { _leTime :: Integer
-  -- ^ The time at which the entry was created.
-  --   Note that this is the first field we sort on.
-  , _leSaid :: LogSource
-  -- ^ Whether this log records a said message.
-  , _leRobotName :: Text
-  -- ^ The name of the robot that generated the entry.
-  , _leRobotID :: Int
-  -- ^ The ID of the robot that generated the entry.
-  , _leLocation :: Location
-  -- ^ Location of the robot at log entry creation.
-  , _leText :: Text
-  -- ^ The text of the log entry.
-  }
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
-
-makeLenses ''LogEntry
 
 -- | A unique identifier for a robot.
 type RID = Int
