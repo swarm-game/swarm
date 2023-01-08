@@ -62,12 +62,12 @@ import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Failure (SystemFailure)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.Util
 import System.Clock
-import Swarm.TUI.Model.Failure (SystemFailure)
 
 ------------------------------------------------------------
 -- UI state
@@ -266,36 +266,37 @@ initUIState showMainMenu cheatMode = do
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- liftIO $ getTime Monotonic
   (warnings, achievements) <- liftIO loadAchievementsInfo
-  let out = UIState
-        { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
-        , _uiPlaying = not showMainMenu
-        , _uiCheatMode = cheatMode
-        , _uiFocusRing = initFocusRing
-        , _uiWorldCursor = Nothing
-        , _uiREPL = initREPLState $ newREPLHistory history
-        , _uiInventory = Nothing
-        , _uiInventorySort = defaultSortOptions
-        , _uiMoreInfoTop = False
-        , _uiMoreInfoBot = False
-        , _uiScrollToEnd = False
-        , _uiError = Nothing
-        , _uiModal = Nothing
-        , _uiGoal = Nothing
-        , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
-        , _uiShowFPS = False
-        , _uiShowZero = True
-        , _uiHideRobotsUntil = startTime - 1
-        , _uiInventoryShouldUpdate = False
-        , _uiTPF = 0
-        , _uiFPS = 0
-        , _lgTicksPerSecond = initLgTicksPerSecond
-        , _lastFrameTime = startTime
-        , _accumulatedTime = 0
-        , _lastInfoTime = 0
-        , _tickCount = 0
-        , _frameCount = 0
-        , _frameTickCount = 0
-        , _appData = appDataMap
-        , _scenarioRef = Nothing
-        }
+  let out =
+        UIState
+          { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+          , _uiPlaying = not showMainMenu
+          , _uiCheatMode = cheatMode
+          , _uiFocusRing = initFocusRing
+          , _uiWorldCursor = Nothing
+          , _uiREPL = initREPLState $ newREPLHistory history
+          , _uiInventory = Nothing
+          , _uiInventorySort = defaultSortOptions
+          , _uiMoreInfoTop = False
+          , _uiMoreInfoBot = False
+          , _uiScrollToEnd = False
+          , _uiError = Nothing
+          , _uiModal = Nothing
+          , _uiGoal = Nothing
+          , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
+          , _uiShowFPS = False
+          , _uiShowZero = True
+          , _uiHideRobotsUntil = startTime - 1
+          , _uiInventoryShouldUpdate = False
+          , _uiTPF = 0
+          , _uiFPS = 0
+          , _lgTicksPerSecond = initLgTicksPerSecond
+          , _lastFrameTime = startTime
+          , _accumulatedTime = 0
+          , _lastInfoTime = 0
+          , _tickCount = 0
+          , _frameCount = 0
+          , _frameTickCount = 0
+          , _appData = appDataMap
+          , _scenarioRef = Nothing
+          }
   return (warnings, out)

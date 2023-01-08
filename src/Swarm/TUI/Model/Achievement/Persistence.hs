@@ -8,15 +8,15 @@ import Control.Monad (forM, forM_)
 import Data.Either (partitionEithers)
 import Data.Yaml qualified as Y
 import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.Util
 import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.TUI.Model.Failure
+import Swarm.Util
 import System.Directory (
   doesDirectoryExist,
   doesFileExist,
   listDirectory,
  )
-import System.FilePath ( (</>) )
-import Swarm.TUI.Model.Failure
+import System.FilePath ((</>))
 
 -- | Get path to swarm achievements, optionally creating necessary
 --   directories.
@@ -40,8 +40,7 @@ loadAchievementsInfo = do
           then do
             eitherDecodedFile <- sendIO (Y.decodeFileEither fullPath)
             return $ left (AssetNotLoaded Achievement p . CanNotParse) eitherDecodedFile
-          else
-            return . Left $ AssetNotLoaded Achievement p (EntryNot File)
+          else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
       return $ partitionEithers eithersList
     else return ([AssetNotLoaded Achievement "." (DoesNotExist Directory)], [])
 
