@@ -2,8 +2,8 @@
 
 module Swarm.Language.LSP.Hover where
 
-import Control.Monad (guard)
 import Control.Applicative ((<|>))
+import Control.Monad (guard)
 import Data.Graph
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -91,8 +91,8 @@ narrowToPosition s0@(Syntax _ t) pos = fromMaybe s0 $ case t of
   SBind _ s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
   _ -> Nothing
-  where
-    d = descend pos
+ where
+  d = descend pos
 
 -- | Markdown line that captures tree depth
 data DocLine a = DocLine
