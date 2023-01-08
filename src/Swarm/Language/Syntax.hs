@@ -66,6 +66,7 @@ module Swarm.Language.Syntax (
   Term (..),
   mkOp,
   mkOp',
+  unfoldApps,
 
   -- * Term traversal
   fvT,
@@ -90,6 +91,8 @@ import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Swarm.Util.Location (Heading)
 import Witch.From (from)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 
 ------------------------------------------------------------
 -- Constants
@@ -757,6 +760,14 @@ constInfo c = case c of
       , constDoc = d
       , tangibility = Intangible
       }
+
+-- | Turn function application chain into a list.
+-- >>> unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
+-- TConst Mul :| [TInt 1,TInt 2]
+unfoldApps :: Term -> NonEmpty Term
+unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
+  SApp (Syntax _ t1) (Syntax _ t2) -> (t2, Just t1)
+  t -> (t, Nothing)
 
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
