@@ -25,7 +25,7 @@ module Swarm.Game.Log (
   -- * Robot log entries
   LogEntry (..),
   leText,
-  leSaid,
+  leSource,
   leRobotName,
   leTime,
   leLocation,
@@ -58,7 +58,7 @@ data LogEntry = LogEntry
   { _leTime :: Integer
   -- ^ The time at which the entry was created.
   --   Note that this is the first field we sort on.
-  , _leSaid :: LogSource
+  , _leSource :: LogSource
   -- ^ Whether this log records a said message.
   , _leRobotName :: Text
   -- ^ The name of the robot that generated the entry.

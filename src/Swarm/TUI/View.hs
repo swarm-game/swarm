@@ -694,7 +694,7 @@ messagesWidget gs = widgetList
   txt2 = txtWrapWith indent2
 
 colorLogs :: LogEntry -> AttrName
-colorLogs e = case e ^. leSaid of
+colorLogs e = case e ^. leSource of
   Said -> robotColor (e ^. leRobotID)
   Logged -> notifAttr
   ErrorTrace l -> case l of
@@ -1115,7 +1115,7 @@ drawLogEntry :: Bool -> LogEntry -> Widget a
 drawLogEntry addName e = withAttr (colorLogs e) . txtWrapWith indent2 $ if addName then name else t
  where
   t = e ^. leText
-  name = "[" <> view leRobotName e <> "] " <> (if e ^. leSaid == Said then "said " <> quote t else t)
+  name = "[" <> view leRobotName e <> "] " <> (if e ^. leSource == Said then "said " <> quote t else t)
 
 ------------------------------------------------------------
 -- REPL panel
