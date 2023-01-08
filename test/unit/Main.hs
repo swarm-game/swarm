@@ -22,6 +22,7 @@ import Test.Tasty.QuickCheck (
  )
 import TestEval (testEval)
 import TestInventory (testInventory)
+import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
 import TestModel (testModel)
 import TestNotification (testNotification)
@@ -46,6 +47,7 @@ tests g =
     , testInventory
     , testNotification g
     , testMisc
+    , testLSP
     ]
 
 testMisc :: TestTree
