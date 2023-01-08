@@ -6,19 +6,17 @@ import Control.Arrow (left)
 import Control.Carrier.Lift (sendIO)
 import Control.Monad (forM, forM_)
 import Data.Either (partitionEithers)
-import Data.Text (Text, pack)
-import Data.Text qualified as T
 import Data.Yaml qualified as Y
-import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.Util
+import Swarm.TUI.Model.Achievement.Definitions
 import System.Directory (
   doesDirectoryExist,
   doesFileExist,
   listDirectory,
  )
-import System.FilePath
-import System.IO (hPutStrLn, stderr)
+import System.FilePath ( (</>) )
+import Swarm.TUI.Model.Failure
 
 -- | Get path to swarm achievements, optionally creating necessary
 --   directories.
@@ -26,8 +24,9 @@ getSwarmAchievementsPath :: Bool -> IO FilePath
 getSwarmAchievementsPath createDirs = getSwarmXdgDataSubdir createDirs "achievement"
 
 -- | Load saved info about achievements from XDG data directory.
+-- Returns a tuple of warnings and attained achievements.
 loadAchievementsInfo ::
-  IO (Either Text [Attainment])
+  IO ([SystemFailure], [Attainment])
 loadAchievementsInfo = do
   savedAchievementsPath <- getSwarmAchievementsPath False
   doesParentExist <- doesDirectoryExist savedAchievementsPath
@@ -40,20 +39,11 @@ loadAchievementsInfo = do
         if isFile
           then do
             eitherDecodedFile <- sendIO (Y.decodeFileEither fullPath)
-            return $ left (pack . prettyPrintParseException) eitherDecodedFile
+            return $ left (AssetNotLoaded Achievement p . CanNotParse) eitherDecodedFile
           else
-            return $
-              Left $
-                T.unwords
-                  [ "Entry"
-                  , quote $ T.pack fullPath
-                  , "is not a file!"
-                  ]
-      let (bads, goods) = partitionEithers eithersList
-      forM_ bads $ \b ->
-        hPutStrLn stderr $ T.unpack b
-      return $ pure goods
-    else return $ pure []
+            return . Left $ AssetNotLoaded Achievement p (EntryNot File)
+      return $ partitionEithers eithersList
+    else return ([AssetNotLoaded Achievement "." (DoesNotExist Directory)], [])
 
 -- | Save info about achievements to XDG data directory.
 saveAchievementsInfo ::
@@ -62,10 +52,8 @@ saveAchievementsInfo ::
 saveAchievementsInfo attainmentList = do
   savedAchievementsPath <- getSwarmAchievementsPath True
   forM_ attainmentList $ \x -> do
-    let achievementName =
-          T.unpack $
-            T.takeWhileEnd (/= ' ') $
-              T.pack $
-                show (_achievement x)
+    let achievementName = case _achievement x of
+          GlobalAchievement y -> show y
+          GameplayAchievement y -> show y
         fullPath = savedAchievementsPath </> achievementName
     Y.encodeFile fullPath x

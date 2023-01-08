@@ -39,6 +39,9 @@ import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.Clock
+import Swarm.Game.Log ( LogSource(ErrorTrace), ErrorLevel(..) ) 
+import Data.List qualified as List
+import Swarm.TUI.Model.Failure (prettyFailure)
 
 -- | Initialize the 'AppState'.
 initAppState :: AppOpts -> ExceptT Text IO AppState
@@ -46,8 +49,9 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   gs <- initGameState
-  ui <- initUIState (not skipMenu) cheatMode
-  let rs = initRuntimeState
+  (warnings, ui) <- initUIState (not skipMenu) cheatMode
+  let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
+  let rs = List.foldl' logWarning initRuntimeState warnings 
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
