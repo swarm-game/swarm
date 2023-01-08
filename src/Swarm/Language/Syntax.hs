@@ -80,6 +80,8 @@ import Data.Aeson.Types
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
@@ -91,8 +93,6 @@ import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Swarm.Util.Location (Heading)
 import Witch.From (from)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty
 
 ------------------------------------------------------------
 -- Constants
