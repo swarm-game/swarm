@@ -15,6 +15,8 @@
 module Swarm.Language.Syntax (
   -- * Directions
   Direction (..),
+  AbsoluteDir (..),
+  RelativeDir (..),
   DirInfo (..),
   applyTurn,
   toDirection,
@@ -71,13 +73,13 @@ module Swarm.Language.Syntax (
   mapFree1,
 ) where
 
+import Control.Arrow (Arrow ((&&&)))
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Aeson.Types
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
 import Data.Text hiding (filter, map)
@@ -93,50 +95,70 @@ import Witch.From (from)
 -- Constants
 ------------------------------------------------------------
 
--- | The type of directions. Used /e.g./ to indicate which way a robot
---   will turn.
-data Direction = DLeft | DRight | DBack | DForward | DNorth | DSouth | DEast | DWest | DDown
+-- | An absolute direction is one which is defined with respect to an
+--   external frame of reference; robots need a compass in order to
+--   use them.
+data AbsoluteDir = DNorth | DSouth | DEast | DWest
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
-instance ToJSONKey Direction where
+instance ToJSONKey AbsoluteDir where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
 
-instance FromJSONKey Direction where
+instance FromJSONKey AbsoluteDir where
   fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
+
+-- | A relative direction is one which is defined with respect to the
+--   robot's frame of reference; no special capability is needed to
+--   use them.
+data RelativeDir = DLeft | DRight | DBack | DForward | DDown
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+
+-- | The type of directions. Used /e.g./ to indicate which way a robot
+--   will turn.
+data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 data DirInfo = DirInfo
   { dirSyntax :: Text
-  , -- absolute direction if it exists
-    dirAbs :: Maybe Heading
-  , -- the turning for the direction
-    dirApplyTurn :: Heading -> Heading
+  , dirApplyTurn :: Heading -> Heading
+  -- ^ the turning for the direction
   }
 
 allDirs :: [Direction]
-allDirs = Util.listEnums
+allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
+
+toHeading :: AbsoluteDir -> Heading
+toHeading = \case
+  DNorth -> north
+  DSouth -> south
+  DEast -> east
+  DWest -> west
 
 -- | Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  DLeft -> relative (\(V2 x y) -> V2 (-y) x)
-  DRight -> relative (\(V2 x y) -> V2 y (-x))
-  DBack -> relative (\(V2 x y) -> V2 (-x) (-y))
-  DDown -> relative (const down)
-  DForward -> relative id
-  DNorth -> cardinal north
-  DSouth -> cardinal south
-  DEast -> cardinal east
-  DWest -> cardinal west
+  DRelative e -> case e of
+    DLeft -> relative perp
+    DRight -> relative (fmap negate . perp)
+    DBack -> relative (fmap negate)
+    DDown -> relative (const down)
+    DForward -> relative id
+  DAbsolute e -> cardinal $ toHeading e
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
-  directionSyntax = toLower . T.tail . from . show $ d
-  cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative = DirInfo directionSyntax Nothing
+  directionSyntax = toLower . T.tail . from $ case d of
+    DAbsolute x -> show x
+    DRelative x -> show x
+
+  cardinal = DirInfo directionSyntax . const
+  relative = DirInfo directionSyntax
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
-isCardinal = isJust . dirAbs . dirInfo
+isCardinal = \case
+  DAbsolute _ -> True
+  _ -> False
 
 -- | The cardinal direction north = @V2 0 1@.
 north :: Heading
@@ -156,7 +178,7 @@ west = V2 (-1) 0
 
 -- | The direction for viewing the current cell = @V2 0 0@.
 down :: Heading
-down = V2 0 0
+down = zero
 
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given heading or by turning to an absolute
@@ -165,12 +187,10 @@ applyTurn :: Direction -> Heading -> Heading
 applyTurn = dirApplyTurn . dirInfo
 
 -- | Mapping from heading to their corresponding cardinal directions.
---   Only directions with a 'dirAbs' value are mapped.
+--   Only absolute directions are mapped.
 cardinalDirs :: M.Map Heading Direction
 cardinalDirs =
-  M.fromList
-    . mapMaybe (\d -> (,d) <$> (dirAbs . dirInfo $ d))
-    $ allDirs
+  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
 
 -- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
@@ -182,7 +202,9 @@ toDirection v = M.lookup v cardinalDirs
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
 --   and 'DWest'---other 'Direction's return the zero vector.
 fromDirection :: Direction -> Heading
-fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
+fromDirection = \case
+  DAbsolute x -> toHeading x
+  _ -> zero
 
 -- | Constants, representing various built-in functions and commands.
 --
@@ -264,14 +286,18 @@ data Const
     Time
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the current heading.
+    Heading
   | -- | See if we can move forward or not.
     Blocked
   | -- | Scan a nearby cell
     Scan
   | -- | Upload knowledge to another robot
     Upload
-  | -- | See if a specific entity is here. (This may be removed.)
+  | -- | See if a specific entity is here.
     Ishere
+  | -- | Check whether the current cell is empty
+    Isempty
   | -- | Get a reference to oneself
     Self
   | -- | Get the robot's parent
@@ -606,14 +632,20 @@ constInfo c = case c of
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
-    command 0 Intangible . doc "Scan a nearby location for entities." $
+    command 1 Intangible . doc "Scan a nearby location for entities." $
       [ "Adds the entity (not actor) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
   Upload -> command 1 short "Upload a robot's known entities and log to another robot."
   Ishere -> command 1 Intangible "See if a specific entity is in the current location."
+  Isempty ->
+    command 0 Intangible . doc "Check if the current location is empty." $
+      [ "Detects whether or not the current location contains an entity."
+      , "Does not detect robots or other actors."
+      ]
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."
@@ -746,7 +778,10 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 data Syntax = Syntax {sLoc :: SrcLoc, sTerm :: Term}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
-data SrcLoc = NoLoc | SrcLoc Int Int
+data SrcLoc
+  = NoLoc
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup SrcLoc where

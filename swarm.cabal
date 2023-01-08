@@ -93,6 +93,7 @@ library
                       Swarm.Language.Typed
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
+                      Swarm.Language.LSP.Hover
                       Swarm.Language.Pipeline
                       Swarm.Language.Pipeline.QQ
                       Swarm.Game.CESK
@@ -129,6 +130,7 @@ library
                       Swarm.TUI.Model.UI
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
+                      Swarm.TUI.View.CellDisplay
                       Swarm.TUI.View.Util
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
@@ -165,7 +167,7 @@ library
                       http-types                    >= 0.12 && < 0.13,
                       lens                          >= 4.19 && < 5.3,
                       linear                        >= 1.21.6 && < 1.22,
-                      lsp                           >= 1.2 && < 1.7,
+                      lsp                           >= 1.6 && < 1.7,
                       megaparsec                    >= 9.0 && < 9.3,
                       minimorph                     >= 0.3 && < 0.4,
                       mtl                           >= 2.2.2 && < 2.3,
@@ -183,6 +185,7 @@ library
                       tagged                        >= 0.8 && < 0.9,
                       template-haskell              >= 2.16 && < 2.20,
                       text                          >= 1.2.4 && < 2.1,
+                      text-rope                     >= 0.2 && < 0.3,
                       text-zipper                   >= 0.10 && < 0.13,
                       time                          >= 1.9 && < 1.14,
                       unification-fd                >= 0.11  && < 0.12,
