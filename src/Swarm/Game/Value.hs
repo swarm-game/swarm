@@ -90,7 +90,7 @@ data Value where
 
 -- | Ensure that a value is not wrapped in 'VResult'.
 stripVResult :: Value -> Value
-stripVResult (VResult v _) = v
+stripVResult (VResult v _) = stripVResult v
 stripVResult v = v
 
 -- | Pretty-print a value.
