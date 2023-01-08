@@ -12,13 +12,11 @@ import Swarm.Util
 import System.Directory (
   doesFileExist,
  )
-import System.FilePath
 
 -- | Get path to swarm achievements, optionally creating necessary
 --   directories.
 getSwarmAchievementsPath :: Bool -> IO FilePath
-getSwarmAchievementsPath createDirs =
-  (</> "achievements") <$> getSwarmDataPath createDirs
+getSwarmAchievementsPath createDirs = getSwarmXdgDataFile createDirs "achievements"
 
 -- | Load saved info about achievements from XDG data directory.
 loadAchievementsInfo ::
