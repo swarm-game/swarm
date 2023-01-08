@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Game.Log
+-- Module      :  Swarm.Game.Failure
 -- Copyright   :  Ondřej Šebek
 -- Maintainer  :  ondras98@icloud.com
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- A data type to represent sustem failures.
+-- A data type to represent system failures.
 --
 -- These failures are often not fatal and serve
 -- to create common infrastructure for logging.
