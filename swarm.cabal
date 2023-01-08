@@ -24,7 +24,7 @@ extra-source-files: CHANGELOG.md
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
 data-dir:           data/
-data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt
+data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
 source-repository head
     type:     git
@@ -107,6 +107,7 @@ library
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
+                      Swarm.Language.LSP.VarUsage
                       Swarm.Language.Parse
                       Swarm.Language.Parse.QQ
                       Swarm.Language.Pipeline
@@ -230,6 +231,7 @@ test-suite swarm-unit
                       TestNotification
                       TestLanguagePipeline
                       TestPretty
+                      TestLSP
                       TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
