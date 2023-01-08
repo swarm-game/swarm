@@ -2,6 +2,7 @@
 
 module Swarm.Language.LSP.Hover where
 
+import Control.Monad (guard)
 import Control.Applicative ((<|>))
 import Data.Graph
 import Data.Maybe (fromMaybe)
@@ -61,10 +62,9 @@ descend ::
   -- | next element to inspect
   Syntax ->
   Maybe Syntax
-descend pos s1@(Syntax l1 _) =
-  if withinBound pos l1
-    then Just $ narrowToPosition s1 pos
-    else Nothing
+descend pos s1@(Syntax l1 _) = do
+  guard $ withinBound pos l1
+  return $ narrowToPosition s1 pos
 
 -- | Find the most specific term for a given
 -- position within the code.
@@ -83,14 +83,16 @@ narrowToPosition ::
   Int ->
   Syntax
 narrowToPosition s0@(Syntax _ t) pos = fromMaybe s0 $ case t of
-  SLam _ _ s -> descend pos s
-  SApp s1 s2 -> descend pos s1 <|> descend pos s2
-  SLet _ _ _ s1 s2 -> descend pos s1 <|> descend pos s2
-  SPair s1 s2 -> descend pos s1 <|> descend pos s2
-  SDef _ _ _ s -> descend pos s
-  SBind _ s1 s2 -> descend pos s1 <|> descend pos s2
-  SDelay _ s -> descend pos s
+  SLam _ _ s -> d s
+  SApp s1 s2 -> d s1 <|> d s2
+  SLet _ _ _ s1 s2 -> d s1 <|> d s2
+  SPair s1 s2 -> d s1 <|> d s2
+  SDef _ _ _ s -> d s
+  SBind _ s1 s2 -> d s1 <|> d s2
+  SDelay _ s -> d s
   _ -> Nothing
+  where
+    d = descend pos
 
 -- | Markdown line that captures tree depth
 data DocLine a = DocLine
