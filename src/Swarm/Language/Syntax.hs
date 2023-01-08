@@ -76,6 +76,7 @@ module Swarm.Language.Syntax (
   Term,
   mkOp,
   mkOp',
+  unfoldApps,
 
   -- * Erasure
   erase,
@@ -96,6 +97,8 @@ import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
 import Data.List qualified as L (tail)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
@@ -785,6 +788,14 @@ constInfo c = case c of
 
   lowShow :: Show a => a -> Text
   lowShow a = toLower (from (show a))
+
+-- | Turn function application chain into a list.
+-- >>> unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
+-- TConst Mul :| [TInt 1,TInt 2]
+unfoldApps :: Term -> NonEmpty Term
+unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
+  SApp (Syntax _ t1) (Syntax _ t2) -> (t2, Just t1)
+  t -> (t, Nothing)
 
 ------------------------------------------------------------
 -- Basic terms
