@@ -277,7 +277,7 @@ dataNotFound f = do
   return $
     T.unlines
       [ "Could not find the data: " <> squotes f
-      , "Try downloading the Swarm 'data' directory to: " <> squotes d
+      , "Try downloading the Swarm 'data' directory to: " <> squotes (d </> "data")
       ]
 
 -- | Get path to swarm data, optionally creating necessary
