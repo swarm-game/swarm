@@ -782,7 +782,7 @@ data SrcLoc
   = NoLoc
   | -- | Half-open interval from start (inclusive) to end (exclusive)
     SrcLoc Int Int
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup SrcLoc where
   NoLoc <> l = l
@@ -871,7 +871,7 @@ data DelayType
 --   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need LocVar for those.)
 data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | Terms of the Swarm language.
 data Term
