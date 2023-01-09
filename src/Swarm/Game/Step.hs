@@ -212,7 +212,7 @@ hypotheticalWinCheck em g ws oc = do
       if WC.isPrereqsSatisfied currentCompletions obj
         then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
         else return $ Right $ VBool False
-    let simplified = simplifyResult v
+    let simplified = simplifyResult $ stripVResult <$> v
     return $ case simplified of
       Left exnText ->
         CompletionsWithExceptions
@@ -233,7 +233,6 @@ hypotheticalWinCheck em g ws oc = do
   simplifyResult = \case
     Left exn -> Left $ formatExn em exn
     Right (VBool x) -> Right x
-    Right (VResult (VBool x) _env) -> Right x
     Right val ->
       Left $
         T.unwords
