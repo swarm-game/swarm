@@ -134,9 +134,10 @@ instance FromJSONE EntityMap Scenario where
         <*> pure known
         <*> localE (,rsMap) (v ..: "world")
         <*> pure rs
-        <*> liftE (v .:? "objectives" .!= []) >>= validateObjectives
-        <*> liftE (v .:? "solution")
-        <*> liftE (v .:? "stepsPerTick")
+        <*> liftE (v .:? "objectives" .!= [])
+        >>= validateObjectives
+          <*> liftE (v .:? "solution")
+          <*> liftE (v .:? "stepsPerTick")
 
 --------------------------------------------------
 -- Lenses
