@@ -17,6 +17,8 @@
 module Swarm.Language.Syntax (
   -- * Directions
   Direction (..),
+  AbsoluteDir (..),
+  RelativeDir (..),
   DirInfo (..),
   applyTurn,
   toDirection,
@@ -53,7 +55,7 @@ module Swarm.Language.Syntax (
   sType,
   Syntax,
   pattern Syntax,
-  Location (..),
+  SrcLoc (..),
   noLoc,
   pattern STerm,
   pattern TPair,
@@ -79,14 +81,13 @@ module Swarm.Language.Syntax (
   mapFree1,
 ) where
 
+import Control.Arrow (Arrow ((&&&)))
 import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
 import Data.Aeson.Types
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
-import Data.Int (Int64)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
 import Data.Text hiding (filter, map)
@@ -94,102 +95,124 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear
 import Swarm.Language.Types
+import Swarm.Util qualified as Util
+import Swarm.Util.Location (Heading)
 import Witch.From (from)
 
 ------------------------------------------------------------
 -- Constants
 ------------------------------------------------------------
 
--- | The type of directions. Used /e.g./ to indicate which way a robot
---   will turn.
-data Direction = DLeft | DRight | DBack | DForward | DNorth | DSouth | DEast | DWest | DDown
+-- | An absolute direction is one which is defined with respect to an
+--   external frame of reference; robots need a compass in order to
+--   use them.
+data AbsoluteDir = DNorth | DSouth | DEast | DWest
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
-instance ToJSONKey Direction where
+instance ToJSONKey AbsoluteDir where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
 
-instance FromJSONKey Direction where
+instance FromJSONKey AbsoluteDir where
   fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
+
+-- | A relative direction is one which is defined with respect to the
+--   robot's frame of reference; no special capability is needed to
+--   use them.
+data RelativeDir = DLeft | DRight | DBack | DForward | DDown
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+
+-- | The type of directions. Used /e.g./ to indicate which way a robot
+--   will turn.
+data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 data DirInfo = DirInfo
   { dirSyntax :: Text
-  , -- absolute direction if it exists
-    dirAbs :: Maybe (V2 Int64)
-  , -- the turning for the direction
-    dirApplyTurn :: V2 Int64 -> V2 Int64
+  , dirApplyTurn :: Heading -> Heading
+  -- ^ the turning for the direction
   }
 
 allDirs :: [Direction]
-allDirs = [minBound .. maxBound]
+allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
+
+toHeading :: AbsoluteDir -> Heading
+toHeading = \case
+  DNorth -> north
+  DSouth -> south
+  DEast -> east
+  DWest -> west
 
 -- | Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  DLeft -> relative (\(V2 x y) -> V2 (-y) x)
-  DRight -> relative (\(V2 x y) -> V2 y (-x))
-  DBack -> relative (\(V2 x y) -> V2 (-x) (-y))
-  DDown -> relative (const down)
-  DForward -> relative id
-  DNorth -> cardinal north
-  DSouth -> cardinal south
-  DEast -> cardinal east
-  DWest -> cardinal west
+  DRelative e -> case e of
+    DLeft -> relative perp
+    DRight -> relative (fmap negate . perp)
+    DBack -> relative (fmap negate)
+    DDown -> relative (const down)
+    DForward -> relative id
+  DAbsolute e -> cardinal $ toHeading e
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
-  directionSyntax = toLower . T.tail . from . show $ d
-  cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative = DirInfo directionSyntax Nothing
+  directionSyntax = toLower . T.tail . from $ case d of
+    DAbsolute x -> show x
+    DRelative x -> show x
+
+  cardinal = DirInfo directionSyntax . const
+  relative = DirInfo directionSyntax
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
-isCardinal = isJust . dirAbs . dirInfo
+isCardinal = \case
+  DAbsolute _ -> True
+  _ -> False
 
 -- | The cardinal direction north = @V2 0 1@.
-north :: V2 Int64
+north :: Heading
 north = V2 0 1
 
 -- | The cardinal direction south = @V2 0 (-1)@.
-south :: V2 Int64
+south :: Heading
 south = V2 0 (-1)
 
 -- | The cardinal direction east = @V2 1 0@.
-east :: V2 Int64
+east :: Heading
 east = V2 1 0
 
 -- | The cardinal direction west = @V2 (-1) 0@.
-west :: V2 Int64
+west :: Heading
 west = V2 (-1) 0
 
 -- | The direction for viewing the current cell = @V2 0 0@.
-down :: V2 Int64
-down = V2 0 0
+down :: Heading
+down = zero
 
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
---   turning relative to the given vector or by turning to an absolute
---   direction vector.
-applyTurn :: Direction -> V2 Int64 -> V2 Int64
+--   turning relative to the given heading or by turning to an absolute
+--   heading
+applyTurn :: Direction -> Heading -> Heading
 applyTurn = dirApplyTurn . dirInfo
 
--- | Mapping from heading to their corresponding cardinal directions
---   only directions with a 'dirAbs` value are mapped
-cardinalDirs :: M.Map (V2 Int64) Direction
+-- | Mapping from heading to their corresponding cardinal directions.
+--   Only absolute directions are mapped.
+cardinalDirs :: M.Map Heading Direction
 cardinalDirs =
-  M.fromList
-    . mapMaybe (\d -> (,d) <$> (dirAbs . dirInfo $ d))
-    $ allDirs
+  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
 
--- | Possibly convert a vector into a 'Direction'---that is, if the
+-- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
 --   directions.
-toDirection :: V2 Int64 -> Maybe Direction
+toDirection :: Heading -> Maybe Direction
 toDirection v = M.lookup v cardinalDirs
 
--- | Convert a 'Direction' into a corresponding vector.  Note that
+-- | Convert a 'Direction' into a corresponding heading.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
 --   and 'DWest'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> V2 Int64
-fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
+fromDirection :: Direction -> Heading
+fromDirection = \case
+  DAbsolute x -> toHeading x
+  _ -> zero
 
 -- | Constants, representing various built-in functions and commands.
 --
@@ -201,9 +224,10 @@ fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
 --   5. the emacs mode syntax highlighter (@contribs/swarm-mode.el@)
 --
 --   GHC will warn you about incomplete pattern matches for the first
---   four, so it's not really possible to forget.  Note you do not
---   need to update the parser or pretty-printer, since they are
---   auto-generated from 'constInfo'.
+--   four, and CI will warn you about the last, so in theory it's not
+--   really possible to forget.  Note you do not need to update the
+--   parser or pretty-printer, since they are auto-generated from
+--   'constInfo'.
 data Const
   = -- Trivial actions
 
@@ -230,6 +254,10 @@ data Const
     Give
   | -- | Install a device on a robot.
     Install
+  | -- | Equip a device on oneself.
+    Equip
+  | -- | Unequip an equipped device, returning to inventory.
+    Unequip
   | -- | Make an item.
     Make
   | -- | Sense whether we have a certain item.
@@ -266,20 +294,28 @@ data Const
     Time
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the current heading.
+    Heading
   | -- | See if we can move forward or not.
     Blocked
   | -- | Scan a nearby cell
     Scan
   | -- | Upload knowledge to another robot
     Upload
-  | -- | See if a specific entity is here. (This may be removed.)
+  | -- | See if a specific entity is here.
     Ishere
+  | -- | Check whether the current cell is empty
+    Isempty
   | -- | Get a reference to oneself
     Self
   | -- | Get the robot's parent
     Parent
   | -- | Get a reference to the base
     Base
+  | -- | Meet a nearby robot
+    Meet
+  | -- | Meet all nearby robots
+    MeetAll
   | -- | Get the robot's display name
     Whoami
   | -- | Set the robot's display name
@@ -360,6 +396,10 @@ data Const
     Chars
   | -- | Split string into two parts.
     Split
+  | -- | Get the character at an index.
+    CharAt
+  | -- | Create a singleton text value with the given character code.
+    ToChar
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -379,16 +419,16 @@ data Const
     Teleport
   | -- | Run a command as if you were another robot.
     As
-  | -- | Find a robot by name.
+  | -- | Find an actor by name.
     RobotNamed
-  | -- | Find a robot by number.
+  | -- | Find an actor by number.
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
   deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON)
 
 allConst :: [Const]
-allConst = [minBound .. maxBound]
+allConst = Util.listEnums
 
 data ConstInfo = ConstInfo
   { syntax :: Text
@@ -532,7 +572,7 @@ constInfo c = case c of
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    command 0 short . doc "Self-destruct the robot." $
+    command 0 short . doc "Self-destruct a robot." $
       [ "Useful to not clutter the world."
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
@@ -547,8 +587,10 @@ constInfo c = case c of
   Place ->
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Give -> command 2 short "Give an item to another robot nearby."
-  Install -> command 2 short "Install a device from inventory on a robot."
+  Give -> command 2 short "Give an item to another actor nearby."
+  Install -> command 2 short "Install a device from inventory on another actor nearby."
+  Equip -> command 1 short "Equip a device on oneself."
+  Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
   Make -> command 1 long "Make an item using a recipe."
   Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
   Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."
@@ -572,7 +614,7 @@ constInfo c = case c of
       ["Salvaging a robot will give you its inventory, installed devices and log."]
   Say ->
     command 1 short . doc "Emit a message." $
-      [ "The message will be in the robots log (if it has one) and the global log."
+      [ "The message will be in the robot's log (if it has one) and the global log."
       , "You can view the message that would be picked by `listen` from the global log "
           <> "in the messages panel, along with your own messages and logs."
       , "This means that to see messages from other robots you have to be able to listen for them, "
@@ -580,14 +622,14 @@ constInfo c = case c of
       , "In creative mode, there is of course no such limitation."
       ]
   Listen ->
-    command 1 long . doc "Listen for a message from other robots." $
-      [ "It will take the first message said by the closest robot."
+    command 1 long . doc "Listen for a message from other actors." $
+      [ "It will take the first message said by the closest actor."
       , "You do not need to actively listen for the message to be logged though, "
           <> "that is done automatically once you have a listening device installed."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
-  View -> command 1 short "View the given robot."
+  View -> command 1 short "View the given actor."
   Appear ->
     command 1 short . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
@@ -598,17 +640,25 @@ constInfo c = case c of
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
-    command 0 Intangible . doc "Scan a nearby location for entities." $
-      [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
+    command 1 Intangible . doc "Scan a nearby location for entities." $
+      [ "Adds the entity (not actor) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
   Upload -> command 1 short "Upload a robot's known entities and log to another robot."
   Ishere -> command 1 Intangible "See if a specific entity is in the current location."
+  Isempty ->
+    command 0 Intangible . doc "Check if the current location is empty." $
+      [ "Detects whether or not the current location contains an entity."
+      , "Does not detect robots or other actors."
+      ]
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."
+  Meet -> command 0 Intangible "Get a reference to a nearby actor, if there is one."
+  MeetAll -> command 0 long "Run a command for each nearby actor."
   Whoami -> command 0 Intangible "Get the robot's display name."
   Setname -> command 1 short "Set the robot's display name."
   Random ->
@@ -652,6 +702,15 @@ constInfo c = case c of
       , "`(s1,s2) == split (chars s1) (s1 ++ s2)`"
       , "So split can be used to undo concatenation if you know the length of the original string."
       ]
+  CharAt ->
+    function 2 . doc "Get the character at a given index." $
+      [ "Gets the character (as an `int` representing a Unicode codepoint) at a specific index in a `text` value.  Valid indices are 0 through `chars t - 1`."
+      , "Throws an exception if given an out-of-bounds index."
+      ]
+  ToChar ->
+    function 1 . doc "Create a singleton `text` value from the given character code." $
+      [ "That is, `chars (toChar c) == 1` and `charAt 0 (toChar c) == c`."
+      ]
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."
@@ -669,8 +728,8 @@ constInfo c = case c of
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
   As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
-  RobotNamed -> command 1 Intangible "Find a robot by name."
-  RobotNumbered -> command 1 Intangible "Find a robot by number."
+  RobotNamed -> command 1 Intangible "Find an actor by name."
+  RobotNumbered -> command 1 Intangible "Find an actor by number."
   Knows -> command 1 Intangible "Check if the robot knows about an entity."
  where
   doc b ls = ConstDoc b (T.unlines ls)
@@ -741,15 +800,18 @@ pattern Syntax l t = Syntax' l t ()
 
 {-# COMPLETE Syntax #-}
 
-data Location = NoLoc | Location Int Int
+data SrcLoc
+  = NoLoc
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
-instance Semigroup Location where
+instance Semigroup SrcLoc where
   NoLoc <> l = l
   l <> NoLoc = l
-  Location s1 e1 <> Location s2 e2 = Location (min s1 s2) (max e1 e2)
+  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
 
-instance Monoid Location where
+instance Monoid SrcLoc where
   mempty = NoLoc
 
 noLoc :: Term -> Syntax
@@ -837,7 +899,7 @@ data Term' ty
     TAntiText Text
   | -- | A Boolean literal.
     TBool Bool
-  | -- | A robot value.  These never show up in surface syntax, but are
+  | -- | A robot reference.  These never show up in surface syntax, but are
     --   here so we can factor pretty-printing for Values through
     --   pretty-printing for Terms.
     TRobot Int

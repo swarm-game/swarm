@@ -214,16 +214,21 @@ them!
 
 #### Formatting style
 
-We use [`fourmolu-0.4.0.0`](https://hackage.haskell.org/package/fourmolu)
+We use [`fourmolu-0.9.0.0`](https://hackage.haskell.org/package/fourmolu)
 with a [custom
 configuration](https://github.com/swarm-game/swarm/blob/main/fourmolu.yaml)
 for formatting Haskell code.
 
 You can run the formatter from the shell:
 ```bash
-cabal install fourmolu-0.4.0.0
+cabal install fourmolu-0.9.0.0
 cd path/to/the/root/of/swarm/repo
-find src/ app/ test/ -name "*.hs" | xargs fourmolu --mode=inplace --cabal-default-extensions
+find src/ app/ test/ -name "*.hs" | xargs fourmolu --mode=inplace
+```
+
+For convenience, one may alternatively execute this script:
+```
+scripts/reformat-code.sh
 ```
 
 There is probably a way to configure your favorite editor to have `fourmolu`

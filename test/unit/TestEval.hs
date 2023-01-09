@@ -5,6 +5,7 @@
 module TestEval where
 
 import Control.Lens ((^.), _3)
+import Data.Char (ord)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
@@ -238,6 +239,27 @@ testEval g =
                  in T.concat ["(", t1, ",", t2, ") == split (chars ", t1, ") (", t1, " ++ ", t2, ")"]
                       `evaluatesToP` VBool True
             )
+        , testProperty
+            "charAt"
+            $ \i (NonEmpty s) ->
+              let i' = i `mod` length s
+               in T.concat ["charAt ", from @String (show i'), " ", tquote s]
+                    `evaluatesToP` VInt (fromIntegral (ord (s !! i')))
+        , testCase
+            "toChar 97"
+            ("toChar 97 == \"a\"" `evaluatesTo` VBool True)
+        , testProperty
+            "chars/toChar"
+            ( \(NonNegative (i :: Integer)) ->
+                T.concat ["chars (toChar ", from @String (show i), ")"]
+                  `evaluatesToP` VInt 1
+            )
+        , testProperty
+            "charAt/toChar"
+            ( \(NonNegative i) ->
+                T.concat ["charAt 0 (toChar ", from @String (show i), ")"]
+                  `evaluatesToP` VInt i
+            )
         ]
     ]
  where
@@ -251,7 +273,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-          ++ from @Text @String err
+            ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do

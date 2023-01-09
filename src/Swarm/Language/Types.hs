@@ -29,7 +29,7 @@ module Swarm.Language.Types (
   pattern TyText,
   pattern TyDir,
   pattern TyBool,
-  pattern TyRobot,
+  pattern TyActor,
   pattern (:+:),
   pattern (:*:),
   pattern (:->:),
@@ -46,7 +46,7 @@ module Swarm.Language.Types (
   pattern UTyText,
   pattern UTyDir,
   pattern UTyBool,
-  pattern UTyRobot,
+  pattern UTyActor,
   pattern UTySum,
   pattern UTyProd,
   pattern UTyFun,
@@ -105,8 +105,11 @@ data BaseTy
     BDir
   | -- | Booleans.
     BBool
-  | -- | Robots.
-    BRobot
+  | -- | "Actors", i.e. anything that can do stuff. Internally, these
+    --   are all just "robots", but we give them a more generic
+    --   in-game name because they could represent other things like
+    --   aliens, animals, seeds, ...
+    BActor
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | A "structure functor" encoding the shape of type expressions.
@@ -278,8 +281,8 @@ pattern TyDir = Fix (TyBaseF BDir)
 pattern TyBool :: Type
 pattern TyBool = Fix (TyBaseF BBool)
 
-pattern TyRobot :: Type
-pattern TyRobot = Fix (TyBaseF BRobot)
+pattern TyActor :: Type
+pattern TyActor = Fix (TyBaseF BActor)
 
 infixr 5 :+:
 
@@ -326,8 +329,8 @@ pattern UTyDir = UTerm (TyBaseF BDir)
 pattern UTyBool :: UType
 pattern UTyBool = UTerm (TyBaseF BBool)
 
-pattern UTyRobot :: UType
-pattern UTyRobot = UTerm (TyBaseF BRobot)
+pattern UTyActor :: UType
+pattern UTyActor = UTerm (TyBaseF BActor)
 
 pattern UTySum :: UType -> UType -> UType
 pattern UTySum ty1 ty2 = UTerm (TySumF ty1 ty2)

@@ -13,4 +13,11 @@
 378-objectives.yaml
 684-swap.yaml
 699-movement-fail
+858-inventory
 710-multi-robot.yaml
+920-meet.yaml
+955-heading.yaml
+397-wrong-missing.yaml
+961-custom-capabilities.yaml
+956-GPS.yaml
+958-isempty.yaml

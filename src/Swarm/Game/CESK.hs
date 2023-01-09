@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -65,7 +66,7 @@ module Swarm.Game.CESK (
 
   -- * Store
   Store,
-  Loc,
+  Addr,
   emptyStore,
   Cell (..),
   allocate,
@@ -83,24 +84,18 @@ module Swarm.Game.CESK (
 
   -- ** Extracting information
   finalValue,
-
-  -- ** Pretty-printing
-  prettyFrame,
-  prettyCont,
-  prettyCESK,
 ) where
 
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson qualified
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.List (intercalate)
 import GHC.Generics (Generic)
-import Swarm.Game.Entity (Entity, Inventory)
+import Prettyprinter (Doc, Pretty (..), hsep, (<+>))
+import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
 import Swarm.Game.Value as V
-import Swarm.Game.World (World)
+import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
@@ -108,7 +103,6 @@ import Swarm.Language.Pretty
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
-import Witch (from)
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -165,12 +159,21 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) Term Env
+  | -- | Discard any environment generated as the result of executing
+    --   a command.
+    FDiscardEnv
   | -- | Apply specific updates to the world and current robot.
-    FImmediate WorldUpdate RobotUpdate
+    --
+    -- The 'Const' is used to track the original command for error messages.
+    FImmediate Const [WorldUpdate Entity] [RobotUpdate]
   | -- | Update the memory cell at a certain location with the computed value.
-    FUpdate Loc
+    FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
     FFinishAtomic
+  | -- | We are in the middle of running a computation for all the
+    --   nearby robots.  We have the function to run, and the list of
+    --   robot IDs to run it on.
+    FMeetAll Value [Int]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.
@@ -180,10 +183,10 @@ type Cont = [Frame]
 -- Store
 ------------------------------------------------------------
 
-type Loc = Int
+type Addr = Int
 
 -- | 'Store' represents a store, indexing integer locations to 'Cell's.
-data Store = Store {next :: Loc, mu :: IntMap Cell} deriving (Show, Eq, Generic, FromJSON, ToJSON)
+data Store = Store {next :: Addr, mu :: IntMap Cell} deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 -- | A memory cell can be in one of three states.
 data Cell
@@ -215,15 +218,15 @@ emptyStore = Store 0 IM.empty
 -- | Allocate a new memory cell containing an unevaluated expression
 --   with the current environment.  Return the index of the allocated
 --   cell.
-allocate :: Env -> Term -> Store -> (Loc, Store)
+allocate :: Env -> Term -> Store -> (Addr, Store)
 allocate e t (Store n m) = (n, Store (n + 1) (IM.insert n (E t e) m))
 
 -- | Look up the cell at a given index.
-lookupCell :: Loc -> Store -> Maybe Cell
+lookupCell :: Addr -> Store -> Maybe Cell
 lookupCell n = IM.lookup n . mu
 
 -- | Set the cell at a given index.
-setCell :: Loc -> Cell -> Store -> Store
+setCell :: Addr -> Cell -> Store -> Store
 setCell n c (Store nxt m) = Store nxt (IM.insert n c m)
 
 ------------------------------------------------------------
@@ -309,82 +312,73 @@ resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
   resetBlackhole c = c
 
 ------------------------------------------------------------
--- Very crude pretty-printing of CESK states.  Should really make a
--- nicer version of this code...
+-- Pretty printing CESK machine states
 ------------------------------------------------------------
 
--- | Very poor pretty-printing of CESK machine states, really just for
---   debugging. At some point we should make a nicer version.
-prettyCESK :: CESK -> String
-prettyCESK (In c _ _ k) =
-  unlines
-    [ "▶ " ++ prettyString c
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Out v _ k) =
-  unlines
-    [ "◀ " ++ from (prettyValue v)
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Up e _ k) =
-  unlines
-    [ "! " ++ from (formatExn mempty e)
-    , "  " ++ prettyCont k
-    ]
-prettyCESK (Waiting t cek) =
-  "🕑" <> show t <> " " <> show cek
+instance PrettyPrec CESK where
+  prettyPrec _ (In c _ _ k) = prettyCont k (11, "▶" <> ppr c <> "◀")
+  prettyPrec _ (Out v _ k) = prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
+  prettyPrec _ (Up e _ k) = prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
+  prettyPrec _ (Waiting t cesk) = "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
 
--- | Poor pretty-printing of continuations.
-prettyCont :: Cont -> String
-prettyCont = ("[" ++) . (++ "]") . intercalate " | " . map prettyFrame
+-- | Take a continuation, and the pretty-printed expression which is
+--   the focus of the continuation (i.e. the expression whose value
+--   will be given to the continuation) along with its top-level
+--   precedence, and pretty-print the whole thing.
+--
+--   As much as possible, we try to print to look like an *expression*
+--   with a currently focused part, that is, we print the continuation
+--   from the inside out instead of as a list of frames.  This makes
+--   it much more intuitive to read.
+prettyCont :: Cont -> (Int, Doc ann) -> Doc ann
+prettyCont [] (_, inner) = inner
+prettyCont (f : k) inner = prettyCont k (prettyFrame f inner)
 
--- | Poor pretty-printing of frames.
-prettyFrame :: Frame -> String
-prettyFrame (FSnd t _) = "(_, " ++ prettyString t ++ ")"
-prettyFrame (FFst v) = "(" ++ from (prettyValue v) ++ ", _)"
-prettyFrame (FArg t _) = "_ " ++ prettyString t
-prettyFrame (FApp v) = prettyString (valueToTerm v) ++ " _"
-prettyFrame (FLet x t _) = "let " ++ from x ++ " = _ in " ++ prettyString t
-prettyFrame (FTry t) = "try _ (" ++ prettyString (valueToTerm t) ++ ")"
-prettyFrame FUnionEnv {} = "_ ∪ <Env>"
-prettyFrame FLoadEnv {} = "loadEnv"
-prettyFrame (FDef x) = "def " ++ from x ++ " = _"
-prettyFrame FExec = "exec _"
-prettyFrame (FBind Nothing t _) = "_ ; " ++ prettyString t
-prettyFrame (FBind (Just x) t _) = from x ++ " <- _ ; " ++ prettyString t
-prettyFrame FImmediate {} = "(_ : cmd a)"
-prettyFrame (FUpdate loc) = "store@" ++ show loc ++ "(_)"
-prettyFrame FFinishAtomic = "finishAtomic"
+-- | Pretty-print a single continuation frame, given its already
+--   pretty-printed focus.  In particular, given a frame and its
+--   "inside" (i.e. the expression or other frames being focused on,
+--   whose value will eventually be passed to this frame), with the
+--   precedence of the inside's top-level construct, return a
+--   pretty-printed version of the entire frame along with its
+--   top-level precedence.
+prettyFrame :: Frame -> (Int, Doc ann) -> (Int, Doc ann)
+prettyFrame (FSnd t _) (_, inner) = (11, "(" <> inner <> "," <+> ppr t <> ")")
+prettyFrame (FFst v) (_, inner) = (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
+prettyFrame (FArg t _) (p, inner) = (10, pparens (p < 10) inner <+> prettyPrec 11 t)
+prettyFrame (FApp v) (p, inner) = (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
+prettyFrame (FLet x t _) (_, inner) = (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
+prettyFrame (FTry v) (p, inner) = (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
+prettyFrame (FUnionEnv _) inner = prettyPrefix "∪·" inner
+prettyFrame (FLoadEnv _ _) inner = prettyPrefix "L·" inner
+prettyFrame (FDef x) (_, inner) = (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
+prettyFrame FExec inner = prettyPrefix "E·" inner
+prettyFrame (FBind Nothing t _) (p, inner) = (0, pparens (p < 1) inner <+> ";" <+> ppr t)
+prettyFrame (FBind (Just x) t _) (p, inner) = (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
+prettyFrame FDiscardEnv inner = prettyPrefix "D·" inner
+prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> ppr c <> "]·") inner
+prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner
+prettyFrame FFinishAtomic inner = prettyPrefix "A·" inner
+prettyFrame (FMeetAll _ _) inner = prettyPrefix "M·" inner
+
+-- | Pretty-print a special "prefix application" frame, i.e. a frame
+--   formatted like @X· inner@.  Unlike typical applications, these
+--   associate to the *right*, so that we can print something like @X·
+--   Y· Z· inner@ with no parens.
+prettyPrefix :: Doc ann -> (Int, Doc ann) -> (Int, Doc ann)
+prettyPrefix pre (p, inner) = (11, pre <+> pparens (p < 11) inner)
 
 --------------------------------------------------------------
--- Wrappers for functions in FImmediate
---
--- NOTE: we can not use GameState and Robot directly, as it
--- would create a cyclic dependency. The alternative is
--- making CESK, Cont and Frame polymorphic which just muddies
--- the picture too much for one little game feature.
---
--- BEWARE: the types do not follow normal laws for Show and Eq
+-- Runtime robot update
 --------------------------------------------------------------
 
-newtype WorldUpdate = WorldUpdate
-  { worldUpdate :: World Int Entity -> Either Exn (World Int Entity)
-  }
-
-newtype RobotUpdate = RobotUpdate
-  { robotUpdateInventory :: Inventory -> Inventory
-  }
-
-instance Show WorldUpdate where show _ = "WorldUpdate {???}"
-
-instance Show RobotUpdate where show _ = "RobotUpdate {???}"
-
-instance Eq WorldUpdate where _ == _ = True
-
-instance Eq RobotUpdate where _ == _ = True
-
--- TODO: remove these instances once Update fields are concret
-instance FromJSON WorldUpdate where parseJSON _ = pure $ WorldUpdate $ \w -> Right w
-instance ToJSON WorldUpdate where toJSON _ = Data.Aeson.Null
-instance FromJSON RobotUpdate where parseJSON _ = pure $ RobotUpdate id
-instance ToJSON RobotUpdate where toJSON _ = Data.Aeson.Null
+-- | Update the robot in an inspectable way.
+--
+-- This type is used for changes by e.g. the drill command at later
+-- tick. Using ADT allows us to serialize and inspect the updates.
+--
+-- Note that this can not be in 'Swarm.Game.Robot' as it would create
+-- a cyclic dependency.
+data RobotUpdate
+  = AddEntity Count Entity
+  | LearnEntity Entity
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)

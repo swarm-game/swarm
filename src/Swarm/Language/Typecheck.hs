@@ -20,7 +20,7 @@ module Swarm.Language.Typecheck (
   -- * Type errors
   TypeErr (..),
   InvalidAtomicReason (..),
-  getTypeErrLocation,
+  getTypeErrSrcLoc,
 
   -- * Inference monad
   Infer,
@@ -99,7 +99,7 @@ runInfer ctx =
 --   an 'UnboundVar' error if it is not found, or opening its
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
-lookup :: Location -> Var -> Infer UType
+lookup :: SrcLoc -> Var -> Infer UType
 lookup loc x = do
   ctx <- ask
   maybe (throwError $ UnboundVar loc x) instantiate (Ctx.lookup x ctx)
@@ -228,20 +228,20 @@ generalize uty = do
 --   separately be pretty-printed to display them to the user.
 data TypeErr
   = -- | An undefined variable was encountered.
-    UnboundVar Location Var
+    UnboundVar SrcLoc Var
   | -- | A Skolem variable escaped its local context.
-    EscapedSkolem Location Var
+    EscapedSkolem SrcLoc Var
   | Infinite IntVar UType
   | -- | The given term was expected to have a certain type, but has a
     -- different type instead.
-    Mismatch Location (TypeF UType) (TypeF UType)
+    Mismatch SrcLoc (TypeF UType) (TypeF UType)
   | -- | A definition was encountered not at the top level.
-    DefNotTopLevel Location Term
+    DefNotTopLevel SrcLoc Term
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
-    CantInfer Location Term
+    CantInfer SrcLoc Term
   | -- | An invalid argument was provided to @atomic@.
-    InvalidAtomic Location InvalidAtomicReason Term
+    InvalidAtomic SrcLoc InvalidAtomicReason Term
   deriving (Show)
 
 -- | Various reasons the body of an @atomic@ might be invalid.
@@ -262,8 +262,8 @@ instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
   mismatchFailure = Mismatch NoLoc
 
-getTypeErrLocation :: TypeErr -> Maybe Location
-getTypeErrLocation te = case te of
+getTypeErrSrcLoc :: TypeErr -> Maybe SrcLoc
+getTypeErrSrcLoc te = case te of
   UnboundVar l _ -> Just l
   EscapedSkolem l _ -> Just l
   Infinite _ _ -> Nothing
@@ -356,7 +356,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TText x -> return $ Syntax' l (TText x) UTyText
   TAntiText x -> return $ Syntax' l (TAntiText x) UTyText
   TBool b -> return $ Syntax' l (TBool b) UTyBool
-  TRobot r -> return $ Syntax' l (TRobot r) UTyRobot
+  TRobot r -> return $ Syntax' l (TRobot r) UTyActor
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
@@ -501,31 +501,37 @@ inferConst c = case c of
   Grab -> [tyQ| cmd text |]
   Harvest -> [tyQ| cmd text |]
   Place -> [tyQ| text -> cmd unit |]
-  Give -> [tyQ| robot -> text -> cmd unit |]
-  Install -> [tyQ| robot -> text -> cmd unit |]
+  Give -> [tyQ| actor -> text -> cmd unit |]
+  Install -> [tyQ| actor -> text -> cmd unit |]
+  Equip -> [tyQ| text -> cmd unit |]
+  Unequip -> [tyQ| text -> cmd unit |]
   Make -> [tyQ| text -> cmd unit |]
   Has -> [tyQ| text -> cmd bool |]
   Installed -> [tyQ| text -> cmd bool |]
   Count -> [tyQ| text -> cmd int |]
-  Reprogram -> [tyQ| robot -> {cmd a} -> cmd unit |]
-  Build -> [tyQ| {cmd a} -> cmd robot |]
+  Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
+  Build -> [tyQ| {cmd a} -> cmd actor |]
   Drill -> [tyQ| dir -> cmd unit |]
   Salvage -> [tyQ| cmd unit |]
   Say -> [tyQ| text -> cmd unit |]
   Listen -> [tyQ| cmd text |]
   Log -> [tyQ| text -> cmd unit |]
-  View -> [tyQ| robot -> cmd unit |]
+  View -> [tyQ| actor -> cmd unit |]
   Appear -> [tyQ| text -> cmd unit |]
   Create -> [tyQ| text -> cmd unit |]
   Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
+  Heading -> [tyQ| cmd dir |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (unit + text) |]
-  Upload -> [tyQ| robot -> cmd unit |]
+  Upload -> [tyQ| actor -> cmd unit |]
   Ishere -> [tyQ| text -> cmd bool |]
-  Self -> [tyQ| robot |]
-  Parent -> [tyQ| robot |]
-  Base -> [tyQ| robot |]
+  Isempty -> [tyQ| cmd bool |]
+  Self -> [tyQ| actor |]
+  Parent -> [tyQ| actor |]
+  Base -> [tyQ| actor |]
+  Meet -> [tyQ| cmd (unit + actor) |]
+  MeetAll -> [tyQ| (b -> actor -> cmd b) -> b -> cmd b |]
   Whoami -> [tyQ| cmd text |]
   Setname -> [tyQ| text -> cmd unit |]
   Random -> [tyQ| int -> cmd int |]
@@ -560,13 +566,15 @@ inferConst c = case c of
   Concat -> [tyQ| text -> text -> text |]
   Chars -> [tyQ| text -> int |]
   Split -> [tyQ| int -> text -> (text * text) |]
+  CharAt -> [tyQ| int -> text -> int |]
+  ToChar -> [tyQ| int -> text |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| text -> cmd text |]
   Atomic -> [tyQ| cmd a -> cmd a |]
-  Teleport -> [tyQ| robot -> (int * int) -> cmd unit |]
-  As -> [tyQ| robot -> {cmd a} -> cmd a |]
-  RobotNamed -> [tyQ| text -> cmd robot |]
-  RobotNumbered -> [tyQ| int -> cmd robot |]
+  Teleport -> [tyQ| actor -> (int * int) -> cmd unit |]
+  As -> [tyQ| actor -> {cmd a} -> cmd a |]
+  RobotNamed -> [tyQ| text -> cmd actor |]
+  RobotNumbered -> [tyQ| int -> cmd actor |]
   Knows -> [tyQ| text -> cmd bool |]
  where
   cmpBinT = [tyQ| a -> a -> bool |]

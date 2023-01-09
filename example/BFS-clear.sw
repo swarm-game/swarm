@@ -63,4 +63,4 @@ def clear : cmd unit =
   give base "tree";
   selfdestruct;
 end;
-def start : cmd robot = build {turn west; repeat 7 move; clear} end
+def start : cmd actor = build {turn west; repeat 7 move; clear} end

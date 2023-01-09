@@ -1,0 +1,57 @@
+version: 1
+name: Test isempty
+description: |
+  Test the `isempty` command.
+objectives:
+  - condition: |
+      as base {has "thneed"}
+    goal:
+      - |
+        The goal is to pick up the thing right after the empty
+        spot in the row.
+solution: |
+  def find_thing =
+    e <- isempty;
+    move;
+    if e {} {find_thing}
+  end;
+  find_thing;
+  grab
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - scanner
+      - branch predictor
+      - grabber
+      - strange loop
+      - lambda
+      - dictionary
+      - logger
+      - treads
+      - solar panel
+entities:
+  - name: thneed
+    display:
+      attr: gold
+      char: 'Y'
+    description:
+    - A thing that everyone needs!
+    properties: [portable]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    '>': [grass, tree, base]
+    'o': [grass, rock]
+    '$': [grass, LaTeX]
+    'i': [grass, cotton]
+    '0': [grass, bit (0)]
+    '1': [grass, bit (1)]
+    'R': [grass, pixel (R)]
+    'G': [grass, pixel (G)]
+    'B': [grass, pixel (B)]
+    'Y': [grass, thneed]
+  upperleft: [-5, 5]
+  map: |
+    >o$i01R.YGB

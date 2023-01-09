@@ -61,7 +61,7 @@ instance PrettyPrec BaseTy where
   prettyPrec _ BDir = "dir"
   prettyPrec _ BText = "text"
   prettyPrec _ BBool = "bool"
-  prettyPrec _ BRobot = "robot"
+  prettyPrec _ BActor = "actor"
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
@@ -120,7 +120,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TText s) = fromString (show s)
   prettyPrec _ (TAntiText v) = "$str:" <> pretty v
   prettyPrec _ (TBool b) = bool "false" "true" b
-  prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
+  prettyPrec _ (TRobot r) = "<a" <> pretty r <> ">"
   prettyPrec _ (TRef r) = "@" <> pretty r
   prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr @Term (TText d)
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
