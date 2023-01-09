@@ -244,7 +244,7 @@ hypotheticalWinCheck em g ws oc = do
 
   -- Log exceptions in the message queue so we can check for them in tests
   handleException exnText = do
-    m <- evalState @Robot h $ createLogEntry ErrorTrace exnText
+    m <- evalState @Robot h $ createLogEntry (ErrorTrace Critical) exnText
     emitMessage m
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
