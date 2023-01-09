@@ -283,7 +283,6 @@ initUIState showMainMenu cheatMode = do
           , _uiScrollToEnd = False
           , _uiError = Nothing
           , _uiModal = Nothing
-          , _uiGoal = Nothing
           , _uiGoal = emptyGoalDisplay
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
