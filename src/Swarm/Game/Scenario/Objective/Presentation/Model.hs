@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- A UI-centric model for Objective presentation.
 module Swarm.Game.Scenario.Objective.Presentation.Model where
 
 import Brick.Widgets.List qualified as BL

@@ -1,3 +1,4 @@
+-- | Utilities to check whether conditions are met for a game win/loss.
 module Swarm.Game.Scenario.Objective.WinCheck where
 
 import Data.Aeson

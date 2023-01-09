@@ -1,3 +1,7 @@
+-- | A model for defining boolean expressions for Objective prerequisites.
+--
+-- This model is intended to be user-facing in the .yaml files, and is
+-- distinct from that in 'Data.BoolExpr'.
 module Swarm.Game.Scenario.Objective.Logic where
 
 import Data.Aeson
