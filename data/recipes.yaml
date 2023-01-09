@@ -459,6 +459,8 @@
   - [4, big motor]
   - [64, iron plate]
   - [16, rubber]
+  required:
+  - [1, welder]
   out:
   - [1, tank treads]
 
