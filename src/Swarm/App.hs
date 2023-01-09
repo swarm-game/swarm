@@ -19,7 +19,7 @@ import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Game.Robot (LogSource (ErrorTrace, Said))
+import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
 import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
@@ -79,7 +79,7 @@ appMain opts = do
       eport <- Swarm.Web.startWebThread (userWebPort opts) appStateRef
 
       let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
-      let logE e = logEvent ErrorTrace ("Web API", -2) (T.pack e)
+      let logE e = logEvent (ErrorTrace Error) ("Web API", -2) (T.pack e)
       let s' =
             s
               & runtimeState

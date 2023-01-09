@@ -139,19 +139,18 @@ gameTick = do
       -- fresh CESK machine, using a copy of the current game state.
       v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
       let markWin = winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
+      let h = hypotheticalRobot (Out VUnit emptyStore []) 0
       case stripVResult <$> v of
         -- Log exceptions in the message queue so we can check for them in tests
         Left exn -> do
-          let h = hypotheticalRobot (Out VUnit emptyStore []) 0
           em <- use entityMap
-          m <- evalState @Robot h $ createLogEntry ErrorTrace (formatExn em exn)
+          m <- evalState @Robot h $ createLogEntry (ErrorTrace Critical) (formatExn em exn)
           emitMessage m
         Right (VBool res) -> when res markWin
         Right val -> do
-          let h = hypotheticalRobot (Out VUnit emptyStore []) 0
           m <-
             evalState @Robot h $
-              createLogEntry ErrorTrace $
+              createLogEntry (ErrorTrace Critical) $
                 T.unwords
                   [ "Non boolean value:"
                   , prettyValue val
@@ -665,7 +664,7 @@ stepCESK cesk = case cesk of
     em <- use entityMap
     if h
       then do
-        void $ traceLog ErrorTrace (formatExn em exn)
+        void $ traceLog (ErrorTrace Error) (formatExn em exn)
         return $ Out VUnit s []
       else return $ Out VUnit s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
