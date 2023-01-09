@@ -14,10 +14,12 @@ import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.List qualified as List
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
+import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
@@ -36,6 +38,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Failure (prettyFailure)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.Clock
@@ -46,8 +49,9 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   gs <- initGameState
-  ui <- initUIState (not skipMenu) cheatMode
-  let rs = initRuntimeState
+  (warnings, ui) <- initUIState (not skipMenu) cheatMode
+  let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
+  let rs = List.foldl' logWarning initRuntimeState warnings
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
