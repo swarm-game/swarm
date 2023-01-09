@@ -16,12 +16,12 @@ data Quotation = Quotation
   { attribution :: Text
   , content :: Text
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data FlavorText
   = Freeform Text
   | FTQuotation Quotation
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data AchievementInfo = AchievementInfo
   { title :: Text
@@ -41,7 +41,7 @@ data AchievementInfo = AchievementInfo
   -- ^ Hides the attainment process until after the achievement is attained.
   -- Best when the title + elaboration constitute a good clue.
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data CategorizedAchievement
   = GlobalAchievement GlobalAchievement

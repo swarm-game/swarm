@@ -56,7 +56,7 @@ data Objective = Objective
   , _objectiveHidden :: Bool
   , _objectiveAchievement :: Maybe AchievementInfo
   }
-  deriving (Show, Generic, ToJSON)
+  deriving (Eq, Show, Generic, ToJSON)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
 
