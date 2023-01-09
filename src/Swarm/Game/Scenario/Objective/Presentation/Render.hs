@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- Display logic for Objectives.
 module Swarm.Game.Scenario.Objective.Presentation.Render where
 
 import Brick hiding (Direction, Location)
