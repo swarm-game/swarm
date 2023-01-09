@@ -48,6 +48,7 @@ module Swarm.Language.Typecheck (
 ) where
 
 import Control.Category ((>>>))
+import Control.Lens ((^.))
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Unification hiding (applyBindings, (=:=))
@@ -292,8 +293,8 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SDef r x Nothing t1 -> do
     xTy <- fresh
     t1' <- withBinding x (Forall [] xTy) $ infer t1
-    _ <- xTy =:= sType t1'
-    pty <- generalize (sType t1')
+    _ <- xTy =:= t1' ^. sType
+    pty <- generalize (t1' ^. sType)
     return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton x pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
@@ -310,7 +311,7 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SBind mx c1 c2 -> do
     -- First, infer the left side.
     Module c1' ctx1 <- inferModule c1
-    a <- decomposeCmdTy (sType c1')
+    a <- decomposeCmdTy (c1' ^. sType)
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
@@ -327,7 +328,7 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         -- going to return the entire type, but it's important to
         -- ensure it's a command type anyway.  Otherwise something
         -- like 'move; 3' would be accepted with type int.
-        _ <- decomposeCmdTy (sType c2')
+        _ <- decomposeCmdTy (c2' ^. sType)
 
         -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
         -- definitions will shadow previous ones.  Include the binder
@@ -337,7 +338,7 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         let ctxX = maybe Ctx.empty (`Ctx.singleton` Forall [] a) mx
         return $
           Module
-            (Syntax' l (SBind mx c1' c2') (sType c2'))
+            (Syntax' l (SBind mx c1' c2') (c2' ^. sType))
             (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
@@ -367,7 +368,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SPair t1 t2 -> do
     t1' <- infer t1
     t2' <- infer t2
-    return $ Syntax' l (SPair t1' t2') (UTyProd (sType t1') (sType t2'))
+    return $ Syntax' l (SPair t1' t2') (UTyProd (t1' ^. sType) (t2' ^. sType))
 
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
@@ -380,7 +381,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- so we don't have to worry about typechecking them here.
   SDelay d t1 -> do
     t1' <- infer t1
-    return $ Syntax' l (SDelay d t1') (UTyDelay (sType t1'))
+    return $ Syntax' l (SDelay d t1') (UTyDelay (t1' ^. sType))
 
   -- We need a special case for checking the argument to 'atomic'.
   -- 'atomic t' has the same type as 't', which must have a type of
@@ -405,20 +406,20 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SLam x (Just argTy) lt -> do
     let uargTy = toU argTy
     lt' <- withBinding x (Forall [] uargTy) $ infer lt
-    return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (sType lt'))
+    return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (lt' ^. sType))
 
   -- If the type of the argument is not provided, create a fresh
   -- unification variable for it and proceed.
   SLam x Nothing lt -> do
     argTy <- fresh
     lt' <- withBinding x (Forall [] argTy) $ infer lt
-    return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (sType lt'))
+    return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (lt' ^. sType))
 
   -- To infer the type of an application:
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
     f' <- infer f
-    (ty1, ty2) <- decomposeFunTy (sType f')
+    (ty1, ty2) <- decomposeFunTy (f' ^. sType)
 
     -- Then check that the argument has the right type.
     x' <- check x ty1 `catchError` addLocToTypeErr x
@@ -429,11 +430,11 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SLet r x Nothing t1 t2 -> do
     xTy <- fresh
     t1' <- withBinding x (Forall [] xTy) $ infer t1
-    let uty = sType t1'
+    let uty = t1' ^. sType
     _ <- xTy =:= uty
     upty <- generalize uty
     t2' <- withBinding x upty $ infer t2
-    return $ Syntax' l (SLet r x Nothing t1' t2') (sType t2')
+    return $ Syntax' l (SLet r x Nothing t1' t2') (t2' ^. sType)
   SLet r x (Just pty) t1 t2 -> do
     let upty = toU pty
     -- If an explicit polytype has been provided, skolemize it and check
@@ -446,14 +447,14 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         <*> infer t2
     -- Make sure no skolem variables have escaped.
     ask >>= mapM_ noSkolems
-    return $ Syntax' l (SLet r x (Just pty) t1' t2') (sType t2')
+    return $ Syntax' l (SLet r x (Just pty) t1' t2') (t2' ^. sType)
   SDef {} -> throwError $ DefNotTopLevel l t
   SBind mx c1 c2 -> do
     c1' <- infer c1
-    a <- decomposeCmdTy (sType c1')
+    a <- decomposeCmdTy (c1' ^. sType)
     c2' <- maybe id (`withBinding` Forall [] a) mx $ infer c2
-    _ <- decomposeCmdTy (sType c2')
-    return $ Syntax' l (SBind mx c1' c2') (sType c2')
+    _ <- decomposeCmdTy (c2' ^. sType)
+    return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -470,7 +471,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 
 addLocToTypeErr :: Syntax' ty -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
-  Mismatch NoLoc a b -> throwError $ Mismatch (sLoc s) a b
+  Mismatch NoLoc a b -> throwError $ Mismatch (s ^. sLoc) a b
   _ -> throwError te
 
 -- | Decompose a type that is supposed to be a command type.

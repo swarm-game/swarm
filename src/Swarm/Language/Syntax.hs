@@ -787,7 +787,7 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 
 -- | The surface syntax for the language, with location and type annotations.
 data Syntax' ty = Syntax'
-  { _sLoc :: Location
+  { _sLoc :: SrcLoc
   , _sTerm :: Term' ty
   , _sType :: ty
   }
@@ -795,7 +795,7 @@ data Syntax' ty = Syntax'
 
 type Syntax = Syntax' ()
 
-pattern Syntax :: Location -> Term -> Syntax
+pattern Syntax :: SrcLoc -> Term -> Syntax
 pattern Syntax l t = Syntax' l t ()
 
 {-# COMPLETE Syntax #-}
