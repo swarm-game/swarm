@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | Validity checking for Objective prerequisites
 module Swarm.Game.Scenario.Objective.Validation where
 
 import Control.Monad (unless)
