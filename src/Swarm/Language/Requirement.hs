@@ -45,15 +45,15 @@ import Swarm.Language.Syntax
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:
 --   - A robot can require a certain 'Capability', which should be fulfilled
---     by installing an appropriate device.
---   - A robot can require a specific /device/, which should be installed.
+--     by equipping an appropriate device.
+--   - A robot can require a specific /device/, which should be equipped.
 --   - A robot can require some number of a specific entity in its inventory.
 data Requirement
   = -- | Require a specific capability.  This must be fulfilled by
-    --   installing an appropriate device.  Requiring the same
+    --   equipping an appropriate device.  Requiring the same
     --   capability multiple times is the same as requiring it once.
     ReqCap Capability
-  | -- | Require a specific device to be installed.  Note that at this
+  | -- | Require a specific device to be equipped.  Note that at this
     --   point it is only a name, and has not been resolved to an actual
     --   'Entity'.  That's because programs have to be type- and
     --   capability-checked independent of an 'EntityMap'.  The name

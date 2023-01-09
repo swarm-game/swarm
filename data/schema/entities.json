@@ -91,7 +91,7 @@
                         "type": "string"
                     }
                 ],
-                "description": "A list of capabilities provided by entity, when it is installed as a device. See Capabilities."
+                "description": "A list of capabilities provided by entity, when it is equipped as a device. See Capabilities."
             }
         },
         "required": [

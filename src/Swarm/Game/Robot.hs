@@ -50,7 +50,7 @@ module Swarm.Game.Robot (
   trobotLocation,
   robotOrientation,
   robotInventory,
-  installedDevices,
+  equippedDevices,
   robotLog,
   robotLogUpdated,
   inventoryHash,
@@ -181,10 +181,10 @@ type family RobotID (phase :: RobotPhase) :: * where
 --   the robot has been assigned a unique ID.
 data RobotR (phase :: RobotPhase) = RobotR
   { _robotEntity :: Entity
-  , _installedDevices :: Inventory
+  , _equippedDevices :: Inventory
   , _robotCapabilities :: Set Capability
   -- ^ A cached view of the capabilities this robot has.
-  --   Automatically generated from '_installedDevices'.
+  --   Automatically generated from '_equippedDevices'.
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
   , _robotLocation :: RobotLocation phase
@@ -209,7 +209,7 @@ deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJS
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog]
+let exclude = ['_robotCapabilities, '_equippedDevices, '_robotLog]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -329,19 +329,19 @@ robotParentID :: Lens' Robot (Maybe RID)
 -- | Is this robot extra heavy (thus requiring tank treads to move)?
 robotHeavy :: Lens' Robot Bool
 
--- | A separate inventory for "installed devices", which provide the
+-- | A separate inventory for equipped devices, which provide the
 --   robot with certain capabilities.
 --
---   Note that every time the inventory of installed devices is
+--   Note that every time the inventory of equipped devices is
 --   modified, this lens recomputes a cached set of the capabilities
---   the installed devices provide, to speed up subsequent lookups to
+--   the equipped devices provide, to speed up subsequent lookups to
 --   see whether the robot has a certain capability (see 'robotCapabilities')
-installedDevices :: Lens' Robot Inventory
-installedDevices = lens _installedDevices setInstalled
+equippedDevices :: Lens' Robot Inventory
+equippedDevices = lens _equippedDevices setEquipped
  where
-  setInstalled r inst =
+  setEquipped r inst =
     r
-      { _installedDevices = inst
+      { _equippedDevices = inst
       , _robotCapabilities = inventoryCapabilities inst
       }
 
@@ -370,20 +370,20 @@ robotLog = lens _robotLog setLog
 --   viewed?
 robotLogUpdated :: Lens' Robot Bool
 
--- | A hash of a robot's entity record and installed devices, to
+-- | A hash of a robot's entity record and equipped devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
 --   info panel.
 inventoryHash :: Getter Robot Int
-inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `hashWithSalt` (r ^. installedDevices))
+inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `hashWithSalt` (r ^. equippedDevices))
 
 -- | Does a robot know of an entity's existence?
 robotKnows :: Robot -> Entity -> Bool
-robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. installedDevices)
+robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. equippedDevices)
 
 -- | Get the set of capabilities this robot possesses.  This is only a
 --   getter, not a lens, because it is automatically generated from
---   the 'installedDevices'.  The only way to change a robot's
---   capabilities is to modify its 'installedDevices'.
+--   the 'equippedDevices'.  The only way to change a robot's
+--   capabilities is to modify its 'equippedDevices'.
 robotCapabilities :: Getter Robot (Set Capability)
 robotCapabilities = to _robotCapabilities
 
@@ -457,7 +457,7 @@ mkRobot ::
   Display ->
   -- | Initial CESK machine.
   CESK ->
-  -- | Installed devices.
+  -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
   [(Count, Entity)] ->
@@ -474,7 +474,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
         mkEntity disp name descr [] []
           & entityOrientation ?~ dir
           & entityInventory .~ fromElems inv
-    , _installedDevices = inst
+    , _equippedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLog = Seq.empty
     , _robotLogUpdated = False

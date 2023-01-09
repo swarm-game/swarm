@@ -16,7 +16,7 @@ def makeHarvester =
     make "box";
     doN 2 $ make "wooden gear";
     make "harvester";
-    install self "harvester";
+    equip "harvester";
     end;
 
 def grabTwoRows =

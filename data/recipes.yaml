@@ -478,6 +478,13 @@
   - [1, fast grabber]
 
 - in:
+  - [2, copper wire]
+  - [1, copper pipe]
+  - [1, I/O cable]
+  out:
+  - [1, welder]
+
+- in:
   - [4, circuit]
   - [1, iron plate]
   - [3, copper pipe]

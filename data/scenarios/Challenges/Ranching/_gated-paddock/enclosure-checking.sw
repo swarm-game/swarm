@@ -116,13 +116,13 @@ def checkIsEnclosed =
     // to clear water tiles.
     let specialDrill = "evaporator" in
     create specialDrill;
-    install self specialDrill;
+    equip specialDrill;
 
     // NOTE: System robots can walk on water
     // so we only need this if we want to
     // demo the algorithm with a player robot.
 //    create "boat";
-//    install self "boat";
+//    equip "boat";
 
     checkIsEnclosedInner;
     end;

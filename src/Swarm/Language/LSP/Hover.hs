@@ -128,7 +128,7 @@ explain = \case
   TBool {} -> pure $ pureDoc "A Boolean literal."
   TRobot {} -> pure $ pureDoc "A robot reference.  These never show up in surface syntax, but are here so we can factor pretty-printing for Values through pretty-printing for Terms."
   TRef {} -> pure $ pureDoc "A memory reference.  These likewise never show up in surface syntax but are here to facilitate pretty-printing."
-  TRequireDevice {} -> pure $ pureDoc "Require a specific device to be installed."
+  TRequireDevice {} -> pure $ pureDoc "Require a specific device to be equipped."
   TRequire {} -> pure $ pureDoc "Require a certain number of an entity."
   TVar x -> pure $ pureDoc $ "var: " <> U.bquote x
   SLam {} -> pure $ pureDoc "A lambda expression, with or without a type annotation on the binder."
