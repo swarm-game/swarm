@@ -95,7 +95,7 @@ data Scenario = Scenario
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
   }
-  deriving (Show)
+  deriving (Eq, Show)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 
