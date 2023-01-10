@@ -203,6 +203,8 @@ check the `hie.yaml.stack` file. Pure Cabal should work fine with the defaults,
 but you might want to [add a GHC flag](https://haskell-language-server.readthedocs.io/en/latest/features.html)
 to build docs into `cabal.project.local`.
 
+**TIP:** To run tests, you can use the [`scripts/run-tests.sh` script](scripts/run-tests.sh) to avoid problems with incremental compilation in alternation with `stack build`.
+
 ### Conventions
 
 We follow a few conventions to help keep everyone on the same page.
