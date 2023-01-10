@@ -76,9 +76,11 @@ module Swarm.Language.Syntax (
   mkOp',
 
   -- * Term traversal
-  fvT,
-  fv,
-  mapFree1,
+  fvSS,
+  fvST,
+  fvSV,
+  mapFreeS,
+  mapFreeT
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
@@ -948,8 +950,8 @@ makeLenses ''Syntax'
 
 -- | Traversal over those subterms of a term which represent free
 --   variables.
-fvT :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
-fvT f = go S.empty
+fvSS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
+fvSS f = go S.empty
  where
   -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
   go bound s@(Syntax' l t ty) = case t of
@@ -980,12 +982,15 @@ fvT f = go S.empty
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 
+fvST :: forall ty. Traversal' (Syntax' ty) (Term' ty)
+fvST = fvSS . sTerm
+
 -- | Traversal over the free variables of a term.  Note that if you
 --   want to get the set of all free variables, you can do so via
 --   @'Data.Set.Lens.setOf' 'fv'@.
-fv :: Traversal' (Syntax' ty) Var
-fv = fvT . sTerm . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
+fvSV :: Traversal' (Syntax' ty) Var
+fvSV = fvST . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular variable.
-mapFree1 :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
-mapFree1 x f = fvT %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
+mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
+mapFreeS x f = fvSS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
