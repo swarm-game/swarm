@@ -21,6 +21,7 @@ module Swarm.Language.Pipeline (
   showTypeErrorPos,
 ) where
 
+import Control.Lens ((^.))
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
@@ -36,9 +37,6 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
-
--- XXX should get rid of the Term argument, because TModule already contains it!
--- XXX Need to update elaborator to take a typed term instead of untyped!
 
 -- | A record containing the results of the language processing
 --   pipeline.  Put a 'Term' in, and get one of these out.
@@ -107,5 +105,8 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
 processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
   m <- inferTop ctx t
-  let (caps, capCtx') = requirements capCtx (sTerm t)
-  return $ ProcessedTerm (elaborate (moduleAST m)) caps capCtx'
+  let (caps, capCtx') = requirements capCtx (t ^. sTerm)
+  return $ ProcessedTerm (elaborateModule m) caps capCtx'
+
+elaborateModule :: TModule -> TModule
+elaborateModule (Module ast ctx) = Module (elaborate ast) ctx
