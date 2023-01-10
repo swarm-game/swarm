@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- |
 -- Module      :  Swarm.TUI.Controller
@@ -73,12 +74,14 @@ import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Value (Value (VUnit), prettyValue, stripVResult)
 import Swarm.Game.World qualified as W
+import Swarm.Language.Capability (Capability (CMake))
 import Swarm.Language.Context
 import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
+import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
@@ -823,9 +826,9 @@ handleREPLEventTyping = \case
         -- The player typed something at the REPL and hit Enter; this
         -- function takes the resulting ProcessedTerm (if the REPL
         -- input is valid) and sets up the base robot to run it.
-        startBaseProgram t@(ProcessedTerm _ (Module tm _) reqs reqCtx) =
+        startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
           -- Set the REPL status to Working
-          (gameState . replStatus .~ REPLWorking (Typed Nothing (sType tm) reqs))
+          (gameState . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
             -- The `reqCtx` maps names of variables defined in the
             -- term (by `def` statements) to their requirements.
             -- E.g. if we had `def m = move end`, the reqCtx would
@@ -973,7 +976,7 @@ validateREPLForm s =
       | otherwise ->
           let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
               theType = case result of
-                Right (Just (ProcessedTerm _ (Module tm _) _ _)) -> Just (sType tm)
+                Right (Just (ProcessedTerm (Module tm _) _ _)) -> Just (tm ^. sType)
                 _ -> Nothing
            in s
                 & uiState . uiREPL . replValid .~ isRight result
@@ -1114,7 +1117,7 @@ makeEntity e = do
 
   case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
-      gameState . replStatus .= REPLWorking (Typed Nothing mkTy mkReq)
+      gameState . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
       gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw

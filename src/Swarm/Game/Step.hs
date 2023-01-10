@@ -1549,7 +1549,7 @@ execConst c vs s k = do
 
         case mt of
           Nothing -> return $ Out VUnit s k
-          Just t@(ProcessedTerm _ _ _ reqCtx) -> do
+          Just t@(ProcessedTerm _ _ reqCtx) -> do
             -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
             -- See #827 for an explanation of (1) why this is needed, (2) why
             -- it's slightly technically incorrect, and (3) why it is still way

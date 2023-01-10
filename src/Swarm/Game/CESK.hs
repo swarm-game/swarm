@@ -86,6 +86,7 @@ module Swarm.Game.CESK (
   finalValue,
 ) where
 
+import Control.Lens ((^.))
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap.Strict (IntMap)
@@ -286,11 +287,15 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm t (Module (sType -> Forall _ (TyCmd _)) ctx) _ reqCtx) e s k =
-  case ctx of
-    Empty -> In t e s (FExec : k)
-    _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
-initMachine' (ProcessedTerm t _ _ _) e s k = In t e s k
+initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
+  case t' ^. sType of
+    Forall _ (TyCmd _) ->
+      case ctx of
+        Empty -> In t e s (FExec : k)
+        _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
+    _ -> In t e s k
+  where
+    t = eraseS t'
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK

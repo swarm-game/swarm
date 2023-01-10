@@ -73,6 +73,11 @@ module Swarm.Language.Syntax (
   Term' (..),
   Term,
   mkOp,
+  mkOp',
+
+  -- * Erasure
+  erase,
+  eraseS,
 
   -- * Term traversal
   fvSS,
@@ -897,6 +902,8 @@ pattern Syntax l t = Syntax' l t ()
 
 {-# COMPLETE Syntax #-}
 
+makeLenses ''Syntax'
+
 noLoc :: Term -> Syntax
 noLoc = Syntax mempty
 
@@ -956,69 +963,37 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   sop = noLoc (TConst c)
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
-------------------------------------------------------------
--- Typed syntax
-------------------------------------------------------------
+-- | Make infix operation, discarding any syntax related location
+mkOp' :: Const -> Term -> Term -> Term
+mkOp' c t1 = TApp (TApp (TConst c) t1)
 
--- type TySyntax ty = Syntax' (Maybe ty)
+--------------------------------------------------
+-- Erasure
 
--- -- | Match a typed term without its 'SrcLoc'.
--- pattern TySTerm :: Term' ty -> ty -> Syntax
--- pattern TySTerm t ty <-
---   Syntax' _ t ty
---   where
---     TySTerm t ty = Syntax' mempty t ty
+eraseS :: Syntax' ty -> Term
+eraseS (Syntax' _ t _) = erase t
 
--- -- | XXX
--- pattern TyTPair :: Term' ty -> Term' ty -> Term' ty
--- pattern TyTPair t1 t2 ty = SPair (TySTerm t1 ) (STerm t2)
-
--- -- | Match a TLam without syntax
--- pattern TLam :: Var -> Maybe Type -> Term -> Term
--- pattern TLam v ty t = SLam v ty (STerm t)
-
--- -- | Match a TApp without syntax
--- pattern TApp :: Term -> Term -> Term
--- pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
-
--- infixl 0 :$:
-
--- -- | Convenient infix pattern synonym for application.
--- pattern (:$:) :: Term -> Syntax -> Term
--- pattern (:$:) t1 s2 = SApp (STerm t1) s2
-
--- -- | Match a TLet without syntax
--- pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
--- pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
-
--- -- | Match a TDef without syntax
--- pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
--- pattern TDef r v pt t = SDef r v pt (STerm t)
-
--- -- | Match a TBind without syntax
--- pattern TBind :: Maybe Var -> Term -> Term -> Term
--- pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
-
--- -- | Match a TDelay without syntax
--- pattern TDelay :: DelayType -> Term -> Term
--- pattern TDelay m t = SDelay m (STerm t)
-
--- -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
--- {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
-
--- -- | Make infix operation (e.g. @2 + 3@) a curried function
--- --   application (@((+) 2) 3@).
--- mkOp :: Const -> Syntax -> Syntax -> Syntax
--- mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
---  where
---   -- The new syntax span both terms
---   newLoc = l1 <> l2
---   -- We don't assign a source location for the operator since it is
---   -- usually provided as-is and it is not likely to be useful.
---   sop = noLoc (TConst c)
---   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
-
-makeLenses ''Syntax'
+erase :: Term' ty -> Term
+erase TUnit = TUnit
+erase (TConst c) = TConst c
+erase (TDir d) = TDir d
+erase (TInt n) = TInt n
+erase (TAntiInt v) = TAntiInt v
+erase (TText t) = TText t
+erase (TAntiText v) = TAntiText v
+erase (TBool b) = TBool b
+erase (TRobot r) = TRobot r
+erase (TRef r) = TRef r
+erase (TRequireDevice d) = TRequireDevice d
+erase (TRequire n e) = TRequire n e
+erase (TVar s) = TVar s
+erase (SDelay x s) = TDelay x (eraseS s)
+erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
+erase (SLam x mty body) = TLam x mty (eraseS body)
+erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
+erase (SLet r x mty s1 s2) = TLet r x mty (eraseS s1) (eraseS s2)
+erase (SDef r x mty s) = TDef r x mty (eraseS s)
+erase (SBind mx s1 s2) = TBind mx (eraseS s1) (eraseS s2)
 
 ------------------------------------------------------------
 -- Free variable traversals

@@ -111,6 +111,9 @@ instance PrettyPrec Capability where
 instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
+instance PrettyPrec (Syntax' ty) where
+  prettyPrec p = prettyPrec p . eraseS
+
 instance PrettyPrec Term where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c

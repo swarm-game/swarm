@@ -15,6 +15,7 @@ import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
+import Swarm.Language.Types (Polytype)
 import Swarm.Util (liftText)
 import Witch (from)
 
@@ -48,7 +49,7 @@ quoteTermExp s = do
     Left errMsg -> fail $ from $ prettyText errMsg
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
-antiTermExp :: Term -> Maybe TH.ExpQ
+antiTermExp :: Term' Polytype -> Maybe TH.ExpQ
 antiTermExp (TAntiText v) =
   Just $ TH.appE (TH.conE (TH.mkName "TText")) (TH.varE (TH.mkName (from v)))
 antiTermExp (TAntiInt v) =
