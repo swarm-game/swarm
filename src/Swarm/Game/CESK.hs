@@ -294,8 +294,8 @@ initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
         Empty -> In t e s (FExec : k)
         _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
     _ -> In t e s k
-  where
-    t = eraseS t'
+ where
+  t = eraseS t'
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
