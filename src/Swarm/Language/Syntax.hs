@@ -73,14 +73,12 @@ module Swarm.Language.Syntax (
   Term' (..),
   Term,
   mkOp,
-  mkOp',
 
   -- * Term traversal
   fvSS,
   fvST,
   fvSV,
   mapFreeS,
-  mapFreeT
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
@@ -102,7 +100,7 @@ import Swarm.Util.Location (Heading)
 import Witch.From (from)
 
 ------------------------------------------------------------
--- Constants
+-- Directions
 ------------------------------------------------------------
 
 -- | An absolute direction is one which is defined with respect to an
@@ -215,6 +213,10 @@ fromDirection :: Direction -> Heading
 fromDirection = \case
   DAbsolute x -> toHeading x
   _ -> zero
+
+------------------------------------------------------------
+-- Constants
+------------------------------------------------------------
 
 -- | Constants, representing various built-in functions and commands.
 --
@@ -771,100 +773,9 @@ constInfo c = case c of
   lowShow :: Show a => a -> Text
   lowShow a = toLower (from (show a))
 
--- | Make infix operation, discarding any syntax related location
-mkOp' :: Const -> Term -> Term -> Term
-mkOp' c t1 = TApp (TApp (TConst c) t1)
-
--- | Make infix operation (e.g. @2 + 3@) a curried function
---   application (@((+) 2) 3@).
-mkOp :: Const -> Syntax -> Syntax -> Syntax
-mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
- where
-  -- The new syntax span both terms
-  newLoc = l1 <> l2
-  -- We don't assign a source location for the operator since it is
-  -- usually provided as-is and it is not likely to be useful.
-  sop = noLoc (TConst c)
-  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
-
--- | The surface syntax for the language, with location and type annotations.
-data Syntax' ty = Syntax'
-  { _sLoc :: SrcLoc
-  , _sTerm :: Term' ty
-  , _sType :: ty
-  }
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
-
-type Syntax = Syntax' ()
-
-pattern Syntax :: SrcLoc -> Term -> Syntax
-pattern Syntax l t = Syntax' l t ()
-
-{-# COMPLETE Syntax #-}
-
-data SrcLoc
-  = NoLoc
-  | -- | Half-open interval from start (inclusive) to end (exclusive)
-    SrcLoc Int Int
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
-
-instance Semigroup SrcLoc where
-  NoLoc <> l = l
-  l <> NoLoc = l
-  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
-
-instance Monoid SrcLoc where
-  mempty = NoLoc
-
-noLoc :: Term -> Syntax
-noLoc = Syntax mempty
-
--- | Match a term without its a syntax
-pattern STerm :: Term -> Syntax
-pattern STerm t <-
-  Syntax _ t
-  where
-    STerm t = Syntax mempty t
-
--- | Match a TPair without syntax
-pattern TPair :: Term -> Term -> Term
-pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
-
--- | Match a TLam without syntax
-pattern TLam :: Var -> Maybe Type -> Term -> Term
-pattern TLam v ty t = SLam v ty (STerm t)
-
--- | Match a TApp without syntax
-pattern TApp :: Term -> Term -> Term
-pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
-
-infixl 0 :$:
-
--- | Convenient infix pattern synonym for application.
-pattern (:$:) :: Term -> Syntax -> Term
-pattern (:$:) t1 s2 = SApp (STerm t1) s2
-
--- | Match a TLet without syntax
-pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
-
--- | Match a TDef without syntax
-pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
-pattern TDef r v pt t = SDef r v pt (STerm t)
-
--- | Match a TBind without syntax
-pattern TBind :: Maybe Var -> Term -> Term -> Term
-pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
-
--- | Match a TDelay without syntax
-pattern TDelay :: DelayType -> Term -> Term
-pattern TDelay m t = SDelay m (STerm t)
-
--- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
-
 ------------------------------------------------------------
--- Terms
+-- Basic terms
+------------------------------------------------------------
 
 -- | Different runtime behaviors for delayed expressions.
 data DelayType
@@ -946,7 +857,172 @@ type Term = Term' ()
 instance Data ty => Plated (Term' ty) where
   plate = uniplate
 
+------------------------------------------------------------
+-- Syntax: annotation on top of Terms with SrcLoc and type
+------------------------------------------------------------
+
+-- | The surface syntax for the language, with location and type annotations.
+data Syntax' ty = Syntax'
+  { _sLoc :: SrcLoc
+  , _sTerm :: Term' ty
+  , _sType :: ty
+  }
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+
+instance Data ty => Plated (Syntax' ty) where
+  plate = uniplate
+
+data SrcLoc
+  = NoLoc
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
+instance Semigroup SrcLoc where
+  NoLoc <> l = l
+  l <> NoLoc = l
+  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
+
+instance Monoid SrcLoc where
+  mempty = NoLoc
+
+------------------------------------------------------------
+-- Pattern synonyms for untyped terms
+------------------------------------------------------------
+
+type Syntax = Syntax' ()
+
+pattern Syntax :: SrcLoc -> Term -> Syntax
+pattern Syntax l t = Syntax' l t ()
+
+{-# COMPLETE Syntax #-}
+
+noLoc :: Term -> Syntax
+noLoc = Syntax mempty
+
+-- | Match an untyped term without its 'SrcLoc'.
+pattern STerm :: Term -> Syntax
+pattern STerm t <-
+  Syntax _ t
+  where
+    STerm t = Syntax mempty t
+
+-- | Match a TPair without syntax
+pattern TPair :: Term -> Term -> Term
+pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
+
+-- | Match a TLam without syntax
+pattern TLam :: Var -> Maybe Type -> Term -> Term
+pattern TLam v ty t = SLam v ty (STerm t)
+
+-- | Match a TApp without syntax
+pattern TApp :: Term -> Term -> Term
+pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
+
+infixl 0 :$:
+
+-- | Convenient infix pattern synonym for application.
+pattern (:$:) :: Term -> Syntax -> Term
+pattern (:$:) t1 s2 = SApp (STerm t1) s2
+
+-- | Match a TLet without syntax
+pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
+pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
+
+-- | Match a TDef without syntax
+pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
+pattern TDef r v pt t = SDef r v pt (STerm t)
+
+-- | Match a TBind without syntax
+pattern TBind :: Maybe Var -> Term -> Term -> Term
+pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
+
+-- | Match a TDelay without syntax
+pattern TDelay :: DelayType -> Term -> Term
+pattern TDelay m t = SDelay m (STerm t)
+
+-- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+
+-- | Make infix operation (e.g. @2 + 3@) a curried function
+--   application (@((+) 2) 3@).
+mkOp :: Const -> Syntax -> Syntax -> Syntax
+mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+ where
+  -- The new syntax span both terms
+  newLoc = l1 <> l2
+  -- We don't assign a source location for the operator since it is
+  -- usually provided as-is and it is not likely to be useful.
+  sop = noLoc (TConst c)
+  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
+
+------------------------------------------------------------
+-- Typed syntax
+------------------------------------------------------------
+
+-- type TySyntax ty = Syntax' (Maybe ty)
+
+-- -- | Match a typed term without its 'SrcLoc'.
+-- pattern TySTerm :: Term' ty -> ty -> Syntax
+-- pattern TySTerm t ty <-
+--   Syntax' _ t ty
+--   where
+--     TySTerm t ty = Syntax' mempty t ty
+
+-- -- | XXX
+-- pattern TyTPair :: Term' ty -> Term' ty -> Term' ty
+-- pattern TyTPair t1 t2 ty = SPair (TySTerm t1 ) (STerm t2)
+
+-- -- | Match a TLam without syntax
+-- pattern TLam :: Var -> Maybe Type -> Term -> Term
+-- pattern TLam v ty t = SLam v ty (STerm t)
+
+-- -- | Match a TApp without syntax
+-- pattern TApp :: Term -> Term -> Term
+-- pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
+
+-- infixl 0 :$:
+
+-- -- | Convenient infix pattern synonym for application.
+-- pattern (:$:) :: Term -> Syntax -> Term
+-- pattern (:$:) t1 s2 = SApp (STerm t1) s2
+
+-- -- | Match a TLet without syntax
+-- pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
+-- pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
+
+-- -- | Match a TDef without syntax
+-- pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
+-- pattern TDef r v pt t = SDef r v pt (STerm t)
+
+-- -- | Match a TBind without syntax
+-- pattern TBind :: Maybe Var -> Term -> Term -> Term
+-- pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
+
+-- -- | Match a TDelay without syntax
+-- pattern TDelay :: DelayType -> Term -> Term
+-- pattern TDelay m t = SDelay m (STerm t)
+
+-- -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
+-- {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+
+-- -- | Make infix operation (e.g. @2 + 3@) a curried function
+-- --   application (@((+) 2) 3@).
+-- mkOp :: Const -> Syntax -> Syntax -> Syntax
+-- mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+--  where
+--   -- The new syntax span both terms
+--   newLoc = l1 <> l2
+--   -- We don't assign a source location for the operator since it is
+--   -- usually provided as-is and it is not likely to be useful.
+--   sop = noLoc (TConst c)
+--   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
+
 makeLenses ''Syntax'
+
+------------------------------------------------------------
+-- Free variable traversals
+------------------------------------------------------------
 
 -- | Traversal over those subterms of a term which represent free
 --   variables.

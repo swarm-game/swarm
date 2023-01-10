@@ -294,12 +294,12 @@ mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
 sLet :: Var -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet x ty t1 = SLet (x `S.member` setOf fv t1) x ty t1
+sLet x ty t1 = SLet (x `S.member` setOf fvSV t1) x ty t1
 
 -- | Construct an 'SDef', automatically filling in the Boolean field
 --   indicating whether it is recursive.
 sDef :: Var -> Maybe Polytype -> Syntax -> Term
-sDef x ty t = SDef (x `S.member` setOf fv t) x ty t
+sDef x ty t = SDef (x `S.member` setOf fvSV t) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
