@@ -53,8 +53,8 @@ import Witch (from)
 
 -- | Suggested way to fix incapable error.
 data IncapableFix
-  = -- | Install the missing device on yourself/target
-    FixByInstall
+  = -- | Equip the missing device on yourself/target
+    FixByEquip
   | -- | Add the missing device to your inventory
     FixByObtain
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -100,7 +100,7 @@ formatExn em = \case
 
 formatIncapableFix :: IncapableFix -> Text
 formatIncapableFix = \case
-  FixByInstall -> "install"
+  FixByEquip -> "equip"
   FixByObtain -> "obtain"
 
 -- | Pretty print the incapable exception with an actionable suggestion
@@ -109,7 +109,7 @@ formatIncapableFix = \case
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
 -- >>> m = buildEntityMap [w,r]
--- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
+-- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
 -- Thou shalt not utter such blasphemy:
@@ -119,7 +119,7 @@ formatIncapableFix = \case
 -- >>> incapableError (R.singletonCap CAppear) (TConst Appear)
 -- You do not have the devices required for:
 --   'appear'
---   Please install:
+--   Please equip:
 --   - the one ring or magic wand
 --
 -- >>> incapableError (R.singletonCap CRandom) (TConst Random)

@@ -5,8 +5,8 @@ description: |
 objectives:
   - goal:
       - In the previous tutorial challenge, you learned how to use
-        `require` to require specific devices to be installed.
-        Sometimes, instead of requiring installed devices, you require
+        `require` to require specific devices to be equipped.
+        Sometimes, instead of requiring equipped devices, you require
         supplies in your inventory.  In this case, you can write
         `require <int> <name>` to require a certain number of copies of
         a certain entity to be placed in your inventory.

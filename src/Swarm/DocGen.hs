@@ -45,7 +45,7 @@ import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
-import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
+import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Language.Capability (Capability)
@@ -529,7 +529,7 @@ classicScenario = do
   fst <$> loadScenario "data/scenarios/classic.yaml" entities
 
 startingDevices :: Scenario -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view installedDevices . instantiateRobot 0 . head . view scenarioRobots
+startingDevices = Set.fromList . map snd . E.elems . view equippedDevices . instantiateRobot 0 . head . view scenarioRobots
 
 startingInventory :: Scenario -> Map Entity Int
 startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots

@@ -60,7 +60,7 @@
             "items": {
                 "type": "string"
             },
-            "description": "A list of entity names which should be installed as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs."
+            "description": "A list of entity names which should be equipped as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs."
         },
         "inventory": {
             "default": [],

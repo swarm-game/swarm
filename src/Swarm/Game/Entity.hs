@@ -441,7 +441,7 @@ entityProperties = hashedLens _entityProperties (\e x -> e {_entityProperties = 
 hasProperty :: Entity -> EntityProperty -> Bool
 hasProperty e p = p `elem` (e ^. entityProperties)
 
--- | The capabilities this entity provides when installed.
+-- | The capabilities this entity provides when equipped.
 entityCapabilities :: Lens' Entity (Set Capability)
 entityCapabilities = hashedLens _entityCapabilities (\e x -> e {_entityCapabilities = x})
 

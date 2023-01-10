@@ -329,7 +329,7 @@ drawGameUI s =
       let worldCursorInfo = drawWorldCursorInfo (s ^. gameState) coord
        in bottomLabels . leftLabel ?~ padLeftRight 1 worldCursorInfo
   -- Add clock display in top right of the world view if focused robot
-  -- has a clock installed
+  -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
@@ -370,12 +370,12 @@ drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pau
   pauseWidget = guard (gs ^. paused) $> txt "(PAUSED)"
 
 -- | Check whether the currently focused robot (if any) has a clock
---   device installed.
-clockInstalled :: GameState -> Bool
-clockInstalled gs = case focusedRobot gs of
+--   device equipped.
+clockEquipped :: GameState -> Bool
+clockEquipped gs = case focusedRobot gs of
   Nothing -> False
   Just r
-    | countByName "clock" (r ^. installedDevices) > 0 -> True
+    | countByName "clock" (r ^. equippedDevices) > 0 -> True
     | otherwise -> False
 
 -- | Format a ticks count as a hexadecimal clock.
@@ -391,12 +391,12 @@ drawTime t showTicks =
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
 
 -- | Return a possible time display, if the currently focused robot
---   has a clock device installed.  The first argument is the number
+--   has a clock device equipped.  The first argument is the number
 --   of ticks (e.g. 943 = 0x3af), and the second argument indicates
 --   whether the time should be shown down to single-tick resolution
 --   (e.g. 0:00:3a.f) or not (e.g. 0:00:3a).
 maybeDrawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
-maybeDrawTime t showTicks gs = guard (clockInstalled gs) $> drawTime t showTicks
+maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> drawTime t showTicks
 
 -- | Draw info about the current number of ticks per second.
 drawTPS :: AppState -> Widget Name
@@ -664,7 +664,7 @@ commandsListWidget gs =
     Just r ->
       M.map NE.toList $
         entitiesByCapability $
-          (r ^. installedDevices) `union` (r ^. robotInventory)
+          (r ^. equippedDevices) `union` (r ^. robotInventory)
     Nothing -> mempty
 
   listDevices cmd = vBox $ map drawLabelledEntityName providerDevices
@@ -895,7 +895,7 @@ drawItem sel i _ (Separator l) =
 drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
  where
   showCount = padLeft Max . str . show
-drawItem _ _ _ (InstalledEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
+drawItem _ _ _ (EquippedEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
 
 -- | Draw the name of an entity, labelled with its visual
 --   representation as a cell in the world.
@@ -923,9 +923,9 @@ drawInfoPanel s =
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry s e
-  Just (InstalledEntry e) ->
+  Just (EquippedEntry e) ->
     explainEntry s e
-      -- Special case: installed logger device displays the robot's log.
+      -- Special case: equipped logger device displays the robot's log.
       <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
   _ -> txt " "
 

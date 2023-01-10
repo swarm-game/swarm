@@ -246,8 +246,6 @@ data Const
     Place
   | -- | Give an item to another robot at the current location.
     Give
-  | -- | Install a device on a robot.
-    Install
   | -- | Equip a device on oneself.
     Equip
   | -- | Unequip an equipped device, returning to inventory.
@@ -256,8 +254,8 @@ data Const
     Make
   | -- | Sense whether we have a certain item.
     Has
-  | -- | Sense whether we have a certain device installed.
-    Installed
+  | -- | Sense whether we have a certain device equipped.
+    Equipped
   | -- | Sense how many of a certain item we have.
     Count
   | -- | Drill through an entity.
@@ -582,12 +580,11 @@ constInfo c = case c of
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
   Give -> command 2 short "Give an item to another actor nearby."
-  Install -> command 2 short "Install a device from inventory on another actor nearby."
   Equip -> command 1 short "Equip a device on oneself."
   Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
   Make -> command 1 long "Make an item using a recipe."
   Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
-  Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."
+  Equipped -> command 1 Intangible "Sense whether the robot has a specific device equipped."
   Count -> command 1 Intangible "Get the count of a given item in a robot's inventory."
   Reprogram ->
     command 2 long . doc "Reprogram another robot with a new command." $
@@ -601,25 +598,26 @@ constInfo c = case c of
   Build ->
     command 1 long . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
-      , "If the command requires devices they will be installed from your inventory."
+      , "If the command requires devices they will be taken from your inventory and "
+          <> "equipped on the new robot."
       ]
   Salvage ->
     command 0 long . doc "Deconstruct an old robot." $
-      ["Salvaging a robot will give you its inventory, installed devices and log."]
+      ["Salvaging a robot will give you its inventory, equipped devices and log."]
   Say ->
     command 1 short . doc "Emit a message." $
       [ "The message will be in the robot's log (if it has one) and the global log."
       , "You can view the message that would be picked by `listen` from the global log "
           <> "in the messages panel, along with your own messages and logs."
       , "This means that to see messages from other robots you have to be able to listen for them, "
-          <> "so once you have a listening device installed messages will be added to your log."
+          <> "so once you have a listening device equipped messages will be added to your log."
       , "In creative mode, there is of course no such limitation."
       ]
   Listen ->
     command 1 long . doc "Listen for a message from other actors." $
       [ "It will take the first message said by the closest actor."
       , "You do not need to actively listen for the message to be logged though, "
-          <> "that is done automatically once you have a listening device installed."
+          <> "that is done automatically once you have a listening device equipped."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
@@ -900,7 +898,7 @@ data Term
   | -- | A memory reference.  These likewise never show up in surface syntax,
     --   but are here to facilitate pretty-printing.
     TRef Int
-  | -- | Require a specific device to be installed.
+  | -- | Require a specific device to be equipped.
     TRequireDevice Text
   | -- | Require a certain number of an entity.
     TRequire Int Text
