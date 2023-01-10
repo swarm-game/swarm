@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-
 -- For 'Ord IntVar' instance
 
 -- |
@@ -273,7 +273,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef _ x Nothing t1 -> do
+  SDef _ (lvVar -> x) Nothing t1 -> do
     xTy <- fresh
     ty <- withBinding x (Forall [] xTy) $ infer t1
     xTy =:= ty
@@ -282,7 +282,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef _ x (Just pty) t1 -> do
+  SDef _ (lvVar -> x) (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
     withBinding x upty $ check t1 uty
@@ -304,7 +304,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
     -- case the bound x should shadow the defined one; hence, we apply
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
-      maybe id (`withBinding` Forall [] a) mx $ do
+      maybe id ((`withBinding` Forall [] a) . lvVar) mx $ do
         Module cmdb ctx2 <- inferModule c2
 
         -- We don't actually need the result type since we're just going
@@ -318,7 +318,7 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
         -- (if any) as well, since binders are made available at the top
         -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
         -- then they will be able to refer to r again later.
-        let ctxX = maybe Ctx.empty (`Ctx.singleton` Forall [] a) mx
+        let ctxX = maybe Ctx.empty ((`Ctx.singleton` Forall [] a) . lvVar) mx
         return $ Module cmdb (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
@@ -374,14 +374,14 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- To infer the type of a lambda if the type of the argument is
   -- provided, just infer the body under an extended context and return
   -- the appropriate function type.
-  SLam x (Just argTy) lt -> do
+  SLam (lvVar -> x) (Just argTy) lt -> do
     let uargTy = toU argTy
     resTy <- withBinding x (Forall [] uargTy) $ infer lt
     return $ UTyFun uargTy resTy
 
   -- If the type of the argument is not provided, create a fresh
   -- unification variable for it and proceed.
-  SLam x Nothing lt -> do
+  SLam (lvVar -> x) Nothing lt -> do
     argTy <- fresh
     resTy <- withBinding x (Forall [] argTy) $ infer lt
     return $ UTyFun argTy resTy
@@ -398,13 +398,13 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 
   -- We can infer the type of a let whether a type has been provided for
   -- the variable or not.
-  SLet _ x Nothing t1 t2 -> do
+  SLet _ (lvVar -> x) Nothing t1 t2 -> do
     xTy <- fresh
     uty <- withBinding x (Forall [] xTy) $ infer t1
     xTy =:= uty
     upty <- generalize uty
     withBinding x upty $ infer t2
-  SLet _ x (Just pty) t1 t2 -> do
+  SLet _ (lvVar -> x) (Just pty) t1 t2 -> do
     let upty = toU pty
     -- If an explicit polytype has been provided, skolemize it and check
     -- definition and body under an extended context.
@@ -419,7 +419,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SBind mx c1 c2 -> do
     ty1 <- infer c1
     a <- decomposeCmdTy ty1
-    ty2 <- maybe id (`withBinding` Forall [] a) mx $ infer c2
+    ty2 <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy ty2
     return ty2
  where
@@ -623,7 +623,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   SDelay _ s1 -> analyzeAtomic locals s1
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
-  SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id S.insert mx locals) s2
+  SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0
