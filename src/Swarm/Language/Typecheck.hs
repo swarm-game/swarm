@@ -391,12 +391,13 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TConst Atomic :$: at -> do
     argTy <- fresh
     at' <- check at (UTyCmd argTy)
+    atomic' <- infer (Syntax l (TConst Atomic))
     -- It's important that we typecheck the subterm @at@ *before* we
     -- check that it is a valid argument to @atomic@: this way we can
     -- ensure that we have already inferred the types of any variables
     -- referenced.
     validAtomic at
-    return at'
+    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
 
   -- Just look up variables in the context.
   TVar x -> Syntax' l (TVar x) <$> lookup l x
