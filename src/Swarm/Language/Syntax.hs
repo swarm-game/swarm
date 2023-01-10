@@ -49,7 +49,7 @@ module Swarm.Language.Syntax (
 
   -- * Syntax
   Syntax (..),
-  LocVar(..),
+  LocVar (..),
   SrcLoc (..),
   noLoc,
   pattern STerm,
@@ -872,7 +872,7 @@ data DelayType
 -- | A variable with associated source location, used for variable
 --   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need LocVar for those.)
-data LocVar = LV { lvSrcLoc :: SrcLoc, lvVar :: Var }
+data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | Terms of the Swarm language.
