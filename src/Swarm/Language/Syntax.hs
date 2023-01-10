@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.Language.Syntax
@@ -48,6 +49,7 @@ module Swarm.Language.Syntax (
 
   -- * Syntax
   Syntax (..),
+  LocVar (..),
   SrcLoc (..),
   noLoc,
   pattern STerm,
@@ -808,7 +810,9 @@ pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
 -- | Match a TLam without syntax
 pattern TLam :: Var -> Maybe Type -> Term -> Term
-pattern TLam v ty t = SLam v ty (STerm t)
+pattern TLam v ty t <- SLam (lvVar -> v) ty (STerm t)
+  where
+    TLam v ty t = SLam (LV NoLoc v) ty (STerm t)
 
 -- | Match a TApp without syntax
 pattern TApp :: Term -> Term -> Term
@@ -822,15 +826,21 @@ pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without syntax
 pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
+pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
+  where
+    TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
 
 -- | Match a TDef without syntax
 pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
-pattern TDef r v pt t = SDef r v pt (STerm t)
+pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
+  where
+    TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
 
 -- | Match a TBind without syntax
 pattern TBind :: Maybe Var -> Term -> Term -> Term
-pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
+pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
+  where
+    TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
 
 -- | Match a TDelay without syntax
 pattern TDelay :: DelayType -> Term -> Term
@@ -857,6 +867,12 @@ data DelayType
     --   @Just@ here is when we automatically generate a delayed
     --   expression while interpreting a recursive @let@ or @def@.
     MemoizedDelay (Maybe Var)
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
+-- | A variable with associated source location, used for variable
+--   binding sites. (Variable occurrences are a bare TVar which gets
+--   wrapped in a Syntax node, so we don't need LocVar for those.)
+data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | Terms of the Swarm language.
@@ -894,19 +910,19 @@ data Term
     SPair Syntax Syntax
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam Var (Maybe Type) Syntax
+    SLam LocVar (Maybe Type) Syntax
   | -- | Function application.
     SApp Syntax Syntax
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool Var (Maybe Polytype) Syntax Syntax
+    SLet Bool LocVar (Maybe Polytype) Syntax Syntax
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
-    SDef Bool Var (Maybe Polytype) Syntax
+    SDef Bool LocVar (Maybe Polytype) Syntax
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe Var) Syntax Syntax
+    SBind (Maybe LocVar) Syntax Syntax
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -941,18 +957,18 @@ fvT f = go S.empty
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)
-    SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+    SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert (lvVar x) bound) t1)
     SApp (Syntax l1 t1) (Syntax l2 t2) ->
       SApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
     SLet r x ty (Syntax l1 t1) (Syntax l2 t2) ->
-      let bound' = S.insert x bound
+      let bound' = S.insert (lvVar x) bound
        in SLet r x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
     SPair (Syntax l1 t1) (Syntax l2 t2) ->
       SPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
     SDef r x ty (Syntax l1 t1) ->
-      SDef r x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+      SDef r x ty <$> (Syntax l1 <$> go (S.insert (lvVar x) bound) t1)
     SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
-      SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
+      SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id (S.insert . lvVar) mx bound) t2)
     SDelay m (Syntax l1 t1) ->
       SDelay m <$> (Syntax l1 <$> go bound t1)
 
