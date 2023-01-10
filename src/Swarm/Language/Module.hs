@@ -31,7 +31,7 @@ import Swarm.Language.Types (Polytype, UPolytype, UType)
 --   contain definitions ('Swarm.Language.Syntax.TDef').  A module
 --   contains the type-annotated AST of the expression itself, as well
 --   as the context giving the types of any defined variables.
-data Module s t = Module { moduleAST :: Syntax' s, moduleCtx :: Ctx t }
+data Module s t = Module {moduleAST :: Syntax' s, moduleCtx :: Ctx t}
   deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
 
 -- | A 'TModule' is the final result of the type inference process on
