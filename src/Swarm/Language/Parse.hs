@@ -129,8 +129,12 @@ reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores and not starting with a
 --   number.
-identifier :: Parser Text
-identifier = (lexeme . try) (p >>= check) <?> "variable name"
+identifier :: Parser Var
+identifier = lvVar <$> locIdentifier
+
+-- | Parse an identifier together with its source location info.
+locIdentifier :: Parser LocVar
+locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
@@ -262,16 +266,16 @@ parseTermAtom =
                     )
              )
         <|> SLam
-          <$> (symbol "\\" *> identifier)
+          <$> (symbol "\\" *> locIdentifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
         <|> sLet
-          <$> (reserved "let" *> identifier)
+          <$> (reserved "let" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
         <|> sDef
-          <$> (reserved "def" *> identifier)
+          <$> (reserved "def" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))
@@ -293,13 +297,13 @@ mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sLet :: Var -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet x ty t1 = SLet (x `S.member` setOf fvSV t1) x ty t1
+sLet :: LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet x ty t1 = SLet (lvVar x `S.member` setOf fvSV t1) x ty t1
 
 -- | Construct an 'SDef', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sDef :: Var -> Maybe Polytype -> Syntax -> Term
-sDef x ty t = SDef (x `S.member` setOf fvSV t) x ty t
+sDef :: LocVar -> Maybe Polytype -> Syntax -> Term
+sDef x ty t = SDef (lvVar x `S.member` setOf fvSV t) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
@@ -312,7 +316,7 @@ parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
 mkBindChain :: [Stmt] -> Parser Syntax
 mkBindChain stmts = case last stmts of
-  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar x))) stmts
+  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar (lvVar x)))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
   mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
@@ -321,14 +325,14 @@ mkBindChain stmts = case last stmts of
 
 data Stmt
   = BareTerm Syntax
-  | Binder Text Syntax
+  | Binder LocVar Syntax
   deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =
-  mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseExpr
+  mkStmt <$> optional (try (locIdentifier <* symbol "<-")) <*> parseExpr
 
-mkStmt :: Maybe Text -> Syntax -> Stmt
+mkStmt :: Maybe LocVar -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
 mkStmt (Just x) = Binder x
 

@@ -2,7 +2,7 @@ version: 1
 name: Test issue 961 (custom entities providing capabilities)
 description: |
   Test that custom entities providing a capability are considered
-  for installation.
+  when equipping a new robot.
   https://github.com/swarm-game/swarm/issues/961
 objectives:
   - condition: |

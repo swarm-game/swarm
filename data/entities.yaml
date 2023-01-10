@@ -326,7 +326,7 @@
     information, made of twisted cotton fibers.  Multiple strings can
     also be woven into larger configurations such as cloth or nets.
   - |
-    An installed `string` device enables several commands for working with
+    An equipped `string` device enables several commands for working with
     `text` values:
   - |
     `format : a -> text` can turn any value into a suitable text
@@ -352,7 +352,7 @@
   description:
   - |
     A handy lookup table for converting from characters to numeric codes and
-    back, shaped for some reason into a ring.  When installed, it
+    back, shaped for some reason into a ring.  When equipped, it
     enables two functions:
   - |
     `charAt : int -> text -> int` returns the numeric code of the
@@ -407,11 +407,11 @@
     attr: wood
     char: 'B'
   description:
-  - A robot with a boat installed can float on top of water without drowning.
+  - A robot with a boat equipped can float on top of water without drowning.
   - |
-    Note: most devices are automatically installed on robots that
+    Note: most devices are automatically equipped on robots that
     will require them; but this doesn't work in the case of boats since floating is not
-    associated with any particular command.  To manually ensure a boat is installed on
+    associated with any particular command.  To manually ensure a boat is equipped on
     a robot, just add the special command `require "boat"` to the robot's program.
   properties: [portable]
   capabilities: [float]
@@ -673,7 +673,7 @@
     attr: device
     char: '%'
   description:
-  - Installing treads on a robot allows it to move and turn.
+  - Equipping treads on a robot allows it to move and turn.
   - The `move` command moves the robot forward one unit.
   - 'Example:'
   - '  move; move; // move two units'
@@ -701,8 +701,8 @@
     char: '<'
   description:
   - A grabber arm is an all-purpose, hydraulically controlled device that can
-    manipulate other items and robots via the `grab`, `place`, `give`,
-    and `install` commands.
+    manipulate other items and robots via the `grab`, `place`, and `give`
+    commands.
   - The `grab` command takes no arguments; it simply grabs whatever is
     available, and also returns the name of the grabbed thing as a string.
     It raises an exception if run in a cell that does not contain an item.
@@ -713,10 +713,7 @@
   - "The `give` command takes two arguments: the actor to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
-  - "The `install` command takes two arguments: the actor
-    on which to install a device (which can be at most 1 cell away),
-    and the name of the device to install."
-  capabilities: [grab, give, place, install]
+  capabilities: [grab, give, place]
   properties: [portable]
 
 - name: fast grabber
@@ -725,7 +722,7 @@
     char: '≪'
   description:
   - A fast grabber is an improved version of the basic grabber - not only
-    can it 'grab', 'place', 'give', and 'install', it can also 'swap'.
+    can it 'grab', 'place', and 'give', it can also 'swap'.
   - The 'swap' command allows the robot to execute grab and place at the
     same time so that the location where the robot is standing does not
     become empty.
@@ -734,7 +731,7 @@
   - In addition you retain the capability to use the 'atomic' command,
     with which you can implement other commands that are safe when
     run in parallel.
-  capabilities: [grab, swap, give, place, install, atomic]
+  capabilities: [grab, swap, give, place, atomic]
   properties: [portable]
 
 - name: welder
@@ -971,9 +968,9 @@
     char: '@'
   description:
   - "Allows a robot to hear anything being said nearby."
-  - "Simply having this device installed will automatically
+  - "Simply having this device equipped will automatically
      add messages said by nearby actors to this robot's log,
-     assuming it has a logger installed."
+     assuming it has a logger equipped."
   - "That way you can view any heard message later either in
      the logger or the message window."
   - "To wait for a message and get the string value, use:"
@@ -1119,7 +1116,7 @@
     char: '#'
   description:
   - A net is a device woven out of many strings.  With a net
-    installed, you can use the `try` command to catch errors. For example,
+    equipped, you can use the `try` command to catch errors. For example,
   - |
     `try {move} {turn left}`
   - will attempt to move, but if that fails, turn left instead.

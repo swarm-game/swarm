@@ -139,7 +139,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/place"
         , testSolution Default "Tutorials/types"
         , testSolution Default "Tutorials/type-errors"
-        , testSolution Default "Tutorials/install"
+        , testSolution Default "Tutorials/equip"
         , testSolution Default "Tutorials/build"
         , testSolution Default "Tutorials/bind2"
         , testSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do

@@ -853,7 +853,7 @@ scenarioToGameState scenario userSeed toRun g = do
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
-      & ix baseID . installedDevices
+      & ix baseID . equippedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)
@@ -863,10 +863,10 @@ scenarioToGameState scenario userSeed toRun g = do
     (base : _) -> isNothing (finalValue (base ^. machine))
 
   -- Initial list of available commands = all commands enabled by
-  -- devices in inventory or installed; and commands that require no
+  -- devices in inventory or equipped; and commands that require no
   -- capability.
   allCapabilities r =
-    inventoryCapabilities (r ^. installedDevices)
+    inventoryCapabilities (r ^. equippedDevices)
       <> inventoryCapabilities (r ^. robotInventory)
   initialCaps = mconcat $ map allCapabilities robotList
   initialCommands =

@@ -5,7 +5,7 @@ grab.yaml
 place.yaml
 types.yaml
 type-errors.yaml
-install.yaml
+equip.yaml
 build.yaml
 bind2.yaml
 crash.yaml

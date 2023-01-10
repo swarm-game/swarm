@@ -325,7 +325,7 @@ ensureCanExecute c =
       robotCaps <- use robotCapabilities
       let hasCaps = cap `S.member` robotCaps
       (sys || creative || hasCaps)
-        `holdsOr` Incapable FixByInstall (R.singletonCap cap) (TConst c)
+        `holdsOr` Incapable FixByEquip (R.singletonCap cap) (TConst c)
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
@@ -343,7 +343,7 @@ hasCapabilityFor ::
   (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term -> m ()
 hasCapabilityFor cap term = do
   h <- hasCapability cap
-  h `holdsOr` Incapable FixByInstall (R.singletonCap cap) term
+  h `holdsOr` Incapable FixByEquip (R.singletonCap cap) term
 
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
@@ -895,7 +895,15 @@ execConst c vs s k = do
         item <- ensureItem itemName "equip"
         myID <- use robotID
         focusedID <- use focusedRobotID
-        installSelf item $ focusedID == myID
+        -- Don't do anything if the robot already has the device.
+        already <- use (equippedDevices . to (`E.contains` item))
+        unless already $ do
+          equippedDevices %= insert item
+          robotInventory %= delete item
+
+          -- Flag the UI for a redraw if we are currently showing our inventory
+          when (focusedID == myID) flagRedraw
+
         return $ Out VUnit s k
       _ -> badConst
     Unequip -> case vs of
@@ -903,42 +911,16 @@ execConst c vs s k = do
         item <- ensureEquipped itemName
         myID <- use robotID
         focusedID <- use focusedRobotID
-        installedDevices %= delete item
+        equippedDevices %= delete item
         robotInventory %= insert item
         -- Flag the UI for a redraw if we are currently showing our inventory
         when (focusedID == myID) flagRedraw
         return $ Out VUnit s k
       _ -> badConst
-    Install -> case vs of
-      [VRobot otherID, VText itemName] -> do
-        -- Make sure the other robot exists and is close
-        _other <- getRobotWithinTouch otherID
-
-        item <- ensureItem itemName "install"
-
-        myID <- use robotID
-        focusedID <- use focusedRobotID
-        case otherID == myID of
-          -- We have to special case installing something on ourselves
-          -- for the same reason as Give.
-          True -> installSelf item $ focusedID == myID
-          False -> do
-            let otherDevices = robotMap . at otherID . _Just . installedDevices
-            already <- use $ pre (otherDevices . to (`E.contains` item))
-            unless (already == Just True) $ do
-              robotMap . at otherID . _Just . installedDevices %= insert item
-              robotInventory %= delete item
-
-              -- Flag the UI for a redraw if we are currently showing
-              -- either robot's inventory
-              when (focusedID == myID || focusedID == otherID) flagRedraw
-
-        return $ Out VUnit s k
-      _ -> badConst
     Make -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        ins <- use installedDevices
+        ins <- use equippedDevices
         em <- use entityMap
         e <-
           lookupEntityName name em
@@ -960,7 +942,7 @@ execConst c vs s k = do
 
         let displayMissingCount mc = \case
               MissingInput -> from (show mc)
-              MissingCatalyst -> "not installed"
+              MissingCatalyst -> "not equipped"
             displayMissingIngredient (MissingIngredient mk mc me) =
               "  - " <> me ^. entityName <> " (" <> displayMissingCount mc mk <> ")"
             displayMissingIngredients xs = L.intercalate ["OR"] (map displayMissingIngredient <$> xs)
@@ -987,9 +969,9 @@ execConst c vs s k = do
         inv <- use robotInventory
         return $ Out (VBool ((> 0) $ countByName name inv)) s k
       _ -> badConst
-    Installed -> case vs of
+    Equipped -> case vs of
       [VText name] -> do
-        inv <- use installedDevices
+        inv <- use equippedDevices
         return $ Out (VBool ((> 0) $ countByName name inv)) s k
       _ -> badConst
     Count -> case vs of
@@ -1019,14 +1001,14 @@ execConst c vs s k = do
       [VDir d] -> do
         rname <- use robotName
         inv <- use robotInventory
-        ins <- use installedDevices
+        ins <- use equippedDevices
 
         let equippedDrills = extantElemsWithCapability CDrill ins
             -- Heuristic: choose the drill with the more elaborate name.
             -- E.g. "metal drill" vs. "drill"
             preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills
 
-        drill <- preferredDrill `isJustOr` Fatal "Drill is required but not installed?!"
+        drill <- preferredDrill `isJustOr` Fatal "Drill is required but not equipped?!"
 
         let directionText = case d of
               DRelative DDown -> "under"
@@ -1093,7 +1075,7 @@ execConst c vs s k = do
     Knows -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        ins <- use installedDevices
+        ins <- use equippedDevices
         let allKnown = inv `E.union` ins
         let knows = case E.lookupByName name allKnown of
               [] -> False
@@ -1389,11 +1371,11 @@ execConst c vs s k = do
 
         -- Figure out if we can supply what the target robot requires,
         -- and if so, what is needed.
-        (toInstall, toGive) <-
+        (toEquip, toGive) <-
           checkRequirements
             (r ^. robotInventory)
             (childRobot ^. robotInventory)
-            (childRobot ^. installedDevices)
+            (childRobot ^. equippedDevices)
             cmd
             "The target robot"
             FixByObtain
@@ -1407,7 +1389,7 @@ execConst c vs s k = do
 
         -- Provision the target robot with any required devices and
         -- inventory that are lacking.
-        provisionChild childRobotID (fromList . S.toList $ toInstall) toGive
+        provisionChild childRobotID (fromList . S.toList $ toEquip) toGive
 
         -- Finally, re-activate the reprogrammed target robot.
         activateRobot childRobotID
@@ -1441,7 +1423,7 @@ execConst c vs s k = do
         r <- get @Robot
         pid <- use robotID
 
-        (toInstall, toGive) <-
+        (toEquip, toGive) <-
           checkRequirements (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtain
 
         -- Pick a random display name.
@@ -1470,7 +1452,7 @@ execConst c vs s k = do
               createdAt
 
         -- Provision the new robot with the necessary devices and inventory.
-        provisionChild (newRobot ^. robotID) (fromList . S.toList $ toInstall) toGive
+        provisionChild (newRobot ^. robotID) (fromList . S.toList $ toEquip) toGive
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
@@ -1484,16 +1466,16 @@ execConst c vs s k = do
         case mtarget of
           Nothing -> return $ Out VUnit s k -- Nothing to salvage
           Just target -> do
-            -- Copy the salvaged robot's installed devices into its inventory, in preparation
+            -- Copy the salvaged robot's equipped devices into its inventory, in preparation
             -- for transferring it.
-            let salvageInventory = E.union (target ^. robotInventory) (target ^. installedDevices)
+            let salvageInventory = E.union (target ^. robotInventory) (target ^. equippedDevices)
             robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
 
             let salvageItems = concatMap (\(n, e) -> replicate n (e ^. entityName)) (E.elems salvageInventory)
                 numItems = length salvageItems
 
             -- Copy over the salvaged robot's log, if we have one
-            inst <- use installedDevices
+            inst <- use equippedDevices
             em <- use entityMap
             creative <- use creativeMode
             logger <-
@@ -1612,21 +1594,6 @@ execConst c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
-  installSelf ::
-    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
-    Entity ->
-    Bool ->
-    m ()
-  installSelf item viewingSelf = do
-    -- Don't do anything if the robot already has the device.
-    already <- use (installedDevices . to (`E.contains` item))
-    unless already $ do
-      installedDevices %= insert item
-      robotInventory %= delete item
-
-      -- Flag the UI for a redraw if we are currently showing our inventory
-      when viewingSelf flagRedraw
-
   badConst :: HasRobotStepState sig m => m a
   badConst = throwError $ Fatal badConstMsg
 
@@ -1656,7 +1623,7 @@ execConst c vs s k = do
 
   ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
   ensureEquipped itemName = do
-    inst <- use installedDevices
+    inst <- use equippedDevices
     listToMaybe (lookupByName itemName inst)
       `isJustOrFail` ["You don't have a", indefinite itemName, "equipped."]
 
@@ -1664,7 +1631,7 @@ execConst c vs s k = do
   ensureItem itemName action = do
     -- First, make sure we know about the entity.
     inv <- use robotInventory
-    inst <- use installedDevices
+    inst <- use equippedDevices
     item <-
       asum (map (listToMaybe . lookupByName itemName) [inv, inst])
         `isJustOrFail` ["What is", indefinite itemName <> "?"]
@@ -1684,14 +1651,14 @@ execConst c vs s k = do
   -- both 'Build' and 'Reprogram'.
   --
   -- It is given as inputs the parent robot inventory, the inventory
-  -- and installed devices of the child (these will be empty in the
+  -- and equipped devices of the child (these will be empty in the
   -- case of 'Build'), and the command to be run (along with a few
   -- inputs to configure any error messages to be generated).
   --
   -- Throws an exception if it's not possible to set up the child
   -- robot with the things it needs to execute the given program.
   -- Otherwise, returns a pair consisting of the set of devices to be
-  -- installed, and the inventory that should be transferred from
+  -- equipped, and the inventory that should be transferred from
   -- parent to child.
   checkRequirements ::
     HasRobotStepState sig m =>
@@ -1738,7 +1705,7 @@ execConst c vs s k = do
             ++ map ((Nothing,) . (: [])) devs -- Outright required devices
 
         -- A device is OK if it is available in the inventory of the
-        -- parent robot, or already installed in the child robot.
+        -- parent robot, or already equipped in the child robot.
         deviceOK :: Entity -> Bool
         deviceOK d = parentInventory `E.contains` d || childDevices `E.contains` d
 
@@ -1752,10 +1719,10 @@ execConst c vs s k = do
         partitionedDevices =
           map (Lens.over both S.fromList . L.partition deviceOK . snd) possibleDevices
 
-        -- Devices installed on the child, as a Set instead of an
+        -- Devices equipped on the child, as a Set instead of an
         -- Inventory for convenience.
-        alreadyInstalled :: Set Entity
-        alreadyInstalled = S.fromList . map snd . E.elems $ childDevices
+        alreadyEquipped :: Set Entity
+        alreadyEquipped = S.fromList . map snd . E.elems $ childDevices
 
         -- Figure out what is still missing of the required inventory:
         -- the required inventory, less any inventory the child robot
@@ -1765,11 +1732,11 @@ execConst c vs s k = do
     if creative
       then
         return
-          ( -- In creative mode, just install ALL the devices
+          ( -- In creative mode, just equip ALL the devices
             -- providing each required capability (because, why
-            -- not?). But don't reinstall any that are already
-            -- installed.
-            S.unions (map (S.fromList . snd) possibleDevices) `S.difference` alreadyInstalled
+            -- not?). But don't re-equip any that are already
+            -- equipped.
+            S.unions (map (S.fromList . snd) possibleDevices) `S.difference` alreadyEquipped
           , -- Conjure the necessary missing inventory out of thin
             -- air.
             missingChildInv
@@ -1783,7 +1750,7 @@ execConst c vs s k = do
           `holdsOr` Incapable fixI (R.Requirements (S.fromList capsWithNoDevice) S.empty M.empty) cmd
 
         -- Now, ensure there is at least one device available to be
-        -- installed for each requirement.
+        -- equipped for each requirement.
         let missingDevices = map snd . filter (null . fst) $ partitionedDevices
         null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"
@@ -1792,16 +1759,16 @@ execConst c vs s k = do
                             : (("\n  - " <>) . formatDevices <$> missingDevices)
                         )
 
-        let minimalInstallSet = smallHittingSet (filter (S.null . S.intersection alreadyInstalled) (map fst partitionedDevices))
+        let minimalEquipSet = smallHittingSet (filter (S.null . S.intersection alreadyEquipped) (map fst partitionedDevices))
 
             -- Check that we have enough in our inventory to cover the
-            -- required installs PLUS what's missing from the child
+            -- required devices PLUS what's missing from the child
             -- inventory.
 
             -- What do we need?
             neededParentInv =
               missingChildInv
-                `E.union` (fromList . S.toList $ minimalInstallSet)
+                `E.union` (fromList . S.toList $ minimalEquipSet)
 
             -- What are we missing?
             missingParentInv = neededParentInv `E.difference` parentInventory
@@ -1816,7 +1783,7 @@ execConst c vs s k = do
         E.isEmpty missingParentInv
           `holdsOr` Incapable fixI (R.Requirements S.empty S.empty missingMap) cmd
 
-        return (minimalInstallSet, missingChildInv)
+        return (minimalEquipSet, missingChildInv)
 
   destroyIfNotBase :: HasRobotStepState sig m => Maybe GameplayAchievement -> m ()
   destroyIfNotBase mAch = do
@@ -1981,7 +1948,7 @@ formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented
 --   by the given 'RID') as part of a 'Build' or 'Reprogram' command.
---   The first 'Inventory' is devices to be installed, and the second
+--   The first 'Inventory' is devices to be equipped, and the second
 --   is entities to be transferred.
 --
 --   In classic mode, the entities will be /transferred/ (that is,
@@ -1994,15 +1961,15 @@ provisionChild ::
   Inventory ->
   Inventory ->
   m ()
-provisionChild childID toInstall toGive = do
-  -- Install and give devices to child
-  robotMap . ix childID . installedDevices %= E.union toInstall
+provisionChild childID toEquip toGive = do
+  -- Equip and give devices to child
+  robotMap . ix childID . equippedDevices %= E.union toEquip
   robotMap . ix childID . robotInventory %= E.union toGive
 
   -- Delete all items from parent in classic mode
   creative <- use creativeMode
   unless creative $
-    robotInventory %= (`E.difference` (toInstall `E.union` toGive))
+    robotInventory %= (`E.difference` (toEquip `E.union` toGive))
 
 -- | Update the location of a robot, and simultaneously update the
 --   'robotsByLocation' map, so we can always look up robots by

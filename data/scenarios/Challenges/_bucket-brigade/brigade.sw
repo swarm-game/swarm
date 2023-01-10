@@ -29,7 +29,7 @@ def recurseUntilDepth = \depth.
     let item = "coal lump" in
     child <- build {
 
-        // NOTE: Treads are auto-installed via the implicit "require"
+        // NOTE: Treads are auto-equipped via the implicit "require"
         move;
         unequip "treads";
 

@@ -38,14 +38,14 @@ elaborate =
     -- For recursive let bindings, rewrite any occurrences of x to
     -- (force x).  When interpreting t1, we will put a binding (x |->
     -- delay t1) in the context.
-    SLet True x ty t1 t2 -> SLet True x ty (wrapForce x t1) (wrapForce x t2)
+    SLet True x ty t1 t2 -> SLet True x ty (wrapForce (lvVar x) t1) (wrapForce (lvVar x) t2)
     -- Rewrite any recursive occurrences of x inside t1 to (force x).
     -- When a TDef is encountered at runtime its body will immediately
     -- be wrapped in a VDelay. However, to make this work we also need
     -- to wrap all free variables in any term with 'force' --- since
     -- any such variables must in fact refer to things previously
     -- bound by 'def'.
-    SDef True x ty t1 -> SDef True x ty (wrapForce x t1)
+    SDef True x ty t1 -> SDef True x ty (wrapForce (lvVar x) t1)
     -- Rewrite @f $ x@ to @f x@.
     SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _) l) _) r -> SApp l r
     -- Leave any other subterms alone.

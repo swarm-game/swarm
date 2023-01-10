@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.Language.Syntax
@@ -55,6 +56,7 @@ module Swarm.Language.Syntax (
   sType,
   Syntax,
   pattern Syntax,
+  LocVar (..),
   SrcLoc (..),
   noLoc,
   pattern STerm,
@@ -261,8 +263,6 @@ data Const
     Place
   | -- | Give an item to another robot at the current location.
     Give
-  | -- | Install a device on a robot.
-    Install
   | -- | Equip a device on oneself.
     Equip
   | -- | Unequip an equipped device, returning to inventory.
@@ -271,8 +271,8 @@ data Const
     Make
   | -- | Sense whether we have a certain item.
     Has
-  | -- | Sense whether we have a certain device installed.
-    Installed
+  | -- | Sense whether we have a certain device equipped.
+    Equipped
   | -- | Sense how many of a certain item we have.
     Count
   | -- | Drill through an entity.
@@ -597,12 +597,11 @@ constInfo c = case c of
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
   Give -> command 2 short "Give an item to another actor nearby."
-  Install -> command 2 short "Install a device from inventory on another actor nearby."
   Equip -> command 1 short "Equip a device on oneself."
   Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
   Make -> command 1 long "Make an item using a recipe."
   Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
-  Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."
+  Equipped -> command 1 Intangible "Sense whether the robot has a specific device equipped."
   Count -> command 1 Intangible "Get the count of a given item in a robot's inventory."
   Reprogram ->
     command 2 long . doc "Reprogram another robot with a new command." $
@@ -616,25 +615,26 @@ constInfo c = case c of
   Build ->
     command 1 long . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
-      , "If the command requires devices they will be installed from your inventory."
+      , "If the command requires devices they will be taken from your inventory and "
+          <> "equipped on the new robot."
       ]
   Salvage ->
     command 0 long . doc "Deconstruct an old robot." $
-      ["Salvaging a robot will give you its inventory, installed devices and log."]
+      ["Salvaging a robot will give you its inventory, equipped devices and log."]
   Say ->
     command 1 short . doc "Emit a message." $
       [ "The message will be in the robot's log (if it has one) and the global log."
       , "You can view the message that would be picked by `listen` from the global log "
           <> "in the messages panel, along with your own messages and logs."
       , "This means that to see messages from other robots you have to be able to listen for them, "
-          <> "so once you have a listening device installed messages will be added to your log."
+          <> "so once you have a listening device equipped messages will be added to your log."
       , "In creative mode, there is of course no such limitation."
       ]
   Listen ->
     command 1 long . doc "Listen for a message from other actors." $
       [ "It will take the first message said by the closest actor."
       , "You do not need to actively listen for the message to be logged though, "
-          <> "that is done automatically once you have a listening device installed."
+          <> "that is done automatically once you have a listening device equipped."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
@@ -799,6 +799,12 @@ data DelayType
     MemoizedDelay (Maybe Var)
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
+-- | A variable with associated source location, used for variable
+--   binding sites. (Variable occurrences are a bare TVar which gets
+--   wrapped in a Syntax node, so we don't need LocVar for those.)
+data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
 -- | Terms of the Swarm language.
 data Term' ty
   = -- | The unit value.
@@ -834,19 +840,19 @@ data Term' ty
     SPair (Syntax' ty) (Syntax' ty)
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam Var (Maybe Type) (Syntax' ty)
+    SLam LocVar (Maybe Type) (Syntax' ty)
   | -- | Function application.
     SApp (Syntax' ty) (Syntax' ty)
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool Var (Maybe Polytype) (Syntax' ty) (Syntax' ty)
+    SLet Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
-    SDef Bool Var (Maybe Polytype) (Syntax' ty)
+    SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe Var) (Syntax' ty) (Syntax' ty)
+    SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -920,7 +926,9 @@ pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
 -- | Match a TLam without syntax
 pattern TLam :: Var -> Maybe Type -> Term -> Term
-pattern TLam v ty t = SLam v ty (STerm t)
+pattern TLam v ty t <- SLam (lvVar -> v) ty (STerm t)
+  where
+    TLam v ty t = SLam (LV NoLoc v) ty (STerm t)
 
 -- | Match a TApp without syntax
 pattern TApp :: Term -> Term -> Term
@@ -934,15 +942,21 @@ pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without syntax
 pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
+pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
+  where
+    TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
 
 -- | Match a TDef without syntax
 pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
-pattern TDef r v pt t = SDef r v pt (STerm t)
+pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
+  where
+    TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
 
 -- | Match a TBind without syntax
 pattern TBind :: Maybe Var -> Term -> Term -> Term
-pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
+pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
+  where
+    TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
 
 -- | Match a TDelay without syntax
 pattern TDelay :: DelayType -> Term -> Term
@@ -970,9 +984,12 @@ mkOp' c t1 = TApp (TApp (TConst c) t1)
 --------------------------------------------------
 -- Erasure
 
+-- | Erase a 'Syntax' tree annotated with @SrcLoc@ and type
+--   information to a bare unannotated 'Term'.
 eraseS :: Syntax' ty -> Term
 eraseS (Syntax' _ t _) = erase t
 
+-- | Erase a type-annotated term to a bare term.
 erase :: Term' ty -> Term
 erase TUnit = TUnit
 erase (TConst c) = TConst c
@@ -989,11 +1006,11 @@ erase (TRequire n e) = TRequire n e
 erase (TVar s) = TVar s
 erase (SDelay x s) = TDelay x (eraseS s)
 erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
-erase (SLam x mty body) = TLam x mty (eraseS body)
+erase (SLam x mty body) = TLam (lvVar x) mty (eraseS body)
 erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
-erase (SLet r x mty s1 s2) = TLet r x mty (eraseS s1) (eraseS s2)
-erase (SDef r x mty s) = TDef r x mty (eraseS s)
-erase (SBind mx s1 s2) = TBind mx (eraseS s1) (eraseS s2)
+erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
+erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
+erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1021,14 +1038,14 @@ fvSS f = go S.empty
     TVar x
       | x `S.member` bound -> pure s
       | otherwise -> f s
-    SLam x xty s1 -> rewrap $ SLam x xty <$> go (S.insert x bound) s1
+    SLam x xty s1 -> rewrap $ SLam x xty <$> go (S.insert (lvVar x) bound) s1
     SApp s1 s2 -> rewrap $ SApp <$> go bound s1 <*> go bound s2
     SLet r x xty s1 s2 ->
-      let bound' = S.insert x bound
+      let bound' = S.insert (lvVar x) bound
        in rewrap $ SLet r x xty <$> go bound' s1 <*> go bound' s2
     SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
-    SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert x bound) s1
-    SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id S.insert mx bound) s2
+    SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
+    SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty

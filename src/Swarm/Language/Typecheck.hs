@@ -1,7 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -292,18 +292,18 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- appropriate context.
   SDef r x Nothing t1 -> do
     xTy <- fresh
-    t1' <- withBinding x (Forall [] xTy) $ infer t1
+    t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     _ <- xTy =:= t1' ^. sType
     pty <- generalize (t1' ^. sType)
-    return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton x pty)
+    return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
   SDef r x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
-    t1' <- withBinding x upty $ check t1 uty
-    return $ Module (Syntax' l (SDef r x (Just pty) t1') (UTyCmd UTyUnit)) (singleton x upty)
+    t1' <- withBinding (lvVar x) upty $ check t1 uty
+    return $ Module (Syntax' l (SDef r x (Just pty) t1') (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
@@ -321,7 +321,7 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     -- case the bound x should shadow the defined one; hence, we apply
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
-      maybe id (`withBinding` Forall [] a) mx $ do
+      maybe id ((`withBinding` Forall [] a) . lvVar) mx $ do
         Module c2' ctx2 <- inferModule c2
 
         -- We don't actually need the result type since we're just
@@ -335,7 +335,7 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         -- (if any) as well, since binders are made available at the top
         -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
         -- then they will be able to refer to r again later.
-        let ctxX = maybe Ctx.empty (`Ctx.singleton` Forall [] a) mx
+        let ctxX = maybe Ctx.empty ((`Ctx.singleton` Forall [] a) . lvVar) mx
         return $
           Module
             (Syntax' l (SBind mx c1' c2') (c2' ^. sType))
@@ -406,14 +406,14 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- the appropriate function type.
   SLam x (Just argTy) lt -> do
     let uargTy = toU argTy
-    lt' <- withBinding x (Forall [] uargTy) $ infer lt
+    lt' <- withBinding (lvVar x) (Forall [] uargTy) $ infer lt
     return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (lt' ^. sType))
 
   -- If the type of the argument is not provided, create a fresh
   -- unification variable for it and proceed.
   SLam x Nothing lt -> do
     argTy <- fresh
-    lt' <- withBinding x (Forall [] argTy) $ infer lt
+    lt' <- withBinding (lvVar x) (Forall [] argTy) $ infer lt
     return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (lt' ^. sType))
 
   -- To infer the type of an application:
@@ -430,18 +430,18 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- the variable or not.
   SLet r x Nothing t1 t2 -> do
     xTy <- fresh
-    t1' <- withBinding x (Forall [] xTy) $ infer t1
+    t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     let uty = t1' ^. sType
     _ <- xTy =:= uty
     upty <- generalize uty
-    t2' <- withBinding x upty $ infer t2
+    t2' <- withBinding (lvVar x) upty $ infer t2
     return $ Syntax' l (SLet r x Nothing t1' t2') (t2' ^. sType)
   SLet r x (Just pty) t1 t2 -> do
     let upty = toU pty
     -- If an explicit polytype has been provided, skolemize it and check
     -- definition and body under an extended context.
     uty <- skolemize upty
-    (t1', t2') <- withBinding x upty $ do
+    (t1', t2') <- withBinding (lvVar x) upty $ do
       (,)
         <$> check t1 uty
         `catchError` addLocToTypeErr t1
@@ -453,7 +453,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SBind mx c1 c2 -> do
     c1' <- infer c1
     a <- decomposeCmdTy (c1' ^. sType)
-    c2' <- maybe id (`withBinding` Forall [] a) mx $ infer c2
+    c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
  where
@@ -504,12 +504,11 @@ inferConst c = case c of
   Harvest -> [tyQ| cmd text |]
   Place -> [tyQ| text -> cmd unit |]
   Give -> [tyQ| actor -> text -> cmd unit |]
-  Install -> [tyQ| actor -> text -> cmd unit |]
   Equip -> [tyQ| text -> cmd unit |]
   Unequip -> [tyQ| text -> cmd unit |]
   Make -> [tyQ| text -> cmd unit |]
   Has -> [tyQ| text -> cmd bool |]
-  Installed -> [tyQ| text -> cmd bool |]
+  Equipped -> [tyQ| text -> cmd bool |]
   Count -> [tyQ| text -> cmd int |]
   Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
   Build -> [tyQ| {cmd a} -> cmd actor |]
@@ -658,7 +657,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   SDelay _ s1 -> analyzeAtomic locals s1
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
-  SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id S.insert mx locals) s2
+  SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0
