@@ -8,7 +8,7 @@
 -- Capabilities needed to evaluate and execute programs.  Language
 -- constructs or commands require certain capabilities, and in turn
 -- capabilities are provided by various devices.  A robot must have an
--- appropriate device installed in order to make use of each language
+-- appropriate device equipped in order to make use of each language
 -- construct or command.
 module Swarm.Language.Capability (
   Capability (..),
@@ -51,8 +51,6 @@ data Capability
     CPlace
   | -- | Execute the 'Give' command
     CGive
-  | -- | Execute the 'Install' command
-    CInstall
   | -- | Execute the 'Equip' command
     CEquip
   | -- | Execute the 'Unequip' command
@@ -165,7 +163,7 @@ constCaps = \case
   Undefined -> Nothing
   Fail -> Nothing
   Has -> Nothing
-  Installed -> Nothing
+  Equipped -> Nothing
   -- speaking is natural to robots (unlike listening)
   Say -> Nothing
   -- TODO: #495
@@ -183,7 +181,6 @@ constCaps = \case
   Harvest -> Just CHarvest
   Place -> Just CPlace
   Give -> Just CGive
-  Install -> Just CInstall
   Equip -> Just CEquip
   Unequip -> Just CUnequip
   Make -> Just CMake

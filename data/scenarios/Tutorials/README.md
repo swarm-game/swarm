@@ -15,7 +15,7 @@ Finally, move into the open world and guide through obtaining ingredients and cr
 
 ### Logger
 
-It is important that at least the base robot has a `logger` device installed.
+It is important that at least the base robot has a `logger` device equipped.
 Without it, the players will not see the errors and will be very confused.
 
 ### New entities to get old ones

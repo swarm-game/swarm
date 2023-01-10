@@ -459,6 +459,8 @@
   - [4, big motor]
   - [64, iron plate]
   - [16, rubber]
+  required:
+  - [1, welder]
   out:
   - [1, tank treads]
 
@@ -476,6 +478,14 @@
   - [1, rubber band]
   out:
   - [1, fast grabber]
+
+- in:
+  - [2, copper wire]
+  - [1, copper pipe]
+  - [1, iron plate]
+  - [1, I/O cable]
+  out:
+  - [1, welder]
 
 - in:
   - [4, circuit]

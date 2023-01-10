@@ -191,7 +191,7 @@ data MissingType = MissingInput | MissingCatalyst
 
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
---   Requirements are not consumed and so can use installed.
+--   Requirements are not consumed and so can use equipped.
 missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [MissingIngredient]
 missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
   mkMissing MissingInput (findLacking inv inps)
@@ -214,7 +214,7 @@ knowsIngredientsFor (inv, ins) recipe =
 --   or an inventory without inputs and function adding outputs if
 --   it was successful.
 make ::
-  -- robots inventory and installed devices
+  -- robots inventory and equipped devices
   (Inventory, Inventory) ->
   -- considered recipe
   Recipe Entity ->

@@ -116,13 +116,13 @@ mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitP
 
 -- | An entry in the inventory list displayed in the info panel.  We
 --   can either have an entity with a count in the robot's inventory,
---   an entity installed on the robot, or a labelled separator.  The
+--   an entity equipped on the robot, or a labelled separator.  The
 --   purpose of the separators is to show a clear distinction between
---   the robot's /inventory/ and its /installed devices/.
+--   the robot's /inventory/ and its /equipped devices/.
 data InventoryListEntry
   = Separator Text
   | InventoryEntry Count Entity
-  | InstalledEntry Entity
+  | EquippedEntry Entity
   deriving (Eq)
 
 makePrisms ''InventoryListEntry

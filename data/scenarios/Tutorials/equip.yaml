@@ -1,20 +1,20 @@
 version: 1
-name: Install
+name: Equip
 description: |
-  Learn how to install devices and gain new capabilities.
+  Learn how to equip devices and gain new capabilities.
 objectives:
   - goal:
       - You know how to `grab` things lying around, so you are ready to get
         an upgrade!
-        By installing devices, you learn new capabilities which allow you to
+        By equipping devices, you learn new capabilities which allow you to
         perform more complex commands.
       - Before you start building new robots in the later tutorials, you need
         to gain the "build" capability.
         Try typing `build {}` - you should get an error telling you that you
-        need to install a "3D printer".
+        need to equip a "3D printer".
       - |
         Fortunately, there is a 3D printer lying nearby.  Go `grab` it, then
-        install it on yourself with `install base "3D printer"`.
+        equip it with `equip "3D printer"`.
       - |
         You win by building your first robot:
       - |
@@ -25,7 +25,7 @@ objectives:
         return true;
       } { return false }
 solution: |
-  turn south; move; grab; install base "3D printer"; build {};
+  turn south; move; grab; equip "3D printer"; build {};
 robots:
   - name: base
     dir: [1,0]
@@ -34,6 +34,7 @@ robots:
       - treads
       - compass
       - grabber
+      - welder
     inventory:
       - [10, solar panel]
       - [10, logger]

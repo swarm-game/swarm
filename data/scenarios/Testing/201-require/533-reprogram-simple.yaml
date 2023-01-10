@@ -1,7 +1,7 @@
 version: 1
-name: Install devices while reprogramming
+name: Equip devices while reprogramming
 description: |
-  While executing 'reprogram', we should install any required devices which
+  While executing 'reprogram', we should equip any required devices which
   the target robot doesn't have.
   https://github.com/swarm-game/swarm/pulls/533
 objectives:
@@ -14,13 +14,13 @@ objectives:
 
         fred <- robotNamed "fred";
         p <- as fred {whereami};
-        boatInstalled <- as fred {installed "boat"};
-        drillInstalled <- as fred {installed "metal drill"};
-        solarInstalled <- as fred {installed "solar panel"};
-        treadsInstalled <- as fred {installed "treads"};
+        boatEquipped <- as fred {equipped "boat"};
+        drillEquipped <- as fred {equipped "metal drill"};
+        solarEquipped <- as fred {equipped "solar panel"};
+        treadsEquipped <- as fred {equipped "treads"};
 
         return (p == (2,0)
-                && boatInstalled && drillInstalled && solarInstalled && treadsInstalled
+                && boatEquipped && drillEquipped && solarEquipped && treadsEquipped
                 && base_boats == 1 && base_solar == 1
                 && base_treads == 1 && base_drills == 1
                );
