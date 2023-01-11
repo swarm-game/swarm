@@ -26,7 +26,7 @@ elaborate =
   -- Wrap all *free* variables in 'Force'.  Free variables must be
   -- referring to a previous definition, which are all wrapped in
   -- 'TDelay'.
-  (fvSS %~ \s -> Syntax' (s ^. sLoc) (SApp sForce s) (s ^. sType))
+  (freeVarsS %~ \s -> Syntax' (s ^. sLoc) (SApp sForce s) (s ^. sType))
     -- Now do additional rewriting on all subterms.
     . transform rewrite
  where

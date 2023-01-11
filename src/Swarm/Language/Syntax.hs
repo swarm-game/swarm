@@ -82,9 +82,9 @@ module Swarm.Language.Syntax (
   eraseS,
 
   -- * Term traversal
-  fvSS,
-  fvST,
-  fvSV,
+  freeVarsS,
+  freeVarsT,
+  freeVarsV,
   mapFreeS,
 ) where
 
@@ -1026,9 +1026,14 @@ erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
 ------------------------------------------------------------
 
 -- | Traversal over those subterms of a term which represent free
---   variables.
-fvSS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
-fvSS f = go S.empty
+--   variables.  The S suffix indicates that it is a `Traversal' over
+--   the `Syntax` nodes (which contain type and source location info)
+--   containing free variables inside a larger `Syntax` value.  Note
+--   that if you want to get the list of all `Syntax` nodes
+--   representing free variables, you can do so via @'listOf'
+--   'freeVarsS'@.
+freeVarsS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
+freeVarsS f = go S.empty
  where
   -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
   go bound s@(Syntax' l t ty) = case t of
@@ -1059,15 +1064,22 @@ fvSS f = go S.empty
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 
-fvST :: forall ty. Traversal' (Syntax' ty) (Term' ty)
-fvST = fvSS . sTerm
+-- | Like 'freeVarsS', but traverse over the 'Term's containing free
+--   variables.  More direct if you don't need to know the types or
+--   source locations of the variables.  Note that if you want to get
+--   the list of all `Term`s representing free variables, you can do so via
+--   @'listOf' 'freeVarsT'@.
+freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
+freeVarsT = freeVarsS . sTerm
 
--- | Traversal over the free variables of a term.  Note that if you
---   want to get the set of all free variables, you can do so via
---   @'Data.Set.Lens.setOf' 'fv'@.
-fvSV :: Traversal' (Syntax' ty) Var
-fvSV = fvST . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
+-- | Traversal over the free variables of a term.  Like 'freeVarsS'
+--   and 'freeVarsT', but traverse over the variable names
+--   themselves.  Note that if you want to get the set of all free
+--   variable names, you can do so via @'Data.Set.Lens.setOf'
+--   'freeVarsV'@.
+freeVarsV :: Traversal' (Syntax' ty) Var
+freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular variable.
 mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
-mapFreeS x f = fvSS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
+mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
