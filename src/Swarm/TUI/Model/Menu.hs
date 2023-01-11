@@ -56,7 +56,7 @@ data ButtonSelection
 
 data Modal = Modal
   { _modalType :: ModalType
-  , _modalDialog :: Dialog ButtonSelection
+  , _modalDialog :: Dialog ButtonSelection Name
   }
 
 makeLenses ''Modal

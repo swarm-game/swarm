@@ -23,7 +23,7 @@ import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
-generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
+generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
   currentScenario = s ^. uiState . scenarioRef
   currentSeed = s ^. gameState . seed
@@ -45,12 +45,12 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             continueMsg = "Keep playing"
          in ( ""
             , Just
-                ( 0
-                , [ (nextMsg, NextButton scene)
+                ( GenericModalName
+                , [ (nextMsg, GenericModalName, NextButton scene)
                   | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
                   ]
-                    ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, KeepPlayingButton)
+                    ++ [ (stopMsg, GenericModalName, QuitButton)
+                       , (continueMsg, GenericModalName, KeepPlayingButton)
                        ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
@@ -58,14 +58,16 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
         let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
-            maybeStartOver = sequenceA ("Start over", StartOverButton currentSeed <$> currentScenario)
+            maybeStartOver = do
+              cs <- currentScenario
+              return ("Start over", GenericModalName, StartOverButton currentSeed cs)
          in ( ""
             , Just
-                ( 0
+                ( GenericModalName
                 , catMaybes
-                    [ Just ("Keep playing", CancelButton)
+                    [ Just ("Keep playing", GenericModalName, CancelButton)
                     , maybeStartOver
-                    , Just (stopMsg, QuitButton)
+                    , Just (stopMsg, GenericModalName, QuitButton)
                     ]
                 )
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
@@ -75,7 +77,7 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
               Nothing -> "Goal"
               Just (scenario, _) -> scenario ^. scenarioName
          in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
-      KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
+      KeepPlayingModal -> ("", Just (GenericModalName, [("OK", GenericModalName, CancelButton)]), 80)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
