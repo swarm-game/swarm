@@ -36,6 +36,5 @@ data Name
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.
     ModalViewport
-  |
-    GenericModalName
+  | GenericModalName
   deriving (Eq, Ord, Show, Read)
