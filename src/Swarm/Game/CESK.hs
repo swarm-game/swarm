@@ -288,12 +288,22 @@ initMachine t e s = initMachine' t e s []
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
 initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
   case t' ^. sType of
+    -- If the starting term has a command type...
     Forall _ (TyCmd _) ->
       case ctx of
+        -- ...but doesn't contain any definitions, just create a machine
+        -- that will evaluate it and then execute it.
         Empty -> In t e s (FExec : k)
+        -- Or, if it does contain definitions, then load the resulting
+        -- context after executing it.
         _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
+    -- Otherwise, for a term with a non-command type, just
+    -- create a machine to evaluate it.
     _ -> In t e s k
  where
+  -- Erase all type and SrcLoc annotations from the term before
+  -- putting it in the machine state, since those are irrelevant at
+  -- runtime.
   t = eraseS t'
 
 -- | Cancel the currently running computation.
