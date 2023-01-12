@@ -11,7 +11,7 @@ objectives:
         The sequence may appear horizontally from left to right,
         vertically from top to bottom, or diagonally from
         top-left to bottom-right.
-      - No other letters may be picked up.
+      - No other letters may be highlighted.
     condition: |
       as base {run "scenarios/Challenges/_word-search/verify-solution.sw"}
 robots:
@@ -42,10 +42,13 @@ robots:
     dir: [1, 0]
     display:
       invisible: false
+    devices:
+      - lodestone
     inventory:
       - [600, capital C]
       - [600, capital O]
       - [600, capital W]
+      - [30, bit (0)]
     program: |
       run "scenarios/Challenges/_word-search/create-puzzle.sw"
 solution: |

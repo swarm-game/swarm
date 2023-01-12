@@ -9,28 +9,23 @@ def boolToNum = \b.
     if b {return 1} {return 0};
     end;
 
+
+def resetBits =
+    countOnes <- count "bit (1)";
+    doN countOnes $ make "bit (0)";
+    end;
+
 // Counts how many times a predicate was true in a loop.
 def countInRow = \act. \pred. \n.
     if (n > 0) {
         isTrue <- pred;
-        bNum <- boolToNum isTrue;
-
-        // act;
-        move;
-
-        subCount <- countInRow act pred $ n - 1;
-        say $ "found subcount:" ++ format subCount;
-        // return $ bNum + subCount;
-
         if isTrue {
-            return $ 1 + subCount;
-        } {
+            make "bit (1)";
+        } {};
 
-            return subCount;
-        };
-    } {
-        return 0;
-    };
+        act;
+        countInRow act pred $ n - 1;
+    } {};
     end;
 
 def isHighlighted =
@@ -49,7 +44,9 @@ def isHighlighted =
     end;
 
 def countHighlighted = \n.
-    hCount <- countInRow move isHighlighted n;
+    resetBits;
+    countInRow move isHighlighted n;
+    hCount <- count "bit (1)";
     say $ "Found " ++ format hCount;
     return hCount;
     end;
