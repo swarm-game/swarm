@@ -42,27 +42,29 @@ def highlightLetter =
     drill down;
     end;
 
-def traverseRow = \progress. \n.
+def traverseRow = \expectedOrdinal. \colCount.
 
-    targetItem <- chooseLetter progress;
+    targetItem <- chooseLetter expectedOrdinal;
     targetHere <- ishere targetItem;
+    log $ "Target: " ++ targetItem;
+    log $ "Is here? " ++ format targetHere;
 
-    newProgress <- if targetHere {
-        return $ progress + 1;
+    newExpectedOrdinal <- if targetHere {
+        return $ expectedOrdinal + 1;
     } {
         // Reset the progress
         return 0;
     };
 
-    if (newProgress == 3) {
+    if (newExpectedOrdinal == 3) {
         turn back;
 
         intersperse 3 move highlightLetter;
         return true;
     } {
-        if (n > 0) {
+        if (colCount > 1) {
             move;
-            traverseRow newProgress (n - 1);
+            traverseRow newExpectedOrdinal (colCount - 1);
         } {
           return false;
         };
@@ -73,20 +75,24 @@ def traverseRow = \progress. \n.
 def advanceRow =
     turn back;
     loc <- whereami;
-    doN (fst loc - 1) move;
+    doN (fst loc) move;
     turn left;
     move;
     turn left;
     end;
 
-def traverseCols = \n.
-    didWin <- traverseRow 0 (25 - 1);
+/**
+Visit all rows, then
+visit all columns.
+*/
+def traverseCols = \width. \height. 
+    didWin <- traverseRow 0 width;
     if didWin {
         return true;
     } {
-        if (n > 0) {
+        if (height > 1) {
             advanceRow;
-            traverseCols $ n - 1;
+            traverseCols width $ height - 1;
         } {
             return false;
         };
@@ -97,10 +103,7 @@ def solve =
     waitUntilUnblocked;
     goToCorner;
 
-    // TODO: Visit all rows, then
-    // visit all columns.
-    traverseCols (15 - 1);
-
+    traverseCols 25 15;
     end;
 
 solve;

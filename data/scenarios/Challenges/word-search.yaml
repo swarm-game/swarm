@@ -3,7 +3,7 @@ name: Word search
 author: Karl Ostmo
 description: |
   Find the word
-seed: 2
+seed: 0
 creative: false
 objectives:
   - goal:
@@ -128,9 +128,6 @@ robots:
     program: |
       run "scenarios/Challenges/_word-search/create-puzzle.sw"
 solution: |
-  // Hardcoded for seed=0:
-  // move; move; turn left; move; drill down; move; drill down; move; drill down;
-
   run "scenarios/Challenges/_word-search/solution.sw"
 entities:
   - name: capital C
