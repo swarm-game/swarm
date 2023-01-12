@@ -3,18 +3,25 @@ name: Word search
 author: Karl Ostmo
 description: |
   Find the word
-seed: 2
+seed: 3
 creative: false
 objectives:
   - goal:
-      - Use `drill` to mark the sequence of letters that spells COW
+      - |
+        First, wait for the playfield to be set up,
+        and then your path forward will be cleared.
+    condition: |
+      r <- robotnamed "lettersetter";
+      as r {has "boulder"};
+  - goal:
+      - Use the `drill` command to mark the sequence of letters that
+        spells COW within the designated playfield.
       - |
         The sequence may appear horizontally in either the
         leftward or rightward direction,
         or vertically in either the upward or downward direction.
         Diagonal appearances are not valid.
     condition: |
-
       def whichOrdinal =
           isC <- ishere "lowercase c";
           if (isC) {
@@ -100,7 +107,6 @@ robots:
       - ADT calculator
       - branch predictor
       - GPS receiver
-      - compass
       - clock
       - comparator
       - counter
@@ -120,11 +126,11 @@ robots:
     system: true
     dir: [1, 0]
     display:
-      invisible: false
+      invisible: true
     inventory:
-      - [600, capital C]
-      - [600, capital O]
-      - [600, capital W]
+      - [376, capital C]
+      - [376, capital O]
+      - [376, capital W]
     program: |
       run "scenarios/Challenges/_word-search/create-puzzle.sw"
 solution: |
@@ -221,7 +227,7 @@ recipes:
       - [1, ink]
     required:
       - [1, highlighter]
-known: [boulder, capital C, capital O, capital W]
+known: [boulder]
 world:
   default: [dirt]
   upperleft: [0, 0]
@@ -231,12 +237,9 @@ world:
     '.': [grass]
     'a': [grass, null, lettersetter]
     '#': [dirt]
-    'C': [grass, capital C]
-    'O': [grass, capital O]
-    'W': [grass, capital W]
-    Ω: [dirt, null, base]
+    Ω: [stone, null, base]
   map: |
-    CCOWWWCOOWCOWWCCCWWWOOWOC###
+    a........................###
     .........................###
     .........................###
     .........................###
@@ -246,7 +249,7 @@ world:
     .........................###
     .........................###
     .........................@@@
-    ..........................Ω@
+    .........................@Ω@
     .........................@@@
     .........................###
     .........................###

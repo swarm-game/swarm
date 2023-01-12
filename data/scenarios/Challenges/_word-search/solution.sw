@@ -36,13 +36,12 @@ def whichOrdinal =
     }
     end;
 
-
 // Go to upper-left corner
 def goToCorner =
-    move;
-    doN 25 move;
+    myLoc <- whereami;
+    doN (fst myLoc) move;
     turn right;
-    doN 10 move;
+    doN (-(snd myLoc)) move;
     turn right;
     end;
 
@@ -81,9 +80,6 @@ def traverseRow = \expectedOrdinal. \colCount.
 
 
 def advanceRow =
-    turn back;
-    loc <- whereami;
-    doN (fst loc) move;
     turn left;
     move;
     turn left;
@@ -98,12 +94,18 @@ def traverseCols = \width. \height.
     if didWin {
         return true;
     } {
-        if (height > 1) {
-            advanceRow;
-            traverseCols width $ height - 1;
+        turn back;
+        didWinBackward <- traverseRow 0 width;
+        if didWinBackward {
+            return true;
         } {
-            return false;
-        };
+            if (height > 1) {
+                advanceRow;
+                traverseCols width $ height - 1;
+            } {
+                return false;
+            };
+        }
     } 
     end;
 
@@ -111,7 +113,13 @@ def solve =
     waitUntilUnblocked;
     goToCorner;
 
-    traverseCols 25 15;
+    wonHorizontally <- traverseCols 25 15;
+    if wonHorizontally {
+        return true;
+    } {
+        turn right;
+        traverseCols 15 25;
+    }
     end;
 
 solve;
