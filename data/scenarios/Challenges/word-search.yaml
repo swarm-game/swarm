@@ -236,7 +236,7 @@ world:
     'W': [grass, capital W]
     Ω: [dirt, null, base]
   map: |
-    OCOWWWCOOOCOWWCCCWWWOOWOC###
+    CCOWWWCOOWCOWWCCCWWWOOWOC###
     .........................###
     .........................###
     .........................###

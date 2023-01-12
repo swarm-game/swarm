@@ -17,17 +17,25 @@ def waitUntilUnblocked =
     } {};
     end;
 
-def chooseLetter = \i.
-    if (i == 0) {
-        return "capital C";
+def whichOrdinal =
+    isC <- ishere "capital C";
+    if (isC) {
+        return 0;
     } {
-        if (i == 1) {
-            return "capital O";
+        isO <- ishere "capital O";
+        if (isO) {
+            return 1;
         } {
-            return "capital W";
+            isW <- ishere "capital W";
+            if (isW) {
+                return 2;
+            } {
+                return (-1);
+            }
         }
-    };
+    }
     end;
+
 
 // Go to upper-left corner
 def goToCorner =
@@ -44,13 +52,13 @@ def highlightLetter =
 
 def traverseRow = \expectedOrdinal. \colCount.
 
-    targetItem <- chooseLetter expectedOrdinal;
-    targetHere <- ishere targetItem;
-    // log $ "Target: " ++ targetItem;
-    // log $ "Is here? " ++ format targetHere;
+    theFoundOrdinal <- whichOrdinal;
 
-    newExpectedOrdinal <- if targetHere {
-        return $ expectedOrdinal + 1;
+    // Logic: the first letter of the target word is *always*
+    // considered a "match".
+    let shouldAdvance = theFoundOrdinal == expectedOrdinal || theFoundOrdinal == 0 in
+    newExpectedOrdinal <- if shouldAdvance {
+        return $ theFoundOrdinal + 1;
     } {
         // Reset the progress
         return 0;
