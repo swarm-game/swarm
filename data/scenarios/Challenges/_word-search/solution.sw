@@ -44,29 +44,54 @@ def highlightLetter =
 
 def traverseRow = \progress. \n.
 
-    if (n > 0) {
+    targetItem <- chooseLetter progress;
+    targetHere <- ishere targetItem;
 
-        targetItem <- chooseLetter progress;
-        targetHere <- ishere targetItem;
+    newProgress <- if targetHere {
+        return $ progress + 1;
+    } {
+        // Reset the progress
+        return 0;
+    };
 
-        newProgress <- if targetHere {
-            return $ progress + 1;
-        } {
-            // Reset the progress
-            return 0;
-        };
+    if (newProgress == 3) {
+        turn back;
 
-        if (newProgress == 3) {
-            turn back;
-
-            intersperse 3 move highlightLetter;
-        } {
+        intersperse 3 move highlightLetter;
+        return true;
+    } {
+        if (n > 0) {
             move;
             traverseRow newProgress (n - 1);
+        } {
+          return false;
         };
-    } {};
+    };
     end;
 
+
+def advanceRow =
+    turn back;
+    loc <- whereami;
+    doN (fst loc - 1) move;
+    turn left;
+    move;
+    turn left;
+    end;
+
+def traverseCols = \n.
+    didWin <- traverseRow 0 (25 - 1);
+    if didWin {
+        return true;
+    } {
+        if (n > 0) {
+            advanceRow;
+            traverseCols $ n - 1;
+        } {
+            return false;
+        };
+    } 
+    end;
 
 def solve =
     waitUntilUnblocked;
@@ -74,7 +99,7 @@ def solve =
 
     // TODO: Visit all rows, then
     // visit all columns.
-    traverseRow 0 25;
+    traverseCols (15 - 1);
 
     end;
 

@@ -3,15 +3,16 @@ name: Word search
 author: Karl Ostmo
 description: |
   Find the word
+seed: 2
 creative: false
 objectives:
   - goal:
-      - Mark the sequence of letters that spells COW
+      - Use `drill` to mark the sequence of letters that spells COW
       - |
-        The sequence may appear horizontally from left to right,
-        vertically from top to bottom, or diagonally from
-        top-left to bottom-right.
-      - No other letters may be highlighted.
+        The sequence may appear horizontally in either the
+        leftward or rightward direction,
+        or vertically in either the upward or downward direction.
+        Diagonal appearances are not valid.
     condition: |
 
       def whichOrdinal =
@@ -96,15 +97,15 @@ robots:
     dir: [-1, 0]
     devices:
       - treads
-      - 3D printer
       - ADT calculator
       - branch predictor
+      - GPS receiver
+      - compass
       - clock
       - comparator
       - counter
       - dictionary
       - grabber
-      - hearing aid
       - lambda
       - logger
       - mirror
@@ -112,7 +113,6 @@ robots:
       - scanner
       - strange loop
       - string
-      - workbench
       - highlighter
     inventory:
       - [3, ink]
@@ -129,9 +129,9 @@ robots:
       run "scenarios/Challenges/_word-search/create-puzzle.sw"
 solution: |
   // Hardcoded for seed=0:
-  move; move; turn left; move; drill down; move; drill down; move; drill down;
+  // move; move; turn left; move; drill down; move; drill down; move; drill down;
 
-  // run "scenarios/Challenges/_word-search/solution.sw"
+  run "scenarios/Challenges/_word-search/solution.sw"
 entities:
   - name: capital C
     display:
@@ -225,7 +225,6 @@ recipes:
     required:
       - [1, highlighter]
 known: [boulder, capital C, capital O, capital W]
-seed: 0
 world:
   default: [dirt]
   upperleft: [0, 0]
