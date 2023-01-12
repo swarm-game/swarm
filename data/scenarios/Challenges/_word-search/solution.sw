@@ -78,7 +78,6 @@ def traverseRow = \expectedOrdinal. \colCount.
     };
     end;
 
-
 def advanceRow =
     turn left;
     move;
@@ -86,8 +85,9 @@ def advanceRow =
     end;
 
 /**
-Visit all rows, then
-visit all columns.
+Travels forward and then backward
+across a row, to check for solutions
+in either direction.
 */
 def traverseCols = \width. \height. 
     didWin <- traverseRow 0 width;
@@ -109,17 +109,19 @@ def traverseCols = \width. \height.
     } 
     end;
 
-def solve =
+def solve = \boardWidth. \boardHeight.
     waitUntilUnblocked;
     goToCorner;
 
-    wonHorizontally <- traverseCols 25 15;
+    wonHorizontally <- traverseCols boardWidth boardHeight;
     if wonHorizontally {
         return true;
     } {
+        // If we did not find a horizontal solution,
+        // look for vertical solutions.
         turn right;
-        traverseCols 15 25;
+        traverseCols boardHeight boardWidth;
     }
     end;
 
-solve;
+solve 25 15;

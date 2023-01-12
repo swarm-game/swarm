@@ -1,9 +1,10 @@
-
-// Algorithm:
-// We only need to check the base's
-// current position: if we find three contiguous highlights,
-// then we know that the player has just completed their
-// third highlight.
+/**
+Algorithm:
+We only need to check the base's
+current position: if we find three contiguous highlights,
+then we know that the player has just completed their
+third highlight.
+*/
 
 def whichOrdinal =
     isC <- ishere "lowercase c";
