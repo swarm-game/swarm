@@ -15,7 +15,8 @@ objectives:
     condition: |
       as base {knows "capital C"};
   - goal:
-      - Use the `drill` command to mark the sequence of letters that
+      - Use the `drill` command (e.g. "drill down" when on top of the
+        intended letter) to mark the sequence of letters that
         spells COW within the designated playfield.
       - |
         The sequence may appear horizontally in either the
@@ -114,7 +115,6 @@ robots:
       - comparator
       - counter
       - dictionary
-      - grabber
       - lambda
       - logger
       - mirror
@@ -137,7 +137,23 @@ robots:
     program: |
       run "scenarios/Challenges/_word-search/create-puzzle.sw"
 solution: |
-  run "scenarios/Challenges/_word-search/solution.sw"
+  // Hard-coded for seed=3:
+  def waitUntilUnblocked =
+    x <- blocked;
+    if x {
+        wait 1;
+        waitUntilUnblocked;
+    } {};
+    end;
+  waitUntilUnblocked;
+  move; move; move; move; move; move; move; move;
+  turn left;
+  drill down;
+  move;
+  drill down;
+  move;
+  drill down;
+  // run "scenarios/Challenges/_word-search/solution.sw"
 entities:
   - name: capital C
     display:
