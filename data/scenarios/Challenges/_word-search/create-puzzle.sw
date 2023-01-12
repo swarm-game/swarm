@@ -14,6 +14,18 @@ def intersperse = \n. \f2. \f1. if (n > 0) {
     } {};
     end;
 
+/**
+Call a function repeatedly with the numeric argument,
+in descending order.
+*/
+def iterN = \n. \f.
+    if (n > 0) {
+        let newNum = n - 1 in
+        f newNum;
+        iterN newNum f;
+    } {};
+    end;
+
 def chooseLetter = \i.
     if (i == 0) {
         return "capital C";
@@ -94,6 +106,11 @@ def layTilesRow = \expectedFwdOrdinal. \expectedBkwdOrdinal. \n.
     } {};
     end;
 
+def giveLetterNumbered = \n.
+    letter <- chooseLetter n;
+    give base letter;
+    end;
+
 def removeBoulder =
     baseLoc <- as base {whereami};
     teleport self (fst baseLoc - 1, snd baseLoc);
@@ -103,9 +120,7 @@ def removeBoulder =
 
     // Make sure the base "knows" about the letters
     // to get rid of the question marks ("?").
-    give base "capital C";
-    give base "capital O";
-    give base "capital W";
+    iterN 3 giveLetterNumbered;
 
     selfdestruct;
     end;

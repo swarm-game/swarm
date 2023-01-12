@@ -160,6 +160,7 @@ testScenarioSolution _ci _em =
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
         , testSolution (Sec 5) "Challenges/2048"
+        , testSolution Default "Challenges/word-search"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution Default "Challenges/friend"
         , testGroup

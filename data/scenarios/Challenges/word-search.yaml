@@ -10,9 +10,10 @@ objectives:
       - |
         First, wait for the playfield to be set up,
         and then your path forward will be cleared.
+      - |
+        You can speed this process up with CTRL+x.
     condition: |
-      r <- robotnamed "lettersetter";
-      as r {has "boulder"};
+      as base {knows "capital C"};
   - goal:
       - Use the `drill` command to mark the sequence of letters that
         spells COW within the designated playfield.
@@ -101,6 +102,8 @@ objectives:
 
 robots:
   - name: base
+    display:
+      attr: flower
     dir: [-1, 0]
     devices:
       - treads
