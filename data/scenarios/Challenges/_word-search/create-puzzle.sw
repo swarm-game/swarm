@@ -25,10 +25,17 @@ def singleTile =
 
   letterIndex <- random 3;
   if (letterIndex == 2) {
-    // Selected last letter in COW.
-    // Make sure we're not completing a word
-    // in any of the three directions.
-    // TODO
+    // We've selected the last letter in COW.
+    //
+    // TODO: To ensure there is only exactly one solution,
+    // make sure we're not completing a word
+    // horizontally (foward or backward) or
+    // vertically (forward or backward), except if we
+    // are in the pre-designated location.
+    // 
+    // To do this, we actually need to check for both
+    // letterIndex 0 and 2. If we would be completing
+    // a word, select a different random letter.
   } {};
   chosenLetter <- chooseLetter letterIndex;
   place chosenLetter;

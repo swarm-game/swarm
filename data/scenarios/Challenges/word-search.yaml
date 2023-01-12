@@ -13,7 +13,84 @@ objectives:
         top-left to bottom-right.
       - No other letters may be highlighted.
     condition: |
-      as base {run "scenarios/Challenges/_word-search/verify-solution.sw"}
+
+      def whichOrdinal =
+          isC <- ishere "lowercase c";
+          if (isC) {
+              return 0;
+          } {
+              isO <- ishere "lowercase o";
+              if (isO) {
+                  return 1;
+              } {
+                  isW <- ishere "lowercase w";
+                  if (isW) {
+                      return 2;
+                  } {
+                      return (-1);
+                  }
+              }
+          }
+          end;
+          
+
+      def countConsecutive = \expectedOrdinal. \n.
+
+          thisOrdinal <- whichOrdinal;
+
+          nextOrdinal <- if (thisOrdinal == expectedOrdinal) {
+              return $ expectedOrdinal + 1;
+          } {
+              return 0;
+          };
+
+          if (nextOrdinal == 3) {
+              return true;
+          } {
+
+              if (n > 0) {
+                  move;
+                  countConsecutive nextOrdinal (n - 1);
+              } {
+                  return false;
+              };
+          };
+
+          end;
+          
+
+      def checkBackAndForth =
+
+          foundBackward <- countConsecutive 0 3;
+          if (foundBackward) {
+              return true;
+          } {
+              turn back;
+              countConsecutive 0 3;
+          }
+          end;
+
+
+      def checkDirections = \n.
+          if (n > 0) {
+              wasFound <- checkBackAndForth;
+              if (wasFound) {
+                  return true;
+              } {
+                  turn left;
+                  checkDirections $ n - 1;
+              }
+          } {
+              return false;
+          }
+          end;
+
+      def checkSoln =
+          checkDirections 4;
+          end;
+
+      as base {checkSoln};
+
 robots:
   - name: base
     dir: [-1, 0]
@@ -37,22 +114,24 @@ robots:
       - string
       - workbench
       - highlighter
+    inventory:
+      - [3, ink]
   - name: lettersetter
     system: true
     dir: [1, 0]
     display:
       invisible: false
-    devices:
-      - lodestone
     inventory:
       - [600, capital C]
       - [600, capital O]
       - [600, capital W]
-      - [25, bit (0)]
     program: |
       run "scenarios/Challenges/_word-search/create-puzzle.sw"
 solution: |
-  run "scenarios/Challenges/_word-search/solution.sw"
+  // Hardcoded for seed=0:
+  move; move; turn left; move; drill down; move; drill down; move; drill down;
+
+  // run "scenarios/Challenges/_word-search/solution.sw"
 entities:
   - name: capital C
     display:
@@ -93,25 +172,56 @@ entities:
       attr: gold
     capabilities: [drill]
     description:
-      - Used for marking found words
+      - Instrument for marking found words
+    properties: [known, portable]
+  - name: ink
+    display:
+      char: 'K'
+      attr: gold
+    description:
+      - Ink for marking found words
     properties: [known, portable]
 recipes:
   - in:
       - [1, capital C]
+      - [1, ink]
     out:
       - [1, lowercase c]
     required:
       - [1, highlighter]
   - in:
       - [1, capital O]
+      - [1, ink]
     out:
       - [1, lowercase o]
     required:
       - [1, highlighter]
   - in:
       - [1, capital W]
+      - [1, ink]
     out:
       - [1, lowercase w]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase c]
+    out:
+      - [1, capital C]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase o]
+    out:
+      - [1, capital O]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase w]
+    out:
+      - [1, capital W]
+      - [1, ink]
     required:
       - [1, highlighter]
 known: [boulder, capital C, capital O, capital W]

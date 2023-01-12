@@ -1,5 +1,14 @@
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
+def intersperse = \n. \f2. \f1. if (n > 0) {
+        f1;
+        if (n > 1) {
+            f2;
+        } {};
+        intersperse (n - 1) f2 f1;
+    } {};
+    end;
+
 def waitUntilUnblocked =
     x <- blocked;
     if x {
@@ -49,7 +58,8 @@ def traverseRow = \progress. \n.
 
         if (newProgress == 3) {
             turn back;
-            doN 3 (highlightLetter; move;);
+
+            intersperse 3 move highlightLetter;
         } {
             move;
             traverseRow newProgress (n - 1);
@@ -62,6 +72,8 @@ def solve =
     waitUntilUnblocked;
     goToCorner;
 
+    // TODO: Visit all rows, then
+    // visit all columns.
     traverseRow 0 25;
 
     end;
