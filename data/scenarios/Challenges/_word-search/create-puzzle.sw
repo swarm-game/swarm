@@ -50,13 +50,12 @@ def layTiles = \n.
 def createPuzzle = \width. \height.
     intersperse height (crossBack width) (layTiles width);
     turn left;
-    doN 9 move;
+    doN 4 move;
     turn right;
     move;
 
     // Remove the boulder blocking the player's path
     grab;
-    // selfdestruct;
     end;
 
-createPuzzle 30 20;
+createPuzzle 25 15;
