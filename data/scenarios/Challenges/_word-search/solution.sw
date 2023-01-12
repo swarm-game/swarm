@@ -46,8 +46,8 @@ def traverseRow = \expectedOrdinal. \colCount.
 
     targetItem <- chooseLetter expectedOrdinal;
     targetHere <- ishere targetItem;
-    log $ "Target: " ++ targetItem;
-    log $ "Is here? " ++ format targetHere;
+    // log $ "Target: " ++ targetItem;
+    // log $ "Is here? " ++ format targetHere;
 
     newExpectedOrdinal <- if targetHere {
         return $ expectedOrdinal + 1;

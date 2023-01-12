@@ -3,7 +3,7 @@ name: Word search
 author: Karl Ostmo
 description: |
   Find the word
-seed: 0
+seed: 2
 creative: false
 objectives:
   - goal:
