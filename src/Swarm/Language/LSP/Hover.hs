@@ -11,7 +11,6 @@ module Swarm.Language.LSP.Hover (
   narrowToPosition,
 
   -- * Explaining source position
-  Length (..),
   explain,
 ) where
 
@@ -62,11 +61,11 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
       Left _e ->
         let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope foundSloc
-         in (,finalPos) . treeToMarkdown 0 $ explain Long found
+         in (,finalPos) . treeToMarkdown 0 $ explain found
       Right (ProcessedTerm modul _req _reqCtx) ->
         let found@(Syntax' foundSloc _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
             finalPos = posToRange myRope foundSloc
-         in (,finalPos) . treeToMarkdown 0 $ explain Long found
+         in (,finalPos) . treeToMarkdown 0 $ explain found
  where
   content = virtualFileText vf
   absolutePos =
@@ -142,11 +141,6 @@ treeToMarkdown :: Int -> Tree Text -> Text
 treeToMarkdown d (Node t children) =
   T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
--- | Top level explanations can use fancy markdown syntax, but list items
---   have to be more conservative and ideally shorter.
-data Length = Brief | Long
-  deriving (Eq, Show)
-
 class ExplainableType t where
   prettyType :: t -> Text
   lambdaParam :: t -> t
@@ -164,35 +158,35 @@ instance ExplainableType Polytype where
     t -> t
   eq = (==)
 
-explain :: ExplainableType ty => Length -> Syntax' ty -> Tree Text
-explain len trm = case trm ^. sTerm of
+explain :: ExplainableType ty => Syntax' ty -> Tree Text
+explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
   TDir {} -> literal "A direction literal."
   TInt {} -> literal "An integer literal."
   TText {} -> literal "A text literal."
   TBool {} -> literal "A boolean literal."
-  TVar v -> pure $ typeSignature len v ty ""
+  TVar v -> pure $ typeSignature v ty ""
   -- special forms (function application will show for `$`, but really should be rare)
-  SApp {} -> explainFunction len trm
+  SApp {} -> explainFunction trm
   TRequireDevice {} -> pure "Require a specific device to be equipped."
   TRequire {} -> pure "Require a certain number of an entity."
   -- definition or bindings
-  SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition len False isRecursive var (rhs ^. sType) mTypeAnn
-  SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition len True isRecursive var (rhs ^. sType) mTypeAnn
+  SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition False isRecursive var (rhs ^. sType) mTypeAnn
+  SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition True isRecursive var (rhs ^. sType) mTypeAnn
   SLam (LV _s v) _mType _syn ->
     pure $
-      typeSignature len v ty $
+      typeSignature v ty $
         "A lambda expression binding the variable " <> U.bquote v <> "."
   SBind mv rhs _cmds ->
     pure $
-      typeSignature len (maybe "__rhs" lvVar mv) (rhs ^. sType) $
+      typeSignature (maybe "__rhs" lvVar mv) (rhs ^. sType) $
         "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote v <> ".") mv
   -- composite types
   SPair {} ->
     Node
-      (typeSignature len "_" ty "A tuple consisting of:")
-      (explain len <$> unTuple trm)
+      (typeSignature "_" ty "A tuple consisting of:")
+      (explain <$> unTuple trm)
   SDelay {} ->
     pure . T.unlines $
       [ "Delay evaluation of a term, written `{...}`."
@@ -206,35 +200,35 @@ explain len trm = case trm ^. sTerm of
   TRobot {} -> internal "A robot reference."
  where
   ty = trm ^. sType
-  literal = pure . typeSignature len (prettyText . void $ trm ^. sTerm) ty
+  literal = pure . typeSignature (prettyText . void $ trm ^. sTerm) ty
   internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
   constGenSig c =
     let ity = inferConst c
-     in if ty `eq` ity then id else typeSignature len (prettyText c) ity
+     in if ty `eq` ity then id else typeSignature (prettyText c) ity
 
 -- | Helper function to explain function application.
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: ExplainableType ty => Length -> Syntax' ty -> Tree Text
-explainFunction len s =
+explainFunction :: ExplainableType ty => Syntax' ty -> Tree Text
+explainFunction s =
   case unfoldApps s of
-    (Syntax' _ (TConst Force) _ :| [innerT]) -> explain len innerT
+    (Syntax' _ (TConst Force) _ :| [innerT]) -> explain innerT
     (Syntax' _ (TConst Force) _ :| f : params) -> explainF f params
     (f :| params) -> explainF f params
  where
   explainF f params =
     Node
       "Function application of:"
-      [ explain Brief f
+      [ explain f
       , Node
           "with parameters:"
-          (map (explain Brief) params)
+          (map explain params)
       ]
 
-explainDefinition :: ExplainableType ty => Length -> Bool -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
-explainDefinition len isDef isRecursive (LV _s var) ty maybeTypeAnnotation =
-  typeSignature len var ty $
+explainDefinition :: ExplainableType ty => Bool -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
+explainDefinition isDef isRecursive (LV _s var) ty maybeTypeAnnotation =
+  typeSignature var ty $
     T.unwords
       [ "A"
       , (if isRecursive then "" else "non-") <> "recursive"
@@ -244,11 +238,7 @@ explainDefinition len isDef isRecursive (LV _s var) ty maybeTypeAnnotation =
       , "a type annotation on the variable."
       ]
 
-typeSignature :: ExplainableType ty => Length -> Var -> ty -> Text -> Text
-typeSignature len v typ body =
-  T.unlines $
-    case len of
-      Brief -> ["`" <> short <> "`", "", body]
-      Long -> ["```", short, "```", body]
+typeSignature :: ExplainableType ty => Var -> ty -> Text -> Text
+typeSignature v typ body = T.unlines ["```", short, "```", body]
  where
   short = v <> ": " <> prettyType typ
