@@ -32,9 +32,10 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Language.Types (Polytype)
+import Swarm.Language.Types
 import Swarm.Util qualified as U
-import Swarm.Language.Module (TModule, Module (moduleCtx))
+import Swarm.Language.Module (Module (..))
+import Control.Lens ((^.))
 
 withinBound :: Int -> SrcLoc -> Bool
 withinBound pos (SrcLoc s e) = pos >= s && pos < e
@@ -58,63 +59,77 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
   case readTerm' content of
     Left _ -> Nothing
     Right Nothing -> Nothing
-    Right (Just stx@(Syntax l t)) -> Just (treeToMarkdown 0 $ explain Long mMod term, finalPos)
-     where
-      mMod = case processParsedTerm stx of
-        Left _e -> Nothing
-        Right (ProcessedTerm modul _req _reqCtx) -> Just modul
-      Syntax sloc term = narrowToPosition (Syntax l t) $ fromIntegral absolutePos
-      finalPos = do
-        (s, e) <- case sloc of
-          SrcLoc s e -> Just (s, e)
-          _ -> Nothing
-        (startRope, _) <- R.splitAt (fromIntegral s) myRope
-        (endRope, _) <- R.splitAt (fromIntegral e) myRope
-        return $
-          J.Range
-            (ropeToLspPosition $ R.lengthAsPosition startRope)
-            (ropeToLspPosition $ R.lengthAsPosition endRope)
+    Right (Just stx) -> Just $ case processParsedTerm stx of
+        Left _e -> 
+          let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
+              finalPos = posToRange myRope foundSloc
+           in (,finalPos) . treeToMarkdown 0 $ explain Long found
+        Right (ProcessedTerm modul _req _reqCtx) -> 
+          let found@(Syntax' foundSloc _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
+              finalPos = posToRange myRope foundSloc
+           in (,finalPos) . treeToMarkdown 0 $ explain Long found
  where
   content = virtualFileText vf
   absolutePos =
     maybe 0 (R.length . fst) $
       R.splitAtPosition (lspToRopePosition p) myRope
 
+posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
+posToRange myRope foundSloc = do
+  (s, e) <- case foundSloc of
+    SrcLoc s e -> Just (s, e)
+    _ -> Nothing
+  (startRope, _) <- R.splitAt (fromIntegral s) myRope
+  (endRope, _) <- R.splitAt (fromIntegral e) myRope
+  return $
+    J.Range
+      (ropeToLspPosition $ R.lengthAsPosition startRope)
+      (ropeToLspPosition $ R.lengthAsPosition endRope)
+    
+
 descend ::
+  ExplainableType ty =>  
   -- | position
   Int ->
   -- | next element to inspect
-  Syntax ->
-  Maybe Syntax
-descend pos s1@(Syntax l1 _) = do
+  Syntax' ty ->
+  Maybe (Syntax' ty)
+descend pos s1@(Syntax' l1 _ _) = do
   guard $ withinBound pos l1
   return $ narrowToPosition s1 pos
 
 -- | Find the most specific term for a given
 -- position within the code.
---
--- In the case statement, all of the constructors
--- with nested Syntax files are given explicit
--- cases, whereas a catchall for non-recursive
--- constructors is placed at the end.  Note that
--- this is catch-all is "dangerous" if we ever
--- add more recursive terms to the language; the
--- compiler won't warn us about missing cases.
 narrowToPosition ::
+  ExplainableType ty =>
   -- | parent term
-  Syntax ->
+  Syntax' ty ->
   -- | absolute offset within the file
   Int ->
-  Syntax
-narrowToPosition s0@(Syntax _ t) pos = fromMaybe s0 $ case t of
-  SLam _ _ s -> d s
+  Syntax' ty
+narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
+  SLam lv _ s -> d (locVarToSyntax' lv $ lambdaParam ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
-  SLet _ _ _ s1 s2 -> d s1 <|> d s2
+  SLet _ lv _ s1@(Syntax' _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
+  SDef _ lv _ s@(Syntax' _ _ lty) -> d (locVarToSyntax' lv lty) <|> d s
+  SBind mlv s1@(Syntax' _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' lty) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
-  SDef _ _ _ s -> d s
-  SBind _ s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
-  _ -> Nothing
+  -- atoms - return their position and end recursion
+  TUnit -> Nothing
+  TConst {} -> Nothing
+  TDir {} -> Nothing
+  TInt {} -> Nothing
+  TText {} -> Nothing
+  TBool {} -> Nothing
+  TVar {} -> Nothing
+  TRequire {} -> Nothing
+  TRequireDevice {} -> Nothing
+  -- these should not show up in surface language
+  TRef {} -> Nothing
+  TRobot {} -> Nothing
+  TAntiInt {} -> Nothing
+  TAntiText {} -> Nothing
  where
   d = descend pos
 
@@ -146,15 +161,29 @@ treeToMarkdown d (Node (DocLine _n t) children) =
 data Length = Brief | Long
   deriving (Eq, Show)
 
-explain :: Length -> Maybe TModule -> Term -> Tree (DocLine Text)
-explain len mMod trm = case trm of
+class ExplainableType t where
+  prettyType :: t -> Text
+  lambdaParam :: t -> t
+
+instance ExplainableType () where
+  prettyType = const "?"
+  lambdaParam = id
+
+instance ExplainableType Polytype where
+  prettyType = prettyText
+  lambdaParam = \case
+    Forall vs (l :->: _r) -> Forall vs l
+    t -> t
+
+explain :: ExplainableType ty => Length -> Syntax' ty -> Tree (DocLine Text)
+explain len trm = case trm ^. sTerm of
   TUnit -> pure $ pureDoc "The unit value."
   TConst c ->
     pure . pureDoc $
       typeSignature
         len
         (prettyText c)
-        (Just $ inferConst c)
+        (inferConst c)
         (briefDoc $ constDoc $ constInfo c)
   TDir {} -> pure $ pureDoc "A direction literal."
   TInt {} -> pure $ pureDoc "An integer literal."
@@ -166,39 +195,41 @@ explain len mMod trm = case trm of
   TRef {} -> pure $ pureDoc "A memory reference.  These likewise never show up in surface syntax but are here to facilitate pretty-printing."
   TRequireDevice {} -> pure $ pureDoc "Require a specific device to be equipped."
   TRequire {} -> pure $ pureDoc "Require a certain number of an entity."
-  TVar v -> pure $ pureDoc $ "`" <> v <> ": " <> maybe "?" prettyText (Ctx.lookup v . moduleCtx =<< mMod) <> "`"
+  TVar v -> pure $ pureDoc $ "`" <> v <> ": " <> prettyType ty <> "`"
   SLam (LV _s v) _mType _syn -> pure . pureDoc $ "A lambda expression binding the variable " <> U.bquote v <> "."
-  SApp _ _ -> explainFunction len mMod trm
-  SLet isRecursive var maybeTypeAnnotation _r _b -> pure $ explainDefinition len False mMod isRecursive var maybeTypeAnnotation
-  SDef isRecursive var maybeTypeAnnotation _body -> pure $ explainDefinition len True mMod isRecursive var maybeTypeAnnotation
+  SApp _ _ -> explainFunction len trm
+  SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition len False isRecursive var (rhs ^. sType) mTypeAnn
+  SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition len True isRecursive var (rhs ^. sType) mTypeAnn
   SPair {} -> pure $ pureDoc "A pair."
   SBind {} -> pure $ pureDoc "A monadic bind for commands, of the form `c1 ; c2` or `x <- c1; c2`."
   SDelay {} -> pure $ pureDoc "Delay evaluation of a term, written `{...}`.  Swarm is an eager language, but in some cases (e.g. for `if` statements and recursive bindings) we need to delay evaluation.  The counterpart to `{...}` is `force`, where `force {t} = t`. Note that 'Force' is just a constant, whereas 'SDelay' has to be a special syntactic form so its argument can get special treatment during evaluation."
+ where
+  ty = trm ^. sType
 
 -- | Helper function to explain function application.
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: Length -> Maybe TModule -> Term -> Tree (DocLine Text)
-explainFunction len mMod t =
-  case unfoldApps t of
-    (TConst Force :| [innerT]) -> explain len mMod innerT
-    (TConst Force :| f : params) -> explainF f params
+explainFunction :: ExplainableType ty => Length -> Syntax' ty -> Tree (DocLine Text)
+explainFunction len s =
+  case unfoldApps s of
+    (Syntax' _ (TConst Force) _ :| [innerT]) -> explain len innerT
+    (Syntax' _ (TConst Force) _ :| f : params) -> explainF f params
     (f :| params) -> explainF f params
  where
   explainF f params =
     Node
       (pureDoc "Function application of:")
-      [ explain Brief mMod f
+      [ explain Brief f
       , Node
           (pureDoc "with parameters:")
-          (map (explain Brief mMod) params)
+          (map (explain Brief) params)
       ]
 
-explainDefinition :: Length -> Bool -> Maybe TModule -> Bool -> LocVar -> Maybe Polytype -> DocLine Text
-explainDefinition len isDef mMod isRecursive (LV _s var) maybeTypeAnnotation =
+explainDefinition :: ExplainableType ty => Length -> Bool -> Bool -> LocVar -> ty -> Maybe Polytype -> DocLine Text
+explainDefinition len isDef isRecursive (LV _s var) ty maybeTypeAnnotation =
   pureDoc $
-    typeSignature len var (maybeTypeAnnotation <|> mTyp) $
+    typeSignature len var ty $
       T.unwords
         [ "A"
         , (if isRecursive then "" else "non-") <> "recursive"
@@ -207,15 +238,12 @@ explainDefinition len isDef mMod isRecursive (LV _s var) maybeTypeAnnotation =
         , if null maybeTypeAnnotation then "without" else "with"
         , "a type annotation on the variable."
         ]
- where
-  mTyp = Ctx.lookup var . moduleCtx =<< mMod
 
-typeSignature :: Length -> Var -> Maybe Polytype -> Text -> Text
+typeSignature :: ExplainableType ty => Length -> Var -> ty -> Text -> Text
 typeSignature len v typ body =
   T.unlines $
     case len of
       Brief -> ["`" <> short <> "`", body]
       Long -> ["```", short, "```", body]
  where
-  ptyp = maybe "?" prettyText typ
-  short = v <> ": " <> ptyp
+  short = v <> ": " <> prettyType typ

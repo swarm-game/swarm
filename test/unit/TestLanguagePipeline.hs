@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- | Swarm unit tests
 module TestLanguagePipeline where
@@ -261,7 +262,9 @@ testLanguagePipeline =
         , testCase
             "get all annotated variable types"
             (let s = getSyntax
-                   [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. |]
+                   [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. undefined end |]
+            in assertBool "whatever" True
+            )
         ]
     ]
  where

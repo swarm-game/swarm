@@ -87,6 +87,7 @@ module Swarm.Language.Syntax (
   freeVarsT,
   freeVarsV,
   mapFreeS,
+  locVarToSyntax',
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
@@ -782,12 +783,13 @@ constInfo c = case c of
   lowShow a = toLower (from (show a))
 
 -- | Turn function application chain into a list.
--- >>> unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
+-- >>> sWrap f = fmap (^. sTerm) . f . Syntax NoLoc
+-- >>> sWrap unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
 -- TConst Mul :| [TInt 1,TInt 2]
-unfoldApps :: Term -> NonEmpty Term
+unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
 unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
-  SApp (Syntax _ t1) (Syntax _ t2) -> (t2, Just t1)
-  t -> (t, Nothing)
+  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
+  s -> (s, Nothing)
 
 ------------------------------------------------------------
 -- Basic terms
@@ -815,6 +817,9 @@ data DelayType
 --   wrapped in a Syntax node, so we don't need LocVar for those.)
 data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
+locVarToSyntax' :: LocVar -> ty -> Syntax' ty
+locVarToSyntax' (LV s v) = Syntax' s (TVar v)
 
 -- | Terms of the Swarm language.
 data Term' ty
