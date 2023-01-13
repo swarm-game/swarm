@@ -201,8 +201,13 @@ explain trm = case trm ^. sTerm of
   SDelay {} ->
     pure . T.unlines $
       [ "Delay evaluation of a term, written `{...}`."
+      , ""
       , "Swarm is an eager language, but in some cases (e.g. for `if` statements and recursive bindings) we need to delay evaluation."
-      , "The counterpart to `{...}` is `force`, where `force {t} = t`."
+      , ""
+      , "The counterpart to `{...}` is `force`:"
+      , "```"
+      , "force {t} = t"
+      , "```"
       ]
   -- internal syntax that should not actually show in hover
   TRef {} -> internal "A memory reference."
