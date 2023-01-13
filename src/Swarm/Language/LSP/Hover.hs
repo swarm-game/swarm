@@ -32,8 +32,9 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Language.Types (Polytype, TModule, moduleCtx)
+import Swarm.Language.Types (Polytype)
 import Swarm.Util qualified as U
+import Swarm.Language.Module (TModule, Module (moduleCtx))
 
 withinBound :: Int -> SrcLoc -> Bool
 withinBound pos (SrcLoc s e) = pos >= s && pos < e
@@ -59,10 +60,10 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
     Right Nothing -> Nothing
     Right (Just stx@(Syntax l t)) -> Just (treeToMarkdown 0 $ explain Long mMod term, finalPos)
      where
-      (betterTerm, mMod) = case processParsedTerm stx of
-        Left _e -> (t, Nothing)
-        Right (ProcessedTerm betterT modul _req _reqCtx) -> (betterT, Just modul)
-      Syntax sloc term = narrowToPosition (Syntax l betterTerm) $ fromIntegral absolutePos
+      mMod = case processParsedTerm stx of
+        Left _e -> Nothing
+        Right (ProcessedTerm modul _req _reqCtx) -> Just modul
+      Syntax sloc term = narrowToPosition (Syntax l t) $ fromIntegral absolutePos
       finalPos = do
         (s, e) <- case sloc of
           SrcLoc s e -> Just (s, e)
@@ -166,7 +167,7 @@ explain len mMod trm = case trm of
   TRequireDevice {} -> pure $ pureDoc "Require a specific device to be equipped."
   TRequire {} -> pure $ pureDoc "Require a certain number of an entity."
   TVar v -> pure $ pureDoc $ "`" <> v <> ": " <> maybe "?" prettyText (Ctx.lookup v . moduleCtx =<< mMod) <> "`"
-  SLam v _mType _syn -> pure . pureDoc $ "A lambda expression binding the variable " <> U.bquote v <> "."
+  SLam (LV _s v) _mType _syn -> pure . pureDoc $ "A lambda expression binding the variable " <> U.bquote v <> "."
   SApp _ _ -> explainFunction len mMod trm
   SLet isRecursive var maybeTypeAnnotation _r _b -> pure $ explainDefinition len False mMod isRecursive var maybeTypeAnnotation
   SDef isRecursive var maybeTypeAnnotation _body -> pure $ explainDefinition len True mMod isRecursive var maybeTypeAnnotation
@@ -194,8 +195,8 @@ explainFunction len mMod t =
           (map (explain Brief mMod) params)
       ]
 
-explainDefinition :: Length -> Bool -> Maybe TModule -> Bool -> Var -> Maybe Polytype -> DocLine Text
-explainDefinition len isDef mMod isRecursive var maybeTypeAnnotation =
+explainDefinition :: Length -> Bool -> Maybe TModule -> Bool -> LocVar -> Maybe Polytype -> DocLine Text
+explainDefinition len isDef mMod isRecursive (LV _s var) maybeTypeAnnotation =
   pureDoc $
     typeSignature len var (maybeTypeAnnotation <|> mTyp) $
       T.unwords
