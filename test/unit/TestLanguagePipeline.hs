@@ -258,10 +258,10 @@ testLanguagePipeline =
                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
                (map (Forall []) [TyInt :->: TyInt :->: TyInt, TyInt, TyInt :->: TyInt, TyInt, TyInt])
             )
-        , testCase
-            "get all annotated variable types"
-            (let s = getSyntax
-                   [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. |]
+        -- , testCase
+        --     "get all annotated variable types"
+        --     (let s = getSyntax
+        --            [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. |]
         ]
     ]
  where

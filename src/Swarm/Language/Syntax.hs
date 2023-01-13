@@ -50,10 +50,12 @@ module Swarm.Language.Syntax (
   isLong,
 
   -- * Syntax
-  Syntax' (..),
+  Annotated(..),
   sLoc,
-  sTerm,
+  sThing,
   sType,
+  Syntax',
+  pattern Syntax',
   Syntax,
   pattern Syntax,
   LocVar (..),
@@ -91,7 +93,7 @@ module Swarm.Language.Syntax (
 import Control.Arrow (Arrow ((&&&)))
 import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
 import Data.Aeson.Types
-import Data.Data (Data)
+import Data.Data (Data, Typeable)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
 import Data.Map qualified as M
@@ -837,22 +839,22 @@ data Term' ty
   | -- | A variable.
     TVar Var
   | -- | A pair.
-    SPair (Syntax' ty) (Syntax' ty)
+    SPair (Annotated Term' ty) (Annotated Term' ty)
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam LocVar (Maybe Type) (Syntax' ty)
+    SLam LocVar (Maybe Type) (Annotated Term' ty)
   | -- | Function application.
-    SApp (Syntax' ty) (Syntax' ty)
+    SApp (Annotated Term' ty) (Annotated Term' ty)
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
+    SLet Bool LocVar (Maybe Polytype) (Annotated Term' ty) (Annotated Term' ty)
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
-    SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
+    SDef Bool LocVar (Maybe Polytype) (Annotated Term' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
+    SBind (Maybe LocVar) (Annotated Term' ty) (Annotated Term' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -860,9 +862,10 @@ data Term' ty
     --   Note that 'Force' is just a constant, whereas 'SDelay' has to
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
-    SDelay DelayType (Syntax' ty)
+    SDelay DelayType (Annotated Term' ty)
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
+-- XXX EDIT ME
 -- The Traversable instance for Term (and for Syntax') is used during
 -- typechecking: during intermediate type inference, many of the type
 -- annotations placed on AST nodes will have unification variables in
@@ -874,23 +877,30 @@ data Term' ty
 
 type Term = Term' ()
 
-instance Data ty => Plated (Term' ty) where
+instance (Data ty, Data (Term' ty)) => Plated (Term' ty) where
   plate = uniplate
 
 ------------------------------------------------------------
--- Syntax: annotation on top of Terms with SrcLoc and type
+-- Annotations on top of Terms with SrcLoc and type
 ------------------------------------------------------------
 
--- | The surface syntax for the language, with location and type annotations.
-data Syntax' ty = Syntax'
-  { _sLoc :: SrcLoc
-  , _sTerm :: Term' ty
-  , _sType :: ty
+-- | XXX
+data Annotated t ty = Annotated
+  { _sLoc   :: SrcLoc
+  , _sType  :: ty
+  , _sThing :: t ty
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
-instance Data ty => Plated (Syntax' ty) where
+instance (Typeable t, Data ty, Data (t ty)) => Plated (Annotated t ty) where
   plate = uniplate
+
+type Syntax' = Annotated Term'
+
+pattern Syntax' :: SrcLoc -> t ty -> ty -> Annotated t ty
+pattern Syntax' l t ty = Annotated l ty t
+
+{-# COMPLETE Syntax' #-}
 
 data SrcLoc
   = NoLoc
@@ -910,14 +920,14 @@ instance Monoid SrcLoc where
 -- Pattern synonyms for untyped terms
 ------------------------------------------------------------
 
-type Syntax = Syntax' ()
+type Syntax = Annotated Term' ()
 
 pattern Syntax :: SrcLoc -> Term -> Syntax
-pattern Syntax l t = Syntax' l t ()
+pattern Syntax l t = Annotated l () t
 
 {-# COMPLETE Syntax #-}
 
-makeLenses ''Syntax'
+makeLenses ''Annotated
 
 noLoc :: Term -> Syntax
 noLoc = Syntax mempty
@@ -1070,7 +1080,7 @@ freeVarsS f = go S.empty
 --   the list of all `Term`s representing free variables, you can do so via
 --   @'toListOf' 'freeVarsT'@.
 freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
-freeVarsT = freeVarsS . sTerm
+freeVarsT = freeVarsS . sThing
 
 -- | Traversal over the free variables of a term.  Like 'freeVarsS'
 --   and 'freeVarsT', but traverse over the variable names
@@ -1082,4 +1092,4 @@ freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular variable.
 mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
-mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
+mapFreeS x f = freeVarsS %~ (\t -> case t ^. sThing of TVar y | y == x -> f t; _ -> t)

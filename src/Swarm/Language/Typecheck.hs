@@ -585,7 +585,7 @@ inferConst c = case c of
 --   type-annotated AST if so.
 check :: Syntax -> UType -> Infer (Syntax' UType)
 check t ty = do
-  Syntax' l t' ty' <- infer t
+  Annotated l ty' t' <- infer t
   theTy <- ty =:= ty'
   return $ Syntax' l t' theTy
 

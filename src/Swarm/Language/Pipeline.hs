@@ -105,7 +105,7 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
 processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
   m <- inferTop ctx t
-  let (caps, capCtx') = requirements capCtx (t ^. sTerm)
+  let (caps, capCtx') = requirements capCtx (t ^. sThing)
   return $ ProcessedTerm (elaborateModule m) caps capCtx'
 
 elaborateModule :: TModule -> TModule
