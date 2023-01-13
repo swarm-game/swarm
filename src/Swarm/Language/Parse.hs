@@ -319,9 +319,9 @@ mkBindChain stmts = case last stmts of
   Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar (lvVar x)))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = loc t1 t2 $ SBind (Just x) t1 t2
-  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
+  mkBind (BareTerm t1) t2 = loc Nothing t1 t2 $ SBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = loc (Just x) t1 t2 $ SBind (Just x) t1 t2
+  loc mx a b = Syntax $ maybe NoLoc lvSrcLoc mx <> (a ^. sLoc) <> (b ^. sLoc)
 
 data Stmt
   = BareTerm Syntax
