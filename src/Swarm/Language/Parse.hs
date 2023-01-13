@@ -35,7 +35,7 @@ module Swarm.Language.Parse (
   getLocRange,
 ) where
 
-import Control.Lens ((^.))
+import Control.Lens ((^.), view)
 import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
@@ -278,7 +278,7 @@ parseTermAtom =
           <$> (reserved "def" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
-        <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))
+        <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
     -- Potential syntax for explicitly requesting memoized delay.
     -- Perhaps we will not need this in the end; see the discussion at
@@ -290,10 +290,12 @@ parseTermAtom =
     <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
-mkTuple :: [Syntax] -> Term
-mkTuple [] = TUnit
-mkTuple [STerm x] = x
-mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
+mkTuple :: [Syntax] -> Syntax
+mkTuple [] = Syntax NoLoc TUnit -- should never happen
+mkTuple [x] = x
+mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
+  where
+  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
