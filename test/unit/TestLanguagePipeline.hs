@@ -12,8 +12,8 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Swarm.Language.Module (Module(..))
-import Swarm.Language.Pipeline (ProcessedTerm(..), processTerm)
+import Swarm.Language.Module (Module (..))
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
@@ -255,15 +255,17 @@ testLanguagePipeline =
         "type annotations"
         [ testCase
             "annotate 1 + 1"
-            (assertEqual "foo"
-               (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
-               (map (Forall []) [TyInt :->: TyInt :->: TyInt, TyInt, TyInt :->: TyInt, TyInt, TyInt])
+            ( assertEqual
+                "foo"
+                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
+                (map (Forall []) [TyInt :->: TyInt :->: TyInt, TyInt, TyInt :->: TyInt, TyInt, TyInt])
             )
         , testCase
             "get all annotated variable types"
-            (let s = getSyntax
-                   [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. undefined end |]
-            in assertBool "whatever" True
+            ( let s =
+                    getSyntax
+                      [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. undefined end |]
+               in assertBool "whatever" True
             )
         ]
     ]

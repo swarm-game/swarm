@@ -144,11 +144,13 @@ treeToMarkdown d (Node t children) =
 class Show t => ExplainableType t where
   -- | Pretty print the type.
   prettyType :: t -> Text
+
   -- | Strip the type of its outermost layer.
-  -- 
+  --
   -- This allows us to strip lambda or command type
   -- and get the type of the bound variable.
   getInnerType :: t -> t
+
   -- | Check if this type is same as the given 'Polytype'.
   --
   -- We use it to not print same type twice (e.g. inferred and generic).
