@@ -1030,7 +1030,7 @@ erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
 --   the `Syntax` nodes (which contain type and source location info)
 --   containing free variables inside a larger `Syntax` value.  Note
 --   that if you want to get the list of all `Syntax` nodes
---   representing free variables, you can do so via @'listOf'
+--   representing free variables, you can do so via @'toListOf'
 --   'freeVarsS'@.
 freeVarsS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
 freeVarsS f = go S.empty
@@ -1068,7 +1068,7 @@ freeVarsS f = go S.empty
 --   variables.  More direct if you don't need to know the types or
 --   source locations of the variables.  Note that if you want to get
 --   the list of all `Term`s representing free variables, you can do so via
---   @'listOf' 'freeVarsT'@.
+--   @'toListOf' 'freeVarsT'@.
 freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
 freeVarsT = freeVarsS . sTerm
 
