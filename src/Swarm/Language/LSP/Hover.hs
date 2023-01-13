@@ -195,8 +195,10 @@ explain len trm = case trm ^. sTerm of
   TRef {} -> pure $ pureDoc "A memory reference.  These likewise never show up in surface syntax but are here to facilitate pretty-printing."
   TRequireDevice {} -> pure $ pureDoc "Require a specific device to be equipped."
   TRequire {} -> pure $ pureDoc "Require a certain number of an entity."
-  TVar v -> pure $ pureDoc $ "`" <> v <> ": " <> prettyType ty <> "`"
-  SLam (LV _s v) _mType _syn -> pure . pureDoc $ "A lambda expression binding the variable " <> U.bquote v <> "."
+  TVar v -> pure $ pureDoc $ typeSignature len v ty ""
+  SLam (LV _s v) _mType _syn -> pure . pureDoc $
+    typeSignature len v ty $
+    "A lambda expression binding the variable " <> U.bquote v <> "."
   SApp _ _ -> explainFunction len trm
   SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition len False isRecursive var (rhs ^. sType) mTypeAnn
   SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition len True isRecursive var (rhs ^. sType) mTypeAnn
