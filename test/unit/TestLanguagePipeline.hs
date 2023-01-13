@@ -1,15 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- | Swarm unit tests
 module TestLanguagePipeline where
 
+import Control.Lens (toListOf)
 import Data.Aeson (eitherDecode, encode)
 import Data.Either
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Module (Module(..))
+import Swarm.Language.Pipeline (ProcessedTerm(..), processTerm)
+import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
 import Swarm.Language.Types
 import Test.Tasty
@@ -245,6 +250,19 @@ testLanguagePipeline =
             "void - valid type signature"
             (valid "def f : void -> a = \\x. undefined end")
         ]
+    , testGroup
+        "type annotations"
+        [ testCase
+            "annotate 1 + 1"
+            (assertEqual "foo"
+               (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
+               (map (Forall []) [TyInt :->: TyInt :->: TyInt, TyInt, TyInt :->: TyInt, TyInt, TyInt])
+            )
+        , testCase
+            "get all annotated variable types"
+            (let s = getSyntax
+                   [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. |]
+        ]
     ]
  where
   valid = flip process ""
@@ -264,3 +282,6 @@ testLanguagePipeline =
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
+
+  getSyntax :: ProcessedTerm -> Syntax' Polytype
+  getSyntax (ProcessedTerm (Module s _) _ _) = s
