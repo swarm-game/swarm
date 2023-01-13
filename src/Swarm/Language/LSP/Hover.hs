@@ -4,7 +4,6 @@ module Swarm.Language.LSP.Hover (
   showHoverInfo,
 
   -- * Documentation rendering
-  DocLine (..),
   renderDoc,
   treeToMarkdown,
 
@@ -17,7 +16,8 @@ module Swarm.Language.LSP.Hover (
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard)
+import Control.Lens ((^.))
+import Control.Monad (guard, void)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
@@ -27,15 +27,14 @@ import Data.Text.Utf16.Rope qualified as R
 import Language.LSP.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
-import Swarm.Language.Parse (readTerm')
+import Swarm.Language.Module (Module (..))
+import Swarm.Language.Parse (readTerm', unTuple)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
 import Swarm.Util qualified as U
-import Swarm.Language.Module (Module (..))
-import Control.Lens ((^.))
 
 withinBound :: Int -> SrcLoc -> Bool
 withinBound pos (SrcLoc s e) = pos >= s && pos < e
@@ -60,14 +59,14 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
     Left _ -> Nothing
     Right Nothing -> Nothing
     Right (Just stx) -> Just $ case processParsedTerm stx of
-        Left _e -> 
-          let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
-              finalPos = posToRange myRope foundSloc
-           in (,finalPos) . treeToMarkdown 0 $ explain Long found
-        Right (ProcessedTerm modul _req _reqCtx) -> 
-          let found@(Syntax' foundSloc _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
-              finalPos = posToRange myRope foundSloc
-           in (,finalPos) . treeToMarkdown 0 $ explain Long found
+      Left _e ->
+        let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
+            finalPos = posToRange myRope foundSloc
+         in (,finalPos) . treeToMarkdown 0 $ explain Long found
+      Right (ProcessedTerm modul _req _reqCtx) ->
+        let found@(Syntax' foundSloc _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
+            finalPos = posToRange myRope foundSloc
+         in (,finalPos) . treeToMarkdown 0 $ explain Long found
  where
   content = virtualFileText vf
   absolutePos =
@@ -85,10 +84,9 @@ posToRange myRope foundSloc = do
     J.Range
       (ropeToLspPosition $ R.lengthAsPosition startRope)
       (ropeToLspPosition $ R.lengthAsPosition endRope)
-    
 
 descend ::
-  ExplainableType ty =>  
+  ExplainableType ty =>
   -- | position
   Int ->
   -- | next element to inspect
@@ -133,28 +131,16 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
  where
   d = descend pos
 
--- | Markdown line that captures tree depth
-data DocLine a = DocLine
-  { depth :: Int
-  , txt :: a
-  }
-
-renderDoc :: DocLine Text -> Text
-renderDoc (DocLine d t)
+renderDoc :: Int -> Text -> Text
+renderDoc d t
   | d == 0 = t
   | otherwise = T.drop 2 . indent (max 0 (4 * (d - 1)) + 2) $ "* " <> t
  where
   indent x = T.unlines . map (T.replicate x " " <>) . T.lines
 
-instance Functor DocLine where
-  fmap f (DocLine d x) = DocLine d $ f x
-
-pureDoc :: a -> DocLine a
-pureDoc = DocLine 0
-
-treeToMarkdown :: Int -> Tree (DocLine Text) -> Text
-treeToMarkdown d (Node (DocLine _n t) children) =
-  T.unlines $ renderDoc (DocLine d t) : map (treeToMarkdown $ d + 1) children
+treeToMarkdown :: Int -> Tree Text -> Text
+treeToMarkdown d (Node t children) =
+  T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
 -- | Top level explanations can use fancy markdown syntax, but list items
 --   have to be more conservative and ideally shorter.
@@ -164,55 +150,73 @@ data Length = Brief | Long
 class ExplainableType t where
   prettyType :: t -> Text
   lambdaParam :: t -> t
+  eq :: t -> Polytype -> Bool
 
 instance ExplainableType () where
   prettyType = const "?"
   lambdaParam = id
+  eq _ _ = False
 
 instance ExplainableType Polytype where
   prettyType = prettyText
   lambdaParam = \case
     Forall vs (l :->: _r) -> Forall vs l
     t -> t
+  eq = (==)
 
-explain :: ExplainableType ty => Length -> Syntax' ty -> Tree (DocLine Text)
+explain :: ExplainableType ty => Length -> Syntax' ty -> Tree Text
 explain len trm = case trm ^. sTerm of
-  TUnit -> pure $ pureDoc "The unit value."
-  TConst c ->
-    pure . pureDoc $
-      typeSignature
-        len
-        (prettyText c)
-        (inferConst c)
-        (briefDoc $ constDoc $ constInfo c)
-  TDir {} -> pure $ pureDoc "A direction literal."
-  TInt {} -> pure $ pureDoc "An integer literal."
-  TAntiInt {} -> pure $ pureDoc "An antiquoted Haskell variable name of type Integer."
-  TText {} -> pure $ pureDoc "A text literal."
-  TAntiText {} -> pure $ pureDoc "An antiquoted Haskell variable name of type Text."
-  TBool {} -> pure $ pureDoc "A Boolean literal."
-  TRobot {} -> pure $ pureDoc "A robot reference.  These never show up in surface syntax, but are here so we can factor pretty-printing for Values through pretty-printing for Terms."
-  TRef {} -> pure $ pureDoc "A memory reference.  These likewise never show up in surface syntax but are here to facilitate pretty-printing."
-  TRequireDevice {} -> pure $ pureDoc "Require a specific device to be equipped."
-  TRequire {} -> pure $ pureDoc "Require a certain number of an entity."
-  TVar v -> pure $ pureDoc $ typeSignature len v ty ""
-  SLam (LV _s v) _mType _syn -> pure . pureDoc $
-    typeSignature len v ty $
-    "A lambda expression binding the variable " <> U.bquote v <> "."
-  SApp _ _ -> explainFunction len trm
+  TUnit -> literal "The unit value."
+  TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
+  TDir {} -> literal "A direction literal."
+  TInt {} -> literal "An integer literal."
+  TText {} -> literal "A text literal."
+  TBool {} -> literal "A boolean literal."
+  TVar v -> pure $ typeSignature len v ty ""
+  -- special forms (function application will show for `$`, but really should be rare)
+  SApp {} -> explainFunction len trm
+  TRequireDevice {} -> pure "Require a specific device to be equipped."
+  TRequire {} -> pure "Require a certain number of an entity."
+  -- definition or bindings
   SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition len False isRecursive var (rhs ^. sType) mTypeAnn
   SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition len True isRecursive var (rhs ^. sType) mTypeAnn
-  SPair {} -> pure $ pureDoc "A pair."
-  SBind {} -> pure $ pureDoc "A monadic bind for commands, of the form `c1 ; c2` or `x <- c1; c2`."
-  SDelay {} -> pure $ pureDoc "Delay evaluation of a term, written `{...}`.  Swarm is an eager language, but in some cases (e.g. for `if` statements and recursive bindings) we need to delay evaluation.  The counterpart to `{...}` is `force`, where `force {t} = t`. Note that 'Force' is just a constant, whereas 'SDelay' has to be a special syntactic form so its argument can get special treatment during evaluation."
+  SLam (LV _s v) _mType _syn ->
+    pure $
+      typeSignature len v ty $
+        "A lambda expression binding the variable " <> U.bquote v <> "."
+  SBind mv rhs _cmds ->
+    pure $
+      typeSignature len (maybe "__rhs" lvVar mv) (rhs ^. sType) $
+        "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote v <> ".") mv
+  -- composite types
+  SPair {} ->
+    Node
+      (typeSignature len "_" ty "A tuple consisting of:")
+      (explain len <$> unTuple trm)
+  SDelay {} ->
+    pure . T.unlines $
+      [ "Delay evaluation of a term, written `{...}`."
+      , "Swarm is an eager language, but in some cases (e.g. for `if` statements and recursive bindings) we need to delay evaluation."
+      , "The counterpart to `{...}` is `force`, where `force {t} = t`."
+      ]
+  -- internal syntax that should not actually show in hover
+  TRef {} -> internal "A memory reference."
+  TAntiInt {} -> internal "An antiquoted Haskell variable name of type Integer."
+  TAntiText {} -> internal "An antiquoted Haskell variable name of type Text."
+  TRobot {} -> internal "A robot reference."
  where
   ty = trm ^. sType
+  literal = pure . typeSignature len (prettyText . void $ trm ^. sTerm) ty
+  internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
+  constGenSig c =
+    let ity = inferConst c
+     in if ty `eq` ity then id else typeSignature len (prettyText c) ity
 
 -- | Helper function to explain function application.
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: ExplainableType ty => Length -> Syntax' ty -> Tree (DocLine Text)
+explainFunction :: ExplainableType ty => Length -> Syntax' ty -> Tree Text
 explainFunction len s =
   case unfoldApps s of
     (Syntax' _ (TConst Force) _ :| [innerT]) -> explain len innerT
@@ -221,31 +225,30 @@ explainFunction len s =
  where
   explainF f params =
     Node
-      (pureDoc "Function application of:")
+      "Function application of:"
       [ explain Brief f
       , Node
-          (pureDoc "with parameters:")
+          "with parameters:"
           (map (explain Brief) params)
       ]
 
-explainDefinition :: ExplainableType ty => Length -> Bool -> Bool -> LocVar -> ty -> Maybe Polytype -> DocLine Text
+explainDefinition :: ExplainableType ty => Length -> Bool -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
 explainDefinition len isDef isRecursive (LV _s var) ty maybeTypeAnnotation =
-  pureDoc $
-    typeSignature len var ty $
-      T.unwords
-        [ "A"
-        , (if isRecursive then "" else "non-") <> "recursive"
-        , if isDef then "definition" else "let"
-        , "expression"
-        , if null maybeTypeAnnotation then "without" else "with"
-        , "a type annotation on the variable."
-        ]
+  typeSignature len var ty $
+    T.unwords
+      [ "A"
+      , (if isRecursive then "" else "non-") <> "recursive"
+      , if isDef then "definition" else "let"
+      , "expression"
+      , if null maybeTypeAnnotation then "without" else "with"
+      , "a type annotation on the variable."
+      ]
 
 typeSignature :: ExplainableType ty => Length -> Var -> ty -> Text -> Text
 typeSignature len v typ body =
   T.unlines $
     case len of
-      Brief -> ["`" <> short <> "`", body]
+      Brief -> ["`" <> short <> "`", "", body]
       Long -> ["```", short, "```", body]
  where
   short = v <> ": " <> prettyType typ

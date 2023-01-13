@@ -33,6 +33,7 @@ module Swarm.Language.Parse (
   showShortError,
   showErrorPos,
   getLocRange,
+  unTuple,
 ) where
 
 import Control.Lens ((^.))
@@ -294,6 +295,11 @@ mkTuple :: [Syntax] -> Term
 mkTuple [] = TUnit
 mkTuple [STerm x] = x
 mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
+
+unTuple :: Syntax' ty -> [Syntax' ty]
+unTuple = \case
+  Syntax' _ (SPair s1 s2) _ -> s1 : unTuple s2
+  s -> [s]
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
