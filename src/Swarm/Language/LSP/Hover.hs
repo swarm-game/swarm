@@ -105,11 +105,11 @@ narrowToPosition ::
   Int ->
   Syntax' ty
 narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
-  SLam lv _ s -> d (locVarToSyntax' lv $ lambdaParam ty) <|> d s
+  SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
   SLet _ lv _ s1@(Syntax' _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
   SDef _ lv _ s@(Syntax' _ _ lty) -> d (locVarToSyntax' lv lty) <|> d s
-  SBind mlv s1@(Syntax' _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' lty) <|> d s1 <|> d s2
+  SBind mlv s1@(Syntax' _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
   -- atoms - return their position and end recursion
@@ -141,20 +141,31 @@ treeToMarkdown :: Int -> Tree Text -> Text
 treeToMarkdown d (Node t children) =
   T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
-class ExplainableType t where
+class Show t => ExplainableType t where
+  -- | Pretty print the type.
   prettyType :: t -> Text
-  lambdaParam :: t -> t
+
+  -- | Strip the type of its outermost layer.
+  --
+  -- This allows us to strip lambda or command type
+  -- and get the type of the bound variable.
+  getInnerType :: t -> t
+
+  -- | Check if this type is same as the given 'Polytype'.
+  --
+  -- We use it to not print same type twice (e.g. inferred and generic).
   eq :: t -> Polytype -> Bool
 
 instance ExplainableType () where
   prettyType = const "?"
-  lambdaParam = id
+  getInnerType = id
   eq _ _ = False
 
 instance ExplainableType Polytype where
   prettyType = prettyText
-  lambdaParam = \case
-    Forall vs (l :->: _r) -> Forall vs l
+  getInnerType = fmap $ \case
+    (l :->: _r) -> l
+    (TyCmd t) -> t
     t -> t
   eq = (==)
 
@@ -180,7 +191,7 @@ explain trm = case trm ^. sTerm of
         "A lambda expression binding the variable " <> U.bquote v <> "."
   SBind mv rhs _cmds ->
     pure $
-      typeSignature (maybe "__rhs" lvVar mv) (rhs ^. sType) $
+      typeSignature (maybe "__rhs" lvVar mv) (getInnerType $ rhs ^. sType) $
         "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote v <> ".") mv
   -- composite types
   SPair {} ->
