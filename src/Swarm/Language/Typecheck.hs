@@ -293,17 +293,18 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SDef r x Nothing t1 -> do
     xTy <- fresh
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
-    _ <- xTy =:= t1' ^. sType
-    pty <- generalize (t1' ^. sType)
-    return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
+    xTy' <- xTy =:= t1' ^. sType
+    pty <- generalize xTy'
+    return $ Module (Syntax' l (SDef r (x `withType` xTy') Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
   SDef r x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
+    utyGen <- instantiate upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
-    return $ Module (Syntax' l (SDef r x (Just pty) t1') (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
+    return $ Module (Syntax' l (SDef r (x `withType` utyGen) (Just pty) t1') (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
@@ -338,7 +339,7 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         let ctxX = maybe Ctx.empty ((`Ctx.singleton` Forall [] a) . lvVar) mx
         return $
           Module
-            (Syntax' l (SBind mx c1' c2') (c2' ^. sType))
+            (Syntax' l (SBind ((`withType` a) <$> mx) c1' c2') (c2' ^. sType))
             (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
@@ -407,14 +408,14 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SLam x (Just argTy) lt -> do
     let uargTy = toU argTy
     lt' <- withBinding (lvVar x) (Forall [] uargTy) $ infer lt
-    return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (lt' ^. sType))
+    return $ Syntax' l (SLam (x `withType` uargTy) (Just argTy) lt') (UTyFun uargTy (lt' ^. sType))
 
   -- If the type of the argument is not provided, create a fresh
   -- unification variable for it and proceed.
   SLam x Nothing lt -> do
     argTy <- fresh
     lt' <- withBinding (lvVar x) (Forall [] argTy) $ infer lt
-    return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (lt' ^. sType))
+    return $ Syntax' l (SLam (x `withType` argTy) Nothing lt') (UTyFun argTy (lt' ^. sType))
 
   -- To infer the type of an application:
   SApp f x -> do
@@ -435,12 +436,13 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     _ <- xTy =:= uty
     upty <- generalize uty
     t2' <- withBinding (lvVar x) upty $ infer t2
-    return $ Syntax' l (SLet r x Nothing t1' t2') (t2' ^. sType)
+    return $ Syntax' l (SLet r (x `withType` xTy) Nothing t1' t2') (t2' ^. sType)
   SLet r x (Just pty) t1 t2 -> do
     let upty = toU pty
     -- If an explicit polytype has been provided, skolemize it and check
     -- definition and body under an extended context.
     uty <- skolemize upty
+    utyGen <- instantiate upty
     (t1', t2') <- withBinding (lvVar x) upty $ do
       (,)
         <$> check t1 uty
@@ -448,14 +450,14 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         <*> infer t2
     -- Make sure no skolem variables have escaped.
     ask >>= mapM_ noSkolems
-    return $ Syntax' l (SLet r x (Just pty) t1' t2') (t2' ^. sType)
+    return $ Syntax' l (SLet r (x `withType` utyGen) (Just pty) t1' t2') (t2' ^. sType)
   SDef {} -> throwError $ DefNotTopLevel l t
   SBind mx c1 c2 -> do
     c1' <- infer c1
     a <- decomposeCmdTy (c1' ^. sType)
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
-    return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+    return $ Syntax' l (SBind ((`withType` a) <$> mx) c1' c2') (c2' ^. sType)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do

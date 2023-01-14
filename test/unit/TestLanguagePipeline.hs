@@ -255,8 +255,8 @@ testLanguagePipeline =
         [ testCase
             "annotate 1 + 1"
             (assertEqual "foo"
+               (map (Forall []) [TyInt, TyInt :->: TyInt, TyInt :->: TyInt :->: TyInt, TyInt, TyInt])
                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
-               (map (Forall []) [TyInt :->: TyInt :->: TyInt, TyInt, TyInt :->: TyInt, TyInt, TyInt])
             )
         -- , testCase
         --     "get all annotated variable types"

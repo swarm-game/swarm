@@ -133,7 +133,7 @@ identifier :: Parser Var
 identifier = lvVar <$> locIdentifier
 
 -- | Parse an identifier together with its source location info.
-locIdentifier :: Parser LocVar
+locIdentifier :: Parser (Annotated Var' ())
 locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
@@ -278,7 +278,7 @@ parseTermAtom =
           <$> (reserved "def" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
-        <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
+        <|> parens (view sThing . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
     -- Potential syntax for explicitly requesting memoized delay.
     -- Perhaps we will not need this in the end; see the discussion at
@@ -299,12 +299,12 @@ mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sLet :: LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet :: Annotated Var' () -> Maybe Polytype -> Syntax -> Syntax -> Term
 sLet x ty t1 = SLet (lvVar x `S.member` setOf freeVarsV t1) x ty t1
 
 -- | Construct an 'SDef', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sDef :: LocVar -> Maybe Polytype -> Syntax -> Term
+sDef :: Annotated Var' () -> Maybe Polytype -> Syntax -> Term
 sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
 
 parseAntiquotation :: Parser Term
@@ -327,14 +327,14 @@ mkBindChain stmts = case last stmts of
 
 data Stmt
   = BareTerm Syntax
-  | Binder LocVar Syntax
+  | Binder (Annotated Var' ()) Syntax
   deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =
   mkStmt <$> optional (try (locIdentifier <* symbol "<-")) <*> parseExpr
 
-mkStmt :: Maybe LocVar -> Syntax -> Stmt
+mkStmt :: Maybe (Annotated Var' ()) -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
 mkStmt (Just x) = Binder x
 

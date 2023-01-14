@@ -58,7 +58,12 @@ module Swarm.Language.Syntax (
   pattern Syntax',
   Syntax,
   pattern Syntax,
-  LocVar (..),
+  pattern LV,
+  Var',
+  coerceVar,
+  lvVar,
+  lvSrcLoc,
+  withType,
   SrcLoc (..),
   noLoc,
   pattern STerm,
@@ -801,11 +806,14 @@ data DelayType
     MemoizedDelay (Maybe Var)
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
--- | A variable with associated source location, used for variable
---   binding sites. (Variable occurrences are a bare TVar which gets
---   wrapped in a Syntax node, so we don't need LocVar for those.)
-data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+newtype Var' ty = Var' { unVar' :: Var }
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+
+coerceVar :: Var' ty -> Var' ty'
+coerceVar (Var' x) = Var' x
+
+withType :: Annotated Var' ty' -> ty -> Annotated Var' ty
+withType (Annotated l _ x) ty = Annotated l ty (coerceVar x)
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -842,19 +850,19 @@ data Term' ty
     SPair (Annotated Term' ty) (Annotated Term' ty)
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam LocVar (Maybe Type) (Annotated Term' ty)
+    SLam (Annotated Var' ty) (Maybe Type) (Annotated Term' ty)
   | -- | Function application.
     SApp (Annotated Term' ty) (Annotated Term' ty)
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool LocVar (Maybe Polytype) (Annotated Term' ty) (Annotated Term' ty)
+    SLet Bool (Annotated Var' ty) (Maybe Polytype) (Annotated Term' ty) (Annotated Term' ty)
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
-    SDef Bool LocVar (Maybe Polytype) (Annotated Term' ty)
+    SDef Bool (Annotated Var' ty) (Maybe Polytype) (Annotated Term' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe LocVar) (Annotated Term' ty) (Annotated Term' ty)
+    SBind (Maybe (Annotated Var' ty)) (Annotated Term' ty) (Annotated Term' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -915,6 +923,16 @@ instance Semigroup SrcLoc where
 
 instance Monoid SrcLoc where
   mempty = NoLoc
+
+-- XXX get rid of this
+lvVar :: Annotated Var' ty -> Var
+lvVar (Annotated _ _ (Var' x)) = x
+
+lvSrcLoc :: Annotated Var' ty -> SrcLoc
+lvSrcLoc (Annotated l _ _) = l
+
+pattern LV :: SrcLoc -> Var -> Annotated Var' ()
+pattern LV l x = Annotated l () (Var' x)
 
 ------------------------------------------------------------
 -- Pattern synonyms for untyped terms
