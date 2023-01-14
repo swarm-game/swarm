@@ -14,6 +14,32 @@ def intersperse = \n. \f2. \f1. if (n > 0) {
     } {};
     end;
 
+def whichOrdinal = \str.
+    if (str == "capital C") {
+        return 0;
+    } {
+        if (str == "capital O") {
+            return 1;
+        } {
+            if (str == "capital W") {
+                return 2;
+            } {
+                return (-1);
+            }
+        }
+    }
+    end;
+
+/**
+Calls "whichOrdinal" on the cell to the north.
+Returns -1 if not a recognized letter.
+*/
+def getNorthOrdinal =
+    foo <- scan north;
+    str <- case foo (\_. return "") (\s. return s);
+    whichOrdinal str;
+    end;
+
 /**
 Call a function repeatedly with the numeric argument,
 in descending order.
@@ -39,37 +65,99 @@ def chooseLetter = \i.
     end;
 
 /**
-We may have selected the last letter to complete
-the word COW.
+We only need to probe further if
+the letter above us is an O.
+Then we need to check whether the letter
+above that is a C or a W.
+*/
+def getExcludedVerticalLetter =
+    northOrdinal <- getNorthOrdinal;
+    if (northOrdinal == 1) {
+        currentLoc <- whereami;
+        teleport self (fst currentLoc, snd currentLoc + 1);
+        doubleNorthOrdinal <- getNorthOrdinal;
+        teleport self currentLoc;
 
+        if (doubleNorthOrdinal == 2) {
+            return 0;
+        } {
+            if (doubleNorthOrdinal == 0) {
+                return 2;
+            } {
+                return (-1);
+            }
+        }
+    } {
+        return (-1);
+    }
+    end;
+
+
+/**
 To ensure there are limited numbers of solutions
 (TODO: preferably exactly one),
 make sure we're not completing a word
 horizontally (foward or backward)
-(TODO: except if we
+or vertically (upward or downward), except if we
 are in the pre-designated location).
 
 If we would be completing
 a word, select a different random letter.
 */
-def reRoll = \expectedFwdOrdinal. \expectedBkwdOrdinal.
+def reRoll = \excludedVertical. \expectedFwdOrdinal. \expectedBkwdOrdinal.
 
-    letterIndex <- random 3;
-    let completingFwd = letterIndex == expectedFwdOrdinal && expectedFwdOrdinal == 2 in
-    let completingBkwd = letterIndex == expectedBkwdOrdinal && expectedBkwdOrdinal == 0 in
-    if (completingFwd || completingBkwd) {
-        if (completingFwd && completingBkwd) {
+    // NOTE: excludeTwo and excludeZero
+    // are mutually exclusive!
+    let excludeTwo = expectedFwdOrdinal == 2 in
+    let excludeZero = expectedBkwdOrdinal == 0 in
+
+    // NOTE: Excluded letters can only be 0 or 2.
+    // 1 is always a valid option.
+
+    if excludeZero {
+        if (excludedVertical == 2) {
             return 1;
         } {
-            reRoll expectedFwdOrdinal expectedBkwdOrdinal;
+            // Zero is the only excluded value,
+            // so just offset a choice between 0 and 1 upward by 1, 
+            // to make it a choice between 1 and 2.
+            val <- random 2;
+            return $ val + 1;
         };
     } {
-        return letterIndex;
+        if excludeTwo {
+            if (excludedVertical == 0) {
+                return 1;
+            } {
+                // Two is the only excluded value,
+                // so make it a choice between 0 and 1.
+                random 2;
+            };
+        } {
+            if (excludedVertical == 0) {
+                // Zero is the only excluded value,
+                // so just offset a choice between 0 and 1 upward by 1, 
+                // to make it a choice between 1 and 2.
+                val <- random 2;
+                return $ val + 1;
+            } {
+                if (excludedVertical == 2) {
+                    // Two is the only excluded value,
+                    // so make it a choice between 0 and 1.
+                    random 2;
+                } {
+                    // No values are excluded, so select random from
+                    // the full range.
+                    random 3;
+                }
+            };
+        };
     };
     end;
 
 def singleTile = \expectedFwdOrdinal. \expectedBkwdOrdinal.
-    letterIndex <- reRoll expectedFwdOrdinal expectedBkwdOrdinal;
+    excludedVertical <- getExcludedVerticalLetter;
+    letterIndex <- reRoll excludedVertical expectedFwdOrdinal expectedBkwdOrdinal;
     chosenLetter <- chooseLetter letterIndex;
     place chosenLetter;
     return letterIndex;
