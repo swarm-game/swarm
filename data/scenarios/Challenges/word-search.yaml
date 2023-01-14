@@ -3,7 +3,7 @@ name: Word search
 author: Karl Ostmo
 description: |
   Find the word
-seed: 3
+seed: 2
 creative: false
 objectives:
   - goal:
@@ -137,7 +137,8 @@ robots:
     program: |
       run "scenarios/Challenges/_word-search/create-puzzle.sw"
 solution: |
-  // Hard-coded for seed=3:
+  // Hard-coded for seed=2:
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
   def waitUntilUnblocked =
     x <- blocked;
     if x {
@@ -146,13 +147,15 @@ solution: |
     } {};
     end;
   waitUntilUnblocked;
-  move; move; move; move; move; move; move; move;
-  turn left;
+  doN 11 move;
+  turn right;
+  doN 2 move;
   drill down;
   move;
   drill down;
   move;
   drill down;
+
   // run "scenarios/Challenges/_word-search/solution.sw"
 entities:
   - name: capital C
