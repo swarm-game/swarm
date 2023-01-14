@@ -212,68 +212,6 @@ def createImpossiblePuzzle = \width. \height.
     end;
 
 /**
-Recurse for each cardinal direction
-*/
-def isInsertionCandidate = \n.
-    if (n > 0) {
-        leftOrd <- getAdjacentOrdinal west;
-        rightOrd <- getAdjacentOrdinal east;
-        if (leftOrd == 0 && rightOrd == 2) {
-            return true;
-        } {
-            turn left;
-            isInsertionCandidate $ n - 1;
-        };
-    } {
-        return false;
-    }
-    end;
-
-def tryRowInsertion = \rowWrapCount. \n.
-    if (n > 0) {
-        canPlaceHere <- isInsertionCandidate 4;
-        if canPlaceHere {
-            chosenLetter <- chooseLetter 1;
-            swap chosenLetter;
-            return true;
-        } {
-            if (n == rowWrapCount) {
-                currentLoc <- whereami;
-                teleport self (0, snd currentLoc);
-            } {
-                move;
-            };
-            tryRowInsertion rowWrapCount $ n - 1;
-        }
-    } {
-        return false;
-    }
-    end;
-
-/**
-Iterates over tryRowInsertion for the whole puzzle.
-*/
-def tryPuzzleInsertion = \rowWrapCount. \width. \colWrapCount. \n.
-    if (n > 0) {
-        didFinish <- tryRowInsertion rowWrapCount width;
-        if didFinish {
-            return true;
-        } {
-            currentLoc <- whereami;
-            if (n == colWrapCount) {
-                teleport self (fst currentLoc, 0);
-            } {
-                teleport self (fst currentLoc, snd currentLoc - 1);
-            };
-
-            tryPuzzleInsertion rowWrapCount width colWrapCount $ n - 1;
-        }
-    } {
-        return false;
-    }
-    end;
-
-/**
 Assumption: this location is padded by
 one cell from the vertical and horizontal
 edges of the playfield.
@@ -297,47 +235,9 @@ def overwriteWithWord = \width. \height.
         move;
     end;
 
-/**
-First, choose a random location to start.
-Then perform a raster scan (which wraps around
-back to the starting location), looking for
-any location where insertion of an O
-will complete a word. In other words, one
-of these four possibilities:
-
-xCx  xxx  xWx  xxx
-xxx  CxW  xxx  WxC
-xWx  xxx  xCx  xxx
-
-which, one may notice, are rotationally symmetric.
-Inserting an O in the center cell will result in 
-either one or two solutions being created.
-
-In the unlikely event that this scan completes without
-finding such an arrangement, the complete word
-shall be written at a random location and orientation
-irrespective of the existing cell contents.
-*/
-def addSolutionToPuzzle = \width. \height.
-
-    startX <- random width;
-    startY <- random height;
-
-    // Proceed from left to right, top to bottom.
-    teleport self (startX, -startY);
-    turn east;
-
-    // Note: this has indeterminate runtime and can be slow:
-    wasInserted <- tryPuzzleInsertion (startX + 1) width (startY + 1) height;
-
-    if wasInserted {} {
-        overwriteWithWord width height;
-    }
-    end;
-
 def createPuzzle = \width. \height.
     createImpossiblePuzzle width height;
-    addSolutionToPuzzle width height;
+    overwriteWithWord width height;
     removeBoulder;
     end;
 
