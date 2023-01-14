@@ -828,7 +828,7 @@ handleREPLEventTyping = \case
         -- input is valid) and sets up the base robot to run it.
         startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
           -- Set the REPL status to Working
-          (gameState . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
+          (gameState . replStatus .~ REPLWorking (Typed Nothing (Forall [] (tm ^. sType)) reqs))
             -- The `reqCtx` maps names of variables defined in the
             -- term (by `def` statements) to their requirements.
             -- E.g. if we had `def m = move end`, the reqCtx would

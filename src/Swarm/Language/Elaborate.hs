@@ -21,19 +21,19 @@ import Swarm.Language.Types
 --   overloaded constants depending on the actual type they are used
 --   at, but currently that sort of thing tends to make type inference
 --   fall over.
-elaborate :: Syntax' Type -> Syntax' Polytype
+elaborate :: Syntax' Type -> Syntax' Type
 elaborate =
   -- Wrap all *free* variables in 'Force'.  Free variables must be
   -- referring to a previous definition, which are all wrapped in
   -- 'TDelay'.
-  (freeVarsS %~ \s -> Syntax' (s ^. sLoc) (SApp sForce s) (s ^. sType))
+  (freeVarsS %~ \s -> Syntax' (s ^. sLoc) (SApp (sForce (s ^. sType)) s) (s ^. sType))
     -- Now do additional rewriting on all subterms.
     . transform rewrite
  where
-  rewrite :: Syntax' Polytype -> Syntax' Polytype
+  rewrite :: Syntax' Type -> Syntax' Type
   rewrite (Syntax' l t ty) = Syntax' l (rewriteTerm t) ty
 
-  rewriteTerm :: Term' Polytype -> Term' Polytype
+  rewriteTerm :: Term' Type -> Term' Type
   rewriteTerm = \case
     -- For recursive let bindings, rewrite any occurrences of x to
     -- (force x).  When interpreting t1, we will put a binding (x |->
@@ -51,10 +51,10 @@ elaborate =
     -- Leave any other subterms alone.
     t -> t
 
-wrapForce :: Var -> Syntax' Polytype -> Syntax' Polytype
-wrapForce x = mapFreeS x (\s@(Syntax' l _ ty) -> Syntax' l (SApp sForce s) ty)
+wrapForce :: Var -> Syntax' Type -> Syntax' Type
+wrapForce x = mapFreeS x (\s@(Syntax' l _ ty) -> Syntax' l (SApp (sForce ty) s) ty)
 
 -- Note, TyUnit is not the right type, but I don't want to bother
 
-sForce :: Syntax' Polytype
-sForce = Syntax' NoLoc (TConst Force) (Forall ["a"] (TyDelay (TyVar "a") :->: TyVar "a"))
+sForce :: Type -> Syntax' Type
+sForce ty = Syntax' NoLoc (TConst Force) (TyDelay ty :->: ty)

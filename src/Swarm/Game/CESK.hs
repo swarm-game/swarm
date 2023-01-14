@@ -289,7 +289,7 @@ initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
 initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
   case t' ^. sType of
     -- If the starting term has a command type...
-    Forall _ (TyCmd _) ->
+    TyCmd _ ->
       case ctx of
         -- ...but doesn't contain any definitions, just create a machine
         -- that will evaluate it and then execute it.
