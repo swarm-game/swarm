@@ -21,7 +21,7 @@ import Swarm.Language.Types
 --   overloaded constants depending on the actual type they are used
 --   at, but currently that sort of thing tends to make type inference
 --   fall over.
-elaborate :: Syntax' Polytype -> Syntax' Polytype
+elaborate :: Syntax' Type -> Syntax' Polytype
 elaborate =
   -- Wrap all *free* variables in 'Force'.  Free variables must be
   -- referring to a previous definition, which are all wrapped in

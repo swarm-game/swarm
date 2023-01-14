@@ -85,11 +85,9 @@ type Infer = ReaderT UCtx (ExceptT TypeErr (IntBindingT TypeF Identity))
 runInfer :: TCtx -> Infer UModule -> Either TypeErr TModule
 runInfer ctx =
   (>>= applyBindings)
-    >>> ( >>=
+    >>> ( fmap (
             \(Module u uctx) ->
-              Module
-                <$> mapM (fmap fromU . generalize) u
-                <*> pure (fromU uctx)
+              (Module (fromU u) (fromU uctx)))
         )
     >>> flip runReaderT (toU ctx)
     >>> runExceptT

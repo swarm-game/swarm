@@ -20,7 +20,7 @@ import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Language.Context (Ctx, empty)
 import Swarm.Language.Syntax (Syntax')
-import Swarm.Language.Types (Polytype, UPolytype, UType)
+import Swarm.Language.Types (Polytype, Type, UPolytype, UType)
 
 ------------------------------------------------------------
 -- Modules
@@ -37,7 +37,7 @@ data Module s t = Module {moduleAST :: Syntax' s, moduleCtx :: Ctx t}
 -- | A 'TModule' is the final result of the type inference process on
 --   an expression: we get a polytype for the expression, and a
 --   context of polytypes for the defined variables.
-type TModule = Module Polytype Polytype
+type TModule = Module Type Polytype
 
 -- | A 'UModule' represents the type of an expression at some
 --   intermediate stage during the type inference process.  We get a
