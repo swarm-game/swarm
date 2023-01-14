@@ -40,7 +40,7 @@ def countConsecutive = \expectedOrdinal. \n.
         return true;
     } {
 
-        if (n > 0) {
+        if (n > 1) {
             move;
             countConsecutive nextOrdinal (n - 1);
         } {
