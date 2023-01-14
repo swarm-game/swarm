@@ -26,12 +26,11 @@ def whichOrdinal = \str.
     end;
 
 /**
-Calls "whichOrdinal" on the cell to the north.
 Returns -1 if not a recognized letter.
 */
 def getAdjacentOrdinal = \d.
-    foo <- scan d;
-    str <- case foo (\_. return "") (\s. return s);
+    maybeEntity <- scan d;
+    str <- case maybeEntity (\_. return "") (\s. return s);
     whichOrdinal str;
     end;
 
@@ -89,14 +88,11 @@ def getExcludedVerticalLetter =
 
 /**
 To ensure there are limited numbers of solutions
-(TODO: preferably exactly one),
+(preferably exactly one),
 make sure we're not completing a word
 horizontally (foward or backward)
 or vertically (upward or downward), except if we
-are in the pre-designated location).
-
-If we would be completing
-a word, select a different random letter.
+are in the designated location.
 */
 def reRoll = \excludedVertical. \expectedFwdOrdinal. \expectedBkwdOrdinal.
 
@@ -212,9 +208,13 @@ def createImpossiblePuzzle = \width. \height.
     end;
 
 /**
-Assumption: this location is padded by
+This word center is padded by
 one cell from the vertical and horizontal
 edges of the playfield.
+This means that the word will not exist
+horizontally at either the top or bottom edge,
+nor will it exist vertically at the left or
+right edge of the playfield.
 */
 def overwriteWithWord = \width. \height.
 
@@ -227,8 +227,11 @@ def overwriteWithWord = \width. \height.
     // Rotate to random orientation
     turnCount <- random 3;
     doN turnCount $ turn left;
+
     move;
     turn back;
+
+    // Place all three letters of the word
     iterN 3 $ \x.
         chosenLetter <- chooseLetter x;
         swap chosenLetter;
