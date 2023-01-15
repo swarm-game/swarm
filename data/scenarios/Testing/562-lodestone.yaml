@@ -1,13 +1,15 @@
+version: 1
 name: Test lodestone
 description: Pick or drill lodestone and use it to flip bits.
-goal:
-    - To create a drill bit, you will need to flip the available bit.
-win: |
-  try {
-    as base {has "drill bit"};
-  } { return false }
+objectives:
+  - goal:
+        - To create a drill bit, you will need to flip the available bit.
+    condition: |
+      try {
+        as base {has "drill bit"};
+      } { return false }
 solution: |
-  run "562-lodestone.sw"
+  run "scenarios/Testing/562-lodestone.sw"
 robots:
   - name: base
     dir: [1,0]
@@ -25,6 +27,7 @@ robots:
       - branch predictor
     inventory:
       - [10, drill]
+      - [10, lambda]
       - [10, logger]
       - [10, compass]
       - [10, treads]
@@ -37,12 +40,13 @@ robots:
       - [0, drill bit]
       - [0, bit (0)]
       - [0, bit (1)]
+known: [water, wavy water]
 world:
-  default: [ice, knownwater]
+  default: [ice, water]
   palette:
     '.': [grass]
-    ' ': [ice, knownwater]
-    '~': [ice, knownwavywater]
+    ' ': [ice, water]
+    '~': [ice, wavy water]
     'L': [grass, Linux]
     'T': [grass, tree]
     '┌': [stone, upper left corner]
@@ -62,29 +66,7 @@ world:
     │..AAA│                                                                ~~
     │B.0.A│                                                                 ~
     └─────┘                                                                 ~
-entities:  
-  ## KNOWN ENTITIES
-  - name: knownwater
-    display:
-      attr: water
-      char: ' '
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-
-  - name: knownwavywater
-    display:
-      attr: water
-      char: '~'
-    description:
-    - An infinite ocean of water.
-    properties: [known, portable, growable, liquid]
-    growth: [0,0]
-    yields: water
-  
-  ## MOUNTAIN MINES (for guaranteed profit)
+entities:
   - name: magnetic vein
     display:
       attr: iron'

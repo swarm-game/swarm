@@ -2,10 +2,13 @@
 dist-newstyle/
 TAGS
 
+.vscode/
+
 cabal.project.local
 hie.yaml
 
 .stack-work/
+.stack-work-test/
 stack.yaml.lock
 .hie/
 stan.html

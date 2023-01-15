@@ -1,6 +1,8 @@
 classic.yaml
 creative.yaml
+blank.yaml
 Tutorials
 Challenges
 Fun
+Speedruns
 Testing

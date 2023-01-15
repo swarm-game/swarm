@@ -1,5 +1,9 @@
-test.yaml
 chess_horse.yaml
-drill_test.yaml
 teleport.yaml
+2048.yaml
+word-search.yaml
+hanoi.yaml
+bucket-brigade.yaml
+friend.yaml
 Mazes
+Ranching

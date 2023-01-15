@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  # Trigger the workflow on the new PVP version tag created.
+  # https://pvp.haskell.org/
+  # See patterns explanation at:
+  # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  create_release:
+    name: Create Github Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Zip data directory
+        run: |
+          zip -r swarm-data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            LICENSE
+            swarm-data.zip
+
+      - name: Output Release URL File
+        run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+
+      - name: Save Release URL File for publish
+        uses: actions/upload-artifact@v3
+        with:
+          name: release_url
+          path: release_url.txt
+
+  build_artifact:
+    needs: [create_release]
+    name: Haskell-Release - ${{ matrix.os }} - ${{ matrix.compiler }}
+    runs-on: ubuntu-20.04
+    container:
+      # It might be good idea to use older runner for building binary:
+      # on latest runners like fedora, it would link symbols in newer
+      # system libraries, so users could not run it on older OSes
+      image: buildpack-deps:bionic
+    strategy:
+      matrix:
+        include:
+          - compiler: ghc-8.10.7
+            compilerKind: ghc
+            compilerVersion: 8.10.7
+            setup-method: ghcup
+    steps:
+      - name: apt
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
+          mkdir -p "$HOME/.ghcup/bin"
+          curl -sL https://downloads.haskell.org/ghcup/0.1.18.0/x86_64-linux-ghcup-0.1.18.0 > "$HOME/.ghcup/bin/ghcup"
+          chmod a+x "$HOME/.ghcup/bin/ghcup"
+          "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
+          "$HOME/.ghcup/bin/ghcup" install cabal 3.6.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+        env:
+          HCKIND: ${{ matrix.compilerKind }}
+          HCNAME: ${{ matrix.compiler }}
+          HCVER: ${{ matrix.compilerVersion }}
+      - name: Set PATH and environment variables
+        run: |
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+          echo "LANG=C.UTF-8" >> "$GITHUB_ENV"
+          echo "CABAL_DIR=$HOME/.cabal" >> "$GITHUB_ENV"
+          echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
+          HCDIR=/opt/$HCKIND/$HCVER
+          HC=$HOME/.ghcup/bin/$HCKIND-$HCVER
+          echo "HC=$HC" >> "$GITHUB_ENV"
+          echo "HCPKG=$HOME/.ghcup/bin/$HCKIND-pkg-$HCVER" >> "$GITHUB_ENV"
+          echo "HADDOCK=$HOME/.ghcup/bin/haddock-$HCVER" >> "$GITHUB_ENV"
+          echo "CABAL=$HOME/.ghcup/bin/cabal-3.6.2.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
+          echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
+          echo "HEADHACKAGE=false" >> "$GITHUB_ENV"
+          echo "ARG_COMPILER=--$HCKIND --with-compiler=$HC" >> "$GITHUB_ENV"
+        env:
+          HCKIND: ${{ matrix.compilerKind }}
+          HCNAME: ${{ matrix.compiler }}
+          HCVER: ${{ matrix.compilerVersion }}
+      - name: env
+        run: |
+          env
+      - name: write cabal config
+        run: |
+          mkdir -p $CABAL_DIR
+          cat >> $CABAL_CONFIG <<EOF
+          remote-build-reporting: anonymous
+          write-ghc-environment-files: never
+          remote-repo-cache: $CABAL_DIR/packages
+          logs-dir:          $CABAL_DIR/logs
+          world-file:        $CABAL_DIR/world
+          extra-prog-path:   $CABAL_DIR/bin
+          symlink-bindir:    $CABAL_DIR/bin
+          installdir:        $CABAL_DIR/bin
+          build-summary:     $CABAL_DIR/logs/build.log
+          store-dir:         $CABAL_DIR/store
+          install-dirs user
+            prefix: $CABAL_DIR
+          repository hackage.haskell.org
+            url: http://hackage.haskell.org/
+          EOF
+          cat >> $CABAL_CONFIG <<EOF
+          program-default-options
+            ghc-options: $GHCJOBS +RTS -M3G -RTS
+          EOF
+          cat $CABAL_CONFIG
+      - name: versions
+        run: |
+          $HC --version || true
+          $HC --print-project-git-commit-id || true
+          $CABAL --version || true
+      - name: update cabal index
+        run: |
+          $CABAL v2-update -v
+      - name: cache (tools)
+        uses: actions/cache@v2
+        with:
+          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-436fbe9d
+          path: ~/.haskell-ci-tools
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: cache
+        uses: actions/cache@v2
+        with:
+          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
+          path: ~/.cabal/store
+          restore-keys: ${{ runner.os }}-${{ matrix.compiler }}-
+      - name: install dependencies
+        run: |
+          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --dependencies-only -j2 all
+
+      - name: Build binary
+        run: |
+          mkdir dist
+          $CABAL v2-install $ARG_COMPILER exe:swarm --install-method=copy --overwrite-policy=always --installdir=dist
+
+      - name: Set binary path name
+        run: echo BINARY_PATH="./dist/swarm" >> "$GITHUB_ENV"
+
+      - name: Load Release URL File from release job
+        uses: actions/download-artifact@v1
+        with:
+          name: release_url
+
+      - name: Get Release File Name & Upload URL
+        id: get_release_info
+        run: |
+          echo "::set-output name=upload_url::$(cat release_url/release_url.txt)"
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release_info.outputs.upload_url }}
+          asset_path: ${{ env.BINARY_PATH }}
+          asset_name: swarm-${{ runner.os }}
+          asset_content_type: application/octet-stream
+
+      - name: Generate tarball for Hackage 
+        run: $CABAL v2-sdist
+      
+      # - name: Generate documentation for Hackage
+      #   # The hackage-server attempts to build documentation for library packages, but this can fail.
+      #   # If it does we can do it ourselves
+      #   run: cabal v2-haddock --builddir=docs --haddock-for-hackage --enable-doc
+
+      - uses: haskell-actions/hackage-publish@v1
+        with:
+          hackageToken: "${{ secrets.HACKAGE_AUTH_TOKEN }}"
+          packagesPath: dist-newstyle/sdist
+          # docsPath: docs
+          publish: true

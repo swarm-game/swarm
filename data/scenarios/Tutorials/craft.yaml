@@ -1,4 +1,5 @@
-name: Crafting, part 1
+version: 1
+name: Crafting
 description: |
   Learn how to make new things using recipes.
 #
@@ -14,6 +15,11 @@ objectives:
         available recipes.
       - Your goal is to make a "branch predictor", so you will have to make
         some "branch"es first.
+      - |
+        Note: when used after opening quotes in the REPL, the Tab key can cycle through
+        possible completions of a name. E.g., type:
+      - |
+        > make "br[Tab][Tab]
     condition: |
       try {
         as base {has "branch predictor"}

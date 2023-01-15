@@ -41,7 +41,7 @@
     char: 'π'
   description:
   - A plain wooden workbench, providing space to make other
-    things using the 'make' command.
+    things using the `make` command.
   - 'Example:'
   - 'make "log"'
   properties: [portable]
@@ -79,7 +79,7 @@
     attr: iron
     char: 'o'
   description:
-  - A medium-sized rock... that looks a little different. 
+  - A medium-sized rock... that looks a little different.
     It seems to react to iron and surprisingly also to naturally growing bits.
   properties: [portable]
   capabilities: [negation]
@@ -106,7 +106,7 @@
     char: 'Å'
     priority: 11
   description:
-  - A tunnel in a mountain through which robots can freely move.
+  - A tunnel in a mountain through which anything can freely move.
   properties: []
 
 - name: copper ore
@@ -306,6 +306,63 @@
   properties: [portable, growable]
   growth: [30, 50]
 
+- name: cotton
+  display:
+    attr: silver
+    char: 'i'
+  description:
+  - A plant with tufts of soft fibers that can be harvested and used
+    to make things, including sheets of material that the local
+    aliens like to drape over their bodies.
+  properties: [portable, growable]
+  growth: [100, 800]
+
+- name: string
+  display:
+    attr: silver
+    char: '~'
+  description:
+  - A long, flexible device for transferring either force or
+    information, made of twisted cotton fibers.  Multiple strings can
+    also be woven into larger configurations such as cloth or nets.
+  - |
+    An equipped `string` device enables several commands for working with
+    `text` values:
+  - |
+    `format : a -> text` can turn any value into a suitable text
+    representation.
+  - |
+    The infix operator `++ : text -> text -> text`
+    can be used to concatenate two text values.  For example,
+  - |
+    "Number of widgets: " ++ format numWidgets
+  - |
+    `chars : text -> int` computes the number of characters in a
+    `text` value.
+  - |
+    `split : int -> text -> text * text` splits a `text` value into
+    two pieces, one before the given index and one after.
+  properties: [portable]
+  capabilities: [text]
+
+- name: decoder ring
+  display:
+    attr: silver
+    char: 'O'
+  description:
+  - |
+    A handy lookup table for converting from characters to numeric codes and
+    back, shaped for some reason into a ring.  When equipped, it
+    enables two functions:
+  - |
+    `charAt : int -> text -> int` returns the numeric code of the
+    character at a specific index in a (0-indexed) `text` value.
+  - |
+    `toChar : int -> text` creates a singleton (length-1) `text`
+    value containing a character with the given numeric code.
+  properties: [portable]
+  capabilities: [code]
+
 - name: lambda
   display:
     attr: flower
@@ -314,8 +371,8 @@
   - A wild lambda.  They are somewhat rare, but regrow when picked.  Lambdas
     are delicious when cooked into curry.
   - Lambdas can also be used to create functions. For example,
-  - '  def thrice : cmd () -> cmd () = \c. c;c;c end'
-  - defines the function 'thrice' which repeats a command three times.
+  - '  def thrice : cmd unit -> cmd unit = \c. c;c;c end'
+  - defines the function `thrice` which repeats a command three times.
   properties: [portable, growable]
   growth: [100, 200]
   capabilities: [lambda]
@@ -350,12 +407,12 @@
     attr: wood
     char: 'B'
   description:
-  - A robot with a boat installed can float on top of water without drowning.
+  - A robot with a boat equipped can float on top of water without drowning.
   - |
-    Note: most devices are automatically installed on robots that
+    Note: most devices are automatically equipped on robots that
     will require them; but this doesn't work in the case of boats since floating is not
-    associated with any particular command.  To manually ensure a boat is installed on
-    a robot, just add the special command 'require "boat"' to the robot's program.
+    associated with any particular command.  To manually ensure a boat is equipped on
+    a robot, just add the special command `require "boat"` to the robot's program.
   properties: [portable]
   capabilities: [float]
 
@@ -388,7 +445,7 @@
 
 - name: rubber
   display:
-    attr: stone
+    attr: rubber
     char: '%'
   description:
   - A flexible, durable material made from LaTeX.
@@ -500,6 +557,16 @@
   - A copy of the Linux operating system.
   properties: [portable]
 
+- name: gold coin
+  display:
+    char: '©'
+    attr: gold
+  description:
+    - A small round shaped piece of gold metal that the aliens pass between
+      each other occasionaly.
+    - Besides staying shiny it does not appear to have practical use.
+  properties: [portable]
+
 ############################################################
 ### Utility ################################################
 ############################################################
@@ -536,6 +603,38 @@
     - A lower right corner wall.
   properties: [unwalkable, known]
 
+- name: down and horizontal wall
+  display:
+    attr: entity
+    char: '┬'
+  description:
+    - A down and horizontal wall.
+  properties: [unwalkable, known]
+
+- name: up and horizontal wall
+  display:
+    attr: entity
+    char: '┴'
+  description:
+    - A up and horizontal wall.
+  properties: [unwalkable, known]
+
+- name: left and vertical wall
+  display:
+    attr: entity
+    char: '┤'
+  description:
+    - A left and vertical wall.
+  properties: [unwalkable, known]
+
+- name: right and vertical wall
+  display:
+    attr: entity
+    char: '├'
+  description:
+    - A right and vertical wall.
+  properties: [unwalkable, known]
+
 - name: horizontal wall
   display:
     attr: entity
@@ -556,17 +655,29 @@
 ### Devices ################################################
 ############################################################
 
+- name: bitcoin
+  display:
+    char: '₿'
+    attr: gold
+  description:
+    - A beautiful round shaped piece of metal that seems to be of great value
+      to the aliens on this planet.
+    - Just like the bit it has two sides and when you flip it, it lands perfectly
+      randomly on one of the sides.
+  properties: [portable]
+  capabilities: [random]
+
 - name: treads
   plural: treads
   display:
     attr: device
     char: '%'
   description:
-  - Installing treads on a robot allows it to move and turn.
-  - The 'move' command moves the robot forward one unit.
+  - Equipping treads on a robot allows it to move and turn.
+  - The `move` command moves the robot forward one unit.
   - 'Example:'
   - '  move; move; // move two units'
-  - The 'turn' command takes a direction as an argument, which
+  - The `turn` command takes a direction as an argument, which
     can be either absolute (north, west, east, south) or relative
     (left, right, forward, back, down).
   - 'Example:'
@@ -590,23 +701,54 @@
     char: '<'
   description:
   - A grabber arm is an all-purpose, hydraulically controlled device that can
-    manipulate other items and robots via the 'grab', 'place', 'give',
-    and 'install' commands.
-  - The 'grab' command takes no arguments; it simply grabs whatever is
+    manipulate other items and robots via the `grab`, `place`, and `give`
+    commands.
+  - The `grab` command takes no arguments; it simply grabs whatever is
     available, and also returns the name of the grabbed thing as a string.
     It raises an exception if run in a cell that does not contain an item.
-  - The 'place' command takes one argument, the name of the item to
+  - The `place` command takes one argument, the name of the item to
     place.  The item is removed from the robot's inventory and placed
     in the robot's current cell (which must be empty).  Raises an
     exception if the operation fails.
-  - "The 'give' command takes two arguments: the robot to
+  - "The `give` command takes two arguments: the actor to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
-  - "The 'install' command takes two arguments: the robot
-    on which to install a device (which can be at most 1 cell away),
-    and the name of the device to install."
+  capabilities: [grab, give, place]
+  properties: [portable]
 
-  capabilities: [grab, give, place, install]
+- name: fast grabber
+  display:
+    attr: device
+    char: '≪'
+  description:
+  - A fast grabber is an improved version of the basic grabber - not only
+    can it 'grab', 'place', and 'give', it can also 'swap'.
+  - The 'swap' command allows the robot to execute grab and place at the
+    same time so that the location where the robot is standing does not
+    become empty.
+  - You can use this to prevent failures where multiple robots
+    are trying to grab, place or scan a given location.
+  - In addition you retain the capability to use the 'atomic' command,
+    with which you can implement other commands that are safe when
+    run in parallel.
+  capabilities: [grab, swap, give, place, atomic]
+  properties: [portable]
+
+- name: welder
+  display:
+    attr: device
+    char: 'f'
+  description:
+  - |
+    A welder can be used to affix other gadgets to one's robot, providing
+    the `equip` and `unequip` commands.
+  - |
+    The `equip` command takes one argument: the name of the device to equip.
+    Raises an exception if the device is not in your inventory.
+  - |
+    The `unequip` command takes one argument: the name of the device to unequip.
+    Raises an exception if the device is not equipped.
+  capabilities: [equip, unequip]
   properties: [portable]
 
 - name: harvester
@@ -614,13 +756,13 @@
     attr: device
     char: '≤'
   description:
-  - A harvester can be used via the 'harvest' command, which is
-    almost identical to the 'grab' command.  The big difference
+  - A harvester can be used via the `harvest` command, which is
+    almost identical to the `grab` command.  The big difference
     is that some entities, when harvested instead of grabbed,
     leave behind a seed which will eventually grow into another copy
     of the original entity.
-  - For entities which do not grow, 'harvest' behaves exactly the same
-    as 'grab'.
+  - For entities which do not grow, `harvest` behaves exactly the same
+    as `grab`.
   capabilities: [grab, harvest, place]
   properties: [portable]
 
@@ -629,13 +771,13 @@
     attr: device
     char: 'Ѣ'
   description:
-  - "A toolkit can be used, via the 'salvage' command, to take apart old robots."
-  - "'salvage' takes no arguments. It looks for an inactive
+  - "A toolkit can be used, via the `salvage` command, to take apart old robots."
+  - "`salvage` takes no arguments. It looks for an inactive
     robot (one which is not currently running a program) in the
     current cell. If an inactive robot is found, its log (if any) is
     downloaded and it is dismantled, transferring its knowledge, devices, and inventory to the
-    robot running 'salvage'.  If no inactive robots are found in the
-    current cell, 'salvage' does nothing."
+    robot running `salvage`.  If no inactive robots are found in the
+    current cell, `salvage` does nothing."
   capabilities: [salvage]
   properties: [portable]
 
@@ -671,12 +813,12 @@
   capabilities: [drill]
   properties: [portable]
 
-- name: printer
+- name: typewriter
   display:
     attr: device
     char: 'Д'
   description:
-  - A printer is used to inscribe symbols on paper, thus reifying pure, platonic
+  - A typewriter is used to inscribe symbols on paper, thus reifying pure, platonic
     information into a physical form.
   properties: [portable]
 
@@ -686,12 +828,12 @@
     char: '3'
   description:
   - A 3D printer gives you the capability of printing more robots! You
-    can access the 3D printer via the 'build' command.
+    can access the 3D printer via the `build` command.
   - 'Example:'
   - '  build {move; grab; turn back; move; give base "tree"}'
   - |
     builds a robot to get the tree on the cell to the
-    east (if there is one) and bring it back to the base. The 'build' command
+    north (if there is one) and bring it back to the base. The `build` command
     always returns a reference to the newly constructed robot. For example,
   - '  r <- build {move}; view r'
   - |
@@ -708,13 +850,13 @@
   description:
   - |
     A dictionary allows a robot to remember definitions and reuse them
-    later.  You can access this ability with either a 'def' command,
+    later.  You can access this ability with either a `def` command,
     which creates a name for an expression or command that is
-    available from then on, or with a 'let' expression, which names an
+    available from then on, or with a `let` expression, which names an
     expression or command locally within another expression.
-  - '  def m2 : cmd () = move; move end'
+  - '  def m2 : cmd unit = move; move end'
   - '  let x : int = 3 in x^2 + 2*x + 1'
-  - The type annotations in 'def' and 'let' are optional.
+  - The type annotations in `def` and `let` are optional.
 
   properties: [portable]
   capabilities: [env]
@@ -727,7 +869,7 @@
   - |
     A branch predictor is a device which allows a robot to interpret
     conditional expressions.  The syntax for a conditional expression
-    is 'if' followed by three arguments: a boolean test and then
+    is `if` followed by three arguments: a boolean test and then
     two delayed expressions (i.e. expressions in curly braces) of the same type.
   - 'Example:'
   - 'if (x > 3) {move} {turn right; move}'
@@ -740,7 +882,7 @@
     char: '*'
   description:
   - An explosive device which can be used to self-destruct, via the
-    'selfdestruct' command.  Immediately vaporizes the robot and any
+    `selfdestruct` command.  Immediately vaporizes the robot and any
     inventory it is carrying.  Can be useful, say, if you are sending
     out some exploratory robots and don't want them cluttering up the
     world once they are done.
@@ -765,15 +907,19 @@
     attr: device
     char: '$'
   description:
-  - "With a scanner device, robots can use the 'scan' command to learn
-    about their surroundings.  Simply give 'scan' a direction in which to scan,
+  - "With a scanner device, robots can use the `scan` command to learn
+    about their surroundings.  Simply give `scan` a direction in which to scan,
     and information about the scanned item (if any) will be added to the robot's
     inventory."
-  - "A scanner also enables the 'blocked' command, which returns a
+  - "A scanner also enables `blocked : cmd bool`, which returns a
      boolean value indicating whether the robot's path is blocked
-     (i.e. whether executing a 'move' command would fail)."
-  - "Finally, robots can use the 'upload' command to copy their accumulated
-    knowledge to another nearby robot; for example, 'upload base'."
+     (i.e. whether executing a `move` command would fail);
+     `ishere : text -> cmd bool` for checking whether the current
+     cell contains a particular entity; and `isempty : cmd bool` for
+     checking whether the current cell is empty of entities. Note that
+     `ishere` and `isempty` do not detect robots, only entities."
+  - "Finally, robots can use the `upload` command to copy their accumulated
+    knowledge to another nearby robot; for example, `upload base`."
   properties: [portable]
   capabilities: [scan, sensefront, sensehere]
 
@@ -786,7 +932,7 @@
     up to 8 pZ of data."
   - "Flash memory can be used as a component of other devices.  In addition,
      a flash memory device can be used to reprogram other robots using the
-     'reprogram' command."
+     `reprogram` command."
   - "The robot being reprogrammed must be idle, and must possess enough capabilities to run the new command;
      otherwise reprogramming will fail."
   properties: [portable]
@@ -798,9 +944,9 @@
     char: 'U'
   description:
   - "With a mirror, robots can reflect on themselves and see their own name."
-  - "A mirror enables the 'whoami' command, which returns the robot's
+  - "A mirror enables the `whoami` command, which returns the robot's
      name as a string."
-  - "It also enables the special 'self' variable, which gives a robot
+  - "It also enables the special `self` variable, which gives a robot
     a reference to itself."
   properties: [portable]
   capabilities: [whoami]
@@ -811,10 +957,26 @@
     char: 'l'
   description:
   - "Allows a robot to generate and store messages for later viewing,
-    using the 'log' command, which takes a string.  Log messages are
+    using the `log` command, which takes a string.  Log messages are
     also automatically generated by uncaught exceptions."
   properties: [portable]
   capabilities: [log]
+
+- name: hearing aid
+  display:
+    attr: device
+    char: '@'
+  description:
+  - "Allows a robot to hear anything being said nearby."
+  - "Simply having this device equipped will automatically
+     add messages said by nearby actors to this robot's log,
+     assuming it has a logger equipped."
+  - "That way you can view any heard message later either in
+     the logger or the message window."
+  - "To wait for a message and get the string value, use:"
+  - "`l <- listen; log $ \"I have waited for someone to say \" ++ l`"
+  properties: [portable]
+  capabilities: [listen]
 
 - name: counter
   display:
@@ -822,9 +984,9 @@
     char: 'C'
   description:
   - |
-    A counter enables the command 'count : string -> cmd int',
+    A counter enables the command `count : string -> cmd int`,
     which counts how many occurrences of an entity are currently
-    in the inventory.  This is an upgraded version of the 'has'
+    in the inventory.  This is an upgraded version of the `has`
     command, which returns a bool instead of an int and does
     not require any special device.
   properties: [portable]
@@ -841,14 +1003,55 @@
   properties: [portable]
   capabilities: [arith]
 
+- name: ADT calculator
+  display:
+    attr: device
+    char: '±'
+  description:
+  - |
+    A calculator with Advanced Display Technology (an attached
+    typewriter that can print out the results).  For some reason, in
+    addition to the usual arithmetic on numbers, an ADT calculator can
+    also do arithmetic on types!  After all, the helpful typewritten manual
+    explains, a type is just a collection of values, and a finite collection
+    of values is just a fancy number.  For example, the type `bool` is
+    just a fancy version of the number 2, where the two things happen to be
+    labelled `false` and `true`.
+  - |
+    The product of two types is a type of pairs, since, for example,
+    if `t` is a type with three elements, then there are 2 * 3 = 6
+    different pairs containing a `bool` and a `t`, that is, 6 elements
+    of type `bool * t`.  For working with products of types, the ADT
+    calculator enables pair syntax `(a, b)` as well as the projection
+    functions `fst : a * b -> a` and `snd : a * b -> b`.
+  - |
+    The sum of two types is a type with two options; for example, a
+    value of type `bool + t` is either a `bool` value or a `t` value,
+    and there are 2 + 3 = 5 such values.  For working with sums of
+    types, the ADT calculator provides the injection functions `inl :
+    a -> a + b` and `inr : b -> a + b`, as well as the case analysis
+    function `case : (a + b) -> (a -> c) -> (b -> c) -> c`.  For
+    example, `case (inl 3) (\x. 2*x) (\y. 3*y) == 6`, and `case (inr
+    3) (\x. 2*x) (\y. 3*y) == 9`.
+
+  properties: [portable]
+  capabilities: [arith, sum, prod]
+
 - name: compass
   display:
     attr: device
     char: 'N'
   description:
-  - "A compass gives a robot the ability to orient using cardinal directions: north, south, west, and east."
-  - "Example:"
-  - "turn west; move; turn north"
+  - |
+    A compass gives a robot the ability to orient using the cardinal
+    directions north, south, west, and east; for example, `turn west;
+    move; turn north`.
+  - |
+    It also enables the `heading : cmd dir` command, which returns the
+    robot's current heading. For example, the following code moves
+    east and then restores the same heading as before:
+  - |
+    d <- heading; turn east; move; turn d
   properties: [portable]
   capabilities: [orient]
 
@@ -857,11 +1060,11 @@
     attr: device
     char: '0'
   description:
-  - A clock is a device for keeping track of time.  It enables the 'wait' and 'time' commands.
+  - A clock is a device for keeping track of time.  It enables the `wait` and `time` commands.
   - |
-    'time : cmd int' returns the current time, measured in game ticks since the beginning of the game.
+    `time : cmd int` returns the current time, measured in game ticks since the beginning of the game.
   - |
-    'wait : int -> cmd ()' causes a robot to sleep for a specified amount of time (measured in game ticks).
+    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
   capabilities: [time]
 
@@ -881,7 +1084,7 @@
     attr: device
     char: 'Ю'
   description:
-  - An I/O cable can be used to communicate with an adjacent robot.
+  - An I/O cable can be used to communicate with adjacent actors.
   properties: [portable]
 
 - name: rubber band
@@ -890,19 +1093,69 @@
     char: 'O'
   description:
   - "A rubber band can tie multiple commands together so that other robots can't execute
-    commands in between them.  It can be used via the 'atomic' command. For example, suppose
+    commands in between them.  It can be used via the `atomic` command. For example, suppose
     robot A executes the following code:"
   - |
     b <- ishere "rock"; if b {grab} {}
 
-  - "This seems like a safe way to execute 'grab' only when there is a
-    rock to grab.  However, it is actually possible for the 'grab' to
+  - "This seems like a safe way to execute `grab` only when there is a
+    rock to grab.  However, it is actually possible for the `grab` to
     fail, if some other robot B snatches the rock right after robot A sensed
-    it and before robot A got around to grab it on the next game tick."
-  - This will make robot A very sad and it will crash.
-  - "To prevent this situation, robot A can wrap the commands in 'atomic', like so:"
+    it and before robot A got around to grabbing it on the next game tick."
+  - "This will make robot A very sad and it will crash."
+  - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
   - |
     atomic (b <- ishere "rock"; if b {grab} {})
 
   properties: [portable]
   capabilities: [atomic]
+
+- name: net
+  display:
+    attr: silver
+    char: '#'
+  description:
+  - A net is a device woven out of many strings.  With a net
+    equipped, you can use the `try` command to catch errors. For example,
+  - |
+    `try {move} {turn left}`
+  - will attempt to move, but if that fails, turn left instead.
+  properties: [portable]
+  capabilities: [try]
+
+- name: antenna
+  display:
+    attr: silver
+    char: 'Y'
+  description:
+  - A device for transforming electric current into radio waves, and
+    vice versa.
+  - |
+    It can be used to locate nearby actors, by bouncing radio
+    waves off them and listening for the echo.  This capability can be
+    accessed via two commands:
+  - |
+    `meet : cmd (() + actor)` tries to locate a
+    nearby actor (a robot, or... something else?) up to one cell away.
+    It returns a reference to the nearest actor, or a unit value if
+    none are found.
+  - |
+    `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
+    every nearby actor (other than oneself), folding over the results
+    to compute a final result of type `b`.  For example, if `x`, `y`,
+    and `z` are nearby actors, then `meetAll f b0` is equivalent to
+    `b1 <- f b0 x; b2 <- f b1 y; f b2 z`.
+  properties: [portable]
+  capabilities: [meet]
+
+- name: GPS receiver
+  display:
+    attr: device
+    char: 'G'
+  description:
+  - |
+    A GPS receiver triangulates your current (x,y) coordinates from
+    some convenient satellite signals,
+    enabling the command `whereami : cmd (int * int)`.
+  properties: [portable]
+  capabilities: [senseloc]

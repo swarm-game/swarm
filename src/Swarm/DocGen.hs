@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Swarm.DocGen (
   generateDocs,
@@ -14,39 +15,49 @@ module Swarm.DocGen (
   editorList,
 
   -- ** Wiki pages
+  PageAddress (..),
   commandsPage,
+  capabilityPage,
+  noPageAddresses,
 ) where
 
+import Control.Arrow (left)
 import Control.Lens (view, (^.))
+import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_, (<=<))
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Except (ExceptT, liftIO, runExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
-import Data.Foldable (toList)
+import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy (Map)
 import Data.Map.Lazy qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, loadEntities)
+import Data.Yaml (decodeFileEither)
+import Data.Yaml.Aeson (prettyPrintParseException)
+import Swarm.Game.Display (displayChar)
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements)
-import Swarm.Game.Robot (installedDevices, instantiateRobot, robotInventory)
+import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
+import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
-import Swarm.Language.Capability (capabilityName, constCaps)
+import Swarm.Language.Capability (Capability)
+import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (isRightOr)
+import Swarm.Util (getDataFileNameSafe, isRightOr, listEnums, quote)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
+import Witch (from)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -61,7 +72,7 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
-  CheatSheet :: Maybe SheetType -> GenerateDocs
+  CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
@@ -69,6 +80,17 @@ data EditorType = Emacs | VSCode
 
 data SheetType = Entities | Commands | Capabilities | Recipes
   deriving (Eq, Show, Enum, Bounded)
+
+data PageAddress = PageAddress
+  { entityAddress :: Text
+  , commandsAddress :: Text
+  , capabilityAddress :: Text
+  , recipesAddress :: Text
+  }
+  deriving (Eq, Show)
+
+noPageAddresses :: PageAddress
+noPageAddresses = PageAddress "" "" "" ""
 
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
@@ -83,12 +105,24 @@ generateDocs = \case
               putStrLn $ "-- " <> show et
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
-        mapM_ editorGen [minBound .. maxBound]
-  CheatSheet s -> case s of
-    Nothing -> error "Not implemented"
+        mapM_ editorGen listEnums
+  CheatSheet address s -> case s of
+    Nothing -> error "Not implemented for all Wikis"
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
-      _ -> error "Not implemented"
+      Capabilities -> simpleErrorHandle $ do
+        entities <- loadEntities >>= guardRight "load entities"
+        liftIO $ T.putStrLn $ capabilityPage address entities
+      Entities -> simpleErrorHandle $ do
+        let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
+        let f = "entities.yaml"
+        Just fileName <- liftIO $ getDataFileNameSafe f
+        entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
+        liftIO $ T.putStrLn $ entitiesPage address entities
+      Recipes -> simpleErrorHandle $ do
+        entities <- loadEntities >>= guardRight "load entities"
+        recipes <- loadRecipes entities >>= guardRight "load recipes"
+        liftIO $ T.putStrLn $ recipePage address recipes
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -127,8 +161,6 @@ editorList :: EditorType -> [Text] -> Text
 editorList = \case
   Emacs -> T.unlines . map (("  " <>) . quote)
   VSCode -> T.intercalate "|"
- where
-  quote = T.cons '"' . flip T.snoc '"'
 
 constSyntax :: Const -> Text
 constSyntax = Syntax.syntax . Syntax.constInfo
@@ -175,6 +207,12 @@ listToRow mw xs = wrap '|' . T.intercalate "|" $ zipWith format mw xs
 maxWidths :: [[Text]] -> [Int]
 maxWidths = map (maximum . map T.length) . transpose
 
+addLink :: Text -> Text -> Text
+addLink l t = T.concat ["[", t, "](", l, ")"]
+
+tshow :: Show a => a -> Text
+tshow = T.pack . show
+
 -- ---------
 -- COMMANDS
 -- ---------
@@ -186,13 +224,11 @@ commandToList :: Const -> [Text]
 commandToList c =
   map
     escapeTable
-    [ addLink (T.pack $ "#" <> show c) . codeQuote $ constSyntax c
+    [ addLink ("#" <> tshow c) . codeQuote $ constSyntax c
     , codeQuote . prettyText $ inferConst c
-    , maybe "" capabilityName $ constCaps c
+    , maybe "" Capability.capabilityName $ Capability.constCaps c
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
     ]
- where
-  addLink l t = T.concat ["[", t, "](", l, ")"]
 
 constTable :: [Const] -> Text
 constTable cs = T.unlines $ header <> map (listToRow mw) commandRows
@@ -208,7 +244,7 @@ commandToSection c =
     , ""
     , "- syntax: " <> codeQuote (constSyntax c)
     , "- type: " <> (codeQuote . prettyText $ inferConst c)
-    , maybe "" (("- required capabilities: " <>) . capabilityName) $ constCaps c
+    , maybe "" (("- required capabilities: " <>) . Capability.capabilityName) $ Capability.constCaps c
     , ""
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
     ]
@@ -229,6 +265,136 @@ commandsPage =
     ]
       <> map commandToSection (commands <> builtinFunctions <> operators)
 
+-- -------------
+-- CAPABILITIES
+-- -------------
+
+capabilityHeader :: [Text]
+capabilityHeader = ["Name", "Commands", "Entities"]
+
+capabilityRow :: PageAddress -> EntityMap -> Capability -> [Text]
+capabilityRow PageAddress {..} em cap =
+  map
+    escapeTable
+    [ Capability.capabilityName cap
+    , T.intercalate ", " (linkCommand <$> cs)
+    , T.intercalate ", " (linkEntity . view entityName <$> es)
+    ]
+ where
+  linkEntity t =
+    if T.null entityAddress
+      then t
+      else addLink (entityAddress <> "#" <> T.replace " " "-" t) t
+  linkCommand c =
+    ( if T.null commandsAddress
+        then id
+        else addLink (commandsAddress <> "#" <> tshow c)
+    )
+      . codeQuote
+      $ constSyntax c
+
+  cs = [c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
+  es = fromMaybe [] $ E.entitiesByCap em Map.!? cap
+
+capabilityTable :: PageAddress -> EntityMap -> [Capability] -> Text
+capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRows
+ where
+  mw = maxWidths (capabilityHeader : capabilityRows)
+  capabilityRows = map (capabilityRow a em) cs
+  header = [listToRow mw capabilityHeader, separatingLine mw]
+
+capabilityPage :: PageAddress -> EntityMap -> Text
+capabilityPage a em = capabilityTable a em listEnums
+
+-- ---------
+-- Entities
+-- ---------
+
+entityHeader :: [Text]
+entityHeader = ["?", "Name", "Capabilities", "Properties*", "Portable"]
+
+entityToList :: Entity -> [Text]
+entityToList e =
+  map
+    escapeTable
+    [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
+    , addLink ("#" <> linkID) $ view entityName e
+    , T.intercalate ", " $ Capability.capabilityName <$> Set.toList (view E.entityCapabilities e)
+    , T.intercalate ", " . map tshow . filter (/= E.Portable) $ toList props
+    , if E.Portable `elem` props
+        then ":heavy_check_mark:"
+        else ":negative_squared_cross_mark:"
+    ]
+ where
+  props = view E.entityProperties e
+  linkID = T.replace " " "-" $ view entityName e
+
+entityTable :: [Entity] -> Text
+entityTable es = T.unlines $ header <> map (listToRow mw) entityRows
+ where
+  mw = maxWidths (entityHeader : entityRows)
+  entityRows = map entityToList es
+  header = [listToRow mw entityHeader, separatingLine mw]
+
+entityToSection :: Entity -> Text
+entityToSection e =
+  T.unlines $
+    [ "## " <> view E.entityName e
+    , ""
+    , " - Char: " <> (codeQuote . T.singleton $ e ^. entityDisplay . to displayChar)
+    ]
+      <> [" - Properties: " <> T.intercalate ", " (map tshow $ toList props) | not $ null props]
+      <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
+      <> ["\n"]
+      <> [T.intercalate "\n\n" $ view E.entityDescription e]
+ where
+  props = view E.entityProperties e
+  caps = Set.toList $ view E.entityCapabilities e
+
+entitiesPage :: PageAddress -> [Entity] -> Text
+entitiesPage _a es =
+  T.intercalate "\n\n" $
+    [ "# Entities"
+    , "This is a quick-overview table of entities - click the name for detailed description."
+    , "*) As a note, most entities have the Portable property, so we show it in a separate column."
+    , entityTable es
+    ]
+      <> map entityToSection es
+
+-- -------------
+-- RECIPES
+-- -------------
+
+recipeHeader :: [Text]
+recipeHeader = ["In", "Out", "Required", "Time", "Weight"]
+
+recipeRow :: PageAddress -> Recipe Entity -> [Text]
+recipeRow PageAddress {..} r =
+  map
+    escapeTable
+    [ T.intercalate ", " (map formatCE $ view recipeInputs r)
+    , T.intercalate ", " (map formatCE $ view recipeOutputs r)
+    , T.intercalate ", " (map formatCE $ view recipeRequirements r)
+    , tshow $ view recipeTime r
+    , tshow $ view recipeWeight r
+    ]
+ where
+  formatCE (c, e) = T.unwords [tshow c, linkEntity $ view entityName e]
+  linkEntity t =
+    if T.null entityAddress
+      then t
+      else addLink (entityAddress <> "#" <> T.replace " " "-" t) t
+
+recipeTable :: PageAddress -> [Recipe Entity] -> Text
+recipeTable a rs = T.unlines $ header <> map (listToRow mw) recipeRows
+ where
+  mw = maxWidths (recipeHeader : recipeRows)
+  recipeRows = map (recipeRow a) rs
+  header = [listToRow mw recipeHeader, separatingLine mw]
+
+recipePage :: PageAddress -> [Recipe Entity] -> Text
+recipePage = recipeTable
+
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
 -- ----------------------------------------------------------------------------
@@ -247,9 +413,9 @@ recipesToDot classic emap recipes = do
   world <- diamond "World"
   base <- diamond "Base"
   -- --------------------------------------------------------------------------
-  -- add nodes with for all the known entites
+  -- add nodes with for all the known entities
   let enames' = toList . Map.keysSet . entitiesByName $ emap
-      enames = filter (`Set.notMember` ignoredEntites) enames'
+      enames = filter (`Set.notMember` ignoredEntities) enames'
   ebmap <- Map.fromList . zip enames <$> mapM (box . unpack) enames
   -- --------------------------------------------------------------------------
   -- getters for the NodeId based on entity name or the whole entity
@@ -257,7 +423,7 @@ recipesToDot classic emap recipes = do
       getE = safeGetEntity ebmap
       nid = getE . view entityName
   -- --------------------------------------------------------------------------
-  -- Get the starting inventories, entites present in the world and compute
+  -- Get the starting inventories, entities present in the world and compute
   -- how hard each entity is to get - see 'recipeLevels'.
   let devs = startingDevices classic
       inv = startingInventory classic
@@ -271,13 +437,13 @@ recipesToDot classic emap recipes = do
     mapM_ ((base ---<>) . nid) devs
     mapM_ ((base .->.) . nid . fst) $ Map.toList inv
   -- --------------------------------------------------------------------------
-  -- World entites
+  -- World entities
   (_wc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "forestgreen")
     mapM_ ((uncurry (Dot..->.) . (world,)) . getE) (toList testWorld2Entites)
   -- --------------------------------------------------------------------------
-  let -- put a hidden node above and below entites and connect them by hidden edges
+  let -- put a hidden node above and below entities and connect them by hidden edges
       wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
       wrapBelowAbove ns = do
         b <- hiddenNode
@@ -286,7 +452,7 @@ recipesToDot classic emap recipes = do
         mapM_ (b .~>.) ns'
         mapM_ (.~>. t) ns'
         return (b, t)
-      -- put set of entites in nice
+      -- put set of entities in nice
       subLevel :: Int -> Set Entity -> Dot (NodeId, NodeId)
       subLevel i ns = fmap snd . Dot.cluster $ do
         Dot.attribute ("style", "filled")
@@ -303,7 +469,7 @@ recipesToDot classic emap recipes = do
             ]
         return bt
   -- --------------------------------------------------------------------------
-  -- order entites into clusters based on how "far" they are from
+  -- order entities into clusters based on how "far" they are from
   -- what is available at the start - see 'recipeLevels'.
   bottom <- wrapBelowAbove worldEntites
   ls <- zipWithM subLevel [1 ..] (tail levels)
@@ -327,14 +493,14 @@ recipesToDot classic emap recipes = do
 -- RECIPE LEVELS
 -- ----------------------------------------------------------------------------
 
--- | Order entites in sets depending on how soon it is possible to obtain them.
+-- | Order entities in sets depending on how soon it is possible to obtain them.
 --
 -- So:
---  * Level 0 - starting entites (for example those obtainable in the world)
+--  * Level 0 - starting entities (for example those obtainable in the world)
 --  * Level N+1 - everything possible to make (or drill) from Level N
 --
--- This is almost a BFS, but the requirement is that the set of entites
--- required for recipe is subset of the entites known in Level N.
+-- This is almost a BFS, but the requirement is that the set of entities
+-- required for recipe is subset of the entities known in Level N.
 --
 -- If we ever depend on some graph library, this could be rewritten
 -- as some BFS-like algorithm with added recipe nodes, but you would
@@ -356,21 +522,21 @@ recipeLevels recipes start = levels
             then ls
             else go (n : ls) (Set.union n known)
 
--- | Get classic scenario to figure out starting entites.
+-- | Get classic scenario to figure out starting entities.
 classicScenario :: ExceptT Text IO Scenario
 classicScenario = do
   entities <- loadEntities >>= guardRight "load entities"
-  loadScenario "data/scenarios/classic.yaml" entities
+  fst <$> loadScenario "data/scenarios/classic.yaml" entities
 
 startingDevices :: Scenario -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view installedDevices . instantiateRobot 0 . head . view scenarioRobots
+startingDevices = Set.fromList . map snd . E.elems . view equippedDevices . instantiateRobot 0 . head . view scenarioRobots
 
 startingInventory :: Scenario -> Map Entity Int
 startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots
 
--- | Ignore utility entites that are just used for tutorials and challenges.
-ignoredEntites :: Set Text
-ignoredEntites =
+-- | Ignore utility entities that are just used for tutorials and challenges.
+ignoredEntities :: Set Text
+ignoredEntities =
   Set.fromList
     [ "upper left corner"
     , "upper right corner"

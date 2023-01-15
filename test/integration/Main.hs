@@ -5,7 +5,7 @@
 -- | Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (^.), (^?!))
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
 import Control.Monad (filterM, forM_, unless, void, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
@@ -15,6 +15,7 @@ import Data.Foldable (Foldable (toList), find)
 import Data.IntSet qualified as IS
 import Data.Map qualified as M
 import Data.Maybe (isJust)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -23,13 +24,15 @@ import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (leText, machine, robotLog, waitingUntil)
+import Swarm.Game.Robot (LogEntry, defReqs, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
   WinCondition (Won),
   activeRobots,
+  baseRobot,
   initGameStateForScenario,
+  messageQueue,
   robotMap,
   ticks,
   waitingRobots,
@@ -38,14 +41,13 @@ import Swarm.Game.State (
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -122,6 +124,8 @@ time = \case
   sec :: Int
   sec = 10 ^ (6 :: Int)
 
+data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
+
 testScenarioSolution :: Bool -> EntityMap -> TestTree
 testScenarioSolution _ci _em =
   testGroup
@@ -129,17 +133,16 @@ testScenarioSolution _ci _em =
     [ testGroup
         "Tutorial"
         [ testSolution Default "Tutorials/backstory"
-        , testSolution Default "Tutorials/move"
-        , testSolution Default "Tutorials/turn"
+        , testSolution (Sec 3) "Tutorials/move"
         , testSolution Default "Tutorials/craft"
         , testSolution Default "Tutorials/grab"
         , testSolution Default "Tutorials/place"
         , testSolution Default "Tutorials/types"
         , testSolution Default "Tutorials/type-errors"
-        , testSolution Default "Tutorials/bind"
-        , testSolution Default "Tutorials/install"
+        , testSolution Default "Tutorials/equip"
         , testSolution Default "Tutorials/build"
-        , testSolution' Default "Tutorials/crash" $ \g -> do
+        , testSolution Default "Tutorials/bind2"
+        , testSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints rs
@@ -148,27 +151,36 @@ testScenarioSolution _ci _em =
         , testSolution Default "Tutorials/def"
         , testSolution Default "Tutorials/lambda"
         , testSolution Default "Tutorials/require"
-        , testSolution Default "Tutorials/requireinv"
+        , testSolution (Sec 3) "Tutorials/requireinv"
         , testSolution Default "Tutorials/conditionals"
         , testSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
-        , testSolution Default "Challenges/test"
         , testSolution Default "Challenges/teleport"
+        , testSolution (Sec 5) "Challenges/2048"
+        , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 10) "Challenges/hanoi"
+        , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
-            [ testSolution Default "Challenges/Mazes/invisible_maze"
+            [ testSolution Default "Challenges/Mazes/easy_cave_maze"
+            , testSolution Default "Challenges/Mazes/easy_spiral_maze"
+            , testSolution Default "Challenges/Mazes/invisible_maze"
             , testSolution Default "Challenges/Mazes/loopy_maze"
+            ]
+        , testGroup
+            "Ranching"
+            [ testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         ]
     , testGroup
         "Regression tests"
-        [ expectFailBecause "Awaiting fix (#394)" $
-            testSolution Default "Testing/394-build-drill"
+        [ testSolution Default "Testing/394-build-drill"
+        , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
-        , testSolution' Default "Testing/475-wait-one" $ \g -> do
+        , testSolution' Default "Testing/475-wait-one" CheckForBadErrors $ \g -> do
             let t = g ^. ticks
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
@@ -181,22 +193,46 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/504-teleport-self"
         , testSolution Default "Testing/508-capability-subset"
         , testGroup
+            "Possession criteria (#858)"
+            [ testSolution Default "Testing/858-inventory/858-possession-objective"
+            , testSolution Default "Testing/858-inventory/858-counting-objective"
+            , testSolution Default "Testing/858-inventory/858-nonpossession-objective"
+            ]
+        , testGroup
             "Require (#201)"
             [ testSolution Default "Testing/201-require/201-require-device"
             , testSolution Default "Testing/201-require/201-require-device-creative"
             , testSolution Default "Testing/201-require/201-require-device-creative1"
             , testSolution Default "Testing/201-require/201-require-entities"
-            , expectFailBecause "Awaiting fix (#540)" $
-                testSolution Default "Testing/201-require/201-require-entities-def"
+            , testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
             ]
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
         , testSolution Default "Testing/555-teleport-location"
-        , expectFailBecause "Awaiting fix (#540)" $
-            testSolution (Sec 10) "Testing/562-lodestone"
+        , testSolution Default "Testing/562-lodestone"
         , testSolution Default "Testing/378-objectives"
+        , testSolution Default "Testing/684-swap"
+        , testSolution Default "Testing/699-movement-fail/699-move-blocked"
+        , testSolution Default "Testing/699-movement-fail/699-move-liquid"
+        , testSolution Default "Testing/699-movement-fail/699-teleport-blocked"
+        , testSolution Default "Testing/710-multi-robot"
+        , testSolution Default "Testing/920-meet"
+        , testSolution Default "Testing/955-heading"
+        , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
+            let msgs =
+                  (g ^. messageQueue . to seqToTexts)
+                    <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
+
+            assertBool "Should be some messages" (not (null msgs))
+            assertBool "Error messages should not mention treads" $
+              not (any ("treads" `T.isInfixOf`) msgs)
+            assertBool "Error message should mention GPS receiver" $
+              any ("GPS receiver" `T.isInfixOf`) msgs
+        , testSolution Default "Testing/961-custom-capabilities"
+        , testSolution Default "Testing/956-GPS"
+        , testSolution Default "Testing/958-isempty"
         ]
     ]
  where
@@ -204,23 +240,31 @@ testScenarioSolution _ci _em =
   -- expectFailIf b = if b then expectFailBecause else (\_ x -> x)
 
   testSolution :: Time -> FilePath -> TestTree
-  testSolution s p = testSolution' s p (const $ pure ())
+  testSolution s p = testSolution' s p CheckForBadErrors (const $ pure ())
 
-  testSolution' :: Time -> FilePath -> (GameState -> Assertion) -> TestTree
-  testSolution' s p verify = testCase p $ do
-    Right gs <- runExceptT $ initGameStateForScenario p Nothing Nothing
-    case gs ^. winSolution of
-      Nothing -> assertFailure "No solution to test!"
-      Just sol -> do
-        let gs' = gs & robotMap . ix 0 . machine .~ initMachine sol Ctx.empty emptyStore
-        m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
-        case m of
-          Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
-          Just g -> do
-            -- When debugging, try logging all robot messages.
-            -- printAllLogs
-            noBadErrors g
-            verify g
+  testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
+  testSolution' s p shouldCheckBadErrors verify = testCase p $ do
+    out <- runExceptT $ initGameStateForScenario p Nothing Nothing
+    case out of
+      Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
+      Right gs -> case gs ^. winSolution of
+        Nothing -> assertFailure "No solution to test!"
+        Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
+          let gs' =
+                gs
+                  -- See #827 for an explanation of why it's important to add to
+                  -- the robotContext defReqs here (and also why this will,
+                  -- hopefully, eventually, go away).
+                  & baseRobot . robotContext . defReqs <>~ reqCtx
+                  & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+          m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
+          case m of
+            Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
+            Just g -> do
+              -- When debugging, try logging all robot messages.
+              -- printAllLogs
+              when (shouldCheckBadErrors == CheckForBadErrors) $ noBadErrors g
+              verify g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
@@ -238,10 +282,14 @@ noBadErrors g = do
 badErrorsInLogs :: GameState -> [Text]
 badErrorsInLogs g =
   concatMap
-    (\r -> filter isBad (view leText <$> toList (r ^. robotLog)))
+    (\r -> filter isBad (seqToTexts $ r ^. robotLog))
     (g ^. robotMap)
+    <> filter isBad (seqToTexts $ g ^. messageQueue)
  where
   isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
+
+seqToTexts :: Seq LogEntry -> [Text]
+seqToTexts = map (view leText) . toList
 
 printAllLogs :: GameState -> IO ()
 printAllLogs g =

@@ -15,13 +15,13 @@ def iterate = \state.\com.
 end;
 
 // At the beginning all robots can be given Win.
-def allOK: robot -> bool = \rob.
+def allOK: actor -> bool = \rob.
   true
 end;
 
 // Try to give a robot a Win, filtering out those that were already given a Win.
 // The robot will also receive instructions, so it **must have a logger!**
-def tryGive: string -> (robot -> bool) -> int -> cmd (robot -> bool) = \msg.\f.\i.
+def tryGive: text -> (actor -> bool) -> int -> cmd (actor -> bool) = \msg.\f.\i.
   r <- try {
     robotNumbered i;
   } {
@@ -59,7 +59,7 @@ end;
 log "Hi, I am secret";
 iterate allOK (foreachF 1 16 $ tryGive
   $ "Send a robot to `salvage` me and come back to `give base \"Win\"`.\n"
-  ++ "When the rescue robot stands where I am and executes `salvage`,"
-  ++ "all my inventory and logs will go to it, namely the \"Win\".\n"
+  ++ "When the rescue robot stands where I am and executes `salvage`,\n"
+  ++ "all my inventory and logs will go to it, including the \"Win\".\n"
   ++ "Once you have brought the \"Win\" to your base, you will win!"
 )

@@ -1,3 +1,4 @@
+version: 1
 name: First steps
 description: |
   Learn some of the first steps you might take on the new planet.
@@ -9,7 +10,7 @@ objectives:
         of the commands and techniques you have learned in the
         previous tutorial challenges.
       - You can see that your base starts out with some key devices
-        installed and some basic supplies for building robots.  To
+        equipped and some basic supplies for building robots.  To
         build more advanced devices and produce more robots,
         you'll need to explore, gather resources, and set up some
         automated production pipelines.
@@ -45,7 +46,7 @@ objectives:
         define and use parameterized commands.  Scan some things and use
         the process of elimination to find one.  Since lambdas regrow,
         once you find one, try getting it with `harvest`.
-      - "TIP: remember that you can click on a cells in the world to see their
+      - "TIP: remember that you can click on cells in the world to see their
         coordinates."
     condition: |
       try { as base {has "lambda"} } {return false}
@@ -60,6 +61,7 @@ robots:
       - 3D printer
       - dictionary
       - grabber
+      - welder
       - life support system
       - logger
       - toolkit

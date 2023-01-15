@@ -14,6 +14,8 @@
 module Swarm.Language.Pretty where
 
 import Control.Lens.Combinators (pattern Empty)
+import Control.Unification
+import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.String (fromString)
@@ -22,16 +24,12 @@ import Data.Text qualified as T
 import Prettyprinter
 import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
-import Witch
-
-import Control.Unification
-import Control.Unification.IntVar
-
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
+import Witch
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -57,12 +55,13 @@ pparens True = parens
 pparens False = id
 
 instance PrettyPrec BaseTy where
-  prettyPrec _ BUnit = "()"
+  prettyPrec _ BVoid = "void"
+  prettyPrec _ BUnit = "unit"
   prettyPrec _ BInt = "int"
   prettyPrec _ BDir = "dir"
-  prettyPrec _ BString = "string"
+  prettyPrec _ BText = "text"
   prettyPrec _ BBool = "bool"
-  prettyPrec _ BRobot = "robot"
+  prettyPrec _ BActor = "actor"
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
@@ -118,13 +117,13 @@ instance PrettyPrec Term where
   prettyPrec _ (TDir d) = ppr d
   prettyPrec _ (TInt n) = pretty n
   prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
-  prettyPrec _ (TString s) = fromString (show s)
-  prettyPrec _ (TAntiString v) = "$str:" <> pretty v
+  prettyPrec _ (TText s) = fromString (show s)
+  prettyPrec _ (TAntiText v) = "$str:" <> pretty v
   prettyPrec _ (TBool b) = bool "false" "true" b
-  prettyPrec _ (TRobot r) = "<r" <> pretty r <> ">"
+  prettyPrec _ (TRobot r) = "<a" <> pretty r <> ">"
   prettyPrec _ (TRef r) = "@" <> pretty r
-  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TString d)
-  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TString e)
+  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TText d)
+  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TText e)
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t

@@ -41,13 +41,13 @@ import Control.Lens hiding (Const, from, (.=))
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
-
+import Data.Maybe (fromMaybe, isJust)
 import Data.Yaml
 import GHC.Generics (Generic)
-
-import Swarm.Language.Syntax (Direction (..))
-import Swarm.TUI.Attr (entityAttr, robotAttr)
-import Swarm.Util (maxOn, (?))
+import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..))
+import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
+import Swarm.Util (maxOn)
+import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
@@ -60,7 +60,7 @@ instance Hashable AttrName
 -- | A record explaining how to display an entity in the TUI.
 data Display = Display
   { _defaultChar :: Char
-  , _orientationMap :: Map Direction Char
+  , _orientationMap :: Map AbsoluteDir Char
   , _curOrientation :: Maybe Direction
   , _displayAttr :: AttrName
   , _displayPriority :: Priority
@@ -83,7 +83,7 @@ defaultChar :: Lens' Display Char
 --   optionally associates different display characters with
 --   different orientations.  If an orientation is not in the map,
 --   the 'defaultChar' will be used.
-orientationMap :: Lens' Display (Map Direction Char)
+orientationMap :: Lens' Display (Map AbsoluteDir Char)
 
 -- | The display caches the current orientation of the entity, so we
 --   know which character to use from the orientation map.
@@ -100,14 +100,21 @@ displayPriority :: Lens' Display Priority
 invisible :: Lens' Display Bool
 
 instance FromJSON Display where
-  parseJSON = withObject "Display" $ \v ->
-    Display
-      <$> v .:? "char" .!= ' '
-      <*> v .:? "orientationMap" .!= M.empty
-      <*> v .:? "curOrientation"
-      <*> v .:? "attr" .!= entityAttr
-      <*> v .:? "priority" .!= 1
-      <*> v .:? "invisible" .!= False
+  parseJSON v = runE (parseJSONE v) (defaultEntityDisplay ' ')
+
+instance FromJSONE Display Display where
+  parseJSONE = withObjectE "Display" $ \v -> do
+    defD <- getE
+    mc <- liftE $ v .:? "char"
+    let c = fromMaybe (defD ^. defaultChar) mc
+    let dOM = if isJust mc then mempty else defD ^. orientationMap
+    liftE $
+      Display c
+        <$> v .:? "orientationMap" .!= dOM
+        <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
+        <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= (defD ^. displayAttr)
+        <*> v .:? "priority" .!= (defD ^. displayPriority)
+        <*> v .:? "invisible" .!= (defD ^. invisible)
 
 instance ToJSON Display where
   toJSON d =
@@ -121,9 +128,9 @@ instance ToJSON Display where
 
 -- | Look up the character that should be used for a display.
 displayChar :: Display -> Char
-displayChar disp = case disp ^. curOrientation of
-  Nothing -> disp ^. defaultChar
-  Just dir -> M.lookup dir (disp ^. orientationMap) ? (disp ^. defaultChar)
+displayChar disp = fromMaybe (disp ^. defaultChar) $ do
+  DAbsolute d <- disp ^. curOrientation
+  M.lookup d (disp ^. orientationMap)
 
 -- | Render a display as a UI widget.
 renderDisplay :: Display -> Widget n
@@ -160,7 +167,7 @@ defaultEntityDisplay c =
 --   priority 10.
 --
 --   Note that the 'defaultChar' is used for direction 'DDown'
---   and is overriden for the special base robot.
+--   and is overridden for the special base robot.
 defaultRobotDisplay :: Display
 defaultRobotDisplay =
   Display

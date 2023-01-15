@@ -15,6 +15,7 @@
 # This may work slightly less well once we implement #502, but I think it should
 # still work.
 
+version: 1
 name: Grab/harvest/place (with race)
 description: |
   Make sure we can cause a robot to crash due to a race condition, in order to

@@ -1,0 +1,94 @@
+version: 1
+name: Spiral shaped maze
+author: Ondřej Šebek
+description: A maze shaped like a spiral, with a twist!
+objectives:
+- goal:
+  - You find yourself in the middle of a large maze.
+  - It's straightforward to get out, but the path is long and dull.
+  - You need to send a robot to the goal square, labelled with an exclamation mark;
+    you win by `grab`bing the `goal`.
+  - Beware! The winding corridors are wider then they look!
+  condition: |
+    j <- robotNamed "judge";
+    as j {has "goal"}
+solution: |
+  def until = \p. \c. b <- p; if b {} {c; until p c} end;
+  def fwd = until blocked move end;
+  build {
+    turn west;
+    until (ishere "goal") (fwd; turn right);
+    grab
+  }
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: 'Ω'
+      attr: robot
+    devices:
+      - dictionary
+      - 3D printer
+      - logger
+      - grabber
+    inventory:
+      - [50, solar panel]
+      - [50, treads]
+      - [50, compass]
+      - [50, scanner]
+      - [50, lambda]
+      - [50, branch predictor]
+      - [50, strange loop]
+      - [50, logger]
+      - [50, grabber]
+      - [0, goal]
+  - name: judge
+    dir: [0,0]
+    system: true
+    program: |
+      def until = \c. b <- c; if b {} {until c} end;
+      until (d <- scan down; return (d == inl ()));
+      create "goal"
+entities:
+  - name: wall
+    display:
+      char: █
+      attr: rock
+    description:
+    - An impassable stone wall.
+    properties: [unwalkable, known]
+  - name: goal
+    display:
+      char: '!'
+      attr: device
+    description:
+    - The place you're trying to reach!  You win by executing `grab` on this item.
+    properties: [known, portable]
+world:
+  default: [ice]
+  palette:
+    'Ω': [stone, null, base]
+    ' ': [stone, null]
+    '█': [stone, wall]
+    '!': [stone, goal, judge]
+  upperleft: [0,0]
+  map: |
+    ████████████████████████████████████
+    ██                                ██
+    ██  ████████████████████████████  ██
+    ██  ██                        ██  ██
+    ██  ██  ████████████████████  ██  ██
+    ██  ██  ██                ██  ██  ██
+    ██  ██  ██  ████████████  ██  ██  ██
+    ██  ██  ██  ██        ██  ██  ██  ██
+    ██  ██  ██  ██  ████  ██  ██  ██  ██
+    ██  ██  ██  ██   Ω██  ██  ██  ██  ██
+    ██  ██  ██  ████████  ██  ██  ██  ██
+    ██  ██  ██            ██  ██  ██  ██
+    ██  ██  ████████████████  ██  ██  ██
+    ██  ██                    ██  ██  ██
+    ██  ████████████████████████  ██  ██
+    ██                            ██  ██
+    ████████████████████████████████  ██
+    █!                                ██
+    ████████████████████████████████████

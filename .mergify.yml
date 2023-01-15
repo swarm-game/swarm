@@ -1,8 +1,19 @@
 queue_rules:
   - name: default
     conditions:
-      - check-success=Haskell-CI - Linux - ghc-9.0.2
-      - check-success=Haskell-CI - Linux - ghc-8.10.7
+      - or:
+        - and:
+          - -files~=\.hs$
+          - -files~=\.sw$
+          - -files~=\.cabal$
+          - -files=stack.yaml
+          - -files~=cabal.project.*
+          - -files~=^[^/]*\.yaml$
+          - -files~=^data/.*\.yaml$
+        - and:
+          - check-success=Haskell-CI - Linux - ghc-9.2.4
+          - check-success=Haskell-CI - Linux - ghc-9.0.2
+          - check-success=Haskell-CI - Linux - ghc-8.10.7
 
 pull_request_rules:
 - actions:
@@ -26,7 +37,7 @@ pull_request_rules:
       - -files~=^[^/]*\.yaml$
       - -files~=^data/.*\.yaml$
     - and:
-      - check-success=Haskell-CI - Linux - ghc-9.2.3
+      - check-success=Haskell-CI - Linux - ghc-9.2.4
       - check-success=Haskell-CI - Linux - ghc-9.0.2
       - check-success=Haskell-CI - Linux - ghc-8.10.7
   - label=merge me

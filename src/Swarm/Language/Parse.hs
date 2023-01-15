@@ -35,28 +35,26 @@ module Swarm.Language.Parse (
   getLocRange,
 ) where
 
+import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
+import Data.Foldable (asum)
 import Data.List (nub)
 import Data.List.NonEmpty qualified (head)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set qualified as S
+import Data.Set.Lens (setOf)
 import Data.Text (Text, index, toLower)
 import Data.Text qualified as T
 import Data.Void
-import Witch
-
-import Control.Monad.Combinators.Expr
-import Data.Map.Strict qualified as Map
+import Swarm.Language.Syntax
+import Swarm.Language.Types
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
-
-import Data.Foldable (asum)
-import Data.Set qualified as S
-import Data.Set.Lens (setOf)
-import Swarm.Language.Syntax
-import Swarm.Language.Types
+import Witch
 
 -- Imports for doctests (cabal-docspec needs this)
 
@@ -83,11 +81,13 @@ reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
     ++ map (dirSyntax . dirInfo) allDirs
-    ++ [ "int"
-       , "string"
+    ++ [ "void"
+       , "unit"
+       , "int"
+       , "text"
        , "dir"
        , "bool"
-       , "robot"
+       , "actor"
        , "cmd"
        , "delay"
        , "let"
@@ -128,20 +128,24 @@ reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores and not starting with a
 --   number.
-identifier :: Parser Text
-identifier = (lexeme . try) (p >>= check) <?> "variable name"
+identifier :: Parser Var
+identifier = lvVar <$> locIdentifier
+
+-- | Parse an identifier together with its source location info.
+locIdentifier :: Parser LocVar
+locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check s
     | toLower t `elem` reservedWords =
-      fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+        fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
     | otherwise = return t
    where
     t = into @Text s
 
--- | Parse a string literal (including escape sequences) in double quotes.
-stringLiteral :: Parser Text
-stringLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
+-- | Parse a text literal (including escape sequences) in double quotes.
+textLiteral :: Parser Text
+textLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
 
 -- | Parse a positive integer literal token, in decimal, binary,
 --   octal, or hexadecimal notation.  Note that negation is handled as
@@ -185,11 +189,11 @@ parsePolytype =
     -- Otherwise, require all variables to be explicitly quantified
     | S.null free = return $ Forall xs ty
     | otherwise =
-      fail $
-        unlines
-          [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
-          , "  Try adding them to the 'forall'."
-          ]
+        fail $
+          unlines
+            [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
+            , "  Try adding them to the 'forall'."
+            ]
    where
     free = tyVars ty `S.difference` S.fromList xs
 
@@ -205,13 +209,14 @@ parseType = makeExprParser parseTypeAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyUnit <$ symbol "()"
+  TyVoid <$ reserved "void"
+    <|> TyUnit <$ reserved "unit"
     <|> TyVar <$> identifier
     <|> TyInt <$ reserved "int"
-    <|> TyString <$ reserved "string"
+    <|> TyText <$ reserved "text"
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
-    <|> TyRobot <$ reserved "robot"
+    <|> TyActor <$ reserved "actor"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> parens parseType
@@ -228,15 +233,15 @@ parseConst = asum (map alternative consts) <?> "built-in user function"
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
 
--- | Add 'Location' to a parser
-parseLocG :: Parser a -> Parser (Location, a)
+-- | Add 'SrcLoc' to a parser
+parseLocG :: Parser a -> Parser (SrcLoc, a)
 parseLocG pa = do
   start <- getOffset
   a <- pa
   end <- getOffset
-  pure (Location start end, a)
+  pure (SrcLoc start end, a)
 
--- | Add 'Location' to a 'Term' parser
+-- | Add 'SrcLoc' to a 'Term' parser
 parseLoc :: Parser Term -> Parser Syntax
 parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
@@ -248,24 +253,28 @@ parseTermAtom =
         <|> TVar <$> identifier
         <|> TDir <$> parseDirection
         <|> TInt <$> integer
-        <|> TString <$> stringLiteral
+        <|> TText <$> textLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
         <|> reserved "require"
           *> ( ( TRequireDevice
-                  <$> (stringLiteral <?> "device name in double quotes")
+                  <$> (textLiteral <?> "device name in double quotes")
                )
-                <|> ( TRequire <$> (fromIntegral <$> integer)
-                        <*> (stringLiteral <?> "entity name in double quotes")
+                <|> ( TRequire
+                        <$> (fromIntegral <$> integer)
+                        <*> (textLiteral <?> "entity name in double quotes")
                     )
              )
-        <|> SLam <$> (symbol "\\" *> identifier)
+        <|> SLam
+          <$> (symbol "\\" *> locIdentifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> sLet <$> (reserved "let" *> identifier)
+        <|> sLet
+          <$> (reserved "let" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> sDef <$> (reserved "def" *> identifier)
+        <|> sDef
+          <$> (reserved "def" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> parens (mkTuple <$> (parseTerm `sepBy` symbol ","))
@@ -287,17 +296,17 @@ mkTuple (x : xs) = SPair x (STerm (mkTuple xs))
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sLet :: Var -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet x ty t1 = SLet (x `S.member` setOf fv (sTerm t1)) x ty t1
+sLet :: LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet x ty t1 = SLet (lvVar x `S.member` setOf fv (sTerm t1)) x ty t1
 
 -- | Construct an 'SDef', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sDef :: Var -> Maybe Polytype -> Syntax -> Term
-sDef x ty t = SDef (x `S.member` setOf fv (sTerm t)) x ty t
+sDef :: LocVar -> Maybe Polytype -> Syntax -> Term
+sDef x ty t = SDef (lvVar x `S.member` setOf fv (sTerm t)) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiString <$> (lexeme . try) (symbol "$str:" *> identifier)
+  TAntiText <$> (lexeme . try) (symbol "$str:" *> identifier)
     <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
 
 -- | Parse a Swarm language term.
@@ -306,7 +315,7 @@ parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
 mkBindChain :: [Stmt] -> Parser Syntax
 mkBindChain stmts = case last stmts of
-  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar x))) stmts
+  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar (lvVar x)))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
   mkBind (BareTerm t1) t2 = loc t1 t2 $ SBind Nothing t1 t2
@@ -315,14 +324,14 @@ mkBindChain stmts = case last stmts of
 
 data Stmt
   = BareTerm Syntax
-  | Binder Text Syntax
+  | Binder LocVar Syntax
   deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =
-  mkStmt <$> optional (try (identifier <* symbol "<-")) <*> parseExpr
+  mkStmt <$> optional (try (locIdentifier <* symbol "<-")) <*> parseExpr
 
-mkStmt :: Maybe Text -> Syntax -> Stmt
+mkStmt :: Maybe LocVar -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
 mkStmt (Just x) = Binder x
 
@@ -513,7 +522,7 @@ getLineCol ps = (line, col)
   line = unPos $ sourceLine $ pstateSourcePos ps
   col = unPos $ sourceColumn $ pstateSourcePos ps
 
--- | A utility for converting a Location into a range
+-- | A utility for converting a SrcLoc into a range
 getLocRange :: Text -> (Int, Int) -> ((Int, Int), (Int, Int))
 getLocRange code (locStart, locEnd) = (start, end)
  where

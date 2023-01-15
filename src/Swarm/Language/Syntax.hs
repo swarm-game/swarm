@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Swarm.Language.Syntax
@@ -15,6 +16,8 @@
 module Swarm.Language.Syntax (
   -- * Directions
   Direction (..),
+  AbsoluteDir (..),
+  RelativeDir (..),
   DirInfo (..),
   applyTurn,
   toDirection,
@@ -46,7 +49,8 @@ module Swarm.Language.Syntax (
 
   -- * Syntax
   Syntax (..),
-  Location (..),
+  LocVar (..),
+  SrcLoc (..),
   noLoc,
   pattern STerm,
   pattern TPair,
@@ -71,14 +75,13 @@ module Swarm.Language.Syntax (
   mapFree1,
 ) where
 
+import Control.Arrow (Arrow ((&&&)))
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Aeson.Types
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
-import Data.Int (Int64)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
 import Data.Text hiding (filter, map)
@@ -86,102 +89,124 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear
 import Swarm.Language.Types
+import Swarm.Util qualified as Util
+import Swarm.Util.Location (Heading)
 import Witch.From (from)
 
 ------------------------------------------------------------
 -- Constants
 ------------------------------------------------------------
 
--- | The type of directions. Used /e.g./ to indicate which way a robot
---   will turn.
-data Direction = DLeft | DRight | DBack | DForward | DNorth | DSouth | DEast | DWest | DDown
+-- | An absolute direction is one which is defined with respect to an
+--   external frame of reference; robots need a compass in order to
+--   use them.
+data AbsoluteDir = DNorth | DSouth | DEast | DWest
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
-instance ToJSONKey Direction where
+instance ToJSONKey AbsoluteDir where
   toJSONKey = genericToJSONKey defaultJSONKeyOptions
 
-instance FromJSONKey Direction where
+instance FromJSONKey AbsoluteDir where
   fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
+
+-- | A relative direction is one which is defined with respect to the
+--   robot's frame of reference; no special capability is needed to
+--   use them.
+data RelativeDir = DLeft | DRight | DBack | DForward | DDown
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+
+-- | The type of directions. Used /e.g./ to indicate which way a robot
+--   will turn.
+data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 data DirInfo = DirInfo
   { dirSyntax :: Text
-  , -- absolute direction if it exists
-    dirAbs :: Maybe (V2 Int64)
-  , -- the turning for the direction
-    dirApplyTurn :: V2 Int64 -> V2 Int64
+  , dirApplyTurn :: Heading -> Heading
+  -- ^ the turning for the direction
   }
 
 allDirs :: [Direction]
-allDirs = [minBound .. maxBound]
+allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
+
+toHeading :: AbsoluteDir -> Heading
+toHeading = \case
+  DNorth -> north
+  DSouth -> south
+  DEast -> east
+  DWest -> west
 
 -- | Information about all directions
 dirInfo :: Direction -> DirInfo
 dirInfo d = case d of
-  DLeft -> relative (\(V2 x y) -> V2 (- y) x)
-  DRight -> relative (\(V2 x y) -> V2 y (- x))
-  DBack -> relative (\(V2 x y) -> V2 (- x) (- y))
-  DDown -> relative (const down)
-  DForward -> relative id
-  DNorth -> cardinal north
-  DSouth -> cardinal south
-  DEast -> cardinal east
-  DWest -> cardinal west
+  DRelative e -> case e of
+    DLeft -> relative perp
+    DRight -> relative (fmap negate . perp)
+    DBack -> relative (fmap negate)
+    DDown -> relative (const down)
+    DForward -> relative id
+  DAbsolute e -> cardinal $ toHeading e
  where
   -- name is generate from Direction data constuctor
   -- e.g. DLeft becomes "left"
-  directionSyntax = toLower . T.tail . from . show $ d
-  cardinal v2 = DirInfo directionSyntax (Just v2) (const v2)
-  relative = DirInfo directionSyntax Nothing
+  directionSyntax = toLower . T.tail . from $ case d of
+    DAbsolute x -> show x
+    DRelative x -> show x
+
+  cardinal = DirInfo directionSyntax . const
+  relative = DirInfo directionSyntax
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
-isCardinal = isJust . dirAbs . dirInfo
+isCardinal = \case
+  DAbsolute _ -> True
+  _ -> False
 
 -- | The cardinal direction north = @V2 0 1@.
-north :: V2 Int64
+north :: Heading
 north = V2 0 1
 
 -- | The cardinal direction south = @V2 0 (-1)@.
-south :: V2 Int64
+south :: Heading
 south = V2 0 (-1)
 
 -- | The cardinal direction east = @V2 1 0@.
-east :: V2 Int64
+east :: Heading
 east = V2 1 0
 
 -- | The cardinal direction west = @V2 (-1) 0@.
-west :: V2 Int64
+west :: Heading
 west = V2 (-1) 0
 
 -- | The direction for viewing the current cell = @V2 0 0@.
-down :: V2 Int64
-down = V2 0 0
+down :: Heading
+down = zero
 
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
---   turning relative to the given vector or by turning to an absolute
---   direction vector.
-applyTurn :: Direction -> V2 Int64 -> V2 Int64
+--   turning relative to the given heading or by turning to an absolute
+--   heading
+applyTurn :: Direction -> Heading -> Heading
 applyTurn = dirApplyTurn . dirInfo
 
--- | Mapping from heading to their corresponding cardinal directions
---   only directions with a 'dirAbs` value are mapped
-cardinalDirs :: M.Map (V2 Int64) Direction
+-- | Mapping from heading to their corresponding cardinal directions.
+--   Only absolute directions are mapped.
+cardinalDirs :: M.Map Heading Direction
 cardinalDirs =
-  M.fromList
-    . mapMaybe (\d -> (,d) <$> (dirAbs . dirInfo $ d))
-    $ allDirs
+  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
 
--- | Possibly convert a vector into a 'Direction'---that is, if the
+-- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
 --   directions.
-toDirection :: V2 Int64 -> Maybe Direction
+toDirection :: Heading -> Maybe Direction
 toDirection v = M.lookup v cardinalDirs
 
--- | Convert a 'Direction' into a corresponding vector.  Note that
+-- | Convert a 'Direction' into a corresponding heading.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
 --   and 'DWest'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> V2 Int64
-fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
+fromDirection :: Direction -> Heading
+fromDirection = \case
+  DAbsolute x -> toHeading x
+  _ -> zero
 
 -- | Constants, representing various built-in functions and commands.
 --
@@ -193,9 +218,10 @@ fromDirection = fromMaybe (V2 0 0) . dirAbs . dirInfo
 --   5. the emacs mode syntax highlighter (@contribs/swarm-mode.el@)
 --
 --   GHC will warn you about incomplete pattern matches for the first
---   four, so it's not really possible to forget.  Note you do not
---   need to update the parser or pretty-printer, since they are
---   auto-generated from 'constInfo'.
+--   four, and CI will warn you about the last, so in theory it's not
+--   really possible to forget.  Note you do not need to update the
+--   parser or pretty-printer, since they are auto-generated from
+--   'constInfo'.
 data Const
   = -- Trivial actions
 
@@ -220,14 +246,16 @@ data Const
     Place
   | -- | Give an item to another robot at the current location.
     Give
-  | -- | Install a device on a robot.
-    Install
+  | -- | Equip a device on oneself.
+    Equip
+  | -- | Unequip an equipped device, returning to inventory.
+    Unequip
   | -- | Make an item.
     Make
   | -- | Sense whether we have a certain item.
     Has
-  | -- | Sense whether we have a certain device installed.
-    Installed
+  | -- | Sense whether we have a certain device equipped.
+    Equipped
   | -- | Sense how many of a certain item we have.
     Count
   | -- | Drill through an entity.
@@ -241,6 +269,8 @@ data Const
     Reprogram
   | -- | Emit a message.
     Say
+  | -- | Listen for a message from other robots.
+    Listen
   | -- | Emit a log message.
     Log
   | -- | View a certain robot.
@@ -256,20 +286,28 @@ data Const
     Time
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the current heading.
+    Heading
   | -- | See if we can move forward or not.
     Blocked
   | -- | Scan a nearby cell
     Scan
   | -- | Upload knowledge to another robot
     Upload
-  | -- | See if a specific entity is here. (This may be removed.)
+  | -- | See if a specific entity is here.
     Ishere
+  | -- | Check whether the current cell is empty
+    Isempty
   | -- | Get a reference to oneself
     Self
   | -- | Get the robot's parent
     Parent
   | -- | Get a reference to the base
     Base
+  | -- | Meet a nearby robot
+    Meet
+  | -- | Meet all nearby robots
+    MeetAll
   | -- | Get the robot's display name
     Whoami
   | -- | Set the robot's display name
@@ -346,6 +384,14 @@ data Const
     Format
   | -- | Concatenate string values
     Concat
+  | -- | Count number of characters.
+    Chars
+  | -- | Split string into two parts.
+    Split
+  | -- | Get the character at an index.
+    CharAt
+  | -- | Create a singleton text value with the given character code.
+    ToChar
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -353,7 +399,9 @@ data Const
     AppF
   | -- Concurrency
 
-    -- | When executing @atomic c@, a robot will not be interrupted,
+    -- | Swap placed entity with one in inventory. Essentially atomic grab and place.
+    Swap
+  | -- | When executing @atomic c@, a robot will not be interrupted,
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
@@ -363,16 +411,16 @@ data Const
     Teleport
   | -- | Run a command as if you were another robot.
     As
-  | -- | Find a robot by name.
+  | -- | Find an actor by name.
     RobotNamed
-  | -- | Find a robot by number.
+  | -- | Find an actor by number.
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
   deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON)
 
 allConst :: [Const]
-allConst = [minBound .. maxBound]
+allConst = Util.listEnums
 
 data ConstInfo = ConstInfo
   { syntax :: Text
@@ -516,7 +564,7 @@ constInfo c = case c of
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    command 0 short . doc "Self-destruct the robot." $
+    command 0 short . doc "Self-destruct a robot." $
       [ "Useful to not clutter the world."
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
@@ -531,11 +579,12 @@ constInfo c = case c of
   Place ->
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Give -> command 2 short "Give an item to another robot nearby."
-  Install -> command 2 short "Install a device from inventory on a robot."
+  Give -> command 2 short "Give an item to another actor nearby."
+  Equip -> command 1 short "Equip a device on oneself."
+  Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
   Make -> command 1 long "Make an item using a recipe."
   Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
-  Installed -> command 1 Intangible "Sense whether the robot has a specific device installed."
+  Equipped -> command 1 Intangible "Sense whether the robot has a specific device equipped."
   Count -> command 1 Intangible "Get the count of a given item in a robot's inventory."
   Reprogram ->
     command 2 long . doc "Reprogram another robot with a new command." $
@@ -549,18 +598,30 @@ constInfo c = case c of
   Build ->
     command 1 long . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
-      , "If the command requires devices they will be installed from your inventory."
+      , "If the command requires devices they will be taken from your inventory and "
+          <> "equipped on the new robot."
       ]
   Salvage ->
     command 0 long . doc "Deconstruct an old robot." $
-      ["Salvaging a robot will give you its inventory, installed devices and log."]
+      ["Salvaging a robot will give you its inventory, equipped devices and log."]
   Say ->
-    command 1 short . doc "Emit a message." $ -- TODO: #513
-      [ "The message will be in a global log, which you can not currently view."
-      , "https://github.com/swarm-game/swarm/issues/513"
+    command 1 short . doc "Emit a message." $
+      [ "The message will be in the robot's log (if it has one) and the global log."
+      , "You can view the message that would be picked by `listen` from the global log "
+          <> "in the messages panel, along with your own messages and logs."
+      , "This means that to see messages from other robots you have to be able to listen for them, "
+          <> "so once you have a listening device equipped messages will be added to your log."
+      , "In creative mode, there is of course no such limitation."
+      ]
+  Listen ->
+    command 1 long . doc "Listen for a message from other actors." $
+      [ "It will take the first message said by the closest actor."
+      , "You do not need to actively listen for the message to be logged though, "
+          <> "that is done automatically once you have a listening device equipped."
+      , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 Intangible "Log the string in the robot's logger."
-  View -> command 1 short "View the given robot."
+  View -> command 1 short "View the given actor."
   Appear ->
     command 1 short . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
@@ -571,17 +632,25 @@ constInfo c = case c of
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
-    command 0 Intangible . doc "Scan a nearby location for entities." $
-      [ "Adds the entity (not robot) to your inventory with count 0 if there is any."
+    command 1 Intangible . doc "Scan a nearby location for entities." $
+      [ "Adds the entity (not actor) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
   Upload -> command 1 short "Upload a robot's known entities and log to another robot."
   Ishere -> command 1 Intangible "See if a specific entity is in the current location."
+  Isempty ->
+    command 0 Intangible . doc "Check if the current location is empty." $
+      [ "Detects whether or not the current location contains an entity."
+      , "Does not detect robots or other actors."
+      ]
   Self -> function 0 "Get a reference to the current robot."
   Parent -> function 0 "Get a reference to the robot's parent."
   Base -> function 0 "Get a reference to the base."
+  Meet -> command 0 Intangible "Get a reference to a nearby actor, if there is one."
+  MeetAll -> command 0 long "Run a command for each nearby actor."
   Whoami -> command 0 Intangible "Get the robot's display name."
   Setname -> command 1 short "Set the robot's display name."
   Random ->
@@ -618,11 +687,32 @@ constInfo c = case c of
   Geq -> binaryOp ">=" 4 N "Check that the left value is greater or equal to the right one."
   Format -> function 1 "Turn an arbitrary value into a string."
   Concat -> binaryOp "++" 6 R "Concatenate the given strings."
+  Chars -> function 1 "Counts the number of characters in the text."
+  Split ->
+    function 2 . doc "Split the text into two at given position." $
+      [ "To be more specific, the following holds for all `text` values `s1` and `s2`:"
+      , "`(s1,s2) == split (chars s1) (s1 ++ s2)`"
+      , "So split can be used to undo concatenation if you know the length of the original string."
+      ]
+  CharAt ->
+    function 2 . doc "Get the character at a given index." $
+      [ "Gets the character (as an `int` representing a Unicode codepoint) at a specific index in a `text` value.  Valid indices are 0 through `chars t - 1`."
+      , "Throws an exception if given an out-of-bounds index."
+      ]
+  ToChar ->
+    function 1 . doc "Create a singleton `text` value from the given character code." $
+      [ "That is, `chars (toChar c) == 1` and `charAt 0 (toChar c) == c`."
+      ]
   AppF ->
     binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."
       , "For exaple:"
       , "`f $ g $ h x = f (g (h x))`"
+      ]
+  Swap ->
+    command 1 short . doc "Swap placed entity with one in inventory." $
+      [ "This essentially works like atomic grab and place."
+      , "Use this to avoid race conditions where more robots grab, scan or place in one location."
       ]
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
@@ -630,8 +720,8 @@ constInfo c = case c of
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
   As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
-  RobotNamed -> command 1 Intangible "Find a robot by name."
-  RobotNumbered -> command 1 Intangible "Find a robot by number."
+  RobotNamed -> command 1 Intangible "Find an actor by name."
+  RobotNumbered -> command 1 Intangible "Find an actor by number."
   Knows -> command 1 Intangible "Check if the robot knows about an entity."
  where
   doc b ls = ConstDoc b (T.unlines ls)
@@ -685,18 +775,21 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
 -- | The surface syntax for the language
-data Syntax = Syntax {sLoc :: Location, sTerm :: Term}
+data Syntax = Syntax {sLoc :: SrcLoc, sTerm :: Term}
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
-data Location = NoLoc | Location Int Int
+data SrcLoc
+  = NoLoc
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
-instance Semigroup Location where
+instance Semigroup SrcLoc where
   NoLoc <> l = l
   l <> NoLoc = l
-  Location s1 e1 <> Location s2 e2 = Location (min s1 s2) (max e1 e2)
+  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
 
-instance Monoid Location where
+instance Monoid SrcLoc where
   mempty = NoLoc
 
 noLoc :: Term -> Syntax
@@ -715,7 +808,9 @@ pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
 -- | Match a TLam without syntax
 pattern TLam :: Var -> Maybe Type -> Term -> Term
-pattern TLam v ty t = SLam v ty (STerm t)
+pattern TLam v ty t <- SLam (lvVar -> v) ty (STerm t)
+  where
+    TLam v ty t = SLam (LV NoLoc v) ty (STerm t)
 
 -- | Match a TApp without syntax
 pattern TApp :: Term -> Term -> Term
@@ -729,22 +824,28 @@ pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without syntax
 pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet r v pt t1 t2 = SLet r v pt (STerm t1) (STerm t2)
+pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
+  where
+    TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
 
 -- | Match a TDef without syntax
 pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
-pattern TDef r v pt t = SDef r v pt (STerm t)
+pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
+  where
+    TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
 
 -- | Match a TBind without syntax
 pattern TBind :: Maybe Var -> Term -> Term -> Term
-pattern TBind v t1 t2 = SBind v (STerm t1) (STerm t2)
+pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
+  where
+    TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
 
 -- | Match a TDelay without syntax
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TString, TAntiString, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
 ------------------------------------------------------------
 -- Terms
@@ -766,6 +867,12 @@ data DelayType
     MemoizedDelay (Maybe Var)
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
 
+-- | A variable with associated source location, used for variable
+--   binding sites. (Variable occurrences are a bare TVar which gets
+--   wrapped in a Syntax node, so we don't need LocVar for those.)
+data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
+  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
 -- | Terms of the Swarm language.
 data Term
   = -- | The unit value.
@@ -778,20 +885,20 @@ data Term
     TInt Integer
   | -- | An antiquoted Haskell variable name of type Integer.
     TAntiInt Text
-  | -- | A string literal.
-    TString Text
+  | -- | A text literal.
+    TText Text
   | -- | An antiquoted Haskell variable name of type Text.
-    TAntiString Text
+    TAntiText Text
   | -- | A Boolean literal.
     TBool Bool
-  | -- | A robot value.  These never show up in surface syntax, but are
+  | -- | A robot reference.  These never show up in surface syntax, but are
     --   here so we can factor pretty-printing for Values through
     --   pretty-printing for Terms.
     TRobot Int
   | -- | A memory reference.  These likewise never show up in surface syntax,
     --   but are here to facilitate pretty-printing.
     TRef Int
-  | -- | Require a specific device to be installed.
+  | -- | Require a specific device to be equipped.
     TRequireDevice Text
   | -- | Require a certain number of an entity.
     TRequire Int Text
@@ -801,19 +908,19 @@ data Term
     SPair Syntax Syntax
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam Var (Maybe Type) Syntax
+    SLam LocVar (Maybe Type) Syntax
   | -- | Function application.
     SApp Syntax Syntax
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool Var (Maybe Polytype) Syntax Syntax
+    SLet Bool LocVar (Maybe Polytype) Syntax Syntax
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
-    SDef Bool Var (Maybe Polytype) Syntax
+    SDef Bool LocVar (Maybe Polytype) Syntax
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe Var) Syntax Syntax
+    SBind (Maybe LocVar) Syntax Syntax
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -838,8 +945,8 @@ fvT f = go S.empty
     TDir {} -> pure t
     TInt {} -> pure t
     TAntiInt {} -> pure t
-    TString {} -> pure t
-    TAntiString {} -> pure t
+    TText {} -> pure t
+    TAntiText {} -> pure t
     TBool {} -> pure t
     TRobot {} -> pure t
     TRef {} -> pure t
@@ -848,18 +955,18 @@ fvT f = go S.empty
     TVar x
       | x `S.member` bound -> pure t
       | otherwise -> f (TVar x)
-    SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+    SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert (lvVar x) bound) t1)
     SApp (Syntax l1 t1) (Syntax l2 t2) ->
       SApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
     SLet r x ty (Syntax l1 t1) (Syntax l2 t2) ->
-      let bound' = S.insert x bound
+      let bound' = S.insert (lvVar x) bound
        in SLet r x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
     SPair (Syntax l1 t1) (Syntax l2 t2) ->
       SPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
     SDef r x ty (Syntax l1 t1) ->
-      SDef r x ty <$> (Syntax l1 <$> go (S.insert x bound) t1)
+      SDef r x ty <$> (Syntax l1 <$> go (S.insert (lvVar x) bound) t1)
     SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
-      SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id S.insert mx bound) t2)
+      SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id (S.insert . lvVar) mx bound) t2)
     SDelay m (Syntax l1 t1) ->
       SDelay m <$> (Syntax l1 <$> go bound t1)
 

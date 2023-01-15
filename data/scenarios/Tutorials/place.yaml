@@ -1,3 +1,4 @@
+version: 1
 name: Place
 description: |
   Learn how to interact with the world by harvesting entities and placing them.

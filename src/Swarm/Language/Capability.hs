@@ -8,7 +8,7 @@
 -- Capabilities needed to evaluate and execute programs.  Language
 -- constructs or commands require certain capabilities, and in turn
 -- capabilities are provided by various devices.  A robot must have an
--- appropriate device installed in order to make use of each language
+-- appropriate device equipped in order to make use of each language
 -- construct or command.
 module Swarm.Language.Capability (
   Capability (..),
@@ -18,18 +18,16 @@ module Swarm.Language.Capability (
 
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Char (toLower)
+import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Yaml
+import GHC.Generics (Generic)
+import Swarm.Language.Syntax
 import Text.Read (readMaybe)
 import Witch (from)
 import Prelude hiding (lookup)
-
-import Data.Data (Data)
-import Data.Yaml
-import GHC.Generics (Generic)
-
-import Swarm.Language.Syntax
 
 -- | Various capabilities which robots can have.
 data Capability
@@ -53,8 +51,10 @@ data Capability
     CPlace
   | -- | Execute the 'Give' command
     CGive
-  | -- | Execute the 'Install' command
-    CInstall
+  | -- | Execute the 'Equip' command
+    CEquip
+  | -- | Execute the 'Unequip' command
+    CUnequip
   | -- | Execute the 'Make' command
     CMake
   | -- | Execute the 'Count' command
@@ -69,7 +69,7 @@ data Capability
     CSenseloc
   | -- | Execute the 'Blocked' command
     CSensefront
-  | -- | Execute the 'Ishere' command
+  | -- | Execute the 'Ishere' and 'Isempty' commands
     CSensehere
   | -- | Execute the 'Scan' command
     CScan
@@ -79,8 +79,14 @@ data Capability
     CAppear
   | -- | Execute the 'Create' command
     CCreate
+  | -- | Execute the 'Listen' command and passively log messages if also has 'CLog'
+    CListen
   | -- | Execute the 'Log' command
     CLog
+  | -- | Manipulate text values
+    CText
+  | -- | Convert between characters/text and Unicode values
+    CCode
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
@@ -101,6 +107,8 @@ data Capability
     CRecursion
   | -- | Execute the 'Reprogram' command
     CReprogram
+  | -- | Execute the `meet` and `meetAll` commands.
+    CMeet
   | -- | Capability to introspect and see its own name
     CWhoami
   | -- | Capability to set its own name
@@ -109,9 +117,17 @@ data Capability
     CTeleport
   | -- | Capability to run commands atomically
     CAtomic
+  | -- | Capability to execute swap (grab and place atomically at the same time).
+    CSwap
   | -- | Capabiltiy to do time-related things, like `wait` and get the
     --   current time.
     CTime
+  | -- | Capability to execute `try`.
+    CTry
+  | -- | Capability for working with sum types.
+    CSum
+  | -- | Capability for working with product types.
+    CProd
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -147,7 +163,7 @@ constCaps = \case
   Undefined -> Nothing
   Fail -> Nothing
   Has -> Nothing
-  Installed -> Nothing
+  Equipped -> Nothing
   -- speaking is natural to robots (unlike listening)
   Say -> Nothing
   -- TODO: #495
@@ -156,6 +172,7 @@ constCaps = \case
   Run -> Nothing
   -- ----------------------------------------------------------------
   -- Some straightforward ones.
+  Listen -> Just CListen
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
@@ -164,17 +181,21 @@ constCaps = \case
   Harvest -> Just CHarvest
   Place -> Just CPlace
   Give -> Just CGive
-  Install -> Just CInstall
+  Equip -> Just CEquip
+  Unequip -> Just CUnequip
   Make -> Just CMake
   Count -> Just CCount
   If -> Just CCond
   Blocked -> Just CSensefront
   Scan -> Just CScan
   Ishere -> Just CSensehere
+  Isempty -> Just CSensehere
   Upload -> Just CScan
   Build -> Just CBuild
   Salvage -> Just CSalvage
   Reprogram -> Just CReprogram
+  Meet -> Just CMeet
+  MeetAll -> Just CMeet
   Drill -> Just CDrill
   Neg -> Just CArith
   Add -> Just CArith
@@ -184,13 +205,20 @@ constCaps = \case
   Exp -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
+  Swap -> Just CSwap
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  Whereami -> Just CSenseloc
+  Heading -> Just COrient
   -- ----------------------------------------------------------------
-  -- String operations
-  Format -> Just CLog
-  Concat -> Just CLog
+  -- Text operations
+  Format -> Just CText
+  Concat -> Just CText
+  Split -> Just CText
+  Chars -> Just CText
+  CharAt -> Just CCode
+  ToChar -> Just CCode
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
@@ -211,21 +239,26 @@ constCaps = \case
   Or -> Just CCond
   Not -> Just CNegation
   -- ----------------------------------------------------------------
+  -- exceptions
+  Try -> Just CTry
+  -- ----------------------------------------------------------------
+  -- type-level arithmetic
+  Inl -> Just CSum
+  Inr -> Just CSum
+  Case -> Just CSum
+  Fst -> Just CProd
+  Snd -> Just CProd
+  -- XXX pair syntax should require CProd too
+
+  -- ----------------------------------------------------------------
   -- Some additional straightforward ones, which however currently
   -- cannot be used in classic mode since there is no craftable item
   -- which conveys their capability. TODO: #26
   Teleport -> Just CTeleport -- Some space-time machine like Tardis?
   Appear -> Just CAppear -- paint?
-  Whereami -> Just CSenseloc -- GPS?
   Random -> Just CRandom -- randomness device (with bitcoins)?
   -- ----------------------------------------------------------------
   -- Some more constants which *ought* to have their own capability but
   -- currently don't. TODO: #26
   View -> Nothing -- XXX this should also require something.
-  Inl -> Nothing -- XXX should require cap for sums
-  Inr -> Nothing
-  Case -> Nothing
-  Fst -> Nothing -- XXX should require cap for pairs
-  Snd -> Nothing
-  Try -> Nothing -- XXX these definitely need to require something.
   Knows -> Nothing

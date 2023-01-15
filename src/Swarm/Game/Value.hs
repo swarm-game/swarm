@@ -13,6 +13,7 @@
 module Swarm.Game.Value (
   -- * Values
   Value (..),
+  stripVResult,
   prettyValue,
   valueToTerm,
 
@@ -28,11 +29,10 @@ import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prelude
-
 import Swarm.Language.Context
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
+import Prelude
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -41,8 +41,8 @@ data Value where
   VUnit :: Value
   -- | An integer.
   VInt :: Integer -> Value
-  -- | A literal string.
-  VString :: Text -> Value
+  -- | Literal text.
+  VText :: Text -> Value
   -- | A direction.
   VDir :: Direction -> Value
   -- | A boolean.
@@ -88,6 +88,11 @@ data Value where
   VRef :: Int -> Value
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+-- | Ensure that a value is not wrapped in 'VResult'.
+stripVResult :: Value -> Value
+stripVResult (VResult v _) = stripVResult v
+stripVResult v = v
+
 -- | Pretty-print a value.
 prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
@@ -96,7 +101,7 @@ prettyValue = prettyText . valueToTerm
 valueToTerm :: Value -> Term
 valueToTerm VUnit = TUnit
 valueToTerm (VInt n) = TInt n
-valueToTerm (VString s) = TString s
+valueToTerm (VText s) = TText s
 valueToTerm (VDir d) = TDir d
 valueToTerm (VBool b) = TBool b
 valueToTerm (VRobot r) = TRobot r

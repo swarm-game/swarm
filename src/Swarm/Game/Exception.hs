@@ -27,14 +27,14 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Witch (from)
-
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
+import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
+import Witch (from)
 
 -- ------------------------------------------------------------------
 -- SETUP FOR DOCTEST
@@ -53,8 +53,8 @@ import Swarm.Util
 
 -- | Suggested way to fix incapable error.
 data IncapableFix
-  = -- | Install the missing device on yourself/target
-    FixByInstall
+  = -- | Equip the missing device on yourself/target
+    FixByEquip
   | -- | Add the missing device to your inventory
     FixByObtain
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -75,7 +75,7 @@ data Exn
   | -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
     --   grab, /etc./).
-    CmdFailed Const Text
+    CmdFailed Const Text (Maybe GameplayAchievement)
   | -- | The user program explicitly called 'Undefined' or 'Fail'.
     User Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -90,7 +90,7 @@ formatExn em = \case
       , "<https://github.com/swarm-game/swarm/issues/new>."
       ]
   InfiniteLoop -> "Infinite loop detected!"
-  (CmdFailed c t) -> T.concat [prettyText c, ": ", t]
+  (CmdFailed c t _) -> T.concat [prettyText c, ": ", t]
   (User t) -> "Player exception: " <> t
   (Incapable f caps tm) -> formatIncapable em f caps tm
 
@@ -100,7 +100,7 @@ formatExn em = \case
 
 formatIncapableFix :: IncapableFix -> Text
 formatIncapableFix = \case
-  FixByInstall -> "install"
+  FixByEquip -> "equip"
   FixByObtain -> "obtain"
 
 -- | Pretty print the incapable exception with an actionable suggestion
@@ -109,7 +109,7 @@ formatIncapableFix = \case
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
 -- >>> m = buildEntityMap [w,r]
--- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByInstall cs t
+-- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
 -- Thou shalt not utter such blasphemy:
@@ -119,7 +119,7 @@ formatIncapableFix = \case
 -- >>> incapableError (R.singletonCap CAppear) (TConst Appear)
 -- You do not have the devices required for:
 --   'appear'
---   Please install:
+--   Please equip:
 --   - the one ring or magic wand
 --
 -- >>> incapableError (R.singletonCap CRandom) (TConst Random)
@@ -136,32 +136,32 @@ formatIncapableFix = \case
 formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
 formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
-    unlinesExText
-      [ "Thou shalt not utter such blasphemy:"
-      , squote $ prettyText tm
-      , "If God in troth thou wantest to play, try thou a Creative game."
-      ]
+      unlinesExText
+        [ "Thou shalt not utter such blasphemy:"
+        , squote $ prettyText tm
+        , "If God in troth thou wantest to play, try thou a Creative game."
+        ]
   | not (null capsNone) =
-    unlinesExText
-      [ "Missing the " <> capMsg <> " for:"
-      , squote $ prettyText tm
-      , "but no device yet provides it. See"
-      , "https://github.com/swarm-game/swarm/issues/26"
-      ]
+      unlinesExText
+        [ "Missing the " <> capMsg <> " for:"
+        , squote $ prettyText tm
+        , "but no device yet provides it. See"
+        , "https://github.com/swarm-game/swarm/issues/26"
+        ]
   | not (S.null caps) =
-    unlinesExText
-      ( "You do not have the devices required for:" :
-        squote (prettyText tm) :
-        "Please " <> formatIncapableFix f <> ":" :
-        (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
-      )
+      unlinesExText
+        ( "You do not have the devices required for:"
+            : squote (prettyText tm)
+            : "Please " <> formatIncapableFix f <> ":"
+            : (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
+        )
   | otherwise =
-    unlinesExText
-      ( "You are missing required inventory for:" :
-        squote (prettyText tm) :
-        "Please obtain:" :
-        (("- " <>) . formatEntity <$> M.assocs inv)
-      )
+      unlinesExText
+        ( "You are missing required inventory for:"
+            : squote (prettyText tm)
+            : "Please obtain:"
+            : (("- " <>) . formatEntity <$> M.assocs inv)
+        )
  where
   capList = S.toList caps
   deviceSets = map (`deviceForCap` em) capList

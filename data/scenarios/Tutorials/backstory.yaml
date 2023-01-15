@@ -1,3 +1,4 @@
+version: 1
 name: Backstory
 description: |
   Introduction to the backstory of Swarm.
@@ -22,27 +23,34 @@ objectives:
         idea.
       - To prepare you, this simulator will walk you through a series of hands-on
         exercises that introduce you to the way robots work and the programming
-        language you will use to control them.
-      - When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
-        and type `place "Ready!"` (without the backticks) at the prompt.
+        language you will use to control them.  Note that your progress through
+        the tutorials will be saved automatically.  You can return to
+        the menu at any time to jump around between tutorials or pick
+        up again where you left off.
+      - |
+        When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
+        and type at the prompt:
+      - |
+        say "Ready!"
     condition: |
       try {
-        as base {
-          b <- has "Ready!";
-          return (not b)
-        }
+        l <- robotNamed "listener";
+        as l {has "READY"}
       } { return false }
 solution: |
-  place "Ready!"
+  say "Ready!"
 entities:
-  - name: Ready!
+  - name: READY
     display:
       attr: device
       char: 'R'
     description:
-      - Type `place "Ready!"` (without the backticks) at the prompt
-        once you are ready for the first tutorial challenge!
-      - To open the full goal text again, you can hit Ctrl-G.
+      - |
+        When you're ready for your first tutorial challenge, type at the prompt:
+      - |
+        say "Ready!"
+      - |
+        To open the full goal text again, you can hit Ctrl-G.
     properties: [known, portable]
 robots:
   - name: base
@@ -53,7 +61,30 @@ robots:
     dir: [1,0]
     loc: [0,0]
     inventory:
-      - [1, Ready!]
+      - [1, READY]
+  - name: listener
+    system: true
+    display:
+      invisible: true
+    loc: [0,0]
+    dir: [0,0]
+    inventory:
+      - [0, READY]
+    devices:
+      - logger
+    program: |
+      def forever = \c. force c; forever c end;
+      forever {
+        try {
+          m <- listen;
+          if (m == "Ready!" || m == "ready!" || m == "ready") {
+            create "READY";
+            log "The player is ready!"
+          } {
+            say $ "Wrong message: " ++ format m
+          }
+        } {log "Something bad happened!"}
+      }
 seed: 0
 world:
   offset: true

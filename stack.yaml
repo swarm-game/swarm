@@ -2,14 +2,15 @@ extra-deps:
 - word-wrap-0.5
 - hashable-1.3.5.0
 - base-orphans-0.8.6
-- git: https://github.com/colinhect/hsnoise
-  commit: 4ccff11dea7e8d94e6a5fcaf8f43857bd65bd72d
-- git: https://github.com/jtdaugherty/brick
-  commit: dee90efa8cde1755f435c1f7dd9b6828b1bd0089
+- hsnoise-0.0.3@sha256:260b39175b8a3e3b1719ad3987b7d72a3fd7a0fa99be8639b91cf4dc3f1c8796,1476
+- brick-1.0@sha256:99242c47aa2fd08424445de9c4437405098dcda5ae74d558648eadd6b069062c,17793
+- bimap-0.5.0@sha256:aba506d02a1c93fc2b50dcbe728d2a4d07cca89b7033945418061a0b08576ebd,1889
 - simple-enumeration-0.2.1@sha256:8625b269c1650d3dd0e3887351c153049f4369853e0d525219e07480ea004b9f,1178
-- fused-effects-1.1.1.1@sha256:c029c5fb0b2154281221a71ff25709d2a11347fe061fa8c2398e7fe52a16008d,4932
 - fused-effects-lens-1.2.0.1@sha256:675fddf183215b6f3c1f2a0823359a648756435fd1966284e61830ec28ad61fa,1466
 - text-zipper-0.12@sha256:e96110598fc25e57a99ffcd8e583351af8b325b813aa5e3bd0adc627e3e02b6b,1472
 - vty-5.36@sha256:dfbb78ea924ad0ef66cff4bc223918240234508c3de139b34780038dafb5fc53,20859
-resolver: lts-19.8
+- criterion-1.6.0.0@sha256:76280dace017fe1fab4dae35d57992a48e70a3cfcdb2a4563923cd2502a7268c,5403
+- criterion-measurement-0.2.0.0@sha256:8c6127b22a53aebc7d5a9dbf8fd870f128b93be3069fe7fed969e4c253cd9626,2121
+- witch-1.1.1.0@sha256:053d116eedea78219fdb465ad7903afc0e67c67ca5837508bba9435f4ac239bc,2178
+resolver: lts-20.5
 

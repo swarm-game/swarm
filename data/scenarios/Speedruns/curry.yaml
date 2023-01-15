@@ -1,0 +1,35 @@
+version: 1
+name: Curry
+author: Brent Yorgey
+description: Race to make a bowl of curry as fast as possible.
+  See the Swarm wiki for more information on Swarm speedrunning.
+objectives:
+  - condition: as base {has "curry"}
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,1]
+    heavy: true
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - 3D printer
+      - dictionary
+      - grabber
+      - life support system
+      - logger
+      - toolkit
+      - solar panel
+      - workbench
+      - clock
+    inventory:
+      - [5, 3D printer]
+      - [100, treads]
+      - [70, grabber]
+      - [100, solar panel]
+      - [50, scanner]
+      - [5, toolkit]
+world:
+  seed: null
+  offset: true

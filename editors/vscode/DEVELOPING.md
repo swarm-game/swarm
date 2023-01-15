@@ -1,7 +1,7 @@
 ## Developing
 
 > The extension was created using [`yo code`](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide#developing-a-new-grammar-extension)
-> and further extended to suport LSP by including modified
+> and further extended to support LSP by including modified
 > [Microsoft lsp-sample](https://github.com/microsoft/vscode-extension-samples/tree/main/lsp-sample).
 >
 > As a note, this is deliberately a separate file from `README.md` which shows in the VSCode extension view.
@@ -10,6 +10,7 @@
 
 * `package.json` - this is the manifest file in which you declare your language support and define the location of the grammar file that has been copied into your extension.
 * `syntaxes/swarm.tmLanguage.json` - this is the Text mate grammar file that is used for tokenization.
+  * here is an overview of the available scopes: [SO answer](https://stackoverflow.com/a/21914803/11105559)
 * `language-configuration.json` - this is the language configuration, defining the tokens that are used for comments and brackets.
 * `client/src/extension.ts` - this is the LSP client, that will connect to `swarm` executable which can serve as LSP server.
 

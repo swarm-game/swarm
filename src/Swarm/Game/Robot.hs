@@ -19,10 +19,7 @@ module Swarm.Game.Robot (
   -- * Robots data
 
   -- * Robot log entries
-  LogEntry (..),
-  leText,
-  leRobotName,
-  leTime,
+  module Swarm.Game.Log,
 
   -- * Robots
   RobotPhase (..),
@@ -31,12 +28,16 @@ module Swarm.Game.Robot (
   Robot,
   TRobot,
 
+  -- ** Runtime robot update
+  RobotUpdate (..),
+
   -- * Robot context
   RobotContext,
   defTypes,
   defReqs,
   defVals,
   defStore,
+  emptyRobotContext,
 
   -- ** Lenses
   robotEntity,
@@ -49,12 +50,13 @@ module Swarm.Game.Robot (
   trobotLocation,
   robotOrientation,
   robotInventory,
-  installedDevices,
+  equippedDevices,
   robotLog,
   robotLogUpdated,
   inventoryHash,
   robotCapabilities,
   robotContext,
+  trobotContext,
   robotID,
   robotParentID,
   robotHeavy,
@@ -73,12 +75,14 @@ module Swarm.Game.Robot (
   isActive,
   waitingUntil,
   getResult,
+
+  -- ** Constants
+  hearingDistance,
 ) where
 
 import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (hashWithSalt)
-import Data.Int (Int64)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -88,50 +92,66 @@ import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
 import Swarm.Game.CESK
-import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay)
+import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Log
 import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
+import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
-import Swarm.Util ()
+import Swarm.Util.Location
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
 -- | A record that stores the information
---   for all defintions stored in a 'Robot'
+--   for all definitions stored in a 'Robot'
 data RobotContext = RobotContext
-  { -- | Map definition names to their types.
-    _defTypes :: TCtx
-  , -- | Map defintion names to the capabilities
-    --   required to evaluate/execute them.
-    _defReqs :: ReqCtx
-  , -- | Map defintion names to their values. Note that since
-    --   definitions are delayed, the values will just consist of
-    --   'VRef's pointing into the store.
-    _defVals :: Env
-  , -- | A store containing memory cells allocated to hold
-    --   definitions.
-    _defStore :: Store
+  { _defTypes :: TCtx
+  -- ^ Map definition names to their types.
+  , _defReqs :: ReqCtx
+  -- ^ Map definition names to the capabilities
+  --   required to evaluate/execute them.
+  , _defVals :: Env
+  -- ^ Map definition names to their values. Note that since
+  --   definitions are delayed, the values will just consist of
+  --   'VRef's pointing into the store.
+  , _defStore :: Store
+  -- ^ A store containing memory cells allocated to hold
+  --   definitions.
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 makeLenses ''RobotContext
 
--- | An entry in a robot's log.
-data LogEntry = LogEntry
-  { -- | The text of the log entry.
-    _leText :: Text
-  , -- | The name of the robot that generated the entry.
-    _leRobotName :: Text
-  , -- | The time at which the entry was created.
-    _leTime :: Integer
-  }
-  deriving (Show, Generic, FromJSON, ToJSON)
+emptyRobotContext :: RobotContext
+emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
 
-makeLenses ''LogEntry
+type instance Index RobotContext = Ctx.Var
+type instance IxValue RobotContext = Typed Value
+
+instance Ixed RobotContext
+instance At RobotContext where
+  at name = lens getter setter
+   where
+    getter ctx =
+      do
+        typ <- Ctx.lookup name (ctx ^. defTypes)
+        val <- Ctx.lookup name (ctx ^. defVals)
+        req <- Ctx.lookup name (ctx ^. defReqs)
+        return $ Typed val typ req
+    setter ctx Nothing =
+      ctx
+        & defTypes %~ Ctx.delete name
+        & defVals %~ Ctx.delete name
+        & defReqs %~ Ctx.delete name
+    setter ctx (Just (Typed val typ req)) =
+      ctx
+        & defTypes %~ Ctx.addBinding name typ
+        & defVals %~ Ctx.addBinding name val
+        & defReqs %~ Ctx.addBinding name req
 
 -- | A unique identifier for a robot.
 type RID = Int
@@ -148,8 +168,8 @@ data RobotPhase
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
 type family RobotLocation (phase :: RobotPhase) :: * where
-  RobotLocation 'TemplateRobot = Maybe (V2 Int64)
-  RobotLocation 'ConcreteRobot = V2 Int64
+  RobotLocation 'TemplateRobot = Maybe Location
+  RobotLocation 'ConcreteRobot = Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
 type family RobotID (phase :: RobotPhase) :: * where
@@ -161,10 +181,10 @@ type family RobotID (phase :: RobotPhase) :: * where
 --   the robot has been assigned a unique ID.
 data RobotR (phase :: RobotPhase) = RobotR
   { _robotEntity :: Entity
-  , _installedDevices :: Inventory
-  , -- | A cached view of the capabilities this robot has.
-    --   Automatically generated from '_installedDevices'.
-    _robotCapabilities :: Set Capability
+  , _equippedDevices :: Inventory
+  , _robotCapabilities :: Set Capability
+  -- ^ A cached view of the capabilities this robot has.
+  --   Automatically generated from '_equippedDevices'.
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
   , _robotLocation :: RobotLocation phase
@@ -182,11 +202,14 @@ data RobotR (phase :: RobotPhase) = RobotR
   deriving (Generic)
 
 deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase)) => Eq (RobotR phase)
+
+deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJSON (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_installedDevices, '_robotLog]
+let exclude = ['_robotCapabilities, '_equippedDevices, '_robotLog]
  in makeLensesWith
       ( lensRules
           & generateSignatures .~ False
@@ -252,31 +275,35 @@ robotDisplay = lens getDisplay setDisplay
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
 --   'updateRobotLocation' function for this purpose.
-robotLocation :: Getter Robot (V2 Int64)
+robotLocation :: Getter Robot Location
 
 -- | Set a robot's location.  This is unsafe and should never be
 --   called directly except by the 'updateRobotLocation' function.
 --   The reason is that we need to make sure the 'robotsByLocation'
 --   map stays in sync.
-unsafeSetRobotLocation :: V2 Int64 -> Robot -> Robot
+unsafeSetRobotLocation :: Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
 --   'robotsByLocation' map to keep up-to-date.
-trobotLocation :: Lens' TRobot (Maybe (V2 Int64))
+trobotLocation :: Lens' TRobot (Maybe Location)
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.
-robotOrientation :: Lens' Robot (Maybe (V2 Int64))
+robotOrientation :: Lens' Robot (Maybe Heading)
 robotOrientation = robotEntity . entityOrientation
 
 -- | The robot's inventory.
 robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
 
--- | The robot's context
+-- | The robot's context.
 robotContext :: Lens' Robot RobotContext
+
+-- | The robot's context.
+trobotContext :: Lens' TRobot RobotContext
+trobotContext = lens _robotContext (\r c -> r {_robotContext = c})
 
 -- | The (unique) ID number of the robot.  This is only a Getter since
 --   the robot ID is immutable.
@@ -291,7 +318,7 @@ instantiateRobot :: RID -> TRobot -> Robot
 instantiateRobot i r =
   r
     { _robotID = i
-    , _robotLocation = fromMaybe (V2 0 0) (_robotLocation r)
+    , _robotLocation = fromMaybe zero (_robotLocation r)
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -302,19 +329,19 @@ robotParentID :: Lens' Robot (Maybe RID)
 -- | Is this robot extra heavy (thus requiring tank treads to move)?
 robotHeavy :: Lens' Robot Bool
 
--- | A separate inventory for "installed devices", which provide the
+-- | A separate inventory for equipped devices, which provide the
 --   robot with certain capabilities.
 --
---   Note that every time the inventory of installed devices is
+--   Note that every time the inventory of equipped devices is
 --   modified, this lens recomputes a cached set of the capabilities
---   the installed devices provide, to speed up subsequent lookups to
+--   the equipped devices provide, to speed up subsequent lookups to
 --   see whether the robot has a certain capability (see 'robotCapabilities')
-installedDevices :: Lens' Robot Inventory
-installedDevices = lens _installedDevices setInstalled
+equippedDevices :: Lens' Robot Inventory
+equippedDevices = lens _equippedDevices setEquipped
  where
-  setInstalled r inst =
+  setEquipped r inst =
     r
-      { _installedDevices = inst
+      { _equippedDevices = inst
       , _robotCapabilities = inventoryCapabilities inst
       }
 
@@ -343,20 +370,20 @@ robotLog = lens _robotLog setLog
 --   viewed?
 robotLogUpdated :: Lens' Robot Bool
 
--- | A hash of a robot's entity record and installed devices, to
+-- | A hash of a robot's entity record and equipped devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
 --   info panel.
 inventoryHash :: Getter Robot Int
-inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `hashWithSalt` (r ^. installedDevices))
+inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `hashWithSalt` (r ^. equippedDevices))
 
 -- | Does a robot know of an entity's existence?
 robotKnows :: Robot -> Entity -> Bool
-robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. installedDevices)
+robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. equippedDevices)
 
 -- | Get the set of capabilities this robot possesses.  This is only a
 --   getter, not a lens, because it is automatically generated from
---   the 'installedDevices'.  The only way to change a robot's
---   capabilities is to modify its 'installedDevices'.
+--   the 'equippedDevices'.  The only way to change a robot's
+--   capabilities is to modify its 'equippedDevices'.
 robotCapabilities :: Getter Robot (Set Capability)
 robotCapabilities = to _robotCapabilities
 
@@ -425,12 +452,12 @@ mkRobot ::
   -- | Initial location.
   RobotLocation phase ->
   -- | Initial heading/direction.
-  V2 Int64 ->
+  Heading ->
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.
   CESK ->
-  -- | Installed devices.
+  -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
   [(Count, Entity)] ->
@@ -447,12 +474,12 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
         mkEntity disp name descr [] []
           & entityOrientation ?~ dir
           & entityInventory .~ fromElems inv
-    , _installedDevices = inst
+    , _equippedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+    , _robotContext = emptyRobotContext
     , _robotID = rid
     , _robotParentID = pid
     , _robotHeavy = heavy
@@ -469,20 +496,23 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
 instance FromJSONE EntityMap TRobot where
-  parseJSONE = withObjectE "robot" $ \v ->
+  parseJSONE = withObjectE "robot" $ \v -> do
     -- Note we can't generate a unique ID here since we don't have
     -- access to a 'State GameState' effect; a unique ID will be
     -- filled in later when adding the robot to the world.
+    sys <- liftE $ v .:? "system" .!= False
+    let defDisplay = defaultRobotDisplay & invisible .~ sys
+
     mkRobot () Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= [])
       <*> liftE (v .:? "loc")
-      <*> liftE (v .: "dir")
-      <*> liftE (v .:? "display" .!= defaultRobotDisplay)
+      <*> liftE (v .:? "dir" .!= zero)
+      <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
       <*> liftE (mkMachine <$> (v .:? "program"))
       <*> v ..:? "devices" ..!= []
       <*> v ..:? "inventory" ..!= []
-      <*> liftE (v .:? "system" .!= False)
+      <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
       <*> pure 0
    where
@@ -505,3 +535,6 @@ waitingUntil robot =
 getResult :: Robot -> Maybe (Value, Store)
 {-# INLINE getResult #-}
 getResult = finalValue . view machine
+
+hearingDistance :: Num i => i
+hearingDistance = 32

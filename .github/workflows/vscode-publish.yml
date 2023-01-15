@@ -1,0 +1,31 @@
+on:
+  push:
+    tags:
+      - "swarm-language-vscode-*"
+
+name: Deploy Extension
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 16
+      - run: |
+          cd editors/vscode           && \
+          npm update                  && \
+          npm clean-install           && \
+          cd client                   && \
+          npm update                  && \
+          npm clean-install           && \
+          tsc --build .               && \
+          cd ..                       && \
+          npm clean-install           && \
+          npm run build --if-present
+      - name: Publish to Visual Studio Marketplace
+        uses: HaaLeo/publish-vscode-extension@v1
+        with:
+          packagePath: editors/vscode
+          pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+          registryUrl: https://marketplace.visualstudio.com

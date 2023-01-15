@@ -1,0 +1,53 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json",
+    "title": "Swarm recipes",
+    "description": "How to make (or drill) entities in the Swarm game",
+    "type": "array",
+    "items": {
+        "title": "Swarm recipe",
+        "description": "Recipe describes a process that takes some inputs and produces some outputs, which robots can access using make and drill.",
+        "type": "object",
+        "examples": [
+            {
+                "in": [
+                    [
+                        2,
+                        "copper wire"
+                    ]
+                ],
+                "out": [
+                    [
+                        1,
+                        "strange loop"
+                    ]
+                ]
+            }
+        ],
+        "properties": {
+            "in": {
+                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
+                "description": "A list of ingredients consumed by the recipe. Each ingredient is a tuple consisting of an integer and an entity name, indicating the number of copies of the given entity that are needed."
+            },
+            "out": {
+                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
+                "description": "A list of outputs produced by the recipe. It is a list of [count, entity name] tuples just like in."
+            },
+            "required": {
+                "default": [],
+                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
+                "description": "A list of catalysts required by the recipe. They are neither consumed nor produced, but must be present in order for the recipe to be carried out. It is a list of [count, entity name] tuples just like in and out."
+            },
+            "time": {
+                "default": 1,
+                "type": "number",
+                "description": "The number of ticks the recipe takes to perform. For recipes which take more than 1 tick, the robot will wait for a number of ticks until the recipe is complete. For example, this is used for many drilling recipes."
+            },
+            "weight": {
+                "default": 1,
+                "type": "number",
+                "description": "Whenever there are multiple recipes that match the relevant criteria, one of them will be chosen at random, with probability proportional to their weights. For example, suppose there are two recipes that both output a widget, one with weight 1 and the other with weight 9. When a robot executes make \"widget\", the first recipe will be chosen 10% of the time, and the second recipe 90% of the time."
+            }
+        }
+    }
+}

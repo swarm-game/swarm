@@ -1,0 +1,213 @@
+version: 1
+name: Bucket Brigade
+author: Karl Ostmo
+description: |
+  Convey resources with limited mobility
+creative: false
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    heavy: true
+    dir: [0, 1]
+    devices:
+      - 3D printer
+      - ADT calculator
+      - branch predictor
+      - clock
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - hearing aid
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - string
+      - workbench
+      - briquette press
+    inventory:
+      - [10, repro kit]
+      - [1, treads]
+  - name: hauler
+    system: true
+    dir: [-1, 0]
+    devices:
+      - furnace
+    display:
+      invisible: false
+      char: '='
+      attr: robot
+    program: |
+      run "scenarios/Challenges/_bucket-brigade/hauler.sw"
+  - name: powerplant
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: false
+      char: '▒'
+      attr: gold
+    program: |
+      run "scenarios/Challenges/_bucket-brigade/powerplant.sw"
+objectives:
+  - goal:
+      - Deliver a "coal lump" to the base.
+      - |
+        To excavate coal from the "lignite mine" (M), a robot needs to
+        `drill` while in posession of a "bucketwheel excavator".
+      - |
+        To assemble the excavator, you'll need to repurpose
+        some "treads".
+        Unfortunately, you have only one set of "treads".
+        You'll have to make do...
+    condition: |
+      as base {has "coal lump"}
+  - goal:
+      - Your base got some coal!
+      - Now fashion more of it into a "coal briquette", and place it
+        so that the hauler (=) can pick it up.
+      - The hauler will periodically stop at the base
+        to check if a load is available.
+    condition: |
+      hauler <- robotnamed "hauler";
+      as hauler {has "coal briquette"}
+solution: |
+  run "scenarios/Challenges/_bucket-brigade/brigade.sw"
+entities:
+  - name: bucketwheel excavator
+    display:
+      char: 'x'
+    description:
+      - A powerful machine designed to remove overburden in mining operations.
+    properties: [known, portable]
+    capabilities: [drill]
+  - name: lignite mine
+    display:
+      attr: copper
+      char: 'M'
+    description:
+      - Requires heavy equipment to remove the overburden.
+    properties: [known]
+  - name: coal lump
+    display:
+      char: 'c'
+    description:
+      - Primitive, sooty fuel.
+    properties: [known, portable]
+  - name: coal briquette
+    display:
+      char: 'q'
+    description:
+      - A compressed, convenient form of coal for consumption and transport.
+    properties: [known, portable]
+  - name: briquette press
+    display:
+      char: 'P'
+    description:
+      - A device to compress coal lumps into briquettes.
+    properties: [known, portable]
+  - name: energy
+    display:
+      char: 'E'
+    description:
+      - The result of burning a coal briquettte.
+    properties: [portable]
+  - name: repro kit
+    display:
+      char: 'k'
+    description:
+      - Kit that can be unpacked into everything a robot needs to reproduce.
+    properties: [known, portable]
+recipes:
+  - in:
+      - [1, repro kit]
+    out:
+      - [1, 3D printer]
+      - [1, ADT calculator]
+      - [1, branch predictor]
+      - [1, calculator]
+      - [1, clock]
+      - [1, comparator]
+      - [1, counter]
+      - [1, dictionary]
+      - [1, grabber]
+      - [1, lambda]
+      - [1, lodestone]
+      - [1, logger]
+      - [1, metal drill]
+      - [1, mirror]
+      - [1, net]
+      - [1, scanner]
+      - [1, solar panel]
+      - [1, string]
+      - [1, strange loop]
+      - [1, welder]
+      - [1, workbench]
+  - in:
+      - [1, treads]
+    out:
+      - [1, bucketwheel excavator]
+  - in:
+      - [1, lignite mine]
+    out:
+      - [1, lignite mine]
+      - [1, coal lump]
+    required:
+      - [1, bucketwheel excavator]
+      - [1, metal drill]
+  - in:
+      - [100, coal lump]
+    out:
+      - [1, coal briquette]
+    required:
+      - [1, briquette press]
+  - in:
+      - [1, coal briquette]
+    out:
+      - [1, energy]
+    required:
+      - [1, furnace]
+
+
+known: [boulder, lignite mine]
+seed: 0
+world:
+  default: [grass]
+  palette:
+    'B': [dirt, null, base]
+    '.': [dirt]
+    '=': [stone]
+    'M': [stone, lignite mine]
+    'H': [stone, null, hauler]
+    'Z': [stone, null, powerplant]
+    'w': [grass]
+    's': [stone]
+    'A': [stone, boulder]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [0, 0]
+  map: |-
+    ww...A.AA.A..A.AA....A..ww
+    w..A..A.AA........A......w
+    .AA..A......M....A....A...
+    ....A..A..................
+    .A...A.A..................
+    ..AA......................
+    ...A..A...............┌┐..
+    ..A.................┌┐││..
+    .....A.............┌────┐.
+    ...................│sZss│.
+    .A.................└────┘.
+    .....A......B==========H=.
+    ..........................
+    .............┌┐.┌──────┐..
+    w......A.....└┘.└──────┘..
+    ww........................

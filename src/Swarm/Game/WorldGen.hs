@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Swarm.Game.WorldGen
@@ -10,24 +11,26 @@
 -- Procedural world generation via coherent noise.
 module Swarm.Game.WorldGen where
 
-import Data.Bool
-import Data.Enumeration
-import Data.Hash.Murmur
-import Data.Int (Int64)
-import Data.List (find)
-import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Set qualified as S
-import Data.Text (Text)
-import Data.Text qualified as T
-import Numeric.Noise.Perlin
-import Witch
-
 import Control.Lens (view)
 import Data.Array.IArray
 import Data.Bifunctor (second)
+import Data.Bool
+import Data.ByteString (ByteString)
+import Data.Enumeration
+import Data.Hash.Murmur
+import Data.Int (Int32)
+import Data.List (find)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set qualified as S
+import Data.Tagged
+import Data.Text (Text)
+import Data.Text qualified as T
+import Numeric.Noise.Perlin
 import Swarm.Game.Entity
 import Swarm.Game.Terrain
 import Swarm.Game.World
+import Witch
+import Witch.Encoding qualified as Encoding
 
 -- | A simple test world used for a while during early development.
 testWorld1 :: Coords -> (TerrainType, Maybe Text)
@@ -93,15 +96,15 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
       (bool Soft Hard (sample ix pn1 > 0))
       (bool Natural Artificial (sample ix pn2 > 0))
    where
-    h = murmur3 0 . into . show $ ix
+    h = murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $ ix
 
     genBiome Big Hard Natural
       | sample ix cl0 > 0.5 = (StoneT, Just "mountain")
       | h `mod` 30 == 0 = (StoneT, Just "boulder")
       | sample ix cl0 > 0 =
-        case h `mod` 30 of
-          1 -> (DirtT, Just "LaTeX")
-          _ -> (DirtT, Just "tree")
+          case h `mod` 30 of
+            1 -> (DirtT, Just "LaTeX")
+            _ -> (DirtT, Just "tree")
       | otherwise = (GrassT, Nothing)
     genBiome Small Hard Natural
       | h `mod` 100 == 0 = (StoneT, Just "lodestone")
@@ -112,7 +115,8 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
       | even (r + c) = (DirtT, Just "wavy water")
       | otherwise = (DirtT, Just "water")
     genBiome Small Soft Natural
-      | h `mod` 10 == 0 = (GrassT, Just "flower")
+      | h `mod` 20 == 0 = (GrassT, Just "flower")
+      | h `mod` 20 == 10 = (GrassT, Just "cotton")
       | otherwise = (GrassT, Nothing)
     genBiome Small Soft Artificial
       | h `mod` 10 == 0 = (GrassT, Just (T.concat ["bit (", from (show ((r + c) `mod` 2)), ")"]))
@@ -149,7 +153,7 @@ testWorld2 em baseSeed = second (readEntity em) (WF tw2)
 
 -- | Create a world function from a finite array of specified cells
 --   plus a seed to randomly generate the rest.
-testWorld2FromArray :: EntityMap -> Array (Int64, Int64) (TerrainType, Maybe Entity) -> Seed -> WorldFun TerrainType Entity
+testWorld2FromArray :: EntityMap -> Array (Int32, Int32) (TerrainType, Maybe Entity) -> Seed -> WorldFun TerrainType Entity
 testWorld2FromArray em arr seed = WF $ \co@(Coords (r, c)) ->
   if inRange bnds (r, c)
     then arr ! (r, c)
@@ -163,7 +167,7 @@ testWorld2FromArray em arr seed = WF $ \co@(Coords (r, c)) ->
 findOffset :: Integer -> ((Coords -> (t, Maybe e)) -> Bool) -> WorldFun t e -> WorldFun t e
 findOffset skip isGood (WF f) = WF f'
  where
-  offset :: Enumeration Int64
+  offset :: Enumeration Int32
   offset = fromIntegral . (skip *) <$> int
 
   f' =

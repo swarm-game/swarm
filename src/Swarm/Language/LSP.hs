@@ -14,20 +14,21 @@ module Swarm.Language.LSP where
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
+import Data.Foldable (forM_)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
-import System.IO (stderr)
-import Witch
-
 import Language.LSP.Diagnostics
 import Language.LSP.Server
+import Language.LSP.Types (Hover (Hover))
 import Language.LSP.Types qualified as J
 import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
-
+import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
+import System.IO (stderr)
+import Witch
 
 lspMain :: IO ()
 lspMain =
@@ -73,9 +74,7 @@ validateSwarmCode doc version content = do
           Left e -> Just $ showTypeErrorPos content e
         Left e -> Just $ showErrorPos e
   -- debug $ "-> " <> from (show err)
-  case err of
-    Nothing -> pure ()
-    Just e -> sendDiagnostic e
+  forM_ err sendDiagnostic
  where
   sendDiagnostic :: ((Int, Int), (Int, Int), Text) -> LspM () ()
   sendDiagnostic ((startLine, startCol), (endLine, endCol), msg) = do
@@ -114,4 +113,13 @@ handlers =
           Just vf@(VirtualFile _ version _rope) -> do
             validateSwarmCode doc (Just $ fromIntegral version) (virtualFileText vf)
           _ -> debug $ "No virtual file found for: " <> from (show msg)
+    , requestHandler J.STextDocumentHover $ \req responder -> do
+        let doc = req ^. J.params . J.textDocument . J.uri . to J.toNormalizedUri
+            pos = req ^. J.params . J.position
+        mdoc <- getVirtualFile doc
+        let maybeHover = do
+              vf <- mdoc
+              (markdownText, maybeRange) <- H.showHoverInfo doc Nothing pos vf
+              return $ Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) maybeRange
+        responder $ Right maybeHover
     ]

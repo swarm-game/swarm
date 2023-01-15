@@ -2,6 +2,19 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.0.8
+- [Highlighter] update regex to recognize `void` and `text` types
+- [Highlighter] improve the coloring of types and lambda parameters
+
+## version 0.0.7
+- [Highlighter] added `swap` command
+- [Highlighter] added `split` and `chars` functions
+
+## version 0.0.6
+- [Highlighter] **FIX:** the number pattern now matches properly, previously it broke everything!
+- [Highlighter] added `listen` command
+- added a snapshot test
+
 ## version 0.0.5
 - [Highlighter] added the `atomic`, `installed` and `time` constants
 - [Highlighter] added `require` syntax (checking what follows it is left to typechecker)
@@ -25,4 +38,4 @@ All notable changes to the "swarm-language" extension will be documented in this
 
 ## version 0.0.1
 
-- Initial release with support for higlighting
+- Initial release with support for highlighting

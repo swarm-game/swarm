@@ -69,6 +69,8 @@ module Swarm.Game.Entity (
   isSubsetOf,
   isEmpty,
   inventoryCapabilities,
+  extantElemsWithCapability,
+  entitiesByCapability,
 
   -- ** Modification
   insert,
@@ -81,39 +83,35 @@ module Swarm.Game.Entity (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens (Getter, Lens', lens, to, view, (^.), _2)
+import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
 import Data.Bifunctor (bimap, first)
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Hashable
-import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.List (foldl')
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set (fromList, member, toList, unions)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Yaml
 import GHC.Generics (Generic)
-import Linear (V2)
+import Swarm.Game.Display
+import Swarm.Language.Capability
+import Swarm.Util (binTuples, dataNotFound, getDataFileNameSafe, plural, reflow, (?))
+import Swarm.Util.Location
+import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
-
-import Data.Yaml
-import Swarm.Util.Yaml
-
-import Swarm.Game.Display
-import Swarm.Language.Capability
-import Swarm.Util (plural, reflow, (?))
-
-import Data.Set (Set)
-import Data.Set.Lens (setOf)
-import Paths_swarm
 
 ------------------------------------------------------------
 -- Properties
@@ -201,33 +199,33 @@ defaultGrowthTime = GrowthTime (100, 200)
 --   entities stored in the world that are the same will literally
 --   just be stored as pointers to the same shared record.
 data Entity = Entity
-  { -- | A hash value computed from the other fields
-    _entityHash :: Int
-  , -- | The way this entity should be displayed on the world map.
-    _entityDisplay :: Display
-  , -- | The name of the entity, used /e.g./ in an inventory display.
-    _entityName :: Text
-  , -- | The plural of the entity name, in case it is irregular.  If
-    --   this field is @Nothing@, default pluralization heuristics
-    --   will be used (see 'plural').
-    _entityPlural :: Maybe Text
-  , -- | A longer-form description. Each 'Text' value is one
-    --   paragraph.
-    _entityDescription :: [Text]
-  , -- | The entity's orientation (if it has one).  For example, when
-    --   a robot moves, it moves in the direction of its orientation.
-    _entityOrientation :: Maybe (V2 Int64)
-  , -- | If this entity grows, how long does it take?
-    _entityGrowth :: Maybe GrowthTime
-  , -- | The name of a different entity obtained when this entity is
-    -- grabbed.
-    _entityYields :: Maybe Text
-  , -- | Properties of the entity.
-    _entityProperties :: [EntityProperty]
-  , -- | Capabilities provided by this entity.
-    _entityCapabilities :: [Capability]
-  , -- | Inventory of other entities held by this entity.
-    _entityInventory :: Inventory
+  { _entityHash :: Int
+  -- ^ A hash value computed from the other fields
+  , _entityDisplay :: Display
+  -- ^ The way this entity should be displayed on the world map.
+  , _entityName :: Text
+  -- ^ The name of the entity, used /e.g./ in an inventory display.
+  , _entityPlural :: Maybe Text
+  -- ^ The plural of the entity name, in case it is irregular.  If
+  --   this field is @Nothing@, default pluralization heuristics
+  --   will be used (see 'plural').
+  , _entityDescription :: [Text]
+  -- ^ A longer-form description. Each 'Text' value is one
+  --   paragraph.
+  , _entityOrientation :: Maybe Heading
+  -- ^ The entity's orientation (if it has one).  For example, when
+  --   a robot moves, it moves in the direction of its orientation.
+  , _entityGrowth :: Maybe GrowthTime
+  -- ^ If this entity grows, how long does it take?
+  , _entityYields :: Maybe Text
+  -- ^ The name of a different entity obtained when this entity is
+  -- grabbed.
+  , _entityProperties :: Set EntityProperty
+  -- ^ Properties of the entity.
+  , _entityCapabilities :: Set Capability
+  -- ^ Capabilities provided by this entity.
+  , _entityInventory :: Inventory
+  -- ^ Inventory of other entities held by this entity.
   }
   -- Note that an entity does not have a location, because the
   -- location of an entity is implicit in the way it is stored (by
@@ -239,7 +237,8 @@ data Entity = Entity
 --   value and simply combines the other fields.
 instance Hashable Entity where
   hashWithSalt s (Entity _ disp nm pl descr orient grow yld props caps inv) =
-    s `hashWithSalt` disp
+    s
+      `hashWithSalt` disp
       `hashWithSalt` nm
       `hashWithSalt` pl
       `hashWithSalt` descr
@@ -278,7 +277,7 @@ mkEntity ::
   [Capability] ->
   Entity
 mkEntity disp nm descr props caps =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing props caps empty
+  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing (Set.fromList props) (Set.fromList caps) empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -291,10 +290,10 @@ data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
   , entitiesByCap :: Map Capability [Entity]
   }
-  deriving (Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 instance Semigroup EntityMap where
-  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (c1 <> c2)
+  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (M.unionWith (<>) c1 c2)
 
 instance Monoid EntityMap where
   mempty = EntityMap M.empty M.empty
@@ -316,7 +315,7 @@ buildEntityMap :: [Entity] -> EntityMap
 buildEntityMap es =
   EntityMap
     { entitiesByName = M.fromList . map (view entityName &&& id) $ es
-    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (e ^. entityCapabilities)) $ es
+    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (Set.toList $ e ^. entityCapabilities)) $ es
     }
 
 ------------------------------------------------------------
@@ -334,8 +333,8 @@ instance FromJSON Entity where
               <*> v .:? "orientation"
               <*> v .:? "growth"
               <*> v .:? "yields"
-              <*> v .:? "properties" .!= []
-              <*> v .:? "capabilities" .!= []
+              <*> v .:? "properties" .!= mempty
+              <*> v .:? "capabilities" .!= mempty
               <*> pure empty
           )
 
@@ -365,8 +364,11 @@ instance ToJSON Entity where
 --   either an 'EntityMap' or a pretty-printed parse error.
 loadEntities :: MonadIO m => m (Either Text EntityMap)
 loadEntities = liftIO $ do
-  fileName <- getDataFileName "entities.yaml"
-  bimap (from . prettyPrintParseException) buildEntityMap <$> decodeFileEither fileName
+  let f = "entities.yaml"
+  mayFileName <- getDataFileNameSafe f
+  case mayFileName of
+    Nothing -> Left <$> dataNotFound f
+    Just fileName -> bimap (from . prettyPrintParseException) buildEntityMap <$> decodeFileEither fileName
 
 ------------------------------------------------------------
 -- Entity lenses
@@ -419,7 +421,7 @@ entityDescription :: Lens' Entity [Text]
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
 
 -- | The direction this entity is facing (if it has one).
-entityOrientation :: Lens' Entity (Maybe (V2 Int64))
+entityOrientation :: Lens' Entity (Maybe Heading)
 entityOrientation = hashedLens _entityOrientation (\e x -> e {_entityOrientation = x})
 
 -- | How long this entity takes to grow, if it regrows.
@@ -432,15 +434,15 @@ entityYields :: Lens' Entity (Maybe Text)
 entityYields = hashedLens _entityYields (\e x -> e {_entityYields = x})
 
 -- | The properties enjoyed by this entity.
-entityProperties :: Lens' Entity [EntityProperty]
+entityProperties :: Lens' Entity (Set EntityProperty)
 entityProperties = hashedLens _entityProperties (\e x -> e {_entityProperties = x})
 
 -- | Test whether an entity has a certain property.
 hasProperty :: Entity -> EntityProperty -> Bool
 hasProperty e p = p `elem` (e ^. entityProperties)
 
--- | The capabilities this entity provides when installed.
-entityCapabilities :: Lens' Entity [Capability]
+-- | The capabilities this entity provides when equipped.
+entityCapabilities :: Lens' Entity (Set Capability)
 entityCapabilities = hashedLens _entityCapabilities (\e x -> e {_entityCapabilities = x})
 
 -- | The inventory of other entities carried by this entity.
@@ -567,7 +569,25 @@ isEmpty = all ((== 0) . fst) . elems
 
 -- | Compute the set of capabilities provided by the devices in an inventory.
 inventoryCapabilities :: Inventory -> Set Capability
-inventoryCapabilities = setOf (to elems . traverse . _2 . entityCapabilities . traverse)
+inventoryCapabilities = Set.unions . map (^. entityCapabilities) . nonzeroEntities
+
+-- | List elements that have at least one copy in the inventory.
+nonzeroEntities :: Inventory -> [Entity]
+nonzeroEntities = map snd . filter ((> 0) . fst) . elems
+
+-- | List elements that possess a given Capability and
+-- exist with nonzero count in the inventory.
+extantElemsWithCapability :: Capability -> Inventory -> [Entity]
+extantElemsWithCapability cap =
+  filter (Set.member cap . (^. entityCapabilities)) . nonzeroEntities
+
+-- | Groups entities by the capabilities they offer.
+entitiesByCapability :: Inventory -> Map Capability (NE.NonEmpty Entity)
+entitiesByCapability inv =
+  binTuples entityCapabilityPairs
+ where
+  getCaps = Set.toList . (^. entityCapabilities)
+  entityCapabilityPairs = concatMap ((\e -> map (,e) $ getCaps e) . snd) $ elems inv
 
 -- | Delete a single copy of a certain entity from an inventory.
 delete :: Entity -> Inventory -> Inventory

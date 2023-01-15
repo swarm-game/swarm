@@ -1,3 +1,4 @@
+version: 1
 name: Classic game
 description: The classic open-world, resource-gathering version of the game.  You start with a few basic supplies and have to program robots to explore and collect resources.
 robots:
@@ -12,6 +13,7 @@ robots:
       - 3D printer
       - dictionary
       - grabber
+      - welder
       - life support system
       - logger
       - toolkit
@@ -24,6 +26,7 @@ robots:
       - [70, grabber]
       - [100, solar panel]
       - [50, scanner]
+      - [50, clock]
       - [5, toolkit]
 world:
   seed: null

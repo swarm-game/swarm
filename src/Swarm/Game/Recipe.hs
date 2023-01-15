@@ -25,6 +25,7 @@ module Swarm.Game.Recipe (
   loadRecipes,
   outRecipeMap,
   inRecipeMap,
+  reqRecipeMap,
 
   -- * Looking up recipes
   MissingIngredient (..),
@@ -44,15 +45,13 @@ import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Yaml
 import GHC.Generics (Generic)
 import Witch
 
-import Data.Yaml
-
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (runThrow)
-import Paths_swarm
+import Control.Carrier.Throw.Either (runThrow, throwError)
 import Swarm.Game.Entity as E
 import Swarm.Util
 import Swarm.Util.Yaml
@@ -143,11 +142,15 @@ instance FromJSONE EntityMap (Recipe Entity) where
 --   recipes from the data file @recipes.yaml@.
 loadRecipes :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text [Recipe Entity])
 loadRecipes em = runThrow $ do
-  fileName <- sendIO $ getDataFileName "recipes.yaml"
-  res <- sendIO $ decodeFileEither @[Recipe Text] fileName
-  textRecipes <- res `isRightOr` (from @String @Text . prettyPrintParseException)
-  resolveRecipes em textRecipes
-    `isSuccessOr` (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
+  let f = "recipes.yaml"
+  mayFileName <- sendIO $ getDataFileNameSafe f
+  case mayFileName of
+    Nothing -> sendIO (dataNotFound f) >>= throwError
+    Just fileName -> do
+      res <- sendIO $ decodeFileEither @[Recipe Text] fileName
+      textRecipes <- res `isRightOr` (from @String @Text . prettyPrintParseException)
+      resolveRecipes em textRecipes
+        `isSuccessOr` (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
 
 ------------------------------------------------------------
 
@@ -165,16 +168,20 @@ buildRecipeMap select recipeList =
 outRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 outRecipeMap = buildRecipeMap recipeOutputs
 
+-- | Build a map of recipes indexed by input ingredients.
+inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
+inRecipeMap = buildRecipeMap recipeInputs
+
+-- | Build a map of recipes indexed by requirements.
+reqRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
+reqRecipeMap = buildRecipeMap recipeRequirements
+
 -- | Get a list of all the recipes for the given entity.  Look up an
 --   entity in either an 'inRecipeMap' or 'outRecipeMap' depending on
 --   whether you want to know recipes that consume or produce the
 --   given entity, respectively.
 recipesFor :: IntMap [Recipe Entity] -> Entity -> [Recipe Entity]
 recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
-
--- | Build a map of recipes indexed by input ingredients.
-inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
-inRecipeMap = buildRecipeMap recipeInputs
 
 data MissingIngredient = MissingIngredient MissingType Count Entity
   deriving (Show, Eq)
@@ -184,7 +191,7 @@ data MissingType = MissingInput | MissingCatalyst
 
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.
---   Requirements are not consumed and so can use installed.
+--   Requirements are not consumed and so can use equipped.
 missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [MissingIngredient]
 missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
   mkMissing MissingInput (findLacking inv inps)
@@ -207,7 +214,7 @@ knowsIngredientsFor (inv, ins) recipe =
 --   or an inventory without inputs and function adding outputs if
 --   it was successful.
 make ::
-  -- robots inventory and installed devices
+  -- robots inventory and equipped devices
   (Inventory, Inventory) ->
   -- considered recipe
   Recipe Entity ->
@@ -215,11 +222,10 @@ make ::
   -- a function to add results and the recipe repeated
   Either
     [MissingIngredient]
-    (Inventory, Inventory -> Inventory, Recipe Entity)
+    (Inventory, IngredientList Entity, Recipe Entity)
 make invs r = finish <$> make' invs r
  where
-  finish (invTaken, out) = (invTaken, addOuts out, r)
-  addOuts out inv' = foldl' (flip $ uncurry insertCount) inv' out
+  finish (invTaken, out) = (invTaken, out, r)
 
 -- | Try to make a recipe, but do not insert it yet.
 make' :: (Inventory, Inventory) -> Recipe Entity -> Either [MissingIngredient] (Inventory, IngredientList Entity)

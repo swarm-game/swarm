@@ -1,14 +1,13 @@
 backstory.yaml
 move.yaml
-turn.yaml
 craft.yaml
 grab.yaml
 place.yaml
 types.yaml
 type-errors.yaml
-bind.yaml
-install.yaml
+equip.yaml
 build.yaml
+bind2.yaml
 crash.yaml
 scan.yaml
 def.yaml

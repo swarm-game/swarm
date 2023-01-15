@@ -1,11 +1,12 @@
+version: 1
 name: Require inventory
 description: |
   Learn how to require inventory when building robots.
 objectives:
   - goal:
       - In the previous tutorial challenge, you learned how to use
-        `require` to require specific devices to be installed.
-        Sometimes, instead of requiring installed devices, you require
+        `require` to require specific devices to be equipped.
+        Sometimes, instead of requiring equipped devices, you require
         supplies in your inventory.  In this case, you can write
         `require <int> <name>` to require a certain number of copies of
         a certain entity to be placed in your inventory.
@@ -33,15 +34,12 @@ objectives:
         ifC (has "tree") {return false} {return true}
       } { return false }
 solution: |
-  def m4 = move; move; move; move end;
+  def x4 = \c. c;c;c;c end;
   def mp = move; place "rock" end;
-  def mp4 = mp; mp; mp; mp end;
-  def rr = move; turn right; mp4; turn back; m4; turn right end;
+  def rr = turn right; move; turn right; x4 mp; turn back; x4 move end;
   build {
-    require "treads"; require "grabber"; // #540
     require 16 "rock";
-    turn right;
-    rr; rr; rr; rr
+    x4 rr
   };
 robots:
   - name: base
@@ -61,6 +59,7 @@ robots:
       - [16, treads]
       - [16, grabber]
       - [16, scanner]
+      - [16, lambda]
       - [100, rock]
 world:
   default: [blank]

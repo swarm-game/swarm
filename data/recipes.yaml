@@ -89,7 +89,7 @@
   - [1, board]
   - [8, wooden gear]
   out:
-  - [1, printer]
+  - [1, typewriter]
 
 #########################################
 ##                BITS                 ##
@@ -389,6 +389,14 @@
   required:
   - [1, big furnace]
 
+- in:
+  - [1, iron plate]
+  out:
+  - [1, lodestone]
+  required:
+  - [2, lodestone]
+  time: 64
+
 ## TOOLS
 
 - in:
@@ -451,6 +459,8 @@
   - [4, big motor]
   - [64, iron plate]
   - [16, rubber]
+  required:
+  - [1, welder]
   out:
   - [1, tank treads]
 
@@ -464,6 +474,20 @@
   - [1, grabber]
 
 - in:
+  - [2, grabber]
+  - [1, rubber band]
+  out:
+  - [1, fast grabber]
+
+- in:
+  - [2, copper wire]
+  - [1, copper pipe]
+  - [1, iron plate]
+  - [1, I/O cable]
+  out:
+  - [1, welder]
+
+- in:
   - [4, circuit]
   - [1, iron plate]
   - [3, copper pipe]
@@ -471,12 +495,58 @@
   out:
   - [1, 3D printer]
 
+- in:
+  - [1, gold]
+  out:
+  - [8, gold coin]
+  required:
+  - [1, furnace]
+
+- in:
+  - [1, gold]
+  out:
+  - [8, gold coin]
+  required:
+  - [1, big furnace]
+
+- in:
+  - [1, gold coin]
+  - [1, bit (1)]
+  - [1, bit (0)]
+  required:
+  - [1, metal drill]
+  out:
+  - [1, bitcoin]
+
+- in:
+  - [2, silver]
+  - [2, copper wire]
+  out:
+  - [1, antenna]
+
+- in:
+  - [1, antenna]
+  - [1, clock]
+  - [1, circuit]
+  - [1, compass]
+  out:
+  - [1, GPS receiver]
+
 ## MAGIC
 
 - in:
   - [2, copper wire]
   out:
   - [1, strange loop]
+
+- in:
+  - [2, copper pipe]
+  - [4, copper wire]
+  - [1, paper]
+  - [1, lodestone]
+  out:
+  - [2, hearing aid]
+
 
 #########################################
 ##           QUARTZ + SILICON          ##
@@ -612,6 +682,13 @@
   - [1, calculator]
 
 - in:
+  - [1, calculator]
+  - [1, typewriter]
+  - [1, I/O cable]
+  out:
+  - [1, ADT calculator]
+
+- in:
   - [1, glass]
   - [1, silver]
   out:
@@ -650,3 +727,19 @@
   - [1, strange loop]
   out:
   - [1, rubber band]
+
+#########################################
+##                COTTON               ##
+#########################################
+
+- in:
+  - [4, cotton]
+  out:
+  - [1, string]
+  required:
+  - [1, small motor]
+
+- in:
+  - [256, string]
+  out:
+  - [1, net]

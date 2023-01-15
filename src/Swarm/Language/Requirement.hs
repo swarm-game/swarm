@@ -37,7 +37,6 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import GHC.Generics (Generic)
-
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
@@ -46,15 +45,15 @@ import Swarm.Language.Syntax
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:
 --   - A robot can require a certain 'Capability', which should be fulfilled
---     by installing an appropriate device.
---   - A robot can require a specific /device/, which should be installed.
+--     by equipping an appropriate device.
+--   - A robot can require a specific /device/, which should be equipped.
 --   - A robot can require some number of a specific entity in its inventory.
 data Requirement
   = -- | Require a specific capability.  This must be fulfilled by
-    --   installing an appropriate device.  Requiring the same
+    --   equipping an appropriate device.  Requiring the same
     --   capability multiple times is the same as requiring it once.
     ReqCap Capability
-  | -- | Require a specific device to be installed.  Note that at this
+  | -- | Require a specific device to be equipped.  Note that at this
     --   point it is only a name, and has not been resolved to an actual
     --   'Entity'.  That's because programs have to be type- and
     --   capability-checked independent of an 'EntityMap'.  The name
@@ -188,8 +187,8 @@ requirements' = go
     TDir d -> if isCardinal d then singletonCap COrient else mempty
     TInt _ -> mempty
     TAntiInt _ -> mempty
-    TString _ -> mempty
-    TAntiString _ -> mempty
+    TText _ -> mempty
+    TAntiText _ -> mempty
     TBool _ -> mempty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
@@ -231,12 +230,13 @@ requirements' = go
     -- lambda.
     TLet r x _ t1 t2 ->
       (if r then insert (ReqCap CRecursion) else id) $
-        insert (ReqCap CEnv) $ go (Ctx.delete x ctx) t1 <> go (Ctx.delete x ctx) t2
+        insert (ReqCap CEnv) $
+          go (Ctx.delete x ctx) t1 <> go (Ctx.delete x ctx) t2
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
     TBind mx t1 t2 -> go ctx t1 <> go (maybe id Ctx.delete mx ctx) t2
     -- Everything else is straightforward.
-    TPair t1 t2 -> go ctx t1 <> go ctx t2
+    TPair t1 t2 -> insert (ReqCap CProd) $ go ctx t1 <> go ctx t2
     TDelay _ t -> go ctx t
     -- This case should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level,

@@ -23,12 +23,13 @@ module Swarm.Language.Types (
   tyVars,
   pattern TyBase,
   pattern TyVar,
+  pattern TyVoid,
   pattern TyUnit,
   pattern TyInt,
-  pattern TyString,
+  pattern TyText,
   pattern TyDir,
   pattern TyBool,
-  pattern TyRobot,
+  pattern TyActor,
   pattern (:+:),
   pattern (:*:),
   pattern (:->:),
@@ -39,12 +40,13 @@ module Swarm.Language.Types (
   UType,
   pattern UTyBase,
   pattern UTyVar,
+  pattern UTyVoid,
   pattern UTyUnit,
   pattern UTyInt,
-  pattern UTyString,
+  pattern UTyText,
   pattern UTyDir,
   pattern UTyBool,
-  pattern UTyRobot,
+  pattern UTyActor,
   pattern UTySum,
   pattern UTyProd,
   pattern UTyFun,
@@ -58,6 +60,7 @@ module Swarm.Language.Types (
   -- * Polytypes
   Poly (..),
   Polytype,
+  pattern PolyUnit,
   UPolytype,
 
   -- * Contexts
@@ -87,9 +90,8 @@ import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
-import Witch
-
 import Swarm.Language.Context
+import Witch
 
 ------------------------------------------------------------
 -- Types
@@ -97,18 +99,23 @@ import Swarm.Language.Context
 
 -- | Base types.
 data BaseTy
-  = -- | The unit type, with a single inhabitant.
+  = -- | The void type, with no inhabitants.
+    BVoid
+  | -- | The unit type, with a single inhabitant.
     BUnit
   | -- | Signed, arbitrary-size integers.
     BInt
   | -- | Unicode strings.
-    BString
+    BText
   | -- | Directions.
     BDir
   | -- | Booleans.
     BBool
-  | -- | Robots.
-    BRobot
+  | -- | "Actors", i.e. anything that can do stuff. Internally, these
+    --   are all just "robots", but we give them a more generic
+    --   in-game name because they could represent other things like
+    --   aliens, animals, seeds, ...
+    BActor
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | A "structure functor" encoding the shape of type expressions.
@@ -290,14 +297,17 @@ pattern TyBase b = Fix (TyBaseF b)
 pattern TyVar :: Var -> Type
 pattern TyVar v = Fix (TyVarF v)
 
+pattern TyVoid :: Type
+pattern TyVoid = Fix (TyBaseF BVoid)
+
 pattern TyUnit :: Type
 pattern TyUnit = Fix (TyBaseF BUnit)
 
 pattern TyInt :: Type
 pattern TyInt = Fix (TyBaseF BInt)
 
-pattern TyString :: Type
-pattern TyString = Fix (TyBaseF BString)
+pattern TyText :: Type
+pattern TyText = Fix (TyBaseF BText)
 
 pattern TyDir :: Type
 pattern TyDir = Fix (TyBaseF BDir)
@@ -305,8 +315,8 @@ pattern TyDir = Fix (TyBaseF BDir)
 pattern TyBool :: Type
 pattern TyBool = Fix (TyBaseF BBool)
 
-pattern TyRobot :: Type
-pattern TyRobot = Fix (TyBaseF BRobot)
+pattern TyActor :: Type
+pattern TyActor = Fix (TyBaseF BActor)
 
 infixr 5 :+:
 
@@ -335,14 +345,17 @@ pattern UTyBase b = UTerm (TyBaseF b)
 pattern UTyVar :: Var -> UType
 pattern UTyVar v = UTerm (TyVarF v)
 
+pattern UTyVoid :: UType
+pattern UTyVoid = UTerm (TyBaseF BVoid)
+
 pattern UTyUnit :: UType
 pattern UTyUnit = UTerm (TyBaseF BUnit)
 
 pattern UTyInt :: UType
 pattern UTyInt = UTerm (TyBaseF BInt)
 
-pattern UTyString :: UType
-pattern UTyString = UTerm (TyBaseF BString)
+pattern UTyText :: UType
+pattern UTyText = UTerm (TyBaseF BText)
 
 pattern UTyDir :: UType
 pattern UTyDir = UTerm (TyBaseF BDir)
@@ -350,8 +363,8 @@ pattern UTyDir = UTerm (TyBaseF BDir)
 pattern UTyBool :: UType
 pattern UTyBool = UTerm (TyBaseF BBool)
 
-pattern UTyRobot :: UType
-pattern UTyRobot = UTerm (TyBaseF BRobot)
+pattern UTyActor :: UType
+pattern UTyActor = UTerm (TyBaseF BActor)
 
 pattern UTySum :: UType -> UType -> UType
 pattern UTySum ty1 ty2 = UTerm (TySumF ty1 ty2)
@@ -367,6 +380,9 @@ pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
 
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty1 = UTerm (TyDelayF ty1)
+
+pattern PolyUnit :: Polytype
+pattern PolyUnit = Forall [] (TyCmd TyUnit)
 
 -- Derive aeson instances for type serialization
 deriving instance Generic Type
