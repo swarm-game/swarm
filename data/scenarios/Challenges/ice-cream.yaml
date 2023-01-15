@@ -11,18 +11,20 @@ objectives:
         Congratulations on the grand opening of your new ice cream shop.
         You have advertised: "All you can eat, for 1 bitcoin!"
       - |
-        Here comes your first customer. They look hungry!
+        A customer is approaching the "Counter". They look hungry!
+      - "..."
+      - |
+        Customer: "`give` me a cone, and then I'll tell you how many scoops I want."
+      - "..."
       - |
         Oh dear, you've forgotten to stock your shop with a "calculator".
         Let's hope this order is simple.
-      - |
-        Customer: "Give me a cone, and then I'll tell you how many scoops I want."
     condition: |
       customer <- robotnamed "customer";
       as customer {has "cone"};
   - goal:
       - |
-        Give the customer exactly what they've requested.
+        `give` the customer exactly what they've requested.
       - |
         Perhaps there is something else around the shop that can assist with
         preparing the order...
@@ -35,7 +37,6 @@ robots:
     dir: [0, 1]
     devices:
       - branch predictor
-      - briefcase
       - treads
       - antenna
       - comparator
@@ -88,7 +89,8 @@ entities:
     properties: [portable, known]
     capabilities: [count]
     description:
-      - Where customers are served
+      - Where customers are served.
+      - Also... it can count things.
   - name: cone
     display:
       char: 'V'
@@ -134,9 +136,13 @@ entities:
   - name: briefcase
     display:
       char: 'B'
+      attr: rubber
     capabilities: [sum, prod]
+    properties: [portable]
     description:
-      - Standard business accoutrement
+      - Standard business accoutrement.
+      - Particular useful for `meet`-ings.
+      - Enables the `case` expression.
   - name: awning1
     display:
       char: '▒'
@@ -204,6 +210,7 @@ world:
     '@': [stone, boulder]
     '.': [grass]
     ':': [stone]
+    'B': [stone, briefcase]
     '6': [stone, cherry]
     'V': [stone, cone]
     Ω: [stone, null, base]
@@ -230,6 +237,6 @@ world:
     .......:.......OO..
     ....yzy:yzyz..OOOO.
     ....┌─┐x┌──┐..^^^^.
-    ....│::Ω:V6│..\ZZ/.
+    ....│B:Ω:V6│..\ZZ/.
     ....└──────┘...\/..
     ...................
