@@ -337,7 +337,7 @@ data AppOpts = AppOpts
 --   is the last among its siblings.
 nextScenario :: Menu -> Maybe ScenarioInfoPair
 nextScenario = \case
-  NewGameMenu (curMenu :| _) ->
+  NewGameMenu (curMenu :| _) _ ->
     let nextMenuList = BL.listMoveDown curMenu
         isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
      in if isLastScenario

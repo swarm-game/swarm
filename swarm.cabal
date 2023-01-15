@@ -94,6 +94,7 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Launch
                       Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Presentation.Model

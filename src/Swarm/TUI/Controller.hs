@@ -49,6 +49,7 @@ import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
 import Control.Lens.Extras (is)
+import Swarm.Game.Scenario.Launch
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State
@@ -131,7 +132,7 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l -> handleNewGameMenuEvent l
+          NewGameMenu l c -> handleNewGameMenuEvent l c
           MessagesMenu -> handleMainMessagesEvent
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
@@ -147,7 +148,7 @@ handleMainMenuEvent menu = \case
         NewGame -> do
           cheat <- use $ uiState . uiCheatMode
           ss <- use $ gameState . scenarios
-          uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss])
+          uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss]) Nothing
         Tutorial -> do
           -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
           cheat <- use $ uiState . uiCheatMode
@@ -159,7 +160,7 @@ handleMainMenuEvent menu = \case
                   (mkScenarioList cheat ss)
               tutorialMenu = mkScenarioList cheat tutorialCollection
               menuStack = NE.fromList [tutorialMenu, topMenu]
-          uiState . uiMenu .= NewGameMenu menuStack
+          uiState . uiMenu .= NewGameMenu menuStack Nothing
 
           -- Extract the first tutorial challenge and run it
           let firstTutorial = case scOrder tutorialCollection of
@@ -194,7 +195,9 @@ getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
 --   menu item is always the same as the currently played scenario!  `quitGame`
 --   is the only place this function should be called.
 advanceMenu :: Menu -> Menu
-advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
+advanceMenu m = case m of
+  NewGameMenu (z :| zs) x -> NewGameMenu (BL.listMoveDown z :| zs) x
+  _ -> m
 
 handleMainAchievementsEvent ::
   BL.List Name CategorizedAchievement ->
@@ -220,21 +223,33 @@ handleMainMessagesEvent = \case
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
-handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
-handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
-  Key V.KEnter ->
+-- | TODO: Don't prompt if the scenario is a tutorial.
+prepareGameStart :: ScenarioInfoPair -> EventM Name AppState ()
+prepareGameStart siPair =
+  -- openModal ScenarioOptionsModal
+  startGame siPair Nothing
+
+handleNewGameMenuEvent
+  :: NonEmpty (BL.List Name ScenarioItem)
+  -> Maybe LaunchOptions
+  -> BrickEvent Name AppEvent
+  -> EventM Name AppState ()
+handleNewGameMenuEvent scenarioStack@(curMenu :| rest) maybeLaunchOptions = \case
+  VtyEvent (V.EvKey V.KEnter modifiers) ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle siPair) -> startGame siPair Nothing
+      Just (SISingle siPair) -> case modifiers of
+        [V.MShift] -> prepareGameStart siPair
+        _ -> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
-        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
+        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack) maybeLaunchOptions
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
   ControlChar 'q' -> halt
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
-    uiState . uiMenu .= NewGameMenu (menu' :| rest)
+    uiState . uiMenu .= NewGameMenu (menu' :| rest) maybeLaunchOptions
   _ -> continueWithoutRedraw
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
@@ -243,7 +258,7 @@ exitNewGameMenu stk = do
     . uiMenu
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
-      Just stk' -> NewGameMenu stk'
+      Just stk' -> NewGameMenu stk' Nothing
 
 pressAnyKey :: Menu -> BrickEvent Name AppEvent -> EventM Name AppState ()
 pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
@@ -464,7 +479,13 @@ saveScenarioInfoOnQuit = do
         -- See what scenario is currently focused in the menu.  Depending on how the
         -- previous scenario ended (via quit vs. via win), it might be the same as
         -- currentScenarioPath or it might be different.
-        curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
+        uim <- preuse $ uiState . uiMenu
+        let curPath = case uim of
+              Just (NewGameMenu (z :| _) _) ->
+                case BL.listSelectedElement z of
+                  Just (_, SISingle (_, sInfo)) -> Just $ _scenarioPath sInfo
+                  _ -> Nothing
+              _ -> Nothing
         -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
         -- being sure to preserve the same focused scenario.
         sc <- use $ gameState . scenarios

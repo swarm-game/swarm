@@ -43,18 +43,23 @@ import Brick.Focus
 import Brick.Forms
 import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
 import Brick.Widgets.Center (center, centerLayer, hCenter)
+import Swarm.Game.Scenario.Launch
+import Brick.Forms qualified as BF
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
+import Control.Monad.Reader (withReaderT)
+import Brick.Widgets.FileBrowser qualified as FB
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
+import Swarm.TUI.Model.Menu
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -87,6 +92,9 @@ import Swarm.Game.ScenarioInfo (
   scenarioStatus,
  )
 import Swarm.Game.State
+import Brick.Widgets.Border
+  ( borderWithLabel
+  )
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Pretty (prettyText)
@@ -109,6 +117,7 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from, into)
+import Control.Exception qualified as E
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -120,7 +129,7 @@ drawUI s
       -- quit the app instead.  But just in case, we display the main menu anyway.
       NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
       MainMenu l -> [drawMainMenuUI s l]
-      NewGameMenu stk -> [drawNewGameMenuUI stk]
+      NewGameMenu stk scenarioCfg -> drawNewGameMenuUI stk scenarioCfg
       AchievementsMenu l -> [drawAchievementsMenuUI s l]
       MessagesMenu -> [drawMainMessages s]
       AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
@@ -168,9 +177,40 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '▒' = dirtAttr
   attrFor _ = defAttr
 
-drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
-drawNewGameMenuUI (l :| ls) =
-  padLeftRight 20
+drawFileBrowser :: FB.FileBrowser Name -> Widget Name
+drawFileBrowser b =
+  center $ ui <=> help
+  where
+    ui = hCenter $
+          vLimit 15 $
+          hLimit 50 $
+          borderWithLabel (txt "Choose a file") $
+          FB.renderFileBrowser True b
+    help = padTop (Pad 1) $
+            vBox [ case FB.fileBrowserException b of
+                      Nothing -> emptyWidget
+                      Just e -> hCenter $ withDefAttr BF.invalidFormInputAttr $
+                                txt $ T.pack $ E.displayException e
+                , hCenter $ txt "Up/Down: select"
+                , hCenter $ txt "/: search, Ctrl-C or Esc: cancel search"
+                , hCenter $ txt "Enter: change directory or select file"
+                , hCenter $ txt "Esc: quit"
+                ]
+
+-- | When launching a game, a modal prompt may appear on another layer
+-- to input seed and/or a script to run.
+drawNewGameMenuUI
+  :: NonEmpty (BL.List Name ScenarioItem)
+  -> Maybe LaunchOptions
+  -> [Widget Name]
+drawNewGameMenuUI (l :| ls) maybeLaunchOptions = case maybeLaunchOptions of
+  Nothing -> pure mainWidget
+  Just (LaunchOptions maybeFileBrowser seedSelector) -> case maybeFileBrowser of
+    Nothing -> pure mainWidget
+    Just fb -> [drawFileBrowser fb, mainWidget]
+    
+ where
+  mainWidget = padLeftRight 20
     . centerLayer
     $ hBox
       [ vBox
@@ -183,7 +223,7 @@ drawNewGameMenuUI (l :| ls) =
           ]
       , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
       ]
- where
+
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioBestTime of
