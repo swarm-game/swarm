@@ -24,7 +24,7 @@ objectives:
       as customer {has "cone"};
   - goal:
       - |
-        `give` the customer exactly what they've requested.
+        `give` the customer exactly what they request.
       - |
         Perhaps there is something else around the shop that can assist with
         preparing the order...
@@ -111,7 +111,7 @@ entities:
       attr: 'silver'
     properties: [portable]
     description:
-      - Pasteurized, homogenized, commoditized, then metabolized.
+      - Pasteurized, homogenized, commoditized, metabolized.
   - name: ice
     display:
       char: 'i'
@@ -141,7 +141,7 @@ entities:
     properties: [portable]
     description:
       - Standard business accoutrement.
-      - Particular useful for `meet`-ings.
+      - Particularly useful for `meet`-ings.
       - Enables the `case` expression.
   - name: awning1
     display:
@@ -230,13 +230,13 @@ world:
     'O': [stone, decorative scoop]
     'x': [stone, Counter]
   map: |
-    .......X...........
-    .......:...........
-    .......:...........
-    .......:...........
-    .......:.......OO..
-    ....yzy:yzyz..OOOO.
-    ....┌─┐x┌──┐..^^^^.
-    ....│B:Ω:V6│..\ZZ/.
-    ....└──────┘...\/..
-    ...................
+    ...X..........
+    ...:..........
+    ...:..........
+    ...:..........
+    ...:.......OO.
+    yzy:yzyz..OOOO
+    ┌─┐x┌──┐..^^^^
+    │B:Ω:V6│..\ZZ/
+    └──────┘...\/.
+    
