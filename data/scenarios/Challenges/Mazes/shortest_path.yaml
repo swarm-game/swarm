@@ -1,4 +1,6 @@
+version: 1
 name: Shortest path
+author: Brent Yorgey
 description: There is a maze, but it can't be seen, only sensed... can you
   program a robot to navigate it successfully, via the shortest possible path?
 objectives:
@@ -8,30 +10,31 @@ objectives:
     You win by marking any shortest path from the base to the goal with `path`
     markers.
   condition: |
-    def tL = turn left end;
-    def tR = turn right end;
-    def tB = turn back end;
-    def ifM = \p.\t.\e. b <- p; if b t e end;
-    def countpath = \d.
-      turn d;
-      n <- ifM blocked {return 0} {move; ifM (ishere "path") {return 1} {return 0}};
-      turn d; turn d; turn d;
-      return n
-    end;
-    def follow : int -> cmd (() + int) = \n.
-      ifM (ishere "goal") {return (inr n)}
-      {
-        a <- countpath left;
-        b <- countpath forward;
-        c <- countpath right;
-        if (a + b + c != 1) {return (inl ())}
-        {
-          return (inl ())
-        }
-      }
-    end
+    return false
+    // def tL = turn left end;
+    // def tR = turn right end;
+    // def tB = turn back end;
+    // def ifC = \p.\t.\e. b <- p; if b t e end;
+    // def countpath = \d.
+    //   turn d;
+    //   n <- ifC blocked {return 0} {move; ifC (ishere "path") {return 1} {return 0}};
+    //   turn d; turn d; turn d;
+    //   return n
+    // end;
+    // def follow : int -> cmd (unit + int) = \n.
+    //   ifC (ishere "goal") {return (inr n)}
+    //   {
+    //     a <- countpath left;
+    //     b <- countpath forward;
+    //     c <- countpath right;
+    //     if (a + b + c != 1) {return (inl ())}
+    //     {
+    //       return (inl ())
+    //     }
+    //   }
+    // end
 solution: |
-  run "data/scenarios/Challenges/Mazes/shortest_path_sol.sw"
+  run "scenarios/Challenges/Mazes/_shortest_path/shortest_path_sol.sw"
 robots:
   - name: base
     dir: [0,1]
@@ -54,6 +57,7 @@ robots:
       - [50, calculator]
       - [50, comparator]
       - [50, logger]
+      - [50, string]
       - [50, grabber]
       - [1000, rock]
       - [1000, path]
