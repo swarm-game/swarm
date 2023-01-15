@@ -11,6 +11,7 @@ module Swarm.TUI.Model.UI (
   uiPlaying,
   uiCheatMode,
   uiFocusRing,
+  uiLaunchConfig,
   uiWorldCursor,
   uiREPL,
   uiInventory,
@@ -70,6 +71,8 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -88,6 +91,7 @@ data UIState = UIState
   , _uiPlaying :: Bool
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
+  , _uiLaunchConfig :: LaunchOptions
   , _uiWorldCursor :: Maybe W.Coords
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
@@ -140,6 +144,9 @@ uiPlaying :: Lens' UIState Bool
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
+
+-- | Configuration modal when launching a scenario
+uiLaunchConfig :: Lens' UIState LaunchOptions
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -284,11 +291,13 @@ initUIState showMainMenu cheatMode = do
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- liftIO $ getTime Monotonic
   (warnings, achievements) <- liftIO loadAchievementsInfo
+  launchConfigPanel <- liftIO initConfigPanel
   let out =
         UIState
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
           , _uiPlaying = not showMainMenu
           , _uiCheatMode = cheatMode
+          , _uiLaunchConfig = launchConfigPanel
           , _uiFocusRing = initFocusRing
           , _uiWorldCursor = Nothing
           , _uiREPL = initREPLState $ newREPLHistory history

@@ -72,9 +72,10 @@ data MainMenuEntry
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
-  = NoMenu -- We started playing directly from command line, no menu to show
+  = -- | We started playing directly from command line, no menu to show
+    NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
-  | -- Stack of scenario item lists. INVARIANT: the currently selected
+  | -- | Stack of scenario item lists. INVARIANT: the currently selected
     -- menu item is ALWAYS the same as the scenario currently being played.
     -- See https://github.com/swarm-game/swarm/issues/1064 and
     -- https://github.com/swarm-game/swarm/pull/1065.
@@ -98,9 +99,15 @@ mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest .
 --   path to some folder or scenario, construct a 'NewGameMenu' stack
 --   focused on the given item, if possible.
 mkNewGameMenu :: Bool -> ScenarioCollection -> FilePath -> Maybe Menu
-mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitPath path) []
+mkNewGameMenu cheat sc path = do
+  theList <- NE.fromList <$> go (Just sc) (splitPath path) []
+  return $ NewGameMenu theList
  where
-  go :: Maybe ScenarioCollection -> [FilePath] -> [BL.List Name ScenarioItem] -> Maybe [BL.List Name ScenarioItem]
+  go ::
+    Maybe ScenarioCollection ->
+    [FilePath] ->
+    [BL.List Name ScenarioItem] ->
+    Maybe [BL.List Name ScenarioItem]
   go _ [] stk = Just stk
   go Nothing _ _ = Nothing
   go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
