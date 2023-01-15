@@ -11,6 +11,7 @@ module Swarm.TUI.Model.UI (
   uiPlaying,
   uiCheatMode,
   uiFocusRing,
+  uiLaunchConfig,
   uiWorldCursor,
   uiREPL,
   uiInventory,
@@ -57,6 +58,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
@@ -85,6 +87,7 @@ data UIState = UIState
   , _uiPlaying :: Bool
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
+  , _uiLaunchConfig :: LaunchOptions
   , _uiWorldCursor :: Maybe W.Coords
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
@@ -136,6 +139,9 @@ uiPlaying :: Lens' UIState Bool
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
+
+-- | Configuration modal when launching a scenario
+uiLaunchConfig :: Lens' UIState LaunchOptions
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -280,6 +286,7 @@ initUIState showMainMenu cheatMode = do
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
           , _uiPlaying = not showMainMenu
           , _uiCheatMode = cheatMode
+          , _uiLaunchConfig = initConfigPanel
           , _uiFocusRing = initFocusRing
           , _uiWorldCursor = Nothing
           , _uiREPL = initREPLState $ newREPLHistory history

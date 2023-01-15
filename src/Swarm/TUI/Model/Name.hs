@@ -11,6 +11,18 @@ data FocusablePanel
     InfoPanel
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+data ScenarioConfigPanel
+  = ScenarioConfigFileSelector
+  | ScenarioConfigPanelControl ScenarioConfigPanelFocusable
+  deriving (Eq, Ord, Show, Read)
+
+data ScenarioConfigPanelFocusable
+  = SeedSelector
+  | -- | The file selector for launching a scenario with a script
+    ScriptSelector
+  | StartGameButton
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 data GoalWidget
   = ObjectivesList
   | GoalSummary
@@ -44,6 +56,8 @@ data Name
     MenuList
   | -- | The list of achievements.
     AchievementList
+  | -- | An individual control within the scenario launch config panel
+    ScenarioConfigControl ScenarioConfigPanel
   | -- | The list of goals/objectives.
     GoalWidgets GoalWidget
   | -- | The list of scenario choices.

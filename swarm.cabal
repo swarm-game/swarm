@@ -99,6 +99,9 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Launch.Controller
+                      Swarm.Game.Scenario.Launch.Model
+                      Swarm.Game.Scenario.Launch.View
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
