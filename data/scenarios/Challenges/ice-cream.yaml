@@ -104,14 +104,14 @@ entities:
       attr: 'gold'
     properties: [portable]
     description:
-      - Bawk bawk
+      - Organic from local, free-range, meticulously pampered chickens.
   - name: milk
     display:
       char: 'm'
       attr: 'silver'
     properties: [portable]
     description:
-      - Moo
+      - Pasteurized, homogenized, commoditized, then metabolized.
   - name: ice
     display:
       char: 'i'
@@ -125,7 +125,7 @@ entities:
       attr: 'snow'
     properties: [portable]
     description:
-      - Basis for most desserts
+      - Basis of most desserts
   - name: vanilla
     display:
       char: 'v'
