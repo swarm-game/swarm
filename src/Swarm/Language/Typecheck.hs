@@ -35,6 +35,7 @@ module Swarm.Language.Typecheck (
   instantiate,
   skolemize,
   generalize,
+  generalize',
 
   -- * Type inference
   inferTop,
@@ -91,12 +92,17 @@ runInfer ctx =
     >>> evalIntBindingT
     >>> runIdentity
 
+-- XXX replace any remaining unification vars with skolems??
+-- fromUSafe :: UType -> Type
+-- fromUSafe
+
 -- XXX
 finalizeModule :: Infer UModule -> Infer (TModule, Polytype)
 finalizeModule um = do
   Module u uctx <- um
-  upty <- generalize (u ^. sType)
-  return $ (Module (fromU u) (fromU uctx), fromU upty)
+  (upty, usubst) <- generalize' (u ^. sType)
+  u' <- traverse (fmap usubst . applyBindings) u
+  return $ (Module (fromU u') (fromU uctx), fromU upty)
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
@@ -212,14 +218,19 @@ skolemize (Forall xs uty) = do
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
 generalize :: UType -> Infer UPolytype
-generalize uty = do
+generalize = fmap fst . generalize'
+
+-- | Like 'generalize', but also return the generalizing substitution.
+generalize' :: UType -> Infer (UPolytype, UType -> UType)
+generalize' uty = do
   uty' <- applyBindings uty
   ctx <- ask
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
       xs = map (mkVarName "a") fvs
-  return $ Forall xs (substU (M.fromList (zip (map Right fvs) (map UTyVar xs))) uty')
+      usubst = substU (M.fromList (zip (map Right fvs) (map UTyVar xs)))
+  return (Forall xs (usubst uty'), usubst)
 
 ------------------------------------------------------------
 -- Type errors
