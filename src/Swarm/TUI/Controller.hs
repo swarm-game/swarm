@@ -43,6 +43,7 @@ import Brick qualified
 import Brick.Focus
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
+import Brick.Widgets.FileBrowser (setWorkingDirectory)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
@@ -74,6 +75,7 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Status (getPlayedScript)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
@@ -93,6 +95,8 @@ import Swarm.Language.Types
 import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
+import Swarm.TUI.Launch.Controller
+import Swarm.TUI.Launch.Model
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
@@ -105,7 +109,7 @@ import Swarm.TUI.View.Objective qualified as GR
 import Swarm.Util hiding (both, (<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
-import System.FilePath (splitDirectories)
+import System.FilePath (splitDirectories, takeDirectory)
 import Witch (into)
 
 tutorialsDirname :: FilePath
@@ -133,7 +137,12 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l -> handleNewGameMenuEvent l
+          NewGameMenu l ->
+            if s ^. uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed
+              then handleFBEvent
+              else case s ^. uiState . uiLaunchConfig . controls . isDisplayedFor of
+                Nothing -> handleNewGameMenuEvent l
+                Just siPair -> handleLaunchOptionsEvent siPair
           MessagesMenu -> handleMainMessagesEvent
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
@@ -222,7 +231,26 @@ handleMainMessagesEvent = \case
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
-handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
+-- | If the selected scenario has been launched with an initial script before,
+-- set the file browser to initially open that script's directory.
+--
+-- Then set the launch dialog to be displayed.
+prepareLaunchDialog ::
+  ScenarioInfoPair ->
+  EventM Name AppState ()
+prepareLaunchDialog siPair@(_, si) = do
+  let maybePlayedScript = getPlayedScript $ si ^. scenarioStatus
+  fb <- use $ uiState . uiLaunchConfig . controls . fileBrowser . fbWidget 
+  forM_ maybePlayedScript $ \playedScript -> do
+    newFb <- liftIO $ setWorkingDirectory (takeDirectory playedScript) fb
+    uiState . uiLaunchConfig . controls . fileBrowser . fbWidget .= newFb
+
+  uiState . uiLaunchConfig . controls . isDisplayedFor .= Just siPair
+
+handleNewGameMenuEvent ::
+  NonEmpty (BL.List Name ScenarioItem) ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
@@ -231,6 +259,9 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
+  CharKey 'o' -> case snd <$> BL.listSelectedElement curMenu of
+    Just (SISingle siPair) -> prepareLaunchDialog siPair
+    _ -> continueWithoutRedraw
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
   ControlChar 'q' -> halt
@@ -456,7 +487,7 @@ getNormalizedCurrentScenarioPath =
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
-  initialCode <- use $ gameState . initiallyRunCode
+  initialRunCode <- use $ gameState . initiallyRunCode
   t <- liftIO getZonedTime
   wc <- use $ gameState . winCondition
   let won = case wc of
@@ -471,7 +502,7 @@ saveScenarioInfoOnFinish p = do
       currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
 
   replHist <- use $ uiState . uiREPL . replHistory
-  let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
+  let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
   currentScenarioInfo
     %= updateScenarioInfoOnFinish determinator t ts won
   status <- preuse currentScenarioInfo

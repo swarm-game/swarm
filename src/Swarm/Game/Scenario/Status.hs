@@ -28,7 +28,11 @@ import Swarm.Game.Scenario.Scoring.GenericMetrics
 --   The "Played" status has two sub-states: "Attempted" or "Completed".
 data ScenarioStatus
   = NotStarted
-  | Played ProgressMetric BestRecords
+  | Played
+      (Maybe FilePath)
+      -- ^ initial script to run
+      ProgressMetric
+      BestRecords
   deriving (Eq, Ord, Show, Read, Generic)
 
 instance FromJSON ScenarioStatus where
@@ -37,6 +41,11 @@ instance FromJSON ScenarioStatus where
 instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
+
+getPlayedScript :: ScenarioStatus -> Maybe FilePath
+getPlayedScript = \case
+  NotStarted -> Nothing
+  Played s _ _ -> s
 
 -- | A "ScenarioInfo" record stores metadata about a scenario: its
 -- canonical path and status.
@@ -83,9 +92,9 @@ updateScenarioInfoOnFinish
   ticks
   completed
   si@(ScenarioInfo p prevPlayState) = case prevPlayState of
-    Played (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
+    Played initialScript (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
       ScenarioInfo p $
-        Played newPlayMetric $
+        Played initialScript newPlayMetric $
           updateBest newPlayMetric prevBestRecords
      where
       el = (diffUTCTime `on` zonedTimeToUTC) z start

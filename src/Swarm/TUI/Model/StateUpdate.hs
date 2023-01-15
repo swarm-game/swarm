@@ -6,6 +6,7 @@
 module Swarm.TUI.Model.StateUpdate (
   initAppState,
   startGame,
+  startGameWithSeed,
   restartGame,
   attainAchievement,
   attainAchievement',
@@ -42,6 +43,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Launch.Model (ValidatedLaunchParms (..))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
@@ -76,12 +78,12 @@ initAppState AppOpts {..} = do
             Right x -> (x, rs)
             Left e -> (ScenarioInfo path NotStarted, addWarnings rs e)
       execStateT
-        (startGameWithSeed userSeed (scenario, si) codeToRun)
+        (startGameWithSeed (scenario, si) $ ValidatedLaunchParms userSeed codeToRun)
         (AppState gs ui newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
-startGame = startGameWithSeed Nothing
+startGame siPair = startGameWithSeed siPair . ValidatedLaunchParms Nothing
 
 -- | Re-initialize the game from the stored reference to the current scenario.
 --
@@ -93,7 +95,7 @@ startGame = startGameWithSeed Nothing
 -- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
 -- case upstream so that the Scenario passed to this function definitely exists.
 restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
-restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Nothing
+restartGame currentSeed siPair = startGameWithSeed siPair $ ValidatedLaunchParms (Just currentSeed) Nothing
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
@@ -102,22 +104,24 @@ restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Not
 -- with "initGameStateForScenario".
 startGameWithSeed ::
   (MonadIO m, MonadState AppState m) =>
-  Maybe Seed ->
   ScenarioInfoPair ->
-  Maybe CodeToRun ->
+  ValidatedLaunchParms ->
   m ()
-startGameWithSeed userSeed siPair@(_scene, si) toRun = do
+startGameWithSeed siPair@(_scene, si) (ValidatedLaunchParms userSeed toRun) = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus
-    .= Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (prevBest t)
+    .= Played
+      (getRunCodePath =<< toRun)
+      (Metric Attempted $ ProgressStats t emptyAttemptMetric)
+      (prevBest t)
   scenarioToAppState siPair userSeed toRun
  where
   prevBest t = case si ^. scenarioStatus of
     NotStarted -> emptyBest t
-    Played _ b -> b
+    Played _ _ b -> b
 
 -- TODO: #516 do we need to keep an old entity map around???
 

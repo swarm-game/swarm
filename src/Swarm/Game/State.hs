@@ -90,6 +90,7 @@ module Swarm.Game.State (
   CodeToRun (..),
   Sha1 (..),
   SolutionSource (..),
+  parseCodeFile,
   getParsedInitialCode,
 
   -- * Utilities
@@ -114,6 +115,7 @@ module Swarm.Game.State (
   toggleRunStatus,
   messageIsRecent,
   messageIsFromNearby,
+  getRunCodePath,
 ) where
 
 import Control.Algebra (Has)
@@ -289,28 +291,32 @@ data SolutionSource
   | -- | Includes the SHA1 of the program text
     -- for the purpose of corroborating solutions
     -- on a leaderboard.
-    PlayerAuthored Sha1
+    PlayerAuthored FilePath Sha1
 
 data CodeToRun = CodeToRun SolutionSource ProcessedTerm
 
-getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
-getParsedInitialCode toRun = case toRun of
-  Nothing -> return Nothing
-  Just filepath -> do
-    contents <- liftIO $ TIO.readFile filepath
+getRunCodePath :: CodeToRun -> Maybe FilePath
+getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
+  ScenarioSuggested -> Nothing
+  PlayerAuthored fp _ -> Just fp
+
+parseCodeFile :: FilePath -> IO (Either Text CodeToRun)
+parseCodeFile filepath = do
+  contents <- TIO.readFile filepath
+  return $ do
     pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
-      ExceptT
-        . return
-        . left T.pack
-        $ processTermEither contents
+      left T.pack $ processTermEither contents
     let strippedText = stripSrc srcLoc contents
         programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
         sha1Hash = showDigest $ sha1 programBytestring
-    return $ Just $ CodeToRun (PlayerAuthored $ Sha1 sha1Hash) pt
+    return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
  where
   stripSrc :: SrcLoc -> Text -> Text
   stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
   stripSrc NoLoc txt = txt
+
+getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
+getParsedInitialCode = traverse $ ExceptT . parseCodeFile
 
 ------------------------------------------------------------
 -- The main GameState record type
@@ -1230,7 +1236,7 @@ initGameStateForScenario sceneName userSeed toRun = do
     gs
       & currentScenarioPath ?~ normalPath
       & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus
-        .~ Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
+        .~ Played toRun (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.
