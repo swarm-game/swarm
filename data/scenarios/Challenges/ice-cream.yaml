@@ -24,8 +24,8 @@ objectives:
       - |
         Give the customer exactly what they've requested.
       - |
-        Perhaps there is something around the shop that can assist with preparing
-        the order...
+        Perhaps there is something else around the shop that can assist with
+        preparing the order...
     condition: |
       as base {
         has "bitcoin";
