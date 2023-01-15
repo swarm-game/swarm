@@ -93,6 +93,8 @@ import Swarm.Language.Types
 import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
+import Swarm.TUI.Launch.Controller
+import Swarm.TUI.Launch.Model
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
@@ -133,7 +135,12 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l -> handleNewGameMenuEvent l
+          NewGameMenu l ->
+            if s ^. uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed
+              then handleFBEvent
+              else case s ^. uiState . uiLaunchConfig . controls . isDisplayedFor of
+                Nothing -> handleNewGameMenuEvent l
+                Just siPair -> handleLaunchOptionsEvent siPair
           MessagesMenu -> handleMainMessagesEvent
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
@@ -196,7 +203,9 @@ getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
 --   menu item is always the same as the currently played scenario!  `quitGame`
 --   is the only place this function should be called.
 advanceMenu :: Menu -> Menu
-advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
+advanceMenu m = case m of
+  NewGameMenu (z :| zs) -> NewGameMenu (BL.listMoveDown z :| zs)
+  _ -> m
 
 handleMainAchievementsEvent ::
   BL.List Name CategorizedAchievement ->
@@ -222,7 +231,18 @@ handleMainMessagesEvent = \case
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
-handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
+-- | TODO: Don't prompt if the scenario is a tutorial.
+prepareGameStart ::
+  ScenarioInfoPair ->
+  EventM Name AppState ()
+prepareGameStart siPair = do
+  uiState . uiLaunchConfig . controls . isDisplayedFor .= Just siPair
+  return ()
+
+handleNewGameMenuEvent ::
+  NonEmpty (BL.List Name ScenarioItem) ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
@@ -231,6 +251,9 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
+  CharKey 'o' -> case snd <$> BL.listSelectedElement curMenu of
+    Just (SISingle siPair) -> prepareGameStart siPair
+    _ -> continueWithoutRedraw
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
   ControlChar 'q' -> halt
@@ -464,7 +487,7 @@ saveScenarioInfoOnFinish = do
     getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
       Just p -> do
-        initialCode <- use $ gameState . initiallyRunCode
+        initialRunCode <- use $ gameState . initiallyRunCode
         t <- liftIO getZonedTime
         wc <- use $ gameState . winCondition
         let won = case wc of
@@ -475,7 +498,7 @@ saveScenarioInfoOnFinish = do
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
 
         replHist <- use $ uiState . uiREPL . replHistory
-        let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
+        let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
         currentScenarioInfo
           %= updateScenarioInfoOnFinish determinator t ts won
         status <- preuse currentScenarioInfo
@@ -503,7 +526,13 @@ saveScenarioInfoOnQuit = do
         -- See what scenario is currently focused in the menu.  Depending on how the
         -- previous scenario ended (via quit vs. via win), it might be the same as
         -- currentScenarioPath or it might be different.
-        curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
+        uim <- preuse $ uiState . uiMenu
+        let curPath = case uim of
+              Just (NewGameMenu (z :| _)) ->
+                case BL.listSelectedElement z of
+                  Just (_, SISingle (_, sInfo)) -> Just $ _scenarioPath sInfo
+                  _ -> Nothing
+              _ -> Nothing
         -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
         -- being sure to preserve the same focused scenario.
         sc <- use $ gameState . scenarios
