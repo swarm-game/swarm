@@ -131,8 +131,10 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
 displayParagraphs :: [Text] -> Widget Name
 displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
 
-withEllipsis :: Text -> Widget Name
-withEllipsis t =
+data EllipsisSide = Beginning | End
+
+withEllipsis :: EllipsisSide -> Text -> Widget Name
+withEllipsis side t =
   Widget Greedy Fixed $ do
     ctx <- getContext
     let w = ctx ^. availWidthL
@@ -140,7 +142,9 @@ withEllipsis t =
         tLength = T.length t
         newText =
           if tLength > w
-            then T.take (w - T.length ellipsis) t <> ellipsis
+            then case side of
+              Beginning -> ellipsis <> T.drop (w - T.length ellipsis) t
+              End -> T.take (w - T.length ellipsis) t <> ellipsis
             else t
     render $ txt newText
 

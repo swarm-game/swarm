@@ -22,14 +22,39 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Game.WorldGen (Seed)
 import Swarm.Util.Lens (makeLensesNoSigs)
+
+-- | These launch parameters are used in a number of ways:
+-- * Serializing the seed/script path for saves
+-- * Holding parse status from form fields, including Error info
+-- * Carrying fully-validated launch parameters.
+--
+-- Type parameters are utilized to support all of these use cases.
+data ParameterizableLaunchParams b a = LaunchParms
+  { seedVal :: a (Maybe Seed)
+  , initialCode :: a (Maybe b)
+  }
+
+type SerializableLaunchParms = ParameterizableLaunchParams FilePath Identity
+deriving instance Eq SerializableLaunchParms
+deriving instance Ord SerializableLaunchParms
+deriving instance Show SerializableLaunchParms
+deriving instance Read SerializableLaunchParms
+deriving instance Generic SerializableLaunchParms
+deriving instance FromJSON SerializableLaunchParms
+deriving instance ToJSON SerializableLaunchParms
 
 -- | A "ScenarioStatus" stores the status of a scenario along with
 --   appropriate metadata: "NotStarted", or "Played".
 --   The "Played" status has two sub-states: "Attempted" or "Completed".
 data ScenarioStatus
   = NotStarted
-  | Played ProgressMetric BestRecords
+  | Played
+      SerializableLaunchParms
+      -- ^ initial seed and script to run
+      ProgressMetric
+      BestRecords
   deriving (Eq, Ord, Show, Read, Generic)
 
 instance FromJSON ScenarioStatus where
@@ -38,6 +63,11 @@ instance FromJSON ScenarioStatus where
 instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
+
+getLaunchParams :: ScenarioStatus -> SerializableLaunchParms
+getLaunchParams = \case
+  NotStarted -> LaunchParms (pure Nothing) (pure Nothing)
+  Played x _ _ -> x
 
 -- | A "ScenarioInfo" record stores metadata about a scenario: its
 -- canonical path and status.
@@ -84,9 +114,9 @@ updateScenarioInfoOnFinish
   ticks
   completed
   si@(ScenarioInfo p prevPlayState) = case prevPlayState of
-    Played (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
+    Played initialScript (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
       ScenarioInfo p $
-        Played newPlayMetric $
+        Played initialScript newPlayMetric $
           updateBest newPlayMetric prevBestRecords
      where
       el = (diffUTCTime `on` zonedTimeToUTC) z start
