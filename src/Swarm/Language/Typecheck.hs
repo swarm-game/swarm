@@ -81,18 +81,22 @@ import Prelude hiding (lookup)
 type Infer = ReaderT UCtx (ExceptT TypeErr (IntBindingT TypeF Identity))
 
 -- | Run a top-level inference computation, returning either a
---   'TypeErr' or a fully resolved 'TModule'.
-runInfer :: TCtx -> Infer UModule -> Either TypeErr TModule
+--   'TypeErr' or a fully resolved 'TModule' and corresponding 'Polytype'.
+runInfer :: TCtx -> Infer UModule -> Either TypeErr (TModule, Polytype)
 runInfer ctx =
   (>>= applyBindings)
-    >>> ( fmap (
-            \(Module u uctx) ->
-              (Module (fromU u) (fromU uctx)))
-        )
+    >>> finalizeModule
     >>> flip runReaderT (toU ctx)
     >>> runExceptT
     >>> evalIntBindingT
     >>> runIdentity
+
+-- XXX
+finalizeModule :: Infer UModule -> Infer (TModule, Polytype)
+finalizeModule um = do
+  Module u uctx <- um
+  upty <- generalize (u ^. sType)
+  return $ (Module (fromU u) (fromU uctx), fromU upty)
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
@@ -275,9 +279,10 @@ getTypeErrSrcLoc te = case te of
 -- Type inference / checking
 
 -- | Top-level type inference function: given a context of definition
---   types and a top-level term, either return a type error or its
---   type as a 'TModule'.
-inferTop :: TCtx -> Syntax -> Either TypeErr TModule
+--   types and a top-level term, either return a type error, or a
+--   fully type-annotated term as a 'TModule' along with a top-level
+--   'Polytype' for the term as a whole.
+inferTop :: TCtx -> Syntax -> Either TypeErr (TModule, Polytype)
 inferTop ctx = runInfer ctx . inferModule
 
 -- | Infer the signature of a top-level expression which might

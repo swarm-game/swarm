@@ -248,7 +248,7 @@ testScenarioSolution _ci _em =
       Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
       Right gs -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
-        Just sol@(ProcessedTerm _ _ reqCtx) -> do
+        Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
           let gs' =
                 gs
                   -- See #827 for an explanation of why it's important to add to

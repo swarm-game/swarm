@@ -255,7 +255,7 @@ testLanguagePipeline =
         [ testCase
             "annotate 1 + 1"
             (assertEqual "foo"
-               (map (Forall []) [TyInt, TyInt :->: TyInt, TyInt :->: TyInt :->: TyInt, TyInt, TyInt])
+               [TyInt, TyInt :->: TyInt, TyInt :->: TyInt :->: TyInt, TyInt, TyInt]
                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
             )
         -- , testCase
@@ -283,5 +283,5 @@ testLanguagePipeline =
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
 
-  getSyntax :: ProcessedTerm -> Syntax' Polytype
-  getSyntax (ProcessedTerm (Module s _) _ _) = s
+  getSyntax :: ProcessedTerm -> Syntax' Type
+  getSyntax (ProcessedTerm (Module s _) _ _ _) = s

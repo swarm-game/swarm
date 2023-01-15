@@ -35,15 +35,16 @@ data Module s t = Module {moduleAST :: Syntax' s, moduleCtx :: Ctx t}
   deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
 
 -- | A 'TModule' is the final result of the type inference process on
---   an expression: we get a polytype for the expression, and a
---   context of polytypes for the defined variables.
+--   an expression: we get the expression annotated with types, a
+--   context of polytypes for the defined variables, and a top-level
+--   Polytype for the expression.
 type TModule = Module Type Polytype
 
 -- | A 'UModule' represents the type of an expression at some
---   intermediate stage during the type inference process.  We get a
---   'UType' (/not/ a 'UPolytype') for the expression, which may
---   contain some free unification or type variables, as well as a
---   context of 'UPolytype's for any defined variables.
+--   intermediate stage during the type inference process.  We get an
+--   expression annotated with `UType`s, which may contain some free
+--   unification or type variables, as well as a context of
+--   'UPolytype's for any defined variables.
 type UModule = Module UType UPolytype
 
 -- | The trivial module for a given AST, with the empty context.

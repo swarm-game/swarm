@@ -286,7 +286,7 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
+initMachine' (ProcessedTerm (Module t' ctx) _ _ reqCtx) e s k =
   case t' ^. sType of
     -- If the starting term has a command type...
     TyCmd _ ->
