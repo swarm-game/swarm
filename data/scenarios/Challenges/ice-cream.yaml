@@ -43,12 +43,11 @@ robots:
       - workbench
       - grabber
       - dictionary
-      - lodestone
       - lambda
       - logger
       - welder
       - hearing aid
-      - net
+      - scanner
       - strange loop
     inventory:
       - [5000, egg]
