@@ -6,12 +6,10 @@ def getCounter =
     move;
     c <- grab;
     equip c;
-    turn back;
-    move;
     end;
 
 def getBriefcase =
-    turn right;
+    turn left;
     move;
     move;
     b <- grab;
@@ -21,7 +19,7 @@ def getBriefcase =
     move;
     end;
 
-def getCone =
+def getIngredients =
     move;
     move;
     cone <- grab;
@@ -55,14 +53,14 @@ def scoopUntil = \customer. \targetRemainingIngredientCount.
     end;
 
 def runSolution = \targetRemainingIngredientCount.
-    getCounter;
     getBriefcase;
-    coneAndCherry <- getCone;
+    coneAndCherry <- getIngredients;
+    getCounter;
+    customer <- meetCustomer;
+
     let cone = fst coneAndCherry in
     let cherry = snd coneAndCherry in
-    customer <- meetCustomer;
     serveCustomer cone customer;
-
     scoopUntil customer targetRemainingIngredientCount;
     give customer cherry;
     end;
