@@ -65,8 +65,7 @@ toErrPos code (VarUsage (LV loc v) scope) = do
       ]
   minusOne (x, y) = (x - 1, y - 1)
 
--- | This is applicable for Let and Lambda.
--- Descends the syntax tree rooted at a variable declaration,
+-- | Descends the syntax tree rooted at a variable declaration,
 -- accumulating variable references.
 -- Generates a "problem" if an associated variable reference
 -- is not encountered in the subtree for this declaration.
