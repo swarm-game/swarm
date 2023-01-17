@@ -8,10 +8,10 @@ import Data.Text.IO qualified as TIO
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parse (readTerm')
 import Swarm.Language.Syntax qualified as S
+import System.Directory (getCurrentDirectory, listDirectory)
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
-import System.Directory ( getCurrentDirectory, listDirectory )
 
 baseTestPath :: FilePath
 baseTestPath = "data/test/language-snippets/warnings/unused-vars"
@@ -58,9 +58,8 @@ testLSP =
  where
   checkFile :: FilePath -> [UnusedVar] -> IO ()
   checkFile filename expectedWarnings = do
-
     -- Debugging
-    currentDir <- getCurrentDirectory;
+    currentDir <- getCurrentDirectory
     putStrLn $ "KARL Current directory is: " <> currentDir
 
     dirContents <- listDirectory currentDir
