@@ -243,6 +243,7 @@ test-suite swarm-unit
                       base,
                       containers,
                       filepath,
+                      directory,
                       hashable,
                       lens,
                       linear,

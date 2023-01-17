@@ -11,6 +11,7 @@ import Swarm.Language.Syntax qualified as S
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
+import System.Directory ( getCurrentDirectory, listDirectory )
 
 baseTestPath :: FilePath
 baseTestPath = "editors/vscode/test/warnings/unused-vars"
@@ -57,6 +58,29 @@ testLSP =
  where
   checkFile :: FilePath -> [UnusedVar] -> IO ()
   checkFile filename expectedWarnings = do
+
+    -- Debugging
+    currentDir <- getCurrentDirectory;
+    putStrLn $ "KARL Current directory is: " <> currentDir
+
+    dirContents <- listDirectory currentDir
+    putStrLn $ show dirContents
+
+    dirContents1 <- listDirectory $ currentDir </> "editors"
+    putStrLn $ "KARL editors/: " <> show dirContents1
+
+    dirContents2 <- listDirectory $ currentDir </> "editors/vscode"
+    putStrLn $ "KARL editors/vscode/: " <> show dirContents2
+
+    dirContents3 <- listDirectory $ currentDir </> "editors/vscode/test"
+    putStrLn $ "KARL editors/vscode/test/: " <> show dirContents3
+
+    dirContents4 <- listDirectory $ currentDir </> "editors/vscode/test/warnings"
+    putStrLn $ "KARL editors/vscode/test/warnings/: " <> show dirContents4
+
+    dirContents5 <- listDirectory $ currentDir </> "editors/vscode/test/warnings/unused-vars"
+    putStrLn $ "KARL editors/vscode/test/warnings/unused-vars/: " <> show dirContents5
+
     content <- TIO.readFile fullPath
     let actualWarnings = getWarnings content
     assertEqual "failed" actualWarnings expectedWarnings
