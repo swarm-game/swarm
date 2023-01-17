@@ -14,7 +14,7 @@ import Test.Tasty.HUnit
 import System.Directory ( getCurrentDirectory, listDirectory )
 
 baseTestPath :: FilePath
-baseTestPath = "editors/vscode/test/warnings/unused-vars"
+baseTestPath = "data/test/language-snippets/warnings/unused-vars"
 
 data UnusedVar = UnusedVar S.Var VU.BindingType
   deriving (Eq, Show)
