@@ -23,13 +23,14 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Utf16.Rope qualified as R
+import Data.Tree (drawTree)
 import Language.LSP.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parse (readTerm', unTuple)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyString, prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
@@ -46,6 +47,9 @@ ropeToLspPosition (R.Position l c) =
 lspToRopePosition :: J.Position -> R.Position
 lspToRopePosition (J.Position myLine myCol) =
   R.Position (fromIntegral myLine) (fromIntegral myCol)
+
+prettifySyntax :: Syntax -> String
+prettifySyntax (Syntax _ t) = prettyString t
 
 showHoverInfo ::
   J.NormalizedUri ->
@@ -71,6 +75,20 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
   absolutePos =
     maybe 0 (R.length . fst) $
       R.splitAtPosition (lspToRopePosition p) myRope
+
+-- | Useful for "printTree" with "prettyText"
+syntaxAsTree :: Syntax' a -> Tree (Syntax' a)
+syntaxAsTree s0@(Syntax' _ t _) = case t of
+  SLam _ _ s -> f [s]
+  SApp s1 s2 -> f [s1, s2]
+  SLet _ _ _ s1 s2 -> f [s1, s2]
+  SPair s1 s2 -> f [s1, s2]
+  SDef _ _ _ s -> f [s]
+  SBind _ s1 s2 -> f [s1, s2]
+  SDelay _ s -> f [s]
+  _ -> pure s0
+ where
+  f = Node s0 . map syntaxAsTree
 
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
 posToRange myRope foundSloc = do
