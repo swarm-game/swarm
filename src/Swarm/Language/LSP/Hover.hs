@@ -14,6 +14,8 @@ import Language.LSP.VFS
 import Swarm.Language.Parse (readTerm')
 import Swarm.Language.Syntax
 import Swarm.Util qualified as U
+import Swarm.Language.Pretty ( prettyText, prettyString )
+import Data.Tree (drawTree)
 
 withinBound :: Int -> SrcLoc -> Bool
 withinBound pos (SrcLoc s e) = pos >= s && pos < e
@@ -27,6 +29,9 @@ lspToRopePosition :: J.Position -> R.Position
 lspToRopePosition (J.Position myLine myCol) =
   R.Position (fromIntegral myLine) (fromIntegral myCol)
 
+prettifySyntax :: Syntax -> String
+prettifySyntax (Syntax _ t) = prettyString t
+
 showHoverInfo ::
   J.NormalizedUri ->
   J.TextDocumentVersion ->
@@ -37,9 +42,15 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
   case readTerm' content of
     Left _ -> Nothing
     Right Nothing -> Nothing
-    Right (Just stx) -> Just (treeToMarkdown 0 $ explain term, finalPos)
+    Right (Just stx) -> Just (t, finalPos)
      where
-      Syntax sloc term = narrowToPosition stx $ fromIntegral absolutePos
+      t = T.intercalate "\n\n" [
+          prettyText term
+        , U.bquote $ U.bquote $ U.bquote $ T.pack (drawTree $ prettifySyntax <$> syntaxAsTree mySyntax)
+        , treeToMarkdown 0 (explain term)
+        ]
+
+      mySyntax@(Syntax sloc term) = narrowToPosition stx $ fromIntegral absolutePos
       finalPos = do
         (s, e) <- case sloc of
           SrcLoc s e -> Just (s, e)
@@ -55,6 +66,19 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
   absolutePos =
     maybe 0 (R.length . fst) $
       R.splitAtPosition (lspToRopePosition p) myRope
+
+-- | Useful for "printTree" with "prettyText"
+syntaxAsTree :: Syntax -> Tree Syntax
+syntaxAsTree s0@(Syntax _pos t) = case t of
+  TVar _ -> pure s0
+  SLam _ _ s -> Node s0 [syntaxAsTree s]
+  SApp s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
+  SLet _ _ _ s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
+  SPair s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
+  SDef _ _v _ s -> Node s0 [syntaxAsTree s]
+  SBind _v s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
+  SDelay _ s -> Node s0 [syntaxAsTree s]
+  _ -> pure s0
 
 descend ::
   -- | position
