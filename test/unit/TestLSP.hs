@@ -33,6 +33,10 @@ testLSP =
         checkFile "multiple-lambda-second-unused.sw" $
           pure $
             UnusedVar "y" VU.Lambda
+    , testCase "shadowed variable name" $
+        checkFile "shadowed-variable-lambda-unused.sw" $
+          pure $
+            UnusedVar "x" VU.Lambda
     , testCase "outer let" $
         checkFile "multiple-let-first-unused.sw" $
           pure $
@@ -45,6 +49,18 @@ testLSP =
         checkFile
           "multiple-let-all-unused.sw"
           [UnusedVar "x" VU.Let, UnusedVar "y" VU.Let]
+    , testCase "shadowed let without usage" $
+        checkFile
+          "shadowed-variable-let-unused.sw"
+          [UnusedVar "x" VU.Let]
+    , testCase "shadowed let with intermediate usage" $
+        checkFile
+          "shadowed-variable-let-intermediate-use.sw"
+          []
+    , testCase "recursive let" $
+        checkFile
+          "recursive-let.sw"
+          [UnusedVar "fac" VU.Let]
     , testCase "single unused bind" $
         checkFile
           "single-bind-unused.sw"
@@ -59,7 +75,7 @@ testLSP =
   checkFile filename expectedWarnings = do
     content <- TIO.readFile fullPath
     let actualWarnings = getWarnings content
-    assertEqual "failed" actualWarnings expectedWarnings
+    assertEqual "failed" expectedWarnings actualWarnings
    where
     fullPath = baseTestPath </> filename
 

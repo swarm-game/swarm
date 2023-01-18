@@ -13,6 +13,7 @@ import Language.LSP.Types qualified as J
 import Swarm.Language.Parse qualified as P
 import Swarm.Language.Syntax
 import Swarm.Util qualified as U
+import Data.List.NonEmpty (NonEmpty (..))
 
 data BindingType
   = Lambda
@@ -22,10 +23,10 @@ data BindingType
 
 data VarUsage = VarUsage LocVar BindingType
 
-type BindingSites = Map Var (BindingType, Syntax)
+type BindingSites = Map Var (NonEmpty SrcLoc)
 
 data Usage = Usage
-  { usages :: Set Var
+  { usages :: Set LocVar
   -- ^ Variable references
   , problems :: [VarUsage]
   -- ^ Variable declarations without any references
@@ -70,22 +71,17 @@ toErrPos code (VarUsage (LV loc v) scope) = do
 -- Generates a "problem" if an associated variable reference
 -- is not encountered in the subtree for this declaration.
 checkOccurrences ::
-  Map Var (BindingType, Syntax) ->
-  Syntax ->
+  BindingSites ->
   LocVar ->
   BindingType ->
   [Syntax] ->
   Usage
-checkOccurrences bindingSites s lv@(LV _ v) declType childSyntaxes =
-  Usage childUsages $ missing <> childMissing
+checkOccurrences bindings lv@(LV loc v) declType childSyntaxes =
+  Usage childUsages $ missing <> deeperMissing
  where
-  -- NOTE: "union" and "mappend" are left-biased, so to overwrite,
-  -- we put the new bindings on the left and the inherited
-  -- bindings on the right.
-  bindingsForChildren = M.singleton v (declType, s) <> bindingSites
-  Usage childUsages childMissing = mconcat $ map (getUsage bindingsForChildren) childSyntaxes
-
-  missing = [VarUsage lv declType | v `S.notMember` childUsages]
+  deeperBindings = M.insertWith (<>) v (pure loc) bindings
+  Usage childUsages deeperMissing = mconcat $ map (getUsage deeperBindings) childSyntaxes
+  missing = [VarUsage lv declType | lv `S.notMember` childUsages]
 
 -- | Build up the bindings map as a function argument as
 -- we descend into the syntax tree.
@@ -94,19 +90,19 @@ getUsage ::
   BindingSites ->
   Syntax ->
   Usage
-getUsage bindingSites s0@(Syntax _pos t) = case t of
+getUsage bindings (Syntax _pos t) = case t of
   TVar v -> Usage myUsages mempty
    where
-    myUsages = case M.lookup v bindingSites of
+    myUsages = case M.lookup v bindings of
       Nothing -> mempty
-      Just _ -> S.singleton v
-  SLam v _ s -> checkOccurrences bindingSites s0 v Lambda [s]
-  SApp s1 s2 -> getUsage bindingSites s1 <> getUsage bindingSites s2
-  SLet _ v _ s1 s2 -> checkOccurrences bindingSites s0 v Let [s1, s2]
-  SPair s1 s2 -> getUsage bindingSites s1 <> getUsage bindingSites s2
-  SDef _ _v _ s -> getUsage bindingSites s
+      Just (loc :| _) -> S.singleton $ LV loc v
+  SLam v _ s -> checkOccurrences bindings v Lambda [s]
+  SApp s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
+  SLet _ v _ s1 s2 -> getUsage bindings s1 <> checkOccurrences bindings v Let [s2]
+  SPair s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
+  SDef _ _v _ s -> getUsage bindings s
   SBind maybeVar s1 s2 -> case maybeVar of
-    Just v -> checkOccurrences bindingSites s0 v Bind [s1, s2]
-    Nothing -> getUsage bindingSites s1 <> getUsage bindingSites s2
-  SDelay _ s -> getUsage bindingSites s
+    Just v -> checkOccurrences bindings v Bind [s1, s2]
+    Nothing -> getUsage bindings s1 <> getUsage bindings s2
+  SDelay _ s -> getUsage bindings s
   _ -> mempty
