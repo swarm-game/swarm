@@ -9,13 +9,13 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Utf16.Rope qualified as R
+import Data.Tree (drawTree)
 import Language.LSP.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Parse (readTerm')
+import Swarm.Language.Pretty (prettyString, prettyText)
 import Swarm.Language.Syntax
 import Swarm.Util qualified as U
-import Swarm.Language.Pretty ( prettyText, prettyString )
-import Data.Tree (drawTree)
 
 withinBound :: Int -> SrcLoc -> Bool
 withinBound pos (SrcLoc s e) = pos >= s && pos < e
@@ -44,11 +44,13 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
     Right Nothing -> Nothing
     Right (Just stx) -> Just (t, finalPos)
      where
-      t = T.intercalate "\n\n" [
-          prettyText term
-        , U.bquote $ U.bquote $ U.bquote $ T.pack (drawTree $ prettifySyntax <$> syntaxAsTree mySyntax)
-        , treeToMarkdown 0 (explain term)
-        ]
+      t =
+        T.intercalate
+          "\n\n"
+          [ prettyText term
+          , U.bquote $ U.bquote $ U.bquote $ T.pack (drawTree $ prettifySyntax <$> syntaxAsTree mySyntax)
+          , treeToMarkdown 0 (explain term)
+          ]
 
       mySyntax@(Syntax sloc term) = narrowToPosition stx $ fromIntegral absolutePos
       finalPos = do
@@ -78,8 +80,8 @@ syntaxAsTree s0@(Syntax _ t) = case t of
   SBind _ s1 s2 -> f [s1, s2]
   SDelay _ s -> f [s]
   _ -> pure s0
-  where
-    f = Node s0 . map syntaxAsTree
+ where
+  f = Node s0 . map syntaxAsTree
 
 descend ::
   -- | position
