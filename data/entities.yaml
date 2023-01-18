@@ -423,7 +423,7 @@
   description:
   - A substance composed mostly of tiny rocks and mineral particles.  It
     tends to be found near water, and can be used in a furnace to make glass.
-  properties: [portable, infinite]
+  properties: [portable]
 
 - name: glass
   display:
