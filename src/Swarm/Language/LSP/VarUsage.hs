@@ -3,6 +3,7 @@
 module Swarm.Language.LSP.VarUsage where
 
 import Control.Monad (guard)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -13,7 +14,6 @@ import Language.LSP.Types qualified as J
 import Swarm.Language.Parse qualified as P
 import Swarm.Language.Syntax
 import Swarm.Util qualified as U
-import Data.List.NonEmpty (NonEmpty (..))
 
 data BindingType
   = Lambda
