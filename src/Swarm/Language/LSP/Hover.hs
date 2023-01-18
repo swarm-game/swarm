@@ -69,16 +69,17 @@ showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
 
 -- | Useful for "printTree" with "prettyText"
 syntaxAsTree :: Syntax -> Tree Syntax
-syntaxAsTree s0@(Syntax _pos t) = case t of
-  TVar _ -> pure s0
-  SLam _ _ s -> Node s0 [syntaxAsTree s]
-  SApp s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
-  SLet _ _ _ s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
-  SPair s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
-  SDef _ _v _ s -> Node s0 [syntaxAsTree s]
-  SBind _v s1 s2 -> Node s0 [syntaxAsTree s1, syntaxAsTree s2]
-  SDelay _ s -> Node s0 [syntaxAsTree s]
+syntaxAsTree s0@(Syntax _ t) = case t of
+  SLam _ _ s -> f [s]
+  SApp s1 s2 -> f [s1, s2]
+  SLet _ _ _ s1 s2 -> f [s1, s2]
+  SPair s1 s2 -> f [s1, s2]
+  SDef _ _ _ s -> f [s]
+  SBind _ s1 s2 -> f [s1, s2]
+  SDelay _ s -> f [s]
   _ -> pure s0
+  where
+    f = Node s0 . map syntaxAsTree
 
 descend ::
   -- | position
