@@ -41,7 +41,7 @@ data PrerequisiteConfig = PrerequisiteConfig
   deriving (Eq, Show, Generic, ToJSON)
 
 instance FromJSON PrerequisiteConfig where
-  -- | Parsing JSON/YAML 'PrerequisiteConfig' has three options:
+  -- \| Parsing JSON/YAML 'PrerequisiteConfig' has three options:
   --
   -- 1. simple String case: `prerequisite: enclose_sheep`
   -- 2. negated form: `prerequisite: not: have_gear`
