@@ -6,7 +6,7 @@
 module Main where
 
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
-import Control.Monad (filterM, forM_, unless, void, when)
+import Control.Monad (filterM, forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Char (isSpace)
@@ -51,7 +51,6 @@ import System.FilePath (splitDirectories)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
@@ -91,24 +90,33 @@ exampleTest (path, fileContent) =
   value = processTerm $ into @Text fileContent
 
 scenarioParseTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioParseTests em inputs = testGroup "Test scenarios" (map (scenarioTest em) inputs)
+scenarioParseTests em inputs =
+  testGroup
+    "Test scenarios parse"
+    (map (scenarioTest Parsed em) inputs)
 
 scenarioParseInvalidTests :: EntityMap -> [(FilePath, String)] -> TestTree
 scenarioParseInvalidTests em inputs =
   testGroup
-    "Parse Validation Test scenarios"
-    (map (expectFailBecause "Invalid scenario file" . scenarioTest em) inputs)
+    "Test invalid scenarios fail to parse"
+    (map (scenarioTest Failed em) inputs)
 
-scenarioTest :: EntityMap -> (FilePath, String) -> TestTree
-scenarioTest em (path, _) =
-  testCase ("parse scenario " ++ show path) (void $ getScenario em path)
+data ParseResult = Parsed | Failed
 
-getScenario :: EntityMap -> FilePath -> IO Scenario
-getScenario em p = do
+scenarioTest :: ParseResult -> EntityMap -> (FilePath, String) -> TestTree
+scenarioTest expRes em (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes em path)
+
+getScenario :: ParseResult -> EntityMap -> FilePath -> IO ()
+getScenario expRes em p = do
   res <- decodeFileEitherE em p :: IO (Either ParseException Scenario)
-  case res of
-    Left err -> assertFailure (prettyPrintParseException err)
-    Right s -> return s
+  case expRes of
+    Parsed -> case res of
+      Left err -> assertFailure (prettyPrintParseException err)
+      Right _s -> return ()
+    Failed -> case res of
+      Left _err -> return ()
+      Right _s -> assertFailure "Unexpectedly parsed invalid scenario!"
 
 acquire :: FilePath -> String -> IO [(FilePath, String)]
 acquire dir ext = do
