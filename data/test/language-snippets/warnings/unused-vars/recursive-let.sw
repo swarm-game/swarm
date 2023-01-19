@@ -1,0 +1,1 @@
+let one = 1 in let fac = \n. if (n == 0) {one} {n * fac (n-1)} in 17
