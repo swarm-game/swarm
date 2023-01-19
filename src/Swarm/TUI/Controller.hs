@@ -41,6 +41,8 @@ module Swarm.TUI.Controller (
 import Brick hiding (Direction, Location)
 import Brick qualified
 import Brick.Focus
+import Brick.Forms ((@@=))
+import Brick.Forms qualified as Forms
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
@@ -49,7 +51,6 @@ import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
 import Control.Lens.Extras (is)
-import Swarm.Game.Scenario.Launch
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State
@@ -71,6 +72,7 @@ import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Launch
 import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
@@ -224,26 +226,44 @@ handleMainMessagesEvent = \case
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 -- | TODO: Don't prompt if the scenario is a tutorial.
-prepareGameStart :: ScenarioInfoPair -> EventM Name AppState ()
-prepareGameStart siPair =
+prepareGameStart ::
+  ScenarioInfoPair ->
+  NonEmpty (BL.List Name ScenarioItem) ->
+  EventM Name AppState ()
+prepareGameStart siPair stack = do
   -- openModal ScenarioOptionsModal
-  startGame siPair Nothing
+  uiState . uiMenu .= NewGameMenu stack launchOptions
+  return ()
+ where
+  launchOptions = Just $ LaunchOptions Nothing myForm ring
 
-handleNewGameMenuEvent
-  :: NonEmpty (BL.List Name ScenarioItem)
-  -> Maybe LaunchOptions
-  -> BrickEvent Name AppEvent
-  -> EventM Name AppState ()
+  formFields =
+    [ (txt "Seed" <+>)
+        @@= Forms.editShowableField seedVal (ScenarioConfigControl $ ScenarioConfigPanelControl SeedSelector)
+    ]
+
+  myForm = Forms.newForm formFields (SeedSelection 0)
+
+  ring = focusRing $ map (ScenarioConfigControl . ScenarioConfigPanelControl) listEnums
+
+-- startGame siPair Nothing
+
+handleNewGameMenuEvent ::
+  NonEmpty (BL.List Name ScenarioItem) ->
+  Maybe LaunchOptions ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) maybeLaunchOptions = \case
-  VtyEvent (V.EvKey V.KEnter modifiers) ->
+  Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle siPair) -> case modifiers of
-        [V.MShift] -> prepareGameStart siPair
-        _ -> startGame siPair Nothing
+      Just (SISingle siPair) -> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack) maybeLaunchOptions
+  CharKey 'o' -> case snd <$> BL.listSelectedElement curMenu of
+    Just (SISingle siPair) -> prepareGameStart siPair scenarioStack
+    _ -> continueWithoutRedraw
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
   ControlChar 'q' -> halt

@@ -11,14 +11,29 @@ data FocusablePanel
     InfoPanel
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
-data ScenarioConfigFocusable = 
-    ScenarioConfigFileSelector
+data ScenarioConfigPanel
+  = ScenarioConfigFileSelector
   | ScenarioConfigPanelControl ScenarioConfigPanelFocusable
   deriving (Eq, Ord, Show, Read)
 
 data ScenarioConfigPanelFocusable
   = SeedSelector
   | ScriptSelector
+  | StartGameButton
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+data GoalWidget
+  = ObjectivesList
+  | GoalSummary
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+-- | Clickable buttons in modal dialogs.
+data Button
+  = CancelButton
+  | KeepPlayingButton
+  | StartOverButton
+  | QuitButton
+  | NextButton
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data GoalWidget
@@ -55,7 +70,7 @@ data Name
   | -- | The list of achievements.
     AchievementList
   | -- | An individual control within the scenario launch config panel
-    ScenarioConfigControl ScenarioConfigFocusable
+    ScenarioConfigControl ScenarioConfigPanel
   | -- | The list of goals/objectives.
     GoalWidgets GoalWidget
   | -- | The list of scenario choices.

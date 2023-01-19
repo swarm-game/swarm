@@ -41,25 +41,30 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
-import Brick.Widgets.Center (center, centerLayer, hCenter)
-import Swarm.Game.Scenario.Launch
 import Brick.Forms qualified as BF
+import Brick.Widgets.Border (
+  borderWithLabel,
+  hBorder,
+  hBorderWithLabel,
+  joinableBorder,
+  vBorder,
+ )
+import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
+import Brick.Widgets.FileBrowser qualified as FB
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
+import Control.Exception qualified as E
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
 import Control.Monad.Reader (withReaderT)
-import Brick.Widgets.FileBrowser qualified as FB
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
-import Swarm.TUI.Model.Menu
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -81,6 +86,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario.Launch
 import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
@@ -92,9 +98,6 @@ import Swarm.Game.ScenarioInfo (
   scenarioStatus,
  )
 import Swarm.Game.State
-import Brick.Widgets.Border
-  ( borderWithLabel
-  )
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Pretty (prettyText)
@@ -104,6 +107,7 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
@@ -117,7 +121,6 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (from, into)
-import Control.Exception qualified as E
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -179,50 +182,71 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
 
 drawFileBrowser :: FB.FileBrowser Name -> Widget Name
 drawFileBrowser b =
-  center $ ui <=> help
-  where
-    ui = hCenter $
-          vLimit 15 $
-          hLimit 50 $
+  centerLayer $ ui <=> help
+ where
+  ui =
+    hCenter $
+      vLimit 15 $
+        hLimit 50 $
           borderWithLabel (txt "Choose a file") $
-          FB.renderFileBrowser True b
-    help = padTop (Pad 1) $
-            vBox [ case FB.fileBrowserException b of
-                      Nothing -> emptyWidget
-                      Just e -> hCenter $ withDefAttr BF.invalidFormInputAttr $
-                                txt $ T.pack $ E.displayException e
-                , hCenter $ txt "Up/Down: select"
-                , hCenter $ txt "/: search, Ctrl-C or Esc: cancel search"
-                , hCenter $ txt "Enter: change directory or select file"
-                , hCenter $ txt "Esc: quit"
-                ]
+            FB.renderFileBrowser True b
+  help =
+    padTop (Pad 1) $
+      vBox
+        [ case FB.fileBrowserException b of
+            Nothing -> emptyWidget
+            Just e ->
+              hCenter $
+                withDefAttr BF.invalidFormInputAttr $
+                  txt $
+                    T.pack $
+                      E.displayException e
+        , hCenter $ txt "Up/Down: select"
+        , hCenter $ txt "/: search, Ctrl-C or Esc: cancel search"
+        , hCenter $ txt "Enter: change directory or select file"
+        , hCenter $ txt "Esc: quit"
+        ]
+
+drawLaunchConfigPanel :: LaunchOptions -> [Widget Name]
+drawLaunchConfigPanel (LaunchOptions maybeFileBrowser seedForm ring) = case maybeFileBrowser of
+  Nothing -> [panelWidget]
+  Just fb -> [drawFileBrowser fb, panelWidget]
+ where
+  panelWidget =
+    centerLayer $
+      borderWithLabel (str "Configure scenario") $
+        hLimit 50 $
+          vBox
+            [ padAll 1 $ txt "Hello there!"
+            , renderForm seedForm
+            , hCenter $ str "Select script"
+            , hCenter $ str "Launch"
+            ]
 
 -- | When launching a game, a modal prompt may appear on another layer
 -- to input seed and/or a script to run.
-drawNewGameMenuUI
-  :: NonEmpty (BL.List Name ScenarioItem)
-  -> Maybe LaunchOptions
-  -> [Widget Name]
+drawNewGameMenuUI ::
+  NonEmpty (BL.List Name ScenarioItem) ->
+  Maybe LaunchOptions ->
+  [Widget Name]
 drawNewGameMenuUI (l :| ls) maybeLaunchOptions = case maybeLaunchOptions of
   Nothing -> pure mainWidget
-  Just (LaunchOptions maybeFileBrowser seedSelector) -> case maybeFileBrowser of
-    Nothing -> pure mainWidget
-    Just fb -> [drawFileBrowser fb, mainWidget]
-    
+  Just launchOptions -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
-  mainWidget = padLeftRight 20
-    . centerLayer
-    $ hBox
-      [ vBox
-          [ withAttr boldAttr . txt $ breadcrumbs ls
-          , txt " "
-          , vLimit 20
-              . hLimit 35
-              . BL.renderList (const $ padRight Max . drawScenarioItem) True
-              $ l
-          ]
-      , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
-      ]
+  mainWidget =
+    padLeftRight 20
+      . centerLayer
+      $ hBox
+        [ vBox
+            [ withAttr boldAttr . txt $ breadcrumbs ls
+            , txt " "
+            , vLimit 20
+                . hLimit 35
+                . BL.renderList (const $ padRight Max . drawScenarioItem) True
+                $ l
+            ]
+        , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
+        ]
 
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
