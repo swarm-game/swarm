@@ -20,9 +20,7 @@ objectives:
     condition: |
       as base {has "wooden gear"};
     id: have_gear
-    prerequisite:
-      logic:
-        id: have_furnace
+    prerequisite: have_furnace
 solution: |
   make "wooden gear";
   make "furnace";

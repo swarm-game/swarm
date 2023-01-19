@@ -48,9 +48,7 @@ objectives:
       - Now go forth and build your swarm!
     condition: |
       try {as base {has "curry"}} {return false}
-    prerequisite:
-      logic:
-        id: get_many_lambdas
+    prerequisite: get_many_lambdas
 solution: |
   run "scenarios/Tutorials/farming.sw";
   run "scenarios/Tutorials/make_curry.sw";

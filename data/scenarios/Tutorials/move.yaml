@@ -31,9 +31,7 @@ objectives:
       r <- robotNamed "check2";
       loc <- as r {has "Win"};
     id: move_along_corridor
-    prerequisite:
-      logic:
-        id: move_to_first_flower
+    prerequisite: move_to_first_flower
   - goal:
       - Well done! In addition to `move`, you can use the `turn` command
         to turn your robot, for example, `turn right` or `turn east`.
@@ -57,9 +55,7 @@ objectives:
       r <- robotNamed "check3";
       loc <- as r {has "Win"};
     id: move_northeast_corner
-    prerequisite:
-      logic:
-        id: move_along_corridor
+    prerequisite: move_along_corridor
   - goal:
       - Good job! You are now ready to move and turn on your own.
       - To complete this challenge, move your robot to the northeast corner,
@@ -70,9 +66,7 @@ objectives:
     condition: |
       r <- robotNamed "check4";
       loc <- as r {has "Win"};
-    prerequisite:
-      logic:
-        id: move_northeast_corner
+    prerequisite: move_northeast_corner
 solution: |
   // 0
   move;move;
