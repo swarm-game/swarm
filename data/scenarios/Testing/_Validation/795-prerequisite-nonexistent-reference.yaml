@@ -8,9 +8,7 @@ objectives:
       - Achieve one of two other objectives
     condition: |
       return true;
-    prerequisite:
-      logic:
-        id: shave_furnace
+    prerequisite: shave_furnace
   - goal:
       - Make a "furnace".
     condition: |

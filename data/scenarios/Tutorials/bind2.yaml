@@ -57,9 +57,7 @@ objectives:
         w <- as p {ishere "Hastur"};
         return w;
       } { return false }
-    prerequisite:
-      logic:
-        id: grab_artifact
+    prerequisite: grab_artifact
 solution: |
   run "data/scenarios/Tutorials/bind2-solution.sw"
 entities:

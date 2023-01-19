@@ -36,9 +36,7 @@ objectives:
     condition: |
       try { as base {has "harvester"} } {return false}
     id: get_harvester
-    prerequisite:
-      logic:
-        id: get_trees
+    prerequisite: get_trees
   - goal:
       - Now that you have a harvester, you can use `harvest` instead of `grab`
         whenever you pick up a growing item (check for the word "growing" at the
@@ -55,9 +53,7 @@ objectives:
         coordinates."
     condition: |
       try { as base {has "lambda"} } {return false}
-    prerequisite:
-      logic:
-        id: get_harvester
+    prerequisite: get_harvester
 robots:
   - name: base
     display:

@@ -76,9 +76,7 @@ objectives:
     condition: |
       hauler <- robotnamed "hauler";
       as hauler {has "coal briquette"}
-    prerequisite:
-      logic:
-        id: deliver_coal_lump
+    prerequisite: deliver_coal_lump
 solution: |
   run "scenarios/Challenges/_bucket-brigade/brigade.sw"
 entities:
