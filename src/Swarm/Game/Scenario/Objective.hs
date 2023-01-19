@@ -4,6 +4,7 @@
 
 module Swarm.Game.Scenario.Objective where
 
+import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Data.Aeson
 import Data.Set qualified as Set
@@ -40,10 +41,14 @@ data PrerequisiteConfig = PrerequisiteConfig
   deriving (Eq, Show, Generic, ToJSON)
 
 instance FromJSON PrerequisiteConfig where
-  parseJSON = withObject "prerequisite" $ \v ->
-    PrerequisiteConfig
-      <$> (v .:? "previewable" .!= False)
-      <*> (v .: "logic")
+  parseJSON val = preString val <|> preObject val
+   where
+    preObject = withObject "prerequisite" $ \v ->
+      PrerequisiteConfig
+        <$> (v .:? "previewable" .!= False)
+        <*> (v .: "logic")
+    preString = withText "prerequisite" $ \t ->
+      pure (PrerequisiteConfig False $ Id t)
 
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
