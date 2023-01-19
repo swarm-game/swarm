@@ -41,12 +41,19 @@ data PrerequisiteConfig = PrerequisiteConfig
   deriving (Eq, Show, Generic, ToJSON)
 
 instance FromJSON PrerequisiteConfig where
+  -- | Parsing JSON/YAML 'PrerequisiteConfig' has three options:
+  --
+  -- 1. simple String case: `prerequisite: enclose_sheep`
+  -- 2. negated form: `prerequisite: not: have_gear`
+  -- 3. full boolean expressions `prerequisite: logic: and: -...`
   parseJSON val = preString val <|> preObject val
    where
     preObject = withObject "prerequisite" $ \v ->
       PrerequisiteConfig
         <$> (v .:? "previewable" .!= False)
-        <*> (v .: "logic")
+        <*> (pNotId v <|> pLogic v)
+    pNotId v = Not . Id <$> v .: "not"
+    pLogic v = v .: "logic"
     preString = withText "prerequisite" $ \t ->
       pure (PrerequisiteConfig False $ Id t)
 
