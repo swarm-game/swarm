@@ -5,7 +5,8 @@ description: |
   Start a wool industry from the local fauna.
 creative: false
 objectives:
-  - goal:
+  - id: enclose_sheep
+    goal:
       - |
         You've homesteaded on a small island in the ocean.
         It's time to gather resources to trade.
@@ -274,8 +275,8 @@ objectives:
       } {
           return false;
       }
-    id: enclose_sheep
-  - goal:
+  - id: feed_sheep
+    goal:
       - |
         Safe! Your sheep are now hungry.
         Offer them something tasty and you may be rewarded.
@@ -312,7 +313,6 @@ objectives:
           end;
 
       anySheep (has "clover") 3;
-    id: feed_sheep
     prerequisite: enclose_sheep
   - goal:
       - |

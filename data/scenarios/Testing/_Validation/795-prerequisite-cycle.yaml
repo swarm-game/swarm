@@ -4,17 +4,17 @@ name: |
 description: |
   This should be rejected by the parser.
 objectives:
-  - goal:
+  - id: have_furnace
+    goal:
       - Make a "furnace".
     condition: |
       as base {has "furnace"};
-    id: have_furnace
     prerequisite: have_gear
-  - goal:
+  - id: have_gear
+    goal:
       - Make a "wooden gear".
     condition: |
       as base {has "wooden gear"};
-    id: have_gear
     prerequisite: have_furnace
 solution: |
   make "wooden gear"
