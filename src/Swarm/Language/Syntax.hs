@@ -620,7 +620,7 @@ constInfo c = case c of
           <> "that is done automatically once you have a listening device equipped."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
-  Log -> command 1 Intangible "Log the string in the robot's logger."
+  Log -> command 1 short "Log the string in the robot's logger."
   View -> command 1 short "View the given actor."
   Appear ->
     command 1 short . doc "Set how the robot is displayed." $
