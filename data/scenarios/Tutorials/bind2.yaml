@@ -4,7 +4,8 @@ creative: false
 description: |
   Learn about command return types and how to bind the results.
 objectives:
-  - goal:
+  - id: grab_artifact
+    goal:
       - |
         A pedestal stands conspicuously empty in the center of the room.
         Perhaps its intended contents lie nearby?
@@ -19,7 +20,6 @@ objectives:
         w <- as p {ishere "Hastur"};
         return (not w);
       } { return false }
-    id: grab_artifact
   - goal:
       - |
         Your robot obtained the misplaced artifact! Next you need to put it back

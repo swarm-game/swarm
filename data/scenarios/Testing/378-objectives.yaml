@@ -3,14 +3,14 @@ name: Complete two objectives in succession.
 description: |
   First, get some trees; then, use them to build a harvester.
 objectives:
-  - goal:
+  - id: get_trees
+    goal:
       - Your first goal is to get three trees.
     condition: |
       try {
         n <- as base {count "tree"};
         return (n >= 3)
       } { return false }
-    id: get_trees
   - goal:
       - Nice job.  Now, build a harvester.
     condition: |

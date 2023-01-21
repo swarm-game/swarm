@@ -14,17 +14,17 @@ objectives:
         and:
           - id: have_furnace
           - id: have_gear
-  - goal:
+  - id: have_furnace
+    goal:
       - Make a "furnace".
     condition: |
       as base {has "furnace"};
-    id: have_furnace
     optional: true
-  - goal:
+  - id: have_gear
+    goal:
       - Make a "wooden gear".
     condition: |
       as base {has "wooden gear"};
-    id: have_gear
     optional: true
 solution: |
   make "furnace";

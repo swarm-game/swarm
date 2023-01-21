@@ -54,7 +54,8 @@ robots:
     program: |
       run "scenarios/Challenges/_bucket-brigade/powerplant.sw"
 objectives:
-  - goal:
+  - id: deliver_coal_lump
+    goal:
       - Deliver a "coal lump" to the base.
       - |
         To excavate coal from the "lignite mine" (M), a robot needs to
@@ -66,7 +67,6 @@ objectives:
         You'll have to make do...
     condition: |
       as base {has "coal lump"}
-    id: deliver_coal_lump
   - goal:
       - Your base got some coal!
       - Now fashion more of it into a "coal briquette", and place it

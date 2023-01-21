@@ -3,7 +3,8 @@ name: Moving
 description: |
   Learn how to move and chain commands.
 objectives:
-  - goal:
+  - id: move_to_first_flower
+    goal:
       - Robots can use the `move` command to move forward one unit
         in the direction they are currently facing.
       - To complete this challenge, move your robot two spaces to the right,
@@ -14,8 +15,8 @@ objectives:
     condition: |
       r <- robotNamed "check1";
       loc <- as r {has "Win"};
-    id: move_to_first_flower
-  - goal:
+  - id: move_along_corridor
+    goal:
       - Good! Now you need to learn how to effectively repeat actions.
       - |
         Previously you could move twice by chaining the move command:
@@ -30,9 +31,9 @@ objectives:
     condition: |
       r <- robotNamed "check2";
       loc <- as r {has "Win"};
-    id: move_along_corridor
     prerequisite: move_to_first_flower
-  - goal:
+  - id: move_northeast_corner
+    goal:
       - Well done! In addition to `move`, you can use the `turn` command
         to turn your robot, for example, `turn right` or `turn east`.
       - Switch to the inventory view in the upper left (by clicking on it or typing `Alt+E`)
@@ -54,7 +55,6 @@ objectives:
     condition: |
       r <- robotNamed "check3";
       loc <- as r {has "Win"};
-    id: move_northeast_corner
     prerequisite: move_along_corridor
   - goal:
       - Good job! You are now ready to move and turn on your own.
