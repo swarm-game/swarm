@@ -4,6 +4,7 @@
 -- distinct from that in 'Data.BoolExpr'.
 module Swarm.Game.Scenario.Objective.Logic where
 
+import Control.Applicative ((<|>))
 import Data.Aeson
 import Data.BoolExpr
 import Data.Char (toLower)
@@ -34,7 +35,9 @@ instance ToJSON (Prerequisite ObjectiveLabel) where
   toJSON = genericToJSON prerequisiteOptions
 
 instance FromJSON (Prerequisite ObjectiveLabel) where
-  parseJSON = genericParseJSON prerequisiteOptions
+  parseJSON x = preString x <|> genericParseJSON prerequisiteOptions x
+   where
+    preString = withText "prerequisite" $ pure . Id
 
 toBoolExpr :: Prerequisite a -> BoolExpr a
 toBoolExpr (And (x :| [])) = toBoolExpr x
