@@ -6,7 +6,8 @@ description: |
 seed: 2
 creative: false
 objectives:
-  - goal:
+  - id: prepare_playfield
+    goal:
       - |
         First, wait for the playfield to be set up,
         and then your path forward will be cleared.
@@ -23,6 +24,7 @@ objectives:
         leftward or rightward direction,
         or vertically in either the upward or downward direction.
         Diagonal appearances are not valid.
+    prerequisite: prepare_playfield
     condition: |
       /**
       Algorithm:
