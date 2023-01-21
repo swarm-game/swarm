@@ -108,6 +108,7 @@ import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
+import Language.LSP.Types.Lens (HasXdata(xdata))
 
 tutorialsDirname :: FilePath
 tutorialsDirname = "Tutorials"
@@ -134,10 +135,23 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l c -> handleNewGameMenuEvent l c
+          NewGameMenu l c -> case c of
+            Nothing -> handleNewGameMenuEvent l
+            Just launchOptions -> handleLaunchOptionsEvent launchOptions
           MessagesMenu -> handleMainMessagesEvent
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
+
+
+-- TODO
+handleLaunchOptionsEvent
+  :: LaunchOptions
+  -> BrickEvent Name AppEvent
+  -> EventM Name AppState ()
+handleLaunchOptionsEvent launchOptions = \case
+  CharKey '\t' -> return ()
+  _ -> return ()
+
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
@@ -231,14 +245,13 @@ prepareGameStart ::
   NonEmpty (BL.List Name ScenarioItem) ->
   EventM Name AppState ()
 prepareGameStart siPair stack = do
-  -- openModal ScenarioOptionsModal
   uiState . uiMenu .= NewGameMenu stack launchOptions
   return ()
  where
   launchOptions = Just $ LaunchOptions Nothing myForm ring
 
   formFields =
-    [ (txt "Seed" <+>)
+    [ (padRight (Pad 2) (txt "Seed") <+>)
         @@= Forms.editShowableField seedVal (ScenarioConfigControl $ ScenarioConfigPanelControl SeedSelector)
     ]
 
@@ -250,17 +263,16 @@ prepareGameStart siPair stack = do
 
 handleNewGameMenuEvent ::
   NonEmpty (BL.List Name ScenarioItem) ->
-  Maybe LaunchOptions ->
   BrickEvent Name AppEvent ->
   EventM Name AppState ()
-handleNewGameMenuEvent scenarioStack@(curMenu :| rest) maybeLaunchOptions = \case
+handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
       Just (SISingle siPair) -> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
-        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack) maybeLaunchOptions
+        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack) Nothing
   CharKey 'o' -> case snd <$> BL.listSelectedElement curMenu of
     Just (SISingle siPair) -> prepareGameStart siPair scenarioStack
     _ -> continueWithoutRedraw

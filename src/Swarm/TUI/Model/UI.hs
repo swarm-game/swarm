@@ -85,6 +85,7 @@ data UIState = UIState
   , _uiPlaying :: Bool
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
+  , _uiLaunchConfig :: Maybe LaunchConfig
   , _uiWorldCursor :: Maybe W.Coords
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
@@ -136,6 +137,9 @@ uiPlaying :: Lens' UIState Bool
 
 -- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
 uiCheatMode :: Lens' UIState Bool
+
+-- | Configuration modal when launching a scenario
+uiLaunchConfig :: Lens' UIState (Maybe LaunchConfig)
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -280,6 +284,7 @@ initUIState showMainMenu cheatMode = do
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
           , _uiPlaying = not showMainMenu
           , _uiCheatMode = cheatMode
+          , _uiLaunchConfig = Nothing
           , _uiFocusRing = initFocusRing
           , _uiWorldCursor = Nothing
           , _uiREPL = initREPLState $ newREPLHistory history
