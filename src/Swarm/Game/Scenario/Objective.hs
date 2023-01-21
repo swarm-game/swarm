@@ -41,21 +41,18 @@ data PrerequisiteConfig = PrerequisiteConfig
   deriving (Eq, Show, Generic, ToJSON)
 
 instance FromJSON PrerequisiteConfig where
-  -- Parsing JSON/YAML 'PrerequisiteConfig' has three options:
-  --
-  -- 1. simple String case: `prerequisite: enclose_sheep`
-  -- 2. negated form: `prerequisite: not: have_gear`
-  -- 3. full boolean expressions `prerequisite: logic: and: -...`
-  parseJSON val = preString val <|> preObject val
+  -- Parsing JSON/YAML 'PrerequisiteConfig' has a shorthand option
+  -- in which the boolean expression can be written directly,
+  -- bypassing the "logic" key.
+  -- Furthermore, an "Id" in a boolean expressions can be written
+  -- as a bare string without needing the "id" key.
+  parseJSON val = preLogic val <|> preObject val
    where
     preObject = withObject "prerequisite" $ \v ->
       PrerequisiteConfig
         <$> (v .:? "previewable" .!= False)
-        <*> (pNotId v <|> pLogic v)
-    pNotId v = Not . Id <$> v .: "not"
-    pLogic v = v .: "logic"
-    preString = withText "prerequisite" $ \t ->
-      pure (PrerequisiteConfig False $ Id t)
+        <*> v .: "logic"
+    preLogic = fmap (PrerequisiteConfig False) . parseJSON
 
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
