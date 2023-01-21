@@ -4,6 +4,7 @@ maypole.yaml
 teleport.yaml
 2048.yaml
 word-search.yaml
+gopher.yaml
 ice-cream.yaml
 hanoi.yaml
 hackman.yaml
