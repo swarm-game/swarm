@@ -1,0 +1,215 @@
+version: 1
+name: DNA
+author: Karl Ostmo
+description: |
+  Copy strands of DNA in the lab to splice organisms
+creative: false
+objectives:
+  - goal:
+      - |
+        Place a `flower`{=entity} in the receptacle immediately to your east.
+        The replicator pod will begin to decode the object's DNA.
+
+        You must complete the DNA strand with complementary base pairs.
+    condition: |
+      r <- robotnamed "verifier";
+      as r {
+        has "flower";
+      }
+  - goal:
+      - |
+        You must complete the DNA strand with complementary base pairs.
+
+        Pick up the result of the cloning experiment to win.
+    condition: |
+      as base {
+        has "organic sludge";
+      }
+robots:
+  - name: base
+    dir: east
+    devices:
+      - antenna
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - dictionary
+      - switch puller
+      - grabber
+      - hearing aid
+      - lambda
+      - logger
+      - rolex
+      - scanner
+      - strange loop
+      - treads
+      - welder
+      - workbench
+    inventory:
+      - [1, flower]
+      - [64, guanine]
+      - [64, cytosine]
+      - [64, adenine]
+      - [64, thymine]
+  - name: verifier
+    system: true
+    dir: east
+    display:
+      invisible: true
+      attr: 'robot'
+    devices:
+      - switch puller
+    inventory:
+      - [128, guanine]
+      - [128, cytosine]
+      - [128, adenine]
+      - [128, thymine]
+      - [1, gold coin]
+      - [1, organic sludge]
+      - [1, branch predictor]
+      - [1, treads]
+      - [1, beaglepuss]
+      - [1, antenna]
+      - [1, comparator]
+      - [1, clock]
+      - [1, workbench]
+      - [1, grabber]
+      - [1, ADT calculator]
+      - [1, dictionary]
+      - [1, lambda]
+      - [1, logger]
+      - [1, welder]
+      - [1, hearing aid]
+      - [1, scanner]
+      - [1, strange loop]
+      - [1, solar panel]
+    program: |
+      run "data/scenarios/Challenges/_dna/verifier.sw"
+solution: |
+  run "data/scenarios/Challenges/_dna/solution.sw"
+entities:
+  - name: guanine
+    display:
+      char: 'G'
+      attr: red
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "cytosine".
+    properties: [pickable, known]
+  - name: cytosine
+    display:
+      char: 'C'
+      attr: blue
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "guanine".
+    properties: [pickable, known]
+  - name: adenine
+    display:
+      char: 'A'
+      attr: green
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "thymine".
+    properties: [pickable, known]
+  - name: thymine
+    display:
+      char: 'T'
+      attr: gold
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "adenine".
+    properties: [pickable, known]
+  - name: switch (off)
+    display:
+      attr: red
+      char: '•'
+    description:
+      - A control in the deactivated position.
+    properties: [known]
+  - name: switch (on)
+    display:
+      attr: green
+      char: '•'
+    description:
+      - A control in the activated position.
+    properties: [known]
+  - name: organic sludge
+    display:
+      attr: green
+      char: 'S'
+    description:
+      - A repulsive, shuddering mass of slime.
+    properties: [pickable]
+  - name: switch puller
+    display:
+      char: 'P'
+      attr: gold
+    capabilities: [drill]
+    description:
+      - Can pull switches
+recipes:
+  - in:
+      - [1, switch (off)]
+    out:
+      - [1, switch (on)]
+    required:
+      - [1, switch puller]
+  - in:
+      - [1, switch (on)]
+    out:
+      - [1, switch (off)]
+    required:
+      - [1, switch puller]
+known: [bit (0), bit (1), tree, flower, rock]
+world:
+  dsl: |
+    let
+      flowerNoise = perlin seed 1 0.15 0.0,
+      stoneNoise = perlin (seed + 1) 1 0.05 0.0,
+      lakeNoise = perlin seed 1 0.02 0.0,
+      forestNoise = perlin seed 2 0.04 1.0,
+
+      flowers = flowerNoise > 0.65,
+      rubble = stoneNoise > 0.8,
+      rock = stoneNoise > 0.9,
+      trees = forestNoise > 0.8
+    in
+      overlay
+      [ {grass}
+      , mask (flowers && (x - y) % 3 == 0) {flower}
+      , mask (rubble && (x + y) % 2 == 0) {rock}
+      , mask rock {rock}
+      , mask trees {tree}
+      ]
+  upperleft: [-1, 2]
+  offset: false
+  palette:
+    '┬': [stone, down and horizontal wall]
+    '┴': [stone, up and horizontal wall]
+    '.': [stone, erase]
+    ':': [blank, erase]
+    'z': [stone, wall]
+    'v': [stone, erase, verifier]
+    'B': [stone, erase, base]
+    '0': [stone, switch (off)]
+  map: |
+    zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+    z...........................................z
+    z...........................................z
+    z.....┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬......z
+    z.....::::::::::::::::::::::::::::::::......z
+    z.zz..::::::::::::::::::::::::::::::::......z
+    zBvzzz┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴......z
+    z.zz........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    zz....┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬......z
+    z0....::::::::::::::::::::::::::::::::......z
+    zz....::::::::::::::::::::::::::::::::..zz..z
+    z.....┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴zzz:..z
+    z.......................................zz..z
+    z...........................................z
+    zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
