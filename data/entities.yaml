@@ -667,6 +667,21 @@
   properties: [portable]
   capabilities: [random]
 
+- name: slew ring
+  display:
+    attr: device
+    char: 'o'
+  description:
+  - A low-friction, rotational roller bearing.
+  - Equipping a slew ring on a robot allows it to turn.
+  - The `turn` command takes a direction as an argument, which
+    can be either absolute (north, west, east, south) or relative
+    (left, right, forward, back, down).
+  - 'Example:'
+  - '  move; turn left; move; turn right'
+  capabilities: [turn]
+  properties: [portable]
+
 - name: treads
   plural: treads
   display:
