@@ -74,6 +74,16 @@
     Can be used to build a simple furnace, among other things.
   properties: [portable]
 
+- name: handle
+  display:
+    attr: silver
+    char: 'h'
+  description:
+  - Ergonomic affordance for manipulating objects. Also grants the "setname" capability, allowing one
+    to assign a "handle" to robots.
+  properties: [portable]
+  capabilities: [setname]
+
 - name: lodestone
   display:
     attr: iron
