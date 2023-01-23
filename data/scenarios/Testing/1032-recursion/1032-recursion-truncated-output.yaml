@@ -1,0 +1,42 @@
+version: 1
+name: Demo recursion bug
+author: Karl Ostmo
+description: |
+  Demo recursion bug
+creative: false
+seed: 1
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - branch predictor
+      - bitcoin
+      - comparator
+      - dictionary
+      - lambda
+      - logger
+      - string
+      - calculator
+      - treads
+    program: |
+      def go = \n.
+          if (n > 0) {
+              idx <- random 4;
+              log $ "In: " ++ format idx;
+
+              go $ n - 1;
+
+              log $ "Out: " ++ format idx;
+          } {};
+          end;
+
+      go 4;
+world:
+  default: [blank]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+  map: |
+    B...
