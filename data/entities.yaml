@@ -76,7 +76,7 @@
 
 - name: handle
   display:
-    attr: silver
+    attr: device
     char: 'h'
   description:
   - Ergonomic affordance for manipulating objects. Also grants the "setname" capability, allowing one
