@@ -94,6 +94,15 @@
   properties: [portable]
   capabilities: [negation]
 
+- name: beaglepuss
+  display:
+    attr: rubber
+    char: 'B'
+  description:
+  - Iconic novelty disguise. Renders one either completely inconspicuous, or the opposite.
+  properties: [portable]
+  capabilities: [appear]
+
 - name: boulder
   display:
     attr: rock
