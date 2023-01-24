@@ -1,11 +1,11 @@
 version: 1
 name: |
-  Prerequisite objectives: OR
+  Mutually exclusive prerequisites
 description: |
   Complete an objective with a prerequisite of either of two other objectives.
 objectives:
   - goal:
-      - Achieve one of two other objectives
+      - Either obtain a "furnace" WITHOUT a "flower", or obtain both a "wooden gear" and "flower".
     condition: |
       return true;
     prerequisite:

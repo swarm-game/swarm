@@ -2,7 +2,7 @@ version: 1
 name: |
   Prerequisite objectives: AND
 description: |
-  Complete an objective with a prerequisite of either of two other objectives.
+  Complete an objective with a prerequisite entailing both of two other objectives.
 objectives:
   - goal:
       - Achieve both of two other objectives
@@ -12,8 +12,8 @@ objectives:
       previewable: true
       logic:
         and:
-          - id: have_furnace
-          - id: have_gear
+          - have_furnace
+          - have_gear
   - id: have_furnace
     goal:
       - Make a "furnace".
