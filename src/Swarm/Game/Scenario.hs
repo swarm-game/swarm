@@ -105,9 +105,6 @@ instance FromJSONE EntityMap Scenario where
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     -- extend ambient EntityMap with custom entities
 
-    objectivesRaw <- liftE (v .:? "objectives" .!= [])
-    objectives <- validateObjectives objectivesRaw
-
     withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
@@ -134,7 +131,7 @@ instance FromJSONE EntityMap Scenario where
         <*> pure known
         <*> localE (,rsMap) (v ..: "world")
         <*> pure rs
-        <*> pure objectives
+        <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
         <*> liftE (v .:? "stepsPerTick")
 
