@@ -259,7 +259,7 @@ testLanguagePipeline =
             "annotate 1 + 1"
             (assertEqual "type annotations"
                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
-               (map (Forall []) [TyInt :->: TyInt :->: TyInt, TyInt, TyInt :->: TyInt, TyInt, TyInt])
+               [ [tyQ| int -> int -> int|], [tyQ|int|], [tyQ|int -> int|], [tyQ|int|], [tyQ|int|] ]
             )
         , testCase
             "get all annotated variable types"
@@ -272,7 +272,7 @@ testLanguagePipeline =
              in assertEqual "variable types"
                   (getVars s)
                   ([ (TVar "g", [tyQ| int -> int |])
-                   , (TVar "x", Forall [] TyInt)
+                   , (TVar "x", [tyQ| int |])
                    ]
                   )
             )
