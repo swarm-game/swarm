@@ -46,6 +46,10 @@ getConstFromSigned = \case
   BE.Positive x -> x
   BE.Negative x -> x
 
+-- | Collect all of the constants that have a negation.
+-- This is necessary for enumerating all of the distinct
+-- nodes when constructing a Graph, as we treat a constant
+-- and its negation as distinct nodes.
 getNegatedIds :: [Objective] -> Map ObjectiveLabel Objective
 getNegatedIds objs =
   M.fromList $ mapMaybe f allConstants
@@ -54,10 +58,10 @@ getNegatedIds objs =
 
   allPrereqExpressions = mapMaybe _objectivePrerequisite objs
   allConstants =
-    mapMaybe onlyNegative $
-      Set.toList $
-        Set.unions $
-          map (getDistinctConstants . logic) allPrereqExpressions
+    mapMaybe onlyNegative .
+      Set.toList .
+        Set.unions .
+          map (getDistinctConstants . logic) $ allPrereqExpressions
 
   f = sequenceA . \x -> (x, M.lookup x objectivesById)
 
@@ -82,8 +86,7 @@ assignIds objs =
  where
   objectivesById = getObjectivesById objs
 
-  labledObjsDirect = M.mapKeys (Label . Positive) objectivesById
-  labeledObjsMap = labledObjsDirect
+  labeledObjsMap = M.mapKeys (Label . Positive) objectivesById
 
   unlabeledObjs = filter (null . _objectiveId) objs
   unlabeledObjsMap = M.fromList $ zipWith (\x y -> (Ordinal x, y)) [0 ..] unlabeledObjs
