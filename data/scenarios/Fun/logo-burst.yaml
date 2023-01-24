@@ -1,0 +1,84 @@
+version: 1
+name: Logo burst
+author: Karl Ostmo
+description: |
+  Animate the Swarm logo
+creative: false
+seed: 0
+robots:
+  # We include a base robot to stabilize the screen at a fixed position.
+  - name: base
+    display:
+      invisible: true
+    dir: [1, 0]
+    devices:
+      - logger
+      - hearing aid
+  - name: botRight
+    system: true
+    display:
+      invisible: false
+    dir: [1, 0]
+    program: |
+      run "scenarios/Fun/_logo-burst/drone.sw"
+  - name: botUp
+    system: true
+    display:
+      invisible: false
+    dir: [0, 1]
+    program: |
+      run "scenarios/Fun/_logo-burst/drone.sw"
+  - name: botLeft
+    system: true
+    display:
+      invisible: false
+    dir: [-1, 0]
+    program: |
+      run "scenarios/Fun/_logo-burst/drone.sw"
+  - name: botDown
+    system: true
+    display:
+      invisible: false
+    dir: [0, -1]
+    program: |
+      run "scenarios/Fun/_logo-burst/drone.sw"
+  - name: stoplight
+    system: true
+    display:
+      invisible: false
+    dir: [0, 1]
+    devices:
+      - lodestone
+    inventory:
+      - [1, bit (0)]
+    program: |
+      run "scenarios/Fun/_logo-burst/coordinator.sw"
+  
+known: [boulder, tree, water, wavy water]
+world:
+  default: [blank]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'Ω': [blank, null, base]
+    's': [blank, null, stoplight]
+    '.': [blank]
+    ' ': [blank]
+    '@': [blank, boulder]
+    'T': [blank, tree]
+    '▒': [blank, water]
+    '~': [blank, wavy water]
+    '>': [blank, null, botRight]
+    '^': [blank, null, botUp]
+    '<': [blank, null, botLeft]
+    'v': [blank, null, botDown]
+  map: |
+    s                   v                                     .
+    .                                                         . 
+    . v<^vv<<@   ^^     vv    >^v^T    ^^^v<     <><      v   >
+    T  ^<        >^  <  >>   v>   v<   >T   <v>  <<▒^  @><>   .
+    .   <@v^^>>   @v  >  <T  <v<T<Ω^>   v><v<     << <<T^ v<  . 
+    . >     >>   v@ @@> <<   ~v   <    >~  ^~    >>  @^  >v   .
+    .   >>^v^^^    < ~ T~v    v<   <~   >>T  <v   vv      ▒>  . 
+    .                             ▒                           . 
+    .                   ^      ^     v       >      >         .

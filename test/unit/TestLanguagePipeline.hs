@@ -281,7 +281,7 @@ testLanguagePipeline =
  where
   valid = flip process ""
 
-  roundTrip txt = assertEqual "rountrip" term (decodeThrow $ encode term)
+  roundTrip txt = assertEqual "roundtrip" term (decodeThrow $ encode term)
    where
     decodeThrow v = case eitherDecode v of
       Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e

@@ -1,1 +1,2 @@
 GoL.yaml
+logo-burst.yaml

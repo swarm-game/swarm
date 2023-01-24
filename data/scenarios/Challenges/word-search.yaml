@@ -1,0 +1,384 @@
+version: 1
+name: Word search
+author: Karl Ostmo
+description: |
+  Find the word
+seed: 2
+creative: false
+objectives:
+  - goal:
+      - |
+        First, wait for the playfield to be set up,
+        and then your path forward will be cleared.
+      - |
+        You can speed this process up with CTRL+x.
+    condition: |
+      as base {knows "capital C"};
+  - goal:
+      - Use the `drill` command (e.g. "drill down" when on top of the
+        intended letter) to mark the sequence of letters that
+        spells COW within the designated playfield.
+      - |
+        The sequence may appear horizontally in either the
+        leftward or rightward direction,
+        or vertically in either the upward or downward direction.
+        Diagonal appearances are not valid.
+    condition: |
+      /**
+      Algorithm:
+      We only need to check the base's
+      current position: if we find three contiguous highlights,
+      then we know that the player has just completed their
+      third highlight.
+      */
+
+      def whichOrdinal =
+          isC <- ishere "lowercase c";
+          if (isC) {
+              return 0;
+          } {
+              isO <- ishere "lowercase o";
+              if (isO) {
+                  return 1;
+              } {
+                  isW <- ishere "lowercase w";
+                  if (isW) {
+                      return 2;
+                  } {
+                      return (-1);
+                  }
+              }
+          }
+          end;
+
+
+      def whichHighlightedOrdinal = \str.
+          if (str == "lowercase c") {
+              return 0;
+          } {
+              if (str == "lowercase o") {
+                  return 1;
+              } {
+                  if (str == "lowercase w") {
+                      return 2;
+                  } {
+                      return (-1);
+                  }
+              }
+          }
+          end;
+
+      def countConsecutive = \expectedOrdinal. \n.
+
+          thisOrdinal <- whichOrdinal;
+          nextOrdinal <- if (thisOrdinal == expectedOrdinal) {
+              return $ expectedOrdinal + 1;
+          } {
+              return 0;
+          };
+
+          if (nextOrdinal == 3) {
+              return true;
+          } {
+              if (n > 1) {
+                  move;
+                  countConsecutive nextOrdinal $ n - 1;
+              } {
+                  return false;
+              };
+          };
+          end;
+
+      def checkBackAndForth =
+
+          foundBackward <- countConsecutive 0 3;
+          if (foundBackward) {
+              return true;
+          } {
+              turn back;
+              countConsecutive 0 3;
+          }
+          end;
+
+      def checkDirections = \n.
+          if (n > 0) {
+              wasFound <- checkBackAndForth;
+              if wasFound {
+                  return true;
+              } {
+                  turn left;
+                  checkDirections $ n - 1;
+              }
+          } {
+              return false;
+          }
+          end;
+
+      def isMarkedInDirection = \d.
+          scanResult <- scan d;
+          ordinalNum <- case scanResult
+              (\_. return (-1))
+              whichHighlightedOrdinal;
+          return $ ordinalNum >= 0;
+          end;
+
+      /**
+      It's possible we could be one cell away from
+      a marked cell after finishing, either due
+      to using a directional `drill` command instead of
+      `drill down`, or due to an apparent bug which
+      does not evaluate the goal condition between the
+      `drill` and a `move` command.
+      */
+      def moveToMarkedCell = \n.
+          if (n > 0) {
+              isMarkedAhead <- isMarkedInDirection forward;
+              if isMarkedAhead {
+                  move;
+                  return true;
+              } {
+                  turn left;
+                  moveToMarkedCell $ n - 1;
+              };
+          } {
+              return false;
+          };
+          end;
+
+      /**
+      Orient ourselves such that
+      a marked cell is behind us.
+      */
+      def findMarkBehind = \n.
+          if (n > 0) {
+              isMarkedBehind <- isMarkedInDirection back;
+              if isMarkedBehind {
+                  return true;
+              } {
+                  turn left;
+                  findMarkBehind $ n - 1;
+              };
+          } {
+              return false;
+          };
+          end;
+
+      /**
+      The cell we're on might be in the middle of a word,
+      rather than the end. Determine the orientation of
+      the line, then move along it until reaching the end.
+
+      Algorithm:
+      0. Assumption: we are currently on a marked cell.
+      1. Turn in all all four directions to `scan back`
+        for a second marked cell. Stop turning if
+        we encounter one.
+        If none found after 4 turns, abort.
+      2. `scan forward` to see if there is a marked cell in
+        the opposite direction.
+        `move` (foward) once if there is. Since the word
+        is only three cells long, this will be the other
+        end of it.
+      */
+      def moveToWordExtrema =
+          foundCellBehind <- findMarkBehind 4;
+          if foundCellBehind {
+              isMarkedAhead <- isMarkedInDirection forward;
+              if isMarkedAhead {
+                  move;
+              } {};
+          } {};
+          end;
+
+      def checkSoln =
+          isMarkedHere <- isMarkedInDirection down;
+          atMarkedCell <- if isMarkedHere {
+              return true;
+          } {
+              moveToMarkedCell 4;
+          };
+
+          if atMarkedCell {
+              moveToWordExtrema;
+              checkDirections 4;
+          } {
+              return false;
+          }
+          end;
+
+      as base {checkSoln};
+
+robots:
+  - name: base
+    display:
+      attr: flower
+    dir: [-1, 0]
+    devices:
+      - treads
+      - ADT calculator
+      - branch predictor
+      - GPS receiver
+      - clock
+      - comparator
+      - counter
+      - dictionary
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - string
+      - highlighter
+    inventory:
+      - [3, ink]
+  - name: lettersetter
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+    inventory:
+      - [376, capital C]
+      - [376, capital O]
+      - [376, capital W]
+    program: |
+      run "scenarios/Challenges/_word-search/create-puzzle.sw"
+solution: |
+  // Hard-coded for seed=2:
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+  def waitUntilUnblocked =
+    x <- blocked;
+    if x {
+        wait 1;
+        waitUntilUnblocked;
+    } {};
+    end;
+  waitUntilUnblocked;
+  doN 11 move;
+  turn right;
+  doN 2 move;
+  drill down;
+  move;
+  drill down;
+  move;
+  drill down;
+  // run "scenarios/Challenges/_word-search/solution.sw"
+entities:
+  - name: capital C
+    display:
+      char: 'C'
+    description:
+      - C is for California
+  - name: capital O
+    display:
+      char: 'O'
+    description:
+      - O is for Oklahoma
+  - name: capital W
+    display:
+      char: 'W'
+    description:
+      - W is for Washington
+  - name: lowercase c
+    display:
+      char: 'c'
+      attr: gold
+    description:
+      - c is for cantaloupe
+  - name: lowercase o
+    display:
+      char: 'o'
+      attr: gold
+    description:
+      - o is for orange
+  - name: lowercase w
+    display:
+      char: 'w'
+      attr: gold
+    description:
+      - w is for watermelon
+  - name: highlighter
+    display:
+      char: 'P'
+      attr: gold
+    capabilities: [drill]
+    description:
+      - Instrument for marking found words
+    properties: [known, portable]
+  - name: ink
+    display:
+      char: 'K'
+      attr: gold
+    description:
+      - Ink for marking found words
+    properties: [known, portable]
+recipes:
+  - in:
+      - [1, capital C]
+      - [1, ink]
+    out:
+      - [1, lowercase c]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, capital O]
+      - [1, ink]
+    out:
+      - [1, lowercase o]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, capital W]
+      - [1, ink]
+    out:
+      - [1, lowercase w]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase c]
+    out:
+      - [1, capital C]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase o]
+    out:
+      - [1, capital O]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase w]
+    out:
+      - [1, capital W]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+known: [boulder]
+world:
+  default: [dirt]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '@': [stone, boulder]
+    '.': [grass]
+    'a': [grass, null, lettersetter]
+    '#': [dirt]
+    Ω: [stone, null, base]
+  map: |
+    a........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................@@@
+    .........................@Ω@
+    .........................@@@
+    .........................###
+    .........................###
+    .........................###
