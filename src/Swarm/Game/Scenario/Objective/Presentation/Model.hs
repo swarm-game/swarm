@@ -26,7 +26,7 @@ data GoalStatus
     -- However, they are only displayed if the "hidden" attribute
     -- is `false`.
     Active
-  | -- | A goal's programmatic condition, as well as all its the prerequisites, were completed.
+  | -- | A goal's programmatic condition, as well as all its prerequisites, were completed.
     -- This is a "latch" mechanism; at some point the conditions required to meet the goal may
     -- no longer hold. Nonetheless, the goal remains "completed".
     Completed

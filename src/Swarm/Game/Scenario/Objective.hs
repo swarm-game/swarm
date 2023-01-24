@@ -162,13 +162,12 @@ addCompleted obj (ObjectiveCompletion buckets cmplIds) =
 
 addUnwinnable :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addUnwinnable obj (ObjectiveCompletion buckets cmplIds) =
-  ObjectiveCompletion newBuckets newCmplById
+  ObjectiveCompletion newBuckets cmplIds
  where
   newBuckets =
     buckets
       { unwinnable = obj : unwinnable buckets
       }
-  newCmplById = cmplIds
 
 setIncomplete ::
   ([Objective] -> [Objective]) ->
