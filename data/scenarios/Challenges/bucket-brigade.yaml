@@ -55,6 +55,7 @@ robots:
       run "scenarios/Challenges/_bucket-brigade/powerplant.sw"
 objectives:
   - id: deliver_coal_lump
+    teaser: Get coal to base
     goal:
       - Deliver a "coal lump" to the base.
       - |

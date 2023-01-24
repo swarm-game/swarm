@@ -4,6 +4,7 @@ description: |
   Learn some of the first steps you might take on the new planet.
 objectives:
   - id: get_trees
+    teaser: Get 3 trees
     goal:
       - You're ready to graduate to something a bit more complex! This
         multi-step tutorial will walk you through a few of the first
@@ -28,6 +29,7 @@ objectives:
         return (n >= 3)
       } { return false }
   - id: get_harvester
+    teaser: Make a harvester
     goal:
       - Nice work!  Now, use the trees to make a harvester device.
         This will require several intermediate products; try making

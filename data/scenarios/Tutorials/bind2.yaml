@@ -5,6 +5,7 @@ description: |
   Learn about command return types and how to bind the results.
 objectives:
   - id: grab_artifact
+    teaser: Retrieve artifact
     goal:
       - |
         A pedestal stands conspicuously empty in the center of the room.
