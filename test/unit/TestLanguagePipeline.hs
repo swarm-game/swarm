@@ -4,7 +4,9 @@
 -- | Swarm unit tests
 module TestLanguagePipeline where
 
+import Control.Arrow ((&&&))
 import Control.Lens (toListOf)
+import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
 import Data.Either
 import Data.Maybe
@@ -14,6 +16,7 @@ import Data.Text.Encoding qualified as T
 import Swarm.Language.Module (Module(..))
 import Swarm.Language.Pipeline (ProcessedTerm(..), processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
 import Swarm.Language.Types
@@ -254,14 +257,25 @@ testLanguagePipeline =
         "type annotations"
         [ testCase
             "annotate 1 + 1"
-            (assertEqual "foo"
+            (assertEqual "type annotations"
                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
                (map (Forall []) [TyInt :->: TyInt :->: TyInt, TyInt, TyInt :->: TyInt, TyInt, TyInt])
             )
-        -- , testCase
-        --     "get all annotated variable types"
-        --     (let s = getSyntax
-        --            [tmQ| def f : (int -> int) -> int -> cmd unit = \g. \x. |]
+        , testCase
+            "get all annotated variable types"
+            (let s = getSyntax
+                   [tmQ| def f : (int -> int) -> int -> text = \g. \x. format (g x) end |]
+
+                 isVar (TVar {}) = True
+                 isVar _ = False
+                 getVars = map (_sTerm &&& _sType) . filter (isVar . _sTerm) . universe
+             in assertEqual "variable types"
+                  (getVars s)
+                  ([ (TVar "g", [tyQ| int -> int |])
+                   , (TVar "x", Forall [] TyInt)
+                   ]
+                  )
+            )
         ]
     ]
  where
