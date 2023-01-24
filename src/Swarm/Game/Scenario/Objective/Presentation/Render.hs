@@ -4,9 +4,9 @@
 module Swarm.Game.Scenario.Objective.Presentation.Render where
 
 import Brick hiding (Direction, Location)
-import Control.Applicative ((<|>))
 import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
+import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
