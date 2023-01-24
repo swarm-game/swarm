@@ -582,8 +582,7 @@ updateAchievements = do
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
   unless (null incrementalAchievements) $ do
-    -- TODO: This is where new achievements would be displayed in
-    -- a popup (see #916)
+    -- TODO: #916 This is where new achievements would be displayed in a popup
     newAchievements <- use $ uiState . uiAchievements
     liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
