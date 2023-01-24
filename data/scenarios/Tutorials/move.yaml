@@ -4,6 +4,7 @@ description: |
   Learn how to move and chain commands.
 objectives:
   - id: move_to_first_flower
+    teaser: Get the flower
     goal:
       - Robots can use the `move` command to move forward one unit
         in the direction they are currently facing.
@@ -16,6 +17,7 @@ objectives:
       r <- robotNamed "check1";
       loc <- as r {has "Win"};
   - id: move_along_corridor
+    teaser: Down the corridor
     goal:
       - Good! Now you need to learn how to effectively repeat actions.
       - |
@@ -33,6 +35,7 @@ objectives:
       loc <- as r {has "Win"};
     prerequisite: move_to_first_flower
   - id: move_northeast_corner
+    teaser: To northeast corner
     goal:
       - Well done! In addition to `move`, you can use the `turn` command
         to turn your robot, for example, `turn right` or `turn east`.

@@ -58,6 +58,7 @@ instance FromJSON PrerequisiteConfig where
 --   scenario.
 data Objective = Objective
   { _objectiveGoal :: [Text]
+  , _objectiveTeaser :: Maybe Text
   , _objectiveCondition :: ProcessedTerm
   , _objectiveId :: Maybe ObjectiveLabel
   , _objectiveOptional :: Bool
@@ -72,6 +73,10 @@ makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
 objectiveGoal :: Lens' Objective [Text]
+
+-- | A very short (3-5 words) description of the goal for
+-- displaying on the left side of the Objectives modal.
+objectiveTeaser :: Lens' Objective (Maybe Text)
 
 -- | A winning condition for the objective, expressed as a
 --   program of type @cmd bool@.  By default, this program will be
@@ -106,6 +111,7 @@ instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->
     Objective
       <$> (fmap . map) reflow (v .:? "goal" .!= [])
+      <*> (v .:? "teaser")
       <*> (v .: "condition")
       <*> (v .:? "id")
       <*> (v .:? "optional" .!= False)

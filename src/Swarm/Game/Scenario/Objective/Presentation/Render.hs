@@ -4,6 +4,7 @@
 module Swarm.Game.Scenario.Objective.Presentation.Render where
 
 import Brick hiding (Direction, Location)
+import Control.Applicative ((<|>))
 import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
@@ -77,9 +78,8 @@ drawGoalListItem = \case
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
-    titleWidget = case listToMaybe $ obj ^. objectiveGoal of
-      Nothing -> txt "?"
-      Just x -> withEllipsis x
+    textSource = obj ^. objectiveTeaser <|> listToMaybe (obj ^. objectiveGoal)
+    titleWidget = maybe (txt "?") withEllipsis textSource
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
