@@ -28,21 +28,29 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
 renderGoalsDisplay :: GoalDisplay -> Widget Name
 renderGoalsDisplay gd =
   padAll 1 $
-    hBox
-      [ hLimitPercent 30 $
-          vBox
-            [ hCenter $ str "Goals"
-            , padAll 1 $
-                vLimit 10 $
-                  BL.renderList (const drawGoalListItem) True lw
-            ]
-      , hLimitPercent 70 $
-          padLeft (Pad 2) $
-            maybe emptyWidget (singleGoalDetails . snd) $
-              BL.listSelectedElement lw
-      ]
+    if goalsCount > 1
+      then
+        hBox
+          [ leftSide
+          , hLimitPercent 70 goalElaboration
+          ]
+      else goalElaboration
  where
   lw = _listWidget gd
+  leftSide =
+    hLimitPercent 30 $
+      vBox
+        [ hCenter $ str "Goals"
+        , padAll 1 $
+            vLimit 10 $
+              BL.renderList (const drawGoalListItem) True lw
+        ]
+  goalsCount = sum . M.elems . M.map NE.length . goals $ gd ^. goalsContent
+
+  goalElaboration =
+    padLeft (Pad 2) $
+      maybe emptyWidget (singleGoalDetails . snd) $
+        BL.listSelectedElement lw
 
 getCompletionIcon :: Objective -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
