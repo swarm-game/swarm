@@ -35,7 +35,7 @@ module Swarm.Language.Parse (
   getLocRange,
 ) where
 
-import Control.Lens ((^.), view)
+import Control.Lens (view, (^.))
 import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
@@ -294,7 +294,7 @@ mkTuple :: [Syntax] -> Syntax
 mkTuple [] = Syntax NoLoc TUnit -- should never happen
 mkTuple [x] = x
 mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
-  where
+ where
   loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
