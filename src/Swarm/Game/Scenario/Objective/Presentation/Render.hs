@@ -11,8 +11,6 @@ import Control.Lens hiding (Const, from)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (listToMaybe)
-import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Presentation.Model
@@ -45,19 +43,6 @@ renderGoalsDisplay gd =
       ]
  where
   lw = _listWidget gd
-
-withEllipsis :: Text -> Widget Name
-withEllipsis t =
-  Widget Greedy Fixed $ do
-    ctx <- getContext
-    let w = ctx ^. availWidthL
-        ellipsis = T.replicate 3 $ T.singleton '.'
-        tLength = T.length t
-        newText =
-          if tLength > w
-            then T.take (w - T.length ellipsis) t <> ellipsis
-            else t
-    render $ txt newText
 
 getCompletionIcon :: Objective -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
