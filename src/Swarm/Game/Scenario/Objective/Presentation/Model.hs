@@ -52,7 +52,7 @@ data GoalEntry
 
 data GoalTracking = GoalTracking
   { announcements :: [Announcement]
-  -- ^ TODO the actual contents of these are not used yet,
+  -- ^ TODO (#916) the actual contents of these are not used yet,
   -- other than as a flag to pop up the Goal dialog.
   , goals :: CategorizedGoals
   }
