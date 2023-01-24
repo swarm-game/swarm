@@ -4,6 +4,7 @@ description: |
   First, get some trees; then, use them to build a harvester.
 objectives:
   - id: get_trees
+    teaser: Get trees
     goal:
       - Your first goal is to get three trees.
     condition: |

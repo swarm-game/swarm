@@ -4,6 +4,7 @@ description: |
   Learn how to build a farm to grow and harvest items.
 objectives:
   - id: get_many_lambdas
+    teaser: Get 256 lambdas
     goal:
       - Lambdas are an essential item for building robots, but they
         are somewhat rare in the wild.  Therefore, it makes sense to farm

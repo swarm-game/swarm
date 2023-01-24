@@ -6,6 +6,7 @@ description: |
 creative: false
 objectives:
   - id: enclose_sheep
+    teaser: Paddock sheep
     goal:
       - |
         You've homesteaded on a small island in the ocean.
@@ -276,6 +277,7 @@ objectives:
           return false;
       }
   - id: feed_sheep
+    teaser: Feed sheep
     goal:
       - |
         Safe! Your sheep are now hungry.
