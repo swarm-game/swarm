@@ -122,3 +122,16 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
 --   each.
 displayParagraphs :: [Text] -> Widget Name
 displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
+
+withEllipsis :: Text -> Widget Name
+withEllipsis t =
+  Widget Greedy Fixed $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+        ellipsis = T.replicate 3 $ T.singleton '.'
+        tLength = T.length t
+        newText =
+          if tLength > w
+            then T.take (w - T.length ellipsis) t <> ellipsis
+            else t
+    render $ txt newText
