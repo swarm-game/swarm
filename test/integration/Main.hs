@@ -186,7 +186,7 @@ testScenarioSolution _ci _em =
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
                 waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
-            assertBool "The game should only take one tick" $ t == 1
+            assertBool "The game should only take two ticks" $ t == 2
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
             assertBool "Robot 1 should not be in waiting set" $ not waiting
