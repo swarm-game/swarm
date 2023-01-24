@@ -1091,18 +1091,13 @@ drawRobotLog :: AppState -> Widget Name
 drawRobotLog s =
   vBox
     [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
-    , vBox . imap drawEntry $ logEntries
+    , vBox . F.toList . imap drawEntry $ logEntries
     ]
  where
-  logEntries =
-    s
-      & view (gameState . to focusedRobot . _Just . robotLog)
-      & Seq.sort
-      & F.toList
-      & uniq
+  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
 
   rn = s ^? gameState . to focusedRobot . _Just . robotName
-  n = length logEntries
+  n = Seq.length logEntries
 
   allMe = all ((== rn) . Just . view leRobotName) logEntries
 

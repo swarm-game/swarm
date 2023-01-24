@@ -20,7 +20,6 @@ def x12 = \c. x4 (c;c;c) end;
 def m12 = x12 move end;
 def next_row = tB; m12; tL; move; tL end;
 def plant_field : text -> cmd unit = \thing.
-  log "planting";
   x4 (
     x12 (move; place thing; harvest);
     next_row
