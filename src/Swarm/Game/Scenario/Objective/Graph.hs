@@ -58,10 +58,11 @@ getNegatedIds objs =
 
   allPrereqExpressions = mapMaybe _objectivePrerequisite objs
   allConstants =
-    mapMaybe onlyNegative .
-      Set.toList .
-        Set.unions .
-          map (getDistinctConstants . logic) $ allPrereqExpressions
+    mapMaybe onlyNegative
+      . Set.toList
+      . Set.unions
+      . map (getDistinctConstants . logic)
+      $ allPrereqExpressions
 
   f = sequenceA . \x -> (x, M.lookup x objectivesById)
 
