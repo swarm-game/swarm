@@ -70,7 +70,7 @@ validateSwarmCode :: J.NormalizedUri -> J.TextDocumentVersion -> Text -> LspM ()
 validateSwarmCode doc version content = do
   -- debug $ "Validating: " <> from (show doc) <> " ( " <> content <> ")"
 
-  -- FIXME With this call to flushDiagnosticsBySource in place, the warnings
+  -- FIXME: #1040 With this call to flushDiagnosticsBySource in place, the warnings
   -- in other buffers (editor tabs) end up getting cleared when switching between
   -- (focusing on) other buffers in VS Code.
   -- However, getting rid of this seems to break error highlighting.

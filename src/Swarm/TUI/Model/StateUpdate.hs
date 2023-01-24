@@ -94,7 +94,7 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
   scenarioToAppState siPair userSeed toRun
 
--- XXX do we need to keep an old entity map around???
+-- TODO: #516 do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
 scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe CodeToRun -> m ()

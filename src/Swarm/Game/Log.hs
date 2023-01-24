@@ -14,7 +14,7 @@
 -- want to use special kinds of logs that will be
 -- shown to the player.
 --
--- TODO: Currently we abuse this system for system
+-- TODO: #1039 Currently we abuse this system for system
 -- logs, which is fun, but we should eventually make
 -- a dedicated `SystemLogEntry` type for 'RuntimeState'
 -- message queue.

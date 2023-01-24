@@ -488,6 +488,13 @@
   - [1, welder]
 
 - in:
+  - [1, copper pipe]
+  out:
+  - [1, handle]
+  required:
+  - [1, welder]
+
+- in:
   - [4, circuit]
   - [1, iron plate]
   - [3, copper pipe]
@@ -727,6 +734,13 @@
   - [1, strange loop]
   out:
   - [1, rubber band]
+
+- in:
+  - [1, rubber]
+  - [1, glass]
+  - [1, string]
+  out:
+  - [1, beaglepuss]
 
 #########################################
 ##                COTTON               ##

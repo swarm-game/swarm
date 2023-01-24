@@ -78,9 +78,11 @@ module Swarm.Language.Syntax (
 import Control.Arrow (Arrow ((&&&)))
 import Control.Lens (Plated (..), Traversal', (%~))
 import Data.Aeson.Types
+import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
+import Data.List qualified as L (tail)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
@@ -103,11 +105,17 @@ import Witch.From (from)
 data AbsoluteDir = DNorth | DSouth | DEast | DWest
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
+cardinalDirectionKeyOptions :: JSONKeyOptions
+cardinalDirectionKeyOptions =
+  defaultJSONKeyOptions
+    { keyModifier = map C.toLower . L.tail
+    }
+
 instance ToJSONKey AbsoluteDir where
-  toJSONKey = genericToJSONKey defaultJSONKeyOptions
+  toJSONKey = genericToJSONKey cardinalDirectionKeyOptions
 
 instance FromJSONKey AbsoluteDir where
-  fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
+  fromJSONKey = genericFromJSONKey cardinalDirectionKeyOptions
 
 -- | A relative direction is one which is defined with respect to the
 --   robot's frame of reference; no special capability is needed to
