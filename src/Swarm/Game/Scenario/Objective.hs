@@ -32,10 +32,13 @@ data PrerequisiteConfig = PrerequisiteConfig
   -- Set this to option True to display this goal in the "upcoming" section even
   -- if the objective has currently unmet prerequisites.
   , logic :: Prerequisite ObjectiveLabel
-  -- ^ Boolean expression the represents the condition dependencies which also
-  -- must have been evaluated to True.
+  -- ^ Boolean expression of dependencies upon other objectives. Variables in this expression
+  -- are the "id"s of other objectives, and become "true" if the corresponding objective is completed.
+  -- The "condition" of the objective at hand shall not be evaluated until its
+  -- prerequisite expression evaluates as True.
+  --
   -- Note that the achievement of these objective dependencies is
-  -- persistent; once achieved, it still counts even if the "condition"
+  -- persistent; once achieved, they still count even if their "condition"
   -- might not still hold. The condition is never re-evaluated once True.
   }
   deriving (Eq, Show, Generic, ToJSON)
