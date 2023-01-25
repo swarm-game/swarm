@@ -99,7 +99,6 @@ library
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Terrain
-                      Swarm.Game.Value
                       Swarm.Game.World
                       Swarm.Game.WorldGen
                       Swarm.Language.Context
@@ -119,6 +118,7 @@ library
                       Swarm.Language.Typecheck
                       Swarm.Language.Typed
                       Swarm.Language.Types
+                      Swarm.Language.Value
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
                       Swarm.TUI.Controller
