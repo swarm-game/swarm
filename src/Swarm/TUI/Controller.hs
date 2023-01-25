@@ -75,7 +75,6 @@ import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
-import Swarm.Game.Value (Value (VUnit), prettyValue, stripVResult)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CMake))
 import Swarm.Language.Context
@@ -88,6 +87,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.Language.Value (Value (VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
