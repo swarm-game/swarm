@@ -4,7 +4,9 @@ creative: false
 description: |
   Learn about command return types and how to bind the results.
 objectives:
-  - goal:
+  - id: grab_artifact
+    teaser: Retrieve artifact
+    goal:
       - |
         A pedestal stands conspicuously empty in the center of the room.
         Perhaps its intended contents lie nearby?
@@ -56,6 +58,7 @@ objectives:
         w <- as p {ishere "Hastur"};
         return w;
       } { return false }
+    prerequisite: grab_artifact
 solution: |
   run "data/scenarios/Tutorials/bind2-solution.sw"
 entities:
