@@ -16,9 +16,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: |
-          if grep --include \*.hs -riP '(TODO|FIXME|XXX):?\s' src 2>&1 | grep -vP '#\d+'; then
-              echo "Please add a link to Issue, for example: TODO: #123"
-              exit 1
-          else
-              echo "No TODOs without links found, all good!"
-          fi
+          scripts/enforce-todo-issues.sh
