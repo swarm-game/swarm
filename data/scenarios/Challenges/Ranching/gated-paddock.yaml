@@ -5,7 +5,9 @@ description: |
   Start a wool industry from the local fauna.
 creative: false
 objectives:
-  - goal:
+  - id: enclose_sheep
+    teaser: Paddock sheep
+    goal:
       - |
         You've homesteaded on a small island in the ocean.
         It's time to gather resources to trade.
@@ -274,7 +276,9 @@ objectives:
       } {
           return false;
       }
-  - goal:
+  - id: feed_sheep
+    teaser: Feed sheep
+    goal:
       - |
         Safe! Your sheep are now hungry.
         Offer them something tasty and you may be rewarded.
@@ -311,6 +315,7 @@ objectives:
           end;
 
       anySheep (has "clover") 3;
+    prerequisite: enclose_sheep
   - goal:
       - |
         Yum! Contented, well-fed sheep may drop wool.
@@ -323,6 +328,7 @@ objectives:
       as base {
         has "sweater";
       };
+    prerequisite: feed_sheep
 robots:
   - name: base
     dir: [0, 1]

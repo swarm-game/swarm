@@ -3,7 +3,9 @@ name: Complete two objectives in succession.
 description: |
   First, get some trees; then, use them to build a harvester.
 objectives:
-  - goal:
+  - id: get_trees
+    teaser: Get trees
+    goal:
       - Your first goal is to get three trees.
     condition: |
       try {
@@ -14,6 +16,7 @@ objectives:
       - Nice job.  Now, build a harvester.
     condition: |
       try { as base {has "harvester"} } {return false}
+    prerequisite: get_trees
 solution: |
   build {turn right; move; move; grab; move; grab; move; grab; turn back; move; move; move; move};
   wait 16;
