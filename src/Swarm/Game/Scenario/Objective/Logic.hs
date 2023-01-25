@@ -8,7 +8,7 @@ import Control.Applicative ((<|>))
 import Data.Aeson
 import Data.BoolExpr
 import Data.Char (toLower)
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -40,9 +40,7 @@ instance FromJSON (Prerequisite ObjectiveLabel) where
     preString = withText "prerequisite" $ pure . Id
 
 toBoolExpr :: Prerequisite a -> BoolExpr a
-toBoolExpr (And (x :| [])) = toBoolExpr x
-toBoolExpr (And (x0 :| x : xs)) = BAnd (toBoolExpr x0) (toBoolExpr $ And $ x :| xs)
-toBoolExpr (Or (x :| [])) = toBoolExpr x
-toBoolExpr (Or (x0 :| x : xs)) = BOr (toBoolExpr x0) (toBoolExpr $ Or $ x :| xs)
+toBoolExpr (And xs) = foldr1 BAnd (fmap toBoolExpr xs)
+toBoolExpr (Or xs) = foldr1 BOr (fmap toBoolExpr xs)
 toBoolExpr (Not x) = BNot $ toBoolExpr x
 toBoolExpr (Id x) = BConst $ pure x
