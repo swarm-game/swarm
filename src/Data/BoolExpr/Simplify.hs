@@ -1,6 +1,6 @@
 -- | Simplification logic for boolean expressions that is not
 -- provided in the 'boolexpr' package.
-module Swarm.Game.Scenario.Objective.Simplify (
+module Data.BoolExpr.Simplify (
   cannotBeTrue,
   replace,
 ) where

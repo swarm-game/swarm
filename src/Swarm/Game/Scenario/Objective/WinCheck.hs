@@ -3,6 +3,7 @@ module Swarm.Game.Scenario.Objective.WinCheck where
 
 import Data.Aeson
 import Data.BoolExpr qualified as BE
+import Data.BoolExpr.Simplify qualified as Simplify
 import Data.List (partition)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -10,7 +11,6 @@ import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
-import Swarm.Game.Scenario.Objective.Simplify qualified as Simplify
 
 -- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
 didWin :: ObjectiveCompletion -> Bool

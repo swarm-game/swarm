@@ -4,10 +4,10 @@
 module TestBoolExpr where
 
 import Data.BoolExpr qualified as BE
+import Data.BoolExpr.Simplify qualified as Simplify
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Set qualified as Set
 import Swarm.Game.Scenario.Objective.Logic
-import Swarm.Game.Scenario.Objective.Simplify qualified as Simplify
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Test.Tasty
 import Test.Tasty.HUnit
