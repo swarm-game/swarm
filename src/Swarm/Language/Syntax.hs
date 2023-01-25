@@ -790,15 +790,6 @@ constInfo c = case c of
   lowShow :: Show a => a -> Text
   lowShow a = toLower (from (show a))
 
--- | Turn function application chain into a list.
--- >>> sWrap f = fmap (^. sTerm) . f . Syntax NoLoc
--- >>> sWrap unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
--- TConst Mul :| [TInt 1,TInt 2]
-unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
-unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
-  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
-  s -> (s, Nothing)
-
 ------------------------------------------------------------
 -- Basic terms
 ------------------------------------------------------------
@@ -1013,6 +1004,19 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
 mkOp' c t1 = TApp (TApp (TConst c) t1)
+
+-- $setup
+-- >>> import Control.Lens ((^.))
+
+-- | Turn function application chain into a list.
+--
+-- >>> syntaxWrap f = fmap (^. sTerm) . f . Syntax NoLoc
+-- >>> syntaxWrap unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
+-- TConst Mul :| [TInt 1,TInt 2]
+unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
+unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
+  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
+  s -> (s, Nothing)
 
 --------------------------------------------------
 -- Erasure
