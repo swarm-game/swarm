@@ -129,6 +129,7 @@ instance PrettyPrec Term where
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
+  prettyPrec p (TLocal t) = pparens (p > 10) $ "local" <+> prettyPrec 11 t
   prettyPrec _ t@TPair {} = prettyTuple t
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body

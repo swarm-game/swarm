@@ -531,6 +531,9 @@ stepCESK cesk = case cesk of
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
   Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
+  -- XXX local
+  In (TLocal t) e s k -> return $ In t e s (FLocal : k)
+  Out v s (FLocal : k) -> return $ Out (VLocal v) s k
   ------------------------------------------------------------
   -- Execution
 
@@ -594,7 +597,6 @@ stepCESK cesk = case cesk of
   -- and the next continuation frame contains a previous environment
   -- to union with, then pass the unioned environments along in
   -- another VResult.
-
   Out (VResult v e2) s (FUnionEnv e1 : k) -> return $ Out (VResult v (e1 `union` e2)) s k
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.
@@ -613,6 +615,11 @@ stepCESK cesk = case cesk of
     robotContext . defReqs %= (`union` rctx)
     return $ Out v s k
   Out v s (FLoadEnv {} : k) -> return $ Out v s k
+
+  -- To execute a value wrapped in VLocal, we push a FDiscardEnv frame
+  -- on the stack and continue.
+  Out (VLocal v) s (FExec : k) -> return $ Out v s (FExec : FDiscardEnv : k)
+
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
@@ -2066,6 +2073,7 @@ compareValues v1 = case v1 of
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
+  VLocal {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.

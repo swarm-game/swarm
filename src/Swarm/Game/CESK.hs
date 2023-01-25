@@ -159,6 +159,8 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) Term Env
+  | -- | We are evaluating a term which was wrapped in @TLocal@.
+    FLocal
   | -- | Discard any environment generated as the result of executing
     --   a command.
     FDiscardEnv
@@ -368,6 +370,7 @@ prettyFrame (FDef x) (_, inner) = (11, "def" <+> pretty x <+> "=" <+> inner <+> 
 prettyFrame FExec inner = prettyPrefix "E·" inner
 prettyFrame (FBind Nothing t _) (p, inner) = (0, pparens (p < 1) inner <+> ";" <+> ppr t)
 prettyFrame (FBind (Just x) t _) (p, inner) = (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
+prettyFrame FLocal (p, inner) = (10, "inner" <+> pparens (p < 11) inner)
 prettyFrame FDiscardEnv inner = prettyPrefix "D·" inner
 prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> ppr c <> "]·") inner
 prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner

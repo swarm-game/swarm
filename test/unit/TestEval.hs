@@ -261,6 +261,12 @@ testEval g =
                   `evaluatesToP` VInt i
             )
         ]
+    , testGroup
+        "binders"
+        [ testCase
+            "binder in local scope #681"
+            ("def f = a <- return 1 end; let a = 2 in f; return a" `evaluatesTo` VInt 2)
+        ]
     ]
  where
   tquote :: String -> Text

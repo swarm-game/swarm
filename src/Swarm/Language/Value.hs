@@ -86,6 +86,8 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
+  -- | XXX
+  VLocal :: Value -> Value
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Ensure that a value is not wrapped in 'VResult'.
@@ -118,6 +120,7 @@ valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TRef n
+valueToTerm (VLocal v) = TLocal (valueToTerm v)
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value

@@ -31,6 +31,10 @@ elaborate =
     . transform rewrite
  where
   rewrite :: Syntax' Polytype -> Syntax' Polytype
+  -- Any variables with a command type should be wrapped in TLocal,
+  -- to ensure any names bound by the commands they represent do not
+  -- escape into the context in which the variable is used.
+  rewrite s@(Syntax' l (TVar _) ty@(Forall _ (TyCmd _))) = Syntax' l (SLocal s) ty
   rewrite (Syntax' l t ty) = Syntax' l (rewriteTerm t) ty
 
   rewriteTerm :: Term' Polytype -> Term' Polytype

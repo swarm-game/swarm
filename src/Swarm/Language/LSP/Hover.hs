@@ -152,3 +152,4 @@ explain = \case
   SDef {} -> pure $ pureDoc "A (recursive) definition command, which binds a variable to a value in subsequent commands."
   SBind {} -> pure $ pureDoc "A monadic bind for commands, of the form `c1 ; c2` or `x <- c1; c2`."
   SDelay {} -> pure $ pureDoc "Delay evaluation of a term, written `{...}`.  Swarm is an eager language, but in some cases (e.g. for `if` statements and recursive bindings) we need to delay evaluation.  The counterpart to `{...}` is `force`, where `force {t} = t`. Note that 'Force' is just a constant, whereas 'SDelay' has to be a special syntactic form so its argument can get special treatment during evaluation."
+  SLocal {} -> pure $ pureDoc "A wrapper for commands whose environment should not leak.  This never shows up in surface syntax."
