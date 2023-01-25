@@ -12,7 +12,9 @@ import Control.Monad (void)
 import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.IO qualified as Text
+import Data.HashMap.Strict qualified as H
 import Language.LSP.Diagnostics
 import Language.LSP.Server
 import Language.LSP.Types (Hover (Hover))
@@ -25,6 +27,7 @@ import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import System.IO (stderr)
 import Witch
+import Swarm.Language.LSP.CodeActions
 
 lspMain :: IO ()
 lspMain =
@@ -154,4 +157,48 @@ handlers =
               (markdownText, maybeRange) <- H.showHoverInfo doc Nothing pos vf
               return $ Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) maybeRange
         responder $ Right maybeHover
+
+      -- TODO:
+    , notificationHandler J.SCancelRequest $ \_msg -> do
+        debug "Cancelled request"
+        return ()
+
+    , requestHandler J.STextDocumentCodeAction $ \req responder -> do
+        let (J.CodeActionParams _ _ (J.TextDocumentIdentifier uri) range context) = req ^. J.params
+
+        debug $ T.unwords ["KARL range:", T.pack $ show range]
+        debug $ T.unwords ["KARL context:", T.pack $ show context]
+
+        let doc = uri ^. to J.toNormalizedUri
+        mdoc <- getVirtualFile doc
+        case mdoc of
+          Just vf@(VirtualFile _ _version rope) -> do
+            
+            debug $ T.unlines $ map (T.pack . show) suggestions
+
+            responder $ Right $ J.List $ map (J.InR . mkAction) suggestions
+              where
+                suggestions = suggestTypes rope content
+                content = virtualFileText vf
+
+                mkAction sugg = J.CodeAction
+                  "Insert type"
+                  -- (Just J.CodeActionRefactorRewrite)
+                  (Just $ J.CodeActionUnknown "Insert type here")
+                  Nothing -- Diagnostics
+                  -- (Just True) -- Preferred
+                  Nothing -- Preferred
+                  Nothing -- Disabled
+                  (Just workspaceEdit)
+                  Nothing -- Command
+                  Nothing -- XData
+                  where
+                    editMap = H.singleton uri $ J.List [sugg]
+                  
+                    workspaceEdit = J.WorkspaceEdit
+                      (Just editMap)
+                      Nothing
+                      Nothing
+
+          _ -> debug "No file..."
     ]

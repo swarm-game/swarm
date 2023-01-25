@@ -123,7 +123,9 @@ library
                       Swarm.Language.Context
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
+                      Swarm.Language.LSP.CodeActions
                       Swarm.Language.LSP.Hover
+                      Swarm.Language.LSP.Util
                       Swarm.Language.LSP.VarUsage
                       Swarm.Language.Module
                       Swarm.Language.Parse
