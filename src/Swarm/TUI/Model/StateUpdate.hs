@@ -114,7 +114,12 @@ attainAchievement a = do
   currentTime <- liftIO getZonedTime
   attainAchievement' currentTime Nothing a
 
-attainAchievement' :: (MonadIO m, MonadState AppState m) => ZonedTime -> Maybe Text -> CategorizedAchievement -> m ()
+attainAchievement' ::
+  (MonadIO m, MonadState AppState m) =>
+  ZonedTime ->
+  Maybe FilePath ->
+  CategorizedAchievement ->
+  m ()
 attainAchievement' t p a = do
   (uiState . uiAchievements)
     %= M.insertWith

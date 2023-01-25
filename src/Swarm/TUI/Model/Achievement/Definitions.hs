@@ -77,6 +77,7 @@ data GameplayAchievement
   | RobotIntoWater
   | AttemptSelfDestructBase
   | DestroyedBase
+  | LoseScenario
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 instance FromJSON GameplayAchievement
