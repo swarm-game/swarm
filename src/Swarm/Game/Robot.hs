@@ -94,13 +94,13 @@ import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Log
-import Swarm.Game.Value as V
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
+import Swarm.Language.Value as V
 import Swarm.Util.Location
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
