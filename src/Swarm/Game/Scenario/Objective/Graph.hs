@@ -58,10 +58,11 @@ getNegatedIds objs =
 
   allPrereqExpressions = mapMaybe _objectivePrerequisite objs
   allConstants =
-    mapMaybe onlyNegative .
-      Set.toList .
-        Set.unions .
-          map (getDistinctConstants . logic) $ allPrereqExpressions
+    mapMaybe onlyNegative
+      . Set.toList
+      . Set.unions
+      . map (getDistinctConstants . logic)
+      $ allPrereqExpressions
 
   f = sequenceA . \x -> (x, M.lookup x objectivesById)
 
@@ -91,6 +92,8 @@ assignIds objs =
   unlabeledObjs = filter (null . _objectiveId) objs
   unlabeledObjsMap = M.fromList $ zipWith (\x y -> (Ordinal x, y)) [0 ..] unlabeledObjs
 
+type Edges = [(Objective, ObjectiveId, [ObjectiveId])]
+
 -- | NOTE: Based strictly on the goal labels, the graph could
 -- potentially contain a cycle, if there exist
 -- mutually-exclusive goals. That is, if goal A depends on the NOT
@@ -103,13 +106,13 @@ assignIds objs =
 --
 -- To avoid a "cycle" in this circumstance, "A" needs to exist as a distinct node
 -- from "NOT A" in the graph.
-makeGraph :: [Objective] -> Graph
-makeGraph objectives =
+makeGraph :: Edges -> Graph
+makeGraph edges =
   myGraph
  where
-  (myGraph, _, _) = graphFromEdges $ makeGraphEdges objectives
+  (myGraph, _, _) = graphFromEdges edges
 
-makeGraphEdges :: [Objective] -> [(Objective, ObjectiveId, [ObjectiveId])]
+makeGraphEdges :: [Objective] -> Edges
 makeGraphEdges objectives =
   rootTuples <> negatedTuples
  where
@@ -120,24 +123,22 @@ makeGraphEdges objectives =
   f (k, v) = (v, k, maybe [] (map Label . g) $ _objectivePrerequisite v)
   g = Set.toList . getDistinctConstants . logic
 
-getStronglyConnectedComponents :: [Objective] -> [SCC Objective]
-getStronglyConnectedComponents objectives =
-  stronglyConnComp $ makeGraphEdges objectives
-
-isAcyclicGraph :: [Objective] -> Bool
-isAcyclicGraph objectives =
-  all isAcyclicVerex $ getStronglyConnectedComponents objectives
+isAcyclicGraph :: [SCC Objective] -> Bool
+isAcyclicGraph =
+  all isAcyclicVertex
  where
-  isAcyclicVerex = \case
+  isAcyclicVertex = \case
     AcyclicSCC _ -> True
     _ -> False
 
 makeGraphInfo :: ObjectiveCompletion -> GraphInfo
 makeGraphInfo oc =
   GraphInfo
-    (makeGraph objs)
-    (isAcyclicGraph objs)
-    (getStronglyConnectedComponents objs)
+    (makeGraph edges)
+    (isAcyclicGraph connectedComponents)
+    connectedComponents
     (M.keys $ assignIds objs)
  where
+  edges = makeGraphEdges objs
+  connectedComponents = stronglyConnComp edges
   objs = listAllObjectives $ completionBuckets oc

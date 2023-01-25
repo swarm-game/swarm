@@ -5,6 +5,7 @@ module Swarm.Game.Scenario.Objective.Validation where
 
 import Control.Monad (unless)
 import Data.Foldable (for_, toList)
+import Data.Graph (stronglyConnComp)
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text qualified as T
@@ -39,10 +40,11 @@ validateObjectives objectives = do
       remaining = Set.difference refs allIds
     Nothing -> return ()
 
-  unless (isAcyclicGraph objectives) $
+  unless (isAcyclicGraph connectedComponents) $
     fail . into @String $
       T.unwords ["There are dependency cycles in the prerequisites."]
 
   return objectives
  where
+  connectedComponents = stronglyConnComp $ makeGraphEdges objectives
   allIds = Set.fromList $ mapMaybe _objectiveId objectives
