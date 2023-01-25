@@ -4,7 +4,9 @@ description: |
   Require a device the base has using the 'require' command in creative mode.
   https://github.com/swarm-game/swarm/issues/201
 objectives:
-  - condition: |
+  - goal:
+      - Boat is properly removed from builder's inventory and equipped on buildee
+    condition: |
       try {
         r <- robotNumbered 1;
         p <- as r {whereami};
