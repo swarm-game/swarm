@@ -40,6 +40,7 @@ module Swarm.TUI.Attr (
   infoAttr,
   boldAttr,
   dimAttr,
+  magentaAttr,
   cyanAttr,
   yellowAttr,
   blueAttr,
@@ -83,6 +84,7 @@ swarmAttrMap =
          , (blueAttr, fg V.blue)
          , (yellowAttr, fg V.yellow)
          , (cyanAttr, fg V.cyan)
+         , (magentaAttr, fg V.magenta)
          , -- Default attribute
            (defAttr, V.defAttr)
          ]
@@ -161,12 +163,13 @@ dimAttr = attrName "dim"
 defAttr = attrName "def"
 
 -- | Some basic colors used in TUI.
-redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr :: AttrName
+redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr, magentaAttr :: AttrName
 redAttr = attrName "red"
 greenAttr = attrName "green"
 blueAttr = attrName "blue"
 yellowAttr = attrName "yellow"
 cyanAttr = attrName "cyan"
+magentaAttr = attrName "magenta"
 
 instance ToJSON AttrName where
   toJSON = toJSON . head . attrNameComponents

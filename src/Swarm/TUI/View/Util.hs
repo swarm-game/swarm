@@ -55,6 +55,21 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
+      LoseModal ->
+        let stopMsg = fromMaybe "Return to the menu" haltingMessage
+            continueMsg = "Keep playing"
+            maybeStartOver = sequenceA ("Start over", StartOverButton currentSeed <$> currentScenario)
+         in ( ""
+            , Just
+                ( 0
+                , catMaybes
+                    [ Just (stopMsg, QuitButton)
+                    , maybeStartOver
+                    , Just (continueMsg, KeepPlayingButton)
+                    ]
+                )
+            , sum (map length [stopMsg, continueMsg]) + 32
+            )
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
         let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
@@ -70,11 +85,11 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
                 )
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
-      GoalModal _ ->
+      GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
               Just (scenario, _) -> scenario ^. scenarioName
-         in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
+         in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
       KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
 
 -- | Render the type of the current REPL input to be shown to the user.
@@ -102,3 +117,21 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
   quitAction = case m of
     NoMenu -> "quit"
     _ -> "return to the menu"
+
+-- | Display a list of text-wrapped paragraphs with one blank line after
+--   each.
+displayParagraphs :: [Text] -> Widget Name
+displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
+
+withEllipsis :: Text -> Widget Name
+withEllipsis t =
+  Widget Greedy Fixed $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+        ellipsis = T.replicate 3 $ T.singleton '.'
+        tLength = T.length t
+        newText =
+          if tLength > w
+            then T.take (w - T.length ellipsis) t <> ellipsis
+            else t
+    render $ txt newText

@@ -520,7 +520,7 @@ data Length = Short | Long
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
---   'Swarm.Game.Value.VCApp') until it has enough, then dispatch
+--   'Swarm.Language.Value.VCApp') until it has enough, then dispatch
 --   the constant's behavior.
 arity :: Const -> Int
 arity c = case constMeta $ constInfo c of

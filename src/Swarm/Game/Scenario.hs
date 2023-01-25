@@ -1,5 +1,4 @@
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -17,11 +16,6 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * Objectives
-  Objective,
-  objectiveGoal,
-  objectiveCondition,
-
   -- * WorldDescription
   PCell (..),
   Cell,
@@ -59,6 +53,7 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Data.Aeson
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -68,6 +63,7 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
@@ -108,6 +104,7 @@ instance FromJSONE EntityMap Scenario where
     -- parse custom entities
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     -- extend ambient EntityMap with custom entities
+
     withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
@@ -134,7 +131,7 @@ instance FromJSONE EntityMap Scenario where
         <*> pure known
         <*> localE (,rsMap) (v ..: "world")
         <*> pure rs
-        <*> liftE (v .:? "objectives" .!= [])
+        <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
         <*> liftE (v .:? "stepsPerTick")
 

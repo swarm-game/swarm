@@ -1,0 +1,49 @@
+version: 1
+name: |
+  Prerequisite objectives: OR
+description: |
+  Complete an objective with a prerequisite of either of two other objectives.
+objectives:
+  - goal:
+      - Achieve one of two other objectives
+    condition: |
+      return true;
+    prerequisite:
+      previewable: true
+      logic:
+        or:
+          - id: have_furnace
+          - id: have_gear
+  - id: have_furnace
+    goal:
+      - Make a "furnace".
+    condition: |
+      as base {has "furnace"};
+    optional: true
+  - id: have_gear
+    goal:
+      - Make a "wooden gear".
+    condition: |
+      as base {has "wooden gear"};
+    optional: true
+solution: |
+  make "wooden gear"
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    dir: [0, 1]
+    devices:
+      - workbench
+      - grabber
+    inventory:
+      - [2, board]
+      - [5, rock]
+world:
+  default: [blank]
+  palette:
+    'x': [grass, flower, base]
+  upperleft: [0, 0]
+  map: |
+    x

@@ -3,7 +3,9 @@ name: Farming
 description: |
   Learn how to build a farm to grow and harvest items.
 objectives:
-  - goal:
+  - id: get_many_lambdas
+    teaser: Get 256 lambdas
+    goal:
       - Lambdas are an essential item for building robots, but they
         are somewhat rare in the wild.  Therefore, it makes sense to farm
         them in order to create a reliable supply.
@@ -47,6 +49,7 @@ objectives:
       - Now go forth and build your swarm!
     condition: |
       try {as base {has "curry"}} {return false}
+    prerequisite: get_many_lambdas
 solution: |
   run "scenarios/Tutorials/farming.sw";
   run "scenarios/Tutorials/make_curry.sw";

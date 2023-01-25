@@ -10,7 +10,6 @@ import Data.Aeson (
   genericToJSON,
  )
 import Data.Function (on)
-import Data.Text (Text)
 import Data.Time (ZonedTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
@@ -18,7 +17,7 @@ import Swarm.TUI.Model.Achievement.Definitions
 
 data Attainment = Attainment
   { _achievement :: CategorizedAchievement
-  , _maybeScenarioPath :: Maybe Text
+  , _maybeScenarioPath :: Maybe FilePath
   -- ^ from which scenario was it obtained?
   , _obtainedAt :: ZonedTime
   }

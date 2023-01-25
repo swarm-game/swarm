@@ -1,0 +1,38 @@
+version: 1
+name: |
+  Prerequisite objectives: Nonexistent reference
+description: |
+  This scenario should be unparseable due to typo "shave_furnace" vs "have_furnace"
+objectives:
+  - goal:
+      - Achieve one of two other objectives
+    condition: |
+      return true;
+    prerequisite: shave_furnace
+  - id: have_furnace
+    goal:
+      - Make a "furnace".
+    condition: |
+      as base {has "furnace"};
+    optional: true
+solution: |
+  make "furnace"
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    dir: [0, 1]
+    devices:
+      - workbench
+      - grabber
+    inventory:
+      - [2, board]
+      - [5, rock]
+world:
+  default: [blank]
+  palette:
+    'x': [grass, flower, base]
+  upperleft: [0, 0]
+  map: |
+    x
