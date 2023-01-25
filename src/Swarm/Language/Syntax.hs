@@ -76,6 +76,7 @@ module Swarm.Language.Syntax (
   Term,
   mkOp,
   mkOp',
+  unfoldApps,
 
   -- * Erasure
   erase,
@@ -86,6 +87,7 @@ module Swarm.Language.Syntax (
   freeVarsT,
   freeVarsV,
   mapFreeS,
+  locVarToSyntax',
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
@@ -96,6 +98,8 @@ import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
 import Data.List qualified as L (tail)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
@@ -813,6 +817,9 @@ data DelayType
 data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
+locVarToSyntax' :: LocVar -> ty -> Syntax' ty
+locVarToSyntax' (LV s v) = Syntax' s (TVar v)
+
 -- | Terms of the Swarm language.
 data Term' ty
   = -- | The unit value.
@@ -997,6 +1004,19 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 -- | Make infix operation, discarding any syntax related location
 mkOp' :: Const -> Term -> Term -> Term
 mkOp' c t1 = TApp (TApp (TConst c) t1)
+
+-- $setup
+-- >>> import Control.Lens ((^.))
+
+-- | Turn function application chain into a list.
+--
+-- >>> syntaxWrap f = fmap (^. sTerm) . f . Syntax NoLoc
+-- >>> syntaxWrap unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
+-- TConst Mul :| [TInt 1,TInt 2]
+unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
+unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
+  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
+  s -> (s, Nothing)
 
 --------------------------------------------------
 -- Erasure
