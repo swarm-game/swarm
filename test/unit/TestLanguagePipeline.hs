@@ -1,15 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- | Swarm unit tests
 module TestLanguagePipeline where
 
+import Control.Arrow ((&&&))
+import Control.Lens (toListOf)
+import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
 import Data.Either
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Module (Module (..))
+import Swarm.Language.Parse.QQ (tyQ)
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
 import Swarm.Language.Types
 import Test.Tasty
@@ -245,6 +253,33 @@ testLanguagePipeline =
             "void - valid type signature"
             (valid "def f : void -> a = \\x. undefined end")
         ]
+    , testGroup
+        "type annotations"
+        [ testCase
+            "annotate 1 + 1"
+            ( assertEqual
+                "type annotations"
+                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
+                [[tyQ| int -> int -> int|], [tyQ|int|], [tyQ|int -> int|], [tyQ|int|], [tyQ|int|]]
+            )
+        , testCase
+            "get all annotated variable types"
+            ( let s =
+                    getSyntax
+                      [tmQ| def f : (int -> int) -> int -> text = \g. \x. format (g x) end |]
+
+                  isVar (TVar {}) = True
+                  isVar _ = False
+                  getVars = map (_sTerm &&& _sType) . filter (isVar . _sTerm) . universe
+               in assertEqual
+                    "variable types"
+                    (getVars s)
+                    ( [ (TVar "g", [tyQ| int -> int |])
+                      , (TVar "x", [tyQ| int |])
+                      ]
+                    )
+            )
+        ]
     ]
  where
   valid = flip process ""
@@ -264,3 +299,6 @@ testLanguagePipeline =
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
+
+  getSyntax :: ProcessedTerm -> Syntax' Polytype
+  getSyntax (ProcessedTerm (Module s _) _ _) = s

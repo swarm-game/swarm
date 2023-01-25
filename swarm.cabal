@@ -108,6 +108,7 @@ library
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
                       Swarm.Language.LSP.VarUsage
+                      Swarm.Language.Module
                       Swarm.Language.Parse
                       Swarm.Language.Parse.QQ
                       Swarm.Language.Pipeline

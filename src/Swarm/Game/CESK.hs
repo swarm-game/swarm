@@ -85,6 +85,7 @@ module Swarm.Game.CESK (
   finalValue,
 ) where
 
+import Control.Lens ((^.))
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap.Strict (IntMap)
@@ -96,6 +97,7 @@ import Swarm.Game.Exception
 import Swarm.Game.Value as V
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
+import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement (ReqCtx)
@@ -284,11 +286,25 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm t (Module (Forall _ (TyCmd _)) ctx) _ reqCtx) e s k =
-  case ctx of
-    Empty -> In t e s (FExec : k)
-    _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
-initMachine' (ProcessedTerm t _ _ _) e s k = In t e s k
+initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
+  case t' ^. sType of
+    -- If the starting term has a command type...
+    Forall _ (TyCmd _) ->
+      case ctx of
+        -- ...but doesn't contain any definitions, just create a machine
+        -- that will evaluate it and then execute it.
+        Empty -> In t e s (FExec : k)
+        -- Or, if it does contain definitions, then load the resulting
+        -- context after executing it.
+        _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
+    -- Otherwise, for a term with a non-command type, just
+    -- create a machine to evaluate it.
+    _ -> In t e s k
+ where
+  -- Erase all type and SrcLoc annotations from the term before
+  -- putting it in the machine state, since those are irrelevant at
+  -- runtime.
+  t = eraseS t'
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK

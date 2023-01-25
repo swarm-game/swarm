@@ -31,6 +31,9 @@ module Swarm.Util (
   getSwarmSavePath,
   getSwarmHistoryPath,
   readAppData,
+  getDataDirSafe,
+  getDataFileNameSafe,
+  dataNotFound,
 
   -- * Text utilities
   isIdentChar,
@@ -67,9 +70,6 @@ module Swarm.Util (
 
   -- * Utilities for NP-hard approximation
   smallHittingSet,
-  getDataDirSafe,
-  getDataFileNameSafe,
-  dataNotFound,
 ) where
 
 import Control.Algebra (Has)
