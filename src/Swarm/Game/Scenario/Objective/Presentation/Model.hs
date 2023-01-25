@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
 -- A UI-centric model for Objective presentation.
 module Swarm.Game.Scenario.Objective.Presentation.Model where
@@ -39,7 +40,7 @@ data GoalStatus
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
 
--- | TODO Could also add an "ObjectiveFailed" constructor...
+-- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
 newtype Announcement
   = ObjectiveCompleted Objective
   deriving (Show, Generic, ToJSON)
@@ -52,7 +53,7 @@ data GoalEntry
 
 data GoalTracking = GoalTracking
   { announcements :: [Announcement]
-  -- ^ TODO (#916) the actual contents of these are not used yet,
+  -- ^ TODO: #1044 the actual contents of these are not used yet,
   -- other than as a flag to pop up the Goal dialog.
   , goals :: CategorizedGoals
   }
