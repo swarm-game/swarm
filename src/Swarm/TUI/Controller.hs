@@ -413,7 +413,7 @@ handleModalEvent = \case
       Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
    where
-    refreshList lw = nestEventM' lw $ BL.handleListEvent ev
+    refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev isHeader
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()

@@ -51,6 +51,11 @@ data GoalEntry
   = Header GoalStatus
   | Goal GoalStatus Objective
 
+isHeader :: GoalEntry -> Bool
+isHeader = \case
+  Header _ -> True
+  _ -> False
+
 data GoalTracking = GoalTracking
   { announcements :: [Announcement]
   -- ^ TODO: #1044 the actual contents of these are not used yet,
