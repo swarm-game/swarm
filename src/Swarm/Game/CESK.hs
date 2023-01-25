@@ -93,7 +93,6 @@ import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), hsep, (<+>))
 import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
-import Swarm.Game.Value as V
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
 import Swarm.Language.Module
@@ -102,6 +101,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Swarm.Language.Value as V
 
 ------------------------------------------------------------
 -- Frames and continuations

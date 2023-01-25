@@ -14,9 +14,9 @@ import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
-import Swarm.Game.Value
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Value
 
 eval :: GameState -> Text -> IO (GameState, Robot, Either Text (Value, Int))
 eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) . processTerm1

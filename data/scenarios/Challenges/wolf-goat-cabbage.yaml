@@ -1,0 +1,125 @@
+version: 1
+name: Lake crossing
+author: Karl Ostmo
+description: |
+  Deposit all three items on the eastern shore of the lake.
+creative: false
+robots:
+  - name: base
+    display:
+      char: 'U'
+      attr: wood
+    dir: [0, 1]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - treads
+      - lodestone
+      - compass
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - boat
+  - name: east_detector
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: true
+  - name: west_detector
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: true
+objectives:
+  - goal:
+      - |
+        Ferry all three of the wolf, goat, and cabbage across the lake.
+        However, only one of these can be carried at a time.
+      - |
+        Furthermore, if left unattended together, the wolf will eat the goat,
+        or the goat will eat the cabbage.
+    condition: |
+      run "data/scenarios/Challenges/_wolf-goat-cabbage/together-on-east-bank.sw";
+    prerequisite:
+      previewable: true
+      logic:
+        not:
+          or: 
+            - id: unattended_disaster
+            - id: carrying_two_items
+  - goal:
+      - Carrying two items at once is not allowed!
+    condition: |
+      as base {
+        run "data/scenarios/Challenges/_wolf-goat-cabbage/multi-item-possession.sw";
+      };
+    id: carrying_two_items
+    optional: true
+    hidden: true
+  - id: unattended_disaster
+    teaser: Something was eaten
+    goal:
+      - Leaving an animal alone with its food is not allowed!
+    condition: |
+      run "data/scenarios/Challenges/_wolf-goat-cabbage/unattended-together.sw";
+    optional: true
+    hidden: true    
+solution: |
+  run "scenarios/Challenges/_wolf-goat-cabbage/cross.sw"
+entities:
+  - name: wolf
+    display:
+      char: 'w'
+      attr: silver
+    description:
+      - A wolf. Likes to eat goats.
+    properties: [known, portable]
+  - name: goat
+    display:
+      char: 'g'
+      attr: sand
+    description:
+      - A goat. Likes to eat cabbage.
+    properties: [known, portable]
+  - name: cabbage
+    display:
+      char: 'c'
+      attr: green
+    description:
+      - A cabbage.
+    properties: [known, portable]
+known: [water, boulder]
+seed: 0
+world:
+  default: [blank]
+  palette:
+    'A': [stone, boulder]
+    'B': [stone, boulder, base]
+    '.': [grass]
+    'e': [grass, null, east_detector]
+    '~': [dirt, water]
+    'w': [grass, wolf]
+    'g': [grass, goat]
+    'c': [grass, cabbage, west_detector]
+  upperleft: [0, 0]
+  map: |-
+    AAAAAAAAAAAAAAAAAAAAA
+    AAAAAAAA~~~~~AAAAAAAA
+    AAAAA~~~~~~~~~~~AAAAA
+    AAA~~~~~~~~~~~~~~~AAA
+    AA~~~~~~~~~~~~~~~~~AA
+    Aw~~~~~~~~~~~~~~~~~.A
+    Ag~~~~~~~~~~~~~~~~~.A
+    Ac~~~~~~~~~~~~~~~~~eA
+    AB~~~~~~~~~~~~~~~~~AA
+    AAA~~~~~~~~~~~~~~~AAA
+    AAAAA~~~~~~~~~~~AAAAA
+    AAAAAAAA~~~~~AAAAAAAA
+    AAAAAAAAAAAAAAAAAAAAA

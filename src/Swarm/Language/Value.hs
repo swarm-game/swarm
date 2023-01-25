@@ -2,14 +2,14 @@
 {-# LANGUAGE GADTs #-}
 
 -- |
--- Module      :  Swarm.Game.Value
+-- Module      :  Swarm.Language.Value
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Values and environments used for interpreting the Swarm language.
-module Swarm.Game.Value (
+module Swarm.Language.Value (
   -- * Values
   Value (..),
   stripVResult,
