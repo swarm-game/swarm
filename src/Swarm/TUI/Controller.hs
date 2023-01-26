@@ -94,6 +94,7 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
@@ -406,11 +407,18 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
-      Just GoalModal -> do
-        lw <- use $ uiState . uiGoal . listWidget
-        newList <- refreshList lw
-        uiState . uiGoal . listWidget .= newList
-      Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+      Just GoalModal -> case ev of
+        V.EvKey (V.KChar '\t') [] -> uiState . uiGoal . focus %= focusNext
+        _ -> do
+          focused <- use $ uiState . uiGoal . focus
+          case focusGetCurrent focused of
+            Just (GoalWidgets w) -> case w of
+              ObjectivesList -> do
+                lw <- use $ uiState . uiGoal . listWidget
+                newList <- refreshList lw
+                uiState . uiGoal . listWidget .= newList
+              GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+            _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> return ()
    where
     refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev isHeader
@@ -771,9 +779,19 @@ doGoalUpdates = do
       -- Decide whether to show a pop-up modal congratulating the user on
       -- successfully completing the current challenge.
       when goalWasUpdated $ do
+        GoalDisplay _ _ ring <- use $ uiState . uiGoal
+        let defaultFocus =
+              if hasMultipleGoals newGoalTracking
+                then ObjectivesList
+                else GoalSummary
+
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState . uiGoal .= GoalDisplay newGoalTracking (GR.makeListWidget newGoalTracking)
+        uiState . uiGoal
+          .= GoalDisplay
+            newGoalTracking
+            (GR.makeListWidget newGoalTracking)
+            (focusSetCurrent (GoalWidgets defaultFocus) ring)
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.

@@ -4,6 +4,7 @@
 module Swarm.Game.Scenario.Objective.Presentation.Render where
 
 import Brick hiding (Direction, Location)
+import Brick.Focus
 import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
@@ -20,7 +21,7 @@ import Swarm.TUI.View.Util
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
-  BL.listMoveTo 1 $ BL.list ObjectivesList (V.fromList objList) 1
+  BL.listMoveTo 1 $ BL.list (GoalWidgets ObjectivesList) (V.fromList objList) 1
  where
   objList = concatMap f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
@@ -28,7 +29,7 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
 renderGoalsDisplay :: GoalDisplay -> Widget Name
 renderGoalsDisplay gd =
   padAll 1 $
-    if goalsCount > 1
+    if hasMultipleGoals $ gd ^. goalsContent
       then
         hBox
           [ leftSide
@@ -37,20 +38,26 @@ renderGoalsDisplay gd =
       else goalElaboration
  where
   lw = _listWidget gd
+  fr = _focus gd
   leftSide =
     hLimitPercent 30 $
       vBox
         [ hCenter $ str "Goals"
         , padAll 1 $
             vLimit 10 $
-              BL.renderList (const drawGoalListItem) True lw
+              withFocusRing fr (BL.renderList drawGoalListItem) lw
         ]
-  goalsCount = sum . M.elems . M.map NE.length . goals $ gd ^. goalsContent
+
+  -- Adds very subtle coloring to indicate focus switch
+  highlightIfFocused = case focusGetCurrent fr of
+    Just (GoalWidgets GoalSummary) -> withAttr lightCyanAttr
+    _ -> id
 
   goalElaboration =
-    padLeft (Pad 2) $
-      maybe emptyWidget (singleGoalDetails . snd) $
-        BL.listSelectedElement lw
+    clickable (GoalWidgets GoalSummary) $
+      padLeft (Pad 2) $
+        maybe emptyWidget (highlightIfFocused . singleGoalDetails . snd) $
+          BL.listSelectedElement lw
 
 getCompletionIcon :: Objective -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
@@ -65,9 +72,10 @@ getCompletionIcon obj = \case
         else greenAttr
 
 drawGoalListItem ::
+  Bool ->
   GoalEntry ->
   Widget Name
-drawGoalListItem = \case
+drawGoalListItem _isSelected e = case e of
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
