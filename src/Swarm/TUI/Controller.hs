@@ -779,11 +779,18 @@ doGoalUpdates = do
       -- Decide whether to show a pop-up modal congratulating the user on
       -- successfully completing the current challenge.
       when goalWasUpdated $ do
-        GoalDisplay _ _ ring <- use $ uiState . uiGoal
-        let defaultFocus =
-              if hasMultipleGoals newGoalTracking
+        let hasMultiple = hasMultipleGoals newGoalTracking
+            defaultFocus =
+              if hasMultiple
                 then ObjectivesList
                 else GoalSummary
+
+            ring =
+              focusRing $
+                map GoalWidgets $
+                  if hasMultiple
+                    then listEnums
+                    else [GoalSummary]
 
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.

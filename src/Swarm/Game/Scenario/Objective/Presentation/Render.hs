@@ -29,7 +29,7 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
 renderGoalsDisplay :: GoalDisplay -> Widget Name
 renderGoalsDisplay gd =
   padAll 1 $
-    if hasMultipleGoals $ gd ^. goalsContent
+    if hasMultiple
       then
         hBox
           [ leftSide
@@ -37,6 +37,7 @@ renderGoalsDisplay gd =
           ]
       else goalElaboration
  where
+  hasMultiple = hasMultipleGoals $ gd ^. goalsContent
   lw = _listWidget gd
   fr = _focus gd
   leftSide =
@@ -49,8 +50,8 @@ renderGoalsDisplay gd =
         ]
 
   -- Adds very subtle coloring to indicate focus switch
-  highlightIfFocused = case focusGetCurrent fr of
-    Just (GoalWidgets GoalSummary) -> withAttr lightCyanAttr
+  highlightIfFocused = case (hasMultiple, focusGetCurrent fr) of
+    (True, Just (GoalWidgets GoalSummary)) -> withAttr lightCyanAttr
     _ -> id
 
   goalElaboration =
@@ -64,9 +65,9 @@ getCompletionIcon obj = \case
   Upcoming -> withAttr yellowAttr $ txt " ○  "
   Active -> withAttr cyanAttr $ txt " ○  "
   Failed -> withAttr redAttr $ txt " ●  "
-  Completed -> withAttr colorattr $ txt " ●  "
+  Completed -> withAttr colorAttr $ txt " ●  "
    where
-    colorattr =
+    colorAttr =
       if obj ^. objectiveHidden
         then magentaAttr
         else greenAttr
