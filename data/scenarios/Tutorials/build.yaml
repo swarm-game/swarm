@@ -14,7 +14,8 @@ objectives:
       - You can build a robot with `build {COMMANDS}`,
         where in place of `COMMANDS` you write the sequence
         of commands for the robot to execute (separated by semicolons).
-      - Build a robot to harvest the flower and place it next
+      - |
+        Build a robot to harvest the "flower" and place it next
         to the water.
       - |
         TIP: Newly built robots start out facing the same
@@ -23,26 +24,15 @@ objectives:
       try {
         teleport self (0,-1);
         turn east;
-        a <- ishere "pickerelweed";
+        a <- ishere "flower";
         move;
-        b <- ishere "pickerelweed";
+        b <- ishere "flower";
         move;
-        c <- ishere "pickerelweed";
+        c <- ishere "flower";
         return (a || b || c);
       } { return false }
-entities:
-  - name: pickerelweed
-    display:
-      attr: flower
-      char: '*'
-    description:
-      - A small plant that grows near the water.
-    properties: [known, portable, growable]
-    # It would make sense for the plant to NOT grow away from water.
-    # But if the player sent a robot that grabbed it and then did not
-    # place it, another robot would need to salvage that robot.
 solution: |
-  build {turn right; move; move; t <- harvest; turn right; move; place t}
+  build {turn right; move; move; harvest; turn right; move; place "flower"}
 robots:
   - name: base
     dir: [0,1]
@@ -66,7 +56,7 @@ world:
     'Ω': [grass, null, base]
     '.': [grass]
     '~': [ice, water]
-    '*': [grass, pickerelweed]
+    '*': [grass, flower]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]
