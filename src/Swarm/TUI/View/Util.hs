@@ -6,10 +6,12 @@ import Brick hiding (Direction)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
+import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Scenario (scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
@@ -135,3 +137,19 @@ withEllipsis t =
             then T.take (w - T.length ellipsis) t <> ellipsis
             else t
     render $ txt newText
+
+-- | Make a widget scrolling if it is bigger than the available
+--   vertical space.  Thanks to jtdaugherty for this code.
+maybeScroll :: (Ord n, Show n) => n -> Widget n -> Widget n
+maybeScroll vpName contents =
+  Widget Greedy Greedy $ do
+    ctx <- getContext
+    result <- withReaderT (availHeightL .~ 10000) (render contents)
+    if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
+      then return result
+      else
+        render $
+          withVScrollBars OnRight $
+            viewport vpName Vertical $
+              Widget Fixed Fixed $
+                return result

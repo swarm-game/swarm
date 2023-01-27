@@ -49,7 +49,6 @@ import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
-import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
@@ -68,7 +67,6 @@ import Data.Set qualified as Set (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
-import Graphics.Vty qualified as V
 import Linear
 import Linear.Affine (Point)
 import Network.Wai.Handler.Warp (Port)
@@ -442,24 +440,10 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
 -- | Draw the error dialog window, if it should be displayed right now.
 drawDialog :: AppState -> Widget Name
 drawDialog s = case s ^. uiState . uiModal of
-  Just (Modal mt d) -> renderDialog d (maybeScroll ModalViewport $ drawModal s mt)
+  Just (Modal mt d) -> renderDialog d $ case mt of
+    GoalModal -> drawModal s mt
+    _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiState . uiError)
-
--- | Make a widget scrolling if it is bigger than the available
---   vertical space.  Thanks to jtdaugherty for this code.
-maybeScroll :: (Ord n, Show n) => n -> Widget n -> Widget n
-maybeScroll vpName contents =
-  Widget Greedy Greedy $ do
-    ctx <- getContext
-    result <- withReaderT (availHeightL .~ 10000) (render contents)
-    if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
-      then return result
-      else
-        render $
-          withVScrollBars OnRight $
-            viewport vpName Vertical $
-              Widget Fixed Fixed $
-                return result
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name

@@ -56,9 +56,10 @@ renderGoalsDisplay gd =
 
   goalElaboration =
     clickable (GoalWidgets GoalSummary) $
-      padLeft (Pad 2) $
-        maybe emptyWidget (highlightIfFocused . singleGoalDetails . snd) $
-          BL.listSelectedElement lw
+      maybeScroll ModalViewport $
+        padLeft (Pad 2) $
+          maybe emptyWidget (highlightIfFocused . singleGoalDetails . snd) $
+            BL.listSelectedElement lw
 
 getCompletionIcon :: Objective -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
