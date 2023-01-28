@@ -28,21 +28,20 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
 
 renderGoalsDisplay :: GoalDisplay -> Widget Name
 renderGoalsDisplay gd =
-  padAll 1 $
-    if hasMultiple
-      then
-        hBox
-          [ leftSide
-          , hLimitPercent 70 goalElaboration
-          ]
-      else goalElaboration
+  if hasMultiple
+    then
+      hBox
+        [ leftSide
+        , hLimitPercent 70 $ padLeft (Pad 2) goalElaboration
+        ]
+    else goalElaboration
  where
   hasMultiple = hasMultipleGoals $ gd ^. goalsContent
   lw = _listWidget gd
   fr = _focus gd
   leftSide =
     hLimitPercent 30 $
-      vBox
+      padAll 1 $ vBox
         [ hCenter $ str "Goals"
         , padAll 1 $
             vLimit 10 $
@@ -54,12 +53,13 @@ renderGoalsDisplay gd =
     (True, Just (GoalWidgets GoalSummary)) -> withAttr lightCyanAttr
     _ -> id
 
+  -- Note: An extra "padRight" is inserted to account for the vertical scrollbar,
+  -- whether or not it appears.
   goalElaboration =
     clickable (GoalWidgets GoalSummary) $
       maybeScroll ModalViewport $
-        padLeft (Pad 2) $
-          maybe emptyWidget (highlightIfFocused . singleGoalDetails . snd) $
-            BL.listSelectedElement lw
+        maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . singleGoalDetails . snd) $
+          BL.listSelectedElement lw
 
 getCompletionIcon :: Objective -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case

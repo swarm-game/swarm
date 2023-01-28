@@ -464,7 +464,7 @@ drawModal s = \case
           ]
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
-  GoalModal -> padLeftRight 1 $ GR.renderGoalsDisplay (s ^. uiState . uiGoal)
+  GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 robotsListWidget :: AppState -> Widget Name
