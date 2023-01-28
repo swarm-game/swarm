@@ -13,7 +13,7 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens ((%~), (&), (?~), view)
+import Control.Lens (view, (%~), (&), (?~))
 import Control.Monad.Except
 import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
