@@ -11,6 +11,11 @@ data FocusablePanel
     InfoPanel
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+data GoalWidget
+  = ObjectivesList
+  | GoalSummary
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 -- | 'Name' represents names to uniquely identify various components
 --   of the UI, such as forms, panels, caches, extents, and lists.
 data Name
@@ -30,8 +35,8 @@ data Name
     MenuList
   | -- | The list of achievements.
     AchievementList
-  | -- | The list of goals/ojbectives.
-    ObjectivesList
+  | -- | The list of goals/objectives.
+    GoalWidgets GoalWidget
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.
