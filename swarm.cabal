@@ -102,6 +102,7 @@ library
                       Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State

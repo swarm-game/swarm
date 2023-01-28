@@ -10,6 +10,7 @@ module Swarm.TUI.Model.StateUpdate (
   scenarioToAppState,
 ) where
 
+import Brick.AttrMap (applyAttrMappings)
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
@@ -20,8 +21,9 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
-import Swarm.Game.Scenario (loadScenario)
+import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
 import Swarm.Game.Scenario.Objective.Presentation.Model (emptyGoalDisplay)
+import Swarm.Game.Scenario.Style (toAttrPair)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioInfoPair,
@@ -34,6 +36,7 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Attainment
@@ -98,7 +101,12 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
 -- TODO: #516 do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
-scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe CodeToRun -> m ()
+scenarioToAppState ::
+  (MonadIO m, MonadState AppState m) =>
+  ScenarioInfoPair ->
+  Maybe Seed ->
+  Maybe CodeToRun ->
+  m ()
 scenarioToAppState siPair@(scene, _) userSeed toRun = do
   withLensIO gameState $ scenarioToGameState scene userSeed toRun
   withLensIO uiState $ scenarioToUIState siPair
@@ -145,5 +153,6 @@ scenarioToUIState siPair u = do
       & lgTicksPerSecond .~ initLgTicksPerSecond
       & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
       & uiREPL . replHistory %~ restartREPLHistory
+      & uiAttrMap .~ applyAttrMappings (map toAttrPair $ fst siPair ^. scenarioAttrs) swarmAttrMap
       & scenarioRef ?~ siPair
       & lastFrameTime .~ curTime

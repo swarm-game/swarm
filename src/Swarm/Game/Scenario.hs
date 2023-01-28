@@ -33,6 +33,7 @@ module Swarm.Game.Scenario (
   scenarioDescription,
   scenarioCreative,
   scenarioSeed,
+  scenarioAttrs,
   scenarioEntities,
   scenarioRecipes,
   scenarioKnown,
@@ -65,6 +66,7 @@ import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (getDataFileNameSafe)
@@ -86,6 +88,7 @@ data Scenario = Scenario
   , _scenarioDescription :: Text
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
+  , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: [Text]
@@ -126,6 +129,7 @@ instance FromJSONE EntityMap Scenario where
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
+        <*> liftE (v .:? "attrs" .!= [])
         <*> pure em
         <*> v ..:? "recipes" ..!= []
         <*> pure known
@@ -160,6 +164,9 @@ scenarioCreative :: Lens' Scenario Bool
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed / prompt the user for the seed.
 scenarioSeed :: Lens' Scenario (Maybe Int)
+
+-- | Custom attributes defined in the scenario.
+scenarioAttrs :: Lens' Scenario [CustomAttr]
 
 -- | Any custom entities used for this scenario.
 scenarioEntities :: Lens' Scenario EntityMap
