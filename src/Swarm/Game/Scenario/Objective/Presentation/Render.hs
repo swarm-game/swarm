@@ -41,12 +41,13 @@ renderGoalsDisplay gd =
   fr = _focus gd
   leftSide =
     hLimitPercent 30 $
-      padAll 1 $ vBox
-        [ hCenter $ str "Goals"
-        , padAll 1 $
-            vLimit 10 $
-              withFocusRing fr (BL.renderList drawGoalListItem) lw
-        ]
+      padAll 1 $
+        vBox
+          [ hCenter $ str "Goals"
+          , padAll 1 $
+              vLimit 10 $
+                withFocusRing fr (BL.renderList drawGoalListItem) lw
+          ]
 
   -- Adds very subtle coloring to indicate focus switch
   highlightIfFocused = case (hasMultiple, focusGetCurrent fr) of
