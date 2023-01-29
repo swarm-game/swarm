@@ -23,7 +23,6 @@ import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
 import Swarm.Game.Scenario.Objective.Presentation.Model (emptyGoalDisplay)
-import Swarm.Game.Scenario.Style (toAttrPair)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioInfoPair,
@@ -45,6 +44,7 @@ import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Failure (prettyFailure)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.TUI.View.CustomStyling (toAttrPair)
 import System.Clock
 
 -- | Initialize the 'AppState'.

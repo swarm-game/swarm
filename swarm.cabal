@@ -132,6 +132,7 @@ library
                       Swarm.TUI.Border
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
+                      Swarm.TUI.View.CustomStyling
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
