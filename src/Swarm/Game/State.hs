@@ -715,7 +715,7 @@ deleteRobot rn = do
 ------------------------------------------------------------
 
 -- | Create an initial game state record, first loading entities and
---   recipies from disk.
+--   recipes from disk.
 initGameState :: ExceptT Text IO GameState
 initGameState = do
   let guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)

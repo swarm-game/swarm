@@ -36,6 +36,7 @@ module Swarm.TUI.Model.UI (
   uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
+  uiAttrMap,
   scenarioRef,
   appData,
 
@@ -45,6 +46,7 @@ module Swarm.TUI.Model.UI (
   initUIState,
 ) where
 
+import Brick (AttrMap)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
@@ -60,6 +62,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
+import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
@@ -107,6 +110,7 @@ data UIState = UIState
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
   , _appData :: Map Text Text
+  , _uiAttrMap :: AttrMap
   , _scenarioRef :: Maybe ScenarioInfoPair
   }
 
@@ -197,6 +201,9 @@ uiTPF :: Lens' UIState Double
 
 -- | Computed frames per milli seconds
 uiFPS :: Lens' UIState Double
+
+-- | Attribute map
+uiAttrMap :: Lens' UIState AttrMap
 
 -- | The currently active Scenario description, useful for starting over.
 scenarioRef :: Lens' UIState (Maybe ScenarioInfoPair)
@@ -299,6 +306,7 @@ initUIState showMainMenu cheatMode = do
           , _frameCount = 0
           , _frameTickCount = 0
           , _appData = appDataMap
+          , _uiAttrMap = swarmAttrMap
           , _scenarioRef = Nothing
           }
   return (warnings, out)

@@ -13,17 +13,17 @@ module Swarm.App where
 import Brick
 import Brick.BChan
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens ((%~), (&), (?~))
+import Control.Lens (view, (%~), (&), (?~))
 import Control.Monad.Except
 import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
-import Swarm.TUI.Attr
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.Model.StateUpdate
+import Swarm.TUI.Model.UI (uiAttrMap)
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
@@ -39,7 +39,7 @@ app eventHandler =
     , appChooseCursor = chooseCursor
     , appHandleEvent = eventHandler
     , appStartEvent = enablePasteMode
-    , appAttrMap = const swarmAttrMap
+    , appAttrMap = view $ uiState . uiAttrMap
     }
 
 -- | The main @IO@ computation which initializes the state, sets up
