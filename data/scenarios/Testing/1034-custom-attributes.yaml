@@ -5,25 +5,25 @@ description: |
 creative: false
 attrs:
   - name: rainbow1
-    fg: ffadad
+    fg: "#ffadad"
   - name: rainbow2
-    fg: ffd6a5
+    fg: "#ffd6a5"
   - name: rainbow3
-    fg: ffff96
+    fg: "#ffff96"
   - name: rainbow4
-    fg: caffbf
+    fg: "#caffbf"
   - name: rainbow5
-    fg: 9bf6ff
+    fg: "#9bf6ff"
   - name: rainbow6
-    fg: a0c4ff
+    fg: "#a0c4ff"
   - name: rainbow7
-    fg: bdb2ff
+    fg: "#bdb2ff"
   - name: redOnYellow
-    fg: ff0000
+    fg: "#ff0000"
     bg: ffff00
   - name: cyanOnMagenta
     fg: 00ffff
-    bg: ff00ff
+    bg: "#ff00ff"
   - name: italicAndUnderline
     style:
       - Italic

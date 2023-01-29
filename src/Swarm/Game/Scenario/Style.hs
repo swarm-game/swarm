@@ -58,7 +58,7 @@ toAttrColor (HexColor colorText) =
     [r, g, b] -> RGBColor r g b
     _ -> RGBColor 255 255 255
  where
-  chunks = T.chunksOf 2 colorText
+  chunks = T.chunksOf 2 $ T.dropWhile (== '#') colorText
   nums = map (fst . head . readHex . T.unpack) chunks
 
 toAttrPair :: CustomAttr -> (AttrName, Attr)
