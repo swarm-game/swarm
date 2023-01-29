@@ -16,8 +16,17 @@ data GoalWidget
   | GoalSummary
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+-- | Clickable buttons in modal dilaogs.
+data Button
+  = CancelButton
+  | KeepPlayingButton
+  | StartOverButton
+  | QuitButton
+  | NextButton
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 -- | 'Name' represents names to uniquely identify various components
---   of the UI, such as forms, panels, caches, extents, and lists.
+--   of the UI, such as forms, panels, caches, extents, lists, and buttons.
 data Name
   = FocusablePanel FocusablePanel
   | -- | The REPL input form.
@@ -43,5 +52,6 @@ data Name
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.
     ModalViewport
-  | GenericModalName
+  | -- | A clickable button in a modal dialog.
+    Button Button
   deriving (Eq, Ord, Show, Read)
