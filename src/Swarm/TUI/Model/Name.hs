@@ -16,7 +16,7 @@ data GoalWidget
   | GoalSummary
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
--- | Clickable buttons in modal dilaogs.
+-- | Clickable buttons in modal dialogs.
 data Button
   = CancelButton
   | KeepPlayingButton
