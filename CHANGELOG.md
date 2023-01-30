@@ -2,11 +2,8 @@
 
 ## **0.3.0.0** - 2023-01-30
 
-First release of 2023! 
-
-This release contains:
-- various new features (see subsections below)
-- many bug fixes
+This is the first release of 2023! It contains:
+- various new features and bugfixes (see subsections below)
 - UI tweaks
 - fewer typos (thanks @bwignall and @kostmo)
 - a ton of internal refactoring
@@ -46,9 +43,6 @@ This release contains:
 * swarm-lang IDE hover by @kostmo in [#972](https://github.com/swarm-game/swarm/pull/972)
 * warn of unused variables by @kostmo in [#983](https://github.com/swarm-game/swarm/pull/983)
 
-#### Driving mode
-* Add a "driving mode" to the REPL by @kostmo in [#819](https://github.com/swarm-game/swarm/pull/819)
-
 #### Web API
 * Expose REPL history via web interface by @kostmo in [#821](https://github.com/swarm-game/swarm/pull/821)
 
@@ -62,7 +56,16 @@ This release contains:
 * Ice Cream Shop by @kostmo in [#1008](https://github.com/swarm-game/swarm/pull/1008)
 * word search by @kostmo in [#999](https://github.com/swarm-game/swarm/pull/999)
 * Wolf, Goat, Cabbage scenario by @kostmo in [#944](https://github.com/swarm-game/swarm/pull/944)
-  * Boolean expressions of objective prerequisites by @kostmo in [#927](https://github.com/swarm-game/swarm/pull/927)
+* swarm logo animation by @kostmo in [#1018](https://github.com/swarm-game/swarm/pull/1018)
+
+#### Scenario development
+* Boolean expressions of objective prerequisites by @kostmo in [#927](https://github.com/swarm-game/swarm/pull/927)
+* support 'orientationMap' by @kostmo in [#1023](https://github.com/swarm-game/swarm/pull/1023)
+* support custom attributes defined in scenarios by @kostmo in [#1058](https://github.com/swarm-game/swarm/pull/1058)
+
+#### UI enhancements
+* show devices that enable commands by @kostmo in [#899](https://github.com/swarm-game/swarm/pull/899)
+* Add a "driving mode" to the REPL by @kostmo in [#819](https://github.com/swarm-game/swarm/pull/819)
 
 #### Achievements
 * achievements board by @kostmo in [#796](https://github.com/swarm-game/swarm/pull/796)
@@ -73,13 +76,6 @@ This release contains:
 * Better CESK machine pretty-printing by @byorgey in [#948](https://github.com/swarm-game/swarm/pull/948)
 * Add the full expected location for the data directory by @TristanCacqueray in [#908](https://github.com/swarm-game/swarm/pull/908)
 * Extend logs for warnings by @xsebek in [#982](https://github.com/swarm-game/swarm/pull/982)
-
-#### ???
-* show devices that enable commands by @kostmo in [#899](https://github.com/swarm-game/swarm/pull/899)
-* swarm logo animation by @kostmo in [#1018](https://github.com/swarm-game/swarm/pull/1018)
-* support 'orientationMap' by @kostmo in [#1023](https://github.com/swarm-game/swarm/pull/1023)
-* support custom attributes defined in scenarios by @kostmo in [#1058](https://github.com/swarm-game/swarm/pull/1058)
-
 
 ## **0.2.0.0** - 2022-11-01
 
