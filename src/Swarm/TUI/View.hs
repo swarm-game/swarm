@@ -129,7 +129,7 @@ drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
  where
   ls = reverse $ s ^. runtimeState . eventLog . notificationsContent
-  dial = dialog (Just "Messages") Nothing maxModalWindowWidth
+  dial = dialog (Just $ str "Messages") Nothing maxModalWindowWidth
   scrollList = withVScrollBars OnRight . vBox
   drawLogs = map (drawLogEntry True)
 
@@ -432,7 +432,7 @@ chooseCursor s locs = case s ^. uiState . uiModal of
 
 -- | Render the error dialog window with a given error message
 renderErrorDialog :: Text -> Widget Name
-renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
+renderErrorDialog err = renderDialog (dialog (Just $ str "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
  where
   errContent = txtWrapWith indent2 {preserveIndentation = True} err
   requiredWidth = 2 + maximum (textWidth <$> T.lines err)

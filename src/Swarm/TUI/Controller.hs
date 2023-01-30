@@ -397,11 +397,11 @@ handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
     mdialog <- preuse $ uiState . uiModal . _Just . modalDialog
     toggleModal QuitModal
-    case dialogSelection <$> mdialog of
-      Just (Just QuitButton) -> quitGame
-      Just (Just KeepPlayingButton) -> toggleModal KeepPlayingModal
-      Just (Just (StartOverButton currentSeed siPair)) -> restartGame currentSeed siPair
-      Just (Just (NextButton siPair)) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
+    case dialogSelection =<< mdialog of
+      Just (Button QuitButton, _) -> quitGame
+      Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
+      Just (Button StartOverButton, StartOver currentSeed siPair) -> restartGame currentSeed siPair
+      Just (Button NextButton, Next siPair) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)

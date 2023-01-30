@@ -21,7 +21,8 @@ module Swarm.TUI.Model (
 
   -- * Menus and dialogs
   ModalType (..),
-  ButtonSelection (..),
+  Button (..),
+  ButtonAction (..),
   Modal (..),
   modalType,
   modalDialog,

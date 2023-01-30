@@ -48,16 +48,16 @@ data ModalType
   | GoalModal
   deriving (Show)
 
-data ButtonSelection
-  = CancelButton
-  | KeepPlayingButton
-  | StartOverButton Seed ScenarioInfoPair
-  | QuitButton
-  | NextButton ScenarioInfoPair
+data ButtonAction
+  = Cancel
+  | KeepPlaying
+  | StartOver Seed ScenarioInfoPair
+  | QuitAction
+  | Next ScenarioInfoPair
 
 data Modal = Modal
   { _modalType :: ModalType
-  , _modalDialog :: Dialog ButtonSelection
+  , _modalDialog :: Dialog ButtonAction Name
   }
 
 makeLenses ''Modal
