@@ -37,10 +37,10 @@ This is the first release of 2023! It contains:
 * device for setname by @kostmo in [#1028](https://github.com/swarm-game/swarm/pull/1028)
 
 #### LSP improvements
-* Improve OnHover for Def/Let, App and Const by @xsebek in [#986](https://github.com/swarm-game/swarm/pull/986)
+* swarm-lang IDE hover by @kostmo in [#972](https://github.com/swarm-game/swarm/pull/972)
 * Include `SrcLoc` info with variable binding sites by @byorgey in [#993](https://github.com/swarm-game/swarm/pull/993)
 * Annotate ASTs with types at every node by @byorgey in [#991](https://github.com/swarm-game/swarm/pull/991)
-* swarm-lang IDE hover by @kostmo in [#972](https://github.com/swarm-game/swarm/pull/972)
+* Improve OnHover for Def/Let, App and Const by @xsebek in [#986](https://github.com/swarm-game/swarm/pull/986)
 * warn of unused variables by @kostmo in [#983](https://github.com/swarm-game/swarm/pull/983)
 
 #### Web API
