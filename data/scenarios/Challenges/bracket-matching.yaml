@@ -1,0 +1,74 @@
+version: 1
+name: Bracket matching
+author: Karl Ostmo
+description: |
+  bracket matching
+creative: false
+seed: 1
+objectives:
+  - goal:
+      - |
+        Check whether the sequence of brackets is valid.
+    condition: |
+      return false;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - branch predictor
+      - treads
+      - antenna
+      - comparator
+      - workbench
+      - grabber
+      - ADT calculator
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - drill
+      - hearing aid
+      - scanner
+      - strange loop
+  - name: verifier
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+      attr: 'robot'
+    devices:
+      - drill
+    inventory:
+      - [240, left bracket]
+      - [240, right bracket]
+    program: |
+      run "data/scenarios/Challenges/_bracket-matching/verifier.sw"
+solution: |
+   run "data/scenarios/Challenges/_bracket-matching/solution.sw"
+entities:
+  - name: left bracket
+    display:
+      char: '('
+    description:
+    - Opening bracket
+    properties: [known]
+  - name: right bracket
+    display:
+      char: ')'
+    description:
+    - Closing bracket
+    properties: [known]
+world:
+  default: [grass]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'B': [stone, null, base]
+    'V': [stone, null, verifier]
+    '.': [stone]
+  map: |
+    ...................................................................
+    .B.V...............................................................
+    ...................................................................
+    ...................................................................
+    ...................................................................
