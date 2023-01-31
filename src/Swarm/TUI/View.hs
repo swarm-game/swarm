@@ -132,7 +132,9 @@ drawUI s
       -- quit the app instead.  But just in case, we display the main menu anyway.
       NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
       MainMenu l -> [drawMainMenuUI s l]
-      NewGameMenu stk scenarioCfg -> drawNewGameMenuUI stk scenarioCfg
+      NewGameMenu stk -> do
+        let launchOptions = s ^. uiState . uiLaunchConfig
+        drawNewGameMenuUI stk launchOptions
       AchievementsMenu l -> [drawAchievementsMenuUI s l]
       MessagesMenu -> [drawMainMessages s]
       AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]

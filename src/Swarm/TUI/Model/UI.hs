@@ -11,6 +11,7 @@ module Swarm.TUI.Model.UI (
   uiPlaying,
   uiCheatMode,
   uiFocusRing,
+  uiLaunchConfig,
   uiWorldCursor,
   uiREPL,
   uiInventory,
@@ -62,6 +63,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
+import Swarm.Game.Scenario.Launch
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment
@@ -85,7 +87,7 @@ data UIState = UIState
   , _uiPlaying :: Bool
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
-  , _uiLaunchConfig :: Maybe LaunchConfig
+  , _uiLaunchConfig :: Maybe LaunchOptions
   , _uiWorldCursor :: Maybe W.Coords
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
@@ -139,7 +141,7 @@ uiPlaying :: Lens' UIState Bool
 uiCheatMode :: Lens' UIState Bool
 
 -- | Configuration modal when launching a scenario
-uiLaunchConfig :: Lens' UIState (Maybe LaunchConfig)
+uiLaunchConfig :: Lens' UIState (Maybe LaunchOptions)
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.

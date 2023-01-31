@@ -15,7 +15,6 @@ import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Vector qualified as V
 import Swarm.Game.Entity as E
-import Swarm.Game.Scenario.Launch
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfo (..),
@@ -102,7 +101,7 @@ mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest .
 mkNewGameMenu :: Bool -> ScenarioCollection -> FilePath -> Maybe Menu
 mkNewGameMenu cheat sc path = do
   theList <- NE.fromList <$> go (Just sc) (splitPath path) []
-  return $ NewGameMenu theList Nothing
+  return $ NewGameMenu theList
  where
   go ::
     Maybe ScenarioCollection ->

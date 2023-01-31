@@ -36,20 +36,6 @@ data Button
   | NextButton
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
-data GoalWidget
-  = ObjectivesList
-  | GoalSummary
-  deriving (Eq, Ord, Show, Read, Bounded, Enum)
-
--- | Clickable buttons in modal dialogs.
-data Button
-  = CancelButton
-  | KeepPlayingButton
-  | StartOverButton
-  | QuitButton
-  | NextButton
-  deriving (Eq, Ord, Show, Read, Bounded, Enum)
-
 -- | 'Name' represents names to uniquely identify various components
 --   of the UI, such as forms, panels, caches, extents, lists, and buttons.
 data Name

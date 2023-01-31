@@ -112,9 +112,9 @@ maxModalWindowWidth = 500
 -- | Get the name of the current New Game menu.
 curMenuName :: AppState -> Maybe Text
 curMenuName s = case s ^. uiState . uiMenu of
-  NewGameMenu (_ :| (parentMenu : _)) _ ->
+  NewGameMenu (_ :| (parentMenu : _)) ->
     Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
-  NewGameMenu _ _ -> Just "Scenarios"
+  NewGameMenu _ -> Just "Scenarios"
   _ -> Nothing
 
 quitMsg :: Menu -> Text

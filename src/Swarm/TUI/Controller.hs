@@ -108,7 +108,6 @@ import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
-import Language.LSP.Types.Lens (HasXdata(xdata))
 
 tutorialsDirname :: FilePath
 tutorialsDirname = "Tutorials"
@@ -135,7 +134,7 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l c -> case c of
+          NewGameMenu l -> case s ^. uiState . uiLaunchConfig of
             Nothing -> handleNewGameMenuEvent l
             Just launchOptions -> handleLaunchOptionsEvent launchOptions
           MessagesMenu -> handleMainMessagesEvent
@@ -164,7 +163,7 @@ handleMainMenuEvent menu = \case
         NewGame -> do
           cheat <- use $ uiState . uiCheatMode
           ss <- use $ gameState . scenarios
-          uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss]) Nothing
+          uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss])
         Tutorial -> do
           -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
           cheat <- use $ uiState . uiCheatMode
@@ -176,7 +175,7 @@ handleMainMenuEvent menu = \case
                   (mkScenarioList cheat ss)
               tutorialMenu = mkScenarioList cheat tutorialCollection
               menuStack = NE.fromList [tutorialMenu, topMenu]
-          uiState . uiMenu .= NewGameMenu menuStack Nothing
+          uiState . uiMenu .= NewGameMenu menuStack
 
           -- Extract the first tutorial challenge and run it
           let firstTutorial = case scOrder tutorialCollection of
@@ -212,7 +211,7 @@ getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
 --   is the only place this function should be called.
 advanceMenu :: Menu -> Menu
 advanceMenu m = case m of
-  NewGameMenu (z :| zs) x -> NewGameMenu (BL.listMoveDown z :| zs) x
+  NewGameMenu (z :| zs) -> NewGameMenu (BL.listMoveDown z :| zs)
   _ -> m
 
 handleMainAchievementsEvent ::
@@ -245,11 +244,9 @@ prepareGameStart ::
   NonEmpty (BL.List Name ScenarioItem) ->
   EventM Name AppState ()
 prepareGameStart siPair stack = do
-  uiState . uiMenu .= NewGameMenu stack launchOptions
+  uiState . uiMenu .= NewGameMenu stack
   return ()
  where
-  launchOptions = Just $ LaunchOptions Nothing myForm ring
-
   formFields =
     [ (padRight (Pad 2) (txt "Seed") <+>)
         @@= Forms.editShowableField seedVal (ScenarioConfigControl $ ScenarioConfigPanelControl SeedSelector)
@@ -272,7 +269,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Just (SISingle siPair) -> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
-        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack) Nothing
+        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
   CharKey 'o' -> case snd <$> BL.listSelectedElement curMenu of
     Just (SISingle siPair) -> prepareGameStart siPair scenarioStack
     _ -> continueWithoutRedraw
@@ -281,7 +278,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   ControlChar 'q' -> halt
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
-    uiState . uiMenu .= NewGameMenu (menu' :| rest) maybeLaunchOptions
+    uiState . uiMenu .= NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
@@ -290,7 +287,7 @@ exitNewGameMenu stk = do
     . uiMenu
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
-      Just stk' -> NewGameMenu stk' Nothing
+      Just stk' -> NewGameMenu stk'
 
 pressAnyKey :: Menu -> BrickEvent Name AppEvent -> EventM Name AppState ()
 pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
@@ -513,7 +510,7 @@ saveScenarioInfoOnQuit = do
         -- currentScenarioPath or it might be different.
         uim <- preuse $ uiState . uiMenu
         let curPath = case uim of
-              Just (NewGameMenu (z :| _) _) ->
+              Just (NewGameMenu (z :| _)) ->
                 case BL.listSelectedElement z of
                   Just (_, SISingle (_, sInfo)) -> Just $ _scenarioPath sInfo
                   _ -> Nothing
