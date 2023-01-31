@@ -25,7 +25,7 @@ import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
-import Swarm.Game.Robot (LogEntry, defReqs, leText, machine, robotContext, robotLog, waitingUntil, equippedDevices)
+import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -289,7 +289,7 @@ testScenarioSolution _ci _em =
               -- printAllLogs
               when (shouldCheckBadErrors == CheckForBadErrors) $ noBadErrors g
               verify g
-  
+
   tutorialHasLog :: GameState -> Assertion
   tutorialHasLog gs =
     let baseDevs = gs ^?! baseRobot . equippedDevices
@@ -297,8 +297,6 @@ testScenarioSolution _ci _em =
 
   testTutorialSolution t f = testSolution' t f CheckForBadErrors tutorialHasLog
   testTutorialSolution' t f s v = testSolution' t f s $ \g -> tutorialHasLog g >> v g
-
-
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
