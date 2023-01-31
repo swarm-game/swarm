@@ -406,7 +406,6 @@ handleModalEvent = \case
       Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
       Just (Button StartOverButton, StartOver currentSeed siPair) -> restartGame currentSeed siPair
       Just (Button NextButton, Next siPair) -> quitGame >> startGame siPair Nothing
-
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
@@ -479,7 +478,6 @@ saveScenarioInfoOnQuit = do
 -- * returns to the previous menu
 quitGame :: EventM Name AppState ()
 quitGame = do
-
   -- Write out REPL history.
   history <- use $ uiState . uiREPL . replHistory
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
