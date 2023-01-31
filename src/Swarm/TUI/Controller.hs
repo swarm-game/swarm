@@ -759,7 +759,6 @@ doGoalUpdates = do
       gameState . winCondition .= WinConditions (Unwinnable True) x
       openModal LoseModal
 
-      uiState . uiMenu %= advanceMenu
       return True
     WinConditions (Won False) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
