@@ -6,6 +6,7 @@ This is the first release of 2023! It contains:
 - various new features and bugfixes (see subsections below)
 - UI tweaks
 - fewer typos (thanks @bwignall and @kostmo)
+- upgraded dependencies (`>=lsp-1.6` and `>=brick-1.5`) and raised Stack resolver to use GHC 9.4 [#1001](https://github.com/swarm-game/swarm/pull/1001)
 - a ton of internal refactoring
 
 ### Fixed bugs
