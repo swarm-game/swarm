@@ -79,43 +79,86 @@ common ghc2021-extensions
       -- Not GHC2021, but until we get \cases we use \case a lot
       LambdaCase
 
-library
+
+library boolexpr
     import:           stan-config, common, ghc2021-extensions
     exposed-modules:  Data.BoolExpr
                       Data.BoolExpr.Simplify
-                      Swarm.App
-                      Swarm.DocGen
-                      Swarm.Game.CESK
-                      Swarm.Game.Display
-                      Swarm.Game.Entity
-                      Swarm.Game.Exception
-                      Swarm.Game.Log
-                      Swarm.Game.Recipe
-                      Swarm.Game.Robot
-                      Swarm.Game.Scenario
-                      Swarm.Game.Scenario.Cell
-                      Swarm.Game.Scenario.Objective.Logic
-                      Swarm.Game.Scenario.Objective.Graph
-                      Swarm.Game.Scenario.Objective.Presentation.Model
-                      Swarm.Game.Scenario.Objective.Presentation.Render
-                      Swarm.Game.Scenario.Objective.Validation
-                      Swarm.Game.Scenario.Objective.WinCheck
-                      Swarm.Game.Scenario.Objective
-                      Swarm.Game.Scenario.RobotLookup
-                      Swarm.Game.Scenario.Style
-                      Swarm.Game.Scenario.WorldDescription
-                      Swarm.Game.ScenarioInfo
-                      Swarm.Game.State
-                      Swarm.Game.Step
-                      Swarm.Game.Terrain
-                      Swarm.Game.World
-                      Swarm.Game.WorldGen
-                      Swarm.Language.Context
+    build-depends:    base                          >= 4.14 && < 4.18,
+                      aeson                         >= 2 && < 2.2,
+                      array                         >= 0.5.4 && < 0.6,
+                      bytestring                    >= 0.10 && < 0.12,
+                      containers                    >= 0.6.2 && < 0.7,
+                      lens                          >= 4.19 && < 5.3,
+                      linear                        >= 1.21.6 && < 1.23,
+                      lsp                           >= 1.6 && < 1.7,
+                      megaparsec                    >= 9.0 && < 9.4,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      parser-combinators            >= 1.2 && < 1.4,
+                      prettyprinter                 >= 1.7.0 && < 1.8,
+                      text                          >= 1.2.4 && < 2.1,
+                      yaml                          >= 0.11 && < 0.12,
+    hs-source-dirs:   src/boolexpr
+    default-language: Haskell2010
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData 
+
+library swarm-util
+    import:           stan-config, common, ghc2021-extensions
+    exposed-modules:  Swarm.Util.Util
+    other-modules:    Paths_swarm
+    autogen-modules:  Paths_swarm
+    build-depends:    base                          >= 4.14 && < 4.18,
+                      aeson                         >= 2 && < 2.2,
+                      array                         >= 0.5.4 && < 0.6,
+                      brick                         >= 1.5 && < 1.7,
+                      bytestring                    >= 0.10 && < 0.12,
+                      clock                         >= 0.8.2 && < 0.9,
+                      containers                    >= 0.6.2 && < 0.7,
+                      directory                     >= 1.3 && < 1.4,
+                      either                        >= 5.0 && < 5.1,
+                      extra                         >= 1.7 && < 1.8,
+                      filepath                      >= 1.4 && < 1.5,
+                      fused-effects                 >= 1.1.1.1 && < 1.2,
+                      fused-effects-lens            >= 1.2.0.1 && < 1.3,
+                      hashable                      >= 1.3.4 && < 1.5,
+                      lens                          >= 4.19 && < 5.3,
+                      linear                        >= 1.21.6 && < 1.23,
+                      lsp                           >= 1.6 && < 1.7,
+                      megaparsec                    >= 9.0 && < 9.4,
+                      minimorph                     >= 0.3 && < 0.4,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      parser-combinators            >= 1.2 && < 1.4,
+                      prettyprinter                 >= 1.7.0 && < 1.8,
+                      random                        >= 1.2.0 && < 1.3,
+                      simple-enumeration            >= 0.2 && < 0.3,
+                      split                         >= 0.2.3 && < 0.3,
+                      stm                           >= 2.5.0 && < 2.6,
+                      syb                           >= 0.7 && < 0.8,
+                      tagged                        >= 0.8 && < 0.9,
+                      template-haskell              >= 2.16 && < 2.20,
+                      text                          >= 1.2.4 && < 2.1,
+                      text-zipper                   >= 0.10 && < 0.13,
+                      time                          >= 1.9 && < 1.14,
+                      vector                        >= 0.12 && < 0.14,
+                      witch                         >= 1.1.1.0 && < 1.2,
+                      word-wrap                     >= 0.5 && < 0.6,
+                      yaml                          >= 0.11 && < 0.12,
+    hs-source-dirs:   src/swarm-util
+    default-language: Haskell2010
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
+
+
+library swarm-language
+    import:           stan-config, common, ghc2021-extensions
+    exposed-modules:  Swarm.Language.Context
                       Swarm.Language.Capability
                       Swarm.Language.Elaborate
-                      Swarm.Language.LSP
-                      Swarm.Language.LSP.Hover
-                      Swarm.Language.LSP.VarUsage
                       Swarm.Language.Module
                       Swarm.Language.Parse
                       Swarm.Language.Parse.QQ
@@ -128,7 +171,219 @@ library
                       Swarm.Language.Typed
                       Swarm.Language.Types
                       Swarm.Language.Value
-                      Swarm.TUI.Attr
+    build-depends:    base                          >= 4.14 && < 4.18,
+                      aeson                         >= 2 && < 2.2,
+                      containers                    >= 0.6.2 && < 0.7,
+                      either                        >= 5.0 && < 5.1,
+                      extra                         >= 1.7 && < 1.8,
+                      fused-effects                 >= 1.1.1.1 && < 1.2,
+                      hashable                      >= 1.3.4 && < 1.5,
+                      lens                          >= 4.19 && < 5.3,
+                      linear                        >= 1.21.6 && < 1.23,
+                      megaparsec                    >= 9.0 && < 9.4,
+                      minimorph                     >= 0.3 && < 0.4,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      parser-combinators            >= 1.2 && < 1.4,
+                      prettyprinter                 >= 1.7.0 && < 1.8,
+                      simple-enumeration            >= 0.2 && < 0.3,
+                      split                         >= 0.2.3 && < 0.3,
+                      stm                           >= 2.5.0 && < 2.6,
+                      syb                           >= 0.7 && < 0.8,
+                      tagged                        >= 0.8 && < 0.9,
+                      template-haskell              >= 2.16 && < 2.20,
+                      text                          >= 1.2.4 && < 2.1,
+                      unification-fd                >= 0.11  && < 0.12,
+                      witch                         >= 1.1.1.0 && < 1.2,
+                      word-wrap                     >= 0.5 && < 0.6,
+                      yaml                          >= 0.11 && < 0.12,
+                      swarm-util,
+    hs-source-dirs:   src/swarm-language
+    default-language: Haskell2010
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
+
+library swarm-language-server
+    import:           stan-config, common, ghc2021-extensions
+    exposed-modules:  Swarm.LSP.Handler
+                      Swarm.LSP.Hover
+                      Swarm.LSP.VarUsage
+    build-depends:    
+                      http-client                   >= 0.7 && < 0.8,
+                      http-client-tls               >= 0.3 && < 0.4,
+                      http-types                    >= 0.12 && < 0.13,
+                      lens                          >= 4.19 && < 5.3,
+                      lsp                           >= 1.6 && < 1.7,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      servant                       >= 0.19 && < 0.20,
+                      servant-server                >= 0.19 && < 0.20,
+                      text                          >= 1.2.4 && < 2.1,
+                      text-rope                     >= 0.2 && < 0.3,
+                      wai                           >= 3.2 && < 3.3,
+                      warp                          >= 3.2 && < 3.4,
+                      witch                         >= 1.1.1.0 && < 1.2,
+                      -- Imports shared with the library don't need bounds
+                      swarm-util,
+                      swarm-language,
+                      base,
+                      aeson,
+                      containers,
+                      yaml,
+    hs-source-dirs:   src/swarm-language-server
+    default-language: Haskell2010
+
+library swarm-game
+    import:           stan-config, common, ghc2021-extensions
+    exposed-modules:  
+                      Swarm.Game.Achievement.Attainment
+                      Swarm.Game.Achievement.Definitions
+                      Swarm.Game.Achievement.Description
+                      Swarm.Game.Achievement.Persistence
+                      Swarm.Game.CESK
+                      Swarm.Game.Display
+                      Swarm.Game.Entity
+                      Swarm.Game.Exception
+                      Swarm.Game.Log
+                      Swarm.Game.Location
+                      Swarm.Game.Recipe
+                      Swarm.Game.Robot
+                      Swarm.Game.Scenario
+                      Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Objective.Logic
+                      Swarm.Game.Scenario.Objective.Graph
+                      Swarm.Game.Scenario.Objective.Validation
+                      Swarm.Game.Scenario.Objective.WinCheck
+                      Swarm.Game.Scenario.Objective
+                      Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.Style
+                      Swarm.Game.Scenario.WorldDescription
+                      Swarm.Game.ScenarioInfo
+                      Swarm.Game.State
+                      Swarm.Game.Step
+                      Swarm.Game.Terrain
+                      Swarm.Game.World
+                      Swarm.Game.WorldGen
+                      Swarm.Game.Util.Yaml
+                      Swarm.Game.Util.Failure
+    other-modules:    Paths_swarm
+    autogen-modules:  Paths_swarm
+    build-depends:    base                          >= 4.14 && < 4.18,
+                      aeson                         >= 2 && < 2.2,
+                      array                         >= 0.5.4 && < 0.6,
+                      brick                         >= 1.5 && < 1.7,
+                      bytestring                    >= 0.10 && < 0.12,
+                      clock                         >= 0.8.2 && < 0.9,
+                      containers                    >= 0.6.2 && < 0.7,
+                      directory                     >= 1.3 && < 1.4,
+                      either                        >= 5.0 && < 5.1,
+                      extra                         >= 1.7 && < 1.8,
+                      filepath                      >= 1.4 && < 1.5,
+                      fused-effects                 >= 1.1.1.1 && < 1.2,
+                      fused-effects-lens            >= 1.2.0.1 && < 1.3,
+                      hashable                      >= 1.3.4 && < 1.5,
+                      hsnoise                       >= 0.0.3 && < 0.1,
+                      lens                          >= 4.19 && < 5.3,
+                      linear                        >= 1.21.6 && < 1.23,
+                      megaparsec                    >= 9.0 && < 9.4,
+                      minimorph                     >= 0.3 && < 0.4,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      murmur3                       >= 1.0.4 && < 1.1,
+                      natural-sort                  >= 0.1.2 && < 0.2,
+                      prettyprinter                 >= 1.7.0 && < 1.8,
+                      random                        >= 1.2.0 && < 1.3,
+                      simple-enumeration            >= 0.2 && < 0.3,
+                      split                         >= 0.2.3 && < 0.3,
+                      tagged                        >= 0.8 && < 0.9,
+                      template-haskell              >= 2.16 && < 2.20,
+                      text                          >= 1.2.4 && < 2.1,
+                      text-zipper                   >= 0.10 && < 0.13,
+                      time                          >= 1.9 && < 1.14,
+                      unordered-containers          >= 0.2.14 && < 0.3,
+                      vector                        >= 0.12 && < 0.14,
+                      vty                           >= 5.33 && < 5.38,
+                      witch                         >= 1.1.1.0 && < 1.2,
+                      word-wrap                     >= 0.5 && < 0.6,
+                      yaml                          >= 0.11 && < 0.12,
+                      boolexpr,
+                      swarm-util,
+                      swarm-language,
+    hs-source-dirs:   src/swarm-game
+    default-language: Haskell2010
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
+
+library swarm-version
+    import:           stan-config, common, ghc2021-extensions
+    exposed-modules:  
+                      Swarm.Version
+    other-modules:    Paths_swarm
+    autogen-modules:  Paths_swarm
+
+    build-depends:    base                          >= 4.14 && < 4.18,
+                      aeson                         >= 2 && < 2.2,
+                      array                         >= 0.5.4 && < 0.6,
+                      brick                         >= 1.5 && < 1.7,
+                      bytestring                    >= 0.10 && < 0.12,
+                      clock                         >= 0.8.2 && < 0.9,
+                      containers                    >= 0.6.2 && < 0.7,
+                      directory                     >= 1.3 && < 1.4,
+                      dotgen                        >= 0.4 && < 0.5,
+                      either                        >= 5.0 && < 5.1,
+                      extra                         >= 1.7 && < 1.8,
+                      filepath                      >= 1.4 && < 1.5,
+                      fused-effects                 >= 1.1.1.1 && < 1.2,
+                      fused-effects-lens            >= 1.2.0.1 && < 1.3,
+                      githash                       >= 0.1.6 && < 0.2,
+                      hashable                      >= 1.3.4 && < 1.5,
+                      hsnoise                       >= 0.0.3 && < 0.1,
+                      http-client                   >= 0.7 && < 0.8,
+                      http-client-tls               >= 0.3 && < 0.4,
+                      http-types                    >= 0.12 && < 0.13,
+                      lens                          >= 4.19 && < 5.3,
+                      linear                        >= 1.21.6 && < 1.23,
+                      lsp                           >= 1.6 && < 1.7,
+                      megaparsec                    >= 9.0 && < 9.4,
+                      minimorph                     >= 0.3 && < 0.4,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      murmur3                       >= 1.0.4 && < 1.1,
+                      natural-sort                  >= 0.1.2 && < 0.2,
+                      parser-combinators            >= 1.2 && < 1.4,
+                      prettyprinter                 >= 1.7.0 && < 1.8,
+                      random                        >= 1.2.0 && < 1.3,
+                      servant                       >= 0.19 && < 0.20,
+                      servant-server                >= 0.19 && < 0.20,
+                      simple-enumeration            >= 0.2 && < 0.3,
+                      split                         >= 0.2.3 && < 0.3,
+                      stm                           >= 2.5.0 && < 2.6,
+                      syb                           >= 0.7 && < 0.8,
+                      tagged                        >= 0.8 && < 0.9,
+                      template-haskell              >= 2.16 && < 2.20,
+                      text                          >= 1.2.4 && < 2.1,
+                      text-rope                     >= 0.2 && < 0.3,
+                      text-zipper                   >= 0.10 && < 0.13,
+                      time                          >= 1.9 && < 1.14,
+                      unification-fd                >= 0.11  && < 0.12,
+                      unordered-containers          >= 0.2.14 && < 0.3,
+                      vector                        >= 0.12 && < 0.14,
+                      vty                           >= 5.33 && < 5.38,
+                      wai                           >= 3.2 && < 3.3,
+                      warp                          >= 3.2 && < 3.4,
+                      witch                         >= 1.1.1.0 && < 1.2,
+                      word-wrap                     >= 0.5 && < 0.6,
+                      yaml                          >= 0.11 && < 0.12,
+    hs-source-dirs:   src/swarm-version
+    default-language: Haskell2010
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
+
+library swarm-tui
+    import:           stan-config, common, ghc2021-extensions
+    exposed-modules:  Swarm.TUI.Attr
                       Swarm.TUI.Border
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
@@ -136,11 +391,7 @@ library
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.Achievement.Attainment
-                      Swarm.TUI.Model.Achievement.Definitions
-                      Swarm.TUI.Model.Achievement.Description
-                      Swarm.TUI.Model.Achievement.Persistence
-                      Swarm.TUI.Model.Failure
+                      Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
@@ -150,11 +401,66 @@ library
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
-                      Swarm.Util
-                      Swarm.Util.Location
-                      Swarm.Util.Yaml
-                      Swarm.Version
+    other-modules:    Paths_swarm
+    autogen-modules:  Paths_swarm
+
+    build-depends:    base                          >= 4.14 && < 4.18,
+                      aeson                         >= 2 && < 2.2,
+                      array                         >= 0.5.4 && < 0.6,
+                      brick                         >= 1.5 && < 1.7,
+                      bytestring                    >= 0.10 && < 0.12,
+                      clock                         >= 0.8.2 && < 0.9,
+                      containers                    >= 0.6.2 && < 0.7,
+                      directory                     >= 1.3 && < 1.4,
+                      either                        >= 5.0 && < 5.1,
+                      extra                         >= 1.7 && < 1.8,
+                      filepath                      >= 1.4 && < 1.5,
+                      fused-effects                 >= 1.1.1.1 && < 1.2,
+                      fused-effects-lens            >= 1.2.0.1 && < 1.3,
+                      githash                       >= 0.1.6 && < 0.2,
+                      hashable                      >= 1.3.4 && < 1.5,
+                      hsnoise                       >= 0.0.3 && < 0.1,
+                      lens                          >= 4.19 && < 5.3,
+                      linear                        >= 1.21.6 && < 1.23,
+                      lsp                           >= 1.6 && < 1.7,
+                      minimorph                     >= 0.3 && < 0.4,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      natural-sort                  >= 0.1.2 && < 0.2,
+                      parser-combinators            >= 1.2 && < 1.4,
+                      prettyprinter                 >= 1.7.0 && < 1.8,
+                      random                        >= 1.2.0 && < 1.3,
+                      simple-enumeration            >= 0.2 && < 0.3,
+                      split                         >= 0.2.3 && < 0.3,
+                      tagged                        >= 0.8 && < 0.9,
+                      template-haskell              >= 2.16 && < 2.20,
+                      text                          >= 1.2.4 && < 2.1,
+                      text-zipper                   >= 0.10 && < 0.13,
+                      time                          >= 1.9 && < 1.14,
+                      unordered-containers          >= 0.2.14 && < 0.3,
+                      vector                        >= 0.12 && < 0.14,
+                      vty                           >= 5.33 && < 5.38,
+                      witch                         >= 1.1.1.0 && < 1.2,
+                      word-wrap                     >= 0.5 && < 0.6,
+                      warp                          >= 3.2 && < 3.4,
+                      yaml                          >= 0.11 && < 0.12,
+                      swarm-util,
+                      swarm-language,
+                      swarm-game,
+                      swarm-version,
+    hs-source-dirs:   src/swarm-user-interface
+    default-language: Haskell2010
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
+
+
+library
+    import:           stan-config, common, ghc2021-extensions
+    exposed-modules:  Swarm.App
+                      Swarm.DocGen
                       Swarm.Web
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
@@ -211,7 +517,13 @@ library
                       witch                         >= 1.1.1.0 && < 1.2,
                       word-wrap                     >= 0.5 && < 0.6,
                       yaml                          >= 0.11 && < 0.12,
-    hs-source-dirs:   src
+                      swarm-util,
+                      swarm-language,
+                      swarm-language-server,
+                      swarm-game,
+                      swarm-version,
+                      swarm-tui,
+    hs-source-dirs:   src/swarm-app
     default-language: Haskell2010
     default-extensions:
       -- Avoid unexpected unevaluated thunk buildup
@@ -226,7 +538,13 @@ executable swarm
                       -- Imports shared with the library don't need bounds
                       base,
                       text,
-                      swarm
+                      swarm,
+                      swarm-util,
+                      swarm-language,
+                      swarm-language-server,
+                      swarm-game,
+                      swarm-version,
+                      swarm-tui,
     hs-source-dirs:   app
     default-language: Haskell2010
     ghc-options:      -threaded

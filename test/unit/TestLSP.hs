@@ -5,7 +5,7 @@ module TestLSP (testLSP) where
 
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
-import Swarm.Language.LSP.VarUsage qualified as VU
+import Swarm.LSP.VarUsage qualified as VU
 import Swarm.Language.Parse (readTerm')
 import Swarm.Language.Syntax qualified as S
 import System.FilePath ((</>))
