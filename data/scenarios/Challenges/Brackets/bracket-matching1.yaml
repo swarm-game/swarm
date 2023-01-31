@@ -17,8 +17,10 @@ robots:
     devices:
       - branch predictor
       - treads
+      - string
       - antenna
       - comparator
+      - lodestone
       - workbench
       - grabber
       - ADT calculator
@@ -30,11 +32,14 @@ robots:
       - hearing aid
       - scanner
       - strange loop
+    inventory:
+      - [50, bit (0)]
+      - [50, bit (1)]
   - name: verifier
     system: true
     dir: [1, 0]
     display:
-      invisible: true
+      invisible: false
       attr: 'robot'
     devices:
       - drill
@@ -57,6 +62,12 @@ entities:
       char: ')'
     description:
     - Closing bracket
+    properties: [known]
+  - name: bracket segment
+    display:
+      char: 'S'
+    description:
+    - A segment of a long squiggly bracket.
     properties: [known]
 world:
   default: [grass]

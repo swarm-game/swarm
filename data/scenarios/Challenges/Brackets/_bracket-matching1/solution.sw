@@ -36,12 +36,10 @@ def checkMatching = \openCount. \offset.
         return (openCount == 0, offset);
     ) (\isOpening.
         if isOpening {
-
             move;
             checkMatching (openCount + 1) (offset + 1);
         } {
             if (openCount > 0) {
-
                 move;
                 checkMatching (openCount - 1) (offset + 1);
             } {
@@ -61,7 +59,6 @@ def checkLines = \lineWidth. \n.
     // rest of the way to the end of the line:
     doN (lineWidth - distanceTravelled - 1) move;
 
-
     let isValidBrackets = fst result in
     item <- bitFromBool isValidBrackets;
     place item;
@@ -78,14 +75,12 @@ def checkLines = \lineWidth. \n.
     end;
 
 def go = \lineCount. \lineWidth.
-
+    // Waits until the playfield is set up:
     _m <- listen;
     move;
     move;
 
-
     checkLines lineWidth lineCount;
-
     end;
 
 go 10 20;
