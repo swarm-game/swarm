@@ -14,6 +14,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Vector qualified as V
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
@@ -24,7 +25,6 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
  )
 import Swarm.Game.State
-import Swarm.Game.Achievement.Definitions
 import Swarm.TUI.Model.Name
 import Swarm.Util.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)

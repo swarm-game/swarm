@@ -68,9 +68,9 @@ import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
+import Swarm.Game.Util.Yaml
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util.Util (getDataFileNameSafe)
-import Swarm.Game.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import Witch (from, into)

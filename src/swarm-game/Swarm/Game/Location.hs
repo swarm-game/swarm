@@ -23,13 +23,13 @@ module Swarm.Game.Location (
 ) where
 
 import Data.Aeson (FromJSONKey, ToJSONKey)
+import Data.Function ((&))
 import Data.Int (Int32)
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
 import Linear (V2 (..))
 import Linear.Affine (Point (..), origin)
-import Data.Map (Map)
-import Data.Map qualified as M 
-import Data.Function ((&))
 
 -- | A Location is a pair of (x,y) coordinates, both up to 32 bits.
 --   The positive x-axis points east and the positive y-axis points
@@ -69,7 +69,6 @@ instance FromJSON Location where
 
 instance ToJSON Location where
   toJSON (P v) = toJSON v
-
 
 -- | Manhattan distance between world locations.
 manhattan :: Location -> Location -> Int32

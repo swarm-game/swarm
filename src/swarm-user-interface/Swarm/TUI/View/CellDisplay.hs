@@ -12,8 +12,8 @@ import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Terrain
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Model.Name
 import Swarm.TUI.Attr
+import Swarm.TUI.Model.Name
 
 -- | Render a display as a UI widget.
 renderDisplay :: Display -> Widget n

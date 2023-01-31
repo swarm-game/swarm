@@ -136,6 +136,8 @@ import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Recipe (
@@ -160,11 +162,11 @@ import Swarm.Language.Syntax (Const, Term' (TText), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Game.Achievement.Attainment
-import Swarm.Game.Achievement.Definitions
---import Swarm.Game.Scenario.Objective (Announcement)
-import Swarm.Util.Util (getDataFileNameSafe, isRightOr, uniq, (<+=), (<<.=), (?))
+
+-- import Swarm.Game.Scenario.Objective (Announcement)
+
 import Swarm.Game.Location
+import Swarm.Util.Util (getDataFileNameSafe, isRightOr, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)

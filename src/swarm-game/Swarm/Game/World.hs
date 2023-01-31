@@ -60,8 +60,8 @@ import Data.Int (Int32)
 import Data.Map.Strict qualified as M
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Swarm.Util.Util
 import Swarm.Game.Location
+import Swarm.Util.Util
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------

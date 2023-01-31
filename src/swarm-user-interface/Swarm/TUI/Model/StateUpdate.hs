@@ -20,9 +20,11 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
-import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioInfoPair,
@@ -35,13 +37,11 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.Util.Failure (prettyFailure)
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
-import Swarm.Game.Achievement.Attainment
-import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Achievement.Persistence
-import Swarm.Game.Util.Failure (prettyFailure)
+import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)

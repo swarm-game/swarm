@@ -52,8 +52,8 @@ import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (runThrow, throwError)
 import Swarm.Game.Entity as E
-import Swarm.Util.Util
 import Swarm.Game.Util.Yaml
+import Swarm.Util.Util
 
 -- | An ingredient list is a list of entities with multiplicity.  It
 --   is polymorphic in the entity type so that we can use either

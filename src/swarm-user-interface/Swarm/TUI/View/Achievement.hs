@@ -10,11 +10,11 @@ import Control.Lens ((^.))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Time.Format (defaultTimeLocale, formatTime)
-import Swarm.TUI.Attr
-import Swarm.TUI.Model
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description
+import Swarm.TUI.Attr
+import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Text.Wrap
 

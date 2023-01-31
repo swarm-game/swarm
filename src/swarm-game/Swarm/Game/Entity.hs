@@ -105,10 +105,10 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
-import Swarm.Language.Capability
-import Swarm.Util.Util (binTuples, dataNotFound, getDataFileNameSafe, plural, reflow, (?))
 import Swarm.Game.Location
 import Swarm.Game.Util.Yaml
+import Swarm.Language.Capability
+import Swarm.Util.Util (binTuples, dataNotFound, getDataFileNameSafe, plural, reflow, (?))
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)

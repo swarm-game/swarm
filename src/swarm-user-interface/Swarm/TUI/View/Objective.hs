@@ -14,8 +14,8 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
-import Swarm.TUI.Model.Goal
 import Swarm.TUI.Attr
+import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Util
 

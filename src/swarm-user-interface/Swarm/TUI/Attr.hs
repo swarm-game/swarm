@@ -59,7 +59,7 @@ import Data.Bifunctor (bimap)
 import Data.Text (unpack)
 import Data.Yaml
 import Graphics.Vty qualified as V
-import Swarm.Game.Display (Attribute(..))
+import Swarm.Game.Display (Attribute (..))
 import Witch (from)
 
 toAttrName :: Attribute -> AttrName

@@ -15,7 +15,7 @@
 module Swarm.Game.Display (
   -- * The display record
   Priority,
-  Attribute(..),
+  Attribute (..),
   Display,
 
   -- ** Fields
@@ -41,12 +41,12 @@ import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
+import Data.Text (Text)
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Game.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..))
 import Swarm.Util.Util (maxOn)
-import Swarm.Game.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
-import Data.Text (Text)
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
