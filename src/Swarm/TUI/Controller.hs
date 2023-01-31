@@ -419,7 +419,7 @@ handleModalEvent = \case
                 uiState . uiGoal . listWidget .= newList
               GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      _ -> return ()
+      _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev isHeader
 
