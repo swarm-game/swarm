@@ -189,6 +189,10 @@ getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
   _ -> error "No tutorials exist!"
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
+--
+--   NOTE: be careful to maintain the invariant that the currently selected
+--   menu item is always the same as the currently played scenario!  `quitGame`
+--   is the only place this function should be called.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
 
@@ -401,7 +405,7 @@ handleModalEvent = \case
       Just (Button QuitButton, _) -> quitGame
       Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
       Just (Button StartOverButton, StartOver currentSeed siPair) -> restartGame currentSeed siPair
-      Just (Button NextButton, Next siPair) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
+      Just (Button NextButton, Next siPair) -> quitGame >> startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
@@ -470,13 +474,28 @@ saveScenarioInfoOnQuit = do
 --
 -- * writes out the updated REPL history to a @.swarm_history@ file
 -- * saves current scenario status (InProgress/Completed)
+-- * advances the menu to the next scenario IF the current one was won
 -- * returns to the previous menu
 quitGame :: EventM Name AppState ()
 quitGame = do
+  -- Write out REPL history.
   history <- use $ uiState . uiREPL . replHistory
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
+
+  -- Save scenario status info.
   saveScenarioInfoOnQuit
+
+  -- Automatically advance the menu to the next scenario iff the
+  -- player has won the current one.
+  wc <- use $ gameState . winCondition
+  case wc of
+    WinConditions (Won _) _ -> uiState . uiMenu %= advanceMenu
+    _ -> return ()
+
+  -- Either quit the entire app (if the scenario was chosen directly
+  -- from the command line) or return to the menu (if the scenario was
+  -- chosen from the menu).
   menu <- use $ uiState . uiMenu
   case menu of
     NoMenu -> halt
@@ -759,14 +778,19 @@ doGoalUpdates = do
       gameState . winCondition .= WinConditions (Unwinnable True) x
       openModal LoseModal
 
-      uiState . uiMenu %= advanceMenu
       return True
     WinConditions (Won False) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
       gameState . winCondition .= WinConditions (Won True) x
       openModal WinModal
 
-      uiState . uiMenu %= advanceMenu
+      -- We do NOT advance the New Game menu to the next item here (we
+      -- used to!), because we do not know if the user is going to
+      -- select 'keep playing' or 'next challenge'.  We maintain the
+      -- invariant that the current menu item is always the same as
+      -- the scenario currently being played.  If the user either (1)
+      -- quits to the menu or (2) selects 'next challenge' we will
+      -- advance the menu at that point.
       return True
     WinConditions _ oc -> do
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc

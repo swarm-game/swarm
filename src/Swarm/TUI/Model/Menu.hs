@@ -74,7 +74,11 @@ data MainMenuEntry
 data Menu
   = NoMenu -- We started playing directly from command line, no menu to show
   | MainMenu (BL.List Name MainMenuEntry)
-  | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
+  | -- Stack of scenario item lists. INVARIANT: the currently selected
+    -- menu item is ALWAYS the same as the scenario currently being played.
+    -- See https://github.com/swarm-game/swarm/issues/1064 and
+    -- https://github.com/swarm-game/swarm/pull/1065.
+    NewGameMenu (NonEmpty (BL.List Name ScenarioItem))
   | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
   | AboutMenu
