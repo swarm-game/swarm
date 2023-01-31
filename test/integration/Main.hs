@@ -24,8 +24,8 @@ import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
-import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (LogEntry, defReqs, leText, machine, robotContext, robotLog, waitingUntil)
+import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
+import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -155,28 +155,28 @@ testScenarioSolution _ci _em =
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution Default "Tutorials/backstory"
-        , testSolution (Sec 3) "Tutorials/move"
-        , testSolution Default "Tutorials/craft"
-        , testSolution Default "Tutorials/grab"
-        , testSolution Default "Tutorials/place"
-        , testSolution Default "Tutorials/types"
-        , testSolution Default "Tutorials/type-errors"
-        , testSolution Default "Tutorials/equip"
-        , testSolution Default "Tutorials/build"
-        , testSolution Default "Tutorials/bind2"
-        , testSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
+        [ testTutorialSolution Default "Tutorials/backstory"
+        , testTutorialSolution (Sec 3) "Tutorials/move"
+        , testTutorialSolution Default "Tutorials/craft"
+        , testTutorialSolution Default "Tutorials/grab"
+        , testTutorialSolution Default "Tutorials/place"
+        , testTutorialSolution Default "Tutorials/types"
+        , testTutorialSolution Default "Tutorials/type-errors"
+        , testTutorialSolution Default "Tutorials/equip"
+        , testTutorialSolution Default "Tutorials/build"
+        , testTutorialSolution Default "Tutorials/bind2"
+        , testTutorialSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
-        , testSolution Default "Tutorials/scan"
-        , testSolution Default "Tutorials/def"
-        , testSolution Default "Tutorials/lambda"
-        , testSolution Default "Tutorials/require"
-        , testSolution (Sec 3) "Tutorials/requireinv"
-        , testSolution Default "Tutorials/conditionals"
-        , testSolution (Sec 5) "Tutorials/farming"
+        , testTutorialSolution Default "Tutorials/scan"
+        , testTutorialSolution Default "Tutorials/def"
+        , testTutorialSolution Default "Tutorials/lambda"
+        , testTutorialSolution Default "Tutorials/require"
+        , testTutorialSolution (Sec 3) "Tutorials/requireinv"
+        , testTutorialSolution Default "Tutorials/conditionals"
+        , testTutorialSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
         "Challenges"
@@ -289,6 +289,14 @@ testScenarioSolution _ci _em =
               -- printAllLogs
               when (shouldCheckBadErrors == CheckForBadErrors) $ noBadErrors g
               verify g
+
+  tutorialHasLog :: GameState -> Assertion
+  tutorialHasLog gs =
+    let baseDevs = gs ^?! baseRobot . equippedDevices
+     in assertBool "Base should have a logger installed!" (not . null $ lookupByName "logger" baseDevs)
+
+  testTutorialSolution t f = testSolution' t f CheckForBadErrors tutorialHasLog
+  testTutorialSolution' t f s v = testSolution' t f s $ \g -> tutorialHasLog g >> v g
 
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
