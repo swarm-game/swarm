@@ -111,6 +111,9 @@ instance PrettyPrec Capability where
 instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
+instance PrettyPrec (Syntax' ty) where
+  prettyPrec p = prettyPrec p . eraseS
+
 instance PrettyPrec Term where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c
@@ -122,8 +125,8 @@ instance PrettyPrec Term where
   prettyPrec _ (TBool b) = bool "false" "true" b
   prettyPrec _ (TRobot r) = "<a" <> pretty r <> ">"
   prettyPrec _ (TRef r) = "@" <> pretty r
-  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr (TText d)
-  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr (TText e)
+  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr @Term (TText d)
+  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t

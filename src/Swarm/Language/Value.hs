@@ -1,16 +1,15 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 
 -- |
--- Module      :  Swarm.Game.Value
+-- Module      :  Swarm.Language.Value
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Values and environments used for interpreting the Swarm language.
-module Swarm.Game.Value (
+module Swarm.Language.Value (
   -- * Values
   Value (..),
   stripVResult,
@@ -111,7 +110,7 @@ valueToTerm (VClo x t e) =
   M.foldrWithKey
     (\y v -> TLet False y Nothing (valueToTerm v))
     (TLam x Nothing t)
-    (M.restrictKeys (unCtx e) (S.delete x (setOf fv t)))
+    (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t ()))))
 valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v

@@ -1,0 +1,19 @@
+name: Enforce issue references for TODOs
+on:
+  push:
+    paths:
+      - '**.hs'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '**.hs'
+    branches:
+      - main
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          scripts/enforce-todo-issues.sh

@@ -1,0 +1,31 @@
+version: 1
+name: |
+  Prerequisite objectives: dependency cycle (self-reference)
+description: |
+  This should be rejected by the parser.
+objectives:
+  - id: have_furnace
+    goal:
+      - Make a "furnace".
+    condition: |
+      as base {has "furnace"};
+    prerequisite: have_furnace
+solution: |
+  make "furnace"
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    dir: [0, 1]
+    devices:
+      - workbench
+    inventory:
+      - [5, rock]
+world:
+  default: [blank]
+  palette:
+    'x': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    x

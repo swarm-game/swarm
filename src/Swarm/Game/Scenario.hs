@@ -1,5 +1,4 @@
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -17,11 +16,6 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * Objectives
-  Objective,
-  objectiveGoal,
-  objectiveCondition,
-
   -- * WorldDescription
   PCell (..),
   Cell,
@@ -39,6 +33,7 @@ module Swarm.Game.Scenario (
   scenarioDescription,
   scenarioCreative,
   scenarioSeed,
+  scenarioAttrs,
   scenarioEntities,
   scenarioRecipes,
   scenarioKnown,
@@ -59,6 +54,7 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Data.Aeson
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -68,7 +64,9 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (getDataFileNameSafe)
@@ -90,6 +88,7 @@ data Scenario = Scenario
   , _scenarioDescription :: Text
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
+  , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: [Text]
@@ -108,6 +107,7 @@ instance FromJSONE EntityMap Scenario where
     -- parse custom entities
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     -- extend ambient EntityMap with custom entities
+
     withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
@@ -129,12 +129,13 @@ instance FromJSONE EntityMap Scenario where
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
+        <*> liftE (v .:? "attrs" .!= [])
         <*> pure em
         <*> v ..:? "recipes" ..!= []
         <*> pure known
         <*> localE (,rsMap) (v ..: "world")
         <*> pure rs
-        <*> liftE (v .:? "objectives" .!= [])
+        <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
         <*> liftE (v .:? "stepsPerTick")
 
@@ -163,6 +164,9 @@ scenarioCreative :: Lens' Scenario Bool
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed / prompt the user for the seed.
 scenarioSeed :: Lens' Scenario (Maybe Int)
+
+-- | Custom attributes defined in the scenario.
+scenarioAttrs :: Lens' Scenario [CustomAttr]
 
 -- | Any custom entities used for this scenario.
 scenarioEntities :: Lens' Scenario EntityMap

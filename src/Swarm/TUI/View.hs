@@ -49,7 +49,6 @@ import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
-import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
@@ -68,7 +67,6 @@ import Data.Set qualified as Set (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
-import Graphics.Vty qualified as V
 import Linear
 import Linear.Affine (Point)
 import Network.Wai.Handler.Warp (Port)
@@ -78,6 +76,8 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -129,7 +129,7 @@ drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
  where
   ls = reverse $ s ^. runtimeState . eventLog . notificationsContent
-  dial = dialog (Just "Messages") Nothing maxModalWindowWidth
+  dial = dialog (Just $ str "Messages") Nothing maxModalWindowWidth
   scrollList = withVScrollBars OnRight . vBox
   drawLogs = map (drawLogEntry True)
 
@@ -432,7 +432,7 @@ chooseCursor s locs = case s ^. uiState . uiModal of
 
 -- | Render the error dialog window with a given error message
 renderErrorDialog :: Text -> Widget Name
-renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
+renderErrorDialog err = renderDialog (dialog (Just $ str "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
  where
   errContent = txtWrapWith indent2 {preserveIndentation = True} err
   requiredWidth = 2 + maximum (textWidth <$> T.lines err)
@@ -440,24 +440,10 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
 -- | Draw the error dialog window, if it should be displayed right now.
 drawDialog :: AppState -> Widget Name
 drawDialog s = case s ^. uiState . uiModal of
-  Just (Modal mt d) -> renderDialog d (maybeScroll ModalViewport $ drawModal s mt)
+  Just (Modal mt d) -> renderDialog d $ case mt of
+    GoalModal -> drawModal s mt
+    _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiState . uiError)
-
--- | Make a widget scrolling if it is bigger than the available
---   vertical space.  Thanks to jtdaugherty for this code.
-maybeScroll :: (Ord n, Show n) => n -> Widget n -> Widget n
-maybeScroll vpName contents =
-  Widget Greedy Greedy $ do
-    ctx <- getContext
-    result <- withReaderT (availHeightL .~ 10000) (render contents)
-    if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
-      then return result
-      else
-        render $
-          withVScrollBars OnRight $
-            viewport vpName Vertical $
-              Widget Fixed Fixed $
-                return result
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
@@ -468,9 +454,17 @@ drawModal s = \case
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
+  LoseModal ->
+    padBottom (Pad 1) $
+      vBox $
+        map
+          (hCenter . txt)
+          [ "Condolences!"
+          , "This scenario is no longer winnable."
+          ]
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
-  GoalModal g -> padLeftRight 1 (displayParagraphs g)
+  GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 robotsListWidget :: AppState -> Widget Name
@@ -759,9 +753,7 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = case s ^. uiState . uiGoal of
-    Just g | g /= [] -> True
-    _ -> False
+  goal = hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode
@@ -1091,18 +1083,13 @@ drawRobotLog :: AppState -> Widget Name
 drawRobotLog s =
   vBox
     [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
-    , vBox . imap drawEntry $ logEntries
+    , vBox . F.toList . imap drawEntry $ logEntries
     ]
  where
-  logEntries =
-    s
-      & view (gameState . to focusedRobot . _Just . robotLog)
-      & Seq.sort
-      & F.toList
-      & uniq
+  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
 
   rn = s ^? gameState . to focusedRobot . _Just . robotName
-  n = length logEntries
+  n = Seq.length logEntries
 
   allMe = all ((== rn) . Just . view leRobotName) logEntries
 
@@ -1160,12 +1147,3 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt]
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
-
-------------------------------------------------------------
--- Utility
-------------------------------------------------------------
-
--- | Display a list of text-wrapped paragraphs with one blank line after
---   each.
-displayParagraphs :: [Text] -> Widget Name
-displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)

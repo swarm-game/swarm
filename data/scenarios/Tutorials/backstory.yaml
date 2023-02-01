@@ -62,6 +62,8 @@ robots:
     loc: [0,0]
     inventory:
       - [1, READY]
+    devices:
+      - logger
   - name: listener
     system: true
     display:

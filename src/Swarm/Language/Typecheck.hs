@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -47,13 +48,16 @@ module Swarm.Language.Typecheck (
 ) where
 
 import Control.Category ((>>>))
+import Control.Lens ((^.))
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Unification hiding (applyBindings, (=:=))
 import Control.Unification qualified as U
 import Control.Unification.IntVar
+import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
+import Data.Generics (mkM)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -61,6 +65,7 @@ import Data.Set (Set, (\\))
 import Data.Set qualified as S
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Module
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -80,7 +85,12 @@ type Infer = ReaderT UCtx (ExceptT TypeErr (IntBindingT TypeF Identity))
 runInfer :: TCtx -> Infer UModule -> Either TypeErr TModule
 runInfer ctx =
   (>>= applyBindings)
-    >>> (>>= \(Module uty uctx) -> Module <$> (fromU <$> generalize uty) <*> pure (fromU uctx))
+    >>> ( >>=
+            \(Module u uctx) ->
+              Module
+                <$> mapM (fmap fromU . generalize) u
+                <*> pure (fromU uctx)
+        )
     >>> flip runReaderT (toU ctx)
     >>> runExceptT
     >>> evalIntBindingT
@@ -143,8 +153,8 @@ substU m =
 infix 4 =:=
 
 -- | Constrain two types to be equal.
-(=:=) :: UType -> UType -> Infer ()
-s =:= t = void (lift $ s U.=:= t)
+(=:=) :: UType -> UType -> Infer UType
+s =:= t = lift $ s U.=:= t
 
 -- | @unification-fd@ provides a function 'U.applyBindings' which
 --   fully substitutes for any bound unification variables (for
@@ -164,8 +174,14 @@ instance HasBindings UPolytype where
 instance HasBindings UCtx where
   applyBindings = mapM applyBindings
 
+instance (HasBindings u, Data u) => HasBindings (Term' u) where
+  applyBindings = gmapM (mkM (applyBindings @(Syntax' u)))
+
+instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
+  applyBindings (Syntax' l t u) = Syntax' l <$> applyBindings t <*> applyBindings u
+
 instance HasBindings UModule where
-  applyBindings (Module uty uctx) = Module <$> applyBindings uty <*> applyBindings uctx
+  applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -269,33 +285,33 @@ inferTop ctx = runInfer ctx . inferModule
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
 inferModule :: Syntax -> Infer UModule
-inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
+inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef _ (lvVar -> x) Nothing t1 -> do
+  SDef r x Nothing t1 -> do
     xTy <- fresh
-    ty <- withBinding x (Forall [] xTy) $ infer t1
-    xTy =:= ty
-    pty <- generalize ty
-    return $ Module (UTyCmd UTyUnit) (singleton x pty)
+    t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
+    _ <- xTy =:= t1' ^. sType
+    pty <- generalize (t1' ^. sType)
+    return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef _ (lvVar -> x) (Just pty) t1 -> do
+  SDef r x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
-    withBinding x upty $ check t1 uty
-    return $ Module (UTyCmd UTyUnit) (singleton x upty)
+    t1' <- withBinding (lvVar x) upty $ check t1 uty
+    return $ Module (Syntax' l (SDef r x (Just pty) t1') (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    Module cmda ctx1 <- inferModule c1
-    a <- decomposeCmdTy cmda
+    Module c1' ctx1 <- inferModule c1
+    a <- decomposeCmdTy (c1' ^. sType)
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
@@ -306,13 +322,13 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
       maybe id ((`withBinding` Forall [] a) . lvVar) mx $ do
-        Module cmdb ctx2 <- inferModule c2
+        Module c2' ctx2 <- inferModule c2
 
-        -- We don't actually need the result type since we're just going
-        -- to return cmdb, but it's important to ensure it's a command
-        -- type anyway.  Otherwise something like 'move; 3' would be
-        -- accepted with type int.
-        _ <- decomposeCmdTy cmdb
+        -- We don't actually need the result type since we're just
+        -- going to return the entire type, but it's important to
+        -- ensure it's a command type anyway.  Otherwise something
+        -- like 'move; 3' would be accepted with type int.
+        _ <- decomposeCmdTy (c2' ^. sType)
 
         -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
         -- definitions will shadow previous ones.  Include the binder
@@ -320,32 +336,40 @@ inferModule s@(Syntax _ t) = (`catchError` addLocToTypeErr s) $ case t of
         -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
         -- then they will be able to refer to r again later.
         let ctxX = maybe Ctx.empty ((`Ctx.singleton` Forall [] a) . lvVar) mx
-        return $ Module cmdb (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
+        return $
+          Module
+            (Syntax' l (SBind mx c1' c2') (c2' ^. sType))
+            (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.
   _anyOtherTerm -> trivMod <$> infer s
 
--- | Infer the type of a term which does not contain definitions.
-infer :: Syntax -> Infer UType
+-- | Infer the type of a term which does not contain definitions,
+--   returning a type-annotated term.
+infer :: Syntax -> Infer (Syntax' UType)
 infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
-  TUnit -> return UTyUnit
-  TConst c -> instantiate . toU $ inferConst c
-  TDir _ -> return UTyDir
-  TInt _ -> return UTyInt
-  TAntiInt _ -> return UTyInt
-  TText _ -> return UTyText
-  TAntiText _ -> return UTyText
-  TBool _ -> return UTyBool
-  TRobot _ -> return UTyActor
+  TUnit -> return $ Syntax' l TUnit UTyUnit
+  TConst c -> Syntax' l (TConst c) <$> (instantiate . toU $ inferConst c)
+  TDir d -> return $ Syntax' l (TDir d) UTyDir
+  TInt n -> return $ Syntax' l (TInt n) UTyInt
+  TAntiInt x -> return $ Syntax' l (TAntiInt x) UTyInt
+  TText x -> return $ Syntax' l (TText x) UTyText
+  TAntiText x -> return $ Syntax' l (TAntiText x) UTyText
+  TBool b -> return $ Syntax' l (TBool b) UTyBool
+  TRobot r -> return $ Syntax' l (TRobot r) UTyActor
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwError $ CantInfer l t
-  TRequireDevice _ -> return $ UTyCmd UTyUnit
-  TRequire _ _ -> return $ UTyCmd UTyUnit
+  TRequireDevice d -> return $ Syntax' l (TRequireDevice d) (UTyCmd UTyUnit)
+  TRequire n d -> return $ Syntax' l (TRequire n d) (UTyCmd UTyUnit)
   -- To infer the type of a pair, just infer both components.
-  SPair t1 t2 -> UTyProd <$> infer t1 <*> infer t2
+  SPair t1 t2 -> do
+    t1' <- infer t1
+    t2' <- infer t2
+    return $ Syntax' l (SPair t1' t2') (UTyProd (t1' ^. sType) (t2' ^. sType))
+
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
   -- is @Just@, we should typecheck the body under a context extended
@@ -355,74 +379,83 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- @SDelay@ nodes are never generated from the surface syntax, only
   -- dynamically at runtime when evaluating recursive let or def expressions,
   -- so we don't have to worry about typechecking them here.
-  SDelay _ dt -> UTyDelay <$> infer dt
+  SDelay d t1 -> do
+    t1' <- infer t1
+    return $ Syntax' l (SDelay d t1') (UTyDelay (t1' ^. sType))
+
   -- We need a special case for checking the argument to 'atomic'.
   -- 'atomic t' has the same type as 't', which must have a type of
   -- the form 'cmd a'.  't' must also be syntactically free of
   -- variables.
+
   TConst Atomic :$: at -> do
     argTy <- fresh
-    check at (UTyCmd argTy)
+    at' <- check at (UTyCmd argTy)
+    atomic' <- infer (Syntax l (TConst Atomic))
     -- It's important that we typecheck the subterm @at@ *before* we
     -- check that it is a valid argument to @atomic@: this way we can
     -- ensure that we have already inferred the types of any variables
     -- referenced.
     validAtomic at
-    return $ UTyCmd argTy
+    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
 
   -- Just look up variables in the context.
-  TVar x -> lookup l x
+  TVar x -> Syntax' l (TVar x) <$> lookup l x
   -- To infer the type of a lambda if the type of the argument is
   -- provided, just infer the body under an extended context and return
   -- the appropriate function type.
-  SLam (lvVar -> x) (Just argTy) lt -> do
+  SLam x (Just argTy) lt -> do
     let uargTy = toU argTy
-    resTy <- withBinding x (Forall [] uargTy) $ infer lt
-    return $ UTyFun uargTy resTy
+    lt' <- withBinding (lvVar x) (Forall [] uargTy) $ infer lt
+    return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (lt' ^. sType))
 
   -- If the type of the argument is not provided, create a fresh
   -- unification variable for it and proceed.
-  SLam (lvVar -> x) Nothing lt -> do
+  SLam x Nothing lt -> do
     argTy <- fresh
-    resTy <- withBinding x (Forall [] argTy) $ infer lt
-    return $ UTyFun argTy resTy
+    lt' <- withBinding (lvVar x) (Forall [] argTy) $ infer lt
+    return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (lt' ^. sType))
 
   -- To infer the type of an application:
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
-    fTy <- infer f
-    (ty1, ty2) <- decomposeFunTy fTy
+    f' <- infer f
+    (ty1, ty2) <- decomposeFunTy (f' ^. sType)
 
     -- Then check that the argument has the right type.
-    check x ty1 `catchError` addLocToTypeErr x
-    return ty2
+    x' <- check x ty1 `catchError` addLocToTypeErr x
+    return $ Syntax' l (SApp f' x') ty2
 
   -- We can infer the type of a let whether a type has been provided for
   -- the variable or not.
-  SLet _ (lvVar -> x) Nothing t1 t2 -> do
+  SLet r x Nothing t1 t2 -> do
     xTy <- fresh
-    uty <- withBinding x (Forall [] xTy) $ infer t1
-    xTy =:= uty
+    t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
+    let uty = t1' ^. sType
+    _ <- xTy =:= uty
     upty <- generalize uty
-    withBinding x upty $ infer t2
-  SLet _ (lvVar -> x) (Just pty) t1 t2 -> do
+    t2' <- withBinding (lvVar x) upty $ infer t2
+    return $ Syntax' l (SLet r x Nothing t1' t2') (t2' ^. sType)
+  SLet r x (Just pty) t1 t2 -> do
     let upty = toU pty
     -- If an explicit polytype has been provided, skolemize it and check
     -- definition and body under an extended context.
     uty <- skolemize upty
-    resTy <- withBinding x upty $ do
-      check t1 uty `catchError` addLocToTypeErr t1
-      infer t2
+    (t1', t2') <- withBinding (lvVar x) upty $ do
+      (,)
+        <$> check t1 uty
+        `catchError` addLocToTypeErr t1
+        <*> infer t2
     -- Make sure no skolem variables have escaped.
     ask >>= mapM_ noSkolems
-    return resTy
+    return $ Syntax' l (SLet r x (Just pty) t1' t2') (t2' ^. sType)
   SDef {} -> throwError $ DefNotTopLevel l t
   SBind mx c1 c2 -> do
-    ty1 <- infer c1
-    a <- decomposeCmdTy ty1
-    ty2 <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
-    _ <- decomposeCmdTy ty2
-    return ty2
+    c1' <- infer c1
+    a <- decomposeCmdTy (c1' ^. sType)
+    c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
+    _ <- decomposeCmdTy (c2' ^. sType)
+    return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -437,9 +470,9 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
       throwError $
         EscapedSkolem l (head (S.toList ftyvs))
 
-addLocToTypeErr :: Syntax -> TypeErr -> Infer a
+addLocToTypeErr :: Syntax' ty -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
-  Mismatch NoLoc a b -> throwError $ Mismatch (sLoc s) a b
+  Mismatch NoLoc a b -> throwError $ Mismatch (s ^. sLoc) a b
   _ -> throwError te
 
 -- | Decompose a type that is supposed to be a command type.
@@ -447,7 +480,7 @@ decomposeCmdTy :: UType -> Infer UType
 decomposeCmdTy (UTyCmd a) = return a
 decomposeCmdTy ty = do
   a <- fresh
-  ty =:= UTyCmd a
+  _ <- ty =:= UTyCmd a
   return a
 
 -- | Decompose a type that is supposed to be a function type.
@@ -456,7 +489,7 @@ decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
 decomposeFunTy ty = do
   ty1 <- fresh
   ty2 <- fresh
-  ty =:= UTyFun ty1 ty2
+  _ <- ty =:= UTyFun ty1 ty2
   return (ty1, ty2)
 
 -- | Infer the type of a constant.
@@ -548,12 +581,13 @@ inferConst c = case c of
   cmpBinT = [tyQ| a -> a -> bool |]
   arithBinT = [tyQ| int -> int -> int |]
 
--- | @check t ty@ checks that @t@ has type @ty@.
-check :: Syntax -> UType -> Infer ()
+-- | @check t ty@ checks that @t@ has type @ty@, returning a
+--   type-annotated AST if so.
+check :: Syntax -> UType -> Infer (Syntax' UType)
 check t ty = do
-  ty' <- infer t
-  _ <- ty =:= ty'
-  return ()
+  Syntax' l t' ty' <- infer t
+  theTy <- ty =:= ty'
+  return $ Syntax' l t' theTy
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are

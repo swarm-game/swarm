@@ -61,3 +61,10 @@ describe (GameplayAchievement DestroyedBase) =
     "Actually destroy your base."
     Moderate
     True
+describe (GameplayAchievement LoseScenario) =
+  AchievementInfo
+    "Silver Lining"
+    (Just $ Freeform "Here's your consolation prize.")
+    "Lose at a scenario."
+    Easy
+    True

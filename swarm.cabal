@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               swarm
-version:            0.2.0.0
+version:            0.3.0.1
 synopsis:           2D resource gathering game with programmable robots
 
 description:        Swarm is a 2D programming and resource gathering
@@ -24,7 +24,7 @@ extra-source-files: CHANGELOG.md
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
 data-dir:           data/
-data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt
+data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
 source-repository head
     type:     git
@@ -81,7 +81,9 @@ common ghc2021-extensions
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Swarm.App
+    exposed-modules:  Data.BoolExpr
+                      Data.BoolExpr.Simplify
+                      Swarm.App
                       Swarm.DocGen
                       Swarm.Game.CESK
                       Swarm.Game.Display
@@ -92,14 +94,20 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Objective.Logic
+                      Swarm.Game.Scenario.Objective.Graph
+                      Swarm.Game.Scenario.Objective.Presentation.Model
+                      Swarm.Game.Scenario.Objective.Presentation.Render
+                      Swarm.Game.Scenario.Objective.Validation
+                      Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Terrain
-                      Swarm.Game.Value
                       Swarm.Game.World
                       Swarm.Game.WorldGen
                       Swarm.Language.Context
@@ -107,6 +115,8 @@ library
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
+                      Swarm.Language.LSP.VarUsage
+                      Swarm.Language.Module
                       Swarm.Language.Parse
                       Swarm.Language.Parse.QQ
                       Swarm.Language.Pipeline
@@ -117,10 +127,12 @@ library
                       Swarm.Language.Typecheck
                       Swarm.Language.Typed
                       Swarm.Language.Types
+                      Swarm.Language.Value
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
+                      Swarm.TUI.View.CustomStyling
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
@@ -150,7 +162,7 @@ library
     build-depends:    base                          >= 4.14 && < 4.18,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
-                      brick                         >= 1.0 && < 1.5,
+                      brick                         >= 1.5 && < 1.7,
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
                       containers                    >= 0.6.2 && < 0.7,
@@ -168,9 +180,9 @@ library
                       http-client-tls               >= 0.3 && < 0.4,
                       http-types                    >= 0.12 && < 0.13,
                       lens                          >= 4.19 && < 5.3,
-                      linear                        >= 1.21.6 && < 1.22,
+                      linear                        >= 1.21.6 && < 1.23,
                       lsp                           >= 1.6 && < 1.7,
-                      megaparsec                    >= 9.0 && < 9.3,
+                      megaparsec                    >= 9.0 && < 9.4,
                       minimorph                     >= 0.3 && < 0.4,
                       mtl                           >= 2.2.2 && < 2.3,
                       murmur3                       >= 1.0.4 && < 1.1,
@@ -230,6 +242,8 @@ test-suite swarm-unit
                       TestNotification
                       TestLanguagePipeline
                       TestPretty
+                      TestBoolExpr
+                      TestLSP
                       TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,

@@ -21,6 +21,7 @@ module Swarm.Language.Pipeline (
   showTypeErrorPos,
 ) where
 
+import Control.Lens ((^.))
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
@@ -28,6 +29,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Language.Context
 import Swarm.Language.Elaborate
+import Swarm.Language.Module
 import Swarm.Language.Parse
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement
@@ -40,10 +42,8 @@ import Witch
 --   pipeline.  Put a 'Term' in, and get one of these out.
 data ProcessedTerm
   = ProcessedTerm
-      Term
-      -- ^ The elaborated term
       TModule
-      -- ^ The type of the term (and of any embedded definitions)
+      -- ^ The elaborated + type-annotated term, plus types of any embedded definitions
       Requirements
       -- ^ Requirements of the term
       ReqCtx
@@ -60,7 +60,7 @@ instance FromJSON ProcessedTerm where
       Right (Just pt) -> return pt
 
 instance ToJSON ProcessedTerm where
-  toJSON (ProcessedTerm t _ _ _) = String $ prettyText t
+  toJSON (ProcessedTerm t _ _) = String $ prettyText (moduleAST t)
 
 -- | Given a 'Text' value representing a Swarm program,
 --
@@ -104,6 +104,9 @@ showTypeErrorPos code te = (minusOne start, minusOne end, msg)
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
-  ty <- inferTop ctx t
-  let (caps, capCtx') = requirements capCtx (sTerm t)
-  return $ ProcessedTerm (elaborate (sTerm t)) ty caps capCtx'
+  m <- inferTop ctx t
+  let (caps, capCtx') = requirements capCtx (t ^. sTerm)
+  return $ ProcessedTerm (elaborateModule m) caps capCtx'
+
+elaborateModule :: TModule -> TModule
+elaborateModule (Module ast ctx) = Module (elaborate ast) ctx

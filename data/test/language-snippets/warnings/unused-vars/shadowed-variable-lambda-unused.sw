@@ -1,0 +1,1 @@
+def y = \x. \x. x + 1 end

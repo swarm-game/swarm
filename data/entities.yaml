@@ -74,6 +74,16 @@
     Can be used to build a simple furnace, among other things.
   properties: [portable]
 
+- name: handle
+  display:
+    attr: device
+    char: 'h'
+  description:
+  - Ergonomic affordance for manipulating objects. Also grants the "setname" capability, allowing one
+    to assign a "handle" to robots.
+  properties: [portable]
+  capabilities: [setname]
+
 - name: lodestone
   display:
     attr: iron
@@ -83,6 +93,15 @@
     It seems to react to iron and surprisingly also to naturally growing bits.
   properties: [portable]
   capabilities: [negation]
+
+- name: beaglepuss
+  display:
+    attr: rubber
+    char: 'B'
+  description:
+  - Iconic novelty disguise. Renders one either completely inconspicuous, or the opposite.
+  properties: [portable]
+  capabilities: [appear]
 
 - name: boulder
   display:

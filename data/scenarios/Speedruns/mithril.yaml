@@ -4,7 +4,9 @@ author: Brent Yorgey
 description: Race to mine some mithril.
   See the Swarm wiki for more information on Swarm speedrunning.
 objectives:
-  - condition: as base {has "mithril"}
+  - goal:
+      - Mine some mithril as quickly as possible!
+    condition: as base {has "mithril"}
 robots:
   - name: base
     loc: [0,0]

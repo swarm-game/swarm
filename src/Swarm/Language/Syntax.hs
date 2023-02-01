@@ -2,6 +2,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -48,7 +50,12 @@ module Swarm.Language.Syntax (
   isLong,
 
   -- * Syntax
-  Syntax (..),
+  Syntax' (..),
+  sLoc,
+  sTerm,
+  sType,
+  Syntax,
+  pattern Syntax,
   LocVar (..),
   SrcLoc (..),
   noLoc,
@@ -65,22 +72,34 @@ module Swarm.Language.Syntax (
   -- * Terms
   Var,
   DelayType (..),
-  Term (..),
+  Term' (..),
+  Term,
   mkOp,
   mkOp',
+  unfoldApps,
+
+  -- * Erasure
+  erase,
+  eraseS,
 
   -- * Term traversal
-  fvT,
-  fv,
-  mapFree1,
+  freeVarsS,
+  freeVarsT,
+  freeVarsV,
+  mapFreeS,
+  locVarToSyntax',
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
-import Control.Lens (Plated (..), Traversal', (%~))
+import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
 import Data.Aeson.Types
+import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
+import Data.List qualified as L (tail)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
@@ -94,7 +113,7 @@ import Swarm.Util.Location (Heading)
 import Witch.From (from)
 
 ------------------------------------------------------------
--- Constants
+-- Directions
 ------------------------------------------------------------
 
 -- | An absolute direction is one which is defined with respect to an
@@ -103,11 +122,17 @@ import Witch.From (from)
 data AbsoluteDir = DNorth | DSouth | DEast | DWest
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
+cardinalDirectionKeyOptions :: JSONKeyOptions
+cardinalDirectionKeyOptions =
+  defaultJSONKeyOptions
+    { keyModifier = map C.toLower . L.tail
+    }
+
 instance ToJSONKey AbsoluteDir where
-  toJSONKey = genericToJSONKey defaultJSONKeyOptions
+  toJSONKey = genericToJSONKey cardinalDirectionKeyOptions
 
 instance FromJSONKey AbsoluteDir where
-  fromJSONKey = genericFromJSONKey defaultJSONKeyOptions
+  fromJSONKey = genericFromJSONKey cardinalDirectionKeyOptions
 
 -- | A relative direction is one which is defined with respect to the
 --   robot's frame of reference; no special capability is needed to
@@ -207,6 +232,10 @@ fromDirection :: Direction -> Heading
 fromDirection = \case
   DAbsolute x -> toHeading x
   _ -> zero
+
+------------------------------------------------------------
+-- Constants
+------------------------------------------------------------
 
 -- | Constants, representing various built-in functions and commands.
 --
@@ -491,7 +520,7 @@ data Length = Short | Long
 
 -- | The arity of a constant, /i.e./ how many arguments it expects.
 --   The runtime system will collect arguments to a constant (see
---   'Swarm.Game.Value.VCApp') until it has enough, then dispatch
+--   'Swarm.Language.Value.VCApp') until it has enough, then dispatch
 --   the constant's behavior.
 arity :: Const -> Int
 arity c = case constMeta $ constInfo c of
@@ -620,7 +649,7 @@ constInfo c = case c of
           <> "that is done automatically once you have a listening device equipped."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
-  Log -> command 1 Intangible "Log the string in the robot's logger."
+  Log -> command 1 short "Log the string in the robot's logger."
   View -> command 1 short "View the given actor."
   Appear ->
     command 1 short . doc "Set how the robot is displayed." $
@@ -758,31 +787,131 @@ constInfo c = case c of
       , tangibility = Intangible
       }
 
--- | Make infix operation, discarding any syntax related location
-mkOp' :: Const -> Term -> Term -> Term
-mkOp' c t1 = TApp (TApp (TConst c) t1)
+  lowShow :: Show a => a -> Text
+  lowShow a = toLower (from (show a))
 
--- | Make infix operation (e.g. @2 + 3@) a curried function
---   application (@((+) 2) 3@).
-mkOp :: Const -> Syntax -> Syntax -> Syntax
-mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
- where
-  -- The new syntax span both terms
-  newLoc = l1 <> l2
-  -- We don't assign a source location for the operator since it is
-  -- usually provided as-is and it is not likely to be useful.
-  sop = noLoc (TConst c)
-  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
+------------------------------------------------------------
+-- Basic terms
+------------------------------------------------------------
 
--- | The surface syntax for the language
-data Syntax = Syntax {sLoc :: SrcLoc, sTerm :: Term}
+-- | Different runtime behaviors for delayed expressions.
+data DelayType
+  = -- | A simple delay, implemented via a (non-memoized) @VDelay@
+    --   holding the delayed expression.
+    SimpleDelay
+  | -- | A memoized delay, implemented by allocating a mutable cell
+    --   with the delayed expression and returning a reference to it.
+    --   When the @Maybe Var@ is @Just@, a recursive binding of the
+    --   variable with a reference to the delayed expression will be
+    --   provided while evaluating the delayed expression itself. Note
+    --   that there is no surface syntax for binding a variable within
+    --   a recursive delayed expression; the only way we can get
+    --   @Just@ here is when we automatically generate a delayed
+    --   expression while interpreting a recursive @let@ or @def@.
+    MemoizedDelay (Maybe Var)
   deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+
+-- | A variable with associated source location, used for variable
+--   binding sites. (Variable occurrences are a bare TVar which gets
+--   wrapped in a Syntax node, so we don't need LocVar for those.)
+data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
+locVarToSyntax' :: LocVar -> ty -> Syntax' ty
+locVarToSyntax' (LV s v) = Syntax' s (TVar v)
+
+-- | Terms of the Swarm language.
+data Term' ty
+  = -- | The unit value.
+    TUnit
+  | -- | A constant.
+    TConst Const
+  | -- | A direction literal.
+    TDir Direction
+  | -- | An integer literal.
+    TInt Integer
+  | -- | An antiquoted Haskell variable name of type Integer.
+    TAntiInt Text
+  | -- | A text literal.
+    TText Text
+  | -- | An antiquoted Haskell variable name of type Text.
+    TAntiText Text
+  | -- | A Boolean literal.
+    TBool Bool
+  | -- | A robot reference.  These never show up in surface syntax, but are
+    --   here so we can factor pretty-printing for Values through
+    --   pretty-printing for Terms.
+    TRobot Int
+  | -- | A memory reference.  These likewise never show up in surface syntax,
+    --   but are here to facilitate pretty-printing.
+    TRef Int
+  | -- | Require a specific device to be installed.
+    TRequireDevice Text
+  | -- | Require a certain number of an entity.
+    TRequire Int Text
+  | -- | A variable.
+    TVar Var
+  | -- | A pair.
+    SPair (Syntax' ty) (Syntax' ty)
+  | -- | A lambda expression, with or without a type annotation on the
+    --   binder.
+    SLam LocVar (Maybe Type) (Syntax' ty)
+  | -- | Function application.
+    SApp (Syntax' ty) (Syntax' ty)
+  | -- | A (recursive) let expression, with or without a type
+    --   annotation on the variable. The @Bool@ indicates whether
+    --   it is known to be recursive.
+    SLet Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
+  | -- | A (recursive) definition command, which binds a variable to a
+    --   value in subsequent commands. The @Bool@ indicates whether the
+    --   definition is known to be recursive.
+    SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
+  | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
+    SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
+  | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
+    --   eager language, but in some cases (e.g. for @if@ statements
+    --   and recursive bindings) we need to delay evaluation.  The
+    --   counterpart to @{...}@ is @force@, where @force {t} = t@.
+    --   Note that 'Force' is just a constant, whereas 'SDelay' has to
+    --   be a special syntactic form so its argument can get special
+    --   treatment during evaluation.
+    SDelay DelayType (Syntax' ty)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+
+-- The Traversable instance for Term (and for Syntax') is used during
+-- typechecking: during intermediate type inference, many of the type
+-- annotations placed on AST nodes will have unification variables in
+-- them. Once we have finished solving everything we need to do a
+-- final traversal over all the types in the AST to substitute away
+-- all the unification variables (and generalize, i.e. stick 'forall'
+-- on, as appropriate).  See the call to 'mapM' in
+-- Swarm.Language.Typecheck.runInfer.
+
+type Term = Term' ()
+
+instance Data ty => Plated (Term' ty) where
+  plate = uniplate
+
+------------------------------------------------------------
+-- Syntax: annotation on top of Terms with SrcLoc and type
+------------------------------------------------------------
+
+-- | The surface syntax for the language, with location and type annotations.
+data Syntax' ty = Syntax'
+  { _sLoc :: SrcLoc
+  , _sTerm :: Term' ty
+  , _sType :: ty
+  }
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+
+instance Data ty => Plated (Syntax' ty) where
+  plate = uniplate
 
 data SrcLoc
   = NoLoc
   | -- | Half-open interval from start (inclusive) to end (exclusive)
     SrcLoc Int Int
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 instance Semigroup SrcLoc where
   NoLoc <> l = l
@@ -792,10 +921,23 @@ instance Semigroup SrcLoc where
 instance Monoid SrcLoc where
   mempty = NoLoc
 
+------------------------------------------------------------
+-- Pattern synonyms for untyped terms
+------------------------------------------------------------
+
+type Syntax = Syntax' ()
+
+pattern Syntax :: SrcLoc -> Term -> Syntax
+pattern Syntax l t = Syntax' l t ()
+
+{-# COMPLETE Syntax #-}
+
+makeLenses ''Syntax'
+
 noLoc :: Term -> Syntax
 noLoc = Syntax mempty
 
--- | Match a term without its a syntax
+-- | Match an untyped term without its 'SrcLoc'.
 pattern STerm :: Term -> Syntax
 pattern STerm t <-
   Syntax _ t
@@ -847,138 +989,125 @@ pattern TDelay m t = SDelay m (STerm t)
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
 {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
 
+-- | Make infix operation (e.g. @2 + 3@) a curried function
+--   application (@((+) 2) 3@).
+mkOp :: Const -> Syntax -> Syntax -> Syntax
+mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+ where
+  -- The new syntax span both terms
+  newLoc = l1 <> l2
+  -- We don't assign a source location for the operator since it is
+  -- usually provided as-is and it is not likely to be useful.
+  sop = noLoc (TConst c)
+  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
+
+-- | Make infix operation, discarding any syntax related location
+mkOp' :: Const -> Term -> Term -> Term
+mkOp' c t1 = TApp (TApp (TConst c) t1)
+
+-- $setup
+-- >>> import Control.Lens ((^.))
+
+-- | Turn function application chain into a list.
+--
+-- >>> syntaxWrap f = fmap (^. sTerm) . f . Syntax NoLoc
+-- >>> syntaxWrap unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
+-- TConst Mul :| [TInt 1,TInt 2]
+unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
+unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
+  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
+  s -> (s, Nothing)
+
+--------------------------------------------------
+-- Erasure
+
+-- | Erase a 'Syntax' tree annotated with @SrcLoc@ and type
+--   information to a bare unannotated 'Term'.
+eraseS :: Syntax' ty -> Term
+eraseS (Syntax' _ t _) = erase t
+
+-- | Erase a type-annotated term to a bare term.
+erase :: Term' ty -> Term
+erase TUnit = TUnit
+erase (TConst c) = TConst c
+erase (TDir d) = TDir d
+erase (TInt n) = TInt n
+erase (TAntiInt v) = TAntiInt v
+erase (TText t) = TText t
+erase (TAntiText v) = TAntiText v
+erase (TBool b) = TBool b
+erase (TRobot r) = TRobot r
+erase (TRef r) = TRef r
+erase (TRequireDevice d) = TRequireDevice d
+erase (TRequire n e) = TRequire n e
+erase (TVar s) = TVar s
+erase (SDelay x s) = TDelay x (eraseS s)
+erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
+erase (SLam x mty body) = TLam (lvVar x) mty (eraseS body)
+erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
+erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
+erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
+erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
+
 ------------------------------------------------------------
--- Terms
-
--- | Different runtime behaviors for delayed expressions.
-data DelayType
-  = -- | A simple delay, implemented via a (non-memoized) @VDelay@
-    --   holding the delayed expression.
-    SimpleDelay
-  | -- | A memoized delay, implemented by allocating a mutable cell
-    --   with the delayed expression and returning a reference to it.
-    --   When the @Maybe Var@ is @Just@, a recursive binding of the
-    --   variable with a reference to the delayed expression will be
-    --   provided while evaluating the delayed expression itself. Note
-    --   that there is no surface syntax for binding a variable within
-    --   a recursive delayed expression; the only way we can get
-    --   @Just@ here is when we automatically generate a delayed
-    --   expression while interpreting a recursive @let@ or @def@.
-    MemoizedDelay (Maybe Var)
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
-
--- | A variable with associated source location, used for variable
---   binding sites. (Variable occurrences are a bare TVar which gets
---   wrapped in a Syntax node, so we don't need LocVar for those.)
-data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
-
--- | Terms of the Swarm language.
-data Term
-  = -- | The unit value.
-    TUnit
-  | -- | A constant.
-    TConst Const
-  | -- | A direction literal.
-    TDir Direction
-  | -- | An integer literal.
-    TInt Integer
-  | -- | An antiquoted Haskell variable name of type Integer.
-    TAntiInt Text
-  | -- | A text literal.
-    TText Text
-  | -- | An antiquoted Haskell variable name of type Text.
-    TAntiText Text
-  | -- | A Boolean literal.
-    TBool Bool
-  | -- | A robot reference.  These never show up in surface syntax, but are
-    --   here so we can factor pretty-printing for Values through
-    --   pretty-printing for Terms.
-    TRobot Int
-  | -- | A memory reference.  These likewise never show up in surface syntax,
-    --   but are here to facilitate pretty-printing.
-    TRef Int
-  | -- | Require a specific device to be equipped.
-    TRequireDevice Text
-  | -- | Require a certain number of an entity.
-    TRequire Int Text
-  | -- | A variable.
-    TVar Var
-  | -- | A pair.
-    SPair Syntax Syntax
-  | -- | A lambda expression, with or without a type annotation on the
-    --   binder.
-    SLam LocVar (Maybe Type) Syntax
-  | -- | Function application.
-    SApp Syntax Syntax
-  | -- | A (recursive) let expression, with or without a type
-    --   annotation on the variable. The @Bool@ indicates whether
-    --   it is known to be recursive.
-    SLet Bool LocVar (Maybe Polytype) Syntax Syntax
-  | -- | A (recursive) definition command, which binds a variable to a
-    --   value in subsequent commands. The @Bool@ indicates whether the
-    --   definition is known to be recursive.
-    SDef Bool LocVar (Maybe Polytype) Syntax
-  | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe LocVar) Syntax Syntax
-  | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
-    --   eager language, but in some cases (e.g. for @if@ statements
-    --   and recursive bindings) we need to delay evaluation.  The
-    --   counterpart to @{...}@ is @force@, where @force {t} = t@.
-    --   Note that 'Force' is just a constant, whereas 'SDelay' has to
-    --   be a special syntactic form so its argument can get special
-    --   treatment during evaluation.
-    SDelay DelayType Syntax
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
-
-instance Plated Term where
-  plate = uniplate
+-- Free variable traversals
+------------------------------------------------------------
 
 -- | Traversal over those subterms of a term which represent free
---   variables.
-fvT :: Traversal' Term Term
-fvT f = go S.empty
+--   variables.  The S suffix indicates that it is a `Traversal' over
+--   the `Syntax` nodes (which contain type and source location info)
+--   containing free variables inside a larger `Syntax` value.  Note
+--   that if you want to get the list of all `Syntax` nodes
+--   representing free variables, you can do so via @'toListOf'
+--   'freeVarsS'@.
+freeVarsS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
+freeVarsS f = go S.empty
  where
-  go bound t = case t of
-    TUnit -> pure t
-    TConst {} -> pure t
-    TDir {} -> pure t
-    TInt {} -> pure t
-    TAntiInt {} -> pure t
-    TText {} -> pure t
-    TAntiText {} -> pure t
-    TBool {} -> pure t
-    TRobot {} -> pure t
-    TRef {} -> pure t
-    TRequireDevice {} -> pure t
-    TRequire {} -> pure t
+  -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
+  go bound s@(Syntax' l t ty) = case t of
+    TUnit -> pure s
+    TConst {} -> pure s
+    TDir {} -> pure s
+    TInt {} -> pure s
+    TAntiInt {} -> pure s
+    TText {} -> pure s
+    TAntiText {} -> pure s
+    TBool {} -> pure s
+    TRobot {} -> pure s
+    TRef {} -> pure s
+    TRequireDevice {} -> pure s
+    TRequire {} -> pure s
     TVar x
-      | x `S.member` bound -> pure t
-      | otherwise -> f (TVar x)
-    SLam x ty (Syntax l1 t1) -> SLam x ty <$> (Syntax l1 <$> go (S.insert (lvVar x) bound) t1)
-    SApp (Syntax l1 t1) (Syntax l2 t2) ->
-      SApp <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    SLet r x ty (Syntax l1 t1) (Syntax l2 t2) ->
+      | x `S.member` bound -> pure s
+      | otherwise -> f s
+    SLam x xty s1 -> rewrap $ SLam x xty <$> go (S.insert (lvVar x) bound) s1
+    SApp s1 s2 -> rewrap $ SApp <$> go bound s1 <*> go bound s2
+    SLet r x xty s1 s2 ->
       let bound' = S.insert (lvVar x) bound
-       in SLet r x ty <$> (Syntax l1 <$> go bound' t1) <*> (Syntax l2 <$> go bound' t2)
-    SPair (Syntax l1 t1) (Syntax l2 t2) ->
-      SPair <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go bound t2)
-    SDef r x ty (Syntax l1 t1) ->
-      SDef r x ty <$> (Syntax l1 <$> go (S.insert (lvVar x) bound) t1)
-    SBind mx (Syntax l1 t1) (Syntax l2 t2) ->
-      SBind mx <$> (Syntax l1 <$> go bound t1) <*> (Syntax l2 <$> go (maybe id (S.insert . lvVar) mx bound) t2)
-    SDelay m (Syntax l1 t1) ->
-      SDelay m <$> (Syntax l1 <$> go bound t1)
+       in rewrap $ SLet r x xty <$> go bound' s1 <*> go bound' s2
+    SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
+    SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
+    SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
+    SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
+   where
+    rewrap s' = Syntax' l <$> s' <*> pure ty
 
--- | Traversal over the free variables of a term.  Note that if you
---   want to get the set of all free variables, you can do so via
---   @'Data.Set.Lens.setOf' 'fv'@.
-fv :: Traversal' Term Var
-fv = fvT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
+-- | Like 'freeVarsS', but traverse over the 'Term's containing free
+--   variables.  More direct if you don't need to know the types or
+--   source locations of the variables.  Note that if you want to get
+--   the list of all `Term`s representing free variables, you can do so via
+--   @'toListOf' 'freeVarsT'@.
+freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
+freeVarsT = freeVarsS . sTerm
+
+-- | Traversal over the free variables of a term.  Like 'freeVarsS'
+--   and 'freeVarsT', but traverse over the variable names
+--   themselves.  Note that if you want to get the set of all free
+--   variable names, you can do so via @'Data.Set.Lens.setOf'
+--   'freeVarsV'@.
+freeVarsV :: Traversal' (Syntax' ty) Var
+freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular variable.
-mapFree1 :: Var -> (Term -> Term) -> Term -> Term
-mapFree1 x f = fvT %~ (\t -> if t == TVar x then f t else t)
-
-lowShow :: Show a => a -> Text
-lowShow a = toLower (from (show a))
+mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
+mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)

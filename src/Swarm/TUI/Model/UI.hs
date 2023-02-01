@@ -6,6 +6,7 @@
 
 module Swarm.TUI.Model.UI (
   UIState (..),
+  GoalDisplay (..),
   uiMenu,
   uiPlaying,
   uiCheatMode,
@@ -35,6 +36,7 @@ module Swarm.TUI.Model.UI (
   uiInventoryShouldUpdate,
   uiTPF,
   uiFPS,
+  uiAttrMap,
   scenarioRef,
   appData,
 
@@ -44,6 +46,7 @@ module Swarm.TUI.Model.UI (
   initUIState,
 ) where
 
+import Brick (AttrMap)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
@@ -54,10 +57,12 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
+import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
@@ -89,7 +94,7 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
-  , _uiGoal :: Maybe [Text]
+  , _uiGoal :: GoalDisplay
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
@@ -105,6 +110,7 @@ data UIState = UIState
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
   , _appData :: Map Text Text
+  , _uiAttrMap :: AttrMap
   , _scenarioRef :: Maybe ScenarioInfoPair
   }
 
@@ -169,7 +175,7 @@ uiModal :: Lens' UIState (Maybe Modal)
 
 -- | Status of the scenario goal: whether there is one, and whether it
 --   has been displayed to the user initially.
-uiGoal :: Lens' UIState (Maybe [Text])
+uiGoal :: Lens' UIState GoalDisplay
 
 -- | Map of achievements that were attained
 uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
@@ -195,6 +201,9 @@ uiTPF :: Lens' UIState Double
 
 -- | Computed frames per milli seconds
 uiFPS :: Lens' UIState Double
+
+-- | Attribute map
+uiAttrMap :: Lens' UIState AttrMap
 
 -- | The currently active Scenario description, useful for starting over.
 scenarioRef :: Lens' UIState (Maybe ScenarioInfoPair)
@@ -281,7 +290,7 @@ initUIState showMainMenu cheatMode = do
           , _uiScrollToEnd = False
           , _uiError = Nothing
           , _uiModal = Nothing
-          , _uiGoal = Nothing
+          , _uiGoal = emptyGoalDisplay
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
           , _uiShowZero = True
@@ -297,6 +306,7 @@ initUIState showMainMenu cheatMode = do
           , _frameCount = 0
           , _frameTickCount = 0
           , _appData = appDataMap
+          , _uiAttrMap = swarmAttrMap
           , _scenarioRef = Nothing
           }
   return (warnings, out)

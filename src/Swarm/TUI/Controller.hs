@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- |
 -- Module      :  Swarm.TUI.Controller
@@ -53,6 +54,7 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.State
 import Data.Bits
 import Data.Either (isRight)
+import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -68,26 +70,31 @@ import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective.Presentation.Model
+import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
-import Swarm.Game.Value (Value (VUnit), prettyValue, stripVResult)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CMake))
 import Swarm.Language.Context
+import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
+import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
+import Swarm.Language.Value (Value (VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
@@ -182,6 +189,10 @@ getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
   _ -> error "No tutorials exist!"
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
+--
+--   NOTE: be careful to maintain the invariant that the currently selected
+--   menu item is always the same as the currently played scenario!  `quitGame`
+--   is the only place this function should be called.
 advanceMenu :: Menu -> Menu
 advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
 
@@ -251,7 +262,8 @@ handleMainEvent ev = do
     -- ctrl-q works everywhere
     ControlChar 'q' ->
       case s ^. gameState . winCondition of
-        Won _ -> toggleModal WinModal
+        WinConditions (Won _) _ -> toggleModal WinModal
+        WinConditions (Unwinnable _) _ -> toggleModal LoseModal
         _ -> toggleModal QuitModal
     VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
     Key V.KEsc
@@ -275,9 +287,10 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
-    ControlChar 'g' -> case s ^. uiState . uiGoal of
-      Just g | g /= [] -> toggleModal (GoalModal g)
-      _ -> continueWithoutRedraw
+    ControlChar 'g' ->
+      if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
+        then toggleModal GoalModal
+        else continueWithoutRedraw
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
@@ -388,18 +401,31 @@ handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
     mdialog <- preuse $ uiState . uiModal . _Just . modalDialog
     toggleModal QuitModal
-    case dialogSelection <$> mdialog of
-      Just (Just QuitButton) -> quitGame
-      Just (Just KeepPlayingButton) -> toggleModal KeepPlayingModal
-      Just (Just (StartOverButton currentSeed siPair)) -> restartGame currentSeed siPair
-      Just (Just (NextButton siPair)) -> saveScenarioInfoOnQuit >> startGame siPair Nothing
+    case dialogSelection =<< mdialog of
+      Just (Button QuitButton, _) -> quitGame
+      Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
+      Just (Button StartOverButton, StartOver currentSeed siPair) -> restartGame currentSeed siPair
+      Just (Button NextButton, Next siPair) -> quitGame >> startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
-      Just _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      _ -> return ()
+      Just GoalModal -> case ev of
+        V.EvKey (V.KChar '\t') [] -> uiState . uiGoal . focus %= focusNext
+        _ -> do
+          focused <- use $ uiState . uiGoal . focus
+          case focusGetCurrent focused of
+            Just (GoalWidgets w) -> case w of
+              ObjectivesList -> do
+                lw <- use $ uiState . uiGoal . listWidget
+                newList <- refreshList lw
+                uiState . uiGoal . listWidget .= newList
+              GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+            _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+      _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+   where
+    refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev isHeader
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
@@ -415,7 +441,10 @@ saveScenarioInfoOnQuit = do
         gs <- use $ gameState . scenarios
         p <- liftIO $ normalizeScenarioPath gs p'
         t <- liftIO getZonedTime
-        won <- isJust <$> preuse (gameState . winCondition . _Won)
+        wc <- use $ gameState . winCondition
+        let won = case wc of
+              WinConditions (Won _) _ -> True
+              _ -> False
         ts <- use $ gameState . ticks
         let currentScenarioInfo :: Traversal' AppState ScenarioInfo
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
@@ -428,7 +457,7 @@ saveScenarioInfoOnQuit = do
             case segments of
               firstDir : _ -> do
                 when (won && firstDir == tutorialsDirname) $
-                  attainAchievement' t (Just $ T.pack p) (GlobalAchievement CompletedSingleTutorial)
+                  attainAchievement' t (Just p) (GlobalAchievement CompletedSingleTutorial)
               _ -> return ()
             liftIO $ saveScenarioInfo p si
 
@@ -445,13 +474,28 @@ saveScenarioInfoOnQuit = do
 --
 -- * writes out the updated REPL history to a @.swarm_history@ file
 -- * saves current scenario status (InProgress/Completed)
+-- * advances the menu to the next scenario IF the current one was won
 -- * returns to the previous menu
 quitGame :: EventM Name AppState ()
 quitGame = do
+  -- Write out REPL history.
   history <- use $ uiState . uiREPL . replHistory
   let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
+
+  -- Save scenario status info.
   saveScenarioInfoOnQuit
+
+  -- Automatically advance the menu to the next scenario iff the
+  -- player has won the current one.
+  wc <- use $ gameState . winCondition
+  case wc of
+    WinConditions (Won _) _ -> uiState . uiMenu %= advanceMenu
+    _ -> return ()
+
+  -- Either quit the entire app (if the scenario was chosen directly
+  -- from the command line) or return to the menu (if the scenario was
+  -- chosen from the menu).
   menu <- use $ uiState . uiMenu
   case menu of
     NoMenu -> halt
@@ -582,8 +626,7 @@ updateAchievements = do
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
   unless (null incrementalAchievements) $ do
-    -- TODO: This is where new achievements would be displayed in
-    -- a popup (see #916)
+    -- TODO: #916 This is where new achievements would be displayed in a popup
     newAchievements <- use $ uiState . uiAchievements
     liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
@@ -701,34 +744,93 @@ updateUI = do
         oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
         return $ oldTopMore /= topMore || oldBotMore /= botMore
 
-  -- Decide whether we need to update the current goal text, and pop
-  -- up a modal dialog.
-  curGoal <- use (uiState . uiGoal)
-  newGoal <-
-    preuse (gameState . winCondition . _WinConditions . _NonEmpty . _1 . objectiveGoal)
+  goalOrWinUpdated <- doGoalUpdates
 
-  let goalUpdated = curGoal /= newGoal
-  when goalUpdated $ do
-    uiState . uiGoal .= newGoal
-    case newGoal of
-      Just goal | goal /= [] -> do
-        toggleModal (GoalModal goal)
-      _ -> return ()
-
-  -- Decide whether to show a pop-up modal congratulating the user on
-  -- successfully completing the current challenge.
-  winModalUpdated <- do
-    w <- use (gameState . winCondition)
-    case w of
-      Won False -> do
-        gameState . winCondition .= Won True
-        toggleModal WinModal
-        uiState . uiMenu %= advanceMenu
-        return True
-      _ -> return False
-
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || goalUpdated || winModalUpdated
+  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || goalOrWinUpdated
   pure redraw
+
+-- | Either pops up the updated Goals modal
+-- or pops up the Congratulations (Win) modal, or pops
+-- up the Condolences (Lose) modal.
+-- The Win modal will take precendence if the player
+-- has met the necessary conditions to win the game.
+--
+-- If the player chooses to "Keep Playing" from the Win modal, the
+-- updated Goals will then immediately appear.
+-- This is desirable for:
+-- * feedback as to the final goal the player accomplished,
+-- * as a summary of all of the goals of the game
+-- * shows the player more "optional" goals they can continue to pursue
+doGoalUpdates :: EventM Name AppState Bool
+doGoalUpdates = do
+  curGoal <- use (uiState . uiGoal . goalsContent)
+  isCheating <- use (uiState . uiCheatMode)
+  curWinCondition <- use (gameState . winCondition)
+  announcementsSeq <- use (gameState . announcementQueue)
+  let announcementsList = toList announcementsSeq
+
+  -- Decide whether we need to update the current goal text and pop
+  -- up a modal dialog.
+  case curWinCondition of
+    NoWinCondition -> return False
+    WinConditions (Unwinnable False) x -> do
+      -- This clears the "flag" that the Lose dialog needs to pop up
+      gameState . winCondition .= WinConditions (Unwinnable True) x
+      openModal LoseModal
+
+      return True
+    WinConditions (Won False) x -> do
+      -- This clears the "flag" that the Win dialog needs to pop up
+      gameState . winCondition .= WinConditions (Won True) x
+      openModal WinModal
+
+      -- We do NOT advance the New Game menu to the next item here (we
+      -- used to!), because we do not know if the user is going to
+      -- select 'keep playing' or 'next challenge'.  We maintain the
+      -- invariant that the current menu item is always the same as
+      -- the scenario currently being played.  If the user either (1)
+      -- quits to the menu or (2) selects 'next challenge' we will
+      -- advance the menu at that point.
+      return True
+    WinConditions _ oc -> do
+      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
+          -- The "uiGoal" field is intialized with empty members, so we know that
+          -- this will be the first time showing it if it will be nonempty after previously
+          -- being empty.
+          isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)
+          goalWasUpdated = isFirstGoalDisplay || not (null announcementsList)
+
+      -- Decide whether to show a pop-up modal congratulating the user on
+      -- successfully completing the current challenge.
+      when goalWasUpdated $ do
+        let hasMultiple = hasMultipleGoals newGoalTracking
+            defaultFocus =
+              if hasMultiple
+                then ObjectivesList
+                else GoalSummary
+
+            ring =
+              focusRing $
+                map GoalWidgets $
+                  if hasMultiple
+                    then listEnums
+                    else [GoalSummary]
+
+        -- The "uiGoal" field is necessary at least to "persist" the data that is needed
+        -- if the player chooses to later "recall" the goals dialog with CTRL+g.
+        uiState . uiGoal
+          .= GoalDisplay
+            newGoalTracking
+            (GR.makeListWidget newGoalTracking)
+            (focusSetCurrent (GoalWidgets defaultFocus) ring)
+
+        -- This clears the "flag" that indicate that the goals dialog needs to be
+        -- automatically popped up.
+        gameState . announcementQueue .= mempty
+
+        openModal GoalModal
+
+      return goalWasUpdated
 
 -- | Make sure all tiles covering the visible part of the world are
 --   loaded.
@@ -823,9 +925,9 @@ handleREPLEventTyping = \case
         -- The player typed something at the REPL and hit Enter; this
         -- function takes the resulting ProcessedTerm (if the REPL
         -- input is valid) and sets up the base robot to run it.
-        startBaseProgram t@(ProcessedTerm _ (Module ty _) reqs reqCtx) =
+        startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
           -- Set the REPL status to Working
-          (gameState . replStatus .~ REPLWorking (Typed Nothing ty reqs))
+          (gameState . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
             -- The `reqCtx` maps names of variables defined in the
             -- term (by `def` statements) to their requirements.
             -- E.g. if we had `def m = move end`, the reqCtx would
@@ -973,7 +1075,7 @@ validateREPLForm s =
       | otherwise ->
           let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
               theType = case result of
-                Right (Just (ProcessedTerm _ (Module ty _) _ _)) -> Just ty
+                Right (Just (ProcessedTerm (Module tm _) _ _)) -> Just (tm ^. sType)
                 _ -> Nothing
            in s
                 & uiState . uiREPL . replValid .~ isRight result
@@ -1106,17 +1208,15 @@ handleRobotPanelEvent = \case
 makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
-  let mkTy = PolyUnit
-      mkReq = R.singletonCap CMake
-      mkProg = TApp (TConst Make) (TText (e ^. entityName))
-      mkPT = ProcessedTerm mkProg (Module mkTy empty) mkReq empty
+  let name = e ^. entityName
+      mkPT = [tmQ| make $str:name |]
       topStore =
         fromMaybe emptyStore $
           s ^? gameState . baseRobot . robotContext . defStore
 
   case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
-      gameState . replStatus .= REPLWorking (Typed Nothing mkTy mkReq)
+      gameState . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
       gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
