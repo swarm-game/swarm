@@ -1,0 +1,46 @@
+version: 1
+name: Sand from drilling
+description: |
+  Sand is no longer infinite, but can be obtained by drilling rocks,
+  which occasionally drop from drilling in mines.
+  https://github.com/swarm-game/swarm/pull/1024
+objectives:
+  - condition: |
+      as base {n <- count "sand"; return (n >= 32)}
+    goal:
+      - Obtain 32 sand.
+solution: |
+  def forever = \c. c ; forever c end
+  def while = \t. \b.
+    x <- t;
+    if x {b; while t b} {}
+  end
+  def drill_for_sand =
+    move;
+    drill down;
+    turn back; move; turn back;
+    while (has "rock") (
+      place "rock"; drill down
+    )
+  end;
+
+  forever drill_for_sand
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - dictionary
+      - logger
+      - branch predictor
+      - harvester
+      - drill
+      - solar panel
+      - treads
+world:
+  default: [blank]
+  palette:
+    '>': [grass, null, base]
+    'Å': [stone, copper mine]
+  upperleft: [0,0]
+  map: |
+    >Å

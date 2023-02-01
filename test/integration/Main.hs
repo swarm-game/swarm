@@ -234,6 +234,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/961-custom-capabilities"
         , testSolution Default "Testing/956-GPS"
         , testSolution Default "Testing/958-isempty"
+        , testSolution Default "Testing/1024-sand"
         ]
     ]
  where
