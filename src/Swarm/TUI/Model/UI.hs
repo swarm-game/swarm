@@ -58,12 +58,12 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Game.Scenario.Launch
 import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
-import Swarm.Game.Scenario.Launch
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment

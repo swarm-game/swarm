@@ -141,16 +141,14 @@ handleEvent = \case
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
-
 -- TODO
-handleLaunchOptionsEvent
-  :: LaunchOptions
-  -> BrickEvent Name AppEvent
-  -> EventM Name AppState ()
+handleLaunchOptionsEvent ::
+  LaunchOptions ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
 handleLaunchOptionsEvent launchOptions = \case
   CharKey '\t' -> return ()
   _ -> return ()
-
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
