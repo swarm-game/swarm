@@ -71,7 +71,7 @@
     char: 'o'
   description:
   - A medium-sized rock, picked up from the ground or created by drilling.
-    Can be used to build a simple furnace, among other things.
+    Can be ground into sand or used to build a simple furnace, among other things.
   properties: [portable]
 
 - name: handle
@@ -440,9 +440,10 @@
     attr: sand
     char: '█'
   description:
-  - A substance composed mostly of tiny rocks and mineral particles.  It
-    tends to be found near water, and can be used in a furnace to make glass.
-  properties: [portable, infinite]
+  - A substance composed mostly of tiny rocks and mineral particles that can be
+    used in a furnace to make glass.  You can often find it near water, or
+    make it yourself by grinding up rocks.
+  properties: [portable]
 
 - name: glass
   display:

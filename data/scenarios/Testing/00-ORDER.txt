@@ -22,4 +22,5 @@
 961-custom-capabilities.yaml
 956-GPS.yaml
 958-isempty.yaml
+1024-sand.yaml
 1034-custom-attributes.yaml
