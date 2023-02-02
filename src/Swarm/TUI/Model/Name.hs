@@ -18,7 +18,8 @@ data ScenarioConfigPanel
 
 data ScenarioConfigPanelFocusable
   = SeedSelector
-  | ScriptSelector
+  | -- | The file selector for launching a scenario with a script
+    ScriptSelector
   | StartGameButton
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 

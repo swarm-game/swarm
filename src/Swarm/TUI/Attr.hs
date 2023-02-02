@@ -48,11 +48,13 @@ module Swarm.TUI.Attr (
   greenAttr,
   redAttr,
   defAttr,
+  customEditFocusedAttr,
 ) where
 
 import Brick
 import Brick.Forms
 import Brick.Widgets.Dialog
+import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.List
 import Data.Bifunctor (bimap)
 import Data.Yaml
@@ -73,6 +75,7 @@ swarmAttrMap =
            (highlightAttr, fg V.cyan)
          , (invalidFormInputAttr, fg V.red)
          , (focusedFormInputAttr, V.defAttr)
+         , (customEditFocusedAttr, V.black `on` V.yellow)
          , (listSelectedFocusedAttr, bg V.blue)
          , (infoAttr, fg (V.rgbColor @Int 50 50 50))
          , (buttonSelectedAttr, bg V.blue)
@@ -173,6 +176,8 @@ yellowAttr = attrName "yellow"
 cyanAttr = attrName "cyan"
 lightCyanAttr = attrName "lightCyan"
 magentaAttr = attrName "magenta"
+
+customEditFocusedAttr = attrName "custom" <> E.editFocusedAttr
 
 instance ToJSON AttrName where
   toJSON = toJSON . head . attrNameComponents

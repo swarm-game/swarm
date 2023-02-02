@@ -58,12 +58,12 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
-import Swarm.Game.Scenario.Launch
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Achievement.Attainment
@@ -87,7 +87,7 @@ data UIState = UIState
   , _uiPlaying :: Bool
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
-  , _uiLaunchConfig :: Maybe LaunchOptions
+  , _uiLaunchConfig :: LaunchOptions
   , _uiWorldCursor :: Maybe W.Coords
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
@@ -141,7 +141,7 @@ uiPlaying :: Lens' UIState Bool
 uiCheatMode :: Lens' UIState Bool
 
 -- | Configuration modal when launching a scenario
-uiLaunchConfig :: Lens' UIState (Maybe LaunchOptions)
+uiLaunchConfig :: Lens' UIState LaunchOptions
 
 -- | The focus ring is the set of UI panels we can cycle among using
 --   the Tab key.
@@ -286,7 +286,7 @@ initUIState showMainMenu cheatMode = do
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
           , _uiPlaying = not showMainMenu
           , _uiCheatMode = cheatMode
-          , _uiLaunchConfig = Nothing
+          , _uiLaunchConfig = initConfigPanel
           , _uiFocusRing = initFocusRing
           , _uiWorldCursor = Nothing
           , _uiREPL = initREPLState $ newREPLHistory history

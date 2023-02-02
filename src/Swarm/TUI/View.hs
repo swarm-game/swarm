@@ -41,9 +41,7 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Forms qualified as BF
 import Brick.Widgets.Border (
-  borderWithLabel,
   hBorder,
   hBorderWithLabel,
   joinableBorder,
@@ -52,13 +50,10 @@ import Brick.Widgets.Border (
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
-import Brick.Widgets.FileBrowser qualified as FB
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
-import Control.Exception qualified as E
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
-import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
@@ -86,7 +81,8 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.Game.Scenario.Launch
+import Swarm.Game.Scenario.Launch.Model
+import Swarm.Game.Scenario.Launch.View
 import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
@@ -107,7 +103,7 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Menu
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
@@ -182,58 +178,15 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '▒' = dirtAttr
   attrFor _ = defAttr
 
-drawFileBrowser :: FB.FileBrowser Name -> Widget Name
-drawFileBrowser b =
-  centerLayer $ ui <=> help
- where
-  ui =
-    hCenter $
-      vLimit 15 $
-        hLimit 50 $
-          borderWithLabel (txt "Choose a file") $
-            FB.renderFileBrowser True b
-  help =
-    padTop (Pad 1) $
-      vBox
-        [ case FB.fileBrowserException b of
-            Nothing -> emptyWidget
-            Just e ->
-              hCenter $
-                withDefAttr BF.invalidFormInputAttr $
-                  txt $
-                    T.pack $
-                      E.displayException e
-        , hCenter $ txt "Up/Down: select"
-        , hCenter $ txt "/: search, Ctrl-C or Esc: cancel search"
-        , hCenter $ txt "Enter: change directory or select file"
-        , hCenter $ txt "Esc: quit"
-        ]
-
-drawLaunchConfigPanel :: LaunchOptions -> [Widget Name]
-drawLaunchConfigPanel (LaunchOptions maybeFileBrowser seedForm ring) = case maybeFileBrowser of
-  Nothing -> [panelWidget]
-  Just fb -> [drawFileBrowser fb, panelWidget]
- where
-  panelWidget =
-    centerLayer $
-      borderWithLabel (str "Configure scenario") $
-        hLimit 50 $
-          vBox
-            [ padAll 1 $ txt "Hello there!"
-            , renderForm seedForm
-            , hCenter $ str "Select script"
-            , hCenter $ str "Launch"
-            ]
-
 -- | When launching a game, a modal prompt may appear on another layer
 -- to input seed and/or a script to run.
 drawNewGameMenuUI ::
   NonEmpty (BL.List Name ScenarioItem) ->
-  Maybe LaunchOptions ->
+  LaunchOptions ->
   [Widget Name]
-drawNewGameMenuUI (l :| ls) maybeLaunchOptions = case maybeLaunchOptions of
+drawNewGameMenuUI (l :| ls) launchOptions = case launchOptions ^. isDisplayedFor of
   Nothing -> pure mainWidget
-  Just launchOptions -> drawLaunchConfigPanel launchOptions <> pure mainWidget
+  Just _ -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
   mainWidget =
     padLeftRight 20

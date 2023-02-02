@@ -41,8 +41,6 @@ module Swarm.TUI.Controller (
 import Brick hiding (Direction, Location)
 import Brick qualified
 import Brick.Focus
-import Brick.Forms ((@@=))
-import Brick.Forms qualified as Forms
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
@@ -72,7 +70,8 @@ import Linear
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario.Launch
+import Swarm.Game.Scenario.Launch.Controller
+import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
@@ -134,23 +133,12 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l -> case s ^. uiState . uiLaunchConfig of
+          NewGameMenu l -> case s ^. uiState . uiLaunchConfig . isDisplayedFor of
             Nothing -> handleNewGameMenuEvent l
-            Just launchOptions -> handleLaunchOptionsEvent launchOptions
+            Just siPair -> handleLaunchOptionsEvent siPair
           MessagesMenu -> handleMainMessagesEvent
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
-
-
--- TODO
-handleLaunchOptionsEvent
-  :: LaunchOptions
-  -> BrickEvent Name AppEvent
-  -> EventM Name AppState ()
-handleLaunchOptionsEvent launchOptions = \case
-  CharKey '\t' -> return ()
-  _ -> return ()
-
 
 -- | The event handler for the main menu.
 handleMainMenuEvent ::
@@ -241,22 +229,10 @@ handleMainMessagesEvent = \case
 -- | TODO: Don't prompt if the scenario is a tutorial.
 prepareGameStart ::
   ScenarioInfoPair ->
-  NonEmpty (BL.List Name ScenarioItem) ->
   EventM Name AppState ()
-prepareGameStart siPair stack = do
-  uiState . uiMenu .= NewGameMenu stack
+prepareGameStart siPair = do
+  uiState . uiLaunchConfig . isDisplayedFor .= Just siPair
   return ()
- where
-  formFields =
-    [ (padRight (Pad 2) (txt "Seed") <+>)
-        @@= Forms.editShowableField seedVal (ScenarioConfigControl $ ScenarioConfigPanelControl SeedSelector)
-    ]
-
-  myForm = Forms.newForm formFields (SeedSelection 0)
-
-  ring = focusRing $ map (ScenarioConfigControl . ScenarioConfigPanelControl) listEnums
-
--- startGame siPair Nothing
 
 handleNewGameMenuEvent ::
   NonEmpty (BL.List Name ScenarioItem) ->
@@ -271,7 +247,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
   CharKey 'o' -> case snd <$> BL.listSelectedElement curMenu of
-    Just (SISingle siPair) -> prepareGameStart siPair scenarioStack
+    Just (SISingle siPair) -> prepareGameStart siPair
     _ -> continueWithoutRedraw
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
