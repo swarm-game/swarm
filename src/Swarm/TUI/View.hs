@@ -917,8 +917,13 @@ explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry s e
   Just (EquippedEntry e) ->
     explainEntry s e
-      -- Special case: equipped logger device displays the robot's log.
-      <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
+      -- A few special cases:
+      <=> case e ^. entityName of
+            -- equipped logger device displays the robot's log.
+            "logger" -> drawRobotLog s
+            -- equipped tweezers display the robot's current CESK machine state.
+            "tweezers" -> drawRobotMachine s
+            _ -> emptyWidget
   _ -> txt " "
 
 explainEntry :: AppState -> Entity -> Widget Name
@@ -1096,6 +1101,13 @@ drawRobotLog s =
   drawEntry i e =
     (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
       drawLogEntry (not allMe) e
+
+drawRobotMachine :: AppState -> Widget Name
+drawRobotMachine s =
+  vBox
+    [ padBottom (Pad 1) (hBorderWithLabel (txt "Machine"))
+    , txt $ s ^. gameState . to focusedRobot . _Just . machine . to prettyText
+    ]
 
 -- | Draw one log entry with an optional robot name first.
 drawLogEntry :: Bool -> LogEntry -> Widget a

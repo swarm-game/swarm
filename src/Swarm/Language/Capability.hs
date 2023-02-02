@@ -128,6 +128,8 @@ data Capability
     CSum
   | -- | Capability for working with product types.
     CProd
+  | -- | Debug capability.
+    CDebug
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
