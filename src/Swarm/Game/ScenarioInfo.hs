@@ -117,8 +117,8 @@ instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
-data ScenarioCodeMetrics = ScenarioCodeMetrics {
-    astSize :: Int
+data ScenarioCodeMetrics = ScenarioCodeMetrics
+  { astSize :: Int
   , sourceTextLength :: Int
   }
 
@@ -167,13 +167,13 @@ scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
 -- Note that when comparing "best" times, shorter is not always better!
 -- As long as the scenario is not completed (e.g. some do not have win condition)
 -- we consider having fun _longer_ to be better.
-updateScenarioInfoOnQuit
-  :: Bool
-  -> ZonedTime
-  -> Integer
-  -> Bool
-  -> ScenarioInfo
-  -> ScenarioInfo
+updateScenarioInfoOnQuit ::
+  Bool ->
+  ZonedTime ->
+  Integer ->
+  Bool ->
+  ScenarioInfo ->
+  ScenarioInfo
 updateScenarioInfoOnQuit usedRepl z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
   InProgress start _ _ ->
     let el = (diffUTCTime `on` zonedTimeToUTC) z start

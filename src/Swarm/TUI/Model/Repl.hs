@@ -96,7 +96,8 @@ data REPLHistory = REPLHistory
   { _replSeq :: Seq REPLHistItem
   , _replIndex :: Int
   , _replStart :: Int
-  } deriving (Show)
+  }
+  deriving (Show)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''REPLHistory
 
