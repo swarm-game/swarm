@@ -177,6 +177,7 @@ cyanAttr = attrName "cyan"
 lightCyanAttr = attrName "lightCyan"
 magentaAttr = attrName "magenta"
 
+customEditFocusedAttr :: AttrName
 customEditFocusedAttr = attrName "custom" <> E.editFocusedAttr
 
 instance ToJSON AttrName where

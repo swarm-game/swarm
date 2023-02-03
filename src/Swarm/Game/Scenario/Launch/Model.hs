@@ -6,7 +6,6 @@ module Swarm.Game.Scenario.Launch.Model where
 import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
 import Brick.Widgets.FileBrowser qualified as FB
-import Control.Exception qualified as E
 import Control.Lens (makeLenses)
 import Data.Text (Text)
 import Swarm.Game.ScenarioInfo
