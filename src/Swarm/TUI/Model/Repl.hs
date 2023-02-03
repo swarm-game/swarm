@@ -15,6 +15,7 @@ module Swarm.TUI.Model.Repl (
   replLength,
   replSeq,
   newREPLHistory,
+  hasExecutedREPL,
   addREPLItem,
   restartREPLHistory,
   getLatestREPLHistoryItems,
@@ -95,7 +96,7 @@ data REPLHistory = REPLHistory
   { _replSeq :: Seq REPLHistItem
   , _replIndex :: Int
   , _replStart :: Int
-  }
+  } deriving (Show)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''REPLHistory
 
@@ -120,6 +121,9 @@ newREPLHistory xs =
         , _replStart = length s
         , _replIndex = length s
         }
+
+hasExecutedREPL :: REPLHistory -> Bool
+hasExecutedREPL h = _replIndex h > _replStart h
 
 -- | Point the start of REPL history after current last line. See 'replStart'.
 restartREPLHistory :: REPLHistory -> REPLHistory

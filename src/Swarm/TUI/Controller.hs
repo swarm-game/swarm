@@ -468,7 +468,10 @@ saveScenarioInfoOnQuit = do
         ts <- use $ gameState . ticks
         let currentScenarioInfo :: Traversal' AppState ScenarioInfo
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
-        currentScenarioInfo %= updateScenarioInfoOnQuit t ts won
+
+        replHist <- use $ uiState . uiREPL . replHistory
+        liftIO $ writeFile "flarg.txt" $ show replHist
+        currentScenarioInfo %= updateScenarioInfoOnQuit (hasExecutedREPL replHist) t ts won
         status <- preuse currentScenarioInfo
         case status of
           Nothing -> return ()

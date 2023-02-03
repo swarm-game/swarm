@@ -107,12 +107,20 @@ data ScenarioStatus
       }
   deriving (Eq, Ord, Show, Read, Generic)
 
+-- TODO Define a semigroup instance that encodes the
+-- "best" precedence logic, factoring in the completion state.
+
 instance FromJSON ScenarioStatus where
   parseJSON = genericParseJSON scenarioOptions
 
 instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
+
+data ScenarioCodeMetrics = ScenarioCodeMetrics {
+    astSize :: Int
+  , sourceTextLength :: Int
+  }
 
 -- | A @ScenarioInfo@ record stores metadata about a scenario: its
 --   canonical path, most recent status, and best-ever status.
@@ -121,6 +129,7 @@ data ScenarioInfo = ScenarioInfo
   , _scenarioStatus :: ScenarioStatus
   , _scenarioBestTime :: ScenarioStatus
   , _scenarioBestTicks :: ScenarioStatus
+  , _scenarioBestCodeSize :: Maybe ScenarioCodeMetrics
   }
   deriving (Eq, Ord, Show, Read, Generic)
 
@@ -158,11 +167,18 @@ scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
 -- Note that when comparing "best" times, shorter is not always better!
 -- As long as the scenario is not completed (e.g. some do not have win condition)
 -- we consider having fun _longer_ to be better.
-updateScenarioInfoOnQuit :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
-updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
+updateScenarioInfoOnQuit
+  :: Bool
+  -> ZonedTime
+  -> Integer
+  -> Bool
+  -> ScenarioInfo
+  -> ScenarioInfo
+updateScenarioInfoOnQuit usedRepl z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
   InProgress start _ _ ->
     let el = (diffUTCTime `on` zonedTimeToUTC) z start
         cur = (if completed then Complete else InProgress) start el ticks
+        -- TODO Offload this logic to a Semigroup instance of ScenarioStatus
         best f b = case b of
           Complete {} | not completed || f b <= f cur -> b -- keep faster completed
           InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
