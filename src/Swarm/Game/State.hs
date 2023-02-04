@@ -27,10 +27,12 @@ module Swarm.Game.State (
   Announcement (..),
   RunStatus (..),
   Seed,
+  Step (..),
   GameState,
 
   -- ** GameState fields
   creativeMode,
+  gameStep,
   winCondition,
   winSolution,
   gameAchievements,
@@ -269,11 +271,14 @@ makeLenses ''Notifications
 defaultRobotStepsPerTick :: Int
 defaultRobotStepsPerTick = 100
 
+data Step = WorldTick | RobotStep Ordering
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
+  , _gameStep :: Step
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _gameAchievements :: Map GameplayAchievement Attainment
@@ -346,6 +351,9 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
+
+-- | Is the user in creative mode (i.e. able to do anything without restriction)?
+gameStep :: Lens' GameState Step
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
@@ -736,6 +744,7 @@ initGameState = do
   return $
     GameState
       { _creativeMode = False
+      , _gameStep = RobotStep LT
       , _winCondition = NoWinCondition
       , _winSolution = Nothing
       , -- This does not need to be initialized with anything,
