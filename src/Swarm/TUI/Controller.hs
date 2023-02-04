@@ -76,7 +76,7 @@ import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability (Capability (CMake, CDebug))
+import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
 import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
