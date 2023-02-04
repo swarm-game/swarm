@@ -141,7 +141,8 @@ gameTick = do
           EQ -> do
             mOldR <- uses robotMap (IM.lookup focusedRob)
             case mOldR of
-              Nothing -> do -- TODO: robot does not exist - refactor to reuse GT case?
+              Nothing -> do
+                -- TODO: robot does not exist - refactor to reuse GT case?
                 runRobotIDs postFoc
                 gameStep .= RobotStep LT
                 ticks += 1
