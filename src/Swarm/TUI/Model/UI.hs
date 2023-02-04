@@ -31,6 +31,7 @@ module Swarm.TUI.Model.UI (
   lastInfoTime,
   uiShowFPS,
   uiShowZero,
+  uiShowDebug,
   uiShowRobots,
   uiHideRobotsUntil,
   uiInventoryShouldUpdate,
@@ -98,6 +99,7 @@ data UIState = UIState
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
+  , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
   , _uiInventoryShouldUpdate :: Bool
   , _uiTPF :: Double
@@ -185,6 +187,9 @@ uiShowFPS :: Lens' UIState Bool
 
 -- | A toggle to show or hide inventory items with count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
+
+-- | A toggle to show debug. TODO: use record for selection of debug features?
+uiShowDebug :: Lens' UIState Bool
 
 -- | Hide robots on the world map.
 uiHideRobotsUntil :: Lens' UIState TimeSpec
@@ -294,6 +299,7 @@ initUIState showMainMenu cheatMode = do
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
           , _uiShowZero = True
+          , _uiShowDebug = False
           , _uiHideRobotsUntil = startTime - 1
           , _uiInventoryShouldUpdate = False
           , _uiTPF = 0

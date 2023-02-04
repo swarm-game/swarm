@@ -47,8 +47,8 @@ import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
-import Control.Lens
-import Control.Lens.Extras (is)
+import Control.Lens as Lens
+import Control.Lens.Extras as Lens (is)
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State
@@ -76,7 +76,7 @@ import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability (Capability (CMake))
+import Swarm.Language.Capability (Capability (CMake, CDebug))
 import Swarm.Language.Context
 import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
@@ -255,6 +255,8 @@ handleMainEvent ev = do
   s <- get
   mt <- preuse $ uiState . uiModal . _Just . modalType
   let isRunning = maybe True isRunningModal mt
+  let isPaused = s ^. gameState . paused
+  let hasDebug = fromMaybe False $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   case ev of
     AppEvent Frame
       | s ^. gameState . paused -> continueWithoutRedraw
@@ -287,10 +289,12 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
+    -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
         then toggleModal GoalModal
         else continueWithoutRedraw
+    -- hide robots
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
@@ -301,6 +305,8 @@ handleMainEvent ev = do
         do
           uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
           invalidateCacheEntry WorldCache
+    -- show debug
+    MetaChar 'd' | isPaused && hasDebug -> uiState . uiShowDebug %= not
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
