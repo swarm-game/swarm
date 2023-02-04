@@ -88,7 +88,7 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability (constCaps, Capability (..))
+import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
@@ -926,9 +926,9 @@ explainEntry s e =
     [ displayProperties $ Set.toList (e ^. entityProperties)
     , displayParagraphs (e ^. entityDescription)
     , explainRecipes s e
-    ] <>
-    [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug] <>
-    [drawRobotLog s | e ^. entityCapabilities . Lens.contains CLog]
+    ]
+      <> [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug]
+      <> [drawRobotLog s | e ^. entityCapabilities . Lens.contains CLog]
 
 displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty
@@ -1101,10 +1101,11 @@ drawRobotLog s =
 drawRobotMachine :: AppState -> Bool -> Widget Name
 drawRobotMachine s showName = case s ^. gameState . to focusedRobot of
   Nothing -> machineLine "no selected robot"
-  Just r -> vBox
-    [ machineLine $ r ^. robotName <> "#" <> r ^. robotID . to tshow
-    , txt $ r ^. machine . to prettyText
-    ]
+  Just r ->
+    vBox
+      [ machineLine $ r ^. robotName <> "#" <> r ^. robotID . to tshow
+      , txt $ r ^. machine . to prettyText
+      ]
  where
   tshow = T.pack . show
   hLine t = padBottom (Pad 1) (hBorderWithLabel (txt t))
