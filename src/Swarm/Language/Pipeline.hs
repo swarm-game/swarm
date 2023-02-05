@@ -63,7 +63,7 @@ tryProcess x = case x of
   Right val -> return val
 
 instance FromJSON ProcessedTerm where
-  parseJSON = withText "Term" $ tryProcess . processTermEither
+  parseJSON = withText "Term" $ either fail return . processTermEither
 
 instance ToJSON ProcessedTerm where
   toJSON (ProcessedTerm t _ _) = String $ prettyText (moduleAST t)
