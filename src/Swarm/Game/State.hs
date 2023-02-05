@@ -156,8 +156,7 @@ import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Const, Term' (TText), allConst)
+import Swarm.Language.Syntax (Const, allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
@@ -165,17 +164,13 @@ import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Location
+import Swarm.Util.RunCode (CodeToRun (..), getParsedInitialCode)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
-import Witch (into)
 
 ------------------------------------------------------------
 -- Subsidiary data types
 ------------------------------------------------------------
-
-data CodeToRun
-  = SuggestedSolution ProcessedTerm
-  | ScriptPath FilePath
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -834,9 +829,7 @@ scenarioToGameState scenario userSeed toRun g = do
   -- the others existed only to serve as a template for robots drawn
   -- in the world map
   locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
-  getCodeToRun x = case x of
-    SuggestedSolution s -> s
-    ScriptPath (into @Text -> f) -> [tmQ| run($str:f) |]
+  getCodeToRun (CodeToRun _ s) = s
 
   -- Rules for selecting the "base" robot:
   -- -------------------------------------
@@ -946,11 +939,16 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
 -- Note that this function is used only for unit tests, integration tests, and benchmarks.
 --
 -- In normal play, the code path that gets executed is scenarioToAppState.
-initGameStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO GameState
+initGameStateForScenario ::
+  String ->
+  Maybe Seed ->
+  Maybe FilePath ->
+  ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   g <- initGameState
   (scene, path) <- loadScenario sceneName (g ^. entityMap)
-  gs <- liftIO $ scenarioToGameState scene userSeed (ScriptPath <$> toRun) g
+  maybeRunScript <- getParsedInitialCode toRun
+  gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
   normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
   t <- liftIO getZonedTime
   return $

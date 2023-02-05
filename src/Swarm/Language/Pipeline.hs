@@ -19,6 +19,7 @@ module Swarm.Language.Pipeline (
   processTerm',
   processParsedTerm',
   showTypeErrorPos,
+  processTermEither,
 ) where
 
 import Control.Lens ((^.))
@@ -50,14 +51,19 @@ data ProcessedTerm
       -- ^ Capability context for any definitions embedded in the term
   deriving (Data, Show, Eq, Generic)
 
+processTermEither :: Text -> Either String ProcessedTerm
+processTermEither t = case processTerm t of
+  Left err -> Left $ "Could not parse term: " ++ from err
+  Right Nothing -> Left "Term was only whitespace"
+  Right (Just pt) -> Right pt
+
+tryProcess :: MonadFail m => Either String a -> m a
+tryProcess x = case x of
+  Left err -> fail err
+  Right val -> return val
+
 instance FromJSON ProcessedTerm where
-  parseJSON = withText "Term" tryProcess
-   where
-    tryProcess :: Text -> Y.Parser ProcessedTerm
-    tryProcess t = case processTerm t of
-      Left err -> fail $ "Could not parse term: " ++ from err
-      Right Nothing -> fail "Term was only whitespace"
-      Right (Just pt) -> return pt
+  parseJSON = withText "Term" $ tryProcess . processTermEither
 
 instance ToJSON ProcessedTerm where
   toJSON (ProcessedTerm t _ _) = String $ prettyText (moduleAST t)

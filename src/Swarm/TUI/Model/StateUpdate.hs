@@ -45,6 +45,7 @@ import Swarm.TUI.Model.Failure (prettyFailure)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
+import Swarm.Util.RunCode
 import System.Clock
 
 -- | Initialize the 'AppState'.
@@ -60,15 +61,16 @@ initAppState AppOpts {..} = do
     False -> return $ AppState gs ui rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
+      maybeRunScript <- getParsedInitialCode scriptToRun
 
       let maybeAutoplay = do
             guard autoPlay
             soln <- scenario ^. scenarioSolution
-            return $ SuggestedSolution soln
-      let realToRun = maybeAutoplay <|> (ScriptPath <$> scriptToRun)
+            return $ CodeToRun ScenarioSuggested soln
+      let codeToRun = maybeAutoplay <|> maybeRunScript
 
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) realToRun)
+        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) codeToRun)
         (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.
