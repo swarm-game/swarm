@@ -45,7 +45,6 @@ import Swarm.TUI.Model.Failure (prettyFailure)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
-import Swarm.Util.RunCode
 import System.Clock
 
 -- | Initialize the 'AppState'.

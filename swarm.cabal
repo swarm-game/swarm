@@ -153,7 +153,6 @@ library
                       Swarm.TUI.View.Util
                       Swarm.Util
                       Swarm.Util.Location
-                      Swarm.Util.RunCode
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web

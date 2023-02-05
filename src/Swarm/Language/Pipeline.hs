@@ -57,11 +57,6 @@ processTermEither t = case processTerm t of
   Right Nothing -> Left "Term was only whitespace"
   Right (Just pt) -> Right pt
 
-tryProcess :: MonadFail m => Either String a -> m a
-tryProcess x = case x of
-  Left err -> fail err
-  Right val -> return val
-
 instance FromJSON ProcessedTerm where
   parseJSON = withText "Term" $ either fail return . processTermEither
 

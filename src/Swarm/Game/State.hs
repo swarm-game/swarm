@@ -85,6 +85,8 @@ module Swarm.Game.State (
   initGameStateForScenario,
   classicGame0,
   CodeToRun (..),
+  SolutionSource (..),
+  getParsedInitialCode,
 
   -- * Utilities
   applyViewCenterRule,
@@ -108,7 +110,7 @@ module Swarm.Game.State (
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Arrow (Arrow ((&&&)))
+import Control.Arrow (Arrow ((&&&)), left)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
@@ -132,8 +134,9 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (lines)
+import Data.Text qualified as T (lines, pack)
 import Data.Text.IO qualified as T (readFile)
+import Data.Text.IO qualified as TIO
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
@@ -155,7 +158,7 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pipeline (ProcessedTerm, processTermEither)
 import Swarm.Language.Syntax (Const, allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
@@ -164,7 +167,6 @@ import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Location
-import Swarm.Util.RunCode (CodeToRun (..), getParsedInitialCode)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
@@ -254,6 +256,26 @@ instance Monoid (Notifications a) where
   mempty = Notifications 0 []
 
 makeLenses ''Notifications
+
+data SolutionSource
+  = ScenarioSuggested
+  | PlayerAuthored
+
+data CodeToRun = CodeToRun SolutionSource ProcessedTerm
+
+getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
+getParsedInitialCode toRun = do
+  maybeRunScript <- ExceptT $ case toRun of
+    Nothing -> return $ Right Nothing
+    Just filepath -> do
+      contents <- TIO.readFile filepath
+      return $
+        sequenceA $
+          Just $
+            left T.pack $
+              processTermEither contents
+
+  return $ CodeToRun PlayerAuthored <$> maybeRunScript
 
 ------------------------------------------------------------
 -- The main GameState record type
