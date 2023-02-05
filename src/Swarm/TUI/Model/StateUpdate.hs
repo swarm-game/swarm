@@ -90,6 +90,9 @@ restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Not
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
+--
+-- Note: Some of the code in this function is duplicated
+-- with "initGameStateForScenario".
 startGameWithSeed ::
   (MonadIO m, MonadState AppState m) =>
   Maybe Seed ->

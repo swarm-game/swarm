@@ -991,10 +991,17 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
 -- Note that this function is used only for unit tests, integration tests, and benchmarks.
 --
 -- In normal play, the code path that gets executed is scenarioToAppState.
+--
+-- Note: Some of the code in this function is duplicated
+-- with "startGameWithSeed".
 initGameStateForScenario ::
+
   String ->
+ 
   Maybe Seed ->
+ 
   Maybe FilePath ->
+ 
   ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   g <- initGameState

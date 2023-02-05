@@ -93,7 +93,7 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
-import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.), para, universe)
+import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
 import Data.Aeson.Types
 import Data.Char qualified as C (toLower)
 import Data.Data (Data)
@@ -105,7 +105,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
-import Data.Text hiding (filter, map, length)
+import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)

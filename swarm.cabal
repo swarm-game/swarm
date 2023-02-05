@@ -103,6 +103,7 @@ library
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.Scoring.CodeSize
+                      Swarm.Game.Scenario.Scoring.Progress
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
