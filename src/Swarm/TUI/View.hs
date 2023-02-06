@@ -80,17 +80,11 @@ import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythi
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.Metrics
+import Swarm.Game.Scenario.Scoring.Progress
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
-  ScenarioStatus (..),
-  scenarioBestByAstSize,
-  scenarioBestByCharCount,
-  scenarioBestByTicks,
-  scenarioBestByTime,
-  scenarioBestRecords,
   scenarioItemName,
-  scenarioStatus,
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
@@ -192,21 +186,21 @@ drawNewGameMenuUI (l :| ls) =
  where
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
-  drawStatusInfo s si = case si ^. scenarioBestRecords . scenarioBestByTime of
+  drawStatusInfo s si = case si ^. scenarioStatus of
     NotStarted -> txt " ○ "
-    InProgress {} -> case s ^. scenarioObjectives of
+    Played (Metric Attempted _) _ -> case s ^. scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
-    Complete {} -> withAttr greenAttr $ txt " ● "
+    Played (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
 
   describeStatus = \case
     NotStarted -> txt "none"
-    InProgress (ProgressMetric _s (AttemptMetrics (DurationMetrics e _t) _cm)) ->
+    Played (Metric Attempted (ProgressStats _s (AttemptMetrics (DurationMetrics e _t) _cm))) _best ->
       withAttr yellowAttr . vBox $
         [ txt "in progress"
         , txt $ "(played for " <> formatTimeDiff e <> ")"
         ]
-    Complete (ProgressMetric _s (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics)) ->
+    Played (Metric Completed (ProgressStats _s (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics))) _best ->
       withAttr greenAttr . vBox $
         catMaybes
           [ Just $ txt $ "completed in " <> formatTimeDiff e
@@ -251,20 +245,12 @@ drawNewGameMenuUI (l :| ls) =
           . txt
           <$> (s ^. scenarioAuthor)
       , Just $
-          padTop (Pad 3) $
-            padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestRecords . scenarioBestByTime)
-      , noSame $ -- hide best game time if it is same as best real time
           padTop (Pad 1) $
-            txt "best game time: " <+> describeStatus (si ^. scenarioBestRecords . scenarioBestByTicks)
-      , Just $
-          padTop (Pad 1) $
-            padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
+            padRight (Pad 1) (txt "last:") <+> describeStatus (si ^. scenarioStatus)
       ]
-   where
-    oneBest = si ^. scenarioBestRecords . scenarioBestByTime == si ^. scenarioBestRecords . scenarioBestByTicks
-    bestRealTime = if oneBest then "best:" else "best real time:"
-    noSame = if oneBest then const Nothing else Just
-    lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
+  -- TODO: Use the "scenarioStarted" member to de-dupe
+  -- records that are from the same game. The start time should
+  -- be sufficient to uniquely identify a game.
 
   nonBlank "" = " "
   nonBlank t = t

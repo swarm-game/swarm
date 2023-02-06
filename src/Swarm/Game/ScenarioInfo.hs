@@ -15,13 +15,10 @@ module Swarm.Game.ScenarioInfo (
   -- * Scenario info
   ScenarioStatus (..),
   _NotStarted,
-  _InProgress,
-  _Complete,
   ScenarioInfo (..),
   BestRecords (..),
   scenarioPath,
   scenarioStatus,
-  scenarioBestRecords,
   scenarioBestByTime,
   scenarioBestByTicks,
   scenarioBestByCharCount,
@@ -227,9 +224,7 @@ loadScenarioInfo p = do
  where
   -- >>= either (throwError . pack . prettyPrintParseException) return
 
-  emptyInfo path =
-    ScenarioInfo path NotStarted $
-      BestRecords NotStarted NotStarted NotStarted NotStarted
+  emptyInfo path = ScenarioInfo path NotStarted
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::

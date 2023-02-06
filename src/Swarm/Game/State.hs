@@ -157,6 +157,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.Scenario.Scoring.Metrics
+import Swarm.Game.Scenario.Scoring.Progress
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
@@ -1015,7 +1016,8 @@ initGameStateForScenario sceneName userSeed toRun = do
   return $
     gs
       & currentScenarioPath ?~ normalPath
-      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus .~ InProgress (ProgressMetric t emptyAttemptMetric)
+      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus
+        .~ Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.
