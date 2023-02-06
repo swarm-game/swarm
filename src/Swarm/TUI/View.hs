@@ -79,12 +79,16 @@ import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, s
 import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.Scenario.Scoring.CodeSize
+import Swarm.Game.Scenario.Scoring.Metrics
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
-  scenarioBestCodeSize,
-  scenarioBestTicks,
-  scenarioBestTime,
+  scenarioBestByAstSize,
+  scenarioBestByCharCount,
+  scenarioBestByTicks,
+  scenarioBestByTime,
+  scenarioBestRecords,
   scenarioItemName,
   scenarioStatus,
  )
@@ -188,7 +192,7 @@ drawNewGameMenuUI (l :| ls) =
  where
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
-  drawStatusInfo s si = case si ^. scenarioBestTime of
+  drawStatusInfo s si = case si ^. scenarioBestRecords . scenarioBestByTime of
     NotStarted -> txt " ○ "
     InProgress {} -> case s ^. scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
@@ -197,20 +201,34 @@ drawNewGameMenuUI (l :| ls) =
 
   describeStatus = \case
     NotStarted -> txt "none"
-    InProgress _s e _t ->
+    InProgress (ProgressMetric _s (AttemptMetrics (DurationMetrics e _t) _cm)) ->
       withAttr yellowAttr . vBox $
         [ txt "in progress"
         , txt $ "(played for " <> formatTimeDiff e <> ")"
         ]
-    Complete _s e t ->
+    Complete (ProgressMetric _s (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics)) ->
       withAttr greenAttr . vBox $
-        [ txt $ "completed in " <> formatTimeDiff e
-        , hBox
-            [ txt "("
-            , drawTime t True
-            , txt " ticks)"
+        catMaybes
+          [ Just $ txt $ "completed in " <> formatTimeDiff e
+          , Just $
+              hBox
+                [ txt "("
+                , drawTime t True
+                , txt " ticks)"
+                ]
+          , sizeDisplay <$> maybeCodeMetrics
+          ]
+     where
+      sizeDisplay (ScenarioCodeMetrics myCharCount myAstSize) =
+        padTop (Pad 1) $
+          padRight (Pad 1) sizeText <+> details
+       where
+        details =
+          withAttr greenAttr . vBox $
+            [ str $ unwords ["Character count:", show myCharCount]
+            , str $ unwords ["AST size:", show myAstSize]
             ]
-        ]
+        sizeText = txt "size:"
 
   formatTimeDiff :: NominalDiffTime -> Text
   formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %Mm %Ss"
@@ -234,31 +252,19 @@ drawNewGameMenuUI (l :| ls) =
           <$> (s ^. scenarioAuthor)
       , Just $
           padTop (Pad 3) $
-            padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestTime)
+            padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestRecords . scenarioBestByTime)
       , noSame $ -- hide best game time if it is same as best real time
           padTop (Pad 1) $
-            txt "best game time: " <+> describeStatus (si ^. scenarioBestTicks)
+            txt "best game time: " <+> describeStatus (si ^. scenarioBestRecords . scenarioBestByTicks)
       , Just $
           padTop (Pad 1) $
             padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
-      , sizeDisplay <$> si ^. scenarioBestCodeSize
       ]
    where
-    sizeDisplay (ScenarioCodeMetrics myCharCount myAstSize) =
-      padTop (Pad 1) $
-        padRight (Pad 1) sizeText <+> details
-     where
-      details =
-        withAttr greenAttr . vBox $
-          [ str $ unwords ["Character count:", show myCharCount]
-          , str $ unwords ["AST size:", show myAstSize]
-          ]
-
-    oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
+    oneBest = si ^. scenarioBestRecords . scenarioBestByTime == si ^. scenarioBestRecords . scenarioBestByTicks
     bestRealTime = if oneBest then "best:" else "best real time:"
     noSame = if oneBest then const Nothing else Just
     lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
-    sizeText = let la = "size:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
 
   nonBlank "" = " "
   nonBlank t = t

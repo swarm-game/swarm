@@ -1,6 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-partial-fields #-}
 
 -- -Wno-orphans is for the Eq/Ord Time instances
 
@@ -20,11 +18,14 @@ module Swarm.Game.ScenarioInfo (
   _InProgress,
   _Complete,
   ScenarioInfo (..),
+  BestRecords (..),
   scenarioPath,
   scenarioStatus,
-  scenarioBestTime,
-  scenarioBestTicks,
-  scenarioBestCodeSize,
+  scenarioBestRecords,
+  scenarioBestByTime,
+  scenarioBestByTicks,
+  scenarioBestByCharCount,
+  scenarioBestByAstSize,
   CodeSizeDeterminators (CodeSizeDeterminators),
   updateScenarioInfoOnQuit,
   ScenarioInfoPair,
@@ -72,125 +73,11 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
+import Swarm.Game.Scenario.Status
 import Swarm.Util (dataNotFound, getDataDirSafe, getSwarmSavePath)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
-
--- Some orphan ZonedTime instances
-
-instance Eq ZonedTime where
-  (==) = (==) `on` zonedTimeToUTC
-
-instance Ord ZonedTime where
-  (<=) = (<=) `on` zonedTimeToUTC
-
--- | A @ScenarioStatus@ stores the status of a scenario along with
---   appropriate metadata: not started, in progress, or complete.
---   Note that "in progress" is currently a bit of a misnomer since
---   games cannot be saved; at the moment it really means more like
---   "you played this scenario before but didn't win".
-data ScenarioStatus
-  = NotStarted
-  | InProgress
-      { _scenarioStarted :: ZonedTime
-      -- ^ Time when the scenario was started including time zone.
-      , _scenarioElapsed :: NominalDiffTime
-      -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: Integer
-      -- ^ Ticks elapsed until quitting the scenario.
-      }
-  | Complete
-      { _scenarioStarted :: ZonedTime
-      -- ^ Time when the scenario was started including time zone.
-      , _scenarioElapsed :: NominalDiffTime
-      -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: Integer
-      -- ^ Ticks elapsed until quitting the scenario.
-      }
-  deriving (Eq, Ord, Show, Read, Generic)
-
--- TODO Define a semigroup instance that encodes the
--- "best" precedence logic, factoring in the completion state.
-
-instance FromJSON ScenarioStatus where
-  parseJSON = genericParseJSON scenarioOptions
-
-instance ToJSON ScenarioStatus where
-  toEncoding = genericToEncoding scenarioOptions
-  toJSON = genericToJSON scenarioOptions
-
--- | A @ScenarioInfo@ record stores metadata about a scenario: its
---   canonical path, most recent status, and best-ever status.
-data ScenarioInfo = ScenarioInfo
-  { _scenarioPath :: FilePath
-  , _scenarioStatus :: ScenarioStatus
-  , _scenarioBestTime :: ScenarioStatus
-  , _scenarioBestTicks :: ScenarioStatus
-  , _scenarioBestCodeSize :: Maybe ScenarioCodeMetrics
-  }
-  deriving (Eq, Ord, Show, Read, Generic)
-
-instance FromJSON ScenarioInfo where
-  parseJSON = genericParseJSON scenarioOptions
-
-instance ToJSON ScenarioInfo where
-  toEncoding = genericToEncoding scenarioOptions
-  toJSON = genericToJSON scenarioOptions
-
-type ScenarioInfoPair = (Scenario, ScenarioInfo)
-
-scenarioOptions :: Options
-scenarioOptions =
-  defaultOptions
-    { fieldLabelModifier = map toLower . drop (length "_scenario")
-    }
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''ScenarioInfo
-
--- | The path of the scenario, relative to @data/scenarios@.
-scenarioPath :: Lens' ScenarioInfo FilePath
-
--- | The status of the scenario.
-scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
-
--- | The best status of the scenario, measured in real world time.
-scenarioBestTime :: Lens' ScenarioInfo ScenarioStatus
-
--- | The best status of the scenario, measured in game ticks.
-scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
-
--- | The best code size of the scenario, measured both in character count and AST size.
-scenarioBestCodeSize :: Lens' ScenarioInfo (Maybe ScenarioCodeMetrics)
-
--- | Update the current @ScenarioInfo@ record when quitting a game.
---
--- Note that when comparing "best" times, shorter is not always better!
--- As long as the scenario is not completed (e.g. some do not have win condition)
--- we consider having fun _longer_ to be better.
-updateScenarioInfoOnQuit ::
-  CodeSizeDeterminators ->
-  ZonedTime ->
-  Integer ->
-  Bool ->
-  ScenarioInfo ->
-  ScenarioInfo
-updateScenarioInfoOnQuit
-  csd
-  z
-  ticks
-  completed
-  (ScenarioInfo p s bTime bTicks _prevCodeSize) = case s of
-    InProgress start _ _ ->
-      let el = (diffUTCTime `on` zonedTimeToUTC) z start
-          cur = (if completed then Complete else InProgress) start el ticks
-          -- TODO Offload this logic to a Semigroup instance of ScenarioStatus
-          best f b = case b of
-            Complete {} | not completed || f b <= f cur -> b -- keep faster completed
-            InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
-            _ -> cur -- otherwise update with current
-       in ScenarioInfo p cur (best _scenarioElapsed bTime) (best _scenarioElapsedTicks bTicks) (codeSizeFromDeterminator csd)
-    _ -> error "Logical error: trying to quit scenario which is not in progress!"
 
 -- ----------------------------------------------------------------------------
 -- Scenario Item
@@ -342,7 +229,9 @@ loadScenarioInfo p = do
   hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
     then do
-      return $ ScenarioInfo path NotStarted NotStarted NotStarted Nothing
+      return $
+        ScenarioInfo path NotStarted $
+          BestRecords NotStarted NotStarted NotStarted NotStarted
     else
       sendIO (decodeFileEither infoPath)
         >>= either (throwError . pack . prettyPrintParseException) return
