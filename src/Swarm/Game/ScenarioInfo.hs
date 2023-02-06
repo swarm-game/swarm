@@ -53,23 +53,13 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, unless, when)
-import Data.Aeson (
-  Options (..),
-  defaultOptions,
-  genericParseJSON,
-  genericToEncoding,
-  genericToJSON,
- )
-import Data.Char (isSpace, toLower)
-import Data.Function (on)
+import Data.Char (isSpace)
 import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
-import Data.Text (Text, pack)
-import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
+import Data.Text (Text)
 import Data.Yaml as Y
-import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
@@ -228,13 +218,18 @@ loadScenarioInfo p = do
   infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
   hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
-    then do
-      return $
-        ScenarioInfo path NotStarted $
-          BestRecords NotStarted NotStarted NotStarted NotStarted
-    else
-      sendIO (decodeFileEither infoPath)
-        >>= either (throwError . pack . prettyPrintParseException) return
+    then return $ emptyInfo path
+    else do
+      eitherDecodedInfo <- sendIO (decodeFileEither infoPath)
+      case eitherDecodedInfo of
+        Left _ -> return $ emptyInfo path -- FIXME Log exceptions
+        Right x -> return x
+ where
+  -- >>= either (throwError . pack . prettyPrintParseException) return
+
+  emptyInfo path =
+    ScenarioInfo path NotStarted $
+      BestRecords NotStarted NotStarted NotStarted NotStarted
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
