@@ -26,6 +26,7 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
 import Swarm.Game.Scenario.Scoring.Metrics
+import Swarm.Game.Scenario.Scoring.Progress
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   normalizeScenarioPath,
@@ -65,7 +66,7 @@ initAppState AppOpts {..} = do
             return $ CodeToRun ScenarioSuggested soln
       let codeToRun = maybeAutoplay <|> maybeRunScript
 
-      let si = ScenarioInfo path NotStarted $ BestRecords NotStarted NotStarted NotStarted NotStarted
+      let si = ScenarioInfo path NotStarted
       execStateT
         (startGameWithSeed userSeed (scenario, si) codeToRun)
         (AppState gs ui rs)
@@ -102,8 +103,13 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress (ProgressMetric t emptyAttemptMetric)
+  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus
+    .= Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (prevBest t)
   scenarioToAppState siPair userSeed toRun
+ where
+  prevBest t = case si ^. scenarioStatus of
+    NotStarted -> emptyBest t
+    Played _ b -> b
 
 -- TODO: #516 do we need to keep an old entity map around???
 

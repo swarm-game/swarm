@@ -16,18 +16,77 @@ import GHC.Generics (Generic)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.Metrics
+import Swarm.Game.Scenario.Scoring.Progress
 
-data ProgressMetric = ProgressMetric
+-- Some orphan ZonedTime instances
+
+instance Eq ZonedTime where
+  (==) = (==) `on` zonedTimeToUTC
+
+instance Ord ZonedTime where
+  (<=) = (<=) `on` zonedTimeToUTC
+
+data ProgressStats = ProgressStats
   { _scenarioStarted :: ZonedTime
   -- ^ Time when the scenario was started including time zone.
   , _scenarioAttemptMetrics :: AttemptMetrics
   }
   deriving (Eq, Ord, Show, Read, Generic)
 
-instance FromJSON ProgressMetric where
+makeLenses ''ProgressStats
+
+instance FromJSON ProgressStats where
   parseJSON = genericParseJSON scenarioOptions
 
-instance ToJSON ProgressMetric where
+instance ToJSON ProgressStats where
+  toEncoding = genericToEncoding scenarioOptions
+  toJSON = genericToJSON scenarioOptions
+
+type ProgressMetric = Metric ProgressStats
+
+data BestRecords = BestRecords
+  { _scenarioBestByTime :: ProgressMetric
+  , _scenarioBestByTicks :: ProgressMetric
+  , _scenarioBestByCharCount :: ProgressMetric
+  , _scenarioBestByAstSize :: ProgressMetric
+  }
+  deriving (Eq, Ord, Show, Read, Generic)
+
+emptyBest :: ZonedTime -> BestRecords
+emptyBest t = BestRecords x x x x
+ where
+  x = Metric Attempted $ ProgressStats t emptyAttemptMetric
+
+updateBest :: ProgressMetric -> BestRecords -> BestRecords
+updateBest newPlayMetric (BestRecords oldA oldB oldC oldD) =
+  BestRecords
+    (bestTime oldA scenarioElapsed)
+    (bestTime oldB scenarioElapsedTicks)
+    (bestSize oldC sourceTextLength)
+    (bestSize oldD astSize)
+ where
+  f x y = chooseBetter y newPlayMetric x
+  bestTime x y = f x (view $ scenarioAttemptMetrics . scenarioDurationMetrics . y)
+  bestSize x y = f x (fmap y . view (scenarioAttemptMetrics . scenarioCodeMetrics))
+
+makeLensesWith (lensRules & generateSignatures .~ False) ''BestRecords
+
+-- | The best status of the scenario, measured in real world time.
+scenarioBestByTime :: Lens' BestRecords ProgressMetric
+
+-- | The best status of the scenario, measured in game ticks.
+scenarioBestByTicks :: Lens' BestRecords ProgressMetric
+
+-- | The best code size of the scenario, measured both in character count and AST size.
+scenarioBestByCharCount :: Lens' BestRecords ProgressMetric
+
+-- | The best code size of the scenario, measured both in character count and AST size.
+scenarioBestByAstSize :: Lens' BestRecords ProgressMetric
+
+instance FromJSON BestRecords where
+  parseJSON = genericParseJSON scenarioOptions
+
+instance ToJSON BestRecords where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
@@ -38,17 +97,8 @@ instance ToJSON ProgressMetric where
 --   "you played this scenario before but didn't win".
 data ScenarioStatus
   = NotStarted
-  | InProgress ProgressMetric
-  | Complete ProgressMetric
+  | Played ProgressMetric BestRecords
   deriving (Eq, Ord, Show, Read, Generic)
-
--- Some orphan ZonedTime instances
-
-instance Eq ZonedTime where
-  (==) = (==) `on` zonedTimeToUTC
-
-instance Ord ZonedTime where
-  (<=) = (<=) `on` zonedTimeToUTC
 
 instance FromJSON ScenarioStatus where
   parseJSON = genericParseJSON scenarioOptions
@@ -57,41 +107,11 @@ instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
-data BestRecords = BestRecords
-  { _scenarioBestByTime :: ScenarioStatus
-  , _scenarioBestByTicks :: ScenarioStatus
-  , _scenarioBestByCharCount :: ScenarioStatus
-  , _scenarioBestByAstSize :: ScenarioStatus
-  }
-  deriving (Eq, Ord, Show, Read, Generic)
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''BestRecords
-
--- | The best status of the scenario, measured in real world time.
-scenarioBestByTime :: Lens' BestRecords ScenarioStatus
-
--- | The best status of the scenario, measured in game ticks.
-scenarioBestByTicks :: Lens' BestRecords ScenarioStatus
-
--- | The best code size of the scenario, measured both in character count and AST size.
-scenarioBestByCharCount :: Lens' BestRecords ScenarioStatus
-
--- | The best code size of the scenario, measured both in character count and AST size.
-scenarioBestByAstSize :: Lens' BestRecords ScenarioStatus
-
-instance FromJSON BestRecords where
-  parseJSON = genericParseJSON scenarioOptions
-
-instance ToJSON BestRecords where
-  toEncoding = genericToEncoding scenarioOptions
-  toJSON = genericToJSON scenarioOptions
-
 -- | A @ScenarioInfo@ record stores metadata about a scenario: its
 --   canonical path, most recent status, and best-ever status.
 data ScenarioInfo = ScenarioInfo
   { _scenarioPath :: FilePath
   , _scenarioStatus :: ScenarioStatus
-  , _scenarioBestRecords :: BestRecords
   }
   deriving (Eq, Ord, Show, Read, Generic)
 
@@ -112,9 +132,6 @@ scenarioPath :: Lens' ScenarioInfo FilePath
 -- | The status of the scenario.
 scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 
--- | The records for best scenario attempt by various metrics
-scenarioBestRecords :: Lens' ScenarioInfo BestRecords
-
 -- | Update the current @ScenarioInfo@ record when quitting a game.
 --
 -- Note that when comparing "best" times, shorter is not always better!
@@ -132,16 +149,17 @@ updateScenarioInfoOnQuit
   z
   ticks
   completed
-  (ScenarioInfo p s (BestRecords bTime bTicks _prevCharCount _prevAstSize)) = case s of
-    InProgress (ProgressMetric start _) ->
-      let el = (diffUTCTime `on` zonedTimeToUTC) z start
-          cs = codeSizeFromDeterminator csd
-          arg = ProgressMetric start $ AttemptMetrics (DurationMetrics el ticks) cs
-          cur = (if completed then Complete else InProgress) arg
-       in ScenarioInfo p cur $
-            BestRecords -- TODO FIXME
-              cur
-              cur
-              cur
-              cur
+  (ScenarioInfo p prevPlayState) = case prevPlayState of
+    Played (Metric Attempted (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
+      ScenarioInfo p $
+        Played newPlayMetric $
+          updateBest newPlayMetric prevBestRecords
+     where
+      el = (diffUTCTime `on` zonedTimeToUTC) z start
+      cs = codeSizeFromDeterminator csd
+      newCompletionFlag = if completed then Completed else Attempted
+      newPlayMetric =
+        Metric newCompletionFlag $
+          ProgressStats start $
+            AttemptMetrics (DurationMetrics el ticks) cs
     _ -> error "Logical error: trying to quit scenario which is not in progress!"

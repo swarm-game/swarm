@@ -42,6 +42,7 @@ module Swarm.Util (
   quote,
   squote,
   bquote,
+  parens,
   commaList,
   indefinite,
   indefiniteQ,
@@ -366,6 +367,10 @@ quote t = T.concat ["\"", t, "\""]
 -- | Surround some text in backticks.
 bquote :: Text -> Text
 bquote t = T.concat ["`", t, "`"]
+
+-- | Surround some text in parentheses.
+parens :: Text -> Text
+parens t = T.concat ["(", t, ")"]
 
 -- | Make a list of things with commas and the word "and".
 commaList :: [Text] -> Text
