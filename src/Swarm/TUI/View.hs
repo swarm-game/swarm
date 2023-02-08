@@ -68,11 +68,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
-import Linear.Affine (Point)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
+import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
@@ -103,7 +103,6 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util
 import Swarm.Util
-import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf

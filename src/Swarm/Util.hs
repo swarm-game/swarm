@@ -19,8 +19,6 @@ module Swarm.Util (
   cycleEnum,
   listEnums,
   uniq,
-  getElemsInArea,
-  manhattan,
   binTuples,
 
   -- * Directory utilities
@@ -78,12 +76,10 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Lens.Lens ((&))
 import Control.Monad (forM, unless, when)
 import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
-import Data.Int (Int32)
 import Data.List (maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -103,7 +99,6 @@ import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import Paths_swarm (getDataDir)
-import Swarm.Util.Location
 import System.Clock (TimeSpec)
 import System.Directory (
   XdgDirectory (XdgData),
@@ -120,7 +115,7 @@ import Witch
 
 -- $setup
 -- >>> import qualified Data.Map as M
--- >>> import Swarm.Util.Location
+-- >>> import Swarm.Game.Location
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -169,43 +164,6 @@ uniq :: Eq a => [a] -> [a]
 uniq = \case
   [] -> []
   (x : xs) -> x : uniq (dropWhile (== x) xs)
-
--- | Manhattan distance between world locations.
-manhattan :: Location -> Location -> Int32
-manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
-
--- | Get elements that are in manhattan distance from location.
---
--- >>> v2s i = [(p, manhattan origin p) | x <- [-i..i], y <- [-i..i], let p = Location x y]
--- >>> v2s 0
--- [(P (V2 0 0),0)]
--- >>> map (\i -> length (getElemsInArea origin i (M.fromList $ v2s i))) [0..8]
--- [1,5,13,25,41,61,85,113,145]
---
--- The last test is the sequence "Centered square numbers":
--- https://oeis.org/A001844
-getElemsInArea :: Location -> Int32 -> Map Location e -> [e]
-getElemsInArea o@(Location x y) d m = M.elems sm'
- where
-  -- to be more efficient we basically split on first coordinate
-  -- (which is logarithmic) and then we have to linearly filter
-  -- the second coordinate to get a square - this is how it looks:
-  --         ▲▲▲▲
-  --         ││││    the arrows mark points that are greater then A
-  --         ││s│                                 and lesser then B
-  --         │sssB (2,1)
-  --         ssoss   <-- o=(x=0,y=0) with d=2
-  -- (-2,-1) Asss│
-  --          │s││   the point o and all s are in manhattan
-  --          ││││                  distance 2 from point o
-  --          ▼▼▼▼
-  sm =
-    m
-      & M.split (Location (x - d) (y - 1)) -- A
-      & snd -- A<
-      & M.split (Location (x + d) (y + 1)) -- B
-      & fst -- B>
-  sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
 
 -- | Place the second element of the tuples into bins by
 -- the value of the first element.

@@ -36,7 +36,7 @@ import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Swarm.Util.Location (Location)
+import Swarm.Game.Location (Location)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.
