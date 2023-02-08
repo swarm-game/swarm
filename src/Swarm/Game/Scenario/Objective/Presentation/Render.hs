@@ -9,6 +9,7 @@ import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from)
+import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (listToMaybe)
@@ -23,7 +24,7 @@ makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
   BL.listMoveTo 1 $ BL.list (GoalWidgets ObjectivesList) (V.fromList objList) 1
  where
-  objList = concatMap f $ M.toList categorizedObjs
+  objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
 renderGoalsDisplay :: GoalDisplay -> Widget Name
@@ -79,6 +80,7 @@ drawGoalListItem ::
   GoalEntry ->
   Widget Name
 drawGoalListItem _isSelected e = case e of
+  Spacer -> str " "
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
@@ -87,5 +89,6 @@ drawGoalListItem _isSelected e = case e of
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Header _gs -> displayParagraphs [" "]
   Goal _gs obj -> displayParagraphs $ obj ^. objectiveGoal
+  -- Only Goal entries are selectable, so we should never see this:
+  _ -> emptyWidget

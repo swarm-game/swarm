@@ -425,7 +425,7 @@ handleModalEvent = \case
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
-    refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev isHeader
+    refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
