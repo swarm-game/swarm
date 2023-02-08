@@ -85,6 +85,10 @@ library
                       Data.BoolExpr.Simplify
                       Swarm.App
                       Swarm.DocGen
+                      Swarm.Game.Achievement.Attainment
+                      Swarm.Game.Achievement.Definitions
+                      Swarm.Game.Achievement.Description
+                      Swarm.Game.Achievement.Persistence
                       Swarm.Game.CESK
                       Swarm.Game.Display
                       Swarm.Game.Entity
@@ -133,10 +137,6 @@ library
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.Achievement.Attainment
-                      Swarm.TUI.Model.Achievement.Definitions
-                      Swarm.TUI.Model.Achievement.Description
-                      Swarm.TUI.Model.Achievement.Persistence
                       Swarm.TUI.Model.Failure
                       Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu

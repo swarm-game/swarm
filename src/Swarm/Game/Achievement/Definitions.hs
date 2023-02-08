@@ -1,4 +1,4 @@
-module Swarm.TUI.Model.Achievement.Definitions where
+module Swarm.Game.Achievement.Definitions where
 
 import Data.Aeson
 import Data.Text (Text)

@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.Model.Achievement.Description where
+module Swarm.Game.Achievement.Description where
 
-import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.Game.Achievement.Definitions
 
 describe :: CategorizedAchievement -> AchievementInfo
 describe (GlobalAchievement CompletedSingleTutorial) =

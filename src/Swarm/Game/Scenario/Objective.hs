@@ -10,9 +10,9 @@ import Data.Aeson
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util (reflow)
 
 ------------------------------------------------------------
