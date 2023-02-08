@@ -53,11 +53,12 @@ type CategorizedGoals = Map GoalStatus (NonEmpty Objective)
 data GoalEntry
   = Header GoalStatus
   | Goal GoalStatus Objective
+  | Spacer
 
-isHeader :: GoalEntry -> Bool
-isHeader = \case
-  Header _ -> True
-  _ -> False
+shouldSkipSelection :: GoalEntry -> Bool
+shouldSkipSelection = \case
+  Goal _ _ -> False
+  _ -> True
 
 data GoalTracking = GoalTracking
   { announcements :: [Announcement]
