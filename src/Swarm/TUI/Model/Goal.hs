@@ -2,7 +2,7 @@
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
 -- A UI-centric model for Objective presentation.
-module Swarm.Game.Scenario.Objective.Presentation.Model where
+module Swarm.TUI.Model.Goal where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
@@ -42,11 +42,6 @@ data GoalStatus
     -- of a negative prerequisite that was completed.
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
-
--- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
-newtype Announcement
-  = ObjectiveCompleted Objective
-  deriving (Show, Generic, ToJSON)
 
 type CategorizedGoals = Map GoalStatus (NonEmpty Objective)
 

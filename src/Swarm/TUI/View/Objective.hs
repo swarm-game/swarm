@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- Display logic for Objectives.
-module Swarm.Game.Scenario.Objective.Presentation.Render where
+module Swarm.TUI.View.Objective where
 
 import Brick hiding (Direction, Location)
 import Brick.Focus
@@ -14,8 +14,8 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.TUI.Attr
+import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Util
 
