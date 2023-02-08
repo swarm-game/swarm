@@ -107,9 +107,9 @@ import Data.Text hiding (filter, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear
+import Swarm.Game.Location (Heading)
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
-import Swarm.Util.Location (Heading)
 import Witch.From (from)
 
 ------------------------------------------------------------

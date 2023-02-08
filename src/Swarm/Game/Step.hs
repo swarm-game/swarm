@@ -57,6 +57,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
+import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
@@ -73,7 +74,6 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util
-import Swarm.Util.Location
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)

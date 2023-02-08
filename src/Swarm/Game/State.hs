@@ -140,6 +140,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
+import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
   inRecipeMap,
@@ -162,8 +163,7 @@ import Swarm.Language.Syntax (Const, Term' (TText), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
-import Swarm.Util.Location
+import Swarm.Util (getDataFileNameSafe, isRightOr, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 import Witch (into)

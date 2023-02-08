@@ -10,9 +10,9 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Entity
+import Swarm.Game.Location
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.RobotLookup
-import Swarm.Util.Location
 import Swarm.Util.Yaml
 import Witch (into)
 
