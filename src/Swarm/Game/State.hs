@@ -998,13 +998,9 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
 -- Note: Some of the code in this function is duplicated
 -- with "startGameWithSeed".
 initGameStateForScenario ::
-
   String ->
- 
   Maybe Seed ->
- 
   Maybe FilePath ->
- 
   ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   g <- initGameState

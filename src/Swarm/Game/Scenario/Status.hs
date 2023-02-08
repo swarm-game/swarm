@@ -64,10 +64,10 @@ updateBest newPlayMetric (BestRecords oldA oldB oldC oldD) =
     (bestTime oldB scenarioElapsedTicks)
     (bestSize oldC sourceTextLength)
     (bestSize oldD astSize)
-  where
-    f x y = chooseBetter y newPlayMetric x
-    bestTime x y = f x (view $ scenarioAttemptMetrics . scenarioDurationMetrics . y)
-    bestSize x y = f x (fmap y . view (scenarioAttemptMetrics . scenarioCodeMetrics))
+ where
+  f x y = chooseBetter y newPlayMetric x
+  bestTime x y = f x (view $ scenarioAttemptMetrics . scenarioDurationMetrics . y)
+  bestSize x y = f x (fmap y . view (scenarioAttemptMetrics . scenarioCodeMetrics))
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''BestRecords
 
