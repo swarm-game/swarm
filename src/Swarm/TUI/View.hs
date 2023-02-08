@@ -76,8 +76,6 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
-import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -96,11 +94,13 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util
 import Swarm.Util
 import Swarm.Util.Location

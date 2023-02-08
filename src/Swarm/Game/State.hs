@@ -154,7 +154,6 @@ import Swarm.Game.Recipe (
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)

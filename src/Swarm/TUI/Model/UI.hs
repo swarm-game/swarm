@@ -57,7 +57,6 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
@@ -68,6 +67,7 @@ import Swarm.TUI.Model.Achievement.Attainment
 import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Failure (SystemFailure)
+import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl

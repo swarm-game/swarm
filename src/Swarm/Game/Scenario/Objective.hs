@@ -129,6 +129,11 @@ data CompletionBuckets = CompletionBuckets
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
+-- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
+newtype Announcement
+  = ObjectiveCompleted Objective
+  deriving (Show, Generic, ToJSON)
+
 data ObjectiveCompletion = ObjectiveCompletion
   { completionBuckets :: CompletionBuckets
   -- ^ This is the authoritative "completion status"
