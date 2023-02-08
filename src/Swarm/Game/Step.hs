@@ -50,6 +50,8 @@ import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (zero)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -70,8 +72,6 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
 import Swarm.Util.Location
 import System.Clock (TimeSpec)

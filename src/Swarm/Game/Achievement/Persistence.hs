@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.Model.Achievement.Persistence where
+module Swarm.Game.Achievement.Persistence where
 
 import Control.Arrow (left)
 import Control.Carrier.Lift (sendIO)
 import Control.Monad (forM, forM_)
 import Data.Either (partitionEithers)
 import Data.Yaml qualified as Y
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.TUI.Model.Failure
 import Swarm.Util
 import System.Directory (
