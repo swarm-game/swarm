@@ -143,8 +143,11 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
+import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
   inRecipeMap,
@@ -154,7 +157,6 @@ import Swarm.Game.Recipe (
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -168,10 +170,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
-import Swarm.Util.Location
+import Swarm.Util (getDataFileNameSafe, isRightOr, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 

@@ -67,11 +67,12 @@ import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Location
 import Swarm.Game.Robot
-import Swarm.Game.Scenario.Objective.Presentation.Model
-import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
@@ -92,15 +93,14 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View (generateModal)
+import Swarm.TUI.View.Objective qualified as GR
 import Swarm.Util hiding ((<<.=))
-import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)

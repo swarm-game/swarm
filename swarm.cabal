@@ -85,22 +85,25 @@ library
                       Data.BoolExpr.Simplify
                       Swarm.App
                       Swarm.DocGen
+                      Swarm.Game.Achievement.Attainment
+                      Swarm.Game.Achievement.Definitions
+                      Swarm.Game.Achievement.Description
+                      Swarm.Game.Achievement.Persistence
                       Swarm.Game.CESK
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception
+                      Swarm.Game.Location
                       Swarm.Game.Log
                       Swarm.Game.Recipe
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
-                      Swarm.Game.Scenario.Objective.Logic
+                      Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
-                      Swarm.Game.Scenario.Objective.Presentation.Model
-                      Swarm.Game.Scenario.Objective.Presentation.Render
+                      Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Validation
                       Swarm.Game.Scenario.Objective.WinCheck
-                      Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
@@ -110,8 +113,8 @@ library
                       Swarm.Game.Terrain
                       Swarm.Game.World
                       Swarm.Game.WorldGen
-                      Swarm.Language.Context
                       Swarm.Language.Capability
+                      Swarm.Language.Context
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
@@ -132,15 +135,11 @@ library
                       Swarm.TUI.Border
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
-                      Swarm.TUI.View.CustomStyling
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.Achievement.Attainment
-                      Swarm.TUI.Model.Achievement.Definitions
-                      Swarm.TUI.Model.Achievement.Description
-                      Swarm.TUI.Model.Achievement.Persistence
                       Swarm.TUI.Model.Failure
+                      Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
@@ -150,9 +149,10 @@ library
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.CustomStyling
+                      Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
-                      Swarm.Util.Location
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web
