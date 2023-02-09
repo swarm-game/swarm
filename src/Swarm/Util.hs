@@ -113,9 +113,6 @@ import System.IO
 import System.IO.Error (catchIOError)
 import Witch
 
--- $setup
--- >>> import qualified Data.Map as M
--- >>> import Swarm.Game.Location
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=

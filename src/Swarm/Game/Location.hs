@@ -35,6 +35,9 @@ import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
 import Linear (V2 (..))
 import Linear.Affine (Affine (..), Point (..), origin)
 
+-- $setup
+-- >>> import qualified Data.Map as Map
+
 -- | A Location is a pair of (x,y) coordinates, both up to 32 bits.
 --   The positive x-axis points east and the positive y-axis points
 --   north.  These are the coordinates that are shown to players.
@@ -83,7 +86,7 @@ manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 -- >>> v2s i = [(p, manhattan origin p) | x <- [-i..i], y <- [-i..i], let p = Location x y]
 -- >>> v2s 0
 -- [(P (V2 0 0),0)]
--- >>> map (\i -> length (getElemsInArea origin i (M.fromList $ v2s i))) [0..8]
+-- >>> map (\i -> length (getElemsInArea origin i (Map.fromList $ v2s i))) [0..8]
 -- [1,5,13,25,41,61,85,113,145]
 --
 -- The last test is the sequence "Centered square numbers":
