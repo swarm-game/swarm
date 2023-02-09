@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- Module      :  Swarm.Game.Terrain
 -- Copyright   :  Brent Yorgey
@@ -17,7 +19,6 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Swarm.Game.Display
-import Swarm.TUI.Attr
 import Text.Read (readMaybe)
 import Witch (into)
 
@@ -41,9 +42,9 @@ instance FromJSON TerrainType where
 terrainMap :: Map TerrainType Display
 terrainMap =
   M.fromList
-    [ (StoneT, defaultTerrainDisplay '▒' rockAttr)
-    , (DirtT, defaultTerrainDisplay '▒' dirtAttr)
-    , (GrassT, defaultTerrainDisplay '▒' grassAttr)
-    , (IceT, defaultTerrainDisplay ' ' iceAttr)
-    , (BlankT, defaultTerrainDisplay ' ' defAttr)
+    [ (StoneT, defaultTerrainDisplay '▒' (ATerrain "stone"))
+    , (DirtT, defaultTerrainDisplay '▒' (ATerrain "dirt"))
+    , (GrassT, defaultTerrainDisplay '▒' (ATerrain "grass"))
+    , (IceT, defaultTerrainDisplay ' ' (ATerrain "ice"))
+    , (BlankT, defaultTerrainDisplay ' ' ADefault)
     ]

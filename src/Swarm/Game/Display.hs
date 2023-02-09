@@ -15,6 +15,7 @@
 module Swarm.Game.Display (
   -- * The display record
   Priority,
+  Attribute (..),
   Display,
 
   -- ** Fields
@@ -27,7 +28,6 @@ module Swarm.Game.Display (
 
   -- ** Rendering
   displayChar,
-  renderDisplay,
   hidden,
 
   -- ** Construction
@@ -36,16 +36,16 @@ module Swarm.Game.Display (
   defaultRobotDisplay,
 ) where
 
-import Brick (AttrName, Widget, str, withAttr)
 import Control.Lens hiding (Const, from, (.=))
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
+import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..))
-import Swarm.TUI.Attr (entityAttr, robotAttr, worldPrefix)
 import Swarm.Util (maxOn)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
@@ -53,16 +53,37 @@ import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 --   top of entities with lower priority.
 type Priority = Int
 
--- Some orphan instances we need to be able to derive a Hashable
--- instance for Display
-instance Hashable AttrName
+-- | An internal attribute name.
+data Attribute = ADefault | ARobot | AEntity | AWorld Text | ATerrain Text
+  deriving (Eq, Ord, Show, Generic, Hashable)
+
+terrainPrefix :: Text
+terrainPrefix = "terrain_"
+
+instance FromJSON Attribute where
+  parseJSON =
+    withText "attribute" $
+      pure . \case
+        "robot" -> ARobot
+        "entity" -> AEntity
+        "default" -> ADefault
+        t | terrainPrefix `T.isPrefixOf` t -> ATerrain $ T.drop (T.length terrainPrefix) t
+        w -> AWorld w
+
+instance ToJSON Attribute where
+  toJSON = \case
+    ADefault -> String "default"
+    ARobot -> String "robot"
+    AEntity -> String "entity"
+    AWorld w -> String w
+    ATerrain t -> String $ terrainPrefix <> t
 
 -- | A record explaining how to display an entity in the TUI.
 data Display = Display
   { _defaultChar :: Char
   , _orientationMap :: Map AbsoluteDir Char
   , _curOrientation :: Maybe Direction
-  , _displayAttr :: AttrName
+  , _displayAttr :: Attribute
   , _displayPriority :: Priority
   , _invisible :: Bool
   }
@@ -90,7 +111,7 @@ orientationMap :: Lens' Display (Map AbsoluteDir Char)
 curOrientation :: Lens' Display (Maybe Direction)
 
 -- | The attribute to use for display.
-displayAttr :: Lens' Display AttrName
+displayAttr :: Lens' Display Attribute
 
 -- | This entity's display priority. Higher priorities are drawn
 --   on top of lower.
@@ -112,7 +133,7 @@ instance FromJSONE Display Display where
       Display c
         <$> v .:? "orientationMap" .!= dOM
         <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
-        <*> (fmap (worldPrefix <>) <$> v .:? "attr") .!= (defD ^. displayAttr)
+        <*> (v .:? "attr") .!= (defD ^. displayAttr)
         <*> v .:? "priority" .!= (defD ^. displayPriority)
         <*> v .:? "invisible" .!= (defD ^. invisible)
 
@@ -132,10 +153,6 @@ displayChar disp = fromMaybe (disp ^. defaultChar) $ do
   DAbsolute d <- disp ^. curOrientation
   M.lookup d (disp ^. orientationMap)
 
--- | Render a display as a UI widget.
-renderDisplay :: Display -> Widget n
-renderDisplay disp = withAttr (disp ^. displayAttr) $ str [displayChar disp]
-
 -- | Modify a display to use a @?@ character for entities that are
 --   hidden/unknown.
 hidden :: Display -> Display
@@ -143,7 +160,7 @@ hidden = (defaultChar .~ '?') . (curOrientation .~ Nothing)
 
 -- | The default way to display some terrain using the given character
 --   and attribute, with priority 0.
-defaultTerrainDisplay :: Char -> AttrName -> Display
+defaultTerrainDisplay :: Char -> Attribute -> Display
 defaultTerrainDisplay c attr =
   defaultEntityDisplay c
     & displayPriority .~ 0
@@ -157,7 +174,7 @@ defaultEntityDisplay c =
     { _defaultChar = c
     , _orientationMap = M.empty
     , _curOrientation = Nothing
-    , _displayAttr = entityAttr
+    , _displayAttr = AEntity
     , _displayPriority = 1
     , _invisible = False
     }
@@ -180,7 +197,7 @@ defaultRobotDisplay =
           , (DNorth, '^')
           ]
     , _curOrientation = Nothing
-    , _displayAttr = robotAttr
+    , _displayAttr = ARobot
     , _displayPriority = 10
     , _invisible = False
     }
