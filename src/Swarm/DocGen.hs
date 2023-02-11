@@ -171,7 +171,7 @@ keywordsCommands e = editorList e $ map constSyntax commands
 
 -- | Get formatted list of directions.
 keywordsDirections :: EditorType -> Text
-keywordsDirections e = editorList e $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
+keywordsDirections e = editorList e $ map Syntax.directionSyntax Syntax.allDirs
 
 operatorNames :: Text
 operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators

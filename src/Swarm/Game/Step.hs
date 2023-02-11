@@ -1112,7 +1112,7 @@ execConst c vs s k = do
               DRelative DDown -> "under"
               DRelative DForward -> "ahead of"
               DRelative DBack -> "behind"
-              _ -> dirSyntax (dirInfo d) <> " of"
+              _ -> directionSyntax d <> " of"
 
         (nextLoc, nextME) <- lookInDirection d
         nextE <-

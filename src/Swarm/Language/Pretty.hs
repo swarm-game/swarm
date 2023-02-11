@@ -103,7 +103,7 @@ instance PrettyPrec t => PrettyPrec (Ctx t) where
     prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
-  prettyPrec _ = pretty . dirSyntax . dirInfo
+  prettyPrec _ = pretty . directionSyntax
 
 instance PrettyPrec Capability where
   prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))
