@@ -64,7 +64,7 @@ playUntilDone rid = do
   w <- use robotMap
   case w ^? ix rid . to isActive of
     Just True -> do
-      gameTick
+      void gameTick
       playUntilDone rid
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"
