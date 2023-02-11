@@ -1098,6 +1098,7 @@ drawRobotLog s =
     (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
       drawLogEntry (not allMe) e
 
+-- | Show the 'CESK' machine of focused robot. Puts a separator above.
 drawRobotMachine :: AppState -> Bool -> Widget Name
 drawRobotMachine s showName = case s ^. gameState . to focusedRobot of
   Nothing -> machineLine "no selected robot"

@@ -292,6 +292,7 @@ defaultRobotStepsPerTick = 100
 -- @
 data SingleStep = SBefore | SSingle RID | SAfter RID
 
+-- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
 data Step = WorldTick | RobotStep SingleStep
 
 -- | The main record holding the state for the game itself (as
@@ -373,7 +374,7 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
 
--- | Is the user in creative mode (i.e. able to do anything without restriction)?
+-- | How to step the game - 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
 gameStep :: Lens' GameState Step
 
 -- | How to determine whether the player has won.
