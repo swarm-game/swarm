@@ -216,7 +216,7 @@ singleStep ss focRID robotSet = do
           singleStep ss rid postFoc
     ----------------------------------------------------------------------------
     -- run robots after the focused robot (go to single step if new robot is focused)
-    SAfter rid | rid == focRID -> do
+    SAfter rid | rid >= focRID -> do
       runRobotIDs postFoc
       gameStep .= RobotStep SBefore
       ticks += 1
