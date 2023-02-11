@@ -20,7 +20,6 @@ import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (north)
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
