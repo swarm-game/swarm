@@ -74,7 +74,7 @@ import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
-import Swarm.Game.Step (gameTick)
+import Swarm.Game.Step (forceGameTick, gameTick)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
@@ -256,7 +256,8 @@ handleMainEvent ev = do
   mt <- preuse $ uiState . uiModal . _Just . modalType
   let isRunning = maybe True isRunningModal mt
   let isPaused = s ^. gameState . paused
-  let hasDebug = fromMaybe False $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
+  let isCreative = s ^. gameState . creativeMode
+  let hasDebug = fromMaybe isCreative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   case ev of
     AppEvent Frame
       | s ^. gameState . paused -> continueWithoutRedraw
@@ -305,8 +306,12 @@ handleMainEvent ev = do
         do
           uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
           invalidateCacheEntry WorldCache
-    -- show debug
-    MetaChar 'd' | isPaused && hasDebug -> uiState . uiShowDebug %= not
+    -- debug focused robot
+    MetaChar 'd' | isPaused && hasDebug -> do
+      debug <- uiState . uiShowDebug Lens.<%= not
+      if debug
+        then gameState . gameStep .= RobotStep SBefore
+        else zoomGameState forceGameTick >> void updateUI
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
@@ -384,7 +389,8 @@ safeTogglePause :: EventM Name AppState ()
 safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
   uiState . lastFrameTime .= curTime
-  gameState . runStatus %= toggleRunStatus
+  p <- gameState . runStatus Lens.<%= toggleRunStatus
+  when (p == Running) $ zoomGameState forceGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
 --
@@ -614,11 +620,12 @@ runGameTickUI :: EventM Name AppState ()
 runGameTickUI = runGameTick >> void updateUI
 
 -- | Modifies the game state using a fused-effect state action.
-zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m ()
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m a
 zoomGameState f = do
   gs <- use gameState
-  gs' <- liftIO (Fused.runM (Fused.execState gs f))
+  (gs', a) <- liftIO (Fused.runM (Fused.runState gs f))
   gameState .= gs'
+  return a
 
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
@@ -642,8 +649,8 @@ updateAchievements = do
 --   etc.).
 runGameTick :: EventM Name AppState ()
 runGameTick = do
-  zoomGameState gameTick
-  updateAchievements
+  ticked <- zoomGameState gameTick
+  when ticked updateAchievements
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.

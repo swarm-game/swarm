@@ -1151,12 +1151,13 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
  where
   -- rendered history lines fitting above REPL prompt
   latestHistory :: [Widget n]
-  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines) (repl ^. replHistory))
+  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines - debugLines) (repl ^. replHistory))
   currentPrompt :: Widget Name
   currentPrompt = case isActive <$> base of
     Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
   inputLines = 1
+  debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)
   repl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e

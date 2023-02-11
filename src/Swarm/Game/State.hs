@@ -28,6 +28,7 @@ module Swarm.Game.State (
   RunStatus (..),
   Seed,
   Step (..),
+  SingleStep (..),
   GameState,
 
   -- ** GameState fields
@@ -271,7 +272,27 @@ makeLenses ''Notifications
 defaultRobotStepsPerTick :: Int
 defaultRobotStepsPerTick = 100
 
-data Step = WorldTick | RobotStep Ordering
+-- | Type for remebering which robots were run in a robot step mode.
+--
+-- Note that it is only safe to transition to 'WorldTick' from 'SBefore'.
+--
+-- @
+--                     tick
+--     ┌────────────────────────────────────┐
+--     │                                    │
+--     │               step                 │
+--     │              ┌────┐                │
+--     │              ▼    │                │
+-- ┌───┴───┐ step  ┌───────┴───┐ step  ┌────┴─────┐
+-- │SBefore├──────►│SSingle RID├──────►│SAfter RID│
+-- └───────┘       └───────────┘       └────┬─────┘
+--                      ▲                   │
+--                      └───────────────────┘
+--                         view RID > oldRID
+-- @
+data SingleStep = SBefore | SSingle RID | SAfter RID
+
+data Step = WorldTick | RobotStep SingleStep
 
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
@@ -744,7 +765,7 @@ initGameState = do
   return $
     GameState
       { _creativeMode = False
-      , _gameStep = RobotStep LT
+      , _gameStep = WorldTick
       , _winCondition = NoWinCondition
       , _winSolution = Nothing
       , -- This does not need to be initialized with anything,

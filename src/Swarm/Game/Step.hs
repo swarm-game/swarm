@@ -15,6 +15,14 @@
 --
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
+--
+-- ** Note on the IO:
+--
+-- The only reason we need @IO@ is so that robots can run programs
+-- loaded from files, via the 'Run' command.
+-- This could be avoided by using 'Import' command instead and parsing
+-- the required files at the time of declaration.
+-- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
 import Control.Applicative (liftA2)
@@ -80,76 +88,23 @@ import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
 
--- | The main function to do one game tick.  The only reason we need
---   @IO@ is so that robots can run programs loaded from files, via
---   the 'Run' command; but eventually I want to get rid of that
---   command and have a library of modules that you can create, edit,
---   and run all from within the UI (the library could also be loaded
---   from a file when the whole program starts up).
-gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+-- | The main function to do one game step.
+--
+-- Note that the game may be in 'RobotStep' mode and not finish
+-- the tick. Use the return value to check that a full tick happened.
+gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m Bool
 gameTick = do
   wakeUpRobotsDoneSleeping
   active <- use activeRobots
   focusedRob <- use focusedRobotID
 
-  let insertBackRobot rn rob =
-        if rob ^. selfDestruct
-          then deleteRobot rn
-          else do
-            robotMap %= IM.insert rn rob
-            time <- use ticks
-            case waitingUntil rob of
-              Just wakeUpTime
-                -- if w=2 t=1 then we do not needlessly put robot to waiting queue
-                | wakeUpTime - 2 <= time -> return ()
-                | otherwise -> sleepUntil rn wakeUpTime
-              Nothing ->
-                unless (isActive rob) (sleepForever rn)
-  let stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
-  let runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
-        mr <- uses robotMap (IM.lookup rn)
-        forM_ mr (stepOneRobot rn)
-
-  let h = hypotheticalRobot (Out VUnit emptyStore []) 0
-  let debugLog txt = do
-        m <- evalState @Robot h $ createLogEntry (ErrorTrace Debug) txt
-        emitMessage m
-
-  use gameStep >>= \case
-    WorldTick -> do
-      runRobotIDs active
-      ticks += 1
-      debugLog "One world tick"
-    RobotStep o -> do
-      let (preFoc, focusedActive, postFoc) = IS.splitMember focusedRob active
-      if not focusedActive
-        then do
-          runRobotIDs active -- the debugged robot is sleeping/finished
-          ticks += 1 -- refactor to reuse world case?
-        else case o of
-          GT -> do
-            runRobotIDs postFoc
-            gameStep .= RobotStep LT -- TODO: takes up two steps, refactor and do LT as well in one step
-            ticks += 1
-          LT -> do
-            runRobotIDs preFoc
-            gameStep .= RobotStep EQ
-            -- also set ticks of focused robot
-            mOldR <- use $ robotMap . at focusedRob
-            steps <- use robotStepsPerTick
-            forM_ mOldR $ \r -> robotMap %= IM.insert focusedRob (r & tickSteps .~ steps)
-          EQ -> do
-            mOldR <- uses robotMap (IM.lookup focusedRob)
-            case mOldR of
-              Nothing -> do
-                -- TODO: robot does not exist - refactor to reuse GT case?
-                runRobotIDs postFoc
-                gameStep .= RobotStep LT
-                ticks += 1
-              Just oldR -> do
-                newR <- stepRobot oldR
-                insertBackRobot focusedRob newR
-                when (newR ^. tickSteps == 0) $ gameStep .= RobotStep GT
+  ticked <-
+    use gameStep >>= \case
+      WorldTick -> do
+        runRobotIDs active
+        ticks += 1
+        pure True
+      RobotStep ss -> singleStep ss focusedRob active
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL;
@@ -164,21 +119,116 @@ gameTick = do
           Just (v, s) -> do
             replStatus .= REPLWorking (Typed (Just v) ty req)
             baseRobot . robotContext . defStore .= s
-          Nothing -> return ()
-        _otherREPLStatus -> return ()
-    Nothing -> return ()
+          Nothing -> pure ()
+        _otherREPLStatus -> pure ()
+    Nothing -> pure ()
 
-  -- Possibly update the view center.
-  modify recalcViewCenter
+  when ticked $ do
+    -- Possibly update the view center.
+    modify recalcViewCenter
 
-  -- Possibly see if the winning condition for the current objective is met.
-  wc <- use winCondition
-  case wc of
-    WinConditions winState oc -> do
-      g <- get @GameState
-      em <- use entityMap
-      hypotheticalWinCheck em g winState oc
-    _ -> return ()
+    -- On new tick see if the winning condition for the current objective is met.
+    wc <- use winCondition
+    case wc of
+      WinConditions winState oc -> do
+        g <- get @GameState
+        em <- use entityMap
+        hypotheticalWinCheck em g winState oc
+      _ -> pure ()
+  return ticked
+
+-- | Run a full game tick and set the game to 'WorldTick' mode afterwards.
+--
+-- Use this function if you need to unpause the game.
+forceGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+forceGameTick = do
+  void gameTick
+  s <- use gameStep
+  case s of
+    WorldTick -> pure ()
+    RobotStep SBefore -> gameStep .= WorldTick
+    RobotStep _ -> forceGameTick
+
+insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
+insertBackRobot rn rob = do
+  time <- use ticks
+  if rob ^. selfDestruct
+    then deleteRobot rn
+    else do
+      robotMap %= IM.insert rn rob
+      case waitingUntil rob of
+        Just wakeUpTime
+          -- if w=2 t=1 then we do not needlessly put robot to waiting queue
+          | wakeUpTime - 2 <= time -> return ()
+          | otherwise -> sleepUntil rn wakeUpTime
+        Nothing ->
+          unless (isActive rob) (sleepForever rn)
+
+runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m) => IS.IntSet -> m ()
+runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
+  mr <- uses robotMap (IM.lookup rn)
+  forM_ mr (stepOneRobot rn)
+ where
+  stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
+
+singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
+singleStep ss focRID robotSet = do
+  let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
+  case ss of
+    ----------------------------------------------------------------------------
+    -- run robots from the beginning until focused robot
+    SBefore -> do
+      runRobotIDs preFoc
+      gameStep .= RobotStep (SSingle focRID)
+      -- also set ticks of focused robot
+      mOldR <- use $ robotMap . at focRID
+      steps <- use robotStepsPerTick
+      forM_ mOldR $ \r -> robotMap %= IM.insert focRID (r & tickSteps .~ steps)
+      return False
+    ----------------------------------------------------------------------------
+    -- run single step of the focused robot (may skip if inactive)
+    SSingle rid | not focusedActive -> do
+      singleStep (SAfter rid) rid postFoc
+    SSingle rid | rid == focRID -> do
+      mOldR <- uses robotMap (IM.lookup focRID)
+      case mOldR of
+        Nothing -> do
+          debugLog "The debugged robot does not exist! Exiting single step mode."
+          runRobotIDs postFoc
+          gameStep .= WorldTick
+          ticks += 1
+          return True
+        Just oldR -> do
+          newR <- stepRobot oldR
+          insertBackRobot focRID newR
+          when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
+          return False
+    SSingle rid | otherwise -> do
+      mOldR <- uses robotMap (IM.lookup focRID)
+      case mOldR of
+        Nothing -> do
+          debugLog "The previously debugged robot does not exist!"
+          singleStep (SAfter rid) focRID postFoc
+        Just oldR -> do
+          newR <- tickRobotRec oldR
+          insertBackRobot focRID newR
+          when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
+          singleStep ss rid postFoc
+    ----------------------------------------------------------------------------
+    -- run robots after the focused robot (go to single step if new robot is focused)
+    SAfter rid | rid == focRID -> do
+      runRobotIDs postFoc
+      gameStep .= RobotStep SBefore
+      ticks += 1
+      return True
+    SAfter rid | otherwise -> do
+      let postRID = snd . IS.split rid $ robotSet
+      singleStep SBefore rid postRID
+ where
+  h = hypotheticalRobot (Out VUnit emptyStore []) 0
+  debugLog txt = do
+    m <- evalState @Robot h $ createLogEntry (ErrorTrace Debug) txt
+    emitMessage m
 
 -- | An accumulator for folding over the incomplete
 -- objectives to evaluate for their completion
