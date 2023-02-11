@@ -750,7 +750,7 @@ drawKeyMenu s =
 
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
-  hasDebug = fromMaybe False $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
+  hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
