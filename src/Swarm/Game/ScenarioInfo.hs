@@ -16,7 +16,6 @@ module Swarm.Game.ScenarioInfo (
   ScenarioStatus (..),
   _NotStarted,
   ScenarioInfo (..),
-  BestRecords (..),
   scenarioPath,
   scenarioStatus,
   scenarioBestByTime,

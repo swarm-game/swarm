@@ -192,25 +192,28 @@ drawNewGameMenuUI (l :| ls) =
       _ -> withAttr yellowAttr $ txt " ◎ "
     Played (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
 
+  describeStatus :: ScenarioStatus -> Widget n
   describeStatus = \case
     NotStarted -> txt "none"
-    Played (Metric Attempted (ProgressStats _s (AttemptMetrics (DurationMetrics e _t) _cm))) _best ->
-      withAttr yellowAttr . vBox $
-        [ txt "in progress"
-        , txt $ "(played for " <> formatTimeDiff e <> ")"
+    Played pm _best -> describeProgress pm
+
+  describeProgress :: ProgressMetric -> Widget n
+  describeProgress (Metric p (ProgressStats _startedAt (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics))) = case p of
+    Attempted -> withAttr yellowAttr . vBox $
+      [ txt "in progress"
+      , txt $ parens $ "played for " <> formatTimeDiff e
+      ]
+    Completed -> withAttr greenAttr . vBox $
+      catMaybes
+        [ Just $ txt $ "completed in " <> formatTimeDiff e
+        , Just $
+            hBox
+              [ txt "("
+              , drawTime t True
+              , txt " ticks)"
+              ]
+        , sizeDisplay <$> maybeCodeMetrics
         ]
-    Played (Metric Completed (ProgressStats _s (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics))) _best ->
-      withAttr greenAttr . vBox $
-        catMaybes
-          [ Just $ txt $ "completed in " <> formatTimeDiff e
-          , Just $
-              hBox
-                [ txt "("
-                , drawTime t True
-                , txt " ticks)"
-                ]
-          , sizeDisplay <$> maybeCodeMetrics
-          ]
      where
       sizeDisplay (ScenarioCodeMetrics myCharCount myAstSize) =
         padTop (Pad 1) details
@@ -226,7 +229,6 @@ drawNewGameMenuUI (l :| ls) =
             , "AST nodes"
             ]
           ]
-
 
   formatTimeDiff :: NominalDiffTime -> Text
   formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %Mm %Ss"
@@ -255,9 +257,30 @@ drawNewGameMenuUI (l :| ls) =
         , Just $ describeStatus (si ^. scenarioStatus)
         )
 
-      otherRows = []
-      tableRows = map (map (padTop (Pad 1) . padLeft (Pad 1)) . \(x, y) -> [x, y]) $
-        mapMaybe sequenceA $ firstRow : secondRow : otherRows
+      getBests = case si ^. scenarioStatus of
+        NotStarted -> Nothing
+        Played (Metric _p (ProgressStats _s _attemptMetrics)) best -> Just best
+
+      makeBestRows best = [
+          makeBestRow $ best ^. scenarioBestByTime
+        , makeBestRow $ best ^. scenarioBestByTicks
+        , makeBestRow $ best ^. scenarioBestByCharCount
+        , makeBestRow $ best ^. scenarioBestByAstSize
+        ]
+
+      makeBestRow b = (
+          txt "best:"
+        , Just $ describeProgress b
+        )
+      
+
+      padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
+
+      pairToList :: (a, a) -> [a]
+      pairToList (x, y) = [x, y]
+
+      tableRows = map (map padTopLeft . pairToList) $
+        mapMaybe sequenceA $ firstRow : secondRow : maybe [] makeBestRows getBests
       table = BT.renderTable
         . BT.surroundingBorder False
         . BT.rowBorders False
