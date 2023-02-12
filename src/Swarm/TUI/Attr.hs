@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module      :  Swarm.TUI.Attr
@@ -20,6 +19,7 @@ module Swarm.TUI.Attr (
   swarmAttrMap,
   worldAttributes,
   worldPrefix,
+  toAttrName,
 
   -- ** Terrain attributes
   dirtAttr,
@@ -55,9 +55,17 @@ import Brick.Forms
 import Brick.Widgets.Dialog
 import Brick.Widgets.List
 import Data.Bifunctor (bimap)
-import Data.Yaml
+import Data.Text (unpack)
 import Graphics.Vty qualified as V
-import Witch (from)
+import Swarm.Game.Display (Attribute (..))
+
+toAttrName :: Attribute -> AttrName
+toAttrName = \case
+  ARobot -> robotAttr
+  AEntity -> entityAttr
+  AWorld n -> worldPrefix <> attrName (unpack n)
+  ATerrain n -> terrainPrefix <> attrName (unpack n)
+  ADefault -> defAttr
 
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap
@@ -173,9 +181,3 @@ yellowAttr = attrName "yellow"
 cyanAttr = attrName "cyan"
 lightCyanAttr = attrName "lightCyan"
 magentaAttr = attrName "magenta"
-
-instance ToJSON AttrName where
-  toJSON = toJSON . head . attrNameComponents
-
-instance FromJSON AttrName where
-  parseJSON = withText "AttrName" (pure . attrName . from)
