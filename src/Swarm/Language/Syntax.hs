@@ -20,17 +20,9 @@ module Swarm.Language.Syntax (
   Direction (..),
   AbsoluteDir (..),
   RelativeDir (..),
-  DirInfo (..),
-  applyTurn,
-  toDirection,
-  fromDirection,
-  allDirs,
+  directionSyntax,
   isCardinal,
-  dirInfo,
-  north,
-  south,
-  east,
-  west,
+  allDirs,
 
   -- * Constants
   Const (..),
@@ -90,7 +82,6 @@ module Swarm.Language.Syntax (
   locVarToSyntax',
 ) where
 
-import Control.Arrow (Arrow ((&&&)))
 import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
 import Data.Aeson.Types
 import Data.Char qualified as C (toLower)
@@ -100,14 +91,11 @@ import Data.Hashable (Hashable)
 import Data.List qualified as L (tail)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
 import Data.Text hiding (filter, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Linear
-import Swarm.Game.Location (Heading)
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
@@ -145,41 +133,12 @@ data RelativeDir = DLeft | DRight | DBack | DForward | DDown
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
-data DirInfo = DirInfo
-  { dirSyntax :: Text
-  , dirApplyTurn :: Heading -> Heading
-  -- ^ the turning for the direction
-  }
-
-allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
-
-toHeading :: AbsoluteDir -> Heading
-toHeading = \case
-  DNorth -> north
-  DSouth -> south
-  DEast -> east
-  DWest -> west
-
--- | Information about all directions
-dirInfo :: Direction -> DirInfo
-dirInfo d = case d of
-  DRelative e -> case e of
-    DLeft -> relative perp
-    DRight -> relative (fmap negate . perp)
-    DBack -> relative (fmap negate)
-    DDown -> relative (const down)
-    DForward -> relative id
-  DAbsolute e -> cardinal $ toHeading e
- where
-  -- name is generate from Direction data constuctor
-  -- e.g. DLeft becomes "left"
-  directionSyntax = toLower . T.tail . from $ case d of
-    DAbsolute x -> show x
-    DRelative x -> show x
-
-  cardinal = DirInfo directionSyntax . const
-  relative = DirInfo directionSyntax
+-- | Direction name is generated from Direction data constuctor
+-- e.g. DLeft becomes "left"
+directionSyntax :: Direction -> Text
+directionSyntax d = toLower . T.tail . from $ case d of
+  DAbsolute x -> show x
+  DRelative x -> show x
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
@@ -187,51 +146,8 @@ isCardinal = \case
   DAbsolute _ -> True
   _ -> False
 
--- | The cardinal direction north = @V2 0 1@.
-north :: Heading
-north = V2 0 1
-
--- | The cardinal direction south = @V2 0 (-1)@.
-south :: Heading
-south = V2 0 (-1)
-
--- | The cardinal direction east = @V2 1 0@.
-east :: Heading
-east = V2 1 0
-
--- | The cardinal direction west = @V2 (-1) 0@.
-west :: Heading
-west = V2 (-1) 0
-
--- | The direction for viewing the current cell = @V2 0 0@.
-down :: Heading
-down = zero
-
--- | The 'applyTurn' function gives the meaning of each 'Direction' by
---   turning relative to the given heading or by turning to an absolute
---   heading
-applyTurn :: Direction -> Heading -> Heading
-applyTurn = dirApplyTurn . dirInfo
-
--- | Mapping from heading to their corresponding cardinal directions.
---   Only absolute directions are mapped.
-cardinalDirs :: M.Map Heading Direction
-cardinalDirs =
-  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
-
--- | Possibly convert a heading into a 'Direction'---that is, if the
---   vector happens to be a unit vector in one of the cardinal
---   directions.
-toDirection :: Heading -> Maybe Direction
-toDirection v = M.lookup v cardinalDirs
-
--- | Convert a 'Direction' into a corresponding heading.  Note that
---   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
---   and 'DWest'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> Heading
-fromDirection = \case
-  DAbsolute x -> toHeading x
-  _ -> zero
+allDirs :: [Direction]
+allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
 
 ------------------------------------------------------------
 -- Constants

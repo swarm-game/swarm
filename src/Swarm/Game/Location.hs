@@ -14,7 +14,17 @@
 module Swarm.Game.Location (
   Location,
   pattern Location,
+
+  -- ** Heading and Direction functions
   Heading,
+  applyTurn,
+  toDirection,
+  fromDirection,
+  isCardinal,
+  north,
+  south,
+  east,
+  west,
 
   -- ** utility functions
   manhattan,
@@ -26,14 +36,17 @@ module Swarm.Game.Location (
   origin,
 ) where
 
+import Control.Arrow ((&&&))
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Function ((&))
 import Data.Int (Int32)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
-import Linear (V2 (..))
+import Linear (Additive (..), V2 (..), negated, perp)
 import Linear.Affine (Affine (..), Point (..), origin)
+import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), RelativeDir (..), isCardinal)
+import Swarm.Util qualified as Util
 
 -- $setup
 -- >>> import qualified Data.Map as Map
@@ -54,6 +67,12 @@ pattern Location x y = P (V2 x y)
 
 {-# COMPLETE Location #-}
 
+instance FromJSON Location where
+  parseJSON = fmap P . parseJSON
+
+instance ToJSON Location where
+  toJSON (P v) = toJSON v
+
 -- | A @Heading@ is a 2D vector, with 32-bit coordinates.
 --
 --   'Location' and 'Heading' are both represented using types from
@@ -71,11 +90,65 @@ deriving instance FromJSON (V2 Int32)
 deriving instance FromJSONKey (V2 Int32)
 deriving instance ToJSONKey (V2 Int32)
 
-instance FromJSON Location where
-  parseJSON = fmap P . parseJSON
+toHeading :: AbsoluteDir -> Heading
+toHeading = \case
+  DNorth -> north
+  DSouth -> south
+  DEast -> east
+  DWest -> west
 
-instance ToJSON Location where
-  toJSON (P v) = toJSON v
+-- | The cardinal direction north = @V2 0 1@.
+north :: Heading
+north = V2 0 1
+
+-- | The cardinal direction south = @V2 0 (-1)@.
+south :: Heading
+south = V2 0 (-1)
+
+-- | The cardinal direction east = @V2 1 0@.
+east :: Heading
+east = V2 1 0
+
+-- | The cardinal direction west = @V2 (-1) 0@.
+west :: Heading
+west = V2 (-1) 0
+
+-- | The direction for viewing the current cell = @V2 0 0@.
+down :: Heading
+down = zero
+
+-- | The 'applyTurn' function gives the meaning of each 'Direction' by
+--   turning relative to the given heading or by turning to an absolute
+--   heading
+applyTurn :: Direction -> Heading -> Heading
+applyTurn d = case d of
+  DRelative e -> case e of
+    DLeft -> perp
+    DRight -> negated . perp
+    DBack -> negated
+    DDown -> const down
+    DForward -> id
+  DAbsolute e -> const $ toHeading e
+
+-- | Mapping from heading to their corresponding cardinal directions.
+--   Only absolute directions are mapped.
+cardinalDirs :: M.Map Heading Direction
+cardinalDirs =
+  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
+
+-- | Possibly convert a heading into a 'Direction'---that is, if the
+--   vector happens to be a unit vector in one of the cardinal
+--   directions.
+toDirection :: Heading -> Maybe Direction
+toDirection v = M.lookup v cardinalDirs
+
+-- | Convert a 'Direction' into a corresponding heading.  Note that
+--   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
+--   and 'DWest'---other 'Direction's return the zero vector.
+fromDirection :: Direction -> Heading
+fromDirection = \case
+  DAbsolute x -> toHeading x
+  _ -> zero
 
 -- | Manhattan distance between world locations.
 manhattan :: Location -> Location -> Int32

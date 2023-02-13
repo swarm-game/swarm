@@ -82,7 +82,7 @@ type ParserError = ParseErrorBundle Text Void
 reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
-    ++ map (dirSyntax . dirInfo) allDirs
+    ++ map directionSyntax allDirs
     ++ [ "void"
        , "unit"
        , "int"
@@ -226,7 +226,7 @@ parseTypeAtom =
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"
  where
-  alternative d = d <$ (reserved . dirSyntax . dirInfo) d
+  alternative d = d <$ (reserved . directionSyntax) d
 
 -- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
