@@ -53,7 +53,7 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   gs <- initGameState
-  (warnings, ui) <- initUIState (not skipMenu) cheatMode
+  (warnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
   let rs = List.foldl' logWarning initRuntimeState warnings
   case skipMenu of

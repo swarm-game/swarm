@@ -11,7 +11,7 @@ on:
     branches:
       - main
 jobs:
-  enforce:
+  Enforce issue references:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
