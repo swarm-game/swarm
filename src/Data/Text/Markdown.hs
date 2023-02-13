@@ -4,16 +4,16 @@ module Data.Text.Markdown where
 
 import CMarkGFM qualified as CMark
 import Control.Applicative ((<|>))
+import Control.Monad (void)
 import Data.Function ((&))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
+import Swarm.Language.Module (moduleAST)
 import Swarm.Language.Parse (readTerm)
+import Swarm.Language.Pipeline (ProcessedTerm (..), prettyTypeErr, processParsedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax)
-import Swarm.Language.Pipeline (processParsedTerm, ProcessedTerm (..), prettyTypeErr)
-import Swarm.Language.Module (moduleAST)
-import Control.Monad (void)
 
 data Node
   = Node NodeType [Node]
