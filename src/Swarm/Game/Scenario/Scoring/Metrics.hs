@@ -9,12 +9,6 @@ import Data.Time (NominalDiffTime)
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Scoring.CodeSize
 
-data BestByCriteria
-  = BestByTime
-  | BestByTicks
-  | BestByCharCount
-  | BestByAstSize
-
 scenarioOptions :: Options
 scenarioOptions =
   defaultOptions

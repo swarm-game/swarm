@@ -261,18 +261,15 @@ drawNewGameMenuUI (l :| ls) =
         NotStarted -> Nothing
         Played (Metric _p (ProgressStats _s _attemptMetrics)) best -> Just best
 
-      makeBestRows best = [
-          makeBestRow $ best ^. scenarioBestByTime
-        , makeBestRow $ best ^. scenarioBestByTicks
-        , makeBestRow $ best ^. scenarioBestByCharCount
-        , makeBestRow $ best ^. scenarioBestByAstSize
-        ]
+      -- TODO: Use the "scenarioStarted" member to de-dupe
+      -- records that are from the same game. The start time should
+      -- be sufficient to uniquely identify a game.
+      makeBestRows best = map (makeBestRow . snd) $ M.toList $ bestToMap best
 
       makeBestRow b = (
           txt "best:"
         , Just $ describeProgress b
         )
-      
 
       padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
 
@@ -289,10 +286,6 @@ drawNewGameMenuUI (l :| ls) =
         . BT.alignLeft 1
         . BT.table
         $ tableRows
-
-  -- TODO: Use the "scenarioStarted" member to de-dupe
-  -- records that are from the same game. The start time should
-  -- be sufficient to uniquely identify a game.
 
   nonBlank "" = " "
   nonBlank t = t

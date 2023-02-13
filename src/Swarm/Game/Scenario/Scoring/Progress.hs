@@ -27,6 +27,9 @@ instance ToJSON Progress where
 data Metric a = Metric Progress a
   deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
 
+getMetric :: Metric a -> a
+getMetric (Metric _ x) = x
+
 -- | This encodes the notion of "more play is better"
 -- for incomplete games (rationale: more play = more fun),
 --  whereas "smaller inputs are better" for completed games.
