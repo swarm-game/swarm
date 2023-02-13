@@ -18,6 +18,7 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
+  prettyTypeErr,
   showTypeErrorPos,
   processTermEither,
 ) where

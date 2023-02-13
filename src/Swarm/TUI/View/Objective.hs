@@ -19,6 +19,7 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Util
+import Data.Text.Markdown qualified as Markdown
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
@@ -84,11 +85,11 @@ drawGoalListItem _isSelected e = case e of
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
-    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> listToMaybe (obj ^. objectiveGoal)
+    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> listToMaybe (Markdown.toText <$> obj ^. objectiveGoal)
     titleWidget = maybe (txt "?") withEllipsis textSource
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Goal _gs obj -> displayParagraphs $ obj ^. objectiveGoal
+  Goal _gs obj -> displayParagraphs . map Markdown.toText $ obj ^. objectiveGoal
   -- Only Goal entries are selectable, so we should never see this:
   _ -> emptyWidget

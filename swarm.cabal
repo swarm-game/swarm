@@ -83,6 +83,7 @@ library
     import:           stan-config, common, ghc2021-extensions
     exposed-modules:  Data.BoolExpr
                       Data.BoolExpr.Simplify
+                      Data.Text.Markdown
                       Swarm.App
                       Swarm.DocGen
                       Swarm.Game.Achievement.Attainment
@@ -165,6 +166,7 @@ library
                       brick                         >= 1.5 && < 1.7,
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
+                      cmark-gfm                     >= 0.2 && < 0.3,
                       containers                    >= 0.6.2 && < 0.7,
                       directory                     >= 1.3 && < 1.4,
                       dotgen                        >= 0.4 && < 0.5,
