@@ -11,6 +11,7 @@ import Control.Lens hiding (from, (<.>))
 import Data.Aeson
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text.Markdown qualified as Markdown
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
@@ -65,7 +66,7 @@ instance FromJSON PrerequisiteConfig where
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
 data Objective = Objective
-  { _objectiveGoal :: [Text]
+  { _objectiveGoal :: [Markdown.Node]
   , _objectiveTeaser :: Maybe Text
   , _objectiveCondition :: ProcessedTerm
   , _objectiveId :: Maybe ObjectiveLabel
@@ -83,7 +84,7 @@ instance ToSample Objective where
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
-objectiveGoal :: Lens' Objective [Text]
+objectiveGoal :: Lens' Objective [Markdown.Node]
 
 -- | A very short (3-5 words) description of the goal for
 -- displaying on the left side of the Objectives modal.
@@ -121,7 +122,7 @@ objectiveAchievement :: Lens' Objective (Maybe AchievementInfo)
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->
     Objective
-      <$> (fmap . map) reflow (v .:? "goal" .!= [])
+      <$> (v .:? "goal" .!= [])
       <*> (v .:? "teaser")
       <*> (v .: "condition")
       <*> (v .:? "id")
