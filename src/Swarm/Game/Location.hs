@@ -43,7 +43,7 @@ import Data.Int (Int32)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
-import Linear (Additive (..), V2 (..), perp)
+import Linear (Additive (..), V2 (..), negated, perp)
 import Linear.Affine (Affine (..), Point (..), origin)
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), RelativeDir (..), isCardinal)
 import Swarm.Util qualified as Util
@@ -123,15 +123,12 @@ down = zero
 applyTurn :: Direction -> Heading -> Heading
 applyTurn d = case d of
   DRelative e -> case e of
-    DLeft -> relative perp
-    DRight -> relative (fmap negate . perp)
-    DBack -> relative (fmap negate)
-    DDown -> relative (const down)
-    DForward -> relative id
-  DAbsolute e -> cardinal $ toHeading e
- where
-  cardinal = const
-  relative = id
+    DLeft -> perp
+    DRight -> negated . perp
+    DBack -> negated
+    DDown -> const down
+    DForward -> id
+  DAbsolute e -> const $ toHeading e
 
 -- | Mapping from heading to their corresponding cardinal directions.
 --   Only absolute directions are mapped.
