@@ -10,11 +10,11 @@ import Data.Aeson (
   genericToJSON,
  )
 import Data.Function (on)
+import Data.Map (Map)
+import Data.Map qualified as M
+import Data.Maybe (catMaybes)
 import Data.Time (ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
-import Data.Maybe (catMaybes)
-import Data.Map qualified as M
-import Data.Map (Map)
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
@@ -101,16 +101,17 @@ instance ToJSON BestRecords where
   toJSON = genericToJSON scenarioOptions
 
 bestToMap :: BestRecords -> Map BestByCriteria ProgressMetric
-bestToMap (BestRecords t1 t2 s1 s2) = M.fromList $ catMaybes
-  [
-    Just (BestByTime, t1)
-  , Just (BestByTicks, t2)
-  , sequenceA (BestByCharCount, ensurePresent s1)
-  , sequenceA (BestByAstSize, ensurePresent s2)
-  ]
-  where
-    ensurePresent x =
-      (getMetric x ^. scenarioAttemptMetrics . scenarioCodeMetrics) >> Just x
+bestToMap (BestRecords t1 t2 s1 s2) =
+  M.fromList $
+    catMaybes
+      [ Just (BestByTime, t1)
+      , Just (BestByTicks, t2)
+      , sequenceA (BestByCharCount, ensurePresent s1)
+      , sequenceA (BestByAstSize, ensurePresent s2)
+      ]
+ where
+  ensurePresent x =
+    (getMetric x ^. scenarioAttemptMetrics . scenarioCodeMetrics) >> Just x
 
 -- | A @ScenarioStatus@ stores the status of a scenario along with
 --   appropriate metadata: not started, in progress, or complete.

@@ -199,36 +199,43 @@ drawNewGameMenuUI (l :| ls) =
 
   describeProgress :: ProgressMetric -> Widget n
   describeProgress (Metric p (ProgressStats _startedAt (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics))) = case p of
-    Attempted -> withAttr yellowAttr . vBox $
-      [ txt "in progress"
-      , txt $ parens $ "played for " <> formatTimeDiff e
-      ]
-    Completed -> withAttr greenAttr . vBox $
-      catMaybes
-        [ Just $ txt $ "completed in " <> formatTimeDiff e
-        , Just $
-            hBox
-              [ txt "("
-              , drawTime t True
-              , txt " ticks)"
-              ]
-        , sizeDisplay <$> maybeCodeMetrics
+    Attempted ->
+      withAttr yellowAttr . vBox $
+        [ txt "in progress"
+        , txt $ parens $ "played for " <> formatTimeDiff e
         ]
+    Completed ->
+      withAttr greenAttr . vBox $
+        catMaybes
+          [ Just $ txt $ "completed in " <> formatTimeDiff e
+          , Just $
+              hBox
+                [ txt "("
+                , drawTime t True
+                , txt " ticks)"
+                ]
+          , sizeDisplay <$> maybeCodeMetrics
+          ]
      where
       sizeDisplay (ScenarioCodeMetrics myCharCount myAstSize) =
         padTop (Pad 1) details
        where
-        details = withAttr greenAttr $ vBox [
-            txt $ T.unwords [
-              "Code:"
-            , T.pack $ show myCharCount
-            , "chars"
-            ]
-          , txt $ parens $ T.unwords [
-              T.pack $ show myAstSize
-            , "AST nodes"
-            ]
-          ]
+        details =
+          withAttr greenAttr $
+            vBox
+              [ txt $
+                  T.unwords
+                    [ "Code:"
+                    , T.pack $ show myCharCount
+                    , "chars"
+                    ]
+              , txt $
+                  parens $
+                    T.unwords
+                      [ T.pack $ show myAstSize
+                      , "AST nodes"
+                      ]
+              ]
 
   formatTimeDiff :: NominalDiffTime -> Text
   formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %Mm %Ss"
@@ -243,42 +250,45 @@ drawNewGameMenuUI (l :| ls) =
   drawDescription :: ScenarioItem -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
   drawDescription (SISingle (s, si)) =
-    vBox [
-        txtWrap (nonBlank (s ^. scenarioDescription))
+    vBox
+      [ txtWrap (nonBlank (s ^. scenarioDescription))
       , padTop (Pad 1) table
       ]
-    where
-      firstRow = (
-          withAttr dimAttr $ txt "Author:"
-        , withAttr dimAttr . txt <$> s ^. scenarioAuthor
-        )
-      secondRow = (
-          txt "last:"
-        , Just $ describeStatus (si ^. scenarioStatus)
-        )
+   where
+    firstRow =
+      ( withAttr dimAttr $ txt "Author:"
+      , withAttr dimAttr . txt <$> s ^. scenarioAuthor
+      )
+    secondRow =
+      ( txt "last:"
+      , Just $ describeStatus (si ^. scenarioStatus)
+      )
 
-      getBests = case si ^. scenarioStatus of
-        NotStarted -> Nothing
-        Played (Metric _p (ProgressStats _s _attemptMetrics)) best -> Just best
+    getBests = case si ^. scenarioStatus of
+      NotStarted -> Nothing
+      Played (Metric _p (ProgressStats _s _attemptMetrics)) best -> Just best
 
-      -- TODO: Use the "scenarioStarted" member to de-dupe
-      -- records that are from the same game. The start time should
-      -- be sufficient to uniquely identify a game.
-      makeBestRows best = map (makeBestRow . snd) $ M.toList $ bestToMap best
+    -- TODO: Use the "scenarioStarted" member to de-dupe
+    -- records that are from the same game. The start time should
+    -- be sufficient to uniquely identify a game.
+    makeBestRows best = map (makeBestRow . snd) $ M.toList $ bestToMap best
 
-      makeBestRow b = (
-          txt "best:"
-        , Just $ describeProgress b
-        )
+    makeBestRow b =
+      ( txt "best:"
+      , Just $ describeProgress b
+      )
 
-      padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
+    padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
 
-      pairToList :: (a, a) -> [a]
-      pairToList (x, y) = [x, y]
+    pairToList :: (a, a) -> [a]
+    pairToList (x, y) = [x, y]
 
-      tableRows = map (map padTopLeft . pairToList) $
-        mapMaybe sequenceA $ firstRow : secondRow : maybe [] makeBestRows getBests
-      table = BT.renderTable
+    tableRows =
+      map (map padTopLeft . pairToList) $
+        mapMaybe sequenceA $
+          firstRow : secondRow : maybe [] makeBestRows getBests
+    table =
+      BT.renderTable
         . BT.surroundingBorder False
         . BT.rowBorders False
         . BT.columnBorders False
