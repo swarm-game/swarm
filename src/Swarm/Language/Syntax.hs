@@ -133,7 +133,7 @@ data RelativeDir = DLeft | DRight | DBack | DForward | DDown
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
--- | Direction name is generate from Direction data constuctor
+-- | Direction name is generated from Direction data constuctor
 -- e.g. DLeft becomes "left"
 directionSyntax :: Direction -> Text
 directionSyntax d = toLower . T.tail . from $ case d of
