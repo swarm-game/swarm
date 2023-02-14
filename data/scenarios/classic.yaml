@@ -31,3 +31,4 @@ robots:
 world:
   seed: null
   offset: true
+  scrollable: false
