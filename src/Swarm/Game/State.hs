@@ -61,6 +61,7 @@ module Swarm.Game.State (
   currentScenarioPath,
   knownEntities,
   world,
+  worldScrollable,
   viewCenterRule,
   viewCenter,
   needsRedraw,
@@ -342,6 +343,7 @@ data GameState = GameState
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
+  , _worldScrollable :: Bool
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Location
   , _needsRedraw :: Bool
@@ -505,6 +507,9 @@ knownEntities :: Lens' GameState [Text]
 --   TerrainType because we need to be able to store terrain values in
 --   unboxed tile arrays.
 world :: Lens' GameState (W.World Int Entity)
+
+-- | Whether the world map is supposed to be scrollable or not.
+worldScrollable :: Lens' GameState Bool
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -794,6 +799,7 @@ initGameState = do
       , _currentScenarioPath = Nothing
       , _knownEntities = []
       , _world = W.emptyWorld (fromEnum StoneT)
+      , _worldScrollable = True
       , _viewCenterRule = VCRobot 0
       , _viewCenter = origin
       , _needsRedraw = False
@@ -842,6 +848,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _recipesReq = addRecipesWith reqRecipeMap recipesReq
       , _knownEntities = scenario ^. scenarioKnown
       , _world = theWorld theSeed
+      , _worldScrollable = scenario ^. scenarioWorld . to scrollable
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = origin
       , _needsRedraw = False
