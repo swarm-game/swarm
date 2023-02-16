@@ -28,6 +28,7 @@ module Swarm.Game.Location (
 
   -- ** utility functions
   manhattan,
+  euclidean,
   getElemsInArea,
 
   -- ** reexports for convenience
@@ -43,7 +44,7 @@ import Data.Int (Int32)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
-import Linear (Additive (..), V2 (..), negated, perp)
+import Linear (Additive (..), V2 (..), negated, norm, perp)
 import Linear.Affine (Affine (..), Point (..), origin)
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), RelativeDir (..), isCardinal)
 import Swarm.Util qualified as Util
@@ -153,6 +154,10 @@ fromDirection = \case
 -- | Manhattan distance between world locations.
 manhattan :: Location -> Location -> Int32
 manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+
+-- | Euclidean distance between world locations.
+euclidean :: Location -> Location -> Double
+euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 
 -- | Get elements that are in manhattan distance from location.
 --
