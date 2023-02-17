@@ -123,10 +123,10 @@ gameTick = do
         _otherREPLStatus -> pure ()
     Nothing -> pure ()
 
-  when ticked $ do
-    -- Possibly update the view center.
-    modify recalcViewCenter
+  -- Possibly update the view center.
+  modify recalcViewCenter
 
+  when ticked $ do
     -- On new tick see if the winning condition for the current objective is met.
     wc <- use winCondition
     case wc of
