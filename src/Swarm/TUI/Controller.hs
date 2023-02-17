@@ -389,6 +389,7 @@ safeTogglePause :: EventM Name AppState ()
 safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
   uiState . lastFrameTime .= curTime
+  uiState . uiShowDebug .= False
   p <- gameState . runStatus Lens.<%= toggleRunStatus
   when (p == Running) $ zoomGameState forceGameTick
 
