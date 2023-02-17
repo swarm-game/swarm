@@ -32,6 +32,7 @@ import Swarm.Game.Scenario.Scoring.Metrics
 import Swarm.Game.Scenario.Scoring.Progress
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
+  loadScenarioInfo,
   normalizeScenarioPath,
   scenarioItemByPath,
   scenarioSolution,
@@ -67,8 +68,7 @@ initAppState AppOpts {..} = do
             soln <- scenario ^. scenarioSolution
             return $ CodeToRun ScenarioSuggested soln
       let codeToRun = maybeAutoplay <|> maybeRunScript
-
-      let si = ScenarioInfo path NotStarted
+      si <- loadScenarioInfo path
       execStateT
         (startGameWithSeed userSeed (scenario, si) codeToRun)
         (AppState gs ui rs)
