@@ -141,7 +141,8 @@ gameTick = do
 --
 -- Use this function if you need to unpause the game.
 finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
-finishGameTick = use gameStep >>= \case
+finishGameTick =
+  use gameStep >>= \case
     WorldTick -> pure ()
     RobotStep SBefore -> gameStep .= WorldTick
     RobotStep _ -> void gameTick >> finishGameTick
