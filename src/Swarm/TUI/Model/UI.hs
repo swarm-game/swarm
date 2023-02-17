@@ -188,7 +188,9 @@ uiShowFPS :: Lens' UIState Bool
 -- | A toggle to show or hide inventory items with count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
 
--- | A toggle to show debug. TODO: use record for selection of debug features?
+-- | A toggle to show debug.
+--
+-- TODO: #1112 use record for selection of debug features?
 uiShowDebug :: Lens' UIState Bool
 
 -- | Hide robots on the world map.
