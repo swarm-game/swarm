@@ -74,7 +74,7 @@ import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
-import Swarm.Game.Step (forceGameTick, gameTick)
+import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
@@ -311,7 +311,7 @@ handleMainEvent ev = do
       debug <- uiState . uiShowDebug Lens.<%= not
       if debug
         then gameState . gameStep .= RobotStep SBefore
-        else zoomGameState forceGameTick >> void updateUI
+        else zoomGameState finishGameTick >> void updateUI
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
@@ -391,7 +391,7 @@ safeTogglePause = do
   uiState . lastFrameTime .= curTime
   uiState . uiShowDebug .= False
   p <- gameState . runStatus Lens.<%= toggleRunStatus
-  when (p == Running) $ zoomGameState forceGameTick
+  when (p == Running) $ zoomGameState finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
 --

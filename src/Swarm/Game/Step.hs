@@ -137,17 +137,14 @@ gameTick = do
       _ -> pure ()
   return ticked
 
--- | Run a full game tick and set the game to 'WorldTick' mode afterwards.
+-- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
 --
 -- Use this function if you need to unpause the game.
-forceGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
-forceGameTick = do
-  void gameTick
-  s <- use gameStep
-  case s of
+finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+finishGameTick = use gameStep >>= \case
     WorldTick -> pure ()
     RobotStep SBefore -> gameStep .= WorldTick
-    RobotStep _ -> forceGameTick
+    RobotStep _ -> void gameTick >> finishGameTick
 
 insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
 insertBackRobot rn rob = do
