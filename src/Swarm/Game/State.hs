@@ -272,9 +272,10 @@ makeLenses ''Notifications
 defaultRobotStepsPerTick :: Int
 defaultRobotStepsPerTick = 100
 
--- | Type for remebering which robots were run in a robot step mode.
+-- | Type for remebering which robots will be run next in a robot step mode.
 --
--- Note that it is only safe to transition to 'WorldTick' from 'SBefore'.
+-- Once some robots have run, we need to store RID to know which ones should go next.
+-- At 'SBefore' no robots were run yet, so it is safe to transition to and from 'WorldTick'.
 --
 -- @
 --                     tick
@@ -282,15 +283,23 @@ defaultRobotStepsPerTick = 100
 --     │                                    │
 --     │               step                 │
 --     │              ┌────┐                │
---     │              ▼    │                │
--- ┌───┴───┐ step  ┌───────┴───┐ step  ┌────┴─────┐
+--     ▼              ▼    │                │
+-- ┌───────┐ step  ┌───────┴───┐ step  ┌────┴─────┐
 -- │SBefore├──────►│SSingle RID├──────►│SAfter RID│
--- └───────┘       └───────────┘       └────┬─────┘
---                      ▲                   │
---                      └───────────────────┘
---                         view RID > oldRID
+-- └──┬────┘       └───────────┘       └────┬─────┘
+--    │ ▲ player        ▲                   │
+--    ▼ │ switch        └───────────────────┘
+-- ┌────┴────┐             view RID > oldRID
+-- │WorldTick│
+-- └─────────┘
 -- @
-data SingleStep = SBefore | SSingle RID | SAfter RID
+data SingleStep
+  = -- | Run the robots from the beginning until the focused robot (noninclusive).
+    SBefore
+  | -- | Run a single step of the focused robot.
+    SSingle RID
+  | -- | Run robots after the (previously) focused robot and finish the tick.
+    SAfter RID
 
 -- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
 data Step = WorldTick | RobotStep SingleStep
