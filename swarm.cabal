@@ -139,6 +139,7 @@ library
                       Swarm.TUI.List
                       Swarm.TUI.Model
                       Swarm.TUI.Model.Failure
+                      Swarm.TUI.Model.FailureRender
                       Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name

@@ -69,6 +69,7 @@ import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.TUI.Model.Failure
+import Swarm.TUI.Model.FailureRender
 import Swarm.Util (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)

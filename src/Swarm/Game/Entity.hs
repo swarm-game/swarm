@@ -108,7 +108,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Display
 import Swarm.Game.Location
 import Swarm.Language.Capability
-import Swarm.TUI.Model.Failure (prettyPathLoadingFailure)
+import Swarm.TUI.Model.FailureRender (prettyPathLoadingFailure)
 import Swarm.Util (binTuples, getDataFileNameSafe, plural, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)

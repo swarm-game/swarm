@@ -55,7 +55,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.TUI.Model.Failure qualified as F
+import Swarm.TUI.Model.FailureRender qualified as F
 import Swarm.Util (getDataFileNameSafe, isRightOr, listEnums, quote)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
