@@ -49,8 +49,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Entity as E
-import Swarm.TUI.Model.Failure
 import Swarm.Util.GameData (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import Witch

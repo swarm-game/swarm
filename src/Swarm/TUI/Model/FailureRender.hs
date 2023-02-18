@@ -6,7 +6,7 @@ import Data.Char (toLower)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml (prettyPrintParseException)
-import Swarm.TUI.Model.Failure
+import Swarm.Failure
 
 tShowLow :: Show a => a -> Text
 tShowLow = T.pack . map toLower . show
