@@ -34,6 +34,7 @@ instance FromJSONE (EntityMap, RobotMap) (WorldPalette Entity) where
 data PWorldDescription e = WorldDescription
   { defaultTerrain :: Maybe (PCell e)
   , offsetOrigin :: Bool
+  , scrollable :: Bool
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
@@ -48,6 +49,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
     WorldDescription
       <$> v ..:? "default"
       <*> liftE (v .:? "offset" .!= False)
+      <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> liftE (v .:? "upperleft" .!= origin)
       <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)

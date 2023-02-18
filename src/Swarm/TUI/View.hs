@@ -756,6 +756,7 @@ drawKeyMenu s =
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode
+  canScroll = creative || (s ^. gameState . worldScrollable)
 
   renderControlModeSwitch :: ReplControlMode -> T.Text
   renderControlModeSwitch = \case
@@ -792,7 +793,7 @@ drawKeyMenu s =
       ++ [("^c", "cancel") | isReplWorking]
       ++ [("M-p", renderControlModeSwitch ctrlMode) | creative]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
-    [ ("←↓↑→ / hjkl", "scroll") | creative
+    [ ("←↓↑→ / hjkl", "scroll") | canScroll
     ]
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]
