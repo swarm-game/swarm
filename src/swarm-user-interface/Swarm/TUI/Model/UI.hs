@@ -63,10 +63,10 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
+import Swarm.Game.Util.Failure (SystemFailure)
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
-import Swarm.Game.Util.Failure (SystemFailure)
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
