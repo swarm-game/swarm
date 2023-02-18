@@ -10,7 +10,7 @@ import Data.Yaml qualified as Y
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.TUI.Model.Failure
-import Swarm.Util
+import Swarm.Util.GameData (getSwarmXdgDataSubdir)
 import System.Directory (
   doesDirectoryExist,
   doesFileExist,

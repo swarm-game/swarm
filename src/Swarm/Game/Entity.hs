@@ -109,7 +109,8 @@ import Swarm.Game.Display
 import Swarm.Game.Location
 import Swarm.Language.Capability
 import Swarm.TUI.Model.FailureRender (prettyPathLoadingFailure)
-import Swarm.Util (binTuples, getDataFileNameSafe, plural, reflow, (?))
+import Swarm.Util (binTuples, plural, reflow, (?))
+import Swarm.Util.GameData (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch

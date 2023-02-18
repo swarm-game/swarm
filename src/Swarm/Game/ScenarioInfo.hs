@@ -69,7 +69,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
 import Swarm.TUI.Model.Failure
-import Swarm.Util (getDataDirSafe, getSwarmSavePath)
+import Swarm.Util.GameData (getDataDirSafe, getSwarmSavePath)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
