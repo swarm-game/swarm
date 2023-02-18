@@ -207,9 +207,9 @@ library swarm-language
 
 library swarm-language-server
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Swarm.LSP
-                      Swarm.LSP.Hover
-                      Swarm.LSP.VarUsage
+    exposed-modules:  Swarm.Language.LSP
+                      Swarm.Language.LSP.Hover
+                      Swarm.Language.LSP.VarUsage
     build-depends:    
                       http-client                   >= 0.7 && < 0.8,
                       http-client-tls               >= 0.3 && < 0.4,
@@ -572,12 +572,19 @@ test-suite swarm-unit
                       -- Imports shared with the library don't need bounds
                       aeson,
                       base,
+											boolexpr,
                       containers,
                       filepath,
                       hashable,
                       lens,
                       linear,
                       mtl,
+                      swarm-util,
+                      swarm-language,
+                      swarm-language-server,
+                      swarm-game,
+                      swarm-tui,
+                      swarm-version,
                       swarm,
                       text,
                       witch
@@ -602,7 +609,12 @@ test-suite swarm-integration
                       linear,
                       mtl,
                       swarm,
-                      text,
+                      swarm-util,
+                      swarm-language,
+                      swarm-language-server,
+                      swarm-game,
+                      swarm-version,
+                      swarm-tui,text,
                       transformers,
                       witch,
                       yaml
