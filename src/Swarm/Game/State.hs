@@ -120,6 +120,7 @@ import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
+import Control.Monad.Trans.Except (except)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -793,11 +794,14 @@ deleteRobot rn = do
 
 -- | Create an initial game state record, first loading entities and
 --   recipes from disk.
-initGameState :: ExceptT Text IO GameState
+initGameState :: ExceptT Text IO ([SystemFailure], GameState)
 initGameState = do
   entities <- ExceptT loadEntities
   recipes <- withExceptT prettyFailure $ loadRecipes entities
-  loadedScenarios <- withExceptT (T.unlines . map prettyFailure) $ loadScenarios entities
+  eitherLoadedScenarios <- liftIO $ runExceptT $ loadScenarios entities
+  let (scenarioWarnings, loadedScenarios) = case eitherLoadedScenarios of
+        Left xs -> (xs, SC mempty mempty)
+        Right (warnings, x) -> (warnings, x)
 
   (adjsFile, namesFile) <- withExceptT (prettyFailure . AssetNotLoaded (Data NameGeneration)) $ do
     adjsFile <- getDataFileNameSafe "adjectives.txt"
@@ -810,49 +814,51 @@ initGameState = do
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
-  return $
-    GameState
-      { _creativeMode = False
-      , _gameStep = WorldTick
-      , _winCondition = NoWinCondition
-      , _winSolution = Nothing
-      , -- This does not need to be initialized with anything,
-        -- since the master list of achievements is stored in UIState
-        _gameAchievements = mempty
-      , _announcementQueue = mempty
-      , _runStatus = Running
-      , _robotMap = IM.empty
-      , _robotsByLocation = M.empty
-      , _availableRecipes = mempty
-      , _availableCommands = mempty
-      , _allDiscoveredEntities = empty
-      , _activeRobots = IS.empty
-      , _waitingRobots = M.empty
-      , _gensym = 0
-      , _seed = 0
-      , _randGen = mkStdGen 0
-      , _adjList = listArray (0, length adjs - 1) adjs
-      , _nameList = listArray (0, length names - 1) names
-      , _entityMap = entities
-      , _recipesOut = outRecipeMap recipes
-      , _recipesIn = inRecipeMap recipes
-      , _recipesReq = reqRecipeMap recipes
-      , _scenarios = loadedScenarios
-      , _currentScenarioPath = Nothing
-      , _knownEntities = []
-      , _world = W.emptyWorld (fromEnum StoneT)
-      , _worldScrollable = True
-      , _viewCenterRule = VCRobot 0
-      , _viewCenter = origin
-      , _needsRedraw = False
-      , _replStatus = REPLDone Nothing
-      , _replNextValueIndex = 0
-      , _messageQueue = Empty
-      , _lastSeenMessageTime = -1
-      , _focusedRobotID = 0
-      , _ticks = 0
-      , _robotStepsPerTick = defaultRobotStepsPerTick
-      }
+  return
+    ( scenarioWarnings
+    , GameState
+        { _creativeMode = False
+        , _gameStep = WorldTick
+        , _winCondition = NoWinCondition
+        , _winSolution = Nothing
+        , -- This does not need to be initialized with anything,
+          -- since the master list of achievements is stored in UIState
+          _gameAchievements = mempty
+        , _announcementQueue = mempty
+        , _runStatus = Running
+        , _robotMap = IM.empty
+        , _robotsByLocation = M.empty
+        , _availableRecipes = mempty
+        , _availableCommands = mempty
+        , _allDiscoveredEntities = empty
+        , _activeRobots = IS.empty
+        , _waitingRobots = M.empty
+        , _gensym = 0
+        , _seed = 0
+        , _randGen = mkStdGen 0
+        , _adjList = listArray (0, length adjs - 1) adjs
+        , _nameList = listArray (0, length names - 1) names
+        , _entityMap = entities
+        , _recipesOut = outRecipeMap recipes
+        , _recipesIn = inRecipeMap recipes
+        , _recipesReq = reqRecipeMap recipes
+        , _scenarios = loadedScenarios
+        , _currentScenarioPath = Nothing
+        , _knownEntities = []
+        , _world = W.emptyWorld (fromEnum StoneT)
+        , _worldScrollable = True
+        , _viewCenterRule = VCRobot 0
+        , _viewCenter = origin
+        , _needsRedraw = False
+        , _replStatus = REPLDone Nothing
+        , _replNextValueIndex = 0
+        , _messageQueue = Empty
+        , _lastSeenMessageTime = -1
+        , _focusedRobotID = 0
+        , _ticks = 0
+        , _robotStepsPerTick = defaultRobotStepsPerTick
+        }
+    )
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
 scenarioToGameState :: Scenario -> Maybe Seed -> Maybe CodeToRun -> GameState -> IO GameState
@@ -1030,7 +1036,12 @@ initGameStateForScenario ::
   Maybe FilePath ->
   ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
-  g <- initGameState
+  (warnings, g) <- initGameState
+  unless (null warnings) $
+    except $
+      Left $
+        T.unlines $
+          map prettyFailure warnings
   (scene, path) <- loadScenario sceneName (g ^. entityMap)
   maybeRunScript <- getParsedInitialCode toRun
   gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
