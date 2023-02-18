@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Game.Failure
+-- Module      :  Swarm.Game.Util.Failure
 -- Copyright   :  Ondřej Šebek
 -- Maintainer  :  ondras98@icloud.com
 --
@@ -11,7 +11,7 @@
 --
 -- These failures are often not fatal and serve
 -- to create common infrastructure for logging.
-module Swarm.TUI.Model.Failure where
+module Swarm.Game.Util.Failure where
 
 import Data.Char (toLower)
 import Data.Text (Text)

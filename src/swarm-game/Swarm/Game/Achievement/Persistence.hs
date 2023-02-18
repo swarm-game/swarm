@@ -9,7 +9,7 @@ import Data.Either (partitionEithers)
 import Data.Yaml qualified as Y
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.TUI.Model.Failure
+import Swarm.Game.Util.Failure
 import Swarm.Util
 import System.Directory (
   doesDirectoryExist,
