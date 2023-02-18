@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.Language.LSP.VarUsage where
+module Swarm.LSP.VarUsage where
 
 import Control.Monad (guard)
 import Data.List.NonEmpty (NonEmpty (..))
