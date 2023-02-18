@@ -172,6 +172,7 @@ import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
 import Swarm.TUI.Model.Failure
+import Swarm.TUI.Model.FailureRender
 import Swarm.Util (getDataFileNameSafe, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)

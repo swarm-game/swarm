@@ -40,7 +40,7 @@ import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Failure (prettyFailure)
+import Swarm.TUI.Model.FailureRender (prettyFailure)
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
