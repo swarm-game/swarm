@@ -56,7 +56,8 @@ initAppState AppOpts {..} = do
   (gsWarnings, gs) <- initGameState
   (uiWarnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
-  let rs = List.foldl' logWarning initRuntimeState $ gsWarnings <> uiWarnings
+  let addWarnings = List.foldl' logWarning
+  let rs = addWarnings initRuntimeState $ gsWarnings <> uiWarnings
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
@@ -68,10 +69,14 @@ initAppState AppOpts {..} = do
             soln <- scenario ^. scenarioSolution
             return $ CodeToRun ScenarioSuggested soln
       let codeToRun = maybeAutoplay <|> maybeRunScript
-      si <- loadScenarioInfo path
+
+      eitherSi <- runExceptT $ loadScenarioInfo path
+      let (si, newRs) = case eitherSi of
+            Right x -> (x, rs)
+            Left e -> (ScenarioInfo path NotStarted, addWarnings rs e)
       execStateT
         (startGameWithSeed userSeed (scenario, si) codeToRun)
-        (AppState gs ui rs)
+        (AppState gs ui newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()

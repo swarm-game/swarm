@@ -41,7 +41,7 @@ data BestByCriteria
   | BestByTicks
   | BestByCharCount
   | BestByAstSize
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Bounded, Enum, Show)
 
 describeCriteria :: BestByCriteria -> Text
 describeCriteria = \case
@@ -117,10 +117,10 @@ scenarioBestByTime :: Lens' BestRecords ProgressMetric
 -- | The best status of the scenario, measured in game ticks.
 scenarioBestByTicks :: Lens' BestRecords ProgressMetric
 
--- | The best code size of the scenario, measured both in character count and AST size.
+-- | The best code size of the scenario, measured in character count.
 scenarioBestByCharCount :: Lens' BestRecords ProgressMetric
 
--- | The best code size of the scenario, measured both in character count and AST size.
+-- | The best code size of the scenario, measured in AST size.
 scenarioBestByAstSize :: Lens' BestRecords ProgressMetric
 
 instance FromJSON BestRecords where

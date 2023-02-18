@@ -45,16 +45,8 @@ module Swarm.Game.ScenarioInfo (
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, unless, when)
 import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
-import Data.Aeson (
-  Options (..),
-  defaultOptions,
-  genericParseJSON,
-  genericToEncoding,
-  genericToJSON,
- )
-import Data.Char (isSpace, toLower)
+import Data.Char (isSpace)
 import Data.Either.Extra (fromRight')
-import Data.Function (on)
 import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -287,7 +279,7 @@ loadScenarioItem em path = do
       eitherSi <- runExceptT $ loadScenarioInfo path
       return $ case eitherSi of
         Right si -> ([], SISingle (s, si))
-        Left warnings -> (warnings, SISingle (s, ScenarioInfo path NotStarted NotStarted NotStarted))
+        Left warnings -> (warnings, SISingle (s, ScenarioInfo path NotStarted))
 
 ------------------------------------------------------------
 -- Some lenses + prisms

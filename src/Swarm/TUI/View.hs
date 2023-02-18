@@ -220,9 +220,6 @@ drawNewGameMenuUI (l :| ls) =
 
     padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
 
-    pairToList :: (a, a) -> [a]
-    pairToList (x, y) = [x, y]
-
     tableRows =
       map (map padTopLeft . pairToList) $
         mapMaybe sequenceA $
@@ -239,6 +236,9 @@ drawNewGameMenuUI (l :| ls) =
 
   nonBlank "" = " "
   nonBlank t = t
+
+pairToList :: (a, a) -> [a]
+pairToList (x, y) = [x, y]
 
 describeProgress :: ProgressMetric -> Widget n
 describeProgress (Metric p (ProgressStats _startedAt (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics))) = case p of
@@ -298,7 +298,7 @@ makeBestScoreRows scenarioStat =
     hasMultiple = length groups > 1
 
   makeBestRow hasDistinctByCriteria (b, criteria) =
-    ( hLimit 16 $
+    ( hLimit (maxLeftColumnWidth + 2) $
         vBox $
           [ padLeft Max $ txt "best:"
           ]
@@ -306,9 +306,22 @@ makeBestScoreRows scenarioStat =
     , Just $ describeProgress b
     )
    where
+    maxLeftColumnWidth = maximum (map (T.length . describeCriteria) listEnums)
+    mkCriteriaRow =
+      withAttr dimAttr
+        . padLeft Max
+        . txt
+        . mconcat
+        . pairToList
+        . fmap (\x -> T.singleton $ if x == 0 then ',' else ' ')
     elaboratedCriteria =
       if hasDistinctByCriteria
-        then map (withAttr dimAttr . txt . ("* by " <>) . describeCriteria) $ NE.toList criteria
+        then
+          map mkCriteriaRow $
+            flip zip [(0 :: Int) ..] $
+              NE.toList $
+                NE.reverse $
+                  NE.map describeCriteria criteria
         else []
 
 drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name

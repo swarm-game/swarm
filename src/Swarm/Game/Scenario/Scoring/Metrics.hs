@@ -17,9 +17,9 @@ scenarioOptions =
 
 data DurationMetrics = DurationMetrics
   { _scenarioElapsed :: NominalDiffTime
-  -- ^ Time elapsed until quitting the scenario.
+  -- ^ Time elapsed until winning the scenario.
   , _scenarioElapsedTicks :: Integer
-  -- ^ Ticks elapsed until quitting the scenario.
+  -- ^ Ticks elapsed until winning the scenario.
   }
   deriving (Eq, Ord, Show, Read, Generic)
 
