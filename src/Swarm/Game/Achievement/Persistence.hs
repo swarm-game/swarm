@@ -39,10 +39,10 @@ loadAchievementsInfo = do
         if isFile
           then do
             eitherDecodedFile <- sendIO (Y.decodeFileEither fullPath)
-            return $ left (AssetNotLoaded Achievement p . CanNotParse) eitherDecodedFile
-          else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
+            return $ left (AssetNotLoaded Achievement . PathLoadFailure p . CanNotParse) eitherDecodedFile
+          else return . Left $ AssetNotLoaded Achievement $ PathLoadFailure p (EntryNot File)
       return $ partitionEithers eithersList
-    else return ([AssetNotLoaded Achievement "." (DoesNotExist Directory)], [])
+    else return ([AssetNotLoaded Achievement $ PathLoadFailure "." $ DoesNotExist Directory], [])
 
 -- | Save info about achievements to XDG data directory.
 saveAchievementsInfo ::
