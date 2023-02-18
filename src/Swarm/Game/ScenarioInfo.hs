@@ -47,7 +47,7 @@ module Swarm.Game.ScenarioInfo (
 
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, unless, when)
-import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, withExceptT)
+import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
 import Data.Aeson (
   Options (..),
   defaultOptions,
@@ -62,7 +62,7 @@ import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
@@ -234,7 +234,7 @@ scenarioCollectionToList (SC (Just order) m) = (m M.!) <$> order
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios ::
   EntityMap ->
-  ExceptT [SystemFailure] IO ScenarioCollection
+  ExceptT [SystemFailure] IO ([SystemFailure], ScenarioCollection)
 loadScenarios em = do
   dataDir <- withExceptT (pure . AssetNotLoaded (Data Scenarios)) $ ExceptT $ getDataDirSafe p
   loadScenarioDir em dataDir
@@ -252,7 +252,7 @@ loadScenarioDir ::
   MonadIO m =>
   EntityMap ->
   FilePath ->
-  ExceptT [SystemFailure] m ScenarioCollection
+  ExceptT [SystemFailure] m ([SystemFailure], ScenarioCollection)
 loadScenarioDir em dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
@@ -296,7 +296,13 @@ loadScenarioDir em dir = do
 
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` fs) <$> morder
-  SC morder' . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
+  let f filepath = do
+        (warnings, item) <- loadScenarioItem em (dir </> filepath)
+        return (warnings, (filepath, item))
+  warningsAndScenarios <- mapM f fs
+  let (allWarnings, allPairs) = unzip warningsAndScenarios
+      collection = SC morder' . M.fromList $ allPairs
+  return (concat allWarnings, collection)
  where
   -- Keep only files which are .yaml files or directories that start
   -- with something other than an underscore.
@@ -327,8 +333,10 @@ loadScenarioInfo p = do
     then do
       return $ ScenarioInfo path NotStarted NotStarted NotStarted
     else
-      sendIO (decodeFileEither infoPath)
-        >>= either (throwError . pack . prettyPrintParseException) return
+      withExceptT (pure . AssetNotLoaded (Data Scenarios) . PathLoadFailure infoPath . CanNotParse) $
+        ExceptT $
+          liftIO $
+            decodeFileEither infoPath
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
@@ -345,16 +353,20 @@ loadScenarioItem ::
   MonadIO m =>
   EntityMap ->
   FilePath ->
-  ExceptT [SystemFailure] m ScenarioItem
+  ExceptT [SystemFailure] m ([SystemFailure], ScenarioItem)
 loadScenarioItem em path = do
   isDir <- liftIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
-    True -> SICollection collectionName <$> loadScenarioDir em path
+    True -> do
+      (warnings, d) <- loadScenarioDir em path
+      return (warnings, SICollection collectionName d)
     False -> do
       s <- withExceptT pure $ loadScenarioFile em path
-      si <- loadScenarioInfo path
-      return $ SISingle (s, si)
+      eitherSi <- runExceptT $ loadScenarioInfo path
+      return $ case eitherSi of
+        Right si -> ([], SISingle (s, si))
+        Left warnings -> (warnings, SISingle (s, ScenarioInfo path NotStarted NotStarted NotStarted))
 
 ------------------------------------------------------------
 -- Some lenses + prisms
