@@ -67,7 +67,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Model.Failure (SystemFailure)
+import Swarm.TUI.Model.Failure (SystemFailure, prettyFailure)
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -278,7 +278,7 @@ initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 initUIState :: Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
 initUIState showMainMenu cheatMode = do
   historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- liftIO readAppData
+  appDataMap <- withExceptT prettyFailure readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- liftIO $ getTime Monotonic
   (warnings, achievements) <- liftIO loadAchievementsInfo

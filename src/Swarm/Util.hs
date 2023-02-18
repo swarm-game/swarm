@@ -71,12 +71,14 @@ module Swarm.Util (
 ) where
 
 import Control.Algebra (Has)
+import Control.Arrow (left)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
 import Control.Monad (forM, unless, when)
+import Control.Monad.Except (ExceptT (..), MonadIO, liftIO)
 import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
@@ -99,6 +101,7 @@ import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import Paths_swarm (getDataDir)
+import Swarm.TUI.Model.Failure
 import System.Clock (TimeSpec)
 import System.Directory (
   XdgDirectory (XdgData),
@@ -109,7 +112,6 @@ import System.Directory (
   listDirectory,
  )
 import System.FilePath
-import System.IO
 import System.IO.Error (catchIOError)
 import Witch
 
@@ -194,16 +196,16 @@ catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
 -- The idea is that when installing with Cabal/Stack the first
 -- is preferred, but when the players install a binary they
 -- need to extract the `data` archive to the XDG directory.
-getDataDirSafe :: FilePath -> IO (Maybe FilePath)
+getDataDirSafe :: MonadIO m => FilePath -> m (Either PathLoadFailure FilePath)
 getDataDirSafe p = do
-  d <- (`appDir` p) <$> getDataDir
-  de <- doesDirectoryExist d
+  d <- (`appDir` p) <$> liftIO getDataDir
+  de <- liftIO $ doesDirectoryExist d
   if de
-    then return $ Just d
+    then return $ Right d
     else do
-      xd <- (`appDir` p) <$> getSwarmXdgDataSubdir False "data"
-      xde <- doesDirectoryExist xd
-      return $ if xde then Just xd else Nothing
+      xd <- (`appDir` p) <$> liftIO (getSwarmXdgDataSubdir False "data")
+      xde <- liftIO $ doesDirectoryExist xd
+      return $ if xde then Right xd else Left $ PathLoadFailure xd $ DoesNotExist Directory
  where
   appDir r = \case
     "" -> r
@@ -213,26 +215,31 @@ getDataDirSafe p = do
 -- | Get file from swarm data directory.
 --
 -- See the note in 'getDataDirSafe'.
-getDataFileNameSafe :: FilePath -> IO (Maybe FilePath)
+getDataFileNameSafe ::
+  MonadIO m =>
+  FilePath ->
+  ExceptT PathLoadFailure m FilePath
 getDataFileNameSafe name = do
-  dir <- getDataDirSafe "."
-  case dir of
-    Nothing -> return Nothing
-    Just d -> do
-      let fp = d </> name
-      fe <- doesFileExist fp
-      return $ if fe then Just fp else Nothing
+  d <- ExceptT $ getDataDirSafe "."
+  let fp = d </> name
+  fe <- liftIO $ doesFileExist fp
+  ExceptT $
+    return $
+      if fe
+        then Right fp
+        else Left $ PathLoadFailure fp $ DoesNotExist File
 
 -- | Get a nice message suggesting to download `data` directory to 'XdgData'.
-dataNotFound :: FilePath -> IO Text
+dataNotFound :: FilePath -> IO LoadingFailure
 dataNotFound f = do
   d <- getSwarmXdgDataSubdir False ""
   let squotes = squote . T.pack
   return $
-    T.unlines
-      [ "Could not find the data: " <> squotes f
-      , "Try downloading the Swarm 'data' directory to: " <> squotes (d </> "data")
-      ]
+    CustomMessage $
+      T.unlines
+        [ "Could not find the data: " <> squotes f
+        , "Try downloading the Swarm 'data' directory to: " <> squotes (d </> "data")
+        ]
 
 -- | Get path to swarm data, optionally creating necessary
 --   directories. This could fail if user has bad permissions
@@ -260,19 +267,17 @@ getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
 
 -- | Read all the .txt files in the data/ directory.
-readAppData :: IO (Map Text Text)
+readAppData :: ExceptT SystemFailure IO (Map Text Text)
 readAppData = do
-  md <- getDataDirSafe "."
-  case md of
-    Nothing -> fail . T.unpack =<< dataNotFound "<the data directory itself>"
-    Just d -> do
-      fs <-
-        filter ((== ".txt") . takeExtension)
-          <$> ( listDirectory d `catch` \e ->
-                  hPutStr stderr (show (e :: IOException)) >> return []
-              )
-      M.fromList . mapMaybe sequenceA
-        <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+  d <- ExceptT $ left (AssetNotLoaded $ Data AppAsset) <$> getDataDirSafe "."
+  dirMembers <-
+    ExceptT $
+      fmap pure (listDirectory d) `catch` \(e :: IOException) ->
+        return $ Left $ AssetNotLoaded (Data AppAsset) $ PathLoadFailure d $ CustomMessage $ T.pack $ show e
+  let fs = filter ((== ".txt") . takeExtension) dirMembers
+
+  filesList <- liftIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+  return $ M.fromList . mapMaybe sequenceA $ filesList
 
 ------------------------------------------------------------
 -- Some Text-y stuff

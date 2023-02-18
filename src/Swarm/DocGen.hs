@@ -25,9 +25,10 @@ import Control.Arrow (left)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_, (<=<))
-import Control.Monad.Except (ExceptT, liftIO, runExceptT)
+import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
+import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy (Map)
@@ -54,6 +55,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
+import Swarm.TUI.Model.Failure qualified as F
 import Swarm.Util (getDataFileNameSafe, isRightOr, listEnums, quote)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
@@ -111,17 +113,18 @@ generateDocs = \case
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
       Capabilities -> simpleErrorHandle $ do
-        entities <- loadEntities >>= guardRight "load entities"
+        entities <- ExceptT loadEntities
         liftIO $ T.putStrLn $ capabilityPage address entities
       Entities -> simpleErrorHandle $ do
         let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
         let f = "entities.yaml"
-        Just fileName <- liftIO $ getDataFileNameSafe f
+        let e2m = fmap eitherToMaybe . runExceptT
+        Just fileName <- liftIO $ e2m $ getDataFileNameSafe f
         entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
         liftIO $ T.putStrLn $ entitiesPage address entities
       Recipes -> simpleErrorHandle $ do
-        entities <- loadEntities >>= guardRight "load entities"
-        recipes <- loadRecipes entities >>= guardRight "load recipes"
+        entities <- ExceptT loadEntities
+        recipes <- withExceptT F.prettyFailure $ loadRecipes entities
         liftIO $ T.putStrLn $ recipePage address recipes
 
 -- ----------------------------------------------------------------------------
@@ -401,8 +404,8 @@ recipePage = recipeTable
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
-  entities <- loadEntities >>= guardRight "load entities"
-  recipes <- loadRecipes entities >>= guardRight "load recipes"
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT F.prettyFailure $ loadRecipes entities
   classic <- classicScenario
   return . Dot.showDot $ recipesToDot classic entities recipes
 

@@ -140,7 +140,7 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (drop, lines, pack, take)
+import Data.Text qualified as T (drop, lines, pack, take, unlines)
 import Data.Text.IO qualified as T (readFile)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
@@ -174,7 +174,8 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (getDataFileNameSafe, isRightOr, uniq, (<+=), (<<.=), (?))
+import Swarm.TUI.Model.Failure
+import Swarm.Util (getDataFileNameSafe, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
@@ -793,18 +794,18 @@ deleteRobot rn = do
 --   recipes from disk.
 initGameState :: ExceptT Text IO GameState
 initGameState = do
-  let guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-  entities <- loadEntities >>= guardRight "load entities"
-  recipes <- loadRecipes entities >>= guardRight "load recipes"
-  loadedScenarios <- loadScenarios entities >>= guardRight "load scenarios"
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT prettyFailure $ loadRecipes entities
+  loadedScenarios <- withExceptT (T.unlines . map prettyFailure) $ loadScenarios entities
+
+  (adjsFile, namesFile) <- withExceptT (prettyFailure . AssetNotLoaded (Data NameGeneration)) $ do
+    adjsFile <- getDataFileNameSafe "adjectives.txt"
+    namesFile <- getDataFileNameSafe "names.txt"
+    return (adjsFile, namesFile)
 
   let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
-
   (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    -- if data directory did not exist we would have failed loading scenarios
-    Just adjsFile <- getDataFileNameSafe "adjectives.txt"
     as <- tail . T.lines <$> T.readFile adjsFile
-    Just namesFile <- getDataFileNameSafe "names.txt"
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
