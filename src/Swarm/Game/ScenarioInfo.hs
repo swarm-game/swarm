@@ -24,7 +24,7 @@ module Swarm.Game.ScenarioInfo (
   scenarioStatus,
   scenarioBestTime,
   scenarioBestTicks,
-  updateScenarioInfoOnQuit,
+  updateScenarioInfoOnFinish,
   ScenarioInfoPair,
 
   -- * Scenario collection
@@ -153,13 +153,13 @@ scenarioBestTime :: Lens' ScenarioInfo ScenarioStatus
 -- | The best status of the scenario, measured in game ticks.
 scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
 
--- | Update the current @ScenarioInfo@ record when quitting a game.
+-- | Update the current @ScenarioInfo@ record when finishing a game.
 --
 -- Note that when comparing "best" times, shorter is not always better!
 -- As long as the scenario is not completed (e.g. some do not have win condition)
 -- we consider having fun _longer_ to be better.
-updateScenarioInfoOnQuit :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
-updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
+updateScenarioInfoOnFinish :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
+updateScenarioInfoOnFinish z ticks completed si@(ScenarioInfo p s bTime bTicks) = case s of
   InProgress start _ _ ->
     let el = (diffUTCTime `on` zonedTimeToUTC) z start
         cur = (if completed then Complete else InProgress) start el ticks
@@ -168,7 +168,7 @@ updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = cas
           InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
           _ -> cur -- otherwise update with current
      in ScenarioInfo p cur (best _scenarioElapsed bTime) (best _scenarioElapsedTicks bTicks)
-  _ -> error "Logical error: trying to quit scenario which is not in progress!"
+  _ -> si
 
 -- ----------------------------------------------------------------------------
 -- Scenario Item
