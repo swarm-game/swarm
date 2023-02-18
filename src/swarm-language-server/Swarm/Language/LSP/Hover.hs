@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.LSP.Hover (
+module Swarm.Language.LSP.Hover (
   showHoverInfo,
 
   -- * Documentation rendering

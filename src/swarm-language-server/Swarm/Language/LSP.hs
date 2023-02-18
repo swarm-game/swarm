@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.LSP
+-- Module      :  Swarm.Language.LSP
 -- Copyright   :  Brent Yorgey
 -- Maintainer  :  byorgey@gmail.com
 --
@@ -9,7 +9,7 @@
 --
 -- Language Server Protocol (LSP) server for the Swarm language.
 -- See the docs/EDITORS.md to learn how to use it.
-module Swarm.LSP where
+module Swarm.Language.LSP where
 
 import Control.Lens (to, (^.))
 import Control.Monad (void)
@@ -23,8 +23,8 @@ import Language.LSP.Types (Hover (Hover))
 import Language.LSP.Types qualified as J
 import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
-import Swarm.LSP.Hover qualified as H
-import Swarm.LSP.VarUsage qualified as VU
+import Swarm.Language.LSP.Hover qualified as H
+import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import System.IO (stderr)
