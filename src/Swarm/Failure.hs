@@ -9,7 +9,7 @@
 --
 -- These failures are often not fatal and serve
 -- to create common infrastructure for logging.
-module Swarm.TUI.Model.Failure where
+module Swarm.Failure where
 
 import Data.Text (Text)
 import Data.Yaml (ParseException)

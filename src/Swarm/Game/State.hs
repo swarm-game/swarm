@@ -148,6 +148,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
@@ -175,7 +176,6 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.TUI.Model.Failure
 import Swarm.TUI.Model.FailureRender
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
 import Swarm.Util.GameData (getDataFileNameSafe)

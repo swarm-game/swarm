@@ -14,7 +14,7 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Paths_swarm (getDataDir)
-import Swarm.TUI.Model.Failure
+import Swarm.Failure
 import Swarm.Util
 import System.Directory (
   XdgDirectory (XdgData),

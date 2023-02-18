@@ -58,6 +58,7 @@ import Data.Either.Extra (eitherToMaybe, maybeToEither)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Failure
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot)
@@ -68,7 +69,6 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.TUI.Model.Failure
 import Swarm.TUI.Model.FailureRender
 import Swarm.Util.GameData (getDataFileNameSafe)
 import Swarm.Util.Yaml
