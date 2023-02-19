@@ -146,6 +146,7 @@ import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
 import Swarm.Failure
+import Swarm.Failure.Render
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
@@ -173,7 +174,6 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.TUI.Model.FailureRender
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
 import Swarm.Util.GameData (getDataFileNameSafe)
 import System.Clock qualified as Clock
@@ -998,11 +998,12 @@ initGameStateForScenario ::
   ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   (warnings, g) <- initGameState
-  unless (null warnings) $
-    except $
-      Left $
-        T.unlines $
-          map prettyFailure warnings
+  unless (null warnings)
+    . except
+    . Left
+    . T.unlines
+    . map prettyFailure
+    $ warnings
   (scene, path) <- loadScenario sceneName (g ^. entityMap)
   maybeRunScript <- getParsedInitialCode toRun
   gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g

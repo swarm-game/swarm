@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.Model.FailureRender where
+module Swarm.Failure.Render where
 
 import Data.Char (toLower)
 import Data.Text (Text)

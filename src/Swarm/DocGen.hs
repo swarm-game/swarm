@@ -42,6 +42,7 @@ import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml (decodeFileEither)
 import Data.Yaml.Aeson (prettyPrintParseException)
+import Swarm.Failure.Render qualified as F
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -55,7 +56,6 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.TUI.Model.FailureRender qualified as F
 import Swarm.Util (isRightOr, listEnums, quote)
 import Swarm.Util.GameData (getDataFileNameSafe)
 import Text.Dot (Dot, NodeId, (.->.))
