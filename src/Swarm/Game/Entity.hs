@@ -105,10 +105,10 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Failure.Render (prettyPathLoadingFailure)
 import Swarm.Game.Display
 import Swarm.Game.Location
 import Swarm.Language.Capability
-import Swarm.TUI.Model.FailureRender (prettyPathLoadingFailure)
 import Swarm.Util (binTuples, plural, reflow, (?))
 import Swarm.Util.GameData (getDataFileNameSafe)
 import Swarm.Util.Yaml

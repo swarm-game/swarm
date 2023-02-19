@@ -86,6 +86,7 @@ library
                       Swarm.App
                       Swarm.DocGen
                       Swarm.Failure
+                      Swarm.Failure.Render
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Achievement.Description
@@ -139,7 +140,6 @@ library
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.FailureRender
                       Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name

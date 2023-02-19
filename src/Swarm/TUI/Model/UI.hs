@@ -59,6 +59,7 @@ import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Failure (SystemFailure)
+import Swarm.Failure.Render (prettyFailure)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
@@ -68,7 +69,6 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Model.FailureRender (prettyFailure)
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
