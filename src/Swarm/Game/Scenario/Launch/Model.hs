@@ -18,9 +18,16 @@ newtype SeedSelection = SeedSelection
 
 makeLenses ''SeedSelection
 
+data FileBrowserControl = FileBrowserControl
+  { _fbWidget :: FB.FileBrowser Name
+  , _fbIsDisplayed :: Bool
+  }
+
+makeLenses ''FileBrowserControl
+
 -- | UI elements to configure scenario launch options
 data LaunchOptions = LaunchOptions
-  { _fileBrowser :: Maybe (FB.FileBrowser Name)
+  { _fileBrowser :: FileBrowserControl
   , _seedValueEditor :: Editor Text Name
   , _scenarioConfigFocusRing :: Focus.FocusRing Name
   , _isDisplayedFor :: Maybe ScenarioInfoPair
@@ -28,9 +35,16 @@ data LaunchOptions = LaunchOptions
 
 makeLenses ''LaunchOptions
 
-initConfigPanel :: LaunchOptions
-initConfigPanel =
-  LaunchOptions Nothing myForm ring Nothing
+initConfigPanel :: IO LaunchOptions
+initConfigPanel = do
+  fb <-
+    FB.newFileBrowser
+      FB.selectNonDirectories
+      -- (const False)
+      (ScenarioConfigControl $ ScenarioConfigPanelControl ScriptSelector)
+      Nothing
+  let configuredFB = FB.setFileBrowserEntryFilter (Just $ FB.fileExtensionMatch "sw") fb
+  return $ LaunchOptions (FileBrowserControl configuredFB False) myForm ring Nothing
  where
   myForm =
     editorText

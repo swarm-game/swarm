@@ -58,10 +58,10 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
@@ -281,12 +281,13 @@ initUIState showMainMenu cheatMode = do
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- liftIO $ getTime Monotonic
   (warnings, achievements) <- liftIO loadAchievementsInfo
+  launchConfigPanel <- liftIO initConfigPanel
   let out =
         UIState
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
           , _uiPlaying = not showMainMenu
           , _uiCheatMode = cheatMode
-          , _uiLaunchConfig = initConfigPanel
+          , _uiLaunchConfig = launchConfigPanel
           , _uiFocusRing = initFocusRing
           , _uiWorldCursor = Nothing
           , _uiREPL = initREPLState $ newREPLHistory history

@@ -133,9 +133,12 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l -> case s ^. uiState . uiLaunchConfig . isDisplayedFor of
-            Nothing -> handleNewGameMenuEvent l
-            Just siPair -> handleLaunchOptionsEvent siPair
+          NewGameMenu l ->
+            if s ^. uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed
+              then handleFBEvent
+              else case s ^. uiState . uiLaunchConfig . isDisplayedFor of
+                Nothing -> handleNewGameMenuEvent l
+                Just siPair -> handleLaunchOptionsEvent siPair
           MessagesMenu -> handleMainMessagesEvent
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))

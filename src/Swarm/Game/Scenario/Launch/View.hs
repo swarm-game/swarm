@@ -11,6 +11,7 @@ import Brick.Widgets.Edit
 import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Exception qualified as E
+import Data.Maybe (listToMaybe)
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Launch.Model
 import Swarm.TUI.Attr
@@ -18,14 +19,12 @@ import Swarm.TUI.Model.Name
 
 drawFileBrowser :: FB.FileBrowser Name -> Widget Name
 drawFileBrowser b =
-  centerLayer $ ui <=> help
+  centerLayer $ hLimit 50 $ ui <=> help
  where
   ui =
-    hCenter $
-      vLimit 15 $
-        hLimit 50 $
-          borderWithLabel (txt "Choose a file") $
-            FB.renderFileBrowser True b
+    vLimit 15 $
+      borderWithLabel (txt "Choose a file") $
+        FB.renderFileBrowser True b
   help =
     padTop (Pad 1) $
       vBox
@@ -44,13 +43,21 @@ drawFileBrowser b =
         ]
 
 drawLaunchConfigPanel :: LaunchOptions -> [Widget Name]
-drawLaunchConfigPanel (LaunchOptions maybeFileBrowser seedEditor ring _isDisplayedFor) = case maybeFileBrowser of
-  Nothing -> [panelWidget]
-  Just fb -> [drawFileBrowser fb, panelWidget]
+drawLaunchConfigPanel (LaunchOptions (FileBrowserControl fb isFbDisplayed) seedEditor ring _isDisplayedFor) =
+  if isFbDisplayed
+    then [drawFileBrowser fb, panelWidget]
+    else [panelWidget]
  where
   seedEditorHasFocus = case focusGetCurrent ring of
     Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) -> True
     _ -> False
+
+  highlightIfFocused x =
+    if focusGetCurrent ring == Just (ScenarioConfigControl (ScenarioConfigPanelControl x))
+      then withAttr highlightAttr
+      else id
+
+  mkButton name label = highlightIfFocused name $ str label
 
   panelWidget =
     centerLayer $
@@ -58,8 +65,18 @@ drawLaunchConfigPanel (LaunchOptions maybeFileBrowser seedEditor ring _isDisplay
         hLimit 50 $
           vBox
             [ padAll 1 $ txt "Hello there!"
-            , overrideAttr E.editFocusedAttr customEditFocusedAttr $
-                renderEditor (txt . mconcat) seedEditorHasFocus seedEditor
-            , hCenter $ str "Select script"
-            , hCenter $ str "Launch"
+            , hBox
+                [ mkButton SeedSelector "Seed: "
+                , hLimit 10 $
+                    overrideAttr E.editFocusedAttr customEditFocusedAttr $
+                      renderEditor (txt . mconcat) seedEditorHasFocus seedEditor
+                ]
+            , hBox
+                [ mkButton ScriptSelector "Script: "
+                , str $
+                    maybe "<none>" FB.fileInfoSanitizedFilename $
+                      listToMaybe $
+                        FB.fileBrowserSelection fb
+                ]
+            , hCenter $ mkButton StartGameButton ">> Launch with these settings <<"
             ]

@@ -15,26 +15,39 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 
+handleFBEvent ::
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
+handleFBEvent = \case
+  Key V.KEsc -> closeModal
+  CharKey 'q' -> closeModal
+  ControlChar 'q' -> closeModal
+  VtyEvent e ->
+    Brick.zoom (uiState . uiLaunchConfig . fileBrowser . fbWidget) (handleFileBrowserEvent e)
+  _ -> return ()
+ where
+  closeModal = uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed .= False
+
 handleLaunchOptionsEvent ::
   ScenarioInfoPair ->
   BrickEvent Name AppEvent ->
   EventM Name AppState ()
 handleLaunchOptionsEvent siPair = \case
-  CharKey '\t' -> do
+  Key V.KBackTab ->
+    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
+  Key V.KUp ->
+    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
+  CharKey '\t' ->
+    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
+  Key V.KDown ->
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
   Key V.KEnter -> do
     fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
     case focusGetCurrent fr of
       Just (ScenarioConfigControl (ScenarioConfigPanelControl item)) -> case item of
         SeedSelector -> return ()
-        ScriptSelector -> do
-          fb <-
-            liftIO $
-              newFileBrowser
-                selectNonDirectories
-                (ScenarioConfigControl $ ScenarioConfigPanelControl ScriptSelector)
-                Nothing
-          uiState . uiLaunchConfig . fileBrowser .= Just fb
+        ScriptSelector ->
+          uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed .= True
         StartGameButton -> do
           closeModal
           startGame siPair Nothing
@@ -47,11 +60,7 @@ handleLaunchOptionsEvent siPair = \case
     case focusGetCurrent fr of
       Just (ScenarioConfigControl (ScenarioConfigPanelControl item)) -> case item of
         SeedSelector -> Brick.zoom (uiState . uiLaunchConfig . seedValueEditor) (handleEditorEvent ev)
-        ScriptSelector -> case ev of
-          VtyEvent e ->
-            Brick.zoom (uiState . uiLaunchConfig . fileBrowser . _Just) (handleFileBrowserEvent e)
-          _ -> return ()
-        StartGameButton -> return ()
+        _ -> return ()
       _ -> return ()
  where
   closeModal = uiState . uiLaunchConfig . isDisplayedFor .= Nothing
