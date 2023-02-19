@@ -58,10 +58,10 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )

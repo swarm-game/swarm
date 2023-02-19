@@ -24,11 +24,10 @@ handleLaunchOptionsEvent siPair = \case
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
   Key V.KUp ->
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
-  CharKey '\t' -> 
+  CharKey '\t' ->
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
-  Key V.KDown -> 
+  Key V.KDown ->
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
-    
   Key V.KEnter -> do
     fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
     case focusGetCurrent fr of

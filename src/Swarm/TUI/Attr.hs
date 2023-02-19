@@ -187,4 +187,3 @@ yellowAttr = attrName "yellow"
 cyanAttr = attrName "cyan"
 lightCyanAttr = attrName "lightCyan"
 magentaAttr = attrName "magenta"
-
