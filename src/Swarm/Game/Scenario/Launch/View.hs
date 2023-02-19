@@ -52,14 +52,23 @@ drawLaunchConfigPanel (LaunchOptions maybeFileBrowser seedEditor ring _isDisplay
     Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) -> True
     _ -> False
 
+  highlightIfFocused x = if focusGetCurrent ring == Just (ScenarioConfigControl (ScenarioConfigPanelControl x))
+    then withAttr highlightAttr
+    else id
+
+  mkButton name label = highlightIfFocused name $ str label
+
   panelWidget =
     centerLayer $
       borderWithLabel (str "Configure scenario") $
         hLimit 50 $
           vBox
             [ padAll 1 $ txt "Hello there!"
-            , overrideAttr E.editFocusedAttr customEditFocusedAttr $
-                renderEditor (txt . mconcat) seedEditorHasFocus seedEditor
-            , hCenter $ str "Select script"
-            , hCenter $ str "Launch"
+            , hBox [
+                mkButton SeedSelector "Seed: "
+              , overrideAttr E.editFocusedAttr customEditFocusedAttr $
+                 renderEditor (txt . mconcat) seedEditorHasFocus seedEditor
+              ]
+            , hCenter $ mkButton ScriptSelector ">> Select script <<"
+            , hCenter $ mkButton StartGameButton ">> Launch with these settings <<"
             ]

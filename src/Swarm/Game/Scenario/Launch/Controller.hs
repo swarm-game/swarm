@@ -20,8 +20,15 @@ handleLaunchOptionsEvent ::
   BrickEvent Name AppEvent ->
   EventM Name AppState ()
 handleLaunchOptionsEvent siPair = \case
-  CharKey '\t' -> do
+  Key V.KBackTab ->
+    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
+  Key V.KUp ->
+    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
+  CharKey '\t' -> 
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
+  Key V.KDown -> 
+    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
+    
   Key V.KEnter -> do
     fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
     case focusGetCurrent fr of
@@ -54,4 +61,8 @@ handleLaunchOptionsEvent siPair = \case
         StartGameButton -> return ()
       _ -> return ()
  where
-  closeModal = uiState . uiLaunchConfig . isDisplayedFor .= Nothing
+  closeModal = do
+    fb <- use $ uiState . uiLaunchConfig . fileBrowser
+    if null fb
+      then uiState . uiLaunchConfig . isDisplayedFor .= Nothing
+      else uiState . uiLaunchConfig . fileBrowser .= Nothing
