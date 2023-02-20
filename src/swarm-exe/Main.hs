@@ -13,7 +13,7 @@ import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.DocGen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
-import Swarm.LSP (lspMain)
+import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.Version
