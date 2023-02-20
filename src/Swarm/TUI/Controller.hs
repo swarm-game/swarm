@@ -72,6 +72,7 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
@@ -101,7 +102,6 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View (generateModal)
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.Util hiding ((<<.=))
-import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)

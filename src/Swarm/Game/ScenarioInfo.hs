@@ -66,10 +66,10 @@ import Data.Text (Text)
 import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Swarm.Game.Failure
 import Swarm.Game.Entity
-import Swarm.Game.Scenario
+import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
+import Swarm.Game.Scenario
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)

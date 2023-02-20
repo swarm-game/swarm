@@ -57,11 +57,12 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
@@ -73,7 +74,6 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.Util
-import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import System.Clock
 
 ------------------------------------------------------------

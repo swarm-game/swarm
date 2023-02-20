@@ -105,12 +105,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
-import Swarm.Game.Failure.Render (prettyPathLoadingFailure)
 import Swarm.Game.Display
+import Swarm.Game.Failure.Render (prettyPathLoadingFailure)
 import Swarm.Game.Location
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
 import Swarm.Util (binTuples, plural, reflow, (?))
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch

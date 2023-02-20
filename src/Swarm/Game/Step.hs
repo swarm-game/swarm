@@ -61,6 +61,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Location
 import Swarm.Game.Recipe
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
@@ -76,7 +77,6 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
