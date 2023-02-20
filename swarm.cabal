@@ -343,6 +343,56 @@ library
     exposed-modules:  Swarm.App
                       Swarm.DocGen
                       Swarm.Web
+
+    reexported-modules: Swarm.Language.Context
+                      , Swarm.Language.Capability
+                      , Swarm.Language.Elaborate
+                      , Swarm.Language.Module
+                      , Swarm.Language.Parse
+                      , Swarm.Language.Parse.QQ
+                      , Swarm.Language.Pipeline
+                      , Swarm.Language.Pipeline.QQ
+                      , Swarm.Language.Pretty
+                      , Swarm.Language.Requirement
+                      , Swarm.Language.Syntax
+                      , Swarm.Language.Typecheck
+                      , Swarm.Language.Typed
+                      , Swarm.Language.Types
+                      , Swarm.Language.Value
+
+    reexported-modules: Swarm.Game.Achievement.Attainment
+                      , Swarm.Game.Achievement.Definitions
+                      , Swarm.Game.Achievement.Description
+                      , Swarm.Game.Achievement.Persistence
+                      , Swarm.Game.CESK
+                      , Swarm.Game.Display
+                      , Swarm.Game.Entity
+                      , Swarm.Game.Exception
+                      , Swarm.Game.Log
+                      , Swarm.Game.Location
+                      , Swarm.Game.Recipe
+                      , Swarm.Game.Robot
+                      , Swarm.Game.Scenario
+                      , Swarm.Game.ScenarioInfo
+                      , Swarm.Game.State
+                      , Swarm.Game.Step
+                      , Swarm.Game.Terrain
+                      , Swarm.Game.World
+                      , Swarm.Game.WorldGen
+                      , Swarm.Game.Util.Failure
+
+    reexported-modules: Swarm.TUI.Attr
+                      , Swarm.TUI.Border
+                      , Swarm.TUI.Controller
+                      , Swarm.TUI.View.CustomStyling
+                      , Swarm.TUI.Inventory.Sorting
+                      , Swarm.TUI.List
+                      , Swarm.TUI.Model
+                      , Swarm.TUI.Panel
+                      , Swarm.TUI.View
+    
+    reexported-modules: Swarm.Version
+
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
 
@@ -380,10 +430,7 @@ executable swarm
                       base,
                       text,
                       swarm,
-                      swarm-language,
                       swarm-language-server,
-                      swarm-version,
-                      swarm-tui,
     hs-source-dirs:   src/swarm-exe
     default-language: Haskell2010
     ghc-options:      -threaded
