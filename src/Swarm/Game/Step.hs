@@ -185,7 +185,11 @@ singleStep ss focRID robotSet = do
       -- also set ticks of focused robot
       steps <- use robotStepsPerTick
       robotMap . ix focRID . tickSteps .= steps
-      return False
+      -- continue to focused robot if there were no previous robots
+      -- DO NOT SKIP THE ROBOT SETUP above
+      if IS.null preFoc
+        then singleStep (SSingle focRID) focRID robotSet
+        else return False
     ----------------------------------------------------------------------------
     -- run single step of the focused robot (may skip if inactive)
     SSingle rid | not focusedActive -> do
