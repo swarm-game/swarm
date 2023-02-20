@@ -230,7 +230,7 @@ singleStep ss focRID robotSet = do
       return True
     SAfter rid | otherwise -> do
       -- go to single step if new robot is focused
-      let (_pre, postRID) = IS.split rid $ robotSet
+      let (_pre, postRID) = IS.split rid robotSet
       singleStep SBefore focRID postRID
  where
   h = hypotheticalRobot (Out VUnit emptyStore []) 0
