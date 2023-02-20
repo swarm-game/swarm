@@ -27,7 +27,7 @@ drawFileBrowser b =
         FB.renderFileBrowser True b
   help =
     padTop (Pad 1) $
-      vBox
+      vBox $
         [ case FB.fileBrowserException b of
             Nothing -> emptyWidget
             Just e ->
@@ -36,18 +36,20 @@ drawFileBrowser b =
                   txt $
                     T.pack $
                       E.displayException e
-        , hCenter $ txt "Up/Down: select"
-        , hCenter $ txt "/: search, Ctrl-C or Esc: cancel search"
-        , hCenter $ txt "Enter: change directory or select file"
-        , hCenter $ txt "Esc: quit"
+        ] <> map (hCenter . txt) [
+          "Up/Down: select"
+        , "/: search, Ctrl-C or Esc: cancel search"
+        , "Enter: change directory or select file"
+        , "Esc: quit"
         ]
 
 drawLaunchConfigPanel :: LaunchOptions -> [Widget Name]
 drawLaunchConfigPanel (LaunchOptions (FileBrowserControl fb isFbDisplayed) seedEditor ring _isDisplayedFor) =
-  if isFbDisplayed
-    then [drawFileBrowser fb, panelWidget]
-    else [panelWidget]
+ addFileBrowser [panelWidget]
  where
+  addFileBrowser = if isFbDisplayed
+    then (drawFileBrowser fb:)
+    else id
   seedEditorHasFocus = case focusGetCurrent ring of
     Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) -> True
     _ -> False
@@ -61,17 +63,18 @@ drawLaunchConfigPanel (LaunchOptions (FileBrowserControl fb isFbDisplayed) seedE
 
   panelWidget =
     centerLayer $
-      borderWithLabel (str "Configure scenario") $
-        hLimit 50 $
+      borderWithLabel (str "Configure scenario launch") $
+        hLimit 50 $ padAll 1 $ 
           vBox
-            [ padAll 1 $ txt "Hello there!"
-            , hBox
+            [ padBottom (Pad 1) $ txtWrap "Leaving this field blank will use the default seed for the scenario."
+            , padBottom (Pad 1) $ padLeft (Pad 2) $ hBox
                 [ mkButton SeedSelector "Seed: "
                 , hLimit 10 $
                     overrideAttr E.editFocusedAttr customEditFocusedAttr $
                       renderEditor (txt . mconcat) seedEditorHasFocus seedEditor
                 ]
-            , hBox
+            , padBottom (Pad 1) $ txtWrap "Selecting a script to be run upon start enables eligibility for code size scoring."
+            , padBottom (Pad 1) $ padLeft (Pad 2) $ hBox
                 [ mkButton ScriptSelector "Script: "
                 , str $
                     maybe "<none>" FB.fileInfoSanitizedFilename $

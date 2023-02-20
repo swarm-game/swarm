@@ -50,5 +50,5 @@ initConfigPanel = do
     editorText
       (ScenarioConfigControl $ ScenarioConfigPanelControl SeedSelector)
       (Just 1)
-      "0"
+      ""
   ring = Focus.focusRing $ map (ScenarioConfigControl . ScenarioConfigPanelControl) listEnums

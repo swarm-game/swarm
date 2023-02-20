@@ -5,7 +5,6 @@ import Brick.Focus
 import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.FileBrowser
 import Control.Lens
-import Control.Monad.Except
 import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Launch.Model
 import Swarm.Game.ScenarioInfo
@@ -41,7 +40,19 @@ handleLaunchOptionsEvent siPair = \case
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
   Key V.KDown ->
     uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
-  Key V.KEnter -> do
+  CharKey ' ' -> activateControl
+  Key V.KEnter -> activateControl
+  Key V.KEsc -> closeModal
+  CharKey 'q' -> closeModal
+  ControlChar 'q' -> closeModal
+  ev -> do
+    fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
+    case focusGetCurrent fr of
+      Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) ->
+        Brick.zoom (uiState . uiLaunchConfig . seedValueEditor) (handleEditorEvent ev)
+      _ -> return ()
+ where
+  activateControl = do
     fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
     case focusGetCurrent fr of
       Just (ScenarioConfigControl (ScenarioConfigPanelControl item)) -> case item of
@@ -52,15 +63,5 @@ handleLaunchOptionsEvent siPair = \case
           closeModal
           startGame siPair Nothing
       _ -> return ()
-  Key V.KEsc -> closeModal
-  CharKey 'q' -> closeModal
-  ControlChar 'q' -> closeModal
-  ev -> do
-    fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
-    case focusGetCurrent fr of
-      Just (ScenarioConfigControl (ScenarioConfigPanelControl item)) -> case item of
-        SeedSelector -> Brick.zoom (uiState . uiLaunchConfig . seedValueEditor) (handleEditorEvent ev)
-        _ -> return ()
-      _ -> return ()
- where
+
   closeModal = uiState . uiLaunchConfig . isDisplayedFor .= Nothing
