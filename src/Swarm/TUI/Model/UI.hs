@@ -73,7 +73,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.Util
-import Swarm.Util.GameData (getSwarmHistoryPath, readAppData)
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import System.Clock
 
 ------------------------------------------------------------

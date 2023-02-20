@@ -51,7 +51,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Entity as E
-import Swarm.Util.GameData (getDataFileNameSafe)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import Witch
 

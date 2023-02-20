@@ -76,7 +76,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util
-import Swarm.Util.GameData (getDataFileNameSafe)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)

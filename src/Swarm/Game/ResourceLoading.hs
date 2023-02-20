@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- Various utilities related to loading game data files.
-module Swarm.Util.GameData where
+module Swarm.Game.ResourceLoading where
 
 import Control.Arrow (left)
 import Control.Exception (catch)

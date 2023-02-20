@@ -175,7 +175,7 @@ import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
-import Swarm.Util.GameData (getDataFileNameSafe)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
