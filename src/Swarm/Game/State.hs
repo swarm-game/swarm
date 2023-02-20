@@ -273,6 +273,8 @@ data SolutionSource
 
 data CodeToRun = CodeToRun SolutionSource ProcessedTerm
 
+-- parseCodeFile :: FilePath -> 
+
 getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
 getParsedInitialCode toRun = case toRun of
   Nothing -> return Nothing

@@ -4,6 +4,7 @@
 module Swarm.TUI.Model.StateUpdate (
   initAppState,
   startGame,
+  startGameWithSeed,
   restartGame,
   attainAchievement,
   attainAchievement',

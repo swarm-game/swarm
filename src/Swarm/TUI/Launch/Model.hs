@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Swarm.Game.Scenario.Launch.Model where
+module Swarm.TUI.Launch.Model where
 
+import Swarm.Game.WorldGen (Seed)
 import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
+import Swarm.Game.State (CodeToRun)
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens (makeLenses)
 import Data.Text (Text)
@@ -12,11 +14,13 @@ import Swarm.Game.ScenarioInfo
 import Swarm.TUI.Model.Name
 import Swarm.Util (listEnums)
 
-newtype SeedSelection = SeedSelection
-  { _seedVal :: Int
+data ValidatedLaunchParms = ValidatedLaunchParms {
+    _seedVal :: Maybe Seed
+  , _initialCode :: Maybe CodeToRun
   }
 
-makeLenses ''SeedSelection
+makeLenses ''ValidatedLaunchParms
+
 
 data FileBrowserControl = FileBrowserControl
   { _fbWidget :: FB.FileBrowser Name
@@ -24,6 +28,7 @@ data FileBrowserControl = FileBrowserControl
   }
 
 makeLenses ''FileBrowserControl
+
 
 -- | UI elements to configure scenario launch options
 data LaunchOptions = LaunchOptions
@@ -34,6 +39,12 @@ data LaunchOptions = LaunchOptions
   }
 
 makeLenses ''LaunchOptions
+
+-- toValidatedParms :: LaunchOptions -> Either String ValidatedLaunchParms
+-- toValidatedParms opts = do
+
+--   xx
+--   where
 
 initConfigPanel :: IO LaunchOptions
 initConfigPanel = do

@@ -1,4 +1,4 @@
-module Swarm.Game.Scenario.Launch.Controller where
+module Swarm.TUI.Launch.Controller where
 
 import Brick hiding (Direction, Location)
 import Brick.Focus
@@ -6,7 +6,7 @@ import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.FileBrowser
 import Control.Lens
 import Graphics.Vty qualified as V
-import Swarm.Game.Scenario.Launch.Model
+import Swarm.TUI.Launch.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
@@ -61,7 +61,7 @@ handleLaunchOptionsEvent siPair = \case
           uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed .= True
         StartGameButton -> do
           closeModal
-          startGame siPair Nothing
+          startGameWithSeed Nothing siPair Nothing
       _ -> return ()
 
   closeModal = uiState . uiLaunchConfig . isDisplayedFor .= Nothing

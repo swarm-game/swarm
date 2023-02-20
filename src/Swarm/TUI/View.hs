@@ -81,8 +81,8 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.Game.Scenario.Launch.Model
-import Swarm.Game.Scenario.Launch.View
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.View
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
