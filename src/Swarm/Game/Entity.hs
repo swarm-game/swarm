@@ -110,7 +110,7 @@ import Swarm.Game.Display
 import Swarm.Game.Location
 import Swarm.Language.Capability
 import Swarm.Util (binTuples, plural, reflow, (?))
-import Swarm.Util.GameData (getDataFileNameSafe)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
