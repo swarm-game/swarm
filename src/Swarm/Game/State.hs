@@ -148,12 +148,12 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
-import Swarm.Failure
-import Swarm.Failure.Render
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
@@ -162,6 +162,7 @@ import Swarm.Game.Recipe (
   outRecipeMap,
   reqRecipeMap,
  )
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.ScenarioInfo
@@ -178,7 +179,6 @@ import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 

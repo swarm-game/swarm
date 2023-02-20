@@ -3,7 +3,7 @@
 --
 -- These failures are often not fatal and serve
 -- to create common infrastructure for logging.
-module Swarm.Failure where
+module Swarm.Game.Failure where
 
 import Data.Text (Text)
 import Data.Yaml (ParseException)

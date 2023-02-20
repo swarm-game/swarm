@@ -42,11 +42,12 @@ import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml (decodeFileEither)
 import Data.Yaml.Aeson (prettyPrintParseException)
-import Swarm.Failure.Render qualified as F
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
+import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
@@ -57,7 +58,6 @@ import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (isRightOr, listEnums, quote)
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
