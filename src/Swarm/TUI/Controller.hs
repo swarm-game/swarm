@@ -73,8 +73,6 @@ import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.Robot
-import Swarm.TUI.Launch.Controller
-import Swarm.TUI.Launch.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick)
@@ -93,6 +91,8 @@ import Swarm.Language.Types
 import Swarm.Language.Value (Value (VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
+import Swarm.TUI.Launch.Controller
+import Swarm.TUI.Launch.Model
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal

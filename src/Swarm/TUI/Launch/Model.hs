@@ -3,18 +3,18 @@
 
 module Swarm.TUI.Launch.Model where
 
-import Swarm.Game.WorldGen (Seed)
-import Swarm.Game.State (CodeToRun)
 import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens (makeLenses)
 import Data.Text (Text)
 import Swarm.Game.ScenarioInfo
+import Swarm.Game.State (CodeToRun)
+import Swarm.Game.WorldGen (Seed)
 import Swarm.TUI.Model.Name
 
-data ValidatedLaunchParms = ValidatedLaunchParms {
-    seedVal :: Maybe Seed
+data ValidatedLaunchParms = ValidatedLaunchParms
+  { seedVal :: Maybe Seed
   , initialCode :: Maybe CodeToRun
   }
 
@@ -25,7 +25,6 @@ data FileBrowserControl = FileBrowserControl
 
 makeLenses ''FileBrowserControl
 
-
 -- | UI elements to configure scenario launch options
 data LaunchControls = LaunchControls
   { _fileBrowser :: FileBrowserControl
@@ -35,7 +34,6 @@ data LaunchControls = LaunchControls
   }
 
 makeLenses ''LaunchControls
-
 
 -- | UI elements to configure scenario launch options
 data LaunchOptions = LaunchOptions

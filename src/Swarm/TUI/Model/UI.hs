@@ -61,14 +61,14 @@ import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.TUI.Launch.Model
-import Swarm.TUI.Launch.Prep
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.Failure (SystemFailure)
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu

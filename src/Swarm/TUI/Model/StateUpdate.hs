@@ -12,7 +12,6 @@ module Swarm.TUI.Model.StateUpdate (
 ) where
 
 import Brick.AttrMap (applyAttrMappings)
-import Swarm.TUI.Launch.Model (ValidatedLaunchParms (..))
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
@@ -41,6 +40,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Launch.Model (ValidatedLaunchParms (..))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Failure (prettyFailure)
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
@@ -73,7 +73,6 @@ initAppState AppOpts {..} = do
       execStateT
         (startGameWithSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) $ ValidatedLaunchParms userSeed codeToRun)
         (AppState gs ui rs)
-
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()

@@ -5,16 +5,16 @@ import Brick.Focus
 import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.FileBrowser
 import Control.Lens
+import Control.Monad.Except (liftIO)
 import Graphics.Vty qualified as V
-import Swarm.TUI.Launch.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.TUI.Controller.Util
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.Prep (toValidatedParms)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
-import Swarm.TUI.Launch.Prep (toValidatedParms)
-import Control.Monad.Except (liftIO)
 
 handleFBEvent ::
   BrickEvent Name AppEvent ->

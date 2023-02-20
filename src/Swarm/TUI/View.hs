@@ -81,8 +81,6 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.TUI.Launch.Model
-import Swarm.TUI.Launch.View
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -100,6 +98,8 @@ import Swarm.Language.Typecheck (inferConst)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl
