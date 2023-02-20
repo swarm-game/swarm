@@ -20,9 +20,11 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
-import Swarm.Game.Scenario.Objective.Presentation.Model (emptyGoalDisplay)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioInfoPair,
@@ -38,10 +40,8 @@ import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Persistence
 import Swarm.TUI.Model.Failure (prettyFailure)
+import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
@@ -53,22 +53,23 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   gs <- initGameState
-  (warnings, ui) <- initUIState (not skipMenu) cheatMode
+  (warnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
   let rs = List.foldl' logWarning initRuntimeState warnings
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
+      maybeRunScript <- getParsedInitialCode scriptToRun
 
       let maybeAutoplay = do
             guard autoPlay
             soln <- scenario ^. scenarioSolution
-            return $ SuggestedSolution soln
-      let realToRun = maybeAutoplay <|> (ScriptPath <$> scriptToRun)
+            return $ CodeToRun ScenarioSuggested soln
+      let codeToRun = maybeAutoplay <|> maybeRunScript
 
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) realToRun)
+        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) codeToRun)
         (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.

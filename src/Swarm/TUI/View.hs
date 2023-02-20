@@ -68,16 +68,14 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
-import Linear.Affine (Point)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
+import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
-import Swarm.Game.Scenario.Objective.Presentation.Model (goalsContent, hasAnythingToShow)
-import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   ScenarioStatus (..),
@@ -96,14 +94,15 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util
 import Swarm.Util
-import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
@@ -758,6 +757,7 @@ drawKeyMenu s =
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode
+  canScroll = creative || (s ^. gameState . worldScrollable)
 
   renderControlModeSwitch :: ReplControlMode -> T.Text
   renderControlModeSwitch = \case
@@ -795,7 +795,7 @@ drawKeyMenu s =
       ++ [("^c", "cancel") | isReplWorking]
       ++ [("M-p", renderControlModeSwitch ctrlMode) | creative]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
-    [ ("←↓↑→ / hjkl", "scroll") | creative
+    [ ("←↓↑→ / hjkl", "scroll") | canScroll
     ]
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]

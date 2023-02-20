@@ -10,9 +10,14 @@ import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Robot
 import Swarm.Game.State
-import Swarm.Game.Terrain (terrainMap)
+import Swarm.Game.Terrain
 import Swarm.Game.World qualified as W
+import Swarm.TUI.Attr
 import Swarm.TUI.Model.Name
+
+-- | Render a display as a UI widget.
+renderDisplay :: Display -> Widget n
+renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
 
 -- | Render the 'Display' for a specific location.
 drawLoc :: Bool -> GameState -> W.Coords -> Widget Name

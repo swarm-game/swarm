@@ -64,6 +64,7 @@ module Swarm.Game.State (
   currentScenarioPath,
   knownEntities,
   world,
+  worldScrollable,
   viewCenterRule,
   viewCenter,
   needsRedraw,
@@ -88,6 +89,9 @@ module Swarm.Game.State (
   initGameStateForScenario,
   classicGame0,
   CodeToRun (..),
+  Sha1 (..),
+  SolutionSource (..),
+  getParsedInitialCode,
 
   -- * Utilities
   applyViewCenterRule,
@@ -111,7 +115,7 @@ module Swarm.Game.State (
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Arrow (Arrow ((&&&)))
+import Control.Arrow (Arrow ((&&&)), left)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
@@ -119,6 +123,7 @@ import Control.Monad.Except
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
+import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.IntMap (IntMap)
@@ -135,12 +140,18 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (lines)
+import Data.Text qualified as T (drop, lines, pack, take)
 import Data.Text.IO qualified as T (readFile)
+import Data.Text.IO qualified as TIO
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
+import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
   inRecipeMap,
@@ -150,7 +161,6 @@ import Swarm.Game.Recipe (
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -158,27 +168,19 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Const, Term' (TText), allConst)
+import Swarm.Language.Module (Module (Module))
+import Swarm.Language.Pipeline (ProcessedTerm (ProcessedTerm), processTermEither)
+import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
-import Swarm.Util.Location
+import Swarm.Util (getDataFileNameSafe, isRightOr, uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
-import Witch (into)
 
 ------------------------------------------------------------
 -- Subsidiary data types
 ------------------------------------------------------------
-
-data CodeToRun
-  = SuggestedSolution ProcessedTerm
-  | ScriptPath FilePath
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -262,6 +264,36 @@ instance Monoid (Notifications a) where
   mempty = Notifications 0 []
 
 makeLenses ''Notifications
+
+newtype Sha1 = Sha1 String
+
+data SolutionSource
+  = ScenarioSuggested
+  | -- | Includes the SHA1 of the program text
+    -- for the purpose of corroborating solutions
+    -- on a leaderboard.
+    PlayerAuthored Sha1
+
+data CodeToRun = CodeToRun SolutionSource ProcessedTerm
+
+getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
+getParsedInitialCode toRun = case toRun of
+  Nothing -> return Nothing
+  Just filepath -> do
+    contents <- liftIO $ TIO.readFile filepath
+    pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
+      ExceptT $
+        return $
+          left T.pack $
+            processTermEither contents
+    let strippedText = stripSrc srcLoc contents
+        programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
+        sha1Hash = showDigest $ sha1 programBytestring
+    return $ Just $ CodeToRun (PlayerAuthored $ Sha1 sha1Hash) pt
+ where
+  stripSrc :: SrcLoc -> Text -> Text
+  stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
+  stripSrc NoLoc txt = txt
 
 ------------------------------------------------------------
 -- The main GameState record type
@@ -347,6 +379,7 @@ data GameState = GameState
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
+  , _worldScrollable :: Bool
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Location
   , _needsRedraw :: Bool
@@ -513,6 +546,9 @@ knownEntities :: Lens' GameState [Text]
 --   TerrainType because we need to be able to store terrain values in
 --   unboxed tile arrays.
 world :: Lens' GameState (W.World Int Entity)
+
+-- | Whether the world map is supposed to be scrollable or not.
+worldScrollable :: Lens' GameState Bool
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -803,6 +839,7 @@ initGameState = do
       , _currentScenarioPath = Nothing
       , _knownEntities = []
       , _world = W.emptyWorld (fromEnum StoneT)
+      , _worldScrollable = True
       , _viewCenterRule = VCRobot 0
       , _viewCenter = origin
       , _needsRedraw = False
@@ -851,6 +888,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _recipesReq = addRecipesWith reqRecipeMap recipesReq
       , _knownEntities = scenario ^. scenarioKnown
       , _world = theWorld theSeed
+      , _worldScrollable = scenario ^. scenarioWorld . to scrollable
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = origin
       , _needsRedraw = False
@@ -874,9 +912,7 @@ scenarioToGameState scenario userSeed toRun g = do
   -- the others existed only to serve as a template for robots drawn
   -- in the world map
   locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
-  getCodeToRun x = case x of
-    SuggestedSolution s -> s
-    ScriptPath (into @Text -> f) -> [tmQ| run($str:f) |]
+  getCodeToRun (CodeToRun _ s) = s
 
   -- Rules for selecting the "base" robot:
   -- -------------------------------------
@@ -986,11 +1022,16 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
 -- Note that this function is used only for unit tests, integration tests, and benchmarks.
 --
 -- In normal play, the code path that gets executed is scenarioToAppState.
-initGameStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO GameState
+initGameStateForScenario ::
+  String ->
+  Maybe Seed ->
+  Maybe FilePath ->
+  ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
   g <- initGameState
   (scene, path) <- loadScenario sceneName (g ^. entityMap)
-  gs <- liftIO $ scenarioToGameState scene userSeed (ScriptPath <$> toRun) g
+  maybeRunScript <- getParsedInitialCode toRun
+  gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
   normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
   t <- liftIO getZonedTime
   return $

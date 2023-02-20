@@ -11,6 +11,7 @@ import Criterion.Main (Benchmark, bench, bgroup, defaultConfig, defaultMainWith,
 import Criterion.Types (Config (timeLimit))
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
+import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.State (GameState, addTRobot, classicGame0, creativeMode, world)
 import Swarm.Game.Step (gameTick)
@@ -19,8 +20,6 @@ import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (north)
-import Swarm.Util.Location
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm

@@ -6,7 +6,9 @@ description: |
 creative: false
 seed: 0
 objectives:
-  - goal:
+  - id: give_cone
+    teaser: Give a cone
+    goal:
       - |
         Congratulations on the grand opening of your new ice cream shop.
         You have advertised: "All you can eat, for 1 bitcoin!"
@@ -22,12 +24,14 @@ objectives:
     condition: |
       customer <- robotnamed "customer";
       as customer {has "cone"};
-  - goal:
+  - teaser: Complete the order
+    goal:
       - |
         `give` the customer exactly what they request.
       - |
         Perhaps there is something else around the shop that can assist with
         preparing the order...
+    prerequisite: give_cone
     condition: |
       as base {
         has "bitcoin";

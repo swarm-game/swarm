@@ -58,11 +58,14 @@ import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (zero)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
+import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
@@ -78,10 +81,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
-import Swarm.Util.Location
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
@@ -1209,7 +1209,7 @@ execConst c vs s k = do
               DRelative DDown -> "under"
               DRelative DForward -> "ahead of"
               DRelative DBack -> "behind"
-              _ -> dirSyntax (dirInfo d) <> " of"
+              _ -> directionSyntax d <> " of"
 
         (nextLoc, nextME) <- lookInDirection d
         nextE <-

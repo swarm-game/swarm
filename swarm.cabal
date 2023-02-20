@@ -85,22 +85,25 @@ library
                       Data.BoolExpr.Simplify
                       Swarm.App
                       Swarm.DocGen
+                      Swarm.Game.Achievement.Attainment
+                      Swarm.Game.Achievement.Definitions
+                      Swarm.Game.Achievement.Description
+                      Swarm.Game.Achievement.Persistence
                       Swarm.Game.CESK
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception
+                      Swarm.Game.Location
                       Swarm.Game.Log
                       Swarm.Game.Recipe
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
-                      Swarm.Game.Scenario.Objective.Logic
+                      Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
-                      Swarm.Game.Scenario.Objective.Presentation.Model
-                      Swarm.Game.Scenario.Objective.Presentation.Render
+                      Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Validation
                       Swarm.Game.Scenario.Objective.WinCheck
-                      Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
@@ -110,8 +113,8 @@ library
                       Swarm.Game.Terrain
                       Swarm.Game.World
                       Swarm.Game.WorldGen
-                      Swarm.Language.Context
                       Swarm.Language.Capability
+                      Swarm.Language.Context
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
@@ -132,15 +135,11 @@ library
                       Swarm.TUI.Border
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
-                      Swarm.TUI.View.CustomStyling
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.Achievement.Attainment
-                      Swarm.TUI.Model.Achievement.Definitions
-                      Swarm.TUI.Model.Achievement.Description
-                      Swarm.TUI.Model.Achievement.Persistence
                       Swarm.TUI.Model.Failure
+                      Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
@@ -150,9 +149,10 @@ library
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.CustomStyling
+                      Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
-                      Swarm.Util.Location
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web
@@ -192,6 +192,7 @@ library
                       random                        >= 1.2.0 && < 1.3,
                       servant                       >= 0.19 && < 0.20,
                       servant-server                >= 0.19 && < 0.20,
+                      SHA                           >= 1.6.4 && < 1.6.5,
                       simple-enumeration            >= 0.2 && < 0.3,
                       split                         >= 0.2.3 && < 0.3,
                       stm                           >= 2.5.0 && < 2.6,
@@ -200,7 +201,7 @@ library
                       template-haskell              >= 2.16 && < 2.20,
                       text                          >= 1.2.4 && < 2.1,
                       text-rope                     >= 0.2 && < 0.3,
-                      text-zipper                   >= 0.10 && < 0.13,
+                      text-zipper                   >= 0.10 && < 0.14,
                       time                          >= 1.9 && < 1.14,
                       unification-fd                >= 0.11  && < 0.12,
                       unordered-containers          >= 0.2.14 && < 0.3,
@@ -208,9 +209,9 @@ library
                       vty                           >= 5.33 && < 5.39,
                       wai                           >= 3.2 && < 3.3,
                       warp                          >= 3.2 && < 3.4,
-                      witch                         >= 1.1.1.0 && < 1.2,
+                      witch                         >= 1.1.1.0 && < 1.3,
                       word-wrap                     >= 0.5 && < 0.6,
-                      yaml                          >= 0.11 && < 0.12,
+                      yaml                          >= 0.11 && < 0.11.9.0,
     hs-source-dirs:   src
     default-language: Haskell2010
     default-extensions:

@@ -67,11 +67,12 @@ import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Location
 import Swarm.Game.Robot
-import Swarm.Game.Scenario.Objective.Presentation.Model
-import Swarm.Game.Scenario.Objective.Presentation.Render qualified as GR
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
@@ -92,15 +93,14 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Persistence
+import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View (generateModal)
+import Swarm.TUI.View.Objective qualified as GR
 import Swarm.Util hiding ((<<.=))
-import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)
@@ -438,21 +438,27 @@ handleModalEvent = \case
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
-    refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev isHeader
+    refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
 
--- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnQuit = do
+getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
+getNormalizedCurrentScenarioPath =
+  -- the path should be normalized and good to search in scenario collection
+  use (gameState . currentScenarioPath) >>= \case
+    Nothing -> return Nothing
+    Just p' -> do
+      gs <- use $ gameState . scenarios
+      Just <$> liftIO (normalizeScenarioPath gs p')
+
+-- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
+saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnFinish = do
   -- Don't save progress if we are in cheat mode
   cheat <- use $ uiState . uiCheatMode
   unless cheat $ do
     -- the path should be normalized and good to search in scenario collection
-    mp' <- use $ gameState . currentScenarioPath
-    case mp' of
+    getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
-      Just p' -> do
-        gs <- use $ gameState . scenarios
-        p <- liftIO $ normalizeScenarioPath gs p'
+      Just p -> do
         t <- liftIO getZonedTime
         wc <- use $ gameState . winCondition
         let won = case wc of
@@ -461,7 +467,7 @@ saveScenarioInfoOnQuit = do
         ts <- use $ gameState . ticks
         let currentScenarioInfo :: Traversal' AppState ScenarioInfo
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
-        currentScenarioInfo %= updateScenarioInfoOnQuit t ts won
+        currentScenarioInfo %= updateScenarioInfoOnFinish t ts won
         status <- preuse currentScenarioInfo
         case status of
           Nothing -> return ()
@@ -474,6 +480,16 @@ saveScenarioInfoOnQuit = do
               _ -> return ()
             liftIO $ saveScenarioInfo p si
 
+-- | Write the @ScenarioInfo@ out to disk when exiting a game.
+saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnQuit = do
+  saveScenarioInfoOnFinish
+  -- Don't save progress if we are in cheat mode
+  cheat <- use $ uiState . uiCheatMode
+  unless cheat $ do
+    getNormalizedCurrentScenarioPath >>= \case
+      Nothing -> return ()
+      Just p -> do
         -- See what scenario is currently focused in the menu.  Depending on how the
         -- previous scenario ended (via quit vs. via win), it might be the same as
         -- currentScenarioPath or it might be different.
@@ -791,13 +807,13 @@ doGoalUpdates = do
       -- This clears the "flag" that the Lose dialog needs to pop up
       gameState . winCondition .= WinConditions (Unwinnable True) x
       openModal LoseModal
-
+      saveScenarioInfoOnFinish
       return True
     WinConditions (Won False) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
       gameState . winCondition .= WinConditions (Won True) x
       openModal WinModal
-
+      saveScenarioInfoOnFinish
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
       -- select 'keep playing' or 'next challenge'.  We maintain the
@@ -832,7 +848,8 @@ doGoalUpdates = do
 
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState . uiGoal
+        uiState
+          . uiGoal
           .= GoalDisplay
             newGoalTracking
             (GR.makeListWidget newGoalTracking)
@@ -1138,9 +1155,12 @@ onlyCreative a = do
 
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
--- scrolling the world view in Creative mode
 handleWorldEvent = \case
-  Key k | k `elem` moveKeys -> onlyCreative $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
+  Key k
+    | k `elem` moveKeys -> do
+        c <- use $ gameState . creativeMode
+        s <- use $ gameState . worldScrollable
+        when (c || s) $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
     gameState . viewCenterRule .= VCRobot 0

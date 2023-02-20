@@ -2,7 +2,7 @@
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
 -- A UI-centric model for Objective presentation.
-module Swarm.Game.Scenario.Objective.Presentation.Model where
+module Swarm.TUI.Model.Goal where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
@@ -43,21 +43,17 @@ data GoalStatus
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
 
--- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
-newtype Announcement
-  = ObjectiveCompleted Objective
-  deriving (Show, Generic, ToJSON)
-
 type CategorizedGoals = Map GoalStatus (NonEmpty Objective)
 
 data GoalEntry
   = Header GoalStatus
   | Goal GoalStatus Objective
+  | Spacer
 
-isHeader :: GoalEntry -> Bool
-isHeader = \case
-  Header _ -> True
-  _ -> False
+shouldSkipSelection :: GoalEntry -> Bool
+shouldSkipSelection = \case
+  Goal _ _ -> False
+  _ -> True
 
 data GoalTracking = GoalTracking
   { announcements :: [Announcement]

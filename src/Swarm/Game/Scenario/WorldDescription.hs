@@ -10,9 +10,9 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Entity
+import Swarm.Game.Location
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.RobotLookup
-import Swarm.Util.Location
 import Swarm.Util.Yaml
 import Witch (into)
 
@@ -34,6 +34,7 @@ instance FromJSONE (EntityMap, RobotMap) (WorldPalette Entity) where
 data PWorldDescription e = WorldDescription
   { defaultTerrain :: Maybe (PCell e)
   , offsetOrigin :: Bool
+  , scrollable :: Bool
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
@@ -48,6 +49,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
     WorldDescription
       <$> v ..:? "default"
       <*> liftE (v .:? "offset" .!= False)
+      <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> liftE (v .:? "upperleft" .!= origin)
       <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)
