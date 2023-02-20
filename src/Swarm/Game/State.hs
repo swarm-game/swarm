@@ -27,10 +27,13 @@ module Swarm.Game.State (
   Announcement (..),
   RunStatus (..),
   Seed,
+  Step (..),
+  SingleStep (..),
   GameState,
 
   -- ** GameState fields
   creativeMode,
+  gameStep,
   winCondition,
   winSolution,
   gameAchievements,
@@ -301,11 +304,44 @@ getParsedInitialCode toRun = case toRun of
 defaultRobotStepsPerTick :: Int
 defaultRobotStepsPerTick = 100
 
+-- | Type for remebering which robots will be run next in a robot step mode.
+--
+-- Once some robots have run, we need to store RID to know which ones should go next.
+-- At 'SBefore' no robots were run yet, so it is safe to transition to and from 'WorldTick'.
+--
+-- @
+--                     tick
+--     ┌────────────────────────────────────┐
+--     │                                    │
+--     │               step                 │
+--     │              ┌────┐                │
+--     ▼              ▼    │                │
+-- ┌───────┐ step  ┌───────┴───┐ step  ┌────┴─────┐
+-- │SBefore├──────►│SSingle RID├──────►│SAfter RID│
+-- └──┬────┘       └───────────┘       └────┬─────┘
+--    │ ▲ player        ▲                   │
+--    ▼ │ switch        └───────────────────┘
+-- ┌────┴────┐             view RID > oldRID
+-- │WorldTick│
+-- └─────────┘
+-- @
+data SingleStep
+  = -- | Run the robots from the beginning until the focused robot (noninclusive).
+    SBefore
+  | -- | Run a single step of the focused robot.
+    SSingle RID
+  | -- | Run robots after the (previously) focused robot and finish the tick.
+    SAfter RID
+
+-- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
+data Step = WorldTick | RobotStep SingleStep
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
+  , _gameStep :: Step
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _gameAchievements :: Map GameplayAchievement Attainment
@@ -379,6 +415,9 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
+
+-- | How to step the game - 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
+gameStep :: Lens' GameState Step
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
@@ -772,6 +811,7 @@ initGameState = do
   return $
     GameState
       { _creativeMode = False
+      , _gameStep = WorldTick
       , _winCondition = NoWinCondition
       , _winSolution = Nothing
       , -- This does not need to be initialized with anything,

@@ -585,6 +585,11 @@
   out:
   - [1, GPS receiver]
 
+- in:
+  - [1, iron plate]
+  out:
+  - [1, tweezers]
+
 ## MAGIC
 
 - in:
