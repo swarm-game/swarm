@@ -61,7 +61,7 @@ handleLaunchOptionsEvent siPair = \case
           uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed .= True
         StartGameButton -> do
           closeModal
-          startGameWithSeed Nothing siPair Nothing
+          startGameWithSeed siPair $ ValidatedLaunchParms Nothing Nothing
       _ -> return ()
 
   closeModal = uiState . uiLaunchConfig . isDisplayedFor .= Nothing

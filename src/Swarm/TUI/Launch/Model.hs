@@ -4,23 +4,19 @@
 module Swarm.TUI.Launch.Model where
 
 import Swarm.Game.WorldGen (Seed)
+import Swarm.Game.State (CodeToRun)
 import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
-import Swarm.Game.State (CodeToRun)
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens (makeLenses)
 import Data.Text (Text)
 import Swarm.Game.ScenarioInfo
 import Swarm.TUI.Model.Name
-import Swarm.Util (listEnums)
 
 data ValidatedLaunchParms = ValidatedLaunchParms {
-    _seedVal :: Maybe Seed
-  , _initialCode :: Maybe CodeToRun
+    seedVal :: Maybe Seed
+  , initialCode :: Maybe CodeToRun
   }
-
-makeLenses ''ValidatedLaunchParms
-
 
 data FileBrowserControl = FileBrowserControl
   { _fbWidget :: FB.FileBrowser Name
@@ -28,7 +24,6 @@ data FileBrowserControl = FileBrowserControl
   }
 
 makeLenses ''FileBrowserControl
-
 
 -- | UI elements to configure scenario launch options
 data LaunchOptions = LaunchOptions
@@ -39,27 +34,3 @@ data LaunchOptions = LaunchOptions
   }
 
 makeLenses ''LaunchOptions
-
--- toValidatedParms :: LaunchOptions -> Either String ValidatedLaunchParms
--- toValidatedParms opts = do
-
---   xx
---   where
-
-initConfigPanel :: IO LaunchOptions
-initConfigPanel = do
-  fb <-
-    FB.newFileBrowser
-      FB.selectNonDirectories
-      -- (const False)
-      (ScenarioConfigControl $ ScenarioConfigPanelControl ScriptSelector)
-      Nothing
-  let configuredFB = FB.setFileBrowserEntryFilter (Just $ FB.fileExtensionMatch "sw") fb
-  return $ LaunchOptions (FileBrowserControl configuredFB False) myForm ring Nothing
- where
-  myForm =
-    editorText
-      (ScenarioConfigControl $ ScenarioConfigPanelControl SeedSelector)
-      (Just 1)
-      ""
-  ring = Focus.focusRing $ map (ScenarioConfigControl . ScenarioConfigPanelControl) listEnums

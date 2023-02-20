@@ -62,6 +62,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.Prep
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )

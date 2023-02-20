@@ -12,6 +12,7 @@ module Swarm.TUI.Model.StateUpdate (
 ) where
 
 import Brick.AttrMap (applyAttrMappings)
+import Swarm.TUI.Launch.Model (ValidatedLaunchParms (..))
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
@@ -70,12 +71,13 @@ initAppState AppOpts {..} = do
       let codeToRun = maybeAutoplay <|> maybeRunScript
 
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) codeToRun)
+        (startGameWithSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) $ ValidatedLaunchParms userSeed codeToRun)
         (AppState gs ui rs)
+
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
-startGame = startGameWithSeed Nothing
+startGame siPair = startGameWithSeed siPair . ValidatedLaunchParms Nothing
 
 -- | Re-initialize the game from the stored reference to the current scenario.
 --
@@ -87,12 +89,16 @@ startGame = startGameWithSeed Nothing
 -- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
 -- case upstream so that the Scenario passed to this function definitely exists.
 restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
-restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Nothing
+restartGame currentSeed siPair = startGameWithSeed siPair $ ValidatedLaunchParms (Just currentSeed) Nothing
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
-startGameWithSeed userSeed siPair@(_scene, si) toRun = do
+startGameWithSeed ::
+  (MonadIO m, MonadState AppState m) =>
+  ScenarioInfoPair ->
+  ValidatedLaunchParms ->
+  m ()
+startGameWithSeed siPair@(_scene, si) (ValidatedLaunchParms userSeed toRun) = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
