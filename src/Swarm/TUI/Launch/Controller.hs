@@ -13,6 +13,8 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Launch.Prep (toValidatedParms)
+import Control.Monad.Except (liftIO)
 
 handleFBEvent ::
   BrickEvent Name AppEvent ->
@@ -22,10 +24,10 @@ handleFBEvent = \case
   CharKey 'q' -> closeModal
   ControlChar 'q' -> closeModal
   VtyEvent e ->
-    Brick.zoom (uiState . uiLaunchConfig . fileBrowser . fbWidget) (handleFileBrowserEvent e)
+    Brick.zoom (uiState . uiLaunchConfig . controls . fileBrowser . fbWidget) (handleFileBrowserEvent e)
   _ -> return ()
  where
-  closeModal = uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed .= False
+  closeModal = uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed .= False
 
 handleLaunchOptionsEvent ::
   ScenarioInfoPair ->
@@ -33,35 +35,40 @@ handleLaunchOptionsEvent ::
   EventM Name AppState ()
 handleLaunchOptionsEvent siPair = \case
   Key V.KBackTab ->
-    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
+    uiState . uiLaunchConfig . controls . scenarioConfigFocusRing %= focusPrev
   Key V.KUp ->
-    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusPrev
+    uiState . uiLaunchConfig . controls . scenarioConfigFocusRing %= focusPrev
   CharKey '\t' ->
-    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
+    uiState . uiLaunchConfig . controls . scenarioConfigFocusRing %= focusNext
   Key V.KDown ->
-    uiState . uiLaunchConfig . scenarioConfigFocusRing %= focusNext
+    uiState . uiLaunchConfig . controls . scenarioConfigFocusRing %= focusNext
   CharKey ' ' -> activateControl
   Key V.KEnter -> activateControl
   Key V.KEsc -> closeModal
   CharKey 'q' -> closeModal
   ControlChar 'q' -> closeModal
   ev -> do
-    fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
+    fr <- use $ uiState . uiLaunchConfig . controls . scenarioConfigFocusRing
     case focusGetCurrent fr of
       Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) ->
-        Brick.zoom (uiState . uiLaunchConfig . seedValueEditor) (handleEditorEvent ev)
+        Brick.zoom (uiState . uiLaunchConfig . controls . seedValueEditor) (handleEditorEvent ev)
       _ -> return ()
  where
   activateControl = do
-    fr <- use $ uiState . uiLaunchConfig . scenarioConfigFocusRing
+    fr <- use $ uiState . uiLaunchConfig . controls . scenarioConfigFocusRing
     case focusGetCurrent fr of
       Just (ScenarioConfigControl (ScenarioConfigPanelControl item)) -> case item of
         SeedSelector -> return ()
         ScriptSelector ->
-          uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed .= True
+          uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed .= True
         StartGameButton -> do
-          closeModal
-          startGameWithSeed siPair $ ValidatedLaunchParms Nothing Nothing
+          launchControls <- use $ uiState . uiLaunchConfig . controls
+          eitherLaunchParams <- liftIO $ toValidatedParms launchControls
+          case eitherLaunchParams of
+            Left errMsg -> return () -- TODO FIXME
+            Right launchParams -> do
+              closeModal
+              startGameWithSeed siPair launchParams
       _ -> return ()
 
-  closeModal = uiState . uiLaunchConfig . isDisplayedFor .= Nothing
+  closeModal = uiState . uiLaunchConfig . controls . isDisplayedFor .= Nothing

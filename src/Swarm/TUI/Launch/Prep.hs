@@ -7,21 +7,18 @@ import Control.Arrow (left)
 import Text.Read (readEither)
 import Data.Maybe (listToMaybe)
 import Control.Monad.Trans.Except (except, runExceptT, ExceptT (..))
-import Swarm.Game.WorldGen (Seed)
 import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
-import Swarm.Game.State (parseCodeFile, CodeToRun)
+import Swarm.Game.State (parseCodeFile)
 import Brick.Widgets.FileBrowser qualified as FB
-import Control.Lens (makeLenses)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.ScenarioInfo
 import Swarm.TUI.Model.Name
 import Swarm.Util (listEnums)
 
 
-toValidatedParms :: LaunchOptions -> IO (Either Text ValidatedLaunchParms)
-toValidatedParms (LaunchOptions (FileBrowserControl fb _) seedEditor _ _) = runExceptT $ do
+toValidatedParms :: LaunchControls -> IO (Either Text ValidatedLaunchParms)
+toValidatedParms (LaunchControls (FileBrowserControl fb _) seedEditor _ _) = runExceptT $ do
   maybeParsedCode <- case maybeSelectedFile of
     Nothing -> return Nothing
     Just filePath -> do
@@ -49,7 +46,7 @@ initConfigPanel = do
       (ScenarioConfigControl $ ScenarioConfigPanelControl ScriptSelector)
       Nothing
   let configuredFB = FB.setFileBrowserEntryFilter (Just $ FB.fileExtensionMatch "sw") fb
-  return $ LaunchOptions (FileBrowserControl configuredFB False) myForm ring Nothing
+  return $ LaunchOptions (LaunchControls (FileBrowserControl configuredFB False) myForm ring Nothing) (ValidatedLaunchParms Nothing Nothing)
  where
   myForm =
     editorText

@@ -25,12 +25,22 @@ data FileBrowserControl = FileBrowserControl
 
 makeLenses ''FileBrowserControl
 
+
 -- | UI elements to configure scenario launch options
-data LaunchOptions = LaunchOptions
+data LaunchControls = LaunchControls
   { _fileBrowser :: FileBrowserControl
   , _seedValueEditor :: Editor Text Name
   , _scenarioConfigFocusRing :: Focus.FocusRing Name
   , _isDisplayedFor :: Maybe ScenarioInfoPair
+  }
+
+makeLenses ''LaunchControls
+
+
+-- | UI elements to configure scenario launch options
+data LaunchOptions = LaunchOptions
+  { _controls :: LaunchControls
+  , _validatedParams :: ValidatedLaunchParms
   }
 
 makeLenses ''LaunchOptions

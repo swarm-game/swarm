@@ -134,9 +134,9 @@ handleEvent = \case
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
           NewGameMenu l ->
-            if s ^. uiState . uiLaunchConfig . fileBrowser . fbIsDisplayed
+            if s ^. uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed
               then handleFBEvent
-              else case s ^. uiState . uiLaunchConfig . isDisplayedFor of
+              else case s ^. uiState . uiLaunchConfig . controls . isDisplayedFor of
                 Nothing -> handleNewGameMenuEvent l
                 Just siPair -> handleLaunchOptionsEvent siPair
           MessagesMenu -> handleMainMessagesEvent
@@ -234,7 +234,7 @@ prepareGameStart ::
   ScenarioInfoPair ->
   EventM Name AppState ()
 prepareGameStart siPair = do
-  uiState . uiLaunchConfig . isDisplayedFor .= Just siPair
+  uiState . uiLaunchConfig . controls . isDisplayedFor .= Just siPair
   return ()
 
 handleNewGameMenuEvent ::

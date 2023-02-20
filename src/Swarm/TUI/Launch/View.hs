@@ -47,7 +47,7 @@ drawFileBrowser b =
         ] <> footerRows
 
 drawLaunchConfigPanel :: LaunchOptions -> [Widget Name]
-drawLaunchConfigPanel (LaunchOptions (FileBrowserControl fb isFbDisplayed) seedEditor ring _isDisplayedFor) =
+drawLaunchConfigPanel (LaunchOptions (LaunchControls (FileBrowserControl fb isFbDisplayed) seedEditor ring _isDisplayedFor) _validatedOptions) =
  addFileBrowser [panelWidget]
  where
   addFileBrowser = if isFbDisplayed

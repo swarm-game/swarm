@@ -182,7 +182,7 @@ drawNewGameMenuUI ::
   NonEmpty (BL.List Name ScenarioItem) ->
   LaunchOptions ->
   [Widget Name]
-drawNewGameMenuUI (l :| ls) launchOptions = case launchOptions ^. isDisplayedFor of
+drawNewGameMenuUI (l :| ls) launchOptions = case launchOptions ^. controls . isDisplayedFor of
   Nothing -> pure mainWidget
   Just _ -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
