@@ -88,6 +88,7 @@ module Swarm.Game.State (
   CodeToRun (..),
   Sha1 (..),
   SolutionSource (..),
+  parseCodeFile,
   getParsedInitialCode,
 
   -- * Utilities
@@ -273,26 +274,27 @@ data SolutionSource
 
 data CodeToRun = CodeToRun SolutionSource ProcessedTerm
 
--- parseCodeFile :: FilePath -> 
+parseCodeFile :: FilePath -> IO (Either Text CodeToRun)
+parseCodeFile filepath = do
+  contents <- TIO.readFile filepath
+  return $ do
+    pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
+      left T.pack $ processTermEither contents
+    let strippedText = stripSrc srcLoc contents
+        programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
+        sha1Hash = showDigest $ sha1 programBytestring
+    return $ CodeToRun (PlayerAuthored $ Sha1 sha1Hash) pt
+ where
+  stripSrc :: SrcLoc -> Text -> Text
+  stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
+  stripSrc NoLoc txt = txt
 
 getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
 getParsedInitialCode toRun = case toRun of
   Nothing -> return Nothing
   Just filepath -> do
-    contents <- liftIO $ TIO.readFile filepath
-    pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
-      ExceptT $
-        return $
-          left T.pack $
-            processTermEither contents
-    let strippedText = stripSrc srcLoc contents
-        programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
-        sha1Hash = showDigest $ sha1 programBytestring
-    return $ Just $ CodeToRun (PlayerAuthored $ Sha1 sha1Hash) pt
- where
-  stripSrc :: SrcLoc -> Text -> Text
-  stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
-  stripSrc NoLoc txt = txt
+    foo <- ExceptT $ parseCodeFile filepath
+    return $ Just foo
 
 ------------------------------------------------------------
 -- The main GameState record type
