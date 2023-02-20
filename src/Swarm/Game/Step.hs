@@ -147,6 +147,8 @@ finishGameTick =
     RobotStep SBefore -> gameStep .= WorldTick
     RobotStep _ -> void gameTick >> finishGameTick
 
+-- Insert the robot back to robot map.
+-- Will selfdestruct or put the robot to sleep if it has that set.
 insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
 insertBackRobot rn rob = do
   time <- use ticks
@@ -162,6 +164,7 @@ insertBackRobot rn rob = do
         Nothing ->
           unless (isActive rob) (sleepForever rn)
 
+-- Run a set of robots - this is used to run robots before/after the focused one.
 runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m) => IS.IntSet -> m ()
 runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
   mr <- uses robotMap (IM.lookup rn)
@@ -169,6 +172,7 @@ runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
  where
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
+-- This is a helper function to do one robot step or run robots before/after.
 singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
 singleStep ss focRID robotSet = do
   let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
@@ -179,49 +183,49 @@ singleStep ss focRID robotSet = do
       runRobotIDs preFoc
       gameStep .= RobotStep (SSingle focRID)
       -- also set ticks of focused robot
-      mOldR <- use $ robotMap . at focRID
       steps <- use robotStepsPerTick
-      forM_ mOldR $ \r -> robotMap %= IM.insert focRID (r & tickSteps .~ steps)
+      robotMap . ix focRID . tickSteps .= steps
       return False
     ----------------------------------------------------------------------------
     -- run single step of the focused robot (may skip if inactive)
     SSingle rid | not focusedActive -> do
-      singleStep (SAfter rid) rid postFoc
-    SSingle rid | rid == focRID -> do
+      singleStep (SAfter rid) rid postFoc -- skip inactive focused robot
+    SSingle rid -> do
       mOldR <- uses robotMap (IM.lookup focRID)
       case mOldR of
-        Nothing -> do
+        Nothing | rid == focRID -> do
           debugLog "The debugged robot does not exist! Exiting single step mode."
           runRobotIDs postFoc
           gameStep .= WorldTick
           ticks += 1
           return True
-        Just oldR -> do
-          newR <- stepRobot oldR
-          insertBackRobot focRID newR
-          when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
-          return False
-    SSingle rid | otherwise -> do
-      mOldR <- uses robotMap (IM.lookup focRID)
-      case mOldR of
-        Nothing -> do
+        Nothing | otherwise -> do
           debugLog "The previously debugged robot does not exist!"
-          singleStep (SAfter rid) focRID postFoc
+          singleStep SBefore focRID postFoc
         Just oldR -> do
-          newR <- tickRobotRec oldR
+          -- if focus changed we need to finish the previous robot
+          newR <- (if rid == focRID then stepRobot else tickRobotRec) oldR
           insertBackRobot focRID newR
-          when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
-          singleStep ss rid postFoc
+          if rid == focRID
+            then do 
+              when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
+              return False
+            else singleStep SBefore focRID postFoc -- continue to newly focused
     ----------------------------------------------------------------------------
-    -- run robots after the focused robot (go to single step if new robot is focused)
-    SAfter rid | rid >= focRID -> do
+    -- run robots after the focused robot
+    SAfter rid | focRID <= rid -> do
+      -- This state takes care of two possibilities:
+      -- 1. normal - rid == focRID and we finish the tick
+      -- 2. changed focus and the newly focused robot has previously run
+      --    so we just finish the tick the same way
       runRobotIDs postFoc
       gameStep .= RobotStep SBefore
       ticks += 1
       return True
     SAfter rid | otherwise -> do
-      let postRID = snd . IS.split rid $ robotSet
-      singleStep SBefore rid postRID
+      -- go to single step if new robot is focused
+      let (_pre, postRID) = IS.split rid $ robotSet
+      singleStep SBefore focRID postRID
  where
   h = hypotheticalRobot (Out VUnit emptyStore []) 0
   debugLog txt = do
