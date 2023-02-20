@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.Failure.Render where
+module Swarm.Game.Failure.Render where
 
 import Data.Char (toLower)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml (prettyPrintParseException)
-import Swarm.Failure
+import Swarm.Game.Failure
 
 tShowLow :: Show a => a -> Text
 tShowLow = T.pack . map toLower . show

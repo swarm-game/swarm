@@ -145,8 +145,8 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
-import Swarm.Failure
-import Swarm.Failure.Render
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)

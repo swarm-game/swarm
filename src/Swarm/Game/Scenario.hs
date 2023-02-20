@@ -58,8 +58,8 @@ import Data.Either.Extra (eitherToMaybe, maybeToEither)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Failure
-import Swarm.Failure.Render
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
 import Swarm.Game.Entity
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot)

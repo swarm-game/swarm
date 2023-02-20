@@ -42,7 +42,7 @@ import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml (decodeFileEither)
 import Data.Yaml.Aeson (prettyPrintParseException)
-import Swarm.Failure.Render qualified as F
+import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E

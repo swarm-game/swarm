@@ -85,8 +85,8 @@ library
                       Data.BoolExpr.Simplify
                       Swarm.App
                       Swarm.DocGen
-                      Swarm.Failure
-                      Swarm.Failure.Render
+                      Swarm.Game.Failure
+                      Swarm.Game.Failure.Render
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Achievement.Description

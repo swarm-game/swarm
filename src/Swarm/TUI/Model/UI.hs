@@ -57,8 +57,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Failure (SystemFailure)
-import Swarm.Failure.Render (prettyFailure)
+import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence

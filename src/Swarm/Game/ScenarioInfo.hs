@@ -66,7 +66,7 @@ import Data.Text (Text)
 import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Swarm.Failure
+import Swarm.Game.Failure
 import Swarm.Game.Entity
 import Swarm.Game.Scenario
 import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
