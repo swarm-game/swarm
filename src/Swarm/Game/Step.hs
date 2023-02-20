@@ -211,10 +211,12 @@ singleStep ss focRID robotSet = do
           newR <- (if rid == focRID then stepRobot else tickRobotRec) oldR
           insertBackRobot focRID newR
           if rid == focRID
-            then do 
+            then do
               when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
               return False
-            else singleStep SBefore focRID postFoc -- continue to newly focused
+            else do
+              -- continue to newly focused
+              singleStep SBefore focRID postFoc
     ----------------------------------------------------------------------------
     -- run robots after the focused robot
     SAfter rid | focRID <= rid -> do
