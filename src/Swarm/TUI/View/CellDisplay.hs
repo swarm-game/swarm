@@ -4,6 +4,7 @@ module Swarm.TUI.View.CellDisplay where
 
 import Brick
 import Control.Lens (at, both, ix, over, to, view, (^.), (^?))
+import Data.Bool (bool)
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
@@ -53,15 +54,24 @@ displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity co
         HideNoEntity -> True
         HideEntityUnknownTo ro -> ro `robotKnows` e
 
+data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
+
+hidingMode :: GameState -> HideEntity
+hidingMode g
+  | g ^. creativeMode = HideNoEntity
+  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
+
 -- | Get the 'Display' for a specific location, by combining the
---   'Display's for the terrain, entity, and robots at the location,
---   taking into account the distance to another robot being @view@ed.
+--   'Display's for the terrain, entity, and robots at the location, and
+--   taking into account "static" based on the distance to the robot
+--   being @view@ed.
 displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords
-  -- "static" = random black + white cells
-  | isStatic = if even h then mempty else terrainMap M.! IceT
-  -- normal: show the terrain, entity, and robots.
-  | otherwise = sconcat $ terrain NE.:| entity <> robots
+displayLoc showRobots g coords = addStatic g coords $ displayLocRaw showRobots g coords
+
+-- | Get the 'Display' for a specific location, by combining the
+--   'Display's for the terrain, entity, and robots at the location.
+displayLocRaw :: Bool -> GameState -> W.Coords -> Display
+displayLocRaw showRobots g coords = sconcat $ terrain NE.:| entity <> robots
  where
   terrain = displayTerrainCell g coords
   entity = displayEntityCell g coords
@@ -70,6 +80,23 @@ displayLoc showRobots g coords
       then displayRobotCell g coords
       else []
 
+-- | Add random "static" based on the distance to the robot being
+--   @view@ed.
+addStatic :: GameState -> W.Coords -> Display -> Display
+addStatic g coords d = maybe d displayStatic (getStatic g coords)
+
+-- | Draw black or white static.
+displayStatic :: Bool -> Display
+displayStatic = bool mempty (terrainMap M.! IceT)
+
+-- | Random "static" based on the distance to the robot being
+--   @view@ed.  A cell can either be static-free (represented by
+--   @Nothing@) or can have one of two types ("black" or "white").
+getStatic :: GameState -> W.Coords -> Maybe Bool
+getStatic g coords
+  | isStatic = Just (even h)
+  | otherwise = Nothing
+ where
   -- Offset from the location of the view center to the location under
   -- consideration for display.
   offset = W.coordsToLoc coords .-. (g ^. viewCenter)
@@ -117,10 +144,3 @@ displayLoc showRobots g coords
     | otherwise = hp < 1 - cos (s * (pi / 2))
    where
     s = (viewDist - viewDist1) / (viewDist2 - viewDist1)
-
-data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
-
-hidingMode :: GameState -> HideEntity
-hidingMode g
-  | g ^. creativeMode = HideNoEntity
-  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
