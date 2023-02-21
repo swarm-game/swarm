@@ -336,7 +336,9 @@ drawGameUI s =
 
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g coords@(W.Coords (y, x)) =
-  hBox $ tileMemberWidgets ++ [coordsWidget]
+  case getStatic g coords of
+    Just s -> renderDisplay $ displayStatic s
+    Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
  where
   coordsWidget =
     txt $
@@ -345,10 +347,7 @@ drawWorldCursorInfo g coords@(W.Coords (y, x)) =
         , from $ show $ y * (-1)
         ]
 
-  tileMembers =
-    case getStatic g coords of
-      Just s -> [displayStatic s]
-      Nothing -> terrain : mapMaybe merge [entity, robot]
+  tileMembers = terrain : mapMaybe merge [entity, robot]
   tileMemberWidgets =
     map (padRight $ Pad 1)
       . concat
