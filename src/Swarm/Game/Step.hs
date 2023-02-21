@@ -1296,15 +1296,28 @@ execConst c vs s k = do
       _ -> badConst
     View -> case vs of
       [VRobot rid] -> do
-        _ <-
-          robotWithID rid
-            >>= (`isJustOrFail` ["There is no actor with ID", from (show rid), "to view."])
-
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
         rn <- use robotID
         when (rn == 0) $
-          viewCenterRule .= VCRobot rid
+          robotWithID rid >>= \case
+            -- If the robot does not exist...
+            Nothing -> do
+              cr <- use creativeMode
+              ws <- use worldScrollable
+              case cr || ws of
+                -- If we are in creative mode or allowed to scroll, then we are allowed
+                -- to learn that the robot doesn't exist.
+                True -> throwError $ cmdExn c ["There is no actor with ID", from (show rid), "to view."]
+                -- Otherwise, "unfocus" from any robot, which
+                -- means the world view will turn to static.  The
+                -- point is that there's no way to tell the difference
+                -- between this situation and the situation where the
+                -- robot exists but is too far away.
+                False -> modify unfocus
+
+            -- If it does exist, set it as the view center.
+            Just _ -> viewCenterRule .= VCRobot rid
 
         return $ Out VUnit s k
       _ -> badConst

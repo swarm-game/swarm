@@ -95,6 +95,7 @@ module Swarm.Game.State (
   recalcViewCenter,
   modifyViewCenter,
   viewingRegion,
+  unfocus,
   focusedRobot,
   clearFocusedRobotLogUpdated,
   addRobot,
@@ -654,6 +655,13 @@ modifyViewCenter update g =
     & case g ^. viewCenterRule of
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
       VCRobot _ -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
+
+-- | "Unfocus" by modifying the view center rule to look at the
+--   current location instead of a specific robot, and also set the
+--   focused robot ID to an invalid value.  In classic mode this
+--   causes the map view to become nothing but static.
+unfocus :: GameState -> GameState
+unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.

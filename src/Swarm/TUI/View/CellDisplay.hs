@@ -134,6 +134,9 @@ getStatic g coords
     -- Don't display static in creative mode or when the player is
     -- allowed to scroll the world
     | g ^. creativeMode || g ^. worldScrollable = False
+    -- Otherwise, if we're not viewing a robot, display static.  This
+    -- can happen if e.g. the robot we were viewing drowned.
+    | Nothing <- focusedRobot g = True
     -- No static inside viewDist1
     | viewDist <= viewDist1 = False
     -- Completely static outside viewDist2
