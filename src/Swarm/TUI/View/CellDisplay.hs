@@ -101,9 +101,11 @@ displayLoc showRobots g coords
     -- Completely static outside viewDist2
     | viewDist > viewDist2 = True
     -- In between, replace cell with static with a probability that
-    -- linearly interpolates between 0 and 1 from viewDist1 to
-    -- viewDist2
-    | otherwise = hp < (viewDist - viewDist1) / (viewDist2 - viewDist1)
+    -- interpolates between 0 and 1 from viewDist1 to
+    -- viewDist2.
+    | otherwise = hp < 1 - cos (s * (pi / 2))
+   where
+    s = (viewDist - viewDist1) / (viewDist2 - viewDist1)
 
 data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
 
