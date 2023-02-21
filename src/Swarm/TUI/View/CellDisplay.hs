@@ -1,7 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Lens (at, to, view, (^.))
+import Control.Lens (at, both, ix, over, to, view, (^.), (^?))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
@@ -76,10 +78,19 @@ displayLoc showRobots g coords
     Just br -> euclidean (g ^. viewCenter) (br ^. robotLocation)
     _ -> 1000000000
 
-  -- XXX view thresholds
+  baseInv :: Maybe Inventory
+  baseInv = g ^? robotMap . ix 0 . equippedDevices
+  focInv = view equippedDevices <$> focusedRobot g
+
+  gain :: Maybe Inventory -> (Double -> Double)
+  gain (Just inv)
+    | E.countByName "antenna" inv > 0 = (* 2)
+  gain _ = id
+
+  -- View thresholds.  Default thresholds are 16, 64; each antenna
+  -- boosts the signal by 2x.
   viewDist1, viewDist2 :: Double
-  viewDist1 = 32
-  viewDist2 = 64
+  (viewDist1, viewDist2) = over both (gain baseInv . gain focInv) (16, 64)
 
   -- Hash.
   h =
