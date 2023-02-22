@@ -67,6 +67,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
+import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
@@ -1718,8 +1719,8 @@ execConst c vs s k = do
       [VText fileName] -> do
         let filePath = into @String fileName
         let e2m = fmap eitherToMaybe . runExceptT
-        sData <- sendIO $ e2m $ getDataFileNameSafe filePath
-        sDataSW <- sendIO $ e2m $ getDataFileNameSafe (filePath <> ".sw")
+        sData <- sendIO $ e2m $ getDataFileNameSafe (Data Script) filePath
+        sDataSW <- sendIO $ e2m $ getDataFileNameSafe (Data Script) (filePath <> ".sw")
         mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]

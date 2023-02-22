@@ -7,20 +7,13 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml (prettyPrintParseException)
 import Swarm.Game.Failure
+import Swarm.Util (quote)
 
 tShowLow :: Show a => a -> Text
 tShowLow = T.pack . map toLower . show
 
 tShow :: Show a => a -> Text
 tShow = T.pack . show
-
-prettyPathLoadingFailure :: PathLoadFailure -> Text
-prettyPathLoadingFailure (PathLoadFailure p x) =
-  T.unwords
-    [ "For path"
-    , T.pack p <> ","
-    , prettyLoadingFailure x
-    ]
 
 prettyLoadingFailure :: LoadingFailure -> Text
 prettyLoadingFailure = \case
@@ -33,5 +26,5 @@ prettyLoadingFailure = \case
 
 prettyFailure :: SystemFailure -> Text
 prettyFailure = \case
-  AssetNotLoaded a (PathLoadFailure fp l) ->
-    T.unwords ["Failed to acquire", tShowLow a, tShow fp] <> ": " <> prettyLoadingFailure l
+  AssetNotLoaded a fp l ->
+    T.unwords ["Failed to acquire", tShowLow a, tShow fp, "from path", quote $ T.pack fp] <> ": " <> prettyLoadingFailure l

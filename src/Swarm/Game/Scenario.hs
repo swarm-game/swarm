@@ -206,8 +206,8 @@ getScenarioPath ::
   FilePath ->
   m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- e2m $ getDataFileNameSafe $ "scenarios" </> scenario
-  libScenarioExt <- e2m $ getDataFileNameSafe $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- e2m $ getDataFileNameSafe (Data Scenarios) $ "scenarios" </> scenario
+  libScenarioExt <- e2m $ getDataFileNameSafe (Data Scenarios) $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
   listToMaybe <$> liftIO (filterM doesFileExist candidates)
  where
@@ -234,7 +234,7 @@ loadScenarioFile ::
   FilePath ->
   ExceptT SystemFailure m Scenario
 loadScenarioFile em fileName = do
-  withExceptT (AssetNotLoaded (Data Scenarios) . PathLoadFailure fileName . CanNotParse) $
+  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse) $
     ExceptT $
       liftIO $
         decodeFileEitherE em fileName

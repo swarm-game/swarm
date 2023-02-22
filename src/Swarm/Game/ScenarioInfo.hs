@@ -219,7 +219,7 @@ normalizeScenarioPath col p =
         then return path
         else liftIO $ do
           canonPath <- canonicalizePath path
-          eitherDdir <- getDataDirSafe "." -- no way we got this far without data directory
+          eitherDdir <- getDataDirSafe (Data Scenarios) "." -- no way we got this far without data directory
           d <- canonicalizePath $ fromRight' eitherDdir
           let n =
                 stripPrefix (d </> "scenarios") canonPath
@@ -236,7 +236,7 @@ loadScenarios ::
   EntityMap ->
   ExceptT [SystemFailure] IO ([SystemFailure], ScenarioCollection)
 loadScenarios em = do
-  dataDir <- withExceptT (pure . AssetNotLoaded (Data Scenarios)) $ ExceptT $ getDataDirSafe p
+  dataDir <- withExceptT pure $ ExceptT $ getDataDirSafe (Data Scenarios) p
   loadScenarioDir em dataDir
  where
   p = "scenarios"
@@ -333,7 +333,7 @@ loadScenarioInfo p = do
     then do
       return $ ScenarioInfo path NotStarted NotStarted NotStarted
     else
-      withExceptT (pure . AssetNotLoaded (Data Scenarios) . PathLoadFailure infoPath . CanNotParse) $
+      withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParse) $
         ExceptT $
           liftIO $
             decodeFileEither infoPath

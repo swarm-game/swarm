@@ -9,12 +9,9 @@ import Data.Text (Text)
 import Data.Yaml (ParseException)
 
 data SystemFailure
-  = AssetNotLoaded Asset PathLoadFailure
+  = AssetNotLoaded Asset FilePath LoadingFailure
 
-data PathLoadFailure
-  = PathLoadFailure FilePath LoadingFailure
-
-data AssetData = AppAsset | NameGeneration | Entities | Recipes | Scenarios
+data AssetData = AppAsset | NameGeneration | Entities | Recipes | Scenarios | Script
   deriving (Eq, Show)
 
 data Asset = Achievement | Data AssetData | History | Save

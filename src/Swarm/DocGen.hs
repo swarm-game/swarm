@@ -45,6 +45,7 @@ import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
+import Swarm.Game.Failure qualified as F
 import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
@@ -120,7 +121,7 @@ generateDocs = \case
         let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
         let f = "entities.yaml"
         let e2m = fmap eitherToMaybe . runExceptT
-        Just fileName <- liftIO $ e2m $ getDataFileNameSafe f
+        Just fileName <- liftIO $ e2m $ getDataFileNameSafe (F.Data F.Entities) f
         entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
         liftIO $ T.putStrLn $ entitiesPage address entities
       Recipes -> simpleErrorHandle $ do

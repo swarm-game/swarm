@@ -106,7 +106,8 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
-import Swarm.Game.Failure.Render (prettyPathLoadingFailure)
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
@@ -368,7 +369,7 @@ instance ToJSON Entity where
 loadEntities :: MonadIO m => m (Either Text EntityMap)
 loadEntities = runExceptT $ do
   let f = "entities.yaml"
-  fileName <- withExceptT prettyPathLoadingFailure $ getDataFileNameSafe f
+  fileName <- withExceptT prettyFailure $ getDataFileNameSafe (Data Entities) f
   decoded <- withExceptT (from . prettyPrintParseException) $ ExceptT $ liftIO $ decodeFileEither fileName
   return $ buildEntityMap decoded
 
