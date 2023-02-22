@@ -121,7 +121,7 @@ generateDocs = \case
         let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
         let f = "entities.yaml"
         let e2m = fmap eitherToMaybe . runExceptT
-        Just fileName <- liftIO $ e2m $ getDataFileNameSafe (F.Data F.Entities) f
+        Just fileName <- liftIO $ e2m $ getDataFileNameSafe F.Entities f
         entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
         liftIO $ T.putStrLn $ entitiesPage address entities
       Recipes -> simpleErrorHandle $ do

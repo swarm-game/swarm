@@ -369,7 +369,7 @@ instance ToJSON Entity where
 loadEntities :: MonadIO m => m (Either Text EntityMap)
 loadEntities = runExceptT $ do
   let f = "entities.yaml"
-  fileName <- withExceptT prettyFailure $ getDataFileNameSafe (Data Entities) f
+  fileName <- withExceptT prettyFailure $ getDataFileNameSafe Entities f
   decoded <- withExceptT (from . prettyPrintParseException) $ ExceptT $ liftIO $ decodeFileEither fileName
   return $ buildEntityMap decoded
 

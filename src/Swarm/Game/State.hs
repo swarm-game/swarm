@@ -805,8 +805,8 @@ initGameState = do
         Right (warnings, x) -> (warnings, x)
 
   (adjsFile, namesFile) <- withExceptT prettyFailure $ do
-    adjsFile <- getDataFileNameSafe (Data NameGeneration) "adjectives.txt"
-    namesFile <- getDataFileNameSafe (Data NameGeneration) "names.txt"
+    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
+    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
     return (adjsFile, namesFile)
 
   let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)

@@ -144,7 +144,7 @@ loadRecipes ::
   EntityMap ->
   ExceptT SystemFailure m [Recipe Entity]
 loadRecipes em = do
-  fileName <- getDataFileNameSafe (Data Recipes) f
+  fileName <- getDataFileNameSafe Recipes f
   textRecipes <-
     withExceptT (AssetNotLoaded (Data Recipes) fileName . CanNotParse) $
       ExceptT $

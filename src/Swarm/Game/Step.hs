@@ -1719,8 +1719,8 @@ execConst c vs s k = do
       [VText fileName] -> do
         let filePath = into @String fileName
         let e2m = fmap eitherToMaybe . runExceptT
-        sData <- sendIO $ e2m $ getDataFileNameSafe (Data Script) filePath
-        sDataSW <- sendIO $ e2m $ getDataFileNameSafe (Data Script) (filePath <> ".sw")
+        sData <- sendIO $ e2m $ getDataFileNameSafe Script filePath
+        sDataSW <- sendIO $ e2m $ getDataFileNameSafe Script (filePath <> ".sw")
         mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]

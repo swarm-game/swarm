@@ -34,7 +34,7 @@ import Witch
 -- The idea is that when installing with Cabal/Stack the first
 -- is preferred, but when the players install a binary they
 -- need to extract the `data` archive to the XDG directory.
-getDataDirSafe :: MonadIO m => Asset -> FilePath -> m (Either SystemFailure FilePath)
+getDataDirSafe :: MonadIO m => AssetData -> FilePath -> m (Either SystemFailure FilePath)
 getDataDirSafe asset p = do
   d <- (`appDir` p) <$> liftIO getDataDir
   de <- liftIO $ doesDirectoryExist d
@@ -43,7 +43,7 @@ getDataDirSafe asset p = do
     else do
       xd <- (`appDir` p) <$> liftIO (getSwarmXdgDataSubdir False "data")
       xde <- liftIO $ doesDirectoryExist xd
-      return $ if xde then Right xd else Left $ AssetNotLoaded asset xd $ DoesNotExist Directory
+      return $ if xde then Right xd else Left $ AssetNotLoaded (Data asset) xd $ DoesNotExist Directory
  where
   appDir r = \case
     "" -> r
@@ -55,7 +55,7 @@ getDataDirSafe asset p = do
 -- See the note in 'getDataDirSafe'.
 getDataFileNameSafe ::
   MonadIO m =>
-  Asset ->
+  AssetData ->
   FilePath ->
   ExceptT SystemFailure m FilePath
 getDataFileNameSafe asset name = do
@@ -66,7 +66,7 @@ getDataFileNameSafe asset name = do
     return $
       if fe
         then Right fp
-        else Left $ AssetNotLoaded asset fp $ DoesNotExist File
+        else Left $ AssetNotLoaded (Data asset) fp $ DoesNotExist File
 
 -- | Get a nice message suggesting to download `data` directory to 'XdgData'.
 dataNotFound :: FilePath -> IO LoadingFailure
@@ -108,7 +108,7 @@ getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
 -- | Read all the .txt files in the data/ directory.
 readAppData :: ExceptT SystemFailure IO (Map Text Text)
 readAppData = do
-  d <- ExceptT $ getDataDirSafe (Data AppAsset) "."
+  d <- ExceptT $ getDataDirSafe AppAsset "."
   dirMembers <-
     ExceptT $
       fmap pure (listDirectory d) `catch` \(e :: IOException) ->

@@ -206,8 +206,8 @@ getScenarioPath ::
   FilePath ->
   m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- e2m $ getDataFileNameSafe (Data Scenarios) $ "scenarios" </> scenario
-  libScenarioExt <- e2m $ getDataFileNameSafe (Data Scenarios) $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
   listToMaybe <$> liftIO (filterM doesFileExist candidates)
  where
