@@ -35,11 +35,13 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM, forM_, guard, msum, unless, when)
+import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
+import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
@@ -65,8 +67,10 @@ import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
+import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
@@ -1714,8 +1718,9 @@ execConst c vs s k = do
     Run -> case vs of
       [VText fileName] -> do
         let filePath = into @String fileName
-        sData <- sendIO $ getDataFileNameSafe filePath
-        sDataSW <- sendIO $ getDataFileNameSafe (filePath <> ".sw")
+        let e2m = fmap eitherToMaybe . runExceptT
+        sData <- sendIO $ e2m $ getDataFileNameSafe Script filePath
+        sDataSW <- sendIO $ e2m $ getDataFileNameSafe Script (filePath <> ".sw")
         mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]

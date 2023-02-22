@@ -23,6 +23,7 @@ import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
 import Swarm.Game.ScenarioInfo (
@@ -40,7 +41,6 @@ import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Failure (prettyFailure)
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -52,10 +52,10 @@ initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
-  gs <- initGameState
-  (warnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
+  (gsWarnings, gs) <- initGameState
+  (uiWarnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
-  let rs = List.foldl' logWarning initRuntimeState warnings
+  let rs = List.foldl' logWarning initRuntimeState $ gsWarnings <> uiWarnings
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do

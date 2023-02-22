@@ -85,6 +85,8 @@ library
                       Data.BoolExpr.Simplify
                       Swarm.App
                       Swarm.DocGen
+                      Swarm.Game.Failure
+                      Swarm.Game.Failure.Render
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Achievement.Description
@@ -96,6 +98,7 @@ library
                       Swarm.Game.Location
                       Swarm.Game.Log
                       Swarm.Game.Recipe
+                      Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
@@ -138,7 +141,6 @@ library
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.Failure
                       Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name
@@ -203,6 +205,7 @@ library
                       text-rope                     >= 0.2 && < 0.3,
                       text-zipper                   >= 0.10 && < 0.14,
                       time                          >= 1.9 && < 1.14,
+                      transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       unification-fd                >= 0.11  && < 0.12,
                       unordered-containers          >= 0.2.14 && < 0.3,
                       vector                        >= 0.12 && < 0.14,

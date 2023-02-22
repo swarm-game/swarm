@@ -85,7 +85,8 @@ module Swarm.Game.Entity (
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
-import Data.Bifunctor (bimap, first)
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT, withExceptT)
+import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
 import Data.Hashable
@@ -105,9 +106,12 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, dataNotFound, getDataFileNameSafe, plural, reflow, (?))
+import Swarm.Util (binTuples, plural, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -363,12 +367,11 @@ instance ToJSON Entity where
 -- | Load entities from a data file called @entities.yaml@, producing
 --   either an 'EntityMap' or a pretty-printed parse error.
 loadEntities :: MonadIO m => m (Either Text EntityMap)
-loadEntities = liftIO $ do
+loadEntities = runExceptT $ do
   let f = "entities.yaml"
-  mayFileName <- getDataFileNameSafe f
-  case mayFileName of
-    Nothing -> Left <$> dataNotFound f
-    Just fileName -> bimap (from . prettyPrintParseException) buildEntityMap <$> decodeFileEither fileName
+  fileName <- withExceptT prettyFailure $ getDataFileNameSafe Entities f
+  decoded <- withExceptT (from . prettyPrintParseException) $ ExceptT $ liftIO $ decodeFileEither fileName
+  return $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses

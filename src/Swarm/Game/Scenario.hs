@@ -49,18 +49,20 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
-import Control.Algebra (Has)
-import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
+import Control.Monad.Trans.Except (except)
 import Data.Aeson
+import Data.Either.Extra (eitherToMaybe, maybeToEither)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Yaml as Y
 import Swarm.Game.Entity
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
 import Swarm.Game.Recipe
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.Objective
@@ -69,7 +71,6 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -200,36 +201,40 @@ scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 -- Loading scenarios
 ------------------------------------------------------------
 
-getScenarioPath :: FilePath -> IO (Maybe FilePath)
+getScenarioPath ::
+  MonadIO m =>
+  FilePath ->
+  m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- getDataFileNameSafe $ "scenarios" </> scenario
-  libScenarioExt <- getDataFileNameSafe $ "scenarios" </> scenario <.> "yaml"
-
+  libScenario <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
-  listToMaybe <$> filterM doesFileExist candidates
+  listToMaybe <$> liftIO (filterM doesFileExist candidates)
+ where
+  e2m = fmap eitherToMaybe . runExceptT
 
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  MonadIO m =>
   String ->
   EntityMap ->
-  m (Scenario, FilePath)
+  ExceptT Text m (Scenario, FilePath)
 loadScenario scenario em = do
-  mfileName <- sendIO $ getScenarioPath scenario
-  case mfileName of
-    Nothing -> throwError @Text $ "Scenario not found: " <> from @String scenario
-    Just fileName -> (,fileName) <$> loadScenarioFile em fileName
+  mfileName <- liftIO $ getScenarioPath scenario
+  fileName <- except $ maybeToEither ("Scenario not found: " <> from @String scenario) mfileName
+  s <- withExceptT prettyFailure $ loadScenarioFile em fileName
+  return (s, fileName)
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  MonadIO m =>
   EntityMap ->
   FilePath ->
-  m Scenario
+  ExceptT SystemFailure m Scenario
 loadScenarioFile em fileName = do
-  res <- sendIO $ decodeFileEitherE em fileName
-  case res of
-    Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
-    Right c -> return c
+  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse) $
+    ExceptT $
+      liftIO $
+        decodeFileEitherE em fileName

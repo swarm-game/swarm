@@ -72,6 +72,7 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
