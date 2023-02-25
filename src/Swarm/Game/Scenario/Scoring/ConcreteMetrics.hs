@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Swarm.Game.Scenario.Scoring.Metrics where
+-- | Data types and instances for specific scoring methods
+module Swarm.Game.Scenario.Scoring.ConcreteMetrics where
 
 import Control.Lens hiding (from, (<.>))
 import Data.Aeson

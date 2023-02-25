@@ -171,8 +171,9 @@ import Swarm.Game.Recipe (
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Scoring.Metrics
-import Swarm.Game.Scenario.Scoring.Progress
+import Swarm.Game.Scenario.Scoring.Best
+import Swarm.Game.Scenario.Scoring.ConcreteMetrics
+import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))

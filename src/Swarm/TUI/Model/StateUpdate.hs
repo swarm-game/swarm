@@ -28,8 +28,9 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
-import Swarm.Game.Scenario.Scoring.Metrics
-import Swarm.Game.Scenario.Scoring.Progress
+import Swarm.Game.Scenario.Scoring.Best
+import Swarm.Game.Scenario.Scoring.ConcreteMetrics
+import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,

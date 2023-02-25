@@ -1,4 +1,6 @@
-module Swarm.Game.Scenario.Scoring.Progress where
+-- | Data types and functions applicable across different
+-- scoring methods.
+module Swarm.Game.Scenario.Scoring.GenericMetrics where
 
 import Data.Aeson
 import Data.Ord (Down (Down))
