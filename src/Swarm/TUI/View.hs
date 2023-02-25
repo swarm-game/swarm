@@ -318,11 +318,12 @@ makeBestScoreRows scenarioStat =
     elaboratedCriteria =
       if hasDistinctByCriteria
         then
-          map mkCriteriaRow $
-            flip zip [(0 :: Int) ..] $
-              NE.toList $
-                NE.reverse $
-                  NE.map describeCriteria criteria
+          map mkCriteriaRow
+            . flip zip [(0 :: Int) ..]
+            . NE.toList
+            . NE.reverse
+            . NE.map describeCriteria
+            $ criteria
         else []
 
 drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
