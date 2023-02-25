@@ -3,7 +3,6 @@
 module Swarm.TUI.Launch.View where
 
 import Brick
-import Control.Lens
 import Brick.Focus
 import Brick.Forms qualified as BF
 import Brick.Widgets.Border
@@ -12,12 +11,13 @@ import Brick.Widgets.Edit
 import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Exception qualified as E
+import Control.Lens
 import Data.Maybe (listToMaybe)
-import Data.Text qualified as T
 import Data.Text (Text)
+import Data.Text qualified as T
+import Swarm.Game.Scenario (scenarioSeed)
 import Swarm.TUI.Attr
 import Swarm.TUI.Launch.Model
-import Swarm.Game.Scenario (scenarioSeed)
 import Swarm.TUI.Model.Name
 
 drawFileBrowser :: FB.FileBrowser Name -> Widget Name
@@ -96,31 +96,34 @@ drawLaunchConfigPanel (LaunchOptions (LaunchControls (FileBrowserControl fb isFb
       then withAttr highlightAttr $ str "<[Enter] to select>"
       else str "<none>"
   fileEntryWidget =
-      maybe unspecifiedFileMessage (str . FB.fileInfoSanitizedFilename) $
-        listToMaybe $
-          FB.fileBrowserSelection fb
+    maybe unspecifiedFileMessage (str . FB.fileInfoSanitizedFilename) $
+      listToMaybe $
+        FB.fileBrowserSelection fb
 
   panelWidget =
     centerLayer $
       borderWithLabel (str " Configure scenario launch ") $
         hLimit 60 $
           padAll 1 $
-            vBox [
-                controlsBox
+            vBox
+              [ controlsBox
               , descriptionBox
               , hCenter $ mkButton StartGameButton ">> Launch with these settings <<"
               ]
-            
-    where
-    descriptionBox = vLimit 4 $ padBottom Max $ padRight (Pad 2) $
-      case optionDescription =<< getFocusedConfigPanel of
-        Just desc -> withDefAttr dimAttr $ hBox [
-            padLeft (Pad 6) $ withAttr boldAttr $ str "[Info]"
-          , padLeft (Pad 1) $ txtWrap desc
-          ]
-        Nothing -> str " "
+   where
+    descriptionBox = vLimit 4 $
+      padBottom Max $
+        padRight (Pad 2) $
+          case optionDescription =<< getFocusedConfigPanel of
+            Just desc ->
+              withDefAttr dimAttr $
+                hBox
+                  [ padLeft (Pad 6) $ withAttr boldAttr $ str "[Info]"
+                  , padLeft (Pad 1) $ txtWrap desc
+                  ]
+            Nothing -> str " "
 
-    controlsBox = 
+    controlsBox =
       vBox
         [ padBottom (Pad 1) $
             padLeft (Pad 2) $

@@ -186,22 +186,23 @@ drawNewGameMenuUI (l :| ls) launchOptions = case launchOptions ^. controls . isD
   Nothing -> pure mainWidget
   Just _ -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
-  mainWidget = vBox [
-    padLeftRight 20
-      . centerLayer
-      $ hBox
-        [ vBox
-            [ withAttr boldAttr . txt $ breadcrumbs ls
-            , txt " "
-            , vLimit 20
-                . hLimit 35
-                . BL.renderList (const $ padRight Max . drawScenarioItem) True
-                $ l
+  mainWidget =
+    vBox
+      [ padLeftRight 20
+          . centerLayer
+          $ hBox
+            [ vBox
+                [ withAttr boldAttr . txt $ breadcrumbs ls
+                , txt " "
+                , vLimit 20
+                    . hLimit 35
+                    . BL.renderList (const $ padRight Max . drawScenarioItem) True
+                    $ l
+                ]
+            , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
             ]
-        , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
-        ]
-    , launchOptionsMessage
-    ]
+      , launchOptionsMessage
+      ]
 
   launchOptionsMessage = case (launchOptions ^. controls . isDisplayedFor, snd <$> BL.listSelectedElement l) of
     (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options"
