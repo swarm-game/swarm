@@ -141,6 +141,9 @@ replStart :: Lens' REPLHistory Int
 -- Therefore, a dedicated boolean is introduced into
 -- REPLHistory which simply latches True when the user
 -- has input a command.
+--
+-- An alternative is described here:
+-- https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380
 replHasExecutedManualInput :: Lens' REPLHistory Bool
 
 -- | Create new REPL history (i.e. from loaded history file lines).

@@ -477,11 +477,7 @@ saveScenarioInfoOnFinish = do
         replHist <- use $ uiState . uiREPL . replHistory
         let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
         currentScenarioInfo
-          %= updateScenarioInfoOnFinish
-            determinator
-            t
-            ts
-            won
+          %= updateScenarioInfoOnFinish determinator t ts won
         status <- preuse currentScenarioInfo
         case status of
           Nothing -> return ()
