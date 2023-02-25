@@ -3,7 +3,12 @@
 -- | High score records
 module TestScoring where
 
+import Swarm.Language.Syntax
+import Swarm.Language.Module
+import Swarm.Language.Pipeline
+import System.FilePath ((</>))
 import Data.Time.Calendar.OrdinalDate
+import Data.Text.IO qualified as TIO
 import Data.Time.LocalTime
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.Metrics
@@ -12,9 +17,25 @@ import Swarm.Game.Scenario.Status
 import Test.Tasty
 import Test.Tasty.HUnit
 
+
+baseTestPath :: FilePath
+baseTestPath = "data/test/language-snippets/code-size"
+
 testHighScores :: TestTree
 testHighScores =
   testGroup
+    "Scoring"
+    [ testGroup "Code size" [
+      compareAstSize 1 "single-move-bare.sw"
+    , compareAstSize 2 "single-move-def.sw"
+    , compareAstSize 3 "single-move-let-with-invocation.sw"
+    , compareAstSize 5 "double-move-let-with-invocation.sw"
+    , compareAstSize 6 "single-move-def-with-invocation.sw"
+    , compareAstSize 8 "double-move-def-with-invocation.sw"
+    , compareAstSize 28 "single-def-two-args-recursive.sw"
+    , compareAstSize 36 "single-def-two-args-recursive-with-invocation.sw"
+    ]
+  , testGroup
     "Precedence"
     [ testGroup
         "Single metrics"
@@ -33,6 +54,17 @@ testHighScores =
         , betterCodeWorseTime
         ]
     ]
+  ]
+
+compareAstSize :: Int -> FilePath -> TestTree
+compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
+  contents <- TIO.readFile $ baseTestPath </> path
+  ProcessedTerm (Module stx _) _ _ <- case processTermEither contents of
+    Right x -> return x
+    Left y -> assertFailure y
+  let actualSize = measureAstSize stx
+  assertEqual "incorrect size" expectedSize actualSize
+
 
 betterReplTimeAfterCodeSizeRecord :: TestTree
 betterReplTimeAfterCodeSizeRecord =
