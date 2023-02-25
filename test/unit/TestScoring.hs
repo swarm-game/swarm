@@ -6,10 +6,10 @@ module TestScoring where
 import Data.Text.IO qualified as TIO
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
+import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
-import Swarm.Game.Scenario.Status
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax
