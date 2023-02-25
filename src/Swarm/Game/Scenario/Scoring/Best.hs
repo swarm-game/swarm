@@ -79,9 +79,6 @@ data BestRecords = BestRecords
   }
   deriving (Eq, Ord, Read, Generic)
 
-angleBracket :: String -> String
-angleBracket x = "<" <> x <> ">"
-
 instance Show BestRecords where
   show (BestRecords a b c d) =
     unlines $
@@ -92,6 +89,9 @@ instance Show BestRecords where
         , show c
         , show d
         ]
+   where
+    angleBracket :: String -> String
+    angleBracket x = "<" <> x <> ">"
 
 emptyBest :: ZonedTime -> BestRecords
 emptyBest t = BestRecords x x x x
@@ -131,22 +131,6 @@ instance ToJSON BestRecords where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
-bestToMap :: BestRecords -> Map BestByCriteria ProgressMetric
-bestToMap (BestRecords t1 t2 s1 s2) =
-  M.fromList $ durationElements <> mapMaybe (traverse ensurePresent) codeSizeElements
- where
-  durationElements =
-    [ (BestByTime, t1)
-    , (BestByTicks, t2)
-    ]
-  codeSizeElements =
-    [ (BestByCharCount, s1)
-    , (BestByAstSize, s2)
-    ]
-
-  ensurePresent x =
-    (getMetric x ^. scenarioAttemptMetrics . scenarioCodeMetrics) >> Just x
-
 -- | Uses the start time of the play-attempt to de-dupe
 -- records that are from the same game. The start time should
 -- be sufficient to uniquely identify a game.
@@ -158,3 +142,19 @@ getBestGroups =
  where
   groupByStartTime = NE.groupAllWith $ view scenarioStarted . getMetric . snd
   rearrangeTuples = map (snd . NE.head &&& NE.map fst) . groupByStartTime
+
+  bestToMap :: BestRecords -> Map BestByCriteria ProgressMetric
+  bestToMap (BestRecords t1 t2 s1 s2) =
+    M.fromList $ durationElements <> mapMaybe (traverse ensurePresent) codeSizeElements
+   where
+    durationElements =
+      [ (BestByTime, t1)
+      , (BestByTicks, t2)
+      ]
+    codeSizeElements =
+      [ (BestByCharCount, s1)
+      , (BestByAstSize, s2)
+      ]
+
+    ensurePresent x =
+      (getMetric x ^. scenarioAttemptMetrics . scenarioCodeMetrics) >> Just x

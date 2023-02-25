@@ -291,7 +291,7 @@ makeBestScoreRows scenarioStat =
  where
   getBests = case scenarioStat of
     NotStarted -> Nothing
-    Played (Metric _ (ProgressStats _ _)) best -> Just best
+    Played _ best -> Just best
 
   makeBestRows b = map (makeBestRow hasMultiple) groups
    where
