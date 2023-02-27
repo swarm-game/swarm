@@ -1,4 +1,6 @@
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A data type to represent system failures.
 --
 -- These failures are often not fatal and serve

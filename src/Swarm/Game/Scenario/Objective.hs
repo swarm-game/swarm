@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Objective where
 
 import Control.Applicative ((<|>))

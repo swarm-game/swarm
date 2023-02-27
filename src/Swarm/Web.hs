@@ -3,6 +3,8 @@
 {-# LANGUAGE TypeOperators #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A web service for Swarm.
 --
 -- The service can be started using the `--port 5357` command line argument,

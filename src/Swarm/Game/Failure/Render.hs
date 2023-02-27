@@ -1,5 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Pretty-printing failure messages
 module Swarm.Game.Failure.Render where
 
 import Data.Char (toLower)

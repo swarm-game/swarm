@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Language.Typed (Typed (..), value, polytype, requires) where
 
 import Control.Lens (makeLenses)

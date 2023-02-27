@@ -1,3 +1,5 @@
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.Name where
 
 data FocusablePanel

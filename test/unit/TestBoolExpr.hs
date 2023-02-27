@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Boolean expression unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Boolean expression unit tests
 module TestBoolExpr where
 
 import Data.BoolExpr qualified as BE

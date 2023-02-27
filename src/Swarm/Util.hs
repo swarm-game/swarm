@@ -3,10 +3,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
--- Module      :  Swarm.Util
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A random collection of small, useful functions that are (or could

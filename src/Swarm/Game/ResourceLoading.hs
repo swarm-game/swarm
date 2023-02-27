@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Various utilities related to loading game data files.
 module Swarm.Game.ResourceLoading where
 

@@ -1,5 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Metadata about achievements that the player has obtained
 module Swarm.Game.Achievement.Attainment where
 
 import Control.Lens hiding (from, (<.>))

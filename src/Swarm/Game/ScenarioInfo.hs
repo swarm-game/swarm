@@ -5,10 +5,6 @@
 -- -Wno-orphans is for the Eq/Ord Time instances
 
 -- |
--- Module      :  Swarm.Game.ScenarioStatus
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Saving and loading info about scenarios (status, path, etc.) as

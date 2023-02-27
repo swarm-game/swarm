@@ -1,7 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Utility functions
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utility functions
 module TestUtil where
 
 import Control.Lens (Ixed (ix), to, use, (&), (.~), (^.), (^?))

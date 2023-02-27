@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
 import Control.Lens ((&), (.~))

@@ -2,10 +2,6 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  Swarm.Game.Entity
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- An 'Entity' represents an object that exists in the world.  Each

@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Swarm unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm unit tests
 module TestPretty where
 
 import Swarm.Language.Pretty

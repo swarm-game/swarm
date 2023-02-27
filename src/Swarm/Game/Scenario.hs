@@ -6,10 +6,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
--- Module      :  Swarm.Game.Scenario
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Scenarios are standalone worlds with specific starting and winning

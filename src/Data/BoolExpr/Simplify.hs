@@ -1,4 +1,7 @@
--- | Simplification logic for boolean expressions that is not
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Simplification logic for boolean expressions that is not
 -- provided in the 'boolexpr' package.
 module Data.BoolExpr.Simplify (
   cannotBeTrue,

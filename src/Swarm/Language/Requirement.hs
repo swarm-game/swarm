@@ -1,8 +1,4 @@
 -- |
--- Module      :  Swarm.Language.Requirement
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A requirement is something that is needed in order to successfully

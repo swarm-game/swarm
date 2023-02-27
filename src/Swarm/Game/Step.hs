@@ -7,10 +7,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Game.Step
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual

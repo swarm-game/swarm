@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Language.Pipeline
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Some convenient functions for putting together the whole Swarm

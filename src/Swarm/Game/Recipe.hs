@@ -2,10 +2,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
--- Module      :  Swarm.Game.Recipe
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A recipe represents some kind of process for transforming

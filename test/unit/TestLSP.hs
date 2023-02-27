@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | LSP unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- LSP unit tests
 module TestLSP (testLSP) where
 
 import Data.Text (Text)

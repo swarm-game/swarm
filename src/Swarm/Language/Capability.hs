@@ -1,8 +1,4 @@
 -- |
--- Module      :  Swarm.Language.Capability
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Capabilities needed to evaluate and execute programs.  Language

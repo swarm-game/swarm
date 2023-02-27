@@ -1,5 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Load/save logic for achievements.
 module Swarm.Game.Achievement.Persistence where
 
 import Control.Arrow (left)
