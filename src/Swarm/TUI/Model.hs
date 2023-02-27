@@ -5,6 +5,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Application state for the @brick@-based Swarm TUI.
 module Swarm.TUI.Model (
   -- * Custom UI label types

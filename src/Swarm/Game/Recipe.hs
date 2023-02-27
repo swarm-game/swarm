@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A recipe represents some kind of process for transforming
 -- some input entities into some output entities.
 module Swarm.Game.Recipe (

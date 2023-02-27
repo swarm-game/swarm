@@ -5,6 +5,8 @@
 -- Orphan Hashable instances needed to derive Hashable Display
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Utilities for describing how to display in-game entities in the TUI.
 module Swarm.Game.Display (
   -- * The display record

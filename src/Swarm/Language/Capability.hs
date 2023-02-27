@@ -1,4 +1,6 @@
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Capabilities needed to evaluate and execute programs.  Language
 -- constructs or commands require certain capabilities, and in turn
 -- capabilities are provided by various devices.  A robot must have an

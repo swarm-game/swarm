@@ -7,6 +7,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
 --

@@ -1,6 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
--- | Utilities for performing graph analysis on Objective prerequisites
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utilities for performing graph analysis on Objective prerequisites
 module Swarm.Game.Scenario.Objective.Graph where
 
 import Control.Arrow ((&&&))

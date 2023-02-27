@@ -1,4 +1,6 @@
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A requirement is something that is needed in order to successfully
 -- build a robot running a certain program.
 module Swarm.Language.Requirement (

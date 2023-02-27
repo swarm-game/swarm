@@ -3,6 +3,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Various utilities related to parsing YAML files.
 module Swarm.Util.Yaml (
   With (..),

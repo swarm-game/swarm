@@ -5,6 +5,8 @@
 -- -Wno-orphans is for the Eq/Ord Time instances
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Saving and loading info about scenarios (status, path, etc.) as
 -- well as loading recursive scenario collections.
 module Swarm.Game.ScenarioInfo (

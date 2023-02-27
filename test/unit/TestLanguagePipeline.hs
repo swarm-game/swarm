@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
 
--- | Swarm unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm unit tests
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))

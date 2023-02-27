@@ -1,5 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Controller.Util where
 
 import Brick hiding (Direction)

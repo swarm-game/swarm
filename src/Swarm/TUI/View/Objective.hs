@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Display logic for Objectives.
 module Swarm.TUI.View.Objective where
 

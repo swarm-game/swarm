@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Code for drawing the TUI.
 module Swarm.TUI.View (
   drawUI,

@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Runtime exceptions for the Swarm language interpreter.
 module Swarm.Game.Exception (
   Exn (..),

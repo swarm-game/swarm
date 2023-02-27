@@ -2,6 +2,8 @@
 {-# LANGUAGE TypeApplications #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Procedural world generation via coherent noise.
 module Swarm.Game.WorldGen where
 

@@ -4,6 +4,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Pretty-printing for the Swarm language.
 module Swarm.Language.Pretty where
 

@@ -3,6 +3,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A random collection of small, useful functions that are (or could
 -- be) used throughout the code base.
 module Swarm.Util (

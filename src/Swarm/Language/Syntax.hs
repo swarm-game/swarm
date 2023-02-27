@@ -8,6 +8,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Abstract syntax for terms of the Swarm programming language.
 module Swarm.Language.Syntax (
   -- * Directions

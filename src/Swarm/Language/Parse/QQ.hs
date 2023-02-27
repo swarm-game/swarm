@@ -1,4 +1,6 @@
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A quasiquoter for Swarm polytypes.
 module Swarm.Language.Parse.QQ (tyQ) where
 

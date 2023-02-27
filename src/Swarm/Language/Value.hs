@@ -2,6 +2,8 @@
 {-# LANGUAGE GADTs #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Values and environments used for interpreting the Swarm language.
 module Swarm.Language.Value (
   -- * Values

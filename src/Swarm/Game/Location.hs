@@ -4,6 +4,8 @@
 -- Orphan JSON instances for Location and Heading
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Locations and headings.
 module Swarm.Game.Location (
   Location,

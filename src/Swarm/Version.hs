@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Query current and upstream Swarm version.
 module Swarm.Version (
   -- * PVP version

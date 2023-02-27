@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Special border drawing functions that can include labels in more
 -- places than just the top center.
 module Swarm.TUI.Border (

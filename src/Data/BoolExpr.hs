@@ -43,6 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -- Module    : Data.BoolExpr
 -- Copyright : (c) Nicolas Pouillard 2008,2009
 -- License   : BSD3
+-- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Maintainer: Nicolas Pouillard <nicolas.pouillard@gmail.com>
 -- Stability : provisional

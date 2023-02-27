@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A data type to represent in-game logs by robots.
 --
 -- Because of the use of system robots, we sometimes

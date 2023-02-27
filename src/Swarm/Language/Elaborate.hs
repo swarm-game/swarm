@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Term elaboration which happens after type checking.
 module Swarm.Language.Elaborate where
 

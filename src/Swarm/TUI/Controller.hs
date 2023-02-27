@@ -2,6 +2,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Event handlers for the TUI.
 module Swarm.TUI.Controller (
   -- * Event handling

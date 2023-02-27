@@ -7,6 +7,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A data type to represent robots.
 module Swarm.Game.Robot (
   -- * Robots data

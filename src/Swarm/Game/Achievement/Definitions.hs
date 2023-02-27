@@ -1,3 +1,7 @@
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Definitions of all possible achievements.
 module Swarm.Game.Achievement.Definitions where
 
 import Data.Aeson

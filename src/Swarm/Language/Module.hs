@@ -1,4 +1,6 @@
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A 'Module' packages together a type-annotated syntax tree along
 -- with a context of top-level definitions.
 module Swarm.Language.Module (

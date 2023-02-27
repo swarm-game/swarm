@@ -1,4 +1,6 @@
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A quasiquoter for Swarm terms.
 module Swarm.Language.Pipeline.QQ (tmQ) where
 

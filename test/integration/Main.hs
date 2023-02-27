@@ -2,7 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Swarm integration tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm integration tests
 module Main where
 
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))

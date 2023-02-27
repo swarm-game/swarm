@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Validity checking for Objective prerequisites
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Validity checking for Objective prerequisites
 module Swarm.Game.Scenario.Objective.Validation where
 
 import Control.Monad (unless)

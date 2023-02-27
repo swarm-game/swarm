@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.DocGen (
   generateDocs,
   GenerateDocs (..),

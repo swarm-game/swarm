@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Rendering attributes (/i.e./ foreground and background colors,
 -- styles, /etc./) used by the Swarm TUI.
 --

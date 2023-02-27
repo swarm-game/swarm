@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Language Server Protocol (LSP) server for the Swarm language.
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where

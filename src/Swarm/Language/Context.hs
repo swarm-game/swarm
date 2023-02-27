@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Generic contexts (mappings from variables to other things, such as
 -- types, values, or capability sets) used throughout the codebase.
 module Swarm.Language.Context where

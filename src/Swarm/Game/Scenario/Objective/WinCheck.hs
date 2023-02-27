@@ -1,4 +1,7 @@
--- | Utilities to check whether conditions are met for a game win/loss.
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utilities to check whether conditions are met for a game win/loss.
 module Swarm.Game.Scenario.Objective.WinCheck where
 
 import Data.Aeson

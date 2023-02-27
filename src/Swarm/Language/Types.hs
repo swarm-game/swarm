@@ -5,6 +5,8 @@
 -- for the Data IntVar instance
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Types for the Swarm programming language and related utilities.
 module Swarm.Language.Types (
   -- * Basic definitions
