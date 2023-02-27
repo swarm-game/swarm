@@ -1,0 +1,231 @@
+version: 1
+name: Hackman
+author: Karl Ostmo
+description: |
+  Feed Hackman caffeine pellets
+creative: false
+attrs:
+  - name: ghost1
+    fg: "#ff0000"
+  - name: ghost2
+    fg: "#ffb8ff"
+  - name: ghost3
+    fg: "#00ffff"
+  - name: ghost4
+    fg: "#ffb852"
+objectives:
+  - teaser: Get pellets
+    goal:
+      - |
+        Pick up all of the caffeine "pellets" so that Hackman can write more code.
+      - |
+        Pay no mind to the colorful ghosts meandering about. That is, unless
+        you are feeling generous with your "donuts"...
+    condition: |
+      as base {
+        pcount <- count "pellet";
+        donut_count <- count "donut";
+        return $ pcount >= 181;
+      };
+  - id: donut_given
+    teaser: Give to ghost
+    hidden: true
+    optional: true
+    goal:
+      - |
+        Give a ghost a donut.
+    condition: |
+      def anyHasPowerup = \n.
+          let ghost_name = "ghost" ++ format n in
+          ghost <- robotnamed ghost_name;
+          hasPowerup <- as ghost {
+              has "donut";
+          };
+          
+          if hasPowerup {
+              return true;
+          } {
+              if (n > 1) {
+                  anyHasPowerup $ n - 1;
+              } {
+                  return false;
+              }
+          }
+          end;
+
+      anyHasPowerup 4;
+  - teaser: Magnanimity
+    hidden: true
+    optional: true
+    prerequisite: donut_given
+    goal:
+      - |
+        Give all ghosts a donut.
+    condition: |
+      def allHasPowerup = \n.
+          let ghost_name = "ghost" ++ format n in
+          ghost <- robotnamed ghost_name;
+          hasPowerup <- as ghost {
+              has "donut";
+          };
+          
+          if hasPowerup {
+              if (n > 1) {
+                  allHasPowerup $ n - 1;
+              } {
+                  return true;
+              }
+          } {
+              return false;
+          }
+          end;
+
+      allHasPowerup 4;
+robots:
+  - name: base
+    display:
+      orientationMap:
+        east: 'e'
+        north: 'u'
+        west: 'ɘ'
+        south: 'n'
+      char: 'U'
+      attr: gold
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - clock
+      - treads
+      - antenna
+      - lodestone
+      - compass
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+  - name: teleporter
+    dir: [0, 1]
+    system: true
+    display:
+      invisible: true
+      char: 'T'
+    program: |
+      run "scenarios/Challenges/_hackman/teleporter.sw"
+  - name: ghost1
+    dir: [0, 1]
+    system: true
+    display:
+      invisible: false
+      char: '∩'
+      attr: ghost1
+    program: |
+      run "scenarios/Challenges/_hackman/ghost.sw"
+  - name: ghost2
+    dir: [0, 1]
+    system: true
+    display:
+      invisible: false
+      char: '∩'
+      attr: ghost2
+    program: |
+      run "scenarios/Challenges/_hackman/ghost.sw"
+  - name: ghost3
+    dir: [0, 1]
+    system: true
+    display:
+      invisible: false
+      char: '∩'
+      attr: ghost3
+    program: |
+      run "scenarios/Challenges/_hackman/ghost.sw"
+  - name: ghost4
+    dir: [0, 1]
+    system: true
+    display:
+      invisible: false
+      char: '∩'
+      attr: ghost4
+    program: |
+      run "scenarios/Challenges/_hackman/ghost.sw"
+solution:
+  run "scenarios/Challenges/_hackman/solution.sw"
+entities:
+  - name: pellet
+    display:
+      char: '•'
+      attr: silver
+    description:
+      - A caffeine pellet.
+    properties: [known, portable]
+  - name: donut
+    display:
+      char: 'o'
+      attr: gold
+    description:
+      - Breakfast of champions.
+    properties: [known, portable]
+  - name: gate
+    display:
+      char: '='
+    description:
+      - A gate.
+    properties: [known, unwalkable]
+  - name: wall
+    display:
+      char: '▒'
+    description:
+      - A wall.
+    properties: [known, unwalkable]
+known: []
+seed: 0
+world:
+  default: [blank]
+  palette:
+    'B': [blank]
+    'Ω': [blank, null, base]
+    'a': [blank, null, ghost1]
+    'b': [blank, null, ghost2]
+    'c': [blank, null, ghost3]
+    'd': [blank, null, ghost4]
+    'T': [blank, null, teleporter]
+    '.': [blank, pellet]
+    '*': [blank, donut]
+    'x': [blank, wall]
+    '=': [blank, gate]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-11, 10]
+  map: |-
+    xxxxxxxxxxxxxxxxxxxxxxx
+    x..........x..........x
+    x*xxx.xxxx.x.xxxx.xxx*x
+    x.xxx.xxxx.x.xxxx.xxx.x
+    x.....................x
+    x.xxx.x.xxxxxxx.x.xxx.x
+    x.....x....x....x.....x
+    xxxxx.xxxxBxBxxxx.xxxxx
+    BBBBx.xBBBBBBBBBx.xBBBB
+    xxxxx.xB┌──=──┐Bx.xxxxx
+    TBBBB.BB│abBcd│BB.BBBBT
+    xxxxx.xB└─────┘Bx.xxxxx
+    BBBBx.xBBBBΩBBBBx.xBBBB
+    xxxxx.xBxxxxxxxBx.xxxxx
+    x..........x..........x
+    x.xxx.xxxx.x.xxxx.xxx.x
+    x*..x.............x..*x
+    xxx.x.x.xxxxxxx.x.x.xxx
+    x.....x....x....x.....x
+    x.xxxxxxxx.x.xxxxxxxx.x
+    x.....................x
+    xxxxxxxxxxxxxxxxxxxxxxx
