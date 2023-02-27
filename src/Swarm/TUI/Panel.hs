@@ -3,12 +3,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
--- Module      :  Swarm.TUI.Panel
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- A small custom "panel widget" for use in the Swarm TUI. Panels draw
 -- a border around some content, with the color of the border
 -- depending on whether the panel is currently focused.  Panels exist

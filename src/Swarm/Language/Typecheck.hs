@@ -7,12 +7,6 @@
 -- For 'Ord IntVar' instance
 
 -- |
--- Module      :  Swarm.Language.Typecheck
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Type inference for the Swarm language.  For the approach used here,
 -- see
 -- https://byorgey.wordpress.com/2021/09/08/implementing-hindley-milner-with-the-unification-fd-library/ .

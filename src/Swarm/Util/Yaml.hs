@@ -3,12 +3,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
--- Module      :  Swarm.Util.Yaml
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Various utilities related to parsing YAML files.
 module Swarm.Util.Yaml (
   With (..),

@@ -1,12 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.TUI.Attr
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Rendering attributes (/i.e./ foreground and background colors,
 -- styles, /etc./) used by the Swarm TUI.
 --

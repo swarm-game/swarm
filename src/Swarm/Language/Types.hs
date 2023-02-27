@@ -5,12 +5,6 @@
 -- for the Data IntVar instance
 
 -- |
--- Module      :  Swarm.Language.Types
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Types for the Swarm programming language and related utilities.
 module Swarm.Language.Types (
   -- * Basic definitions

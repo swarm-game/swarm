@@ -2,12 +2,6 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  Swarm.Game.World
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- A /world/ refers to the grid on which the game takes place, and the
 -- things in it (besides robots). A world has a base, immutable
 -- /terrain/ layer, where each cell contains a terrain type, and a

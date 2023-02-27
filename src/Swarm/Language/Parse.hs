@@ -2,12 +2,6 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  Swarm.Language.Parse
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Parser for the Swarm language.  Note, you probably don't want to
 -- use this directly, unless there is a good reason to parse a term
 -- without also type checking it; use

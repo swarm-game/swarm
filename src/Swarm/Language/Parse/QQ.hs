@@ -1,10 +1,4 @@
 -- |
--- Module      :  Swarm.Language.Parse.QQ
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- A quasiquoter for Swarm polytypes.
 module Swarm.Language.Parse.QQ (tyQ) where
 

@@ -2,12 +2,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 -- |
--- Module      :  Swarm.TUI.Controller
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Event handlers for the TUI.
 module Swarm.TUI.Controller (
   -- * Event handling

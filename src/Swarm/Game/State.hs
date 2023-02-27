@@ -7,12 +7,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Game.State
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Definition of the record holding all the game-related state, and various related
 -- utility functions.
 module Swarm.Game.State (

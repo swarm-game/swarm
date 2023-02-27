@@ -4,12 +4,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Language.Pretty
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
--- SPDX-License-Identifier: BSD-3-Clause
---
 -- Pretty-printing for the Swarm language.
 module Swarm.Language.Pretty where
 
