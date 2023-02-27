@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Swarm unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm unit tests
 module TestEval where
 
 import Control.Lens ((^.), _3)
@@ -9,7 +12,7 @@ import Data.Char (ord)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
-import Swarm.Game.Value
+import Swarm.Language.Value
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck

@@ -2,17 +2,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Swarm integration tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm integration tests
 module Main where
 
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
-import Control.Monad (filterM, forM_, unless, void, when)
+import Control.Monad (filterM, forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
 import Data.IntSet qualified as IS
+import Data.List (partition)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Sequence (Seq)
@@ -23,12 +27,13 @@ import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.DocGen (EditorType (..))
 import Swarm.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
-import Swarm.Game.Entity (EntityMap, loadEntities)
-import Swarm.Game.Robot (LogEntry, defReqs, leText, machine, robotContext, robotLog, waitingUntil)
+import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
+import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
-  WinCondition (Won),
+  WinCondition (WinConditions),
+  WinStatus (Won),
   activeRobots,
   baseRobot,
   initGameStateForScenario,
@@ -45,16 +50,21 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
+import System.FilePath (splitDirectories)
 import System.FilePath.Posix (takeExtension, (</>))
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
 
+isUnparseableTest :: (FilePath, String) -> Bool
+isUnparseableTest (fp, _) = "_Validation" `elem` splitDirectories fp
+
 main :: IO ()
 main = do
   examplePaths <- acquire "example" "sw"
   scenarioPaths <- acquire "data/scenarios" "yaml"
+  let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
   scenarioPrograms <- acquire "data/scenarios" "sw"
   ci <- any (("CI" ==) . fst) <$> getEnvironment
   entities <- loadEntities
@@ -66,7 +76,8 @@ main = do
           "Tests"
           [ exampleTests examplePaths
           , exampleTests scenarioPrograms
-          , scenarioTests em scenarioPaths
+          , scenarioParseTests em parseableScenarios
+          , scenarioParseInvalidTests em unparseableScenarios
           , testScenarioSolution ci em
           , testEditorFiles
           ]
@@ -81,19 +92,34 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioTests em inputs = testGroup "Test scenarios" (map (scenarioTest em) inputs)
+scenarioParseTests :: EntityMap -> [(FilePath, String)] -> TestTree
+scenarioParseTests em inputs =
+  testGroup
+    "Test scenarios parse"
+    (map (scenarioTest Parsed em) inputs)
 
-scenarioTest :: EntityMap -> (FilePath, String) -> TestTree
-scenarioTest em (path, _) =
-  testCase ("parse scenario " ++ show path) (void $ getScenario em path)
+scenarioParseInvalidTests :: EntityMap -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests em inputs =
+  testGroup
+    "Test invalid scenarios fail to parse"
+    (map (scenarioTest Failed em) inputs)
 
-getScenario :: EntityMap -> FilePath -> IO Scenario
-getScenario em p = do
+data ParseResult = Parsed | Failed
+
+scenarioTest :: ParseResult -> EntityMap -> (FilePath, String) -> TestTree
+scenarioTest expRes em (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes em path)
+
+getScenario :: ParseResult -> EntityMap -> FilePath -> IO ()
+getScenario expRes em p = do
   res <- decodeFileEitherE em p :: IO (Either ParseException Scenario)
-  case res of
-    Left err -> assertFailure (prettyPrintParseException err)
-    Right s -> return s
+  case expRes of
+    Parsed -> case res of
+      Left err -> assertFailure (prettyPrintParseException err)
+      Right _s -> return ()
+    Failed -> case res of
+      Left _err -> return ()
+      Right _s -> assertFailure "Unexpectedly parsed invalid scenario!"
 
 acquire :: FilePath -> String -> IO [(FilePath, String)]
 acquire dir ext = do
@@ -132,28 +158,28 @@ testScenarioSolution _ci _em =
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
-        [ testSolution Default "Tutorials/backstory"
-        , testSolution (Sec 3) "Tutorials/move"
-        , testSolution Default "Tutorials/craft"
-        , testSolution Default "Tutorials/grab"
-        , testSolution Default "Tutorials/place"
-        , testSolution Default "Tutorials/types"
-        , testSolution Default "Tutorials/type-errors"
-        , testSolution Default "Tutorials/equip"
-        , testSolution Default "Tutorials/build"
-        , testSolution Default "Tutorials/bind2"
-        , testSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
+        [ testTutorialSolution Default "Tutorials/backstory"
+        , testTutorialSolution (Sec 3) "Tutorials/move"
+        , testTutorialSolution Default "Tutorials/craft"
+        , testTutorialSolution Default "Tutorials/grab"
+        , testTutorialSolution Default "Tutorials/place"
+        , testTutorialSolution Default "Tutorials/types"
+        , testTutorialSolution Default "Tutorials/type-errors"
+        , testTutorialSolution Default "Tutorials/equip"
+        , testTutorialSolution Default "Tutorials/build"
+        , testTutorialSolution Default "Tutorials/bind2"
+        , testTutorialSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
             let rs = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
-        , testSolution Default "Tutorials/scan"
-        , testSolution Default "Tutorials/def"
-        , testSolution Default "Tutorials/lambda"
-        , testSolution Default "Tutorials/require"
-        , testSolution (Sec 3) "Tutorials/requireinv"
-        , testSolution Default "Tutorials/conditionals"
-        , testSolution (Sec 5) "Tutorials/farming"
+        , testTutorialSolution Default "Tutorials/scan"
+        , testTutorialSolution Default "Tutorials/def"
+        , testTutorialSolution Default "Tutorials/lambda"
+        , testTutorialSolution Default "Tutorials/require"
+        , testTutorialSolution (Sec 3) "Tutorials/requireinv"
+        , testTutorialSolution Default "Tutorials/conditionals"
+        , testTutorialSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
         "Challenges"
@@ -161,6 +187,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Challenges/teleport"
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 3) "Challenges/ice-cream"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution Default "Challenges/friend"
         , testGroup
@@ -185,7 +212,7 @@ testScenarioSolution _ci _em =
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
                 waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
-            assertBool "The game should only take one tick" $ t == 1
+            assertBool "The game should only take two ticks" $ t == 2
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
             assertBool "Robot 1 should not be in waiting set" $ not waiting
@@ -233,6 +260,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/961-custom-capabilities"
         , testSolution Default "Testing/956-GPS"
         , testSolution Default "Testing/958-isempty"
+        , testSolution Default "Testing/1024-sand"
         ]
     ]
  where
@@ -249,7 +277,7 @@ testScenarioSolution _ci _em =
       Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
       Right gs -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
-        Just sol@(ProcessedTerm _ _ _ reqCtx) -> do
+        Just sol@(ProcessedTerm _ _ reqCtx) -> do
           let gs' =
                 gs
                   -- See #827 for an explanation of why it's important to add to
@@ -266,12 +294,20 @@ testScenarioSolution _ci _em =
               when (shouldCheckBadErrors == CheckForBadErrors) $ noBadErrors g
               verify g
 
+  tutorialHasLog :: GameState -> Assertion
+  tutorialHasLog gs =
+    let baseDevs = gs ^?! baseRobot . equippedDevices
+     in assertBool "Base should have a logger installed!" (not . null $ lookupByName "logger" baseDevs)
+
+  testTutorialSolution t f = testSolution' t f CheckForBadErrors tutorialHasLog
+  testTutorialSolution' t f s v = testSolution' t f s $ \g -> tutorialHasLog g >> v g
+
   playUntilWin :: StateT GameState IO ()
   playUntilWin = do
     w <- use winCondition
     b <- gets badErrorsInLogs
     when (null b) $ case w of
-      Won _ -> return ()
+      WinConditions (Won _) _ -> return ()
       _ -> gameTick >> playUntilWin
 
 noBadErrors :: GameState -> Assertion

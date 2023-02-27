@@ -5,10 +5,6 @@
 -- for the Data IntVar instance
 
 -- |
--- Module      :  Swarm.Language.Types
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Types for the Swarm programming language and related utilities.
@@ -66,12 +62,6 @@ module Swarm.Language.Types (
   -- * Contexts
   TCtx,
   UCtx,
-
-  -- * Modules
-  Module (..),
-  TModule,
-  UModule,
-  trivMod,
 
   -- * The 'WithU' class
   WithU (..),
@@ -215,34 +205,6 @@ type Polytype = Poly Type
 
 -- | A polytype with unification variables.
 type UPolytype = Poly UType
-
-------------------------------------------------------------
--- Modules
-------------------------------------------------------------
-
--- | A module generally represents the result of performing type
---   inference on a top-level expression, which in particular can
---   contain definitions ('Swarm.Language.Syntax.TDef').  A module
---   contains the overall type of the expression, as well as the
---   context giving the types of any defined variables.
-data Module s t = Module {moduleTy :: s, moduleCtx :: Ctx t}
-  deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
-
--- | A 'TModule' is the final result of the type inference process on
---   an expression: we get a polytype for the expression, and a
---   context of polytypes for the defined variables.
-type TModule = Module Polytype Polytype
-
--- | A 'UModule' represents the type of an expression at some
---   intermediate stage during the type inference process.  We get a
---   'UType' (/not/ a 'UPolytype') for the expression, which may
---   contain some free unification or type variables, as well as a
---   context of 'UPolytype's for any defined variables.
-type UModule = Module UType UPolytype
-
--- | The trivial module for a given @s@, with the empty context.
-trivMod :: s -> Module s t
-trivMod t = Module t empty
 
 ------------------------------------------------------------
 -- WithU

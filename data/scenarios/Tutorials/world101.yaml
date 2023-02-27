@@ -3,7 +3,9 @@ name: First steps
 description: |
   Learn some of the first steps you might take on the new planet.
 objectives:
-  - goal:
+  - id: get_trees
+    teaser: Get 3 trees
+    goal:
       - You're ready to graduate to something a bit more complex! This
         multi-step tutorial will walk you through a few of the first
         steps you might take in exploring the new planet, using many
@@ -26,7 +28,9 @@ objectives:
         n <- as base {count "tree"};
         return (n >= 3)
       } { return false }
-  - goal:
+  - id: get_harvester
+    teaser: Make a harvester
+    goal:
       - Nice work!  Now, use the trees to make a harvester device.
         This will require several intermediate products; try making
         various things, and take a look at your available recipes (F3)
@@ -34,6 +38,7 @@ objectives:
         you may end up needing some additional trees.
     condition: |
       try { as base {has "harvester"} } {return false}
+    prerequisite: get_trees
   - goal:
       - Now that you have a harvester, you can use `harvest` instead of `grab`
         whenever you pick up a growing item (check for the word "growing" at the
@@ -50,6 +55,7 @@ objectives:
         coordinates."
     condition: |
       try { as base {has "lambda"} } {return false}
+    prerequisite: get_harvester
 robots:
   - name: base
     display:
@@ -78,3 +84,4 @@ robots:
 seed: 0
 world:
   offset: true
+  scrollable: false

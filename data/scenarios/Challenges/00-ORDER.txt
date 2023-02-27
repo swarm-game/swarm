@@ -2,8 +2,10 @@ chess_horse.yaml
 teleport.yaml
 2048.yaml
 word-search.yaml
+ice-cream.yaml
 hanoi.yaml
 bucket-brigade.yaml
+wolf-goat-cabbage.yaml
 friend.yaml
 Mazes
 Ranching

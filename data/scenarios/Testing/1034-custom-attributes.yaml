@@ -1,0 +1,134 @@
+version: 1
+name: Rainbow color custom attributes
+description: |
+  Custom attributes with rainbow colors
+creative: false
+attrs:
+  - name: rainbow1
+    fg: "#ffadad"
+  - name: rainbow2
+    fg: "#ffd6a5"
+  - name: rainbow3
+    fg: "#ffff96"
+  - name: rainbow4
+    fg: "#caffbf"
+  - name: rainbow5
+    fg: "#9bf6ff"
+  - name: rainbow6
+    fg: "#a0c4ff"
+  - name: rainbow7
+    fg: "#bdb2ff"
+  - name: redOnYellow
+    fg: "#ff0000"
+    bg: ffff00
+  - name: cyanOnMagenta
+    fg: 00ffff
+    bg: "#ff00ff"
+  - name: italicAndUnderline
+    style:
+      - Italic
+      - Underline
+  - name: boldAndStrikethrough
+    style:
+      - Bold
+      - Strikethrough
+entities:
+  - name: color1
+    display:
+      char: '▒'
+      attr: rainbow1
+    description:
+      - c1
+    properties: [known]
+  - name: color2
+    display:
+      char: '▒'
+      attr: rainbow2
+    description:
+      - c2
+    properties: [known]
+  - name: color3
+    display:
+      char: '▒'
+      attr: rainbow3
+    description:
+      - c3
+    properties: [known]
+  - name: color4
+    display:
+      char: '▒'
+      attr: rainbow4
+    description:
+      - c4
+    properties: [known]
+  - name: color5
+    display:
+      char: '▒'
+      attr: rainbow5
+    description:
+      - c5
+    properties: [known]
+  - name: color6
+    display:
+      char: '▒'
+      attr: rainbow6
+    description:
+      - c6
+    properties: [known]
+  - name: color7
+    display:
+      char: '▒'
+      attr: rainbow7
+    description:
+      - c7
+    properties: [known]
+  - name: redYellow
+    display:
+      char: 'R'
+      attr: redOnYellow
+    description:
+      - Red on Yellow
+    properties: [known]
+  - name: cyanMagenta
+    display:
+      char: 'C'
+      attr: cyanOnMagenta
+    description:
+      - Cyan on Magenta
+    properties: [known]
+  - name: italicUnderline
+    display:
+      char: 'X'
+      attr: italicAndUnderline
+    description:
+      - Italic and Underline
+    properties: [known]
+  - name: boldStrikethrough
+    display:
+      char: 'X'
+      attr: boldAndStrikethrough
+    description:
+      - Bold and Strikethrough
+    properties: [known]
+robots: []
+world:
+  default: [blank]
+  palette:
+    '.': [blank]
+    '1': [blank, color1]
+    '2': [blank, color2]
+    '3': [blank, color3]
+    '4': [blank, color4]
+    '5': [blank, color5]
+    '6': [blank, color6]
+    '7': [blank, color7]
+    'R': [blank, redYellow]
+    'C': [blank, cyanMagenta]
+    'I': [blank, italicUnderline]
+    'B': [blank, boldStrikethrough]
+  upperleft: [0, 0]
+  map: |-
+    .1234567..R.....II.
+    .1234567..R........
+    .1234567.....C..BB.
+    .1234567.....C.....

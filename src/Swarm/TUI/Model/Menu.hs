@@ -4,6 +4,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.Menu where
 
 import Brick.Widgets.Dialog (Dialog)
@@ -14,6 +16,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Vector qualified as V
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
@@ -24,7 +27,6 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
  )
 import Swarm.Game.State
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
@@ -41,22 +43,23 @@ data ModalType
   | MessagesModal
   | RobotsModal
   | WinModal
+  | LoseModal
   | QuitModal
   | KeepPlayingModal
   | DescriptionModal Entity
-  | GoalModal [Text]
+  | GoalModal
   deriving (Show)
 
-data ButtonSelection
-  = CancelButton
-  | KeepPlayingButton
-  | StartOverButton Seed ScenarioInfoPair
-  | QuitButton
-  | NextButton ScenarioInfoPair
+data ButtonAction
+  = Cancel
+  | KeepPlaying
+  | StartOver Seed ScenarioInfoPair
+  | QuitAction
+  | Next ScenarioInfoPair
 
 data Modal = Modal
   { _modalType :: ModalType
-  , _modalDialog :: Dialog ButtonSelection
+  , _modalDialog :: Dialog ButtonAction Name
   }
 
 makeLenses ''Modal
@@ -73,7 +76,11 @@ data MainMenuEntry
 data Menu
   = NoMenu -- We started playing directly from command line, no menu to show
   | MainMenu (BL.List Name MainMenuEntry)
-  | NewGameMenu (NonEmpty (BL.List Name ScenarioItem)) -- stack of scenario item lists
+  | -- Stack of scenario item lists. INVARIANT: the currently selected
+    -- menu item is ALWAYS the same as the scenario currently being played.
+    -- See https://github.com/swarm-game/swarm/issues/1064 and
+    -- https://github.com/swarm-game/swarm/pull/1065.
+    NewGameMenu (NonEmpty (BL.List Name ScenarioItem))
   | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
   | AboutMenu

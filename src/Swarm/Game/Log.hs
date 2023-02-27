@@ -2,10 +2,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
--- Module      :  Swarm.Game.Log
--- Copyright   :  Ondřej Šebek
--- Maintainer  :  ondras98@icloud.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A data type to represent in-game logs by robots.
@@ -14,7 +10,7 @@
 -- want to use special kinds of logs that will be
 -- shown to the player.
 --
--- TODO: Currently we abuse this system for system
+-- TODO: #1039 Currently we abuse this system for system
 -- logs, which is fun, but we should eventually make
 -- a dedicated `SystemLogEntry` type for 'RuntimeState'
 -- message queue.
@@ -36,7 +32,7 @@ import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Swarm.Util.Location (Location)
+import Swarm.Game.Location (Location)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.

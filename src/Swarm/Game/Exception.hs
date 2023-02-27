@@ -1,12 +1,7 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Game.Exception
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Runtime exceptions for the Swarm language interpreter.
@@ -27,12 +22,12 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
 import Witch (from)
 

@@ -1,4 +1,8 @@
-module Swarm.TUI.Model.Achievement.Definitions where
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Definitions of all possible achievements.
+module Swarm.Game.Achievement.Definitions where
 
 import Data.Aeson
 import Data.Text (Text)
@@ -10,18 +14,18 @@ data ExpectedEffort
   | Easy
   | Moderate
   | Gruelling
-  deriving (Eq, Ord, Show, Bounded, Enum)
+  deriving (Eq, Ord, Show, Bounded, Enum, Generic, FromJSON, ToJSON)
 
 data Quotation = Quotation
   { attribution :: Text
   , content :: Text
   }
-  deriving (Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data FlavorText
   = Freeform Text
   | FTQuotation Quotation
-  deriving (Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data AchievementInfo = AchievementInfo
   { title :: Text
@@ -41,7 +45,7 @@ data AchievementInfo = AchievementInfo
   -- ^ Hides the attainment process until after the achievement is attained.
   -- Best when the title + elaboration constitute a good clue.
   }
-  deriving (Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data CategorizedAchievement
   = GlobalAchievement GlobalAchievement
@@ -77,6 +81,7 @@ data GameplayAchievement
   | RobotIntoWater
   | AttemptSelfDestructBase
   | DestroyedBase
+  | LoseScenario
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 instance FromJSON GameplayAchievement

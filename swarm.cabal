@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               swarm
-version:            0.2.0.0
+version:            0.3.0.1
 synopsis:           2D resource gathering game with programmable robots
 
 description:        Swarm is a 2D programming and resource gathering
@@ -24,7 +24,7 @@ extra-source-files: CHANGELOG.md
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
 data-dir:           data/
-data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt
+data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
 source-repository head
     type:     git
@@ -81,32 +81,48 @@ common ghc2021-extensions
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Swarm.App
+    exposed-modules:  Data.BoolExpr
+                      Data.BoolExpr.Simplify
+                      Swarm.App
                       Swarm.DocGen
+                      Swarm.Game.Failure
+                      Swarm.Game.Failure.Render
+                      Swarm.Game.Achievement.Attainment
+                      Swarm.Game.Achievement.Definitions
+                      Swarm.Game.Achievement.Description
+                      Swarm.Game.Achievement.Persistence
                       Swarm.Game.CESK
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Exception
+                      Swarm.Game.Location
                       Swarm.Game.Log
                       Swarm.Game.Recipe
+                      Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
                       Swarm.Game.Scenario.Objective
+                      Swarm.Game.Scenario.Objective.Graph
+                      Swarm.Game.Scenario.Objective.Logic
+                      Swarm.Game.Scenario.Objective.Validation
+                      Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Terrain
-                      Swarm.Game.Value
                       Swarm.Game.World
                       Swarm.Game.WorldGen
-                      Swarm.Language.Context
                       Swarm.Language.Capability
+                      Swarm.Language.Context
                       Swarm.Language.Elaborate
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
+                      Swarm.Language.LSP.VarUsage
+                      Swarm.Language.Module
                       Swarm.Language.Parse
                       Swarm.Language.Parse.QQ
                       Swarm.Language.Pipeline
@@ -117,6 +133,7 @@ library
                       Swarm.Language.Typecheck
                       Swarm.Language.Typed
                       Swarm.Language.Types
+                      Swarm.Language.Value
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
                       Swarm.TUI.Controller
@@ -124,11 +141,7 @@ library
                       Swarm.TUI.Inventory.Sorting
                       Swarm.TUI.List
                       Swarm.TUI.Model
-                      Swarm.TUI.Model.Achievement.Attainment
-                      Swarm.TUI.Model.Achievement.Definitions
-                      Swarm.TUI.Model.Achievement.Description
-                      Swarm.TUI.Model.Achievement.Persistence
-                      Swarm.TUI.Model.Failure
+                      Swarm.TUI.Model.Goal
                       Swarm.TUI.Model.Menu
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
@@ -138,9 +151,10 @@ library
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.CustomStyling
+                      Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
-                      Swarm.Util.Location
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web
@@ -150,7 +164,7 @@ library
     build-depends:    base                          >= 4.14 && < 4.18,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
-                      brick                         >= 1.0 && < 1.5,
+                      brick                         >= 1.5 && < 1.7,
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
                       containers                    >= 0.6.2 && < 0.7,
@@ -168,9 +182,9 @@ library
                       http-client-tls               >= 0.3 && < 0.4,
                       http-types                    >= 0.12 && < 0.13,
                       lens                          >= 4.19 && < 5.3,
-                      linear                        >= 1.21.6 && < 1.22,
+                      linear                        >= 1.21.6 && < 1.23,
                       lsp                           >= 1.6 && < 1.7,
-                      megaparsec                    >= 9.0 && < 9.3,
+                      megaparsec                    >= 9.0 && < 9.4,
                       minimorph                     >= 0.3 && < 0.4,
                       mtl                           >= 2.2.2 && < 2.3,
                       murmur3                       >= 1.0.4 && < 1.1,
@@ -180,6 +194,7 @@ library
                       random                        >= 1.2.0 && < 1.3,
                       servant                       >= 0.19 && < 0.20,
                       servant-server                >= 0.19 && < 0.20,
+                      SHA                           >= 1.6.4 && < 1.6.5,
                       simple-enumeration            >= 0.2 && < 0.3,
                       split                         >= 0.2.3 && < 0.3,
                       stm                           >= 2.5.0 && < 2.6,
@@ -188,17 +203,18 @@ library
                       template-haskell              >= 2.16 && < 2.20,
                       text                          >= 1.2.4 && < 2.1,
                       text-rope                     >= 0.2 && < 0.3,
-                      text-zipper                   >= 0.10 && < 0.13,
+                      text-zipper                   >= 0.10 && < 0.14,
                       time                          >= 1.9 && < 1.14,
+                      transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       unification-fd                >= 0.11  && < 0.12,
                       unordered-containers          >= 0.2.14 && < 0.3,
                       vector                        >= 0.12 && < 0.14,
-                      vty                           >= 5.33 && < 5.38,
+                      vty                           >= 5.33 && < 5.39,
                       wai                           >= 3.2 && < 3.3,
                       warp                          >= 3.2 && < 3.4,
-                      witch                         >= 1.1.1.0 && < 1.2,
+                      witch                         >= 1.1.1.0 && < 1.3,
                       word-wrap                     >= 0.5 && < 0.6,
-                      yaml                          >= 0.11 && < 0.12,
+                      yaml                          >= 0.11 && < 0.11.12.0,
     hs-source-dirs:   src
     default-language: Haskell2010
     default-extensions:
@@ -230,6 +246,8 @@ test-suite swarm-unit
                       TestNotification
                       TestLanguagePipeline
                       TestPretty
+                      TestBoolExpr
+                      TestLSP
                       TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,

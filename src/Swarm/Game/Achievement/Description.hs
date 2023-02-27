@@ -1,8 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.Model.Achievement.Description where
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Flavor text about all defined achievements.
+module Swarm.Game.Achievement.Description where
 
-import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.Game.Achievement.Definitions
 
 describe :: CategorizedAchievement -> AchievementInfo
 describe (GlobalAchievement CompletedSingleTutorial) =
@@ -60,4 +64,11 @@ describe (GameplayAchievement DestroyedBase) =
     (Just $ Freeform "Boom.")
     "Actually destroy your base."
     Moderate
+    True
+describe (GameplayAchievement LoseScenario) =
+  AchievementInfo
+    "Silver Lining"
+    (Just $ Freeform "Here's your consolation prize.")
+    "Lose at a scenario."
+    Easy
     True

@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.TUI.View
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Code for drawing the TUI.
@@ -47,9 +43,8 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
-import Control.Lens hiding (Const, from)
+import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
-import Control.Monad.Reader (withReaderT)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable qualified as F
@@ -68,13 +63,12 @@ import Data.Set qualified as Set (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
-import Graphics.Vty qualified as V
 import Linear
-import Linear.Affine (Point)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
+import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
@@ -88,7 +82,7 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability (constCaps)
+import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
@@ -96,14 +90,15 @@ import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util
 import Swarm.Util
-import Swarm.Util.Location
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
@@ -129,7 +124,7 @@ drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
  where
   ls = reverse $ s ^. runtimeState . eventLog . notificationsContent
-  dial = dialog (Just "Messages") Nothing maxModalWindowWidth
+  dial = dialog (Just $ str "Messages") Nothing maxModalWindowWidth
   scrollList = withVScrollBars OnRight . vBox
   drawLogs = map (drawLogEntry True)
 
@@ -432,7 +427,7 @@ chooseCursor s locs = case s ^. uiState . uiModal of
 
 -- | Render the error dialog window with a given error message
 renderErrorDialog :: Text -> Widget Name
-renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
+renderErrorDialog err = renderDialog (dialog (Just $ str "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
  where
   errContent = txtWrapWith indent2 {preserveIndentation = True} err
   requiredWidth = 2 + maximum (textWidth <$> T.lines err)
@@ -440,24 +435,10 @@ renderErrorDialog err = renderDialog (dialog (Just "Error") Nothing (maxModalWin
 -- | Draw the error dialog window, if it should be displayed right now.
 drawDialog :: AppState -> Widget Name
 drawDialog s = case s ^. uiState . uiModal of
-  Just (Modal mt d) -> renderDialog d (maybeScroll ModalViewport $ drawModal s mt)
+  Just (Modal mt d) -> renderDialog d $ case mt of
+    GoalModal -> drawModal s mt
+    _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiState . uiError)
-
--- | Make a widget scrolling if it is bigger than the available
---   vertical space.  Thanks to jtdaugherty for this code.
-maybeScroll :: (Ord n, Show n) => n -> Widget n -> Widget n
-maybeScroll vpName contents =
-  Widget Greedy Greedy $ do
-    ctx <- getContext
-    result <- withReaderT (availHeightL .~ 10000) (render contents)
-    if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
-      then return result
-      else
-        render $
-          withVScrollBars OnRight $
-            viewport vpName Vertical $
-              Widget Fixed Fixed $
-                return result
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
@@ -468,9 +449,17 @@ drawModal s = \case
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
   WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
+  LoseModal ->
+    padBottom (Pad 1) $
+      vBox $
+        map
+          (hCenter . txt)
+          [ "Condolences!"
+          , "This scenario is no longer winnable."
+          ]
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
-  GoalModal g -> padLeftRight 1 (displayParagraphs g)
+  GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
 
 robotsListWidget :: AppState -> Widget Name
@@ -756,15 +745,15 @@ drawKeyMenu s =
 
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
+  hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = case s ^. uiState . uiGoal of
-    Just g | g /= [] -> True
-    _ -> False
+  goal = hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode
+  canScroll = creative || (s ^. gameState . worldScrollable)
 
   renderControlModeSwitch :: ReplControlMode -> T.Text
   renderControlModeSwitch = \case
@@ -784,7 +773,8 @@ drawKeyMenu s =
       [ may goal (NoHighlight, "^g", "goal")
       , may cheat (NoHighlight, "^v", "creative")
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
-      , Just (NoHighlight, "^o", "step")
+      , may isPaused (NoHighlight, "^o", "step")
+      , may (isPaused && hasDebug) (if s ^. uiState . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
       , Just (NoHighlight, "^zx", "speed")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
@@ -801,7 +791,7 @@ drawKeyMenu s =
       ++ [("^c", "cancel") | isReplWorking]
       ++ [("M-p", renderControlModeSwitch ctrlMode) | creative]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
-    [ ("←↓↑→ / hjkl", "scroll") | creative
+    [ ("←↓↑→ / hjkl", "scroll") | canScroll
     ]
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]
@@ -923,19 +913,18 @@ drawInfoPanel s =
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry s e
-  Just (EquippedEntry e) ->
-    explainEntry s e
-      -- Special case: equipped logger device displays the robot's log.
-      <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
+  Just (EquippedEntry e) -> explainEntry s e
   _ -> txt " "
 
 explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
-  vBox
+  vBox $
     [ displayProperties $ Set.toList (e ^. entityProperties)
     , displayParagraphs (e ^. entityDescription)
     , explainRecipes s e
     ]
+      <> [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug]
+      <> [drawRobotLog s | e ^. entityCapabilities . Lens.contains CLog]
 
 displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty
@@ -1091,24 +1080,33 @@ drawRobotLog :: AppState -> Widget Name
 drawRobotLog s =
   vBox
     [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
-    , vBox . imap drawEntry $ logEntries
+    , vBox . F.toList . imap drawEntry $ logEntries
     ]
  where
-  logEntries =
-    s
-      & view (gameState . to focusedRobot . _Just . robotLog)
-      & Seq.sort
-      & F.toList
-      & uniq
+  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
 
   rn = s ^? gameState . to focusedRobot . _Just . robotName
-  n = length logEntries
+  n = Seq.length logEntries
 
   allMe = all ((== rn) . Just . view leRobotName) logEntries
 
   drawEntry i e =
     (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
       drawLogEntry (not allMe) e
+
+-- | Show the 'CESK' machine of focused robot. Puts a separator above.
+drawRobotMachine :: AppState -> Bool -> Widget Name
+drawRobotMachine s showName = case s ^. gameState . to focusedRobot of
+  Nothing -> machineLine "no selected robot"
+  Just r ->
+    vBox
+      [ machineLine $ r ^. robotName <> "#" <> r ^. robotID . to tshow
+      , txt $ r ^. machine . to prettyText
+      ]
+ where
+  tshow = T.pack . show
+  hLine t = padBottom (Pad 1) (hBorderWithLabel (txt t))
+  machineLine r = hLine $ if showName then "Machine [" <> r <> "]" else "Machine"
 
 -- | Draw one log entry with an optional robot name first.
 drawLogEntry :: Bool -> LogEntry -> Widget a
@@ -1146,26 +1144,19 @@ renderREPLPrompt focus repl = ps1 <+> replE
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
-drawREPL s = vBox $ latestHistory <> [currentPrompt]
+drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
  where
   -- rendered history lines fitting above REPL prompt
   latestHistory :: [Widget n]
-  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines) (repl ^. replHistory))
+  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines - debugLines) (repl ^. replHistory))
   currentPrompt :: Widget Name
   currentPrompt = case isActive <$> base of
     Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
   inputLines = 1
+  debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)
   repl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
-
-------------------------------------------------------------
--- Utility
-------------------------------------------------------------
-
--- | Display a list of text-wrapped paragraphs with one blank line after
---   each.
-displayParagraphs :: [Text] -> Widget Name
-displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
+  mayDebug = [drawRobotMachine s True | s ^. uiState . uiShowDebug]

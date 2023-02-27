@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -8,10 +7,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Game.State
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Definition of the record holding all the game-related state, and various related
@@ -20,19 +15,25 @@ module Swarm.Game.State (
   -- * Game state record and related types
   ViewCenterRule (..),
   REPLStatus (..),
+  WinStatus (..),
   WinCondition (..),
+  ObjectiveCompletion (..),
   _NoWinCondition,
   _WinConditions,
-  _Won,
+  Announcement (..),
   RunStatus (..),
   Seed,
+  Step (..),
+  SingleStep (..),
   GameState,
 
   -- ** GameState fields
   creativeMode,
+  gameStep,
   winCondition,
   winSolution,
   gameAchievements,
+  announcementQueue,
   runStatus,
   paused,
   robotMap,
@@ -59,6 +60,7 @@ module Swarm.Game.State (
   currentScenarioPath,
   knownEntities,
   world,
+  worldScrollable,
   viewCenterRule,
   viewCenter,
   needsRedraw,
@@ -83,6 +85,9 @@ module Swarm.Game.State (
   initGameStateForScenario,
   classicGame0,
   CodeToRun (..),
+  Sha1 (..),
+  SolutionSource (..),
+  getParsedInitialCode,
 
   -- * Utilities
   applyViewCenterRule,
@@ -106,14 +111,16 @@ module Swarm.Game.State (
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Arrow (Arrow ((&&&)))
+import Control.Arrow (Arrow ((&&&)), left)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
+import Control.Monad.Trans.Except (except)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
+import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.IntMap (IntMap)
@@ -122,7 +129,6 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -131,12 +137,20 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (lines)
+import Data.Text qualified as T (drop, lines, pack, take, unlines)
 import Data.Text.IO qualified as T (readFile)
+import Data.Text.IO qualified as TIO
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
+import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
   inRecipeMap,
@@ -144,35 +158,29 @@ import Swarm.Game.Recipe (
   outRecipeMap,
   reqRecipeMap,
  )
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Objective
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
-import Swarm.Game.Value (Value)
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Const, Term (TText), allConst)
+import Swarm.Language.Module (Module (Module))
+import Swarm.Language.Pipeline (ProcessedTerm (ProcessedTerm), processTermEither)
+import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.Util (getDataFileNameSafe, getElemsInArea, isRightOr, manhattan, uniq, (<+=), (<<.=), (?))
-import Swarm.Util.Location
+import Swarm.Language.Value (Value)
+import Swarm.Util (uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
-import Witch (into)
 
 ------------------------------------------------------------
 -- Subsidiary data types
 ------------------------------------------------------------
-
-data CodeToRun
-  = SuggestedSolution ProcessedTerm
-  | ScriptPath FilePath
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
 --   world viewport.
@@ -198,15 +206,28 @@ data REPLStatus
     REPLWorking (Typed (Maybe Value))
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+data WinStatus
+  = -- | There are one or more objectives remaining that the player
+    -- has not yet accomplished.
+    Ongoing
+  | -- | The player has won.
+    -- The boolean indicates whether they have
+    -- already been congratulated.
+    Won Bool
+  | -- | The player has completed certain "goals" that preclude
+    -- (via negative prerequisites) the completion of all of the
+    -- required goals.
+    -- The boolean indicates whether they have
+    -- already been informed.
+    Unwinnable Bool
+  deriving (Show, Generic, FromJSON, ToJSON)
+
 data WinCondition
   = -- | There is no winning condition.
     NoWinCondition
-  | -- | There are one or more objectives remaining that the player
-    --   has not yet accomplished.
-    WinConditions (NonEmpty Objective)
-  | -- | The player has won. The boolean indicates whether they have
-    --   already been congratulated.
-    Won Bool
+  | -- | NOTE: It is possible to continue to achieve "optional" objectives
+    -- even after the game has been won (or deemed unwinnable).
+    WinConditions WinStatus ObjectiveCompletion
   deriving (Show, Generic, FromJSON, ToJSON)
 
 makePrisms ''WinCondition
@@ -244,6 +265,36 @@ instance Monoid (Notifications a) where
 
 makeLenses ''Notifications
 
+newtype Sha1 = Sha1 String
+
+data SolutionSource
+  = ScenarioSuggested
+  | -- | Includes the SHA1 of the program text
+    -- for the purpose of corroborating solutions
+    -- on a leaderboard.
+    PlayerAuthored Sha1
+
+data CodeToRun = CodeToRun SolutionSource ProcessedTerm
+
+getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
+getParsedInitialCode toRun = case toRun of
+  Nothing -> return Nothing
+  Just filepath -> do
+    contents <- liftIO $ TIO.readFile filepath
+    pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
+      ExceptT $
+        return $
+          left T.pack $
+            processTermEither contents
+    let strippedText = stripSrc srcLoc contents
+        programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
+        sha1Hash = showDigest $ sha1 programBytestring
+    return $ Just $ CodeToRun (PlayerAuthored $ Sha1 sha1Hash) pt
+ where
+  stripSrc :: SrcLoc -> Text -> Text
+  stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
+  stripSrc NoLoc txt = txt
+
 ------------------------------------------------------------
 -- The main GameState record type
 ------------------------------------------------------------
@@ -253,14 +304,48 @@ makeLenses ''Notifications
 defaultRobotStepsPerTick :: Int
 defaultRobotStepsPerTick = 100
 
+-- | Type for remebering which robots will be run next in a robot step mode.
+--
+-- Once some robots have run, we need to store RID to know which ones should go next.
+-- At 'SBefore' no robots were run yet, so it is safe to transition to and from 'WorldTick'.
+--
+-- @
+--                     tick
+--     ┌────────────────────────────────────┐
+--     │                                    │
+--     │               step                 │
+--     │              ┌────┐                │
+--     ▼              ▼    │                │
+-- ┌───────┐ step  ┌───────┴───┐ step  ┌────┴─────┐
+-- │SBefore├──────►│SSingle RID├──────►│SAfter RID│
+-- └──┬────┘       └───────────┘       └────┬─────┘
+--    │ ▲ player        ▲                   │
+--    ▼ │ switch        └───────────────────┘
+-- ┌────┴────┐             view RID > oldRID
+-- │WorldTick│
+-- └─────────┘
+-- @
+data SingleStep
+  = -- | Run the robots from the beginning until the focused robot (noninclusive).
+    SBefore
+  | -- | Run a single step of the focused robot.
+    SSingle RID
+  | -- | Run robots after the (previously) focused robot and finish the tick.
+    SAfter RID
+
+-- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
+data Step = WorldTick | RobotStep SingleStep
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
+  , _gameStep :: Step
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _gameAchievements :: Map GameplayAchievement Attainment
+  , _announcementQueue :: Seq Announcement
   , _runStatus :: RunStatus
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -294,6 +379,7 @@ data GameState = GameState
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
+  , _worldScrollable :: Bool
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Location
   , _needsRedraw :: Bool
@@ -330,6 +416,9 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
 
+-- | How to step the game - 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
+gameStep :: Lens' GameState Step
+
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
 
@@ -339,6 +428,13 @@ winSolution :: Lens' GameState (Maybe ProcessedTerm)
 
 -- | Map of in-game achievements that were attained
 gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
+
+-- | A queue of global announcments.
+-- Note that this is distinct from the "messageQueue",
+-- which is for messages emitted by robots.
+--
+-- Note that we put the newest entry to the right.
+announcementQueue :: Lens' GameState (Seq Announcement)
 
 -- | The current 'RunStatus'.
 runStatus :: Lens' GameState RunStatus
@@ -450,6 +546,9 @@ knownEntities :: Lens' GameState [Text]
 --   TerrainType because we need to be able to store terrain values in
 --   unboxed tile arrays.
 world :: Lens' GameState (W.World Int Entity)
+
+-- | Whether the world map is supposed to be scrollable or not.
+worldScrollable :: Lens' GameState Bool
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -691,64 +790,72 @@ deleteRobot rn = do
 ------------------------------------------------------------
 
 -- | Create an initial game state record, first loading entities and
---   recipies from disk.
-initGameState :: ExceptT Text IO GameState
+--   recipes from disk.
+initGameState :: ExceptT Text IO ([SystemFailure], GameState)
 initGameState = do
-  let guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-  entities <- loadEntities >>= guardRight "load entities"
-  recipes <- loadRecipes entities >>= guardRight "load recipes"
-  loadedScenarios <- loadScenarios entities >>= guardRight "load scenarios"
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT prettyFailure $ loadRecipes entities
+  eitherLoadedScenarios <- liftIO $ runExceptT $ loadScenarios entities
+  let (scenarioWarnings, loadedScenarios) = case eitherLoadedScenarios of
+        Left xs -> (xs, SC mempty mempty)
+        Right (warnings, x) -> (warnings, x)
+
+  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
+    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
+    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
+    return (adjsFile, namesFile)
 
   let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
-
   (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    -- if data directory did not exist we would have failed loading scenarios
-    Just adjsFile <- getDataFileNameSafe "adjectives.txt"
     as <- tail . T.lines <$> T.readFile adjsFile
-    Just namesFile <- getDataFileNameSafe "names.txt"
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
-  return $
-    GameState
-      { _creativeMode = False
-      , _winCondition = NoWinCondition
-      , _winSolution = Nothing
-      , -- This does not need to be initialized with anything,
-        -- since the master list of achievements is stored in UIState
-        _gameAchievements = mempty
-      , _runStatus = Running
-      , _robotMap = IM.empty
-      , _robotsByLocation = M.empty
-      , _availableRecipes = mempty
-      , _availableCommands = mempty
-      , _allDiscoveredEntities = empty
-      , _activeRobots = IS.empty
-      , _waitingRobots = M.empty
-      , _gensym = 0
-      , _seed = 0
-      , _randGen = mkStdGen 0
-      , _adjList = listArray (0, length adjs - 1) adjs
-      , _nameList = listArray (0, length names - 1) names
-      , _entityMap = entities
-      , _recipesOut = outRecipeMap recipes
-      , _recipesIn = inRecipeMap recipes
-      , _recipesReq = reqRecipeMap recipes
-      , _scenarios = loadedScenarios
-      , _currentScenarioPath = Nothing
-      , _knownEntities = []
-      , _world = W.emptyWorld (fromEnum StoneT)
-      , _viewCenterRule = VCRobot 0
-      , _viewCenter = origin
-      , _needsRedraw = False
-      , _replStatus = REPLDone Nothing
-      , _replNextValueIndex = 0
-      , _messageQueue = Empty
-      , _lastSeenMessageTime = -1
-      , _focusedRobotID = 0
-      , _ticks = 0
-      , _robotStepsPerTick = defaultRobotStepsPerTick
-      }
+  return
+    ( scenarioWarnings
+    , GameState
+        { _creativeMode = False
+        , _gameStep = WorldTick
+        , _winCondition = NoWinCondition
+        , _winSolution = Nothing
+        , -- This does not need to be initialized with anything,
+          -- since the master list of achievements is stored in UIState
+          _gameAchievements = mempty
+        , _announcementQueue = mempty
+        , _runStatus = Running
+        , _robotMap = IM.empty
+        , _robotsByLocation = M.empty
+        , _availableRecipes = mempty
+        , _availableCommands = mempty
+        , _allDiscoveredEntities = empty
+        , _activeRobots = IS.empty
+        , _waitingRobots = M.empty
+        , _gensym = 0
+        , _seed = 0
+        , _randGen = mkStdGen 0
+        , _adjList = listArray (0, length adjs - 1) adjs
+        , _nameList = listArray (0, length names - 1) names
+        , _entityMap = entities
+        , _recipesOut = outRecipeMap recipes
+        , _recipesIn = inRecipeMap recipes
+        , _recipesReq = reqRecipeMap recipes
+        , _scenarios = loadedScenarios
+        , _currentScenarioPath = Nothing
+        , _knownEntities = []
+        , _world = W.emptyWorld (fromEnum StoneT)
+        , _worldScrollable = True
+        , _viewCenterRule = VCRobot 0
+        , _viewCenter = origin
+        , _needsRedraw = False
+        , _replStatus = REPLDone Nothing
+        , _replNextValueIndex = 0
+        , _messageQueue = Empty
+        , _lastSeenMessageTime = -1
+        , _focusedRobotID = 0
+        , _ticks = 0
+        , _robotStepsPerTick = defaultRobotStepsPerTick
+        }
+    )
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
 scenarioToGameState :: Scenario -> Maybe Seed -> Maybe CodeToRun -> GameState -> IO GameState
@@ -786,6 +893,7 @@ scenarioToGameState scenario userSeed toRun g = do
       , _recipesReq = addRecipesWith reqRecipeMap recipesReq
       , _knownEntities = scenario ^. scenarioKnown
       , _world = theWorld theSeed
+      , _worldScrollable = scenario ^. scenarioWorld . to scrollable
       , _viewCenterRule = VCRobot baseID
       , _viewCenter = origin
       , _needsRedraw = False
@@ -809,9 +917,7 @@ scenarioToGameState scenario userSeed toRun g = do
   -- the others existed only to serve as a template for robots drawn
   -- in the world map
   locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
-  getCodeToRun x = case x of
-    SuggestedSolution s -> s
-    ScriptPath (into @Text -> f) -> [tmQ| run($str:f) |]
+  getCodeToRun (CodeToRun _ s) = s
 
   -- Rules for selecting the "base" robot:
   -- -------------------------------------
@@ -876,7 +982,12 @@ scenarioToGameState scenario userSeed toRun g = do
 
   (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
   theWorld = W.newWorld . wf
-  theWinCondition = maybe NoWinCondition WinConditions (NE.nonEmpty (scenario ^. scenarioObjectives))
+  theWinCondition =
+    maybe
+      NoWinCondition
+      (\x -> WinConditions Ongoing (ObjectiveCompletion (CompletionBuckets (NE.toList x) mempty mempty) mempty))
+      (NE.nonEmpty (scenario ^. scenarioObjectives))
+
   initGensym = length robotList - 1
   addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
 
@@ -916,11 +1027,22 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
 -- Note that this function is used only for unit tests, integration tests, and benchmarks.
 --
 -- In normal play, the code path that gets executed is scenarioToAppState.
-initGameStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO GameState
+initGameStateForScenario ::
+  String ->
+  Maybe Seed ->
+  Maybe FilePath ->
+  ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
-  g <- initGameState
+  (warnings, g) <- initGameState
+  unless (null warnings)
+    . except
+    . Left
+    . T.unlines
+    . map prettyFailure
+    $ warnings
   (scene, path) <- loadScenario sceneName (g ^. entityMap)
-  gs <- liftIO $ scenarioToGameState scene userSeed (ScriptPath <$> toRun) g
+  maybeRunScript <- getParsedInitialCode toRun
+  gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
   normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
   t <- liftIO getZonedTime
   return $

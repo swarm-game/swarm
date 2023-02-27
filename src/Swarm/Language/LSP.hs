@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Language.LSP
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Language Server Protocol (LSP) server for the Swarm language.
@@ -14,8 +10,7 @@ module Swarm.Language.LSP where
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
-import Data.Foldable (forM_)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
@@ -25,6 +20,7 @@ import Language.LSP.Types qualified as J
 import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS
 import Swarm.Language.LSP.Hover qualified as H
+import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
 import System.IO (stderr)
@@ -42,7 +38,7 @@ lspMain =
         , interpretHandler = \env -> Iso (runLspT env) liftIO
         , options =
             defaultOptions
-              { -- set sync options to get DidSave event
+              { -- set sync options to get DidSave event, as well as Open and Close events.
                 textDocumentSync =
                   Just
                     ( J.TextDocumentSyncOptions
@@ -60,38 +56,74 @@ lspMain =
   -- handler is called for each key-stroke.
   syncKind = J.TdSyncFull
 
+diagnosticSourcePrefix :: Text
+diagnosticSourcePrefix = "swarm-lsp"
+
 debug :: MonadIO m => Text -> m ()
 debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
 validateSwarmCode :: J.NormalizedUri -> J.TextDocumentVersion -> Text -> LspM () ()
 validateSwarmCode doc version content = do
   -- debug $ "Validating: " <> from (show doc) <> " ( " <> content <> ")"
-  flushDiagnosticsBySource 0 (Just "swarm-lsp")
-  let err = case readTerm' content of
-        Right Nothing -> Nothing
-        Right (Just term) -> case processParsedTerm' mempty mempty term of
-          Right _ -> Nothing
-          Left e -> Just $ showTypeErrorPos content e
-        Left e -> Just $ showErrorPos e
+
+  -- FIXME: #1040 With this call to flushDiagnosticsBySource in place, the warnings
+  -- in other buffers (editor tabs) end up getting cleared when switching between
+  -- (focusing on) other buffers in VS Code.
+  -- However, getting rid of this seems to break error highlighting.
+  flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
+
+  let (parsingErrs, unusedVarWarnings) = case readTerm' content of
+        Right Nothing -> ([], [])
+        Right (Just term) -> (parsingErrors, unusedWarnings)
+         where
+          VU.Usage _ problems = VU.getUsage mempty term
+          unusedWarnings = mapMaybe (VU.toErrPos content) problems
+
+          parsingErrors = case processParsedTerm' mempty mempty term of
+            Right _ -> []
+            Left e -> pure $ showTypeErrorPos content e
+        Left e -> (pure $ showErrorPos e, [])
   -- debug $ "-> " <> from (show err)
-  forM_ err sendDiagnostic
+
+  publishDiags $
+    map makeUnusedVarDiagnostic unusedVarWarnings
+
+  -- NOTE: "publishDiags" keeps only one diagnostic at a
+  -- time (the most recent) so we make sure the errors are
+  -- issued last (after any warnings).
+  -- Note that it does not achieve the desired effect to simply
+  -- concatenate the two diagnostic lists into a single
+  -- publishDiagnostics function call (regardless of the order
+  -- of the lists).
+  publishDiags $
+    map makeParseErrorDiagnostic parsingErrs
  where
-  sendDiagnostic :: ((Int, Int), (Int, Int), Text) -> LspM () ()
-  sendDiagnostic ((startLine, startCol), (endLine, endCol), msg) = do
-    let diags =
-          [ J.Diagnostic
-              ( J.Range
-                  (J.Position (fromIntegral startLine) (fromIntegral startCol))
-                  (J.Position (fromIntegral endLine) (fromIntegral endCol))
-              )
-              (Just J.DsWarning) -- severity
-              Nothing -- code
-              (Just "swarm-lsp") -- source
-              msg
-              Nothing -- tags
-              (Just (J.List []))
-          ]
-    publishDiagnostics 1 doc version (partitionBySource diags)
+  publishDiags :: [J.Diagnostic] -> LspM () ()
+  publishDiags = publishDiagnostics 1 doc version . partitionBySource
+
+  makeUnusedVarDiagnostic :: (J.Range, Text) -> J.Diagnostic
+  makeUnusedVarDiagnostic (range, msg) =
+    J.Diagnostic
+      range
+      (Just J.DsWarning) -- severity
+      Nothing -- code
+      (Just diagnosticSourcePrefix) -- source
+      msg
+      (Just (J.List [J.DtUnnecessary])) -- tags
+      Nothing -- related source code info
+  makeParseErrorDiagnostic :: ((Int, Int), (Int, Int), Text) -> J.Diagnostic
+  makeParseErrorDiagnostic ((startLine, startCol), (endLine, endCol), msg) =
+    J.Diagnostic
+      ( J.Range
+          (J.Position (fromIntegral startLine) (fromIntegral startCol))
+          (J.Position (fromIntegral endLine) (fromIntegral endCol))
+      )
+      (Just J.DsError) -- severity
+      Nothing -- code
+      (Just diagnosticSourcePrefix) -- source
+      msg
+      Nothing -- tags
+      (Just (J.List []))
 
 handlers :: Handlers (LspM ())
 handlers =

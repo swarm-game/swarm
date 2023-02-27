@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Achievement where
 
 import Brick
@@ -10,11 +12,11 @@ import Control.Lens ((^.))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Time.Format (defaultTimeLocale, formatTime)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Description
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Description
 import Swarm.TUI.Model.UI
 import Text.Wrap
 

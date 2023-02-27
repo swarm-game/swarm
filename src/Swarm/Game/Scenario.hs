@@ -1,5 +1,4 @@
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -7,21 +6,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
--- Module      :  Swarm.Game.Scenario
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Scenarios are standalone worlds with specific starting and winning
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * Objectives
-  Objective,
-  objectiveGoal,
-  objectiveCondition,
-
   -- * WorldDescription
   PCell (..),
   Cell,
@@ -39,6 +29,7 @@ module Swarm.Game.Scenario (
   scenarioDescription,
   scenarioCreative,
   scenarioSeed,
+  scenarioAttrs,
   scenarioEntities,
   scenarioRecipes,
   scenarioKnown,
@@ -54,24 +45,28 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
-import Control.Algebra (Has)
-import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (Throw, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM)
+import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
+import Control.Monad.Trans.Except (except)
+import Data.Aeson
+import Data.Either.Extra (eitherToMaybe, maybeToEither)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Yaml as Y
 import Swarm.Game.Entity
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
 import Swarm.Game.Recipe
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot)
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (getDataFileNameSafe)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -90,6 +85,7 @@ data Scenario = Scenario
   , _scenarioDescription :: Text
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
+  , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: [Text]
@@ -108,6 +104,7 @@ instance FromJSONE EntityMap Scenario where
     -- parse custom entities
     em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
     -- extend ambient EntityMap with custom entities
+
     withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
@@ -129,12 +126,13 @@ instance FromJSONE EntityMap Scenario where
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
+        <*> liftE (v .:? "attrs" .!= [])
         <*> pure em
         <*> v ..:? "recipes" ..!= []
         <*> pure known
         <*> localE (,rsMap) (v ..: "world")
         <*> pure rs
-        <*> liftE (v .:? "objectives" .!= [])
+        <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
         <*> liftE (v .:? "stepsPerTick")
 
@@ -163,6 +161,9 @@ scenarioCreative :: Lens' Scenario Bool
 -- | The seed used for the random number generator.  If @Nothing@, use
 --   a random seed / prompt the user for the seed.
 scenarioSeed :: Lens' Scenario (Maybe Int)
+
+-- | Custom attributes defined in the scenario.
+scenarioAttrs :: Lens' Scenario [CustomAttr]
 
 -- | Any custom entities used for this scenario.
 scenarioEntities :: Lens' Scenario EntityMap
@@ -196,36 +197,40 @@ scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 -- Loading scenarios
 ------------------------------------------------------------
 
-getScenarioPath :: FilePath -> IO (Maybe FilePath)
+getScenarioPath ::
+  MonadIO m =>
+  FilePath ->
+  m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- getDataFileNameSafe $ "scenarios" </> scenario
-  libScenarioExt <- getDataFileNameSafe $ "scenarios" </> scenario <.> "yaml"
-
+  libScenario <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
-  listToMaybe <$> filterM doesFileExist candidates
+  listToMaybe <$> liftIO (filterM doesFileExist candidates)
+ where
+  e2m = fmap eitherToMaybe . runExceptT
 
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  MonadIO m =>
   String ->
   EntityMap ->
-  m (Scenario, FilePath)
+  ExceptT Text m (Scenario, FilePath)
 loadScenario scenario em = do
-  mfileName <- sendIO $ getScenarioPath scenario
-  case mfileName of
-    Nothing -> throwError @Text $ "Scenario not found: " <> from @String scenario
-    Just fileName -> (,fileName) <$> loadScenarioFile em fileName
+  mfileName <- liftIO $ getScenarioPath scenario
+  fileName <- except $ maybeToEither ("Scenario not found: " <> from @String scenario) mfileName
+  s <- withExceptT prettyFailure $ loadScenarioFile em fileName
+  return (s, fileName)
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  MonadIO m =>
   EntityMap ->
   FilePath ->
-  m Scenario
+  ExceptT SystemFailure m Scenario
 loadScenarioFile em fileName = do
-  res <- sendIO $ decodeFileEitherE em fileName
-  case res of
-    Left parseExn -> throwError @Text (from @String (prettyPrintParseException parseExn))
-    Right c -> return c
+  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse) $
+    ExceptT $
+      liftIO $
+        decodeFileEitherE em fileName

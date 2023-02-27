@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.DocGen (
   generateDocs,
   GenerateDocs (..),
@@ -25,9 +27,10 @@ import Control.Arrow (left)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_, (<=<))
-import Control.Monad.Except (ExceptT, liftIO, runExceptT)
+import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
+import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy (Map)
@@ -44,7 +47,10 @@ import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
+import Swarm.Game.Failure qualified as F
+import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
@@ -54,7 +60,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (getDataFileNameSafe, isRightOr, listEnums, quote)
+import Swarm.Util (isRightOr, listEnums, quote)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
@@ -111,17 +117,18 @@ generateDocs = \case
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
       Capabilities -> simpleErrorHandle $ do
-        entities <- loadEntities >>= guardRight "load entities"
+        entities <- ExceptT loadEntities
         liftIO $ T.putStrLn $ capabilityPage address entities
       Entities -> simpleErrorHandle $ do
         let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
         let f = "entities.yaml"
-        Just fileName <- liftIO $ getDataFileNameSafe f
+        let e2m = fmap eitherToMaybe . runExceptT
+        Just fileName <- liftIO $ e2m $ getDataFileNameSafe F.Entities f
         entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
         liftIO $ T.putStrLn $ entitiesPage address entities
       Recipes -> simpleErrorHandle $ do
-        entities <- loadEntities >>= guardRight "load entities"
-        recipes <- loadRecipes entities >>= guardRight "load recipes"
+        entities <- ExceptT loadEntities
+        recipes <- withExceptT F.prettyFailure $ loadRecipes entities
         liftIO $ T.putStrLn $ recipePage address recipes
 
 -- ----------------------------------------------------------------------------
@@ -171,7 +178,7 @@ keywordsCommands e = editorList e $ map constSyntax commands
 
 -- | Get formatted list of directions.
 keywordsDirections :: EditorType -> Text
-keywordsDirections e = editorList e $ map (Syntax.dirSyntax . Syntax.dirInfo) Syntax.allDirs
+keywordsDirections e = editorList e $ map Syntax.directionSyntax Syntax.allDirs
 
 operatorNames :: Text
 operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
@@ -401,8 +408,8 @@ recipePage = recipeTable
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
-  entities <- loadEntities >>= guardRight "load entities"
-  recipes <- loadRecipes entities >>= guardRight "load recipes"
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT F.prettyFailure $ loadRecipes entities
   classic <- classicScenario
   return . Dot.showDot $ recipesToDot classic entities recipes
 

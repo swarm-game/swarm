@@ -3,10 +3,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
--- Module      :  Swarm.Util
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A random collection of small, useful functions that are (or could
@@ -19,18 +15,11 @@ module Swarm.Util (
   cycleEnum,
   listEnums,
   uniq,
-  getElemsInArea,
-  manhattan,
   binTuples,
 
   -- * Directory utilities
   readFileMay,
   readFileMayT,
-  getSwarmXdgDataSubdir,
-  getSwarmXdgDataFile,
-  getSwarmSavePath,
-  getSwarmHistoryPath,
-  readAppData,
 
   -- * Text utilities
   isIdentChar,
@@ -67,29 +56,22 @@ module Swarm.Util (
 
   -- * Utilities for NP-hard approximation
   smallHittingSet,
-  getDataDirSafe,
-  getDataFileNameSafe,
-  dataNotFound,
 ) where
 
 import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
-import Control.Exception (catch)
-import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Lens.Lens ((&))
-import Control.Monad (forM, unless, when)
+import Control.Monad (unless)
 import Data.Bifunctor (first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
-import Data.Int (Int32)
 import Data.List (maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -102,25 +84,8 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
-import Paths_swarm (getDataDir)
-import Swarm.Util.Location
 import System.Clock (TimeSpec)
-import System.Directory (
-  XdgDirectory (XdgData),
-  createDirectoryIfMissing,
-  doesDirectoryExist,
-  doesFileExist,
-  getXdgDirectory,
-  listDirectory,
- )
-import System.FilePath
-import System.IO
 import System.IO.Error (catchIOError)
-import Witch
-
--- $setup
--- >>> import qualified Data.Map as M
--- >>> import Swarm.Util.Location
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -170,43 +135,6 @@ uniq = \case
   [] -> []
   (x : xs) -> x : uniq (dropWhile (== x) xs)
 
--- | Manhattan distance between world locations.
-manhattan :: Location -> Location -> Int32
-manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
-
--- | Get elements that are in manhattan distance from location.
---
--- >>> v2s i = [(p, manhattan origin p) | x <- [-i..i], y <- [-i..i], let p = Location x y]
--- >>> v2s 0
--- [(P (V2 0 0),0)]
--- >>> map (\i -> length (getElemsInArea origin i (M.fromList $ v2s i))) [0..8]
--- [1,5,13,25,41,61,85,113,145]
---
--- The last test is the sequence "Centered square numbers":
--- https://oeis.org/A001844
-getElemsInArea :: Location -> Int32 -> Map Location e -> [e]
-getElemsInArea o@(Location x y) d m = M.elems sm'
- where
-  -- to be more efficient we basically split on first coordinate
-  -- (which is logarithmic) and then we have to linearly filter
-  -- the second coordinate to get a square - this is how it looks:
-  --         ▲▲▲▲
-  --         ││││    the arrows mark points that are greater then A
-  --         ││s│                                 and lesser then B
-  --         │sssB (2,1)
-  --         ssoss   <-- o=(x=0,y=0) with d=2
-  -- (-2,-1) Asss│
-  --          │s││   the point o and all s are in manhattan
-  --          ││││                  distance 2 from point o
-  --          ▼▼▼▼
-  sm =
-    m
-      & M.split (Location (x - d) (y - 1)) -- A
-      & snd -- A<
-      & M.split (Location (x + d) (y + 1)) -- B
-      & fst -- B>
-  sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
-
 -- | Place the second element of the tuples into bins by
 -- the value of the first element.
 binTuples ::
@@ -231,94 +159,6 @@ readFileMayT = catchIO . T.readFile
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)
 catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
-
--- | Get subdirectory from swarm data directory.
---
--- This will first look in Cabal generated path and then
--- try a `data` directory in 'XdgData' path.
---
--- The idea is that when installing with Cabal/Stack the first
--- is preferred, but when the players install a binary they
--- need to extract the `data` archive to the XDG directory.
-getDataDirSafe :: FilePath -> IO (Maybe FilePath)
-getDataDirSafe p = do
-  d <- (`appDir` p) <$> getDataDir
-  de <- doesDirectoryExist d
-  if de
-    then return $ Just d
-    else do
-      xd <- (`appDir` p) <$> getSwarmXdgDataSubdir False "data"
-      xde <- doesDirectoryExist xd
-      return $ if xde then Just xd else Nothing
- where
-  appDir r = \case
-    "" -> r
-    "." -> r
-    d -> r </> d
-
--- | Get file from swarm data directory.
---
--- See the note in 'getDataDirSafe'.
-getDataFileNameSafe :: FilePath -> IO (Maybe FilePath)
-getDataFileNameSafe name = do
-  dir <- getDataDirSafe "."
-  case dir of
-    Nothing -> return Nothing
-    Just d -> do
-      let fp = d </> name
-      fe <- doesFileExist fp
-      return $ if fe then Just fp else Nothing
-
--- | Get a nice message suggesting to download `data` directory to 'XdgData'.
-dataNotFound :: FilePath -> IO Text
-dataNotFound f = do
-  d <- getSwarmXdgDataSubdir False ""
-  let squotes = squote . T.pack
-  return $
-    T.unlines
-      [ "Could not find the data: " <> squotes f
-      , "Try downloading the Swarm 'data' directory to: " <> squotes (d </> "data")
-      ]
-
--- | Get path to swarm data, optionally creating necessary
---   directories. This could fail if user has bad permissions
---   on his own $HOME or $XDG_DATA_HOME which is unlikely.
-getSwarmXdgDataSubdir :: Bool -> FilePath -> IO FilePath
-getSwarmXdgDataSubdir createDirs subDir = do
-  swarmData <- (</> subDir) <$> getXdgDirectory XdgData "swarm"
-  when createDirs (createDirectoryIfMissing True swarmData)
-  pure swarmData
-
-getSwarmXdgDataFile :: Bool -> FilePath -> IO FilePath
-getSwarmXdgDataFile createDirs filepath = do
-  let (subDir, file) = splitFileName filepath
-  d <- getSwarmXdgDataSubdir createDirs subDir
-  return $ d </> file
-
--- | Get path to swarm saves, optionally creating necessary
---   directories.
-getSwarmSavePath :: Bool -> IO FilePath
-getSwarmSavePath createDirs = getSwarmXdgDataSubdir createDirs "saves"
-
--- | Get path to swarm history, optionally creating necessary
---   directories.
-getSwarmHistoryPath :: Bool -> IO FilePath
-getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
-
--- | Read all the .txt files in the data/ directory.
-readAppData :: IO (Map Text Text)
-readAppData = do
-  md <- getDataDirSafe "."
-  case md of
-    Nothing -> fail . T.unpack =<< dataNotFound "<the data directory itself>"
-    Just d -> do
-      fs <-
-        filter ((== ".txt") . takeExtension)
-          <$> ( listDirectory d `catch` \e ->
-                  hPutStr stderr (show (e :: IOException)) >> return []
-              )
-      M.fromList . mapMaybe sequenceA
-        <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
 
 ------------------------------------------------------------
 -- Some Text-y stuff

@@ -71,8 +71,18 @@
     char: 'o'
   description:
   - A medium-sized rock, picked up from the ground or created by drilling.
-    Can be used to build a simple furnace, among other things.
+    Can be ground into sand or used to build a simple furnace, among other things.
   properties: [portable]
+
+- name: handle
+  display:
+    attr: device
+    char: 'h'
+  description:
+  - Ergonomic affordance for manipulating objects. Also grants the "setname" capability, allowing one
+    to assign a "handle" to robots.
+  properties: [portable]
+  capabilities: [setname]
 
 - name: lodestone
   display:
@@ -83,6 +93,15 @@
     It seems to react to iron and surprisingly also to naturally growing bits.
   properties: [portable]
   capabilities: [negation]
+
+- name: beaglepuss
+  display:
+    attr: rubber
+    char: 'B'
+  description:
+  - Iconic novelty disguise. Renders one either completely inconspicuous, or the opposite.
+  properties: [portable]
+  capabilities: [appear]
 
 - name: boulder
   display:
@@ -421,9 +440,10 @@
     attr: sand
     char: '█'
   description:
-  - A substance composed mostly of tiny rocks and mineral particles.  It
-    tends to be found near water, and can be used in a furnace to make glass.
-  properties: [portable, infinite]
+  - A substance composed mostly of tiny rocks and mineral particles that can be
+    used in a furnace to make glass.  You can often find it near water, or
+    make it yourself by grinding up rocks.
+  properties: [portable]
 
 - name: glass
   display:
@@ -1159,3 +1179,16 @@
     enabling the command `whereami : cmd (int * int)`.
   properties: [portable]
   capabilities: [senseloc]
+
+- name: tweezers
+  display:
+    attr: device
+    char: 'V'
+  description:
+  - |
+    Sometimes small, self-reproducing creatures get stuck inside a robot's
+    relays, preventing it from executing properly.  Tweezers are
+    useful for removing such pests, and for inspecting robots' detailed
+    inner workings.
+  properties: [portable]
+  capabilities: [debug]

@@ -19,37 +19,35 @@ def allOK: actor -> bool = \rob.
   true
 end;
 
+myLoc <- whereami;
+
 // Try to give a robot a Win, filtering out those that were already given a Win.
 // The robot will also receive instructions, so it **must have a logger!**
-def tryGive: text -> (actor -> bool) -> int -> cmd (actor -> bool) = \msg.\f.\i.
-  r <- try {
-    robotNumbered i;
-  } {
-    log $ "could not find robot " ++ format i;
-    return self
-  };
-  if (r != self && f r) {
-    log $ "found the robot " ++ format i;
-    l <- whereami;
-    rl <- as r {whereami}; wait 1;  // WHY is this 'wait 1' required???
-    if (l != rl) {
-      log $ "the robot" ++ format i ++ "is not in my cell";
-      return f;
+def tryGive: text -> (actor -> bool) -> cmd (actor -> bool) = \msg.
+  // (b -> actor -> cmd b) -> b -> cmd b
+  meetAll $ \f.\rob.
+    if (not $ f rob) {
+      log $ "skipping the robot " ++ format rob ++ "because it already has a Win";
+      return f
     } {
-      try {
-        reprogram r { log msg; };
-        log $ "successfully reprogrammed robot " ++ format i;
-        give r "Win";
-        log $ "successfully gave Win to robot " ++ format i;
+      robLoc <- as rob {whereami};
+      if (robLoc != myLoc) {
+        log $ "the robot" ++ format rob ++ "is not in my cell";
+        return f;
       } {
-        log $ "the robot " ++ format i ++ "is missing a logger!"
-      };
-      return (\rob. (rob != r && f rob));
+        try {
+          reprogram rob { log msg; };
+          log $ "successfully reprogrammed robot " ++ format rob;
+          give rob "Win";
+          log $ "successfully gave Win to robot " ++ format rob;
+          return (\r. (rob != r && f rob));
+        } {
+          log $ "the robot " ++ format rob ++ "is missing a logger!";
+          return f;
+        };
+        
+      }
     }
-  } {
-    log $ "skipping the robot " ++ format i;
-    return f
-  }
 end;
 
 // -------------------------------------------------------------------------
@@ -57,7 +55,7 @@ end;
 // -------------------------------------------------------------------------
 
 log "Hi, I am secret";
-iterate allOK (foreachF 1 16 $ tryGive
+iterate allOK (tryGive
   $ "Send a robot to `salvage` me and come back to `give base \"Win\"`.\n"
   ++ "When the rescue robot stands where I am and executes `salvage`,\n"
   ++ "all my inventory and logs will go to it, including the \"Win\".\n"

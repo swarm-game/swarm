@@ -7,14 +7,18 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Game.Step
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
+--
+-- ** Note on the IO:
+--
+-- The only reason we need @IO@ is so that robots can run programs
+-- loaded from files, via the 'Run' command.
+-- This could be avoided by using 'Import' command instead and parsing
+-- the required files at the time of declaration.
+-- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
 import Control.Applicative (liftA2)
@@ -26,23 +30,24 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, forM_, guard, msum, unless, when)
+import Control.Monad (foldM, forM, forM_, guard, msum, unless, when)
+import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
+import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
 import Data.List qualified as L
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
+import Data.Sequence ((><))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -51,16 +56,21 @@ import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (zero)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
+import Swarm.Game.Failure
+import Swarm.Game.Location
 import Swarm.Game.Recipe
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (objectiveCondition)
+import Swarm.Game.Scenario.Objective qualified as OB
+import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State
-import Swarm.Game.Value
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
@@ -70,44 +80,31 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.Language.Value
 import Swarm.Util
-import Swarm.Util.Location
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
 
--- | The main function to do one game tick.  The only reason we need
---   @IO@ is so that robots can run programs loaded from files, via
---   the 'Run' command; but eventually I want to get rid of that
---   command and have a library of modules that you can create, edit,
---   and run all from within the UI (the library could also be loaded
---   from a file when the whole program starts up).
-gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+-- | The main function to do one game step.
+--
+-- Note that the game may be in 'RobotStep' mode and not finish
+-- the tick. Use the return value to check that a full tick happened.
+gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m Bool
 gameTick = do
   wakeUpRobotsDoneSleeping
-  robotNames <- use activeRobots
-  forM_ (IS.toList robotNames) $ \rn -> do
-    mr <- uses robotMap (IM.lookup rn)
-    case mr of
-      Nothing -> return ()
-      Just curRobot -> do
-        curRobot' <- tickRobot curRobot
-        if curRobot' ^. selfDestruct
-          then deleteRobot rn
-          else do
-            robotMap %= IM.insert rn curRobot'
-            time <- use ticks
-            case waitingUntil curRobot' of
-              Just wakeUpTime
-                -- if w=2 t=1 then we do not needlessly put robot to waiting queue
-                | wakeUpTime - 2 <= time -> return ()
-                | otherwise -> sleepUntil rn wakeUpTime
-              Nothing ->
-                unless (isActive curRobot') (sleepForever rn)
+  active <- use activeRobots
+  focusedRob <- use focusedRobotID
+
+  ticked <-
+    use gameStep >>= \case
+      WorldTick -> do
+        runRobotIDs active
+        ticks += 1
+        pure True
+      RobotStep ss -> singleStep ss focusedRob active
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL;
@@ -122,46 +119,243 @@ gameTick = do
           Just (v, s) -> do
             replStatus .= REPLWorking (Typed (Just v) ty req)
             baseRobot . robotContext . defStore .= s
-          Nothing -> return ()
-        _otherREPLStatus -> return ()
-    Nothing -> return ()
+          Nothing -> pure ()
+        _otherREPLStatus -> pure ()
+    Nothing -> pure ()
 
   -- Possibly update the view center.
   modify recalcViewCenter
 
-  -- Possibly see if the winning condition for the current objective is met.
-  wc <- use winCondition
-  case wc of
-    WinConditions (obj :| objs) -> do
-      g <- get @GameState
+  when ticked $ do
+    -- On new tick see if the winning condition for the current objective is met.
+    wc <- use winCondition
+    case wc of
+      WinConditions winState oc -> do
+        g <- get @GameState
+        em <- use entityMap
+        hypotheticalWinCheck em g winState oc
+      _ -> pure ()
+  return ticked
 
-      -- Execute the win condition check *hypothetically*: i.e. in a
-      -- fresh CESK machine, using a copy of the current game state.
-      v <- runThrow @Exn . evalState @GameState g $ evalPT (obj ^. objectiveCondition)
-      let markWin = winCondition .= maybe (Won False) WinConditions (NE.nonEmpty objs)
-      let h = hypotheticalRobot (Out VUnit emptyStore []) 0
-      case stripVResult <$> v of
-        -- Log exceptions in the message queue so we can check for them in tests
-        Left exn -> do
-          em <- use entityMap
-          m <- evalState @Robot h $ createLogEntry (ErrorTrace Critical) (formatExn em exn)
-          emitMessage m
-        Right (VBool res) -> when res markWin
-        Right val -> do
-          m <-
-            evalState @Robot h $
-              createLogEntry (ErrorTrace Critical) $
-                T.unwords
-                  [ "Non boolean value:"
-                  , prettyValue val
-                  , "real:"
-                  , T.pack (show val)
-                  ]
-          emitMessage m
+-- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
+--
+-- Use this function if you need to unpause the game.
+finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+finishGameTick =
+  use gameStep >>= \case
+    WorldTick -> pure ()
+    RobotStep SBefore -> gameStep .= WorldTick
+    RobotStep _ -> void gameTick >> finishGameTick
+
+-- Insert the robot back to robot map.
+-- Will selfdestruct or put the robot to sleep if it has that set.
+insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
+insertBackRobot rn rob = do
+  time <- use ticks
+  if rob ^. selfDestruct
+    then deleteRobot rn
+    else do
+      robotMap %= IM.insert rn rob
+      case waitingUntil rob of
+        Just wakeUpTime
+          -- if w=2 t=1 then we do not needlessly put robot to waiting queue
+          | wakeUpTime - 2 <= time -> return ()
+          | otherwise -> sleepUntil rn wakeUpTime
+        Nothing ->
+          unless (isActive rob) (sleepForever rn)
+
+-- Run a set of robots - this is used to run robots before/after the focused one.
+runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m) => IS.IntSet -> m ()
+runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
+  mr <- uses robotMap (IM.lookup rn)
+  forM_ mr (stepOneRobot rn)
+ where
+  stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
+
+-- This is a helper function to do one robot step or run robots before/after.
+singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
+singleStep ss focRID robotSet = do
+  let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
+  case ss of
+    ----------------------------------------------------------------------------
+    -- run robots from the beginning until focused robot
+    SBefore -> do
+      runRobotIDs preFoc
+      gameStep .= RobotStep (SSingle focRID)
+      -- also set ticks of focused robot
+      steps <- use robotStepsPerTick
+      robotMap . ix focRID . tickSteps .= steps
+      -- continue to focused robot if there were no previous robots
+      -- DO NOT SKIP THE ROBOT SETUP above
+      if IS.null preFoc
+        then singleStep (SSingle focRID) focRID robotSet
+        else return False
+    ----------------------------------------------------------------------------
+    -- run single step of the focused robot (may skip if inactive)
+    SSingle rid | not focusedActive -> do
+      singleStep (SAfter rid) rid postFoc -- skip inactive focused robot
+    SSingle rid -> do
+      mOldR <- uses robotMap (IM.lookup focRID)
+      case mOldR of
+        Nothing | rid == focRID -> do
+          debugLog "The debugged robot does not exist! Exiting single step mode."
+          runRobotIDs postFoc
+          gameStep .= WorldTick
+          ticks += 1
+          return True
+        Nothing | otherwise -> do
+          debugLog "The previously debugged robot does not exist!"
+          singleStep SBefore focRID postFoc
+        Just oldR -> do
+          -- if focus changed we need to finish the previous robot
+          newR <- (if rid == focRID then stepRobot else tickRobotRec) oldR
+          insertBackRobot focRID newR
+          if rid == focRID
+            then do
+              when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
+              return False
+            else do
+              -- continue to newly focused
+              singleStep SBefore focRID postFoc
+    ----------------------------------------------------------------------------
+    -- run robots after the focused robot
+    SAfter rid | focRID <= rid -> do
+      -- This state takes care of two possibilities:
+      -- 1. normal - rid == focRID and we finish the tick
+      -- 2. changed focus and the newly focused robot has previously run
+      --    so we just finish the tick the same way
+      runRobotIDs postFoc
+      gameStep .= RobotStep SBefore
+      ticks += 1
+      return True
+    SAfter rid | otherwise -> do
+      -- go to single step if new robot is focused
+      let (_pre, postRID) = IS.split rid robotSet
+      singleStep SBefore focRID postRID
+ where
+  h = hypotheticalRobot (Out VUnit emptyStore []) 0
+  debugLog txt = do
+    m <- evalState @Robot h $ createLogEntry (ErrorTrace Debug) txt
+    emitMessage m
+
+-- | An accumulator for folding over the incomplete
+-- objectives to evaluate for their completion
+data CompletionsWithExceptions = CompletionsWithExceptions
+  { exceptions :: [Text]
+  , completions :: ObjectiveCompletion
+  , completionAnnouncementQueue :: [OB.Objective]
+  -- ^ Upon completion, an objective is enqueued.
+  -- It is dequeued when displayed on the UI.
+  }
+
+-- | Execute the win condition check *hypothetically*: i.e. in a
+-- fresh CESK machine, using a copy of the current game state.
+--
+-- The win check is performed only on "active" goals; that is,
+-- the goals that are currently unmet and have had all of their
+-- prerequisites satisfied.
+-- Note that it may be possible, while traversing through the
+-- goal list, for one goal to be met earlier in the list that
+-- happens to be a prerequisite later in the traversal. This
+-- is why:
+-- 1) We must not pre-filter the goals to be traversed based
+--    on satisfied prerequisites (i.e. we cannot use the
+--    "getActiveObjectives" function).
+-- 2) The traversal order must be "reverse topological" order, so
+--    that prerequisites are evaluated before dependent goals.
+-- 3) The iteration needs to be a "fold", so that state is updated
+--    after each element.
+hypotheticalWinCheck ::
+  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  EntityMap ->
+  GameState ->
+  WinStatus ->
+  ObjectiveCompletion ->
+  m ()
+hypotheticalWinCheck em g ws oc = do
+  -- We can fully and accurately evaluate the new state of the objectives DAG
+  -- in a single pass, so long as we visit it in reverse topological order.
+  --
+  -- N.B. The "reverse" is essential due to the re-population of the
+  -- "incomplete" goal list by cons-ing.
+  finalAccumulator <-
+    foldM foldFunc initialAccumulator $
+      reverse incompleteGoals
+
+  let newWinState = case ws of
+        Ongoing -> getNextWinState $ completions finalAccumulator
+        _ -> ws
+
+  winCondition .= WinConditions newWinState (completions finalAccumulator)
+
+  case newWinState of
+    Unwinnable _ -> do
+      currentTime <- sendIO getZonedTime
+      gameAchievements
+        %= M.insertWith
+          (<>)
+          LoseScenario
+          (Attainment (GameplayAchievement LoseScenario) Nothing currentTime)
     _ -> return ()
 
-  -- Advance the game time by one.
-  ticks += 1
+  announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+
+  mapM_ handleException $ exceptions finalAccumulator
+ where
+  getNextWinState completedObjs
+    | WC.didWin completedObjs = Won False
+    | WC.didLose completedObjs = Unwinnable False
+    | otherwise = Ongoing
+
+  (withoutIncomplete, incompleteGoals) = OB.extractIncomplete oc
+  initialAccumulator = CompletionsWithExceptions [] withoutIncomplete []
+
+  -- All of the "incomplete" goals have been emptied from the initial accumulator, and
+  -- these are what we iterate over with the fold.
+  -- Each iteration, we either place the goal back into the "incomplete" bucket, or
+  -- we determine that it has been met or impossible and place it into the "completed"
+  -- or "unwinnable" bucket, respectively.
+  foldFunc (CompletionsWithExceptions exnTexts currentCompletions announcements) obj = do
+    v <-
+      if WC.isPrereqsSatisfied currentCompletions obj
+        then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
+        else return $ Right $ VBool False
+    let simplified = simplifyResult $ stripVResult <$> v
+    return $ case simplified of
+      Left exnText ->
+        CompletionsWithExceptions
+          (exnText : exnTexts)
+          currentCompletions
+          announcements
+      Right boolResult ->
+        CompletionsWithExceptions
+          exnTexts
+          (modifyCompletions obj currentCompletions)
+          (modifyAnnouncements announcements)
+       where
+        (modifyCompletions, modifyAnnouncements)
+          | boolResult = (OB.addCompleted, (obj :))
+          | WC.isUnwinnable currentCompletions obj = (OB.addUnwinnable, id)
+          | otherwise = (OB.addIncomplete, id)
+
+  simplifyResult = \case
+    Left exn -> Left $ formatExn em exn
+    Right (VBool x) -> Right x
+    Right val ->
+      Left $
+        T.unwords
+          [ "Non boolean value:"
+          , prettyValue val
+          , "real:"
+          , T.pack (show val)
+          ]
+
+  -- Log exceptions in the message queue so we can check for them in tests
+  handleException exnText = do
+    m <- evalState @Robot h $ createLogEntry (ErrorTrace Critical) exnText
+    emitMessage m
+   where
+    h = hypotheticalRobot (Out VUnit emptyStore []) 0
 
 evalPT ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
@@ -644,11 +838,12 @@ stepCESK cesk = case cesk of
     case exn of
       CmdFailed _ _ (Just a) -> do
         currentTime <- sendIO getZonedTime
+        scenarioPath <- use currentScenarioPath
         gameAchievements
           %= M.insertWith
             (<>)
             a
-            (Attainment (GameplayAchievement a) Nothing currentTime)
+            (Attainment (GameplayAchievement a) scenarioPath currentTime)
       _ -> return ()
 
     -- If an exception rises all the way to the top level without being
@@ -1014,7 +1209,7 @@ execConst c vs s k = do
               DRelative DDown -> "under"
               DRelative DForward -> "ahead of"
               DRelative DBack -> "behind"
-              _ -> dirSyntax (dirInfo d) <> " of"
+              _ -> directionSyntax d <> " of"
 
         (nextLoc, nextME) <- lookInDirection d
         nextE <-
@@ -1519,8 +1714,9 @@ execConst c vs s k = do
     Run -> case vs of
       [VText fileName] -> do
         let filePath = into @String fileName
-        sData <- sendIO $ getDataFileNameSafe filePath
-        sDataSW <- sendIO $ getDataFileNameSafe (filePath <> ".sw")
+        let e2m = fmap eitherToMaybe . runExceptT
+        sData <- sendIO $ e2m $ getDataFileNameSafe Script filePath
+        sDataSW <- sendIO $ e2m $ getDataFileNameSafe Script (filePath <> ".sw")
         mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
@@ -1531,7 +1727,7 @@ execConst c vs s k = do
 
         case mt of
           Nothing -> return $ Out VUnit s k
-          Just t@(ProcessedTerm _ _ _ reqCtx) -> do
+          Just t@(ProcessedTerm _ _ reqCtx) -> do
             -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
             -- See #827 for an explanation of (1) why this is needed, (2) why
             -- it's slightly technically incorrect, and (3) why it is still way

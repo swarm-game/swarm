@@ -168,6 +168,22 @@
   weight: 3
 
 - in:
+  - [1, rock]
+  out:
+  - [4, sand]
+  required:
+  - [1, drill]
+  time: 9
+
+- in:
+  - [1, rock]
+  out:
+  - [4, sand]
+  required:
+  - [1, metal drill]
+  time: 3
+
+- in:
   - [1, mountain]
   out:
   - [8, rock]
@@ -296,6 +312,16 @@
   required:
   - [1, drill]
   time: 42
+  weight: 9
+
+- in:
+  - [1, copper mine]
+  out:
+  - [2, rock]
+  - [1, copper mine]
+  required:
+  - [1, drill]
+  time: 42
 
 - in:
   - [1, iron mine]
@@ -305,11 +331,31 @@
   required:
   - [1, drill]
   time: 64
+  weight: 9
+
+- in:
+  - [1, iron mine]
+  out:
+  - [2, rock]
+  - [1, iron mine]
+  required:
+  - [1, drill]
+  time: 64
 
 - in:
   - [1, quartz mine]
   out:
   - [1, quartz]
+  - [1, quartz mine]
+  required:
+  - [1, drill]
+  time: 64
+  weight: 9
+
+- in:
+  - [1, quartz mine]
+  out:
+  - [2, rock]
   - [1, quartz mine]
   required:
   - [1, drill]
@@ -488,6 +534,13 @@
   - [1, welder]
 
 - in:
+  - [1, copper pipe]
+  out:
+  - [1, handle]
+  required:
+  - [1, welder]
+
+- in:
   - [4, circuit]
   - [1, iron plate]
   - [3, copper pipe]
@@ -531,6 +584,11 @@
   - [1, compass]
   out:
   - [1, GPS receiver]
+
+- in:
+  - [1, iron plate]
+  out:
+  - [1, tweezers]
 
 ## MAGIC
 
@@ -727,6 +785,13 @@
   - [1, strange loop]
   out:
   - [1, rubber band]
+
+- in:
+  - [1, rubber]
+  - [1, glass]
+  - [1, string]
+  out:
+  - [1, beaglepuss]
 
 #########################################
 ##                COTTON               ##

@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
 import Data.Foldable qualified

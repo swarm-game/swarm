@@ -1,11 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
--- Module      :  Swarm.TUI.Attr
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Rendering attributes (/i.e./ foreground and background colors,
@@ -20,6 +15,7 @@ module Swarm.TUI.Attr (
   swarmAttrMap,
   worldAttributes,
   worldPrefix,
+  toAttrName,
 
   -- ** Terrain attributes
   dirtAttr,
@@ -40,7 +36,9 @@ module Swarm.TUI.Attr (
   infoAttr,
   boldAttr,
   dimAttr,
+  magentaAttr,
   cyanAttr,
+  lightCyanAttr,
   yellowAttr,
   blueAttr,
   greenAttr,
@@ -53,9 +51,17 @@ import Brick.Forms
 import Brick.Widgets.Dialog
 import Brick.Widgets.List
 import Data.Bifunctor (bimap)
-import Data.Yaml
+import Data.Text (unpack)
 import Graphics.Vty qualified as V
-import Witch (from)
+import Swarm.Game.Display (Attribute (..))
+
+toAttrName :: Attribute -> AttrName
+toAttrName = \case
+  ARobot -> robotAttr
+  AEntity -> entityAttr
+  AWorld n -> worldPrefix <> attrName (unpack n)
+  ATerrain n -> terrainPrefix <> attrName (unpack n)
+  ADefault -> defAttr
 
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap
@@ -83,6 +89,8 @@ swarmAttrMap =
          , (blueAttr, fg V.blue)
          , (yellowAttr, fg V.yellow)
          , (cyanAttr, fg V.cyan)
+         , (lightCyanAttr, fg (V.rgbColor @Int 200 255 255))
+         , (magentaAttr, fg V.magenta)
          , -- Default attribute
            (defAttr, V.defAttr)
          ]
@@ -161,15 +169,11 @@ dimAttr = attrName "dim"
 defAttr = attrName "def"
 
 -- | Some basic colors used in TUI.
-redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr :: AttrName
+redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr, lightCyanAttr, magentaAttr :: AttrName
 redAttr = attrName "red"
 greenAttr = attrName "green"
 blueAttr = attrName "blue"
 yellowAttr = attrName "yellow"
 cyanAttr = attrName "cyan"
-
-instance ToJSON AttrName where
-  toJSON = toJSON . head . attrNameComponents
-
-instance FromJSON AttrName where
-  parseJSON = withText "AttrName" (pure . attrName . from)
+lightCyanAttr = attrName "lightCyan"
+magentaAttr = attrName "magenta"

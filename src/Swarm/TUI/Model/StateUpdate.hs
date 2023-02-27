@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.StateUpdate (
   initAppState,
   startGame,
@@ -10,6 +12,7 @@ module Swarm.TUI.Model.StateUpdate (
   scenarioToAppState,
 ) where
 
+import Brick.AttrMap (applyAttrMappings)
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
@@ -19,8 +22,12 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
-import Swarm.Game.Scenario (loadScenario)
+import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfo (..),
   ScenarioInfoPair,
@@ -33,14 +40,13 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Persistence
-import Swarm.TUI.Model.Failure (prettyFailure)
+import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.TUI.View.CustomStyling (toAttrPair)
 import System.Clock
 
 -- | Initialize the 'AppState'.
@@ -48,23 +54,24 @@ initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
-  gs <- initGameState
-  (warnings, ui) <- initUIState (not skipMenu) cheatMode
+  (gsWarnings, gs) <- initGameState
+  (uiWarnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
-  let rs = List.foldl' logWarning initRuntimeState warnings
+  let rs = List.foldl' logWarning initRuntimeState $ gsWarnings <> uiWarnings
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
+      maybeRunScript <- getParsedInitialCode scriptToRun
 
       let maybeAutoplay = do
             guard autoPlay
             soln <- scenario ^. scenarioSolution
-            return $ SuggestedSolution soln
-      let realToRun = maybeAutoplay <|> (ScriptPath <$> scriptToRun)
+            return $ CodeToRun ScenarioSuggested soln
+      let codeToRun = maybeAutoplay <|> maybeRunScript
 
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) realToRun)
+        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) codeToRun)
         (AppState gs ui rs)
 
 -- | Load a 'Scenario' and start playing the game.
@@ -94,10 +101,15 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
   scenarioToAppState siPair userSeed toRun
 
--- XXX do we need to keep an old entity map around???
+-- TODO: #516 do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
-scenarioToAppState :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe Seed -> Maybe CodeToRun -> m ()
+scenarioToAppState ::
+  (MonadIO m, MonadState AppState m) =>
+  ScenarioInfoPair ->
+  Maybe Seed ->
+  Maybe CodeToRun ->
+  m ()
 scenarioToAppState siPair@(scene, _) userSeed toRun = do
   withLensIO gameState $ scenarioToGameState scene userSeed toRun
   withLensIO uiState $ scenarioToUIState siPair
@@ -113,7 +125,12 @@ attainAchievement a = do
   currentTime <- liftIO getZonedTime
   attainAchievement' currentTime Nothing a
 
-attainAchievement' :: (MonadIO m, MonadState AppState m) => ZonedTime -> Maybe Text -> CategorizedAchievement -> m ()
+attainAchievement' ::
+  (MonadIO m, MonadState AppState m) =>
+  ZonedTime ->
+  Maybe FilePath ->
+  CategorizedAchievement ->
+  m ()
 attainAchievement' t p a = do
   (uiState . uiAchievements)
     %= M.insertWith
@@ -130,7 +147,7 @@ scenarioToUIState siPair u = do
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ Nothing
+      & uiGoal .~ emptyGoalDisplay
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiInventorySort .~ defaultSortOptions
@@ -139,5 +156,6 @@ scenarioToUIState siPair u = do
       & lgTicksPerSecond .~ initLgTicksPerSecond
       & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
       & uiREPL . replHistory %~ restartREPLHistory
+      & uiAttrMap .~ applyAttrMappings (map toAttrPair $ fst siPair ^. scenarioAttrs) swarmAttrMap
       & scenarioRef ?~ siPair
       & lastFrameTime .~ curTime

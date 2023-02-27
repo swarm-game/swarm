@@ -1,7 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Utility functions
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utility functions
 module TestUtil where
 
 import Control.Lens (Ixed (ix), to, use, (&), (.~), (^.), (^?))
@@ -14,9 +17,9 @@ import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
-import Swarm.Game.Value
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Value
 
 eval :: GameState -> Text -> IO (GameState, Robot, Either Text (Value, Int))
 eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) . processTerm1
@@ -64,7 +67,7 @@ playUntilDone rid = do
   w <- use robotMap
   case w ^? ix rid . to isActive of
     Just True -> do
-      gameTick
+      void gameTick
       playUntilDone rid
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"

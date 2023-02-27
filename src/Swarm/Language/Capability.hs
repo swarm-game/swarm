@@ -1,8 +1,4 @@
 -- |
--- Module      :  Swarm.Language.Capability
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Capabilities needed to evaluate and execute programs.  Language
@@ -128,6 +124,8 @@ data Capability
     CSum
   | -- | Capability for working with product types.
     CProd
+  | -- | Debug capability.
+    CDebug
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -248,7 +246,7 @@ constCaps = \case
   Case -> Just CSum
   Fst -> Just CProd
   Snd -> Just CProd
-  -- XXX pair syntax should require CProd too
+  -- TODO: #563 pair syntax (1,2,3...) should require CProd too
 
   -- ----------------------------------------------------------------
   -- Some additional straightforward ones, which however currently
@@ -259,6 +257,6 @@ constCaps = \case
   Random -> Just CRandom -- randomness device (with bitcoins)?
   -- ----------------------------------------------------------------
   -- Some more constants which *ought* to have their own capability but
-  -- currently don't. TODO: #26
-  View -> Nothing -- XXX this should also require something.
+  -- currently don't.
+  View -> Nothing -- TODO: #17 should require equipping an antenna
   Knows -> Nothing

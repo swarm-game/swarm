@@ -1,0 +1,245 @@
+version: 1
+name: Ice Cream Shop
+author: Karl Ostmo
+description: |
+  Serve a demanding customer
+creative: false
+seed: 0
+objectives:
+  - id: give_cone
+    teaser: Give a cone
+    goal:
+      - |
+        Congratulations on the grand opening of your new ice cream shop.
+        You have advertised: "All you can eat, for 1 bitcoin!"
+      - |
+        A customer is approaching the "Counter". They look hungry!
+      - "..."
+      - |
+        Customer: "`give` me a cone, and then I'll tell you how many scoops I want."
+      - "..."
+      - |
+        Oh dear, you've forgotten to stock your shop with a "calculator".
+        Let's hope this order is simple.
+    condition: |
+      customer <- robotnamed "customer";
+      as customer {has "cone"};
+  - teaser: Complete the order
+    goal:
+      - |
+        `give` the customer exactly what they request.
+      - |
+        Perhaps there is something else around the shop that can assist with
+        preparing the order...
+    prerequisite: give_cone
+    condition: |
+      as base {
+        has "bitcoin";
+      };
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - branch predictor
+      - treads
+      - antenna
+      - comparator
+      - workbench
+      - grabber
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - hearing aid
+      - scanner
+      - strange loop
+    inventory:
+      - [5000, egg]
+      - [5000, milk]
+      - [5000, sugar]
+      - [5000, ice]
+      - [5000, vanilla]
+  - name: customer
+    system: true
+    dir: [0, -1]
+    display:
+      invisible: false
+      attr: 'iron'
+    inventory:
+      - [1, bitcoin]
+    program: |
+      run "scenarios/Challenges/_ice-cream/customer.sw"
+solution: |
+   run "scenarios/Challenges/_ice-cream/solution.sw"
+entities:
+  - name: scoop
+    display:
+      char: '@'
+    description:
+      - A single scoop of vanilla ice cream
+    properties: [portable]
+  - name: cherry
+    display:
+      char: '6'
+      attr: 'red'
+    properties: [portable]
+    description:
+      - A traditional ice cream garnish
+  - name: Counter
+    display:
+      char: '▒'
+      attr: 'sand'
+    properties: [portable, known]
+    capabilities: [count]
+    description:
+      - Where customers are served.
+      - Also... it can count things.
+  - name: cone
+    display:
+      char: 'V'
+      attr: 'sand'
+    properties: [portable]
+    description:
+      - A conical, edible container for ice cream
+  - name: egg
+    display:
+      char: 'e'
+      attr: 'gold'
+    properties: [portable]
+    description:
+      - Organic from local, free-range, meticulously pampered chickens.
+  - name: milk
+    display:
+      char: 'm'
+      attr: 'silver'
+    properties: [portable]
+    description:
+      - Pasteurized, homogenized, commoditized, metabolized.
+  - name: ice
+    display:
+      char: 'i'
+      attr: 'snow'
+    properties: [portable]
+    description:
+      - Ice cream is better cold, don't you think?
+  - name: sugar
+    display:
+      char: 's'
+      attr: 'snow'
+    properties: [portable]
+    description:
+      - Basis of most desserts
+  - name: vanilla
+    display:
+      char: 'v'
+      attr: 'wood'
+    properties: [portable]
+    description:
+      - Traditional ice cream flavoring
+  - name: briefcase
+    display:
+      char: 'B'
+      attr: rubber
+    capabilities: [sum, prod]
+    properties: [portable]
+    description:
+      - Standard business accoutrement.
+      - Particularly useful for `meet`-ings.
+      - Enables the `case` expression.
+  - name: awning1
+    display:
+      char: '▒'
+      attr: flower
+    description:
+      - Decoration
+    properties: [known]
+  - name: awning2
+    display:
+      char: '▒'
+      attr: snow
+    description:
+      - Decoration
+    properties: [known]
+  - name: cone left
+    display:
+      char: '\'
+      attr: wood
+    description:
+      - Decoration
+    properties: [known]
+  - name: cone right
+    display:
+      char: '/'
+      attr: wood
+    description:
+      - Decoration
+    properties: [known]
+  - name: cone top
+    display:
+      char: 'M'
+      attr: wood
+    description:
+      - Decoration
+    properties: [known]
+  - name: cone inside
+    display:
+      char: 'Z'
+      attr: wood
+    description:
+      - Decoration
+    properties: [known]
+  - name: decorative scoop
+    display:
+      char: 'O'
+      attr: snow
+    description:
+      - Decoration
+    properties: [known]
+recipes:
+  - in:
+      - [1, egg]
+      - [1, milk]
+      - [1, sugar]
+      - [1, ice]
+      - [1, vanilla]
+    out:
+      - [1, scoop]
+known: []
+world:
+  default: [grass]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '@': [stone, boulder]
+    '.': [grass]
+    ':': [stone]
+    'B': [stone, briefcase]
+    '6': [stone, cherry]
+    'V': [stone, cone]
+    Ω: [stone, null, base]
+    X: [stone, null, customer]
+    'y': [stone, awning1]
+    'z': [stone, awning2]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    '\': [stone, cone left]
+    '/': [stone, cone right]
+    'Z': [stone, cone inside]
+    '^': [stone, cone top]
+    'O': [stone, decorative scoop]
+    'x': [stone, Counter]
+  map: |
+    ...X..........
+    ...:..........
+    ...:..........
+    ...:..........
+    ...:.......OO.
+    yzy:yzyz..OOOO
+    ┌─┐x┌──┐..^^^^
+    │B:Ω:V6│..\ZZ/
+    └──────┘...\/.
+    

@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Swarm unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm unit tests
 module Main where
 
 import Control.Monad.Except (runExceptT)
@@ -20,8 +23,10 @@ import Test.Tasty.QuickCheck (
   testProperty,
   (==>),
  )
+import TestBoolExpr (testBoolExpr)
 import TestEval (testEval)
 import TestInventory (testInventory)
+import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
 import TestModel (testModel)
 import TestNotification (testNotification)
@@ -41,11 +46,13 @@ tests g =
     "Tests"
     [ testLanguagePipeline
     , testPrettyConst
+    , testBoolExpr
     , testEval g
     , testModel
     , testInventory
     , testNotification g
     , testMisc
+    , testLSP
     ]
 
 testMisc :: TestTree

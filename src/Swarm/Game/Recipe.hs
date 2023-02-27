@@ -1,12 +1,7 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
--- Module      :  Swarm.Game.Recipe
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A recipe represents some kind of process for transforming
@@ -36,7 +31,10 @@ module Swarm.Game.Recipe (
   make',
 ) where
 
+import Control.Arrow (left)
 import Control.Lens hiding (from, (.=))
+import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, withExceptT)
+import Control.Monad.Trans.Except (except)
 import Data.Bifunctor (second)
 import Data.Either.Validation
 import Data.IntMap (IntMap)
@@ -47,14 +45,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
-import Witch
-
-import Control.Algebra (Has)
-import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (runThrow, throwError)
 import Swarm.Game.Entity as E
-import Swarm.Util
+import Swarm.Game.Failure
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Yaml
+import Witch
 
 -- | An ingredient list is a list of entities with multiplicity.  It
 --   is polymorphic in the entity type so that we can use either
@@ -140,17 +135,24 @@ instance FromJSONE EntityMap (Recipe Entity) where
 
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
-loadRecipes :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text [Recipe Entity])
-loadRecipes em = runThrow $ do
-  let f = "recipes.yaml"
-  mayFileName <- sendIO $ getDataFileNameSafe f
-  case mayFileName of
-    Nothing -> sendIO (dataNotFound f) >>= throwError
-    Just fileName -> do
-      res <- sendIO $ decodeFileEither @[Recipe Text] fileName
-      textRecipes <- res `isRightOr` (from @String @Text . prettyPrintParseException)
-      resolveRecipes em textRecipes
-        `isSuccessOr` (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
+loadRecipes ::
+  MonadIO m =>
+  EntityMap ->
+  ExceptT SystemFailure m [Recipe Entity]
+loadRecipes em = do
+  fileName <- getDataFileNameSafe Recipes f
+  textRecipes <-
+    withExceptT (AssetNotLoaded (Data Recipes) fileName . CanNotParse) $
+      ExceptT $
+        liftIO $
+          decodeFileEither @[Recipe Text] fileName
+  withExceptT (AssetNotLoaded (Data Recipes) fileName . CustomMessage) $
+    except $
+      left (T.append "Unknown entities in recipe(s): " . T.intercalate ", ") $
+        validationToEither $
+          resolveRecipes em textRecipes
+ where
+  f = "recipes.yaml"
 
 ------------------------------------------------------------
 

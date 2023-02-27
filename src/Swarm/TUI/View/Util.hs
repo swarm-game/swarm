@@ -1,15 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
+import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Scenario (scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
@@ -23,7 +27,7 @@ import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
-generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth `min` requiredWidth))
+generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
   currentScenario = s ^. uiState . scenarioRef
   currentSeed = s ^. gameState . seed
@@ -45,37 +49,56 @@ generateModal s mt = Modal mt (dialog (Just title) buttons (maxModalWindowWidth 
             continueMsg = "Keep playing"
          in ( ""
             , Just
-                ( 0
-                , [ (nextMsg, NextButton scene)
+                ( Button NextButton
+                , [ (nextMsg, Button NextButton, Next scene)
                   | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
                   ]
-                    ++ [ (stopMsg, QuitButton)
-                       , (continueMsg, KeepPlayingButton)
+                    ++ [ (stopMsg, Button QuitButton, QuitAction)
+                       , (continueMsg, Button KeepPlayingButton, KeepPlaying)
                        ]
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
+      LoseModal ->
+        let stopMsg = fromMaybe "Return to the menu" haltingMessage
+            continueMsg = "Keep playing"
+            maybeStartOver = do
+              cs <- currentScenario
+              return ("Start over", Button StartOverButton, StartOver currentSeed cs)
+         in ( ""
+            , Just
+                ( Button QuitButton
+                , catMaybes
+                    [ Just (stopMsg, Button QuitButton, QuitAction)
+                    , maybeStartOver
+                    , Just (continueMsg, Button KeepPlayingButton, KeepPlaying)
+                    ]
+                )
+            , sum (map length [stopMsg, continueMsg]) + 32
+            )
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
       QuitModal ->
         let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
-            maybeStartOver = sequenceA ("Start over", StartOverButton currentSeed <$> currentScenario)
+            maybeStartOver = do
+              cs <- currentScenario
+              return ("Start over", Button StartOverButton, StartOver currentSeed cs)
          in ( ""
             , Just
-                ( 0
+                ( Button CancelButton
                 , catMaybes
-                    [ Just ("Keep playing", CancelButton)
+                    [ Just ("Keep playing", Button CancelButton, Cancel)
                     , maybeStartOver
-                    , Just (stopMsg, QuitButton)
+                    , Just (stopMsg, Button QuitButton, QuitAction)
                     ]
                 )
             , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
             )
-      GoalModal _ ->
+      GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
               Just (scenario, _) -> scenario ^. scenarioName
-         in (" " <> T.unpack goalModalTitle <> " ", Nothing, 80)
-      KeepPlayingModal -> ("", Just (0, [("OK", CancelButton)]), 80)
+         in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
+      KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
@@ -102,3 +125,37 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
   quitAction = case m of
     NoMenu -> "quit"
     _ -> "return to the menu"
+
+-- | Display a list of text-wrapped paragraphs with one blank line after
+--   each.
+displayParagraphs :: [Text] -> Widget Name
+displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
+
+withEllipsis :: Text -> Widget Name
+withEllipsis t =
+  Widget Greedy Fixed $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+        ellipsis = T.replicate 3 $ T.singleton '.'
+        tLength = T.length t
+        newText =
+          if tLength > w
+            then T.take (w - T.length ellipsis) t <> ellipsis
+            else t
+    render $ txt newText
+
+-- | Make a widget scrolling if it is bigger than the available
+--   vertical space.  Thanks to jtdaugherty for this code.
+maybeScroll :: (Ord n, Show n) => n -> Widget n -> Widget n
+maybeScroll vpName contents =
+  Widget Greedy Greedy $ do
+    ctx <- getContext
+    result <- withReaderT (availHeightL .~ 10000) (render contents)
+    if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
+      then return result
+      else
+        render $
+          withVScrollBars OnRight $
+            viewport vpName Vertical $
+              Widget Fixed Fixed $
+                return result

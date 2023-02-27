@@ -1,0 +1,42 @@
+version: 1
+name: |
+  Prerequisite objectives: non-dependency cycle due to the NOT
+description: |
+  This should NOT be rejected by the parser.
+  The two objectives do reference each other,
+  but the NOT is a distinct reference from the non-negated goal.
+objectives:
+  - id: have_furnace
+    goal:
+      - Make a "furnace".
+    condition: |
+      as base {has "furnace"};
+    prerequisite:
+      not: have_gear
+  - id: have_gear
+    goal:
+      - Make a "wooden gear".
+    condition: |
+      as base {has "wooden gear"};
+    prerequisite: have_furnace
+solution: |
+  make "wooden gear";
+  make "furnace";
+robots:
+  - name: base
+    display:
+      char: 'Ω'
+      attr: robot
+    dir: [0, 1]
+    devices:
+      - workbench
+    inventory:
+      - [2, board]
+      - [5, rock]
+world:
+  default: [blank]
+  palette:
+    'x': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    x

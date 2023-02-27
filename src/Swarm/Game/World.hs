@@ -2,10 +2,6 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  Swarm.Game.World
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A /world/ refers to the grid on which the game takes place, and the
@@ -60,8 +56,8 @@ import Data.Int (Int32)
 import Data.Map.Strict qualified as M
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Swarm.Game.Location
 import Swarm.Util
-import Swarm.Util.Location
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------

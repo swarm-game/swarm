@@ -1,5 +1,91 @@
 # Revision history for swarm
 
+## **0.3.0.1** - 2023-02-01
+
+A few critical bug fixes and improvements:
+
+* Make sure the base always has a `logger` installed in every tutorial level, by @byorgey in [#1067](https://github.com/swarm-game/swarm/pull/1067) and @xsebek in [#1073](https://github.com/swarm-game/swarm/pull/1073)
+* Allow dialog boxes to scroll by @byorgey in [#1071](https://github.com/swarm-game/swarm/pull/1071)
+* Fix bug that sometimes caused scenarios to be skipped or repeated by @byorgey in [#1065](https://github.com/swarm-game/swarm/pull/1065)
+
+## **0.3.0.0** - 2023-01-30
+
+This is the first release of 2023! It contains:
+- various new features and bugfixes (see subsections below)
+- UI tweaks
+- fewer typos (thanks @bwignall and @kostmo)
+- upgraded dependencies (`>=lsp-1.6` and `>=brick-1.5`) and raised Stack resolver to use GHC 9.4 [#1001](https://github.com/swarm-game/swarm/pull/1001)
+- a ton of internal refactoring
+
+### Fixed bugs
+* copy parent robot context to child when executing `build` by @byorgey in [#817](https://github.com/swarm-game/swarm/pull/817)
+* Merge new requirements context with existing when running from REPL by @byorgey in [#965](https://github.com/swarm-game/swarm/pull/965)
+* Reset `lastFrameTime` when starting a new scenario by @byorgey in [#855](https://github.com/swarm-game/swarm/pull/855)
+* Fix capability checking, and refactor/add lots of comments by @byorgey in [#959](https://github.com/swarm-game/swarm/pull/959)
+* Fix `EntityMap` merging by @byorgey in [#962](https://github.com/swarm-game/swarm/pull/962)
+* Fix: add first heard message to log by @xsebek in [#842](https://github.com/swarm-game/swarm/pull/842)
+* Fix hypothetical result of condition by @xsebek in [#940](https://github.com/swarm-game/swarm/pull/940)
+* One file per achievement record by @kostmo in [#954](https://github.com/swarm-game/swarm/pull/954)
+* Show duplicate robot logs by @xsebek in [#1022](https://github.com/swarm-game/swarm/pull/1022)
+* Copy requirements map to robot context when loading a new `ProcessedTerm` by @byorgey in [#827](https://github.com/swarm-game/swarm/pull/827)
+* Set REPL to `Working` when base has `program` field specified by @byorgey in [#846](https://github.com/swarm-game/swarm/pull/846)
+* Create swarm subdirectories as necessary by @xsebek in [#943](https://github.com/swarm-game/swarm/pull/943)
+
+### New Features
+
+#### Swarm language
+* implement Equip/Unequip by @kostmo in [#887](https://github.com/swarm-game/swarm/pull/887)
+  * The great `install`/`equip` switch by @byorgey in [#989](https://github.com/swarm-game/swarm/pull/989)
+* Meeting other robots by @byorgey in [#920](https://github.com/swarm-game/swarm/pull/920)
+* New `heading` command by @byorgey in [#955](https://github.com/swarm-game/swarm/pull/955)
+* Add `isempty : cmd bool` to check whether current cell has an entity by @byorgey in [#968](https://github.com/swarm-game/swarm/pull/968)
+
+#### Entities
+* Add `GPS receiver` device to provide `senseloc` capability by @byorgey in [#956](https://github.com/swarm-game/swarm/pull/956)
+* Device with recipe for 'appear' capability by @kostmo in [#1027](https://github.com/swarm-game/swarm/pull/1027)
+* device for setname by @kostmo in [#1028](https://github.com/swarm-game/swarm/pull/1028)
+
+#### LSP improvements
+* swarm-lang IDE hover by @kostmo in [#972](https://github.com/swarm-game/swarm/pull/972)
+* Include `SrcLoc` info with variable binding sites by @byorgey in [#993](https://github.com/swarm-game/swarm/pull/993)
+* Annotate ASTs with types at every node by @byorgey in [#991](https://github.com/swarm-game/swarm/pull/991)
+* Improve OnHover for Def/Let, App and Const by @xsebek in [#986](https://github.com/swarm-game/swarm/pull/986)
+* warn of unused variables by @kostmo in [#983](https://github.com/swarm-game/swarm/pull/983)
+
+#### Web API
+* Expose REPL history via web interface by @kostmo in [#821](https://github.com/swarm-game/swarm/pull/821)
+
+#### Command line options
+* Add full color mode option by @xsebek in [#851](https://github.com/swarm-game/swarm/pull/851)
+
+#### New scenarios
+* New ranching scenario by @kostmo in [#835](https://github.com/swarm-game/swarm/pull/835)
+* new bind tutorial by @kostmo in [#895](https://github.com/swarm-game/swarm/pull/895)
+* A "bucket brigade" of robots by @kostmo in [#885](https://github.com/swarm-game/swarm/pull/885)
+* Ice Cream Shop by @kostmo in [#1008](https://github.com/swarm-game/swarm/pull/1008)
+* word search by @kostmo in [#999](https://github.com/swarm-game/swarm/pull/999)
+* Wolf, Goat, Cabbage scenario by @kostmo in [#944](https://github.com/swarm-game/swarm/pull/944)
+* swarm logo animation by @kostmo in [#1018](https://github.com/swarm-game/swarm/pull/1018)
+
+#### Scenario development
+* Boolean expressions of objective prerequisites by @kostmo in [#927](https://github.com/swarm-game/swarm/pull/927)
+* support 'orientationMap' by @kostmo in [#1023](https://github.com/swarm-game/swarm/pull/1023)
+* support custom attributes defined in scenarios by @kostmo in [#1058](https://github.com/swarm-game/swarm/pull/1058)
+
+#### UI enhancements
+* show devices that enable commands by @kostmo in [#899](https://github.com/swarm-game/swarm/pull/899)
+* Add a "driving mode" to the REPL by @kostmo in [#819](https://github.com/swarm-game/swarm/pull/819)
+
+#### Achievements
+* achievements board by @kostmo in [#796](https://github.com/swarm-game/swarm/pull/796)
+* first tutorial completion achievement by @kostmo in [#925](https://github.com/swarm-game/swarm/pull/925)
+* Add achievement for losing by @kostmo in [#945](https://github.com/swarm-game/swarm/pull/945)
+
+#### Debugging
+* Better CESK machine pretty-printing by @byorgey in [#948](https://github.com/swarm-game/swarm/pull/948)
+* Add the full expected location for the data directory by @TristanCacqueray in [#908](https://github.com/swarm-game/swarm/pull/908)
+* Extend logs for warnings by @xsebek in [#982](https://github.com/swarm-game/swarm/pull/982)
+
 ## **0.2.0.0** - 2022-11-01
 
 A bunch of small fixes and improvements; special thanks to new

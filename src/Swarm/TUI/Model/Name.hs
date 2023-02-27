@@ -1,3 +1,5 @@
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.Name where
 
 data FocusablePanel
@@ -11,8 +13,22 @@ data FocusablePanel
     InfoPanel
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+data GoalWidget
+  = ObjectivesList
+  | GoalSummary
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+-- | Clickable buttons in modal dialogs.
+data Button
+  = CancelButton
+  | KeepPlayingButton
+  | StartOverButton
+  | QuitButton
+  | NextButton
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 -- | 'Name' represents names to uniquely identify various components
---   of the UI, such as forms, panels, caches, extents, and lists.
+--   of the UI, such as forms, panels, caches, extents, lists, and buttons.
 data Name
   = FocusablePanel FocusablePanel
   | -- | The REPL input form.
@@ -30,10 +46,14 @@ data Name
     MenuList
   | -- | The list of achievements.
     AchievementList
+  | -- | The list of goals/objectives.
+    GoalWidgets GoalWidget
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.
     ModalViewport
+  | -- | A clickable button in a modal dialog.
+    Button Button
   deriving (Eq, Ord, Show, Read)

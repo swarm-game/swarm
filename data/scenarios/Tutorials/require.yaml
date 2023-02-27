@@ -56,6 +56,7 @@ robots:
       - [10, boat]
       - [10, grabber]
       - [10, scanner]
+      - [10, compass]
 known: [water]
 world:
   default: [blank]
