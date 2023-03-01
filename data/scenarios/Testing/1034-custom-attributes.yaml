@@ -22,8 +22,12 @@ attrs:
     fg: "#ff0000"
     bg: ffff00
   - name: cyanOnMagenta
-    fg: 00ffff
+    fg: "#00ffff
     bg: "#ff00ff"
+  - name: greenForeground
+    fg: "#00ff00"
+  - name: blueBackround
+    bg: "#0000ff"
   - name: italicAndUnderline
     style:
       - Italic
@@ -82,6 +86,69 @@ entities:
     description:
       - c7
     properties: [known]
+  - name: color1f
+    display:
+      char: '█'
+      attr: rainbow1
+    description:
+      - c1
+    properties: [known]
+  - name: color2f
+    display:
+      char: '█'
+      attr: rainbow2
+    description:
+      - c2
+    properties: [known]
+  - name: color3f
+    display:
+      char: '█'
+      attr: rainbow3
+    description:
+      - c3
+    properties: [known]
+  - name: color4f
+    display:
+      char: '█'
+      attr: rainbow4
+    description:
+      - c4
+    properties: [known]
+  - name: color5f
+    display:
+      char: '█'
+      attr: rainbow5
+    description:
+      - c5
+    properties: [known]
+  - name: color6f
+    display:
+      char: '█'
+      attr: rainbow6
+    description:
+      - c6
+    properties: [known]
+  - name: color7f
+    display:
+      char: '█'
+      attr: rainbow7
+    description:
+      - c7
+    properties: [known]
+  - name: greenForeground
+    display:
+      char: 'G'
+      attr: greenForeground
+    description:
+      - Green foreground, no background defined
+    properties: [known]
+  - name: blueBackround
+    display:
+      char: 'B'
+      attr: blueBackround
+    description:
+      - Blue background, no foreground defined
+    properties: [known]
   - name: redYellow
     display:
       char: 'R'
@@ -122,13 +189,22 @@ world:
     '5': [blank, color5]
     '6': [blank, color6]
     '7': [blank, color7]
+    'a': [blank, color1f]
+    'b': [blank, color2f]
+    'c': [blank, color3f]
+    'd': [blank, color4f]
+    'e': [blank, color5f]
+    'f': [blank, color6f]
+    'g': [blank, color7f]
+    'y': [blank, blueBackround]
+    'z': [blank, greenForeground]
     'R': [blank, redYellow]
     'C': [blank, cyanMagenta]
     'I': [blank, italicUnderline]
     'B': [blank, boldStrikethrough]
   upperleft: [0, 0]
   map: |-
-    .1234567..R.....II.
-    .1234567..R........
-    .1234567.....C..BB.
-    .1234567.....C.....
+    .1234567..Rzzy...IIy
+    .1234567y.R.z.......
+    .abcdefg......C..BBz
+    .abcdefgyy.yy..Cz.z.
