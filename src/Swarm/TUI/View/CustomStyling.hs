@@ -32,7 +32,7 @@ toAttrColor (HexColor colorText) =
 
 toAttrPair :: CustomAttr -> (AttrName, Attr)
 toAttrPair ca =
-  (worldPrefix <> attrName (name ca), addStyle $ addFg $ addBg currentAttr)
+  (worldPrefix <> attrName (name ca), addStyle $ addFg $ addBg defAttr)
  where
   addFg = maybe id (flip withForeColor . toAttrColor) $ fg ca
   addBg = maybe id (flip withBackColor . toAttrColor) $ bg ca
