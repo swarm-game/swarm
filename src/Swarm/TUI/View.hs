@@ -314,7 +314,7 @@ drawGameUI s =
                   ( plainBorder
                       & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
                   )
-                  ( vLimit replHeight
+                  ( vLimit (if showREPL then replHeight else 1)
                       . padBottom Max
                       . padLeftRight 1
                       $ drawREPL s
@@ -334,6 +334,7 @@ drawGameUI s =
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
+  showREPL = s ^. uiState . uiShowREPL
 
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g coords@(W.Coords (y, x)) =
@@ -588,7 +589,7 @@ helpWidget theSeed mport =
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
     , ("Ctrl-q", "quit the current scenario")
-    , ("Ctrl-r", "collapse/expand REPL")
+    , ("Ctrl-k", "collapse/expand REPL")
     , ("Meta-h", "hide robots for 2s")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
