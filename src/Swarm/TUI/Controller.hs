@@ -59,7 +59,7 @@ import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -650,22 +650,31 @@ updateUI = do
   g <- use gameState
   when (g ^. needsRedraw) $ invalidateCacheEntry WorldCache
 
-  -- Check if the inventory list needs to be updated.
-  listRobotHash <- fmap fst <$> use (uiState . uiInventory)
   -- The hash of the robot whose inventory is currently displayed (if any)
+  listRobotHash <- fmap fst <$> use (uiState . uiInventory)
 
+  -- The hash of the focused robot (if any)
   fr <- use (gameState . to focusedRobot)
   let focusedRobotHash = view inventoryHash <$> fr
-  -- The hash of the focused robot (if any)
 
+  -- Check if the inventory list needs to be updated.
   shouldUpdate <- use (uiState . uiInventoryShouldUpdate)
-  -- If the hashes don't match (either because which robot (or
-  -- whether any robot) is focused changed, or the focused robot's
-  -- inventory changed), regenerate the list.
+
+  -- Whether the focused robot is too far away to sense, & whether
+  -- that has recently changed
+  dist <- use (gameState . to focusedRange)
+  farOK <- liftM2 (||) (use (gameState . creativeMode)) (use (gameState . worldScrollable))
+  let tooFar = not farOK && dist == Just Far
+      farChanged = tooFar /= isNothing listRobotHash
+
+  -- If the robot moved in or out of range, or hashes don't match
+  -- (either because which robot (or whether any robot) is focused
+  -- changed, or the focused robot's inventory changed), or the
+  -- inventory was flagged to be updated, regenerate the list.
   inventoryUpdated <-
-    if listRobotHash /= focusedRobotHash || shouldUpdate
+    if farChanged || (not farChanged && listRobotHash /= focusedRobotHash) || shouldUpdate
       then do
-        Brick.zoom uiState $ populateInventoryList fr
+        Brick.zoom uiState $ populateInventoryList (if tooFar then Nothing else fr)
         (uiState . uiInventoryShouldUpdate) .= False
         pure True
       else pure False
@@ -818,7 +827,8 @@ doGoalUpdates = do
 
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState . uiGoal
+        uiState
+          . uiGoal
           .= GoalDisplay
             newGoalTracking
             (GR.makeListWidget newGoalTracking)

@@ -849,23 +849,31 @@ drawWorld showRobots g =
 ------------------------------------------------------------
 
 -- | Draw info about the currently focused robot, such as its name,
---   position, orientation, and inventory.
+--   position, orientation, and inventory, as long as it is not too
+--   far away.
 drawRobotPanel :: AppState -> Widget Name
-drawRobotPanel s = case (s ^. gameState . to focusedRobot, s ^. uiState . uiInventory) of
-  (Just r, Just (_, lst)) ->
-    let Location x y = r ^. robotLocation
-        drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
-     in padBottom Max $
-          vBox
-            [ hCenter $
-                hBox
-                  [ txt (r ^. robotName)
-                  , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
-                  , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
-                  ]
-            , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
-            ]
-  _ -> padRight Max . padBottom Max $ str " "
+drawRobotPanel s
+  -- If the focused robot is too far away to communicate, just leave the panel blank.
+  -- There should be no way to tell the difference between a robot that is too far
+  -- away and a robot that does not exist.
+  | Just r <- s ^. gameState . to focusedRobot
+  , Just (_, lst) <- s ^. uiState . uiInventory =
+      let Location x y = r ^. robotLocation
+          drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+       in padBottom Max $
+            vBox
+              [ hCenter $
+                  hBox
+                    [ txt (r ^. robotName)
+                    , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
+                    , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
+                    ]
+              , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
+              ]
+  | otherwise = blank
+
+blank :: Widget Name
+blank = padRight Max . padBottom Max $ str " "
 
 -- | Draw an inventory entry.
 drawItem ::
@@ -908,10 +916,12 @@ drawLabelledEntityName e =
 -- | Draw the info panel in the bottom-left corner, which shows info
 --   about the currently focused inventory item.
 drawInfoPanel :: AppState -> Widget Name
-drawInfoPanel s =
-  viewport InfoViewport Vertical
-    . padLeftRight 1
-    $ explainFocusedItem s
+drawInfoPanel s
+  | Just Far <- s ^. gameState . to focusedRange = blank
+  | otherwise =
+      viewport InfoViewport Vertical
+        . padLeftRight 1
+        $ explainFocusedItem s
 
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
