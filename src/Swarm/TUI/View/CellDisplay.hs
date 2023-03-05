@@ -3,7 +3,7 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Lens (at, both, ix, over, to, view, (^.), (^?))
+import Control.Lens (to, view, (^.))
 import Data.Bool (bool)
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
@@ -15,8 +15,7 @@ import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
 import Swarm.Game.Display
-import Swarm.Game.Entity as E
-import Swarm.Game.Location (euclidean)
+import Swarm.Game.Entity
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Terrain
@@ -100,24 +99,6 @@ getStatic g coords
   -- Offset from the location of the view center to the location under
   -- consideration for display.
   offset = W.coordsToLoc coords .-. (g ^. viewCenter)
-  -- Euclidean distance from the base to the view center.
-  viewDist = case g ^. robotMap . at 0 of
-    Just br -> euclidean (g ^. viewCenter) (br ^. robotLocation)
-    _ -> 1000000000
-
-  baseInv :: Maybe Inventory
-  baseInv = g ^? robotMap . ix 0 . equippedDevices
-  focInv = view equippedDevices <$> focusedRobot g
-
-  gain :: Maybe Inventory -> (Double -> Double)
-  gain (Just inv)
-    | E.countByName "antenna" inv > 0 = (* 2)
-  gain _ = id
-
-  -- View thresholds.  Default thresholds are 16, 64; each antenna
-  -- boosts the signal by 2x.
-  viewDist1, viewDist2 :: Double
-  (viewDist1, viewDist2) = over both (gain baseInv . gain focInv) (16, 64)
 
   -- Hash.
   h =
@@ -130,20 +111,15 @@ getStatic g coords
   hp :: Double
   hp = fromIntegral h / fromIntegral (maxBound :: Word32)
 
-  isStatic
-    -- Don't display static in creative mode or when the player is
-    -- allowed to scroll the world
-    | g ^. creativeMode || g ^. worldScrollable = False
-    -- Otherwise, if we're not viewing a robot, display static.  This
+  isStatic = case focusedRange g of
+    -- If we're not viewing a robot, display static.  This
     -- can happen if e.g. the robot we were viewing drowned.
-    | Nothing <- focusedRobot g = True
-    -- No static inside viewDist1
-    | viewDist <= viewDist1 = False
-    -- Completely static outside viewDist2
-    | viewDist > viewDist2 = True
-    -- In between, replace cell with static with a probability that
-    -- interpolates between 0 and 1 from viewDist1 to
-    -- viewDist2.
-    | otherwise = hp < 1 - cos (s * (pi / 2))
-   where
-    s = (viewDist - viewDist1) / (viewDist2 - viewDist1)
+    Nothing -> True
+    -- Don't display static if the robot is close, or when we're in
+    -- creative mode or the player is allowed to scroll the world.
+    Just Close -> False
+    -- At medium distances, replace cell with static with a
+    -- probability that increases with distance.
+    Just (MidRange s) -> hp < 1 - cos (s * (pi / 2))
+    -- Far away, everything is static.
+    Just Far -> True
