@@ -23,6 +23,8 @@ module Swarm.Web where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
+import Swarm.Language.Module
+import Swarm.Language.Syntax
 import Control.Exception (Exception (displayException), IOException, catch, throwIO)
 import Control.Lens ((^.))
 import Control.Monad (void)
@@ -33,11 +35,15 @@ import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Network.Wai qualified
+import Swarm.Language.Pipeline
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
+import Control.Lens.Plated (para)
+import Data.Tree (drawTree, Tree (Node))
+import Swarm.Language.Pretty (prettyString, prettyText)
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
 import Swarm.TUI.Model
@@ -53,7 +59,13 @@ type SwarmApi =
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
+    :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
+
+
+
+-- syntaxAsTree :: Data a => Syntax' a -> Tree (Syntax' a)
+syntaxAsTree = para Node
 
 mkApp :: IORef AppState -> Servant.Server SwarmApi
 mkApp appStateRef =
@@ -64,6 +76,7 @@ mkApp appStateRef =
     :<|> goalsGraphHandler
     :<|> uiGoalHandler
     :<|> goalsHandler
+    :<|> codeHandler
     :<|> replHandler
  where
   robotsHandler = do
@@ -93,6 +106,13 @@ mkApp appStateRef =
   goalsHandler = do
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition
+
+  codeHandler contents = do
+    return $ T.pack $ case processTermEither contents of
+      Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
+        drawTree . fmap prettyString . syntaxAsTree $ stx
+      Left x -> x
+
   replHandler = do
     appState <- liftIO (readIORef appStateRef)
     let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
