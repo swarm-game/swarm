@@ -1,8 +1,4 @@
 -- |
--- Module      :  Swarm.TUI.List
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A special modified version of 'Brick.Widgets.List.handleListEvent'

@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.TUI.View
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Code for drawing the TUI.
@@ -47,7 +43,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
-import Control.Lens hiding (Const, from)
+import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
@@ -86,7 +82,7 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability (constCaps)
+import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
@@ -752,6 +748,7 @@ drawKeyMenu s =
 
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
+  hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
@@ -779,7 +776,8 @@ drawKeyMenu s =
       [ may goal (NoHighlight, "^g", "goal")
       , may cheat (NoHighlight, "^v", "creative")
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
-      , Just (NoHighlight, "^o", "step")
+      , may isPaused (NoHighlight, "^o", "step")
+      , may (isPaused && hasDebug) (if s ^. uiState . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
       , Just (NoHighlight, "^zx", "speed")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
@@ -928,19 +926,18 @@ drawInfoPanel s
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry s e
-  Just (EquippedEntry e) ->
-    explainEntry s e
-      -- Special case: equipped logger device displays the robot's log.
-      <=> if e ^. entityName == "logger" then drawRobotLog s else emptyWidget
+  Just (EquippedEntry e) -> explainEntry s e
   _ -> txt " "
 
 explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
-  vBox
+  vBox $
     [ displayProperties $ Set.toList (e ^. entityProperties)
     , displayParagraphs (e ^. entityDescription)
     , explainRecipes s e
     ]
+      <> [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug]
+      <> [drawRobotLog s | e ^. entityCapabilities . Lens.contains CLog]
 
 displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty
@@ -1110,6 +1107,20 @@ drawRobotLog s =
     (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
       drawLogEntry (not allMe) e
 
+-- | Show the 'CESK' machine of focused robot. Puts a separator above.
+drawRobotMachine :: AppState -> Bool -> Widget Name
+drawRobotMachine s showName = case s ^. gameState . to focusedRobot of
+  Nothing -> machineLine "no selected robot"
+  Just r ->
+    vBox
+      [ machineLine $ r ^. robotName <> "#" <> r ^. robotID . to tshow
+      , txt $ r ^. machine . to prettyText
+      ]
+ where
+  tshow = T.pack . show
+  hLine t = padBottom (Pad 1) (hBorderWithLabel (txt t))
+  machineLine r = hLine $ if showName then "Machine [" <> r <> "]" else "Machine"
+
 -- | Draw one log entry with an optional robot name first.
 drawLogEntry :: Bool -> LogEntry -> Widget a
 drawLogEntry addName e = withAttr (colorLogs e) . txtWrapWith indent2 $ if addName then name else t
@@ -1146,17 +1157,19 @@ renderREPLPrompt focus repl = ps1 <+> replE
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
-drawREPL s = vBox $ latestHistory <> [currentPrompt]
+drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
  where
   -- rendered history lines fitting above REPL prompt
   latestHistory :: [Widget n]
-  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines) (repl ^. replHistory))
+  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines - debugLines) (repl ^. replHistory))
   currentPrompt :: Widget Name
   currentPrompt = case isActive <$> base of
     Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
   inputLines = 1
+  debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)
   repl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
+  mayDebug = [drawRobotMachine s True | s ^. uiState . uiShowDebug]

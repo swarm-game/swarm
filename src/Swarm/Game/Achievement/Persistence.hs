@@ -1,5 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Load/save logic for achievements.
 module Swarm.Game.Achievement.Persistence where
 
 import Control.Arrow (left)
@@ -9,8 +13,8 @@ import Data.Either (partitionEithers)
 import Data.Yaml qualified as Y
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.TUI.Model.Failure
-import Swarm.Util
+import Swarm.Game.Failure
+import Swarm.Game.ResourceLoading (getSwarmXdgDataSubdir)
 import System.Directory (
   doesDirectoryExist,
   doesFileExist,
@@ -42,7 +46,7 @@ loadAchievementsInfo = do
             return $ left (AssetNotLoaded Achievement p . CanNotParse) eitherDecodedFile
           else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
       return $ partitionEithers eithersList
-    else return ([AssetNotLoaded Achievement "." (DoesNotExist Directory)], [])
+    else return ([AssetNotLoaded Achievement "." $ DoesNotExist Directory], [])
 
 -- | Save info about achievements to XDG data directory.
 saveAchievementsInfo ::

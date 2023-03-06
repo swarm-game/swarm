@@ -3,10 +3,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
--- Module      :  Swarm.Game.CESK
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- The Swarm interpreter uses a technique known as a

@@ -2,10 +2,6 @@
 {-# LANGUAGE TypeApplications #-}
 
 -- |
--- Module      :  Swarm.Game.WorldGen
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Procedural world generation via coherent noise.

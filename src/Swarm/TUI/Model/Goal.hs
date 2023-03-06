@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A UI-centric model for Objective presentation.
 module Swarm.TUI.Model.Goal where
 

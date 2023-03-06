@@ -7,10 +7,6 @@
 -- For 'Ord IntVar' instance
 
 -- |
--- Module      :  Swarm.Language.Typecheck
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Type inference for the Swarm language.  For the approach used here,

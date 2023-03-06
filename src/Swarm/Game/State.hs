@@ -7,10 +7,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Game.State
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Definition of the record holding all the game-related state, and various related
@@ -27,10 +23,13 @@ module Swarm.Game.State (
   Announcement (..),
   RunStatus (..),
   Seed,
+  Step (..),
+  SingleStep (..),
   GameState,
 
   -- ** GameState fields
   creativeMode,
+  gameStep,
   winCondition,
   winSolution,
   gameAchievements,
@@ -120,6 +119,7 @@ import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
+import Control.Monad.Trans.Except (except)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -140,7 +140,7 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (drop, lines, pack, take)
+import Data.Text qualified as T (drop, lines, pack, take, unlines)
 import Data.Text.IO qualified as T (readFile)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
@@ -151,6 +151,8 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
@@ -159,6 +161,7 @@ import Swarm.Game.Recipe (
   outRecipeMap,
   reqRecipeMap,
  )
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.ScenarioInfo
@@ -174,7 +177,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (getDataFileNameSafe, isRightOr, uniq, (<+=), (<<.=), (?))
+import Swarm.Util (uniq, (<+=), (<<.=), (?))
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
@@ -304,11 +307,44 @@ getParsedInitialCode toRun = case toRun of
 defaultRobotStepsPerTick :: Int
 defaultRobotStepsPerTick = 100
 
+-- | Type for remebering which robots will be run next in a robot step mode.
+--
+-- Once some robots have run, we need to store RID to know which ones should go next.
+-- At 'SBefore' no robots were run yet, so it is safe to transition to and from 'WorldTick'.
+--
+-- @
+--                     tick
+--     ┌────────────────────────────────────┐
+--     │                                    │
+--     │               step                 │
+--     │              ┌────┐                │
+--     ▼              ▼    │                │
+-- ┌───────┐ step  ┌───────┴───┐ step  ┌────┴─────┐
+-- │SBefore├──────►│SSingle RID├──────►│SAfter RID│
+-- └──┬────┘       └───────────┘       └────┬─────┘
+--    │ ▲ player        ▲                   │
+--    ▼ │ switch        └───────────────────┘
+-- ┌────┴────┐             view RID > oldRID
+-- │WorldTick│
+-- └─────────┘
+-- @
+data SingleStep
+  = -- | Run the robots from the beginning until the focused robot (noninclusive).
+    SBefore
+  | -- | Run a single step of the focused robot.
+    SSingle RID
+  | -- | Run robots after the (previously) focused robot and finish the tick.
+    SAfter RID
+
+-- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
+data Step = WorldTick | RobotStep SingleStep
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
+  , _gameStep :: Step
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _gameAchievements :: Map GameplayAchievement Attainment
@@ -382,6 +418,9 @@ let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots,
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
+
+-- | How to step the game - 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
+gameStep :: Lens' GameState Step
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
@@ -820,65 +859,71 @@ deleteRobot rn = do
 
 -- | Create an initial game state record, first loading entities and
 --   recipes from disk.
-initGameState :: ExceptT Text IO GameState
+initGameState :: ExceptT Text IO ([SystemFailure], GameState)
 initGameState = do
-  let guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-  entities <- loadEntities >>= guardRight "load entities"
-  recipes <- loadRecipes entities >>= guardRight "load recipes"
-  loadedScenarios <- loadScenarios entities >>= guardRight "load scenarios"
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT prettyFailure $ loadRecipes entities
+  eitherLoadedScenarios <- liftIO $ runExceptT $ loadScenarios entities
+  let (scenarioWarnings, loadedScenarios) = case eitherLoadedScenarios of
+        Left xs -> (xs, SC mempty mempty)
+        Right (warnings, x) -> (warnings, x)
+
+  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
+    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
+    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
+    return (adjsFile, namesFile)
 
   let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
-
   (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    -- if data directory did not exist we would have failed loading scenarios
-    Just adjsFile <- getDataFileNameSafe "adjectives.txt"
     as <- tail . T.lines <$> T.readFile adjsFile
-    Just namesFile <- getDataFileNameSafe "names.txt"
     ns <- tail . T.lines <$> T.readFile namesFile
     return (as, ns)
 
-  return $
-    GameState
-      { _creativeMode = False
-      , _winCondition = NoWinCondition
-      , _winSolution = Nothing
-      , -- This does not need to be initialized with anything,
-        -- since the master list of achievements is stored in UIState
-        _gameAchievements = mempty
-      , _announcementQueue = mempty
-      , _runStatus = Running
-      , _robotMap = IM.empty
-      , _robotsByLocation = M.empty
-      , _availableRecipes = mempty
-      , _availableCommands = mempty
-      , _allDiscoveredEntities = empty
-      , _activeRobots = IS.empty
-      , _waitingRobots = M.empty
-      , _gensym = 0
-      , _seed = 0
-      , _randGen = mkStdGen 0
-      , _adjList = listArray (0, length adjs - 1) adjs
-      , _nameList = listArray (0, length names - 1) names
-      , _entityMap = entities
-      , _recipesOut = outRecipeMap recipes
-      , _recipesIn = inRecipeMap recipes
-      , _recipesReq = reqRecipeMap recipes
-      , _scenarios = loadedScenarios
-      , _currentScenarioPath = Nothing
-      , _knownEntities = []
-      , _world = W.emptyWorld (fromEnum StoneT)
-      , _worldScrollable = True
-      , _viewCenterRule = VCRobot 0
-      , _viewCenter = origin
-      , _needsRedraw = False
-      , _replStatus = REPLDone Nothing
-      , _replNextValueIndex = 0
-      , _messageQueue = Empty
-      , _lastSeenMessageTime = -1
-      , _focusedRobotID = 0
-      , _ticks = 0
-      , _robotStepsPerTick = defaultRobotStepsPerTick
-      }
+  return
+    ( scenarioWarnings
+    , GameState
+        { _creativeMode = False
+        , _gameStep = WorldTick
+        , _winCondition = NoWinCondition
+        , _winSolution = Nothing
+        , -- This does not need to be initialized with anything,
+          -- since the master list of achievements is stored in UIState
+          _gameAchievements = mempty
+        , _announcementQueue = mempty
+        , _runStatus = Running
+        , _robotMap = IM.empty
+        , _robotsByLocation = M.empty
+        , _availableRecipes = mempty
+        , _availableCommands = mempty
+        , _allDiscoveredEntities = empty
+        , _activeRobots = IS.empty
+        , _waitingRobots = M.empty
+        , _gensym = 0
+        , _seed = 0
+        , _randGen = mkStdGen 0
+        , _adjList = listArray (0, length adjs - 1) adjs
+        , _nameList = listArray (0, length names - 1) names
+        , _entityMap = entities
+        , _recipesOut = outRecipeMap recipes
+        , _recipesIn = inRecipeMap recipes
+        , _recipesReq = reqRecipeMap recipes
+        , _scenarios = loadedScenarios
+        , _currentScenarioPath = Nothing
+        , _knownEntities = []
+        , _world = W.emptyWorld (fromEnum StoneT)
+        , _worldScrollable = True
+        , _viewCenterRule = VCRobot 0
+        , _viewCenter = origin
+        , _needsRedraw = False
+        , _replStatus = REPLDone Nothing
+        , _replNextValueIndex = 0
+        , _messageQueue = Empty
+        , _lastSeenMessageTime = -1
+        , _focusedRobotID = 0
+        , _ticks = 0
+        , _robotStepsPerTick = defaultRobotStepsPerTick
+        }
+    )
 
 -- | Set a given scenario as the currently loaded scenario in the game state.
 scenarioToGameState :: Scenario -> Maybe Seed -> Maybe CodeToRun -> GameState -> IO GameState
@@ -1056,7 +1101,13 @@ initGameStateForScenario ::
   Maybe FilePath ->
   ExceptT Text IO GameState
 initGameStateForScenario sceneName userSeed toRun = do
-  g <- initGameState
+  (warnings, g) <- initGameState
+  unless (null warnings)
+    . except
+    . Left
+    . T.unlines
+    . map prettyFailure
+    $ warnings
   (scene, path) <- loadScenario sceneName (g ^. entityMap)
   maybeRunScript <- getParsedInitialCode toRun
   gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g

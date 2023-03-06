@@ -2,10 +2,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 -- |
--- Module      :  Swarm.TUI.Controller
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Event handlers for the TUI.
@@ -47,8 +43,8 @@ import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
-import Control.Lens
-import Control.Lens.Extras (is)
+import Control.Lens as Lens
+import Control.Lens.Extras as Lens (is)
 import Control.Monad.Except
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State
@@ -72,12 +68,13 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
-import Swarm.Game.Step (gameTick)
+import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Game.World qualified as W
-import Swarm.Language.Capability (Capability (CMake))
+import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
 import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
@@ -255,6 +252,9 @@ handleMainEvent ev = do
   s <- get
   mt <- preuse $ uiState . uiModal . _Just . modalType
   let isRunning = maybe True isRunningModal mt
+  let isPaused = s ^. gameState . paused
+  let isCreative = s ^. gameState . creativeMode
+  let hasDebug = fromMaybe isCreative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   case ev of
     AppEvent Frame
       | s ^. gameState . paused -> continueWithoutRedraw
@@ -287,10 +287,12 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . lastSeenMessageTime .= s ^. gameState . ticks
+    -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
         then toggleModal GoalModal
         else continueWithoutRedraw
+    -- hide robots
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiHideRobotsUntil
@@ -301,6 +303,12 @@ handleMainEvent ev = do
         do
           uiState . uiHideRobotsUntil .= t + TimeSpec 2 0
           invalidateCacheEntry WorldCache
+    -- debug focused robot
+    MetaChar 'd' | isPaused && hasDebug -> do
+      debug <- uiState . uiShowDebug Lens.<%= not
+      if debug
+        then gameState . gameStep .= RobotStep SBefore
+        else zoomGameState finishGameTick >> void updateUI
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
@@ -378,7 +386,9 @@ safeTogglePause :: EventM Name AppState ()
 safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
   uiState . lastFrameTime .= curTime
-  gameState . runStatus %= toggleRunStatus
+  uiState . uiShowDebug .= False
+  p <- gameState . runStatus Lens.<%= toggleRunStatus
+  when (p == Running) $ zoomGameState finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
 --
@@ -427,19 +437,25 @@ handleModalEvent = \case
    where
     refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
 
--- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnQuit = do
+getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
+getNormalizedCurrentScenarioPath =
+  -- the path should be normalized and good to search in scenario collection
+  use (gameState . currentScenarioPath) >>= \case
+    Nothing -> return Nothing
+    Just p' -> do
+      gs <- use $ gameState . scenarios
+      Just <$> liftIO (normalizeScenarioPath gs p')
+
+-- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
+saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnFinish = do
   -- Don't save progress if we are in cheat mode
   cheat <- use $ uiState . uiCheatMode
   unless cheat $ do
     -- the path should be normalized and good to search in scenario collection
-    mp' <- use $ gameState . currentScenarioPath
-    case mp' of
+    getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
-      Just p' -> do
-        gs <- use $ gameState . scenarios
-        p <- liftIO $ normalizeScenarioPath gs p'
+      Just p -> do
         t <- liftIO getZonedTime
         wc <- use $ gameState . winCondition
         let won = case wc of
@@ -448,7 +464,7 @@ saveScenarioInfoOnQuit = do
         ts <- use $ gameState . ticks
         let currentScenarioInfo :: Traversal' AppState ScenarioInfo
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
-        currentScenarioInfo %= updateScenarioInfoOnQuit t ts won
+        currentScenarioInfo %= updateScenarioInfoOnFinish t ts won
         status <- preuse currentScenarioInfo
         case status of
           Nothing -> return ()
@@ -461,6 +477,16 @@ saveScenarioInfoOnQuit = do
               _ -> return ()
             liftIO $ saveScenarioInfo p si
 
+-- | Write the @ScenarioInfo@ out to disk when exiting a game.
+saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnQuit = do
+  saveScenarioInfoOnFinish
+  -- Don't save progress if we are in cheat mode
+  cheat <- use $ uiState . uiCheatMode
+  unless cheat $ do
+    getNormalizedCurrentScenarioPath >>= \case
+      Nothing -> return ()
+      Just p -> do
         -- See what scenario is currently focused in the menu.  Depending on how the
         -- previous scenario ended (via quit vs. via win), it might be the same as
         -- currentScenarioPath or it might be different.
@@ -608,11 +634,12 @@ runGameTickUI :: EventM Name AppState ()
 runGameTickUI = runGameTick >> void updateUI
 
 -- | Modifies the game state using a fused-effect state action.
-zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m ()
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m a
 zoomGameState f = do
   gs <- use gameState
-  gs' <- liftIO (Fused.runM (Fused.execState gs f))
+  (gs', a) <- liftIO (Fused.runM (Fused.runState gs f))
   gameState .= gs'
+  return a
 
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
@@ -636,8 +663,8 @@ updateAchievements = do
 --   etc.).
 runGameTick :: EventM Name AppState ()
 runGameTick = do
-  zoomGameState gameTick
-  updateAchievements
+  ticked <- zoomGameState gameTick
+  when ticked updateAchievements
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -786,13 +813,13 @@ doGoalUpdates = do
       -- This clears the "flag" that the Lose dialog needs to pop up
       gameState . winCondition .= WinConditions (Unwinnable True) x
       openModal LoseModal
-
+      saveScenarioInfoOnFinish
       return True
     WinConditions (Won False) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
       gameState . winCondition .= WinConditions (Won True) x
       openModal WinModal
-
+      saveScenarioInfoOnFinish
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
       -- select 'keep playing' or 'next challenge'.  We maintain the

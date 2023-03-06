@@ -4,6 +4,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.UI (
   UIState (..),
   GoalDisplay (..),
@@ -31,6 +33,7 @@ module Swarm.TUI.Model.UI (
   lastInfoTime,
   uiShowFPS,
   uiShowZero,
+  uiShowDebug,
   uiShowRobots,
   uiHideRobotsUntil,
   uiInventoryShouldUpdate,
@@ -60,13 +63,15 @@ import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Model.Failure (SystemFailure)
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -98,6 +103,7 @@ data UIState = UIState
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowZero :: Bool
+  , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
   , _uiInventoryShouldUpdate :: Bool
   , _uiTPF :: Double
@@ -186,6 +192,11 @@ uiShowFPS :: Lens' UIState Bool
 -- | A toggle to show or hide inventory items with count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
 
+-- | A toggle to show debug.
+--
+-- TODO: #1112 use record for selection of debug features?
+uiShowDebug :: Lens' UIState Bool
+
 -- | Hide robots on the world map.
 uiHideRobotsUntil :: Lens' UIState TimeSpec
 
@@ -271,7 +282,7 @@ initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 initUIState :: Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
 initUIState showMainMenu cheatMode = do
   historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- liftIO readAppData
+  appDataMap <- withExceptT prettyFailure readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- liftIO $ getTime Monotonic
   (warnings, achievements) <- liftIO loadAchievementsInfo
@@ -294,6 +305,7 @@ initUIState showMainMenu cheatMode = do
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
           , _uiShowZero = True
+          , _uiShowDebug = False
           , _uiHideRobotsUntil = startTime - 1
           , _uiInventoryShouldUpdate = False
           , _uiTPF = 0

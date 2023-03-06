@@ -1,4 +1,7 @@
--- | A model for defining boolean expressions for Objective prerequisites.
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- A model for defining boolean expressions for Objective prerequisites.
 --
 -- This model is intended to be user-facing in the .yaml files, and is
 -- distinct from that in 'Data.BoolExpr'.

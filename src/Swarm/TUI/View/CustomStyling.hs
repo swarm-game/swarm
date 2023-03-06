@@ -1,3 +1,5 @@
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.CustomStyling where
 
 import Brick (AttrName, attrName)
@@ -30,7 +32,7 @@ toAttrColor (HexColor colorText) =
 
 toAttrPair :: CustomAttr -> (AttrName, Attr)
 toAttrPair ca =
-  (worldPrefix <> attrName (name ca), addStyle $ addFg $ addBg currentAttr)
+  (worldPrefix <> attrName (name ca), addStyle $ addFg $ addBg defAttr)
  where
   addFg = maybe id (flip withForeColor . toAttrColor) $ fg ca
   addBg = maybe id (flip withBackColor . toAttrColor) $ bg ca

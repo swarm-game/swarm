@@ -1179,3 +1179,16 @@
     enabling the command `whereami : cmd (int * int)`.
   properties: [portable]
   capabilities: [senseloc]
+
+- name: tweezers
+  display:
+    attr: device
+    char: 'V'
+  description:
+  - |
+    Sometimes small, self-reproducing creatures get stuck inside a robot's
+    relays, preventing it from executing properly.  Tweezers are
+    useful for removing such pests, and for inspecting robots' detailed
+    inner workings.
+  properties: [portable]
+  capabilities: [debug]
