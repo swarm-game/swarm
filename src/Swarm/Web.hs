@@ -25,6 +25,8 @@ import CMarkGFM qualified as CMark (commonmarkToHtml)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
+import Swarm.Language.Module
+import Swarm.Language.Syntax
 import Control.Exception (Exception (displayException), IOException, catch, throwIO)
 import Control.Lens
 import Control.Monad (void)
@@ -40,6 +42,7 @@ import Data.Text.Lazy.Encoding (encodeUtf8)
 import Network.HTTP.Types (ok200)
 import Network.Wai (responseLBS)
 import Network.Wai qualified
+import Swarm.Language.Pipeline
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Servant.Docs (ToCapture)
@@ -47,6 +50,9 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
+import Control.Lens.Plated (para)
+import Data.Tree (drawTree, Tree (Node))
+import Swarm.Language.Pretty (prettyString, prettyText)
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
 import Swarm.TUI.Model
@@ -68,6 +74,7 @@ type SwarmAPI =
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
+    :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
 
 instance ToCapture (Capture "id" RobotID) where
@@ -99,6 +106,11 @@ docsBS =
  where
   intro = SD.DocIntro "Swarm Web API" ["All of the valid endpoints are documented below."]
 
+
+
+-- syntaxAsTree :: Data a => Syntax' a -> Tree (Syntax' a)
+syntaxAsTree = para Node
+
 mkApp :: IORef AppState -> Servant.Server SwarmAPI
 mkApp appStateRef =
   robotsHandler
@@ -108,6 +120,7 @@ mkApp appStateRef =
     :<|> goalsGraphHandler
     :<|> uiGoalHandler
     :<|> goalsHandler
+    :<|> codeHandler
     :<|> replHandler
  where
   robotsHandler = do
@@ -137,6 +150,13 @@ mkApp appStateRef =
   goalsHandler = do
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition
+
+  codeHandler contents = do
+    return $ T.pack $ case processTermEither contents of
+      Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
+        drawTree . fmap prettyString . syntaxAsTree $ stx
+      Left x -> x
+
   replHandler = do
     appState <- liftIO (readIORef appStateRef)
     let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
