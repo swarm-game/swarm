@@ -749,17 +749,17 @@ data RobotRange
 --     both radii.
 --   * If the base has an @antenna@ installed, it also doubles both radii.
 focusedRange :: GameState -> Maybe RobotRange
-focusedRange g
-  | Nothing <- focusedRobot g = Nothing
-  | g ^. creativeMode || g ^. worldScrollable = Just Close
-  | r <= minRadius = Just Close
-  | r > maxRadius = Just Far
-  | otherwise = Just (MidRange $ (r - minRadius) / (maxRadius - minRadius))
+focusedRange g = computedRange <$ focusedRobot g
  where
+  computedRange
+    | g ^. creativeMode || g ^. worldScrollable || r <= minRadius = Close
+    | r > maxRadius = Far
+    | otherwise = MidRange $ (r - minRadius) / (maxRadius - minRadius)
+
   -- Euclidean distance from the base to the view center.
   r = case g ^. robotMap . at 0 of
     Just br -> euclidean (g ^. viewCenter) (br ^. robotLocation)
-    _ -> 1000000000
+    _ -> 1000000000 -- if the base doesn't exist, we have bigger problems
 
   -- See whether the base or focused robot have antennas installed.
   baseInv, focInv :: Maybe Inventory
