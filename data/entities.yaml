@@ -1149,9 +1149,10 @@
     char: 'Y'
   description:
   - A device for transforming electric current into radio waves, and
-    vice versa.
+    vice versa.  Antennas can be used to increase the viable range
+    over which you can communicate with your robots.
   - |
-    It can be used to locate nearby actors, by bouncing radio
+    Antennas can also be used to locate nearby actors, by bouncing radio
     waves off them and listening for the echo.  This capability can be
     accessed via two commands:
   - |

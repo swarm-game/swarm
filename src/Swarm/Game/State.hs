@@ -94,7 +94,10 @@ module Swarm.Game.State (
   recalcViewCenter,
   modifyViewCenter,
   viewingRegion,
+  unfocus,
   focusedRobot,
+  RobotRange (..),
+  focusedRange,
   clearFocusedRobotLogUpdated,
   addRobot,
   addTRobot,
@@ -694,6 +697,13 @@ modifyViewCenter update g =
       VCLocation l -> viewCenterRule .~ VCLocation (update l)
       VCRobot _ -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
 
+-- | "Unfocus" by modifying the view center rule to look at the
+--   current location instead of a specific robot, and also set the
+--   focused robot ID to an invalid value.  In classic mode this
+--   causes the map view to become nothing but static.
+unfocus :: GameState -> GameState
+unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
+
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
 viewingRegion :: GameState -> (Int32, Int32) -> (W.Coords, W.Coords)
@@ -707,6 +717,64 @@ viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
 focusedRobot g = g ^. robotMap . at (g ^. focusedRobotID)
+
+-- | Type for describing how far away a robot is from the base, which
+--   determines what kind of communication can take place.
+data RobotRange
+  = -- | Close; communication is perfect.
+    Close
+  | -- | Mid-range; communication is possible but lossy.
+    MidRange Double
+  | -- | Far; communication is not possible.
+    Far
+  deriving (Eq, Ord)
+
+-- | Check how far away the focused robot is from the base.  @Nothing@
+--   is returned if there is no focused robot; otherwise, return a
+--   'RobotRange' value as follows.
+--
+--   * If we are in creative or scroll-enabled mode, the focused robot is
+--   always considered 'Close'.
+--   * Otherwise, there is a "minimum radius" and "maximum radius".
+--       - If the robot is within the minimum radius, it is 'Close'.
+--       - If the robot is between the minimum and maximum radii, it
+--         is 'MidRange', with a 'Double' value ranging linearly from
+--         0 to 1 proportional to the distance from the minimum to
+--         maximum radius.  For example, 'MidRange 0.5' would indicate
+--         a robot exactly halfway between the minimum and maximum
+--         radii.
+--       - If the robot is beyond the maximum radius, it is 'Far'.
+--   * By default, the minimum radius is 16, and maximum is 64.
+--   * If the focused robot has an @antenna@ installed, it doubles
+--     both radii.
+--   * If the base has an @antenna@ installed, it also doubles both radii.
+focusedRange :: GameState -> Maybe RobotRange
+focusedRange g = computedRange <$ focusedRobot g
+ where
+  computedRange
+    | g ^. creativeMode || g ^. worldScrollable || r <= minRadius = Close
+    | r > maxRadius = Far
+    | otherwise = MidRange $ (r - minRadius) / (maxRadius - minRadius)
+
+  -- Euclidean distance from the base to the view center.
+  r = case g ^. robotMap . at 0 of
+    Just br -> euclidean (g ^. viewCenter) (br ^. robotLocation)
+    _ -> 1000000000 -- if the base doesn't exist, we have bigger problems
+
+  -- See whether the base or focused robot have antennas installed.
+  baseInv, focInv :: Maybe Inventory
+  baseInv = g ^? robotMap . ix 0 . equippedDevices
+  focInv = view equippedDevices <$> focusedRobot g
+
+  gain :: Maybe Inventory -> (Double -> Double)
+  gain (Just inv)
+    | countByName "antenna" inv > 0 = (* 2)
+  gain _ = id
+
+  -- Range radii.  Default thresholds are 16, 64; each antenna
+  -- boosts the signal by 2x.
+  minRadius, maxRadius :: Double
+  (minRadius, maxRadius) = over both (gain baseInv . gain focInv) (16, 64)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
 clearFocusedRobotLogUpdated :: Has (State GameState) sig m => m ()
