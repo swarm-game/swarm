@@ -169,6 +169,10 @@ instance PrettyPrec Term where
   prettyPrec p (TBind (Just x) t1 t2) =
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+  prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
+
+prettyEquality :: (Pretty a, PrettyPrec b) => (a, b) -> Doc ann
+prettyEquality (x, t) = pretty x <+> "=" <+> ppr t
 
 prettyTuple :: Term -> Doc a
 prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
