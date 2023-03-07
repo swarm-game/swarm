@@ -452,6 +452,9 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+  SRcd m -> do
+    m' <- traverse infer m
+    return $ Syntax' l (SRcd m') (UTyRcd (fmap (^. sType) m'))
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -654,6 +657,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
+  SRcd m -> sum <$> mapM (analyzeAtomic locals) (M.elems m)
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0

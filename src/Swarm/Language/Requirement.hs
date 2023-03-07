@@ -238,3 +238,4 @@ requirements' = go
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning mempty is safe.
     TDef {} -> mempty
+    TRcd m -> foldMap (go ctx) (M.elems m)

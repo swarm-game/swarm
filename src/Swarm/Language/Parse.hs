@@ -221,13 +221,13 @@ parseTypeAtom =
     <|> TyActor <$ reserved "actor"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
-    <|> TyRcd <$> brackets (parseRecord parseType)
+    <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
 
 parseRecord :: Parser a -> Parser (Map Var a)
 parseRecord p = Map.fromList <$> (parseBinding `sepBy` symbol ",")
  where
-  parseBinding = (,) <$> identifier <*> (symbol ":" *> p)
+  parseBinding = (,) <$> identifier <*> p
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"
@@ -285,6 +285,7 @@ parseTermAtom =
           <$> (reserved "def" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
+        <|> SRcd <$> brackets (parseRecord (symbol "=" *> parseTerm))
         <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
     -- Potential syntax for explicitly requesting memoized delay.
