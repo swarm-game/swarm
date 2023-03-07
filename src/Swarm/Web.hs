@@ -30,9 +30,11 @@ import Control.Lens ((^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (toList)
-import Data.IORef (IORef, readIORef)
+import Data.IORef (IORef, readIORef, atomicModifyIORef')
 import Data.IntMap qualified as IM
+import Data.Tuple (swap)
 import Data.Maybe (fromMaybe)
+import Control.Monad.Trans.State.Lazy (runState)
 import Data.Text qualified as T
 import Network.Wai qualified
 import Swarm.Language.Pipeline
@@ -41,9 +43,10 @@ import Servant
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
+import Swarm.TUI.Controller (runBaseWebCode)
 import Control.Lens.Plated (para)
 import Data.Tree (drawTree, Tree (Node))
-import Swarm.Language.Pretty (prettyString, prettyText)
+import Swarm.Language.Pretty (prettyString)
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
 import Swarm.TUI.Model
@@ -60,12 +63,8 @@ type SwarmApi =
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
+    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
-
-
-
--- syntaxAsTree :: Data a => Syntax' a -> Tree (Syntax' a)
-syntaxAsTree = para Node
 
 mkApp :: IORef AppState -> Servant.Server SwarmApi
 mkApp appStateRef =
@@ -76,7 +75,8 @@ mkApp appStateRef =
     :<|> goalsGraphHandler
     :<|> uiGoalHandler
     :<|> goalsHandler
-    :<|> codeHandler
+    :<|> codeRenderHandler
+    :<|> codeRunHandler
     :<|> replHandler
  where
   robotsHandler = do
@@ -107,11 +107,16 @@ mkApp appStateRef =
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition
 
-  codeHandler contents = do
+  codeRenderHandler contents = do
     return $ T.pack $ case processTermEither contents of
       Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
-        drawTree . fmap prettyString . syntaxAsTree $ stx
+        drawTree . fmap prettyString . para Node $ stx
       Left x -> x
+
+  codeRunHandler contents = do
+    foo <- liftIO $ atomicModifyIORef' appStateRef $
+      swap . runState (runBaseWebCode contents)
+    return $ T.pack foo
 
   replHandler = do
     appState <- liftIO (readIORef appStateRef)
