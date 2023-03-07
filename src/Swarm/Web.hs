@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -33,9 +34,11 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
-import Data.IORef (IORef, readIORef)
+import Data.IORef (IORef, readIORef, atomicModifyIORef')
 import Data.IntMap qualified as IM
+import Data.Tuple (swap)
 import Data.Maybe (fromMaybe)
+import Control.Monad.Trans.State.Lazy (runState)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as L
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -50,9 +53,10 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
+import Swarm.TUI.Controller (runBaseWebCode)
 import Control.Lens.Plated (para)
 import Data.Tree (drawTree, Tree (Node))
-import Swarm.Language.Pretty (prettyString, prettyText)
+import Swarm.Language.Pretty (prettyString)
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
 import Swarm.TUI.Model
@@ -66,6 +70,9 @@ newtype RobotID = RobotID Int
 instance FromHttpApiData RobotID where
   parseUrlPiece = fmap RobotID . left T.pack . readEither . T.unpack
 
+instance SD.ToSample T.Text where
+  toSamples _ = SD.noSamples
+
 type SwarmAPI =
   "robots" :> Get '[JSON] [Robot]
     :<|> "robot" :> Capture "id" RobotID :> Get '[JSON] (Maybe Robot)
@@ -75,6 +82,7 @@ type SwarmAPI =
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
+    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
 
 instance ToCapture (Capture "id" RobotID) where
@@ -106,11 +114,6 @@ docsBS =
  where
   intro = SD.DocIntro "Swarm Web API" ["All of the valid endpoints are documented below."]
 
-
-
--- syntaxAsTree :: Data a => Syntax' a -> Tree (Syntax' a)
-syntaxAsTree = para Node
-
 mkApp :: IORef AppState -> Servant.Server SwarmAPI
 mkApp appStateRef =
   robotsHandler
@@ -120,7 +123,8 @@ mkApp appStateRef =
     :<|> goalsGraphHandler
     :<|> uiGoalHandler
     :<|> goalsHandler
-    :<|> codeHandler
+    :<|> codeRenderHandler
+    :<|> codeRunHandler
     :<|> replHandler
  where
   robotsHandler = do
@@ -151,11 +155,16 @@ mkApp appStateRef =
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition
 
-  codeHandler contents = do
+  codeRenderHandler contents = do
     return $ T.pack $ case processTermEither contents of
       Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
-        drawTree . fmap prettyString . syntaxAsTree $ stx
+        drawTree . fmap prettyString . para Node $ stx
       Left x -> x
+
+  codeRunHandler contents = do
+    foo <- liftIO $ atomicModifyIORef' appStateRef $
+      swap . runState (runBaseWebCode contents)
+    return $ T.pack foo
 
   replHandler = do
     appState <- liftIO (readIORef appStateRef)
