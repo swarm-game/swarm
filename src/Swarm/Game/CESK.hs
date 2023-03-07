@@ -85,6 +85,7 @@ import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
+import Data.Map.Strict (Map)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), hsep, (<+>))
 import Swarm.Game.Entity (Count, Entity)
@@ -169,6 +170,10 @@ data Frame
     --   nearby robots.  We have the function to run, and the list of
     --   robot IDs to run it on.
     FMeetAll Value [Int]
+  | -- | We are in the middle of evaluating a record: some fields have
+    --   already been evaluated; we are focusing on evaluating one
+    --   field; and some fields have yet to be evaluated.
+    FRcd Env [(Var, Value)] Var [(Var, Term)]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.

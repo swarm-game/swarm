@@ -19,6 +19,7 @@ module Swarm.Language.Value (
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bool (bool)
 import Data.List (foldl')
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
@@ -81,6 +82,8 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
+  -- | A record value.
+  VRcd :: Map Var Value -> Value
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Ensure that a value is not wrapped in 'VResult'.
@@ -113,6 +116,7 @@ valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TRef n
+valueToTerm (VRcd m) = TRcd (valueToTerm <$> m)
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value
