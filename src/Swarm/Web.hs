@@ -23,32 +23,32 @@ module Swarm.Web where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
-import Swarm.Language.Module
-import Swarm.Language.Syntax
 import Control.Exception (Exception (displayException), IOException, catch, throwIO)
 import Control.Lens ((^.))
+import Control.Lens.Plated (para)
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
-import Data.Foldable (toList)
-import Data.IORef (IORef, readIORef, atomicModifyIORef')
-import Data.IntMap qualified as IM
-import Data.Tuple (swap)
-import Data.Maybe (fromMaybe)
 import Control.Monad.Trans.State.Lazy (runState)
+import Data.Foldable (toList)
+import Data.IORef (IORef, atomicModifyIORef', readIORef)
+import Data.IntMap qualified as IM
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Data.Tree (Tree (Node), drawTree)
+import Data.Tuple (swap)
 import Network.Wai qualified
-import Swarm.Language.Pipeline
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
-import Swarm.TUI.Controller (runBaseWebCode)
-import Control.Lens.Plated (para)
-import Data.Tree (drawTree, Tree (Node))
-import Swarm.Language.Pretty (prettyString)
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
+import Swarm.Language.Module
+import Swarm.Language.Pipeline
+import Swarm.Language.Pretty (prettyString)
+import Swarm.Language.Syntax
+import Swarm.TUI.Controller (runBaseWebCode)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
@@ -114,8 +114,10 @@ mkApp appStateRef =
       Left x -> x
 
   codeRunHandler contents = do
-    foo <- liftIO $ atomicModifyIORef' appStateRef $
-      swap . runState (runBaseWebCode contents)
+    foo <-
+      liftIO $
+        atomicModifyIORef' appStateRef $
+          swap . runState (runBaseWebCode contents)
     return $ T.pack foo
 
   replHandler = do
