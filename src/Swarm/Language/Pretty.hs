@@ -14,6 +14,7 @@ import Control.Unification
 import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.Map.Strict qualified as M
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -83,6 +84,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
   prettyPrec p (TyFunF ty1 ty2) =
     pparens (p > 0) $
       prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
+  prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
@@ -95,8 +97,9 @@ instance PrettyPrec UPolytype where
 instance PrettyPrec t => PrettyPrec (Ctx t) where
   prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
-   where
-    prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
+
+prettyBinding :: (Pretty a, PrettyPrec b) => (a, b) -> Doc ann
+prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
   prettyPrec _ = pretty . directionSyntax

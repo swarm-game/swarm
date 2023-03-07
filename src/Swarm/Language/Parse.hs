@@ -39,6 +39,7 @@ import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (nub)
 import Data.List.NonEmpty qualified (head)
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
@@ -166,6 +167,9 @@ braces = between (symbol "{") (symbol "}")
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+brackets :: Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")
+
 --------------------------------------------------
 -- Parser
 
@@ -217,7 +221,13 @@ parseTypeAtom =
     <|> TyActor <$ reserved "actor"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
+    <|> TyRcd <$> brackets (parseRecord parseType)
     <|> parens parseType
+
+parseRecord :: Parser a -> Parser (Map Var a)
+parseRecord p = Map.fromList <$> (parseBinding `sepBy` symbol ",")
+ where
+  parseBinding = (,) <$> identifier <*> (symbol ":" *> p)
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"
