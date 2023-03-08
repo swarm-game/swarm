@@ -73,7 +73,7 @@ handleCtrlLeftClick mouseLoc = do
     let getSelected x = snd <$> BL.listSelectedElement x
         maybeTerrainType = getSelected $ worldEditor ^. terrainList
         maybeEntityPaint = getSelected $ worldEditor ^. entityPaintList
-    -- TODO: Use hoistMaybe when available
+    -- TODO (#1151): Use hoistMaybe when available
     terrain <- MaybeT . pure $ maybeTerrainType
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
     uiState . uiWorldEditor . paintedTerrain %= M.insert mouseCoords (terrain, maybeEntityPaint)
@@ -140,7 +140,7 @@ updateAreaBounds = \case
       UpperLeftPending -> do
         uiState . uiWorldEditor . editingBounds . boundsSelectionStep .= LowerRightPending mouseCoords
         return False
-      -- TODO: Validate that the lower-right click is below and to the right of the top-left coord
+      -- TODO (#1152): Validate that the lower-right click is below and to the right of the top-left coord
       LowerRightPending upperLeftMouseCoords -> do
         uiState . uiWorldEditor . editingBounds . boundsRect
           .= Just (upperLeftMouseCoords, mouseCoords)
@@ -217,7 +217,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
       let cell = Cell terrain (Just $ EntityFacade eName eDisplay) []
       return ((terrain, Just eName), (T.singleton displayChar, cell))
 
-  -- TODO: Filter out terrain-only palette entries that aren't actually
+  -- TODO (#1153): Filter out terrain-only palette entries that aren't actually
   -- used in the map.
   terrainOnlyPalette :: Map TerrainEntityNamePair (T.Text, CellPaintDisplay)
   terrainOnlyPalette = M.fromList $ map f U.listEnums

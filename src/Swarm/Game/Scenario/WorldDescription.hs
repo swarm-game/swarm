@@ -173,7 +173,7 @@ prepForJson (WorldPalette suggestedPalette) cellGrid =
 
   unassignedCharacters :: Set.Set Char
   unassignedCharacters =
-    -- TODO: How can we efficiently use the Unicode categories (in "Data.Char")
+    -- TODO (#1149): How can we efficiently use the Unicode categories (in "Data.Char")
     -- to generate this pool?
     Set.difference genericCharacterPool $
       Set.fromList $
