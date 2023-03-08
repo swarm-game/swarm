@@ -293,7 +293,7 @@ drawGameUI s =
                   )
                   $ drawInfoPanel s
               ]
-        , vBox rightPanel 
+        , vBox rightPanel
         ]
   ]
  where
@@ -310,37 +310,35 @@ drawGameUI s =
   moreBot = s ^. uiState . uiMoreInfoBot
   showREPL = s ^. uiState . uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel
-  worldPanel = 
-    [ 
-      panel
-      highlightAttr
-      fr
-      (FocusablePanel WorldPanel)
-      ( plainBorder
-        & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
-        & topLabels . leftLabel ?~ drawModalMenu s
-        & addCursorPos
-        & addClock
-      )
-      (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
-      , drawKeyMenu s
+  worldPanel =
+    [ panel
+        highlightAttr
+        fr
+        (FocusablePanel WorldPanel)
+        ( plainBorder
+            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+            & topLabels . leftLabel ?~ drawModalMenu s
+            & addCursorPos
+            & addClock
+        )
+        (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
+    , drawKeyMenu s
     ]
-  replPanel = 
-    [
-      clickable (FocusablePanel REPLPanel) $
+  replPanel =
+    [ clickable (FocusablePanel REPLPanel) $
         panel
           highlightAttr
-            fr
-            (FocusablePanel REPLPanel)
-            ( plainBorder
-                & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
-            )
-            ( vLimit replHeight
-                . padBottom Max
-                . padLeftRight 1
-                $ drawREPL s
-            )
-    ] 
+          fr
+          (FocusablePanel REPLPanel)
+          ( plainBorder
+              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
+          )
+          ( vLimit replHeight
+              . padBottom Max
+              . padLeftRight 1
+              $ drawREPL s
+          )
+    ]
 
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g coords@(W.Coords (y, x)) =
