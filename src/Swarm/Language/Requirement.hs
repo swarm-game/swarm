@@ -239,3 +239,4 @@ requirements' = go
     -- so simply returning mempty is safe.
     TDef {} -> mempty
     TRcd m -> foldMap (go ctx) (M.elems m)
+    TProj t _ -> go ctx t

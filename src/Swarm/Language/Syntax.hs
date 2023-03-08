@@ -57,6 +57,7 @@ module Swarm.Language.Syntax (
   pattern TBind,
   pattern TDelay,
   pattern TRcd,
+  pattern TProj,
 
   -- * Terms
   Var,
@@ -792,6 +793,8 @@ data Term' ty
     SDelay DelayType (Syntax' ty)
   | -- | Record literals @[x1 = e1, x2 = e2, ...]@
     SRcd (Map Var (Syntax' ty))
+  | -- | Record projection @e.x@
+    SProj (Syntax' ty) Var
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- The Traversable instance for Term (and for Syntax') is used during
@@ -908,8 +911,11 @@ pattern TRcd m <- SRcd (fmap _sTerm -> m)
   where
     TRcd m = SRcd (fmap STerm m)
 
+pattern TProj :: Term -> Var -> Term
+pattern TProj t x = SProj (STerm t) x
+
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
@@ -971,6 +977,7 @@ erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
 erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
 erase (SRcd m) = TRcd (fmap eraseS m)
+erase (SProj s x) = TProj (eraseS s) x
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1013,6 +1020,7 @@ freeVarsS f = go S.empty
     SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> traverse (go bound) m
+    SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 

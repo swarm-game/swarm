@@ -237,6 +237,11 @@ data TypeErr
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
     CantInfer SrcLoc Term
+  | -- | We can't infer the type of a record projection @r.x@ if we
+    --   don't concretely know the type of the record @r@.
+    CantInferProj SrcLoc Term
+  | -- | An attempt to project out a nonexistent field
+    UnknownProj SrcLoc Var Term
   | -- | An invalid argument was provided to @atomic@.
     InvalidAtomic SrcLoc InvalidAtomicReason Term
   deriving (Show)
@@ -267,6 +272,8 @@ getTypeErrSrcLoc te = case te of
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
+  CantInferProj l _ -> Just l
+  UnknownProj l _ _ -> Just l
   InvalidAtomic l _ _ -> Just l
 
 ------------------------------------------------------------
@@ -455,6 +462,13 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SRcd m -> do
     m' <- traverse infer m
     return $ Syntax' l (SRcd m') (UTyRcd (fmap (^. sType) m'))
+  SProj t1 x -> do
+    t1' <- infer t1
+    case t1' ^. sType of
+      UTyRcd m -> case M.lookup x m of
+        Just xTy -> return $ Syntax' l (SProj t1' x) xTy
+        Nothing -> throwError $ UnknownProj l x (SProj t1 x)
+      _ -> throwError $ CantInferProj l (SProj t1 x)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
