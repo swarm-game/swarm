@@ -49,6 +49,7 @@ import Data.Text qualified as T
 import Data.Void
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Swarm.Util (findDup)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -225,9 +226,12 @@ parseTypeAtom =
     <|> parens parseType
 
 parseRecord :: Parser a -> Parser (Map Var a)
-parseRecord p = Map.fromList <$> (parseBinding `sepBy` symbol ",")
+parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
  where
   parseBinding = (,) <$> identifier <*> p
+  fromListUnique kvs = case findDup (map fst kvs) of
+    Nothing -> return $ Map.fromList kvs
+    Just x -> fail $ "duplicate field name '" ++ from @Text x ++ "' in record literal"
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"

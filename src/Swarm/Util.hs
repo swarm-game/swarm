@@ -16,6 +16,7 @@ module Swarm.Util (
   listEnums,
   uniq,
   binTuples,
+  findDup,
 
   -- * Directory utilities
   readFileMay,
@@ -144,6 +145,15 @@ binTuples ::
 binTuples = foldr f mempty
  where
   f = uncurry (M.insertWith (<>)) . fmap pure
+
+-- | Find a duplicate element within the list, if any exists.
+findDup :: Ord a => [a] -> Maybe a
+findDup = go S.empty
+ where
+  go _ [] = Nothing
+  go seen (a : as)
+    | a `S.member` seen = Just a
+    | otherwise = go (S.insert a seen) as
 
 ------------------------------------------------------------
 -- Directory stuff
