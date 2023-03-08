@@ -85,9 +85,8 @@ import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.Map.Strict (Map)
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..), hsep, (<+>))
+import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
 import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
 import Swarm.Game.World (WorldUpdate (..))
@@ -373,6 +372,11 @@ prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> p
 prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner
 prettyFrame FFinishAtomic inner = prettyPrefix "A·" inner
 prettyFrame (FMeetAll _ _) inner = prettyPrefix "M·" inner
+prettyFrame (FRcd _ done foc todo) (_, inner) = (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pTodo))
+ where
+  pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
+  pFoc = pretty foc <+> "=" <+> inner
+  pTodo = map (\(x, t) -> pretty x <+> "=" <+> ppr t) todo
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these
