@@ -687,14 +687,15 @@ stepCESK cesk = case cesk of
         evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
-  -- XXX records.  Need a new kind of frame that keeps track of our
-  -- position in the middle of evaluating a record ---
-  -- already-evaluated fields to one side and yet-to-be-evaluated
-  -- fields on the other.
+  -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
+  -- on the first field and record the rest in a FRcd frame.
   In (TRcd m) e s k -> return $ case M.assocs m of
     [] -> Out (VRcd M.empty) s k
     ((x, t) : fs) -> In t e s (FRcd e [] x fs : k)
+  -- When we finish evaluating the last field, return a record value.
   Out v s (FRcd _ done x [] : k) -> return $ Out (VRcd (M.fromList ((x, v) : done))) s k
+  -- Otherwise, save the value of the field just evaluated and move on
+  -- to focus on evaluating the next one.
   Out v s (FRcd e done x ((y, t) : todo) : k) ->
     return $ In t e s (FRcd e ((x, v) : done) y todo : k)
   -- To evaluate non-recursive let expressions, we start by focusing on the
