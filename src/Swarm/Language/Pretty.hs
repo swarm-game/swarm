@@ -170,6 +170,7 @@ instance PrettyPrec Term where
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
+  prettyPrec _ (TProj t x) = prettyPrec 11 t <> "." <> pretty x
 
 prettyEquality :: (Pretty a, PrettyPrec b) => (a, b) -> Doc ann
 prettyEquality (x, t) = pretty x <+> "=" <+> ppr t
@@ -204,6 +205,8 @@ instance PrettyPrec TypeErr where
     "Definitions may only be at the top level:" <+> ppr t
   prettyPrec _ (CantInfer _ t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
+  prettyPrec _ (CantInferProj _ _) = "XXX can't infer projection"
+  prettyPrec _ (UnknownProj _ _ _) = "XXX unknown projection"
   prettyPrec _ (InvalidAtomic _ reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
 

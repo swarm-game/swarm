@@ -37,7 +37,7 @@ import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
 import Data.Foldable (asum)
-import Data.List (nub)
+import Data.List (foldl', nub)
 import Data.List.NonEmpty qualified (head)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -257,8 +257,17 @@ parseLocG pa = do
 parseLoc :: Parser Term -> Parser Syntax
 parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
+-- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
+--   Record projection binds more tightly than function application.
 parseTermAtom :: Parser Syntax
-parseTermAtom =
+parseTermAtom = do
+  s1 <- parseTermAtom2
+  ps <- many (symbol "." *> parseLocG identifier)
+  return $ foldl' (\(Syntax l1 t) (l2, x) -> Syntax (l1 <> l2) (TProj t x)) s1 ps
+
+-- | Parse an atomic term.
+parseTermAtom2 :: Parser Syntax
+parseTermAtom2 =
   parseLoc
     ( TUnit <$ symbol "()"
         <|> TConst <$> parseConst
