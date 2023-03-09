@@ -1,3 +1,6 @@
+packages:
+- .
+- gen-scenario 
 extra-deps:
 - fused-effects-lens-1.2.0.1@sha256:675fddf183215b6f3c1f2a0823359a648756435fd1966284e61830ec28ad61fa,1466
 - hsnoise-0.0.3@sha256:260b39175b8a3e3b1719ad3987b7d72a3fd7a0fa99be8639b91cf4dc3f1c8796,1476

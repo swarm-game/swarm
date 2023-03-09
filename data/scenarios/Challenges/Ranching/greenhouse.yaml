@@ -6,26 +6,67 @@ description: |
 creative: false
 seed: 0
 attrs:
+  - name: fuchsia
+    fg: "#dd00cc"
+    bg: "#000000"
+  - name: azalea
+    fg: "#ff7788"
+    bg: "#000000"
+  - name: daffodil
+    fg: "#FAFA33"
+  - name: zinnia
+    fg: "#bFeF20"
+    bg: "#000000"
+  - name: poppy
+    fg: "#ff5238"
+    bg: "#000000"
+  - name: hibiscus
+    fg: "#ff2222"
+    bg: "#000000"
   - name: marigold
     fg: "#eba832"
+    bg: "#000000"
   - name: skyBlue
     fg: "#87CEEB"
+    bg: "#000000"
+  - name: lupine
+    fg: "#479EaB"
+    bg: "#000000"
   - name: peach
     fg: "#FFE5B4"
+    bg: "#000000"
+  - name: hydrangea
+    fg: "#aaffaa"
+    bg: "#000000"
+  - name: pansy
+    fg: "#220044"
+    bg: "#000000"
+  - name: dahlia
+    fg: "#440022"
+    bg: "#000000"
   - name: chrysanthemum
-    fg: "#88ff88"
+    fg: "#77ff77"
+    bg: "#000000"
   - name: thistle
     fg: "#D8BFD8"
-    
+    bg: "#000000"
+  - name: soil
+    fg: "#eab64f"
+    bg: "#27221c"
+  - name: planterbox
+    fg: "#964B00"
+    bg: "#5C4033"
 robots:
   - name: base
-    dir: [0, 1]
+    dir: [1, 0]
     devices:
       - branch predictor
       - treads
       - antenna
       - comparator
+      - ADT calculator
       - workbench
+      - clock
       - grabber
       - dictionary
       - lambda
@@ -34,7 +75,6 @@ robots:
       - hearing aid
       - scanner
       - strange loop
-
   - name: planter
     system: true
     dir: [1, 0]
@@ -47,12 +87,33 @@ robots:
 solution: |
    run "scenarios/Challenges/Ranching/_greenhouse/solution.sw"
 entities:
-  - name: rose
+  - name: azalea
     display:
-      char: '@'
-      attr: 'red'
+      char: '*'
+      attr: 'azalea'
     description:
-      - Roses are red.
+      - azalea.
+    properties: [known, portable, growable]
+  - name: chrysanthemum
+    display:
+      char: '*'
+      attr: 'chrysanthemum'
+    description:
+      - chrysanthemum.
+    properties: [known, portable, growable]
+  - name: daffodil
+    display:
+      char: '*'
+      attr: 'daffodil'
+    description:
+      - daffodil.
+    properties: [known, portable, growable]
+  - name: dahlia
+    display:
+      char: '*'
+      attr: 'dahlia'
+    description:
+      - dahlia.
     properties: [known, portable, growable]
   - name: daisy
     display:
@@ -68,6 +129,34 @@ entities:
     description:
       - lily.
     properties: [known, portable, growable]
+  - name: hibiscus
+    display:
+      char: '*'
+      attr: 'hibiscus'
+    description:
+      - hibiscus.
+    properties: [known, portable, growable]
+  - name: hydrangea
+    display:
+      char: '*'
+      attr: 'hydrangea'
+    description:
+      - hydrangea.
+    properties: [known, portable, growable]
+  - name: iris
+    display:
+      char: '*'
+      attr: 'blue'
+    description:
+      - iris.
+    properties: [known, portable, growable]
+  - name: lupine
+    display:
+      char: '*'
+      attr: 'lupine'
+    description:
+      - lupine.
+    properties: [known, portable, growable]
   - name: marigold
     display:
       char: '*'
@@ -75,19 +164,40 @@ entities:
     description:
       - marigold.
     properties: [known, portable, growable]
-  - name: tulip
-    display:
-      char: 'u'
-      attr: 'orange'
-    description:
-      - tulip.
-    properties: [known, portable, growable]
-  - name: chrysanthemum
+  - name: morning glory
     display:
       char: '*'
-      attr: 'chrysanthemum'
+      attr: 'skyBlue'
     description:
-      - chrysanthemum.
+      - morning glory.
+    properties: [known, portable, growable]
+  - name: pansy
+    display:
+      char: '*'
+      attr: 'pansy'
+    description:
+      - pansy.
+    properties: [known, portable, growable]
+  - name: peony
+    display:
+      char: '*'
+      attr: 'fuchsia'
+    description:
+      - peony.
+    properties: [known, portable, growable]
+  - name: poppy
+    display:
+      char: '*'
+      attr: 'poppy'
+    description:
+      - poppy.
+    properties: [known, portable, growable]
+  - name: rose
+    display:
+      char: '*'
+      attr: 'red'
+    description:
+      - Roses are red.
     properties: [known, portable, growable]
   - name: sunflower
     display:
@@ -98,46 +208,116 @@ entities:
     properties: [known, portable, growable]
   - name: thistle
     display:
-      char: 'w'
+      char: '*'
       attr: 'thistle'
     description:
       - thistle.
     properties: [known, portable, growable]
-  - name: dahlia
+  - name: tulip
     display:
       char: '*'
       attr: 'peach'
     description:
-      - peach.
+      - tulip.
     properties: [known, portable, growable]
-  - name: morning glory
-    display:
-      char: 'o'
-      attr: 'skyBlue'
-    description:
-      - morning glory.
-    properties: [known, portable, growable]
-  - name: iris
+  - name: zinnia
     display:
       char: '*'
-      attr: 'blue'
+      attr: 'zinnia'
     description:
-      - iris.
+      - zinnia.
     properties: [known, portable, growable]
+  - name: planter box receptacle
+    display:
+      char: '_'
+      attr: 'soil'
+    description:
+      - Plant flowers here.
+    properties: [known]
+  - name: planter box wall
+    display:
+      char: '|'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: planter box edge
+    display:
+      char: '\'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: planter box lip
+    display:
+      char: '_'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: planter box column
+    display:
+      char: '|'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse vertical wall
+    display:
+      char: '|'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse horizontal wall
+    display:
+      char: '_'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse left slope
+    display:
+      char: '/'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse right slope
+    display:
+      char: '\'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
 known: []
 world:
   default: [grass]
   upperleft: [0, 0]
   offset: false
   palette:
-    ".": [grass]
-    Ω: [grass, null, base]
-    p: [grass, null, planter]
+    ".": [blank]
+    Ω: [blank, null, base]
+    p: [blank, null, planter]
+    "/": [blank, greenhouse left slope]
+    "\\": [blank, greenhouse right slope]
+    "|": [blank, greenhouse vertical wall]
+    "_": [blank, greenhouse horizontal wall]
+    e: [blank, planter box edge]
+    c: [blank, planter box column]
+    r: [blank, planter box receptacle]
+    q: [blank, planter box lip]
+    
   map: |
-    .................
-    .................
-    ........Ω........
-    .................
-    ..p..............
-    .................
+    ...................Ω.p...............................
+    ..............__________________________________.....
+    ............./\.................................\....
+    ............/..\.................................\...
+    .........../....\.................................|..
+    ..........|......|....qqqqqqqqqqqqqqqqqqqqq.......|..
+    ..........|......|...cerrrrrrrrrrrrrrrrrrrre......|..
+    ..........|..__..|.......qqqqqqqqqqqqqqqqqqqqq....|..
+    ..........|.|..|.|......cerrrrrrrrrrrrrrrrrrrre...|..
+    ..........|_|/.|_|________________________________|..
+    .....................................................
     
