@@ -3,3 +3,5 @@ restylers:
   - fourmolu:
       arguments:
         []
+      include:
+        - "!gen-scenario/**"

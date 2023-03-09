@@ -209,6 +209,7 @@ testScenarioSolution _ci _em =
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
+            , testSolution (Sec 30) "Challenges/Ranching/greenhouse"
             ]
         , testGroup
             "Sokoban"
