@@ -1,0 +1,143 @@
+version: 1
+name: Greenhouse
+author: Karl Ostmo
+description: |
+  Curate flower varieties
+creative: false
+seed: 0
+attrs:
+  - name: marigold
+    fg: "#eba832"
+  - name: skyBlue
+    fg: "#87CEEB"
+  - name: peach
+    fg: "#FFE5B4"
+  - name: chrysanthemum
+    fg: "#88ff88"
+  - name: thistle
+    fg: "#D8BFD8"
+    
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - branch predictor
+      - treads
+      - antenna
+      - comparator
+      - workbench
+      - grabber
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - hearing aid
+      - scanner
+      - strange loop
+
+  - name: planter
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: false
+    devices:
+      - logger
+    program: |
+      run "scenarios/Challenges/Ranching/_greenhouse/planter.sw"
+solution: |
+   run "scenarios/Challenges/Ranching/_greenhouse/solution.sw"
+entities:
+  - name: rose
+    display:
+      char: '@'
+      attr: 'red'
+    description:
+      - Roses are red.
+    properties: [known, portable, growable]
+  - name: daisy
+    display:
+      char: '*'
+      attr: 'white'
+    description:
+      - daisy.
+    properties: [known, portable, growable]
+  - name: lily
+    display:
+      char: '*'
+      attr: 'white'
+    description:
+      - lily.
+    properties: [known, portable, growable]
+  - name: marigold
+    display:
+      char: '*'
+      attr: 'marigold'
+    description:
+      - marigold.
+    properties: [known, portable, growable]
+  - name: tulip
+    display:
+      char: 'u'
+      attr: 'orange'
+    description:
+      - tulip.
+    properties: [known, portable, growable]
+  - name: chrysanthemum
+    display:
+      char: '*'
+      attr: 'chrysanthemum'
+    description:
+      - chrysanthemum.
+    properties: [known, portable, growable]
+  - name: sunflower
+    display:
+      char: '*'
+      attr: 'gold'
+    description:
+      - sunflower.
+    properties: [known, portable, growable]
+  - name: thistle
+    display:
+      char: 'w'
+      attr: 'thistle'
+    description:
+      - thistle.
+    properties: [known, portable, growable]
+  - name: dahlia
+    display:
+      char: '*'
+      attr: 'peach'
+    description:
+      - peach.
+    properties: [known, portable, growable]
+  - name: morning glory
+    display:
+      char: 'o'
+      attr: 'skyBlue'
+    description:
+      - morning glory.
+    properties: [known, portable, growable]
+  - name: iris
+    display:
+      char: '*'
+      attr: 'blue'
+    description:
+      - iris.
+    properties: [known, portable, growable]
+known: []
+world:
+  default: [grass]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    ".": [grass]
+    Ω: [grass, null, base]
+    p: [grass, null, planter]
+  map: |
+    .................
+    .................
+    ........Ω........
+    .................
+    ..p..............
+    .................
+    
