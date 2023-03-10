@@ -205,8 +205,10 @@ instance PrettyPrec TypeErr where
     "Definitions may only be at the top level:" <+> ppr t
   prettyPrec _ (CantInfer _ t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
-  prettyPrec _ (CantInferProj _ _) = "XXX can't infer projection"
-  prettyPrec _ (UnknownProj _ _ _) = "XXX unknown projection"
+  prettyPrec _ (CantInferProj _ t) =
+    "Can't infer the type of a record projection:" <+> ppr t
+  prettyPrec _ (UnknownProj _ x t) =
+    "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
   prettyPrec _ (InvalidAtomic _ reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
 
