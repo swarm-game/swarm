@@ -698,6 +698,15 @@ stepCESK cesk = case cesk of
   -- to focus on evaluating the next one.
   Out v s (FRcd e done x ((y, t) : todo) : k) ->
     return $ In t e s (FRcd e ((x, v) : done) y todo : k)
+  -- Evaluate a record projection: evaluate the record and remember we
+  -- need to do the projection later.
+  In (TProj t x) e s k -> return $ In t e s (FProj x : k)
+  -- Do a record projection
+  Out v s (FProj x : k) -> case v of
+    FRcd m -> case M.lookup x m of
+      Nothing -> badMachineState s $ "Record projection for variable " ++ x ++ " that does not exist"
+      Just v -> return $ Out v s k
+    _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
