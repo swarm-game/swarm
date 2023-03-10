@@ -597,10 +597,16 @@ inferConst c = case c of
 -- | @check t ty@ checks that @t@ has type @ty@, returning a
 --   type-annotated AST if so.
 check :: Syntax -> UType -> Infer (Syntax' UType)
-check t ty = do
-  Syntax' l t' ty' <- infer t
-  theTy <- ty =:= ty'
-  return $ Syntax' l t' theTy
+check s@(Syntax l t) ty = (`catchError` addLocToTypeErr s) $ case t of
+  SLam x xTy body -> do
+    (argTy, resTy) <- decomposeFunTy ty
+    _ <- maybe (return argTy) (=:= argTy) (toU xTy)
+    body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
+    return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
+  _ -> do
+    Syntax' l' t' ty' <- infer s
+    theTy <- ty =:= ty'
+    return $ Syntax' l' t' theTy
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
