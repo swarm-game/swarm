@@ -30,7 +30,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (foldM, forM, forM_, guard, msum, unless, when)
+import Control.Monad (foldM, forM, forM_, guard, msum, unless, when, zipWithM)
 import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
@@ -2288,6 +2288,8 @@ compareValues v1 = case v1 of
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
     v2 -> incompatCmp v1 v2
+  VRcd v1 -> \case
+    VRcd v2 -> mconcat <$> zipWithM compareValues (M.elems v1) (M.elems v2)
   VClo {} -> incomparable v1
   VCApp {} -> incomparable v1
   VDef {} -> incomparable v1
