@@ -374,11 +374,11 @@ prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> p
 prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner
 prettyFrame FFinishAtomic inner = prettyPrefix "A·" inner
 prettyFrame (FMeetAll _ _) inner = prettyPrefix "M·" inner
-prettyFrame (FRcd _ done foc todo) (_, inner) = (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pTodo))
+prettyFrame (FRcd _ done foc rest) (_, inner) = (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))
  where
   pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
   pFoc = pretty foc <+> "=" <+> inner
-  pTodo = map (\(x, t) -> pretty x <+> "=" <+> ppr t) todo
+  pRest = map (\(x, t) -> pretty x <+> "=" <+> ppr t) rest
 prettyFrame (FProj x) (p, inner) = (11, pparens (p < 11) inner <> "." <> pretty x)
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
