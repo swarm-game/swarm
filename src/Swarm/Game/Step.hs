@@ -2288,8 +2288,9 @@ compareValues v1 = case v1 of
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
     v2 -> incompatCmp v1 v2
-  VRcd v1 -> \case
-    VRcd v2 -> mconcat <$> zipWithM compareValues (M.elems v1) (M.elems v2)
+  VRcd m1 -> \case
+    VRcd m2 -> mconcat <$> zipWithM compareValues (M.elems m1) (M.elems m2)
+    v2 -> incompatCmp v1 v2
   VClo {} -> incomparable v1
   VCApp {} -> incomparable v1
   VDef {} -> incomparable v1
