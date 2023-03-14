@@ -112,6 +112,8 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   SBind mlv s1@(Syntax' _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
+  SRcd m -> undefined -- XXX
+  SProj s1 _ -> d s1
   -- atoms - return their position and end recursion
   TUnit -> Nothing
   TConst {} -> Nothing
@@ -122,6 +124,7 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   TVar {} -> Nothing
   TRequire {} -> Nothing
   TRequireDevice {} -> Nothing
+  TExport -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
   TRobot {} -> Nothing
@@ -169,6 +172,7 @@ instance ExplainableType Polytype where
     t -> t
   eq = (==)
 
+-- XXX update for record stuff
 explain :: ExplainableType ty => Syntax' ty -> Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."

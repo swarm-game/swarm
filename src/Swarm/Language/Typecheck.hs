@@ -45,6 +45,7 @@ module Swarm.Language.Typecheck (
 
 import Control.Category ((>>>))
 import Control.Lens ((^.))
+import Control.Lens.Indexed (itraverse)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Unification hiding (applyBindings, (=:=))
@@ -460,8 +461,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
   SRcd m -> do
-    m' <- traverse infer m
-    return $ Syntax' l (SRcd m') (UTyRcd (fmap (^. sType) m'))
+    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
+    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
   SProj t1 x -> do
     t1' <- infer t1
     case t1' ^. sType of
@@ -469,6 +470,9 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         Just xTy -> return $ Syntax' l (SProj t1' x) xTy
         Nothing -> throwError $ UnknownProj l x (SProj t1 x)
       _ -> throwError $ CantInferProj l (SProj t1 x)
+  TExport -> do
+    c <- ask >>= traverse instantiate
+    return $ Syntax' l TExport (UTyRcd (unCtx c))
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -677,7 +681,13 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
-  SRcd m -> sum <$> mapM (analyzeAtomic locals) (M.elems m)
+  SRcd m -> sum <$> mapM analyzeField (M.assocs m)
+   where
+    analyzeField :: (Var, Maybe Syntax) -> Infer Int
+    analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
+    analyzeField (_, Just s) = analyzeAtomic locals s
+  SProj {} -> return 0
+  TExport -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0

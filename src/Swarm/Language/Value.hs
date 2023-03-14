@@ -116,7 +116,7 @@ valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TRef n
-valueToTerm (VRcd m) = TRcd (valueToTerm <$> m)
+valueToTerm (VRcd m) = TRcd (Just . valueToTerm <$> m)
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value

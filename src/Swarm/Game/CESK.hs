@@ -172,7 +172,7 @@ data Frame
   | -- | We are in the middle of evaluating a record: some fields have
     --   already been evaluated; we are focusing on evaluating one
     --   field; and some fields have yet to be evaluated.
-    FRcd Env [(Var, Value)] Var [(Var, Term)]
+    FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
   | -- | We are in the middle of evaluating a record field projection.(:*:)
     FProj Var
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -378,7 +378,9 @@ prettyFrame (FRcd _ done foc rest) (_, inner) = (11, encloseSep "[" "]" ", " (pD
  where
   pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
   pFoc = pretty foc <+> "=" <+> inner
-  pRest = map (\(x, t) -> pretty x <+> "=" <+> ppr t) rest
+  pRest = map pprEq rest
+  pprEq (x, Nothing) = pretty x
+  pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
 prettyFrame (FProj x) (p, inner) = (11, pparens (p < 11) inner <> "." <> pretty x)
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame

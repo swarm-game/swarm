@@ -171,9 +171,11 @@ instance PrettyPrec Term where
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
   prettyPrec _ (TProj t x) = prettyPrec 11 t <> "." <> pretty x
+  prettyPrec _ TExport = "export"
 
-prettyEquality :: (Pretty a, PrettyPrec b) => (a, b) -> Doc ann
-prettyEquality (x, t) = pretty x <+> "=" <+> ppr t
+prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
+prettyEquality (x, Nothing) = pretty x
+prettyEquality (x, Just t) = pretty x <+> "=" <+> ppr t
 
 prettyTuple :: Term -> Doc a
 prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
