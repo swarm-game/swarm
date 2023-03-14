@@ -243,4 +243,3 @@ requirements' = go
       expandEq (x, Nothing) = TVar x
       expandEq (_, Just t) = t
     TProj t _ -> go ctx t
-    TExport -> mempty -- XXX

@@ -470,9 +470,6 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         Just xTy -> return $ Syntax' l (SProj t1' x) xTy
         Nothing -> throwError $ UnknownProj l x (SProj t1 x)
       _ -> throwError $ CantInferProj l (SProj t1 x)
-  TExport -> do
-    c <- ask >>= traverse instantiate
-    return $ Syntax' l TExport (UTyRcd (unCtx c))
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -687,7 +684,6 @@ analyzeAtomic locals (Syntax l t) = case t of
     analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
-  TExport -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0

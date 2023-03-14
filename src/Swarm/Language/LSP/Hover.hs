@@ -124,7 +124,6 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   TVar {} -> Nothing
   TRequire {} -> Nothing
   TRequireDevice {} -> Nothing
-  TExport -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
   TRobot {} -> Nothing

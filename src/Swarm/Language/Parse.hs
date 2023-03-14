@@ -98,7 +98,6 @@ reservedWords =
        , "false"
        , "forall"
        , "require"
-       , "export"
        ]
 
 -- | Skip spaces and comments.
@@ -300,7 +299,6 @@ parseTermAtom2 =
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
-        <|> TExport <$ reserved "export"
         <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
     -- Potential syntax for explicitly requesting memoized delay.

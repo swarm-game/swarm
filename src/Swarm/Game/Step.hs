@@ -707,8 +707,6 @@ stepCESK cesk = case cesk of
       Nothing -> badMachineState s $ "Record projection for variable " <> x <> " that does not exist"
       Just xv -> return $ Out xv s k
     _ -> badMachineState s "FProj frame with non-record value"
-  -- Export all in-scope names.
-  In TExport e s k -> return $ Out (VRcd (unCtx e)) s k
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)

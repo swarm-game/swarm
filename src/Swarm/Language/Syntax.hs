@@ -797,8 +797,6 @@ data Term' ty
     SRcd (Map Var (Maybe (Syntax' ty)))
   | -- | Record projection @e.x@
     SProj (Syntax' ty) Var
-  | -- | Export in-scope names as a record
-    TExport -- XXX not sure this is a good idea!
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- The Traversable instance for Term (and for Syntax') is used during
@@ -919,7 +917,7 @@ pattern TProj :: Term -> Var -> Term
 pattern TProj t x = SProj (STerm t) x
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TExport #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
@@ -982,7 +980,6 @@ erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
 erase (SRcd m) = TRcd ((fmap . fmap) eraseS m)
 erase (SProj s x) = TProj (eraseS s) x
-erase TExport = TExport
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1026,7 +1023,6 @@ freeVarsS f = go S.empty
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
-    TExport -> pure s
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 
