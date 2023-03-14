@@ -784,6 +784,7 @@ drawKeyMenu s =
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
       , Just (NoHighlight, "^o", "step")
       , Just (NoHighlight, "^zx", "speed")
+      , Just (NoHighlight, "^k", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing
