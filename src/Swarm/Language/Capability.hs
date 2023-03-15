@@ -124,6 +124,8 @@ data Capability
     CSum
   | -- | Capability for working with product types.
     CProd
+  | -- | Capability for working with record types.
+    CRecord
   | -- | Debug capability.
     CDebug
   | -- | God-like capabilities.  For e.g. commands intended only for
