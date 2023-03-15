@@ -1209,7 +1209,8 @@
     collection of named fields.  For example, `[x = 2, y = "hi"]`
     is a value of type `[x : int, y : text]`.  Individual fields
     can be projected using dot notation.  For example,
-    `let r = [x=2, y="hi"] in r.x` has the value 2.
+    `let r = [y="hi", x=2] in r.x` has the value 2.  The order
+    of the fields does not matter.
   properties: [portable]
   capabilities: [record]
 
