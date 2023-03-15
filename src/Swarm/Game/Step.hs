@@ -696,8 +696,8 @@ stepCESK cesk = case cesk of
   Out v s (FRcd _ done x [] : k) -> return $ Out (VRcd (M.fromList ((x, v) : done))) s k
   -- Otherwise, save the value of the field just evaluated and move on
   -- to focus on evaluating the next one.
-  Out v s (FRcd e done x ((y, t) : todo) : k) ->
-    return $ In (fromMaybe (TVar y) t) e s (FRcd e ((x, v) : done) y todo : k)
+  Out v s (FRcd e done x ((y, t) : rest) : k) ->
+    return $ In (fromMaybe (TVar y) t) e s (FRcd e ((x, v) : done) y rest : k)
   -- Evaluate a record projection: evaluate the record and remember we
   -- need to do the projection later.
   In (TProj t x) e s k -> return $ In t e s (FProj x : k)
