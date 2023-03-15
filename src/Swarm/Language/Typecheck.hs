@@ -506,6 +506,15 @@ decomposeFunTy ty = do
   _ <- ty =:= UTyFun ty1 ty2
   return (ty1, ty2)
 
+-- | Decompose a type that is supposed to be a product type.
+decomposeProdTy :: UType -> Infer (UType, UType)
+decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- ty =:= UTyProd ty1 ty2
+  return (ty1, ty2)
+
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
 inferConst c = case c of
@@ -599,6 +608,11 @@ inferConst c = case c of
 --   type-annotated AST if so.
 check :: Syntax -> UType -> Infer (Syntax' UType)
 check s@(Syntax l t) ty = (`catchError` addLocToTypeErr s) $ case t of
+  SPair s1 s2 -> do
+    (ty1, ty2) <- decomposeProdTy ty
+    s1' <- check s1 ty1
+    s2' <- check s2 ty2
+    return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
   SLam x xTy body -> do
     (argTy, resTy) <- decomposeFunTy ty
     _ <- maybe (return argTy) (=:= argTy) (toU xTy)
