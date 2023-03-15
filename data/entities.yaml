@@ -1193,3 +1193,23 @@
     inner workings.
   properties: [portable]
   capabilities: [debug]
+
+- name: victrola
+  display:
+    attr: device
+    char: 'Q'
+  description:
+  - |
+    A device for reading and writing data on circular platters made of
+    a soft plastic material, and also, for some reason, transmitting
+    the data as pressure waves through the air.  The stylus must be
+    made of an extremely hard and durable material.
+  - |
+    Also allows manipulating composite values consisting of a
+    collection of named fields.  For example, `[x = 2, y = "hi"]`
+    is a value of type `[x : int, y : text]`.  Individual fields
+    can be projected using dot notation.  For example,
+    `let r = [x=2, y="hi"] in r.x` has the value 2.
+  properties: [portable]
+  capabilities: [record]
+
