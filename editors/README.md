@@ -14,7 +14,7 @@ The current LSP implementation features the following extensions:
 
 Using [lsp-mode](https://github.com/emacs-lsp/lsp-mode):
 
-Load the [swarm-mode.el](../contribs/swarm-mode.el) and start
+Load the [swarm-mode.el](emacs/swarm-mode.el) and start
 the `M-x lsp` service in a *swarm-mode* buffer.
 
 ## VS Code and VS Codium
