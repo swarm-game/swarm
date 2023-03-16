@@ -788,6 +788,8 @@ data Term' ty
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType (Syntax' ty)
+  | -- | Annotate a term with a type
+    SAnnotate (Syntax' ty) Polytype
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- The Traversable instance for Term (and for Syntax') is used during
@@ -960,6 +962,7 @@ erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
 erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
 erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
+erase (SAnnotate s _) = eraseS s
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1001,6 +1004,7 @@ freeVarsS f = go S.empty
     SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
     SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
+    SAnnotate s1 _ -> go bound s1
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 

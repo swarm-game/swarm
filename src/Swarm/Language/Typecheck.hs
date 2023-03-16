@@ -452,6 +452,9 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+  SAnnotate c pty -> do
+    uty <- skolemize $ toU pty
+    check c uty
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do

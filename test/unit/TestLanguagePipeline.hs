@@ -282,6 +282,9 @@ testLanguagePipeline =
                       ]
                     )
             )
+        , testCase
+            "simple type ascription"
+            (valid "(3 : int) + 5")
         ]
     ]
  where
