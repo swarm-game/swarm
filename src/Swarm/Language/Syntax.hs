@@ -56,6 +56,7 @@ module Swarm.Language.Syntax (
   pattern TDef,
   pattern TBind,
   pattern TDelay,
+  pattern TAnnotate,
 
   -- * Terms
   Var,
@@ -900,8 +901,12 @@ pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
+-- | Match a TAnnotate without syntax
+pattern TAnnotate :: Term -> Polytype -> Term
+pattern TAnnotate t pt = SAnnotate (STerm t) pt
+
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TAnnotate #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).

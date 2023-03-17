@@ -695,6 +695,8 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef {} -> throwError (CantInfer l t)
+  -- An explicit type annotation doesn't change atomicity
+  SAnnotate s _ -> analyzeAtomic locals s
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool

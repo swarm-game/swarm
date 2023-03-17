@@ -166,6 +166,9 @@ instance PrettyPrec Term where
   prettyPrec p (TBind (Just x) t1 t2) =
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+  prettyPrec p (TAnnotate t pt) =
+    pparens (p > 0) $
+      prettyPrec 1 t <+> ":" <+> ppr pt
 
 prettyTuple :: Term -> Doc a
 prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
