@@ -5,4 +5,5 @@ Tutorials
 Challenges
 Fun
 Speedruns
+Mechanics Gallery
 Testing
