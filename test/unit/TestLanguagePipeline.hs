@@ -285,6 +285,9 @@ testLanguagePipeline =
         , testCase
             "simple type ascription"
             (valid "(3 : int) + 5")
+        , testCase
+            "invalid type ascription"
+            (process "1 : text" "1: Can't unify text and int")
         ]
     ]
  where
