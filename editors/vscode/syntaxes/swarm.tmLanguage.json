@@ -30,7 +30,7 @@
 				{
 				"name": "keyword.control.dictionary.let",
 				"begin": "\\s*let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|text|int|void|unit|actor|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-				"end": "\\s*in",
+				"end": "\\s*in\\b",
 				"beginCaptures": {
 					"1": {"name": "entity.name.function"},
 					"3": {"name": "entity.name.type"}
