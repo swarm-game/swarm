@@ -453,8 +453,10 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
   SAnnotate c pty -> do
-    uty <- skolemize $ toU pty
-    check c uty
+    uty <- instantiate $ toU pty
+    c' <- check c uty
+    ask >>= mapM_ noSkolems
+    return $ Syntax' l (SAnnotate c' pty) (c' ^. sType)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do

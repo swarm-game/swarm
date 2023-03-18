@@ -288,6 +288,9 @@ testLanguagePipeline =
         , testCase
             "invalid type ascription"
             (process "1 : text" "1: Can't unify text and int")
+        , testCase
+            "type ascription with a polytype"
+            (valid "((\\x . x) : a -> a) 3")
         ]
     ]
  where

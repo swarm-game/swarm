@@ -1009,7 +1009,7 @@ freeVarsS f = go S.empty
     SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
     SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
-    SAnnotate s1 _ -> go bound s1
+    SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 
