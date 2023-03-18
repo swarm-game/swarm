@@ -1157,7 +1157,7 @@ execConst c vs s k = do
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
-        finishCookingRecipe recipe [] (map (uncurry AddEntity) changeInv)
+        finishCookingRecipe recipe VUnit [] (map (uncurry AddEntity) changeInv)
       _ -> badConst
     Has -> case vs of
       [VText name] -> do
@@ -1247,7 +1247,11 @@ execConst c vs s k = do
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
-        finishCookingRecipe recipe [changeWorld] (learn <> gain)
+
+        let cmdOutput = case listToMaybe out of
+              Nothing -> VInj False VUnit
+              Just e -> VInj True $ VText $ snd e ^. entityName
+        finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
       _ -> badConst
     Blocked -> do
       loc <- use robotLocation
@@ -1815,12 +1819,18 @@ execConst c vs s k = do
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
-  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> [WorldUpdate Entity] -> [RobotUpdate] -> m CESK
-  finishCookingRecipe r wf rf = do
+  finishCookingRecipe ::
+    HasRobotStepState sig m =>
+    Recipe e ->
+    Value ->
+    [WorldUpdate Entity] ->
+    [RobotUpdate] ->
+    m CESK
+  finishCookingRecipe r v wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-      Out VUnit s (FImmediate c wf rf : k)
+      Out v s (FImmediate c wf rf : k)
 
   lookInDirection :: HasRobotStepState sig m => Direction -> m (Location, Maybe Entity)
   lookInDirection d = do

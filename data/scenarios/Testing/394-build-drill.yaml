@@ -12,7 +12,7 @@ objectives:
 # When testing, add `s <- build {...}; n <- as s {whoami}; log n`
 solution: |
   def forever = \c. c ; forever c end;
-  def unblock = try {drill forward} {} end;
+  def unblock = try {drill forward; return ()} {} end;
   def push = unblock; move end;
   log "Hi, I am base";
   r <- build {
