@@ -12,6 +12,7 @@ module Swarm.TUI.Model (
   -- * Custom UI label types
   -- $uilabel
   AppEvent (..),
+  WebCommand (..),
   FocusablePanel (..),
   Name (..),
 
@@ -140,12 +141,15 @@ import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 -- $uilabel These types are used as parameters to various @brick@
 -- types.
 
+newtype WebCommand = RunWebCode Text
+  deriving (Show)
+
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
---   receive.  At the moment, we only have one custom event, but it's
---   very important: a separate thread sends 'Frame' events as fast as
+--   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
 --   it can, telling the TUI to render a new frame.
 data AppEvent
   = Frame
+  | Web WebCommand
   | UpstreamVersion (Either NewReleaseFailure String)
   deriving (Show)
 
