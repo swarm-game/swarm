@@ -182,7 +182,7 @@ explain trm = case trm ^. sTerm of
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node
-      (typeSignature "_" typeAnn "A type acription for")
+      (typeSignature "_" typeAnn "A type ascription for")
       [explain lhs]
   -- special forms (function application will show for `$`, but really should be rare)
   SApp {} -> explainFunction trm
