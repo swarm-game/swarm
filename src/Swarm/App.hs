@@ -70,9 +70,11 @@ appMain opts = do
         upRel <- getNewerReleaseVersion (repoGitInfo opts)
         writeBChan chan (UpstreamVersion upRel)
 
-      -- Start the web service with a reference to the game state
+      -- Start the web service with a reference to the game state.
+      -- NOTE: This reference should be considered read-only by
+      -- the web service; the game alone shall host the canonical state.
       appStateRef <- newIORef s
-      eport <- Swarm.Web.startWebThread (userWebPort opts) appStateRef
+      eport <- Swarm.Web.startWebThread (userWebPort opts) appStateRef chan
 
       let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
       let logE e = logEvent (ErrorTrace Error) ("Web API", -2) (T.pack e)
@@ -119,7 +121,8 @@ demoWeb = do
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
       appStateRef <- newIORef s
-      webMain Nothing demoPort appStateRef
+      chan <- newBChan 5
+      webMain Nothing demoPort appStateRef chan
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 
