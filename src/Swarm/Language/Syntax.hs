@@ -967,7 +967,7 @@ erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
 erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
 erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
-erase (SAnnotate s _) = eraseS s
+erase (SAnnotate s pty) = TAnnotate (eraseS s) pty
 
 ------------------------------------------------------------
 -- Free variable traversals
