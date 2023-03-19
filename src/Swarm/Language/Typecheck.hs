@@ -522,7 +522,7 @@ inferConst c = case c of
   Count -> [tyQ| text -> cmd int |]
   Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
   Build -> [tyQ| {cmd a} -> cmd actor |]
-  Drill -> [tyQ| dir -> cmd unit |]
+  Drill -> [tyQ| dir -> cmd (unit + text) |]
   Salvage -> [tyQ| cmd unit |]
   Say -> [tyQ| text -> cmd unit |]
   Listen -> [tyQ| cmd text |]

@@ -185,6 +185,7 @@ testScenarioSolution _ci _em =
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
+        , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 5) "Challenges/bridge-building"

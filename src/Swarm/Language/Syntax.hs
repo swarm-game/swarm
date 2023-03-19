@@ -536,6 +536,7 @@ constInfo c = case c of
       [ "Usually you want to `drill forward` when exploring to clear out obstacles."
       , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
+      , "The `drill` command may return the name of an entity added to your inventory."
       ]
   Build ->
     command 1 long . doc "Construct a new robot." $
