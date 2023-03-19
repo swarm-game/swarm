@@ -646,6 +646,8 @@ stepCESK cesk = case cesk of
   -- Require and requireDevice just turn into no-ops.
   In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  -- Type ascriptions are ignored
+  In (TAnnotate v _) e s k -> return $ In v e s k
   -- Normally it's not possible to have a TRobot value in surface
   -- syntax, but the salvage command generates a program that needs to
   -- refer directly to the salvaging robot.

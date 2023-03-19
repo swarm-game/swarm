@@ -360,7 +360,15 @@ fixDefMissingSemis term =
     _ -> []
 
 parseExpr :: Parser Syntax
-parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
+parseExpr =
+  parseLoc $ ascribe <$> parseExpr' <*> optional (symbol ":" *> parsePolytype)
+ where
+  ascribe :: Syntax -> Maybe Polytype -> Term
+  ascribe s Nothing = s ^. sTerm
+  ascribe s (Just ty) = SAnnotate s ty
+
+parseExpr' :: Parser Syntax
+parseExpr' = fixDefMissingSemis <$> makeExprParser parseTermAtom table
  where
   table = snd <$> Map.toDescList tableMap
   tableMap =

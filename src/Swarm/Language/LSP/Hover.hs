@@ -112,6 +112,7 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   SBind mlv s1@(Syntax' _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
+  SAnnotate s _ -> d s
   -- atoms - return their position and end recursion
   TUnit -> Nothing
   TConst {} -> Nothing
@@ -178,6 +179,11 @@ explain trm = case trm ^. sTerm of
   TText {} -> literal "A text literal."
   TBool {} -> literal "A boolean literal."
   TVar v -> pure $ typeSignature v ty ""
+  -- type ascription
+  SAnnotate lhs typeAnn ->
+    Node
+      (typeSignature "_" typeAnn "A type ascription for")
+      [explain lhs]
   -- special forms (function application will show for `$`, but really should be rare)
   SApp {} -> explainFunction trm
   TRequireDevice {} -> pure "Require a specific device to be equipped."

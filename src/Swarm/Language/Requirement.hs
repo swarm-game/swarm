@@ -238,3 +238,5 @@ requirements' = go
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning mempty is safe.
     TDef {} -> mempty
+    -- A type ascription doesn't change requirements
+    TAnnotate t _ -> go ctx t

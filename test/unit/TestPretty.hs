@@ -90,6 +90,11 @@ testPrettyConst =
         "void type"
         ( assertEqual "" "void" . show $ ppr TyVoid
         )
+    , testCase
+        "type ascription"
+        ( equalPretty "1 : int" $
+            TAnnotate (TInt 1) (Forall [] TyInt)
+        )
     ]
  where
   equalPretty :: String -> Term -> Assertion

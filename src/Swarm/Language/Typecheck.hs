@@ -452,6 +452,20 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+  SAnnotate c pty -> do
+    let upty = toU pty
+    -- Typecheck against skolemized polytype.
+    uty <- skolemize upty
+    _ <- check c uty `catchError` addLocToTypeErr c
+    -- Make sure no skolem variables have escaped.
+    ask >>= mapM_ noSkolems
+    -- If check against skolemized polytype is successful,
+    -- instantiate polytype with unification variables.
+    -- Free variables should be able to unify with anything in
+    -- following inference steps.
+    iuty <- instantiate upty
+    c'' <- check c iuty `catchError` addLocToTypeErr c
+    return $ Syntax' l (SAnnotate c'' pty) (c'' ^. sType)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -692,6 +706,8 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef {} -> throwError (CantInfer l t)
+  -- An explicit type annotation doesn't change atomicity
+  SAnnotate s _ -> analyzeAtomic locals s
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool
