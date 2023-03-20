@@ -228,6 +228,9 @@ data Const
     Time
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Locate the closest instance of a given entity within the rectangle
+    -- specified by opposite corners, relative to the current location.
+    Detect
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -575,6 +578,9 @@ constInfo c = case c of
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Detect ->
+    command 2 Intangible . doc "Detect an entity within a rectangle." $
+      ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->

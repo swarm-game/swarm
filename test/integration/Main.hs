@@ -263,6 +263,8 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/956-GPS"
         , testSolution Default "Testing/958-isempty"
         , testSolution Default "Testing/1024-sand"
+        , testSolution Default "Testing/1140-detect-command"
+        , testSolution Default "Testing/1157-drill-return-value"
         ]
     ]
  where
