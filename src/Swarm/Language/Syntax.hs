@@ -228,7 +228,7 @@ data Const
     Time
   | -- | Get the current x, y coordinates
     Whereami
-  | -- | Determine whether the given entity exists with the rectangle
+  | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
   | -- | Get the current heading.
@@ -580,7 +580,7 @@ constInfo c = case c of
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
-      ["Determine whether the given entity exists with the rectangle specified by opposite corners, relative to the current location."]
+      ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->

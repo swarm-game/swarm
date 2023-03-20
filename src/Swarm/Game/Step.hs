@@ -39,7 +39,7 @@ import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, traverse_)
-import Data.Foldable.Extra (anyM)
+import Data.Foldable.Extra (findM)
 import Data.Function (on)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
@@ -1185,10 +1185,14 @@ execConst c vs s k = do
     Detect -> case vs of
       [VText name, VPair (VPair (VInt x1) (VInt y1)) (VPair (VInt x2) (VInt y2))] -> do
         loc <- use robotLocation
-        let locs = [loc .+^ V2 x y | x <- [fromIntegral x1 .. fromIntegral x2], y <- [fromIntegral y1 .. fromIntegral y2]]
-        -- Short-circuit as soon as we find the entity in question
-        doesExist <- anyM (fmap (maybe False $ isEntityNamed name) . entityAt) locs
-        return $ Out (VBool doesExist) s k
+        let locs = [V2 x y | x <- [fromIntegral x1 .. fromIntegral x2], y <- [fromIntegral y1 .. fromIntegral y2]]
+        -- sort offsets by (Manhattan) distance so that we return the closest occurrence
+        let sortedLocs = sortOn (\(V2 x y) -> abs x + abs y) locs
+        firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
+        let result = case firstOne of
+              Just (V2 x y) -> VInj True (VPair (VInt $ fromIntegral x) (VInt $ fromIntegral y))
+              Nothing -> VInj False VUnit
+        return $ Out result s k
       _ -> badConst
     Heading -> do
       mh <- use robotOrientation
