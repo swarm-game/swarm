@@ -1,0 +1,52 @@
+version: 1
+name: Detect test
+creative: true
+description: Detect whether a tree exists anywhere on the map
+objectives:
+  - goal:
+      - Place a tree within range of the detector.
+    condition: |
+      d <- robotnamed "detector";
+      as d {
+        detect "tree" ((-2, -2), (2, 2));
+      };
+solution: |
+  place "tree";
+  move;
+  turn right;
+  move;
+  place "tree";
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - grabber
+    inventory:
+      - [2, tree]
+  - name: detector
+    dir: [0, 1]
+    display:
+      char: d
+      attr: robot
+known: []
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    'd': [grass, null, detector]
+  upperleft: [-4, 4]
+  map: |
+   .........
+   .........
+   .........
+   .........
+   ....d....
+   .........
+   .........
+   .Ω.......
+   .........

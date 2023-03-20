@@ -39,6 +39,8 @@ import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, traverse_)
+import Data.Foldable.Extra (anyM)
+import Data.Function (on)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -55,7 +57,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
-import Linear (zero)
+import Linear (V2 (..), zero)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -1180,6 +1182,14 @@ execConst c vs s k = do
       loc <- use robotLocation
       let Location x y = loc
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
+    Detect -> case vs of
+      [VText name, VPair (VPair (VInt x1) (VInt y1)) (VPair (VInt x2) (VInt y2))] -> do
+        loc <- use robotLocation
+        let locs = [loc .+^ V2 x y | x <- [fromIntegral x1 .. fromIntegral x2], y <- [fromIntegral y1 .. fromIntegral y2]]
+        -- Short-circuit as soon as we find the entity in question
+        doesExist <- anyM (fmap (maybe False $ isEntityNamed name) . entityAt) locs
+        return $ Out (VBool doesExist) s k
+      _ -> badConst
     Heading -> do
       mh <- use robotOrientation
       -- In general, (1) entities might not have an orientation, and
@@ -1459,7 +1469,7 @@ execConst c vs s k = do
         me <- entityAt loc
         case me of
           Nothing -> return $ Out (VBool False) s k
-          Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower name)) s k
+          Just e -> return $ Out (VBool $ isEntityNamed name e) s k
       _ -> badConst
     Isempty -> do
       loc <- use robotLocation
@@ -1809,6 +1819,10 @@ execConst c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
+  -- Case-insensitive matching on entity names
+  isEntityNamed :: T.Text -> Entity -> Bool
+  isEntityNamed n e = ((==) `on` T.toLower) (e ^. entityName) n
+
   badConst :: HasRobotStepState sig m => m a
   badConst = throwError $ Fatal badConstMsg
 

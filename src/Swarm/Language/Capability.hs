@@ -67,6 +67,8 @@ data Capability
     CSensefront
   | -- | Execute the 'Ishere' and 'Isempty' commands
     CSensehere
+  | -- | Execute the 'Detect' command
+    CSenseremote
   | -- | Execute the 'Scan' command
     CScan
   | -- | Execute the 'Random' command
@@ -208,6 +210,7 @@ constCaps = \case
   Time -> Just CTime
   Wait -> Just CTime
   Whereami -> Just CSenseloc
+  Detect -> Just CSenseremote
   Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations

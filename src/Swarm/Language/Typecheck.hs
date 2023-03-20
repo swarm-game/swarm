@@ -532,6 +532,7 @@ inferConst c = case c of
   Create -> [tyQ| text -> cmd unit |]
   Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
+  Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd bool |]
   Heading -> [tyQ| cmd dir |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (unit + text) |]

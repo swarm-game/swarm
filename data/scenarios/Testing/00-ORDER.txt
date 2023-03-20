@@ -24,4 +24,5 @@
 958-isempty.yaml
 1024-sand.yaml
 1034-custom-attributes.yaml
+1140-detect-command.yaml
 1157-drill-return-value.yaml
