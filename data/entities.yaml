@@ -1201,9 +1201,8 @@
   description:
   - |
     A device for reading and writing data on circular platters made of
-    a soft plastic material, and also, for some reason, transmitting
-    the data as pressure waves through the air.  The stylus must be
-    made of an extremely hard and durable material.
+    a soft plastic material.  The stylus must be made of an extremely
+    hard and durable material.
   - |
     Also allows manipulating composite values consisting of a
     collection of named fields.  For example, `[x = 2, y = "hi"]`
