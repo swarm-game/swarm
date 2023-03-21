@@ -38,7 +38,7 @@ import Data.Bool (bool)
 import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
 import Data.Either.Extra (eitherToMaybe)
-import Data.Foldable (asum, traverse_)
+import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM)
 import Data.Function (on)
 import Data.Functor (void)
@@ -47,7 +47,7 @@ import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
 import Data.Sequence ((><))
 import Data.Sequence qualified as Seq
@@ -73,6 +73,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State
+import Swarm.Game.Values
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
@@ -1189,10 +1190,7 @@ execConst c vs s k = do
         -- sort offsets by (Manhattan) distance so that we return the closest occurrence
         let sortedLocs = sortOn (\(V2 x y) -> abs x + abs y) locs
         firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
-        let result = case firstOne of
-              Just (V2 x y) -> VInj True (VPair (VInt $ fromIntegral x) (VInt $ fromIntegral y))
-              Nothing -> VInj False VUnit
-        return $ Out result s k
+        return $ Out (asValue firstOne) s k
       _ -> badConst
     Heading -> do
       mh <- use robotOrientation
@@ -1264,9 +1262,7 @@ execConst c vs s k = do
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
 
-        let cmdOutput = case listToMaybe out of
-              Nothing -> VInj False VUnit
-              Just e -> VInj True $ VText $ snd e ^. entityName
+        let cmdOutput = asValue $ snd <$> listToMaybe out
         finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
       _ -> badConst
     Blocked -> do
@@ -1278,14 +1274,10 @@ execConst c vs s k = do
     Scan -> case vs of
       [VDir d] -> do
         (_loc, me) <- lookInDirection d
-        res <- case me of
-          Nothing -> return $ VInj False VUnit
-          Just e -> do
-            robotInventory %= insertCount 0 e
-            updateDiscoveredEntities e
-            return $ VInj True (VText (e ^. entityName))
-
-        return $ Out res s k
+        for_ me $ \e -> do
+          robotInventory %= insertCount 0 e
+          updateDiscoveredEntities e
+        return $ Out (asValue me) s k
       _ -> badConst
     Knows -> case vs of
       [VText name] -> do
@@ -1495,7 +1487,7 @@ execConst c vs s k = do
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
               . sortOn (manhattan loc . (^. robotLocation)) -- prefer closer
               $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
-      return $ Out (VInj (isJust neighbor) (maybe VUnit (VRobot . (^. robotID)) neighbor)) s k
+      return $ Out (asValue neighbor) s k
     MeetAll -> case vs of
       [f, b] -> do
         loc <- use robotLocation
