@@ -309,7 +309,7 @@ drawGameUI s =
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
   showREPL = s ^. uiState . uiShowREPL
-  rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel
+  rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ [padLeftRight 1 $ hBorderWithLabel (txt "REPL")]
   worldPanel =
     [ panel
         highlightAttr
