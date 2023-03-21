@@ -1,8 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
+-- Conversions from native Haskell values
+-- to values in the swarm language.
+--
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.Game.Values where
+module Swarm.Game.Value where
 
 import Control.Lens (view)
 import Data.Int (Int32)
@@ -11,6 +14,11 @@ import Swarm.Game.Entity
 import Swarm.Game.Robot
 import Swarm.Language.Value
 
+-- | Conversion from native Haskell types
+-- to their swarm-lang equivalents, useful for
+-- implementing swarm
+-- <https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet commands>
+-- in Haskell.
 class Valuable a where
   asValue :: a -> Value
 
