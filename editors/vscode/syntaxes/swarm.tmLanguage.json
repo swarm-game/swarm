@@ -30,7 +30,7 @@
 				{
 				"name": "keyword.control.dictionary.let",
 				"begin": "\\s*let\\s+(\\w+)\\s*(:((\\s*(cmd|dir|text|int|void|unit|actor|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-				"end": "\\s*in",
+				"end": "\\s*in\\b",
 				"beginCaptures": {
 					"1": {"name": "entity.name.function"},
 					"3": {"name": "entity.name.type"}
@@ -58,7 +58,7 @@
 				},
 				{
 				"name": "keyword.other",
-				"match": "\\b(?i)(self|parent|base|if|inl|inr|case|fst|snd|force|undefined|fail|not|format|chars|split|charat|tochar|noop|wait|selfdestruct|move|turn|grab|harvest|place|give|equip|unequip|make|has|equipped|count|drill|build|salvage|reprogram|say|listen|log|view|appear|create|time|whereami|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|run|return|try|swap|atomic|teleport|as|robotnamed|robotnumbered|knows)\\b"
+				"match": "\\b(?i)(self|parent|base|if|inl|inr|case|fst|snd|force|undefined|fail|not|format|chars|split|charat|tochar|noop|wait|selfdestruct|move|turn|grab|harvest|place|give|equip|unequip|make|has|equipped|count|drill|build|salvage|reprogram|say|listen|log|view|appear|create|time|whereami|detect|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|run|return|try|swap|atomic|teleport|as|robotnamed|robotnumbered|knows)\\b"
 				}
 			]
 			},

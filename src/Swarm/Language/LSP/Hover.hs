@@ -116,6 +116,7 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   SDelay _ s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
   SProj s1 _ -> d s1
+  SAnnotate s _ -> d s
   -- atoms - return their position and end recursion
   TUnit -> Nothing
   TConst {} -> Nothing
@@ -184,6 +185,11 @@ explain trm = case trm ^. sTerm of
   TVar v -> pure $ typeSignature v ty ""
   SRcd {} -> literal "A record literal."
   SProj {} -> literal "A record projection."
+  -- type ascription
+  SAnnotate lhs typeAnn ->
+    Node
+      (typeSignature "_" typeAnn "A type ascription for")
+      [explain lhs]
   -- special forms (function application will show for `$`, but really should be rare)
   SApp {} -> explainFunction trm
   TRequireDevice {} -> pure "Require a specific device to be equipped."

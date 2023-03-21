@@ -76,6 +76,7 @@
                "create"
                "time"
                "whereami"
+               "detect"
                "heading"
                "blocked"
                "scan"

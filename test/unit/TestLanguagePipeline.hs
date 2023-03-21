@@ -282,6 +282,27 @@ testLanguagePipeline =
                       ]
                     )
             )
+        , testCase
+            "simple type ascription"
+            (valid "(3 : int) + 5")
+        , testCase
+            "invalid type ascription"
+            (process "1 : text" "1: Can't unify text and int")
+        , testCase
+            "type ascription with a polytype"
+            (valid "((\\x . x) : a -> a) 3")
+        , testCase
+            "type ascription too general"
+            (process "1 : a" "1: Can't unify")
+        , testCase
+            "type specialization through type ascription"
+            (valid "fst:(int + b) * a -> int + b")
+        , testCase
+            "type ascription doesn't allow rank 2 types"
+            ( process
+                "\\f. (f:forall a. a->a) 3"
+                "1: Skolem variable s1 would escape its scope"
+            )
         ]
     ]
  where

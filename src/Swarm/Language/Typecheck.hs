@@ -470,6 +470,20 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         Just xTy -> return $ Syntax' l (SProj t1' x) xTy
         Nothing -> throwError $ UnknownProj l x (SProj t1 x)
       _ -> throwError $ CantInferProj l (SProj t1 x)
+  SAnnotate c pty -> do
+    let upty = toU pty
+    -- Typecheck against skolemized polytype.
+    uty <- skolemize upty
+    _ <- check c uty `catchError` addLocToTypeErr c
+    -- Make sure no skolem variables have escaped.
+    ask >>= mapM_ noSkolems
+    -- If check against skolemized polytype is successful,
+    -- instantiate polytype with unification variables.
+    -- Free variables should be able to unify with anything in
+    -- following inference steps.
+    iuty <- instantiate upty
+    c'' <- check c iuty `catchError` addLocToTypeErr c
+    return $ Syntax' l (SAnnotate c'' pty) (c'' ^. sType)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -535,7 +549,7 @@ inferConst c = case c of
   Count -> [tyQ| text -> cmd int |]
   Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
   Build -> [tyQ| {cmd a} -> cmd actor |]
-  Drill -> [tyQ| dir -> cmd unit |]
+  Drill -> [tyQ| dir -> cmd (unit + text) |]
   Salvage -> [tyQ| cmd unit |]
   Say -> [tyQ| text -> cmd unit |]
   Listen -> [tyQ| cmd text |]
@@ -545,6 +559,7 @@ inferConst c = case c of
   Create -> [tyQ| text -> cmd unit |]
   Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
+  Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Heading -> [tyQ| cmd dir |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (unit + text) |]
@@ -736,6 +751,8 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef {} -> throwError (CantInfer l t)
+  -- An explicit type annotation doesn't change atomicity
+  SAnnotate s _ -> analyzeAtomic locals s
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool

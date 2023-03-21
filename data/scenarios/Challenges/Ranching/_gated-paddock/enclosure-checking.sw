@@ -59,6 +59,7 @@ def leaveBreadcrumbs =
                     // Nothing will remain on the ground.
                     // after making the "steam" via
                     // the drilling recipe.
+                    return ();
                 } {
                     grab;
                     return ();

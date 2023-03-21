@@ -58,6 +58,7 @@ module Swarm.Language.Syntax (
   pattern TDelay,
   pattern TRcd,
   pattern TProj,
+  pattern TAnnotate,
 
   -- * Terms
   Var,
@@ -230,6 +231,9 @@ data Const
     Time
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Locate the closest instance of a given entity within the rectangle
+    -- specified by opposite corners, relative to the current location.
+    Detect
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -538,6 +542,7 @@ constInfo c = case c of
       [ "Usually you want to `drill forward` when exploring to clear out obstacles."
       , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
+      , "The `drill` command may return the name of an entity added to your inventory."
       ]
   Build ->
     command 1 long . doc "Construct a new robot." $
@@ -576,6 +581,9 @@ constInfo c = case c of
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Detect ->
+    command 2 Intangible . doc "Detect an entity within a rectangle." $
+      ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
@@ -797,6 +805,8 @@ data Term' ty
     SRcd (Map Var (Maybe (Syntax' ty)))
   | -- | Record projection @e.x@
     SProj (Syntax' ty) Var
+  | -- | Annotate a term with a type
+    SAnnotate (Syntax' ty) Polytype
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- The Traversable instance for Term (and for Syntax') is used during
@@ -916,8 +926,12 @@ pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
 pattern TProj :: Term -> Var -> Term
 pattern TProj t x = SProj (STerm t) x
 
+-- | Match a TAnnotate without syntax
+pattern TAnnotate :: Term -> Polytype -> Term
+pattern TAnnotate t pt = SAnnotate (STerm t) pt
+
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
@@ -980,6 +994,7 @@ erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
 erase (SRcd m) = TRcd ((fmap . fmap) eraseS m)
 erase (SProj s x) = TProj (eraseS s) x
+erase (SAnnotate s pty) = TAnnotate (eraseS s) pty
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1023,6 +1038,7 @@ freeVarsS f = go S.empty
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
+    SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 

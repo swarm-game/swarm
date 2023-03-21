@@ -1,5 +1,6 @@
 chess_horse.yaml
 bridge-building.yaml
+maypole.yaml
 teleport.yaml
 2048.yaml
 word-search.yaml

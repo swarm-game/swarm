@@ -1,0 +1,119 @@
+version: 1
+name: Maypole
+author: Karl Ostmo
+description: |
+  Circle the maypole
+creative: false
+seed: 0
+attrs:
+  - name: maypole0
+    fg: "#ff0000"
+  - name: maypole1
+    fg: "#ffff00"
+  - name: maypole2
+    fg: "#00ffff"
+  - name: maypole3
+    fg: "#00ff00"
+objectives:
+  - id: circle_maypole
+    teaser: Around you go!
+    goal:
+      - |
+        Go around the maypole several times counter-clockwise.
+    condition: |
+      monitor <- robotnamed "monitor";
+      as monitor {has "dizzy"};
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - branch predictor
+      - treads
+      - antenna
+      - calculator
+      - clock
+      - comparator
+      - workbench
+      - grabber
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - hearing aid
+      - scanner
+      - strange loop
+  - name: monitor
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: true
+    inventory:
+      - [1, bitcoin]
+      - [1, maypole 0]
+      - [1, maypole 1]
+      - [1, maypole 2]
+      - [1, maypole 3]
+    program: |
+      run "scenarios/Challenges/_maypole/monitor.sw"
+solution: |
+   run "scenarios/Challenges/_maypole/solution.sw"
+entities:
+  - name: dizzy
+    display:
+      char: '@'
+    description:
+      - A disorienting vestibular affliction
+    properties: [portable]
+  - name: maypole
+    display:
+      char: 'M'
+    description:
+      - A tall, colorful pole.
+    properties: [known, unwalkable]
+  - name: maypole 0
+    display:
+      char: 'M'
+      attr: maypole0
+    description:
+      - A tall, colorful pole.
+    properties: [known, unwalkable]
+  - name: maypole 1
+    display:
+      char: 'M'
+      attr: maypole1
+    description:
+      - A tall, colorful pole.
+    properties: [known, unwalkable]
+  - name: maypole 2
+    display:
+      char: 'M'
+      attr: maypole2
+    description:
+      - A tall, colorful pole.
+    properties: [known, unwalkable]
+  - name: maypole 3
+    display:
+      char: 'M'
+      attr: maypole3
+    description:
+      - A tall, colorful pole.
+    properties: [known, unwalkable]
+known: [bitcoin]
+world:
+  default: [grass]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'M': [grass, maypole, monitor]
+  map: |
+    ................
+    ................
+    ................
+    .......M........
+    ................
+    .........B......
+    ................
+    ................
+    
