@@ -147,7 +147,7 @@ data TypeF t
 --   will only unify if they have exactly the same keys.
 instance Ord k => Unifiable (Map k) where
   zipMatch m1 m2 = do
-    guard $ M.keysSet m1 == M.keysSet m2
+    guard $ ((==) `on` M.keysSet) m1 m2
     pure $ M.merge M.dropMissing M.dropMissing (M.zipWithMatched (\_ a1 a2 -> Right (a1, a2))) m1 m2
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
