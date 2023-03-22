@@ -2311,7 +2311,7 @@ compareValues v1 = case v1 of
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
     v2 -> incompatCmp v1 v2
   VRcd m1 -> \case
-    VRcd m2 -> mconcat <$> zipWithM (compareValues `on` M.elems) m1 m2
+    VRcd m2 -> mconcat <$> (zipWithM compareValues `on` M.elems) m1 m2
     v2 -> incompatCmp v1 v2
   VClo {} -> incomparable v1
   VCApp {} -> incomparable v1

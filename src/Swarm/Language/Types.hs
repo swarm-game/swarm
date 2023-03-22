@@ -75,6 +75,7 @@ import Control.Unification.IntVar
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Foldable (fold)
+import Data.Function (on)
 import Data.Functor.Fixedpoint
 import Data.Map.Merge.Strict qualified as M
 import Data.Map.Strict (Map)
