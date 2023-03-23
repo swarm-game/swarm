@@ -186,6 +186,9 @@ requirements' = go
     TText _ -> mempty
     TAntiText _ -> mempty
     TBool _ -> mempty
+    -- It doesn't require any special capability to *inquire* about
+    -- the requirements of a term.
+    TRequirements _ -> mempty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
     TConst c -> maybe mempty singletonCap (constCaps c)

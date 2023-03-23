@@ -360,6 +360,9 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TRef _ -> throwError $ CantInfer l t
   TRequireDevice d -> return $ Syntax' l (TRequireDevice d) (UTyCmd UTyUnit)
   TRequire n d -> return $ Syntax' l (TRequire n d) (UTyCmd UTyUnit)
+  SRequirements t1 -> do
+    t1' <- infer t1
+    return $ Syntax' l (SRequirements t1') (UTyCmd UTyUnit)
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> do
     t1' <- infer t1
@@ -647,6 +650,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRobot {} -> return 0
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
+  SRequirements {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.

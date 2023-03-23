@@ -649,6 +649,11 @@ stepCESK cesk = case cesk of
   -- Require and requireDevice just turn into no-ops.
   In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  In (TRequirements t) e s k -> do
+    currentContext <- use $ robotContext . defReqs
+    let (reqs, _) = R.requirements currentContext t
+    traceLog Logged _
+    return $ Out VUnit s k
   -- Type ascriptions are ignored
   In (TAnnotate v _) e s k -> return $ In v e s k
   -- Normally it's not possible to have a TRobot value in surface
