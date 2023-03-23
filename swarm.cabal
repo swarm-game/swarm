@@ -114,6 +114,7 @@ library
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Terrain
+                      Swarm.Game.Value
                       Swarm.Game.World
                       Swarm.Game.WorldGen
                       Swarm.Language.Capability
