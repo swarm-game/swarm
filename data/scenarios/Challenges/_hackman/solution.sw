@@ -100,7 +100,8 @@ def eatAllPellets =
 
 def waitToGive =
     tryGive "donut";
-    waitToGive;
+    hasDonut <- has "donut";
+    if hasDonut {waitToGive} {};
     end;
 
 def returnToCenter =
@@ -115,13 +116,28 @@ def returnToCenter =
     turn right;
     doN 2 move;
     turn left;
-    doN 8 move;
+    doN 4 move;
+    _strawberry <-grab;
+    doN 4 move;
     turn right;
     doN 2 move;
     turn left;
     doN 2 move;
     end;
 
+def invadeDen =
+    doN 14 move;
+    turn right;
+    doN 2 move;
+    turn left;
+    doN 4 move;
+    turn left;
+    make "den key";
+    drill forward;
+    doN 2 move;
+    end;
+
 eatAllPellets;
 returnToCenter;
 waitToGive;
+invadeDen;

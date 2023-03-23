@@ -17,6 +17,7 @@ def observeAndTeleport = \criteriaFunc. \telporterPos. \wasExceeded.
     // Boundary was crossed
     if (currentlyExceeded && not wasExceeded) {
         teleport base (-(fst telporterPos), snd telporterPos);
+        create "bit (0)";
     } {};
 
     observeAndTeleport criteriaFunc telporterPos currentlyExceeded;

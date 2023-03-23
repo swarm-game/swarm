@@ -13,6 +13,8 @@ attrs:
     fg: "#00ffff"
   - name: ghost4
     fg: "#ffb852"
+  - name: strawberry
+    fg: "#ff0000"
 objectives:
   - teaser: Get pellets
     goal:
@@ -21,6 +23,8 @@ objectives:
       - |
         Pay no mind to the colorful ghosts meandering about. That is, unless
         you are feeling generous with your "donuts"...
+      - |
+        Can you find all of the secret objectives?
     condition: |
       as base {
         pcount <- count "pellet";
@@ -54,6 +58,38 @@ objectives:
           end;
 
       anyHasPowerup 4;
+  - teaser: Interloper
+    hidden: true
+    optional: true
+    goal:
+      - |
+        Invade the ghost den
+    condition: |
+      loc <- as base {
+        whereami;
+      };
+      return $ loc == (0, 0);
+  - teaser: World wrap
+    hidden: true
+    optional: true
+    goal:
+      - |
+        Be teleported
+    condition: |
+      r <- robotnamed "teleporter";
+      loc <- as r {
+        has "bit (0)"
+      };
+  - teaser: Balanced diet
+    hidden: true
+    optional: true
+    goal:
+      - |
+        Get the strawberry
+    condition: |
+      as base {
+        has "strawberry";
+      };
   - teaser: Magnanimity
     hidden: true
     optional: true
@@ -85,31 +121,34 @@ robots:
   - name: base
     display:
       orientationMap:
-        east: 'e'
+        east: 'c'
         north: 'u'
-        west: 'ɘ'
+        west: 'ↄ'
         south: 'n'
       char: 'U'
       attr: gold
     dir: [1, 0]
     devices:
       - ADT calculator
+      - antenna
+      - bitcoin
       - branch predictor
       - clock
-      - treads
-      - antenna
-      - lodestone
       - compass
       - comparator
       - counter
       - dictionary
+      - drill
       - grabber
       - lambda
+      - lodestone
       - logger
       - mirror
       - net
       - scanner
       - strange loop
+      - treads
+      - workbench
   - name: teleporter
     dir: [0, 1]
     system: true
@@ -154,8 +193,16 @@ robots:
       attr: ghost4
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
-solution:
-  run "scenarios/Challenges/_hackman/solution.sw"
+  - name: fruit_maker
+    dir: [0, 1]
+    system: true
+    display:
+      invisible: true
+      char: 'f'
+    inventory:
+      - [1, strawberry]
+    program: |
+      run "scenarios/Challenges/_hackman/fruit_maker.sw"
 entities:
   - name: pellet
     display:
@@ -163,6 +210,7 @@ entities:
       attr: silver
     description:
       - A caffeine pellet.
+      - Helps Hackman produce more code.
     properties: [known, portable]
   - name: donut
     display:
@@ -170,6 +218,22 @@ entities:
       attr: gold
     description:
       - Breakfast of champions.
+      - Fancied by ghosts. Will you share?
+    properties: [known, portable]
+  - name: den key
+    display:
+      char: 'k'
+      attr: gold
+    description:
+      - Opens a gate
+    properties: [known, portable]
+  - name: strawberry
+    display:
+      char: 'v'
+      attr: strawberry
+    description:
+      - A tart berry
+      - Possessing this fruit gives you great satisfaction.
     properties: [known, portable]
   - name: gate
     display:
@@ -183,6 +247,20 @@ entities:
     description:
       - A wall.
     properties: [known, unwalkable]
+recipes:
+  - in:
+    - [181, "pellet"]
+    out:
+    - [1, "den key"]
+  - in:
+    - [1, "den key"]
+    - [1, "gate"]
+    out:
+    - [1, "den key"]
+    required:
+    - [1, drill]
+solution:
+  run "scenarios/Challenges/_hackman/solution.sw"
 known: []
 seed: 0
 world:
@@ -190,6 +268,7 @@ world:
   palette:
     'B': [blank]
     'Ω': [blank, null, base]
+    'f': [blank, null, fruit_maker]
     'a': [blank, null, ghost1]
     'b': [blank, null, ghost2]
     'c': [blank, null, ghost3]
@@ -219,7 +298,7 @@ world:
     xxxxx.xB┌──=──┐Bx.xxxxx
     TBBBB.BB│abBcd│BB.BBBBT
     xxxxx.xB└─────┘Bx.xxxxx
-    BBBBx.xBBBBΩBBBBx.xBBBB
+    BBBBx.xBBBfΩBBBBx.xBBBB
     xxxxx.xBxxxxxxxBx.xxxxx
     x..........x..........x
     x.xxx.xxxx.x.xxxx.xxx.x
