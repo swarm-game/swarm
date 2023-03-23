@@ -153,12 +153,12 @@ instance PrettyPrec Term where
             ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
-  prettyPrec _ (TLet _ x mty t1 t2) =
+  prettyPrec _ (TLet x mty t1 t2) =
     hsep $
       ["let", pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty
         ++ ["=", ppr t1, "in", ppr t2]
-  prettyPrec _ (TDef _ x mty t1) =
+  prettyPrec _ (TDef x mty t1) =
     hsep $
       ["def", pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty

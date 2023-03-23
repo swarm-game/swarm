@@ -63,8 +63,7 @@ data Value where
   --   not a value, and will immediately reduce.
   VCApp :: Const -> [Value] -> Value
   -- | A definition, which does not take effect until executed.
-  --   The @Bool@ indicates whether the definition is recursive.
-  VDef :: Bool -> Var -> Term -> Env -> Value
+  VDef :: Var -> Term -> Env -> Value
   -- | The result of a command, consisting of the result of the
   --   command as well as an environment of bindings from 'TDef'
   --   commands.
@@ -107,11 +106,11 @@ valueToTerm (VInj s v) = TApp (TConst (bool Inl Inr s)) (valueToTerm v)
 valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
 valueToTerm (VClo x t e) =
   M.foldrWithKey
-    (\y v -> TLet False y Nothing (valueToTerm v))
+    (\y v -> TLet y Nothing (valueToTerm v))
     (TLam x Nothing t)
     (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t ()))))
 valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VDef r x t _) = TDef r x Nothing t
+valueToTerm (VDef x t _) = TDef x Nothing t
 valueToTerm (VResult v _) = valueToTerm v
 valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t

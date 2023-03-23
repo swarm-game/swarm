@@ -294,20 +294,20 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef r x Nothing t1 -> do
+  SDef x Nothing t1 -> do
     xTy <- fresh
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     _ <- xTy =:= t1' ^. sType
     pty <- generalize (t1' ^. sType)
-    return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
+    return $ Module (Syntax' l (SDef x Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef r x (Just pty) t1 -> do
+  SDef x (Just pty) t1 -> do
     let upty = toU pty
     uty <- skolemize upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
-    return $ Module (Syntax' l (SDef r x (Just pty) t1') (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
+    return $ Module (Syntax' l (SDef x (Just pty) t1') (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
@@ -432,15 +432,15 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 
   -- We can infer the type of a let whether a type has been provided for
   -- the variable or not.
-  SLet r x Nothing t1 t2 -> do
+  SLet x Nothing t1 t2 -> do
     xTy <- fresh
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     let uty = t1' ^. sType
     _ <- xTy =:= uty
     upty <- generalize uty
     t2' <- withBinding (lvVar x) upty $ infer t2
-    return $ Syntax' l (SLet r x Nothing t1' t2') (t2' ^. sType)
-  SLet r x (Just pty) t1 t2 -> do
+    return $ Syntax' l (SLet x Nothing t1' t2') (t2' ^. sType)
+  SLet x (Just pty) t1 t2 -> do
     let upty = toU pty
     -- If an explicit polytype has been provided, skolemize it and check
     -- definition and body under an extended context.
@@ -452,7 +452,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         <*> infer t2
     -- Make sure no skolem variables have escaped.
     ask >>= mapM_ noSkolems
-    return $ Syntax' l (SLet r x (Just pty) t1' t2') (t2' ^. sType)
+    return $ Syntax' l (SLet x (Just pty) t1' t2') (t2' ^. sType)
   SDef {} -> throwError $ DefNotTopLevel l t
   SBind mx c1 c2 -> do
     c1' <- infer c1

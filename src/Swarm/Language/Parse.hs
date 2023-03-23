@@ -289,12 +289,12 @@ parseTermAtom2 =
           <$> (symbol "\\" *> locIdentifier)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> sLet
+        <|> SLet
           <$> (reserved "let" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> sDef
+        <|> SDef
           <$> (reserved "def" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
@@ -322,16 +322,6 @@ unTuple :: Syntax' ty -> [Syntax' ty]
 unTuple = \case
   Syntax' _ (SPair s1 s2) _ -> s1 : unTuple s2
   s -> [s]
-
--- | Construct an 'SLet', automatically filling in the Boolean field
---   indicating whether it is recursive.
-sLet :: LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet x ty t1 = SLet (lvVar x `S.member` setOf freeVarsV t1) x ty t1
-
--- | Construct an 'SDef', automatically filling in the Boolean field
---   indicating whether it is recursive.
-sDef :: LocVar -> Maybe Polytype -> Syntax -> Term
-sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =

@@ -781,14 +781,12 @@ data Term' ty
     SLam LocVar (Maybe Type) (Syntax' ty)
   | -- | Function application.
     SApp (Syntax' ty) (Syntax' ty)
-  | -- | A (recursive) let expression, with or without a type
-    --   annotation on the variable. The @Bool@ indicates whether
-    --   it is known to be recursive.
-    SLet Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
-  | -- | A (recursive) definition command, which binds a variable to a
-    --   value in subsequent commands. The @Bool@ indicates whether the
-    --   definition is known to be recursive.
-    SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
+  | -- | A (possibly recursive) let expression, with or without a type
+    --   annotation on the variable.
+    SLet LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
+  | -- | A (possibly recursive) definition command, which binds a variable to a
+    --   value in subsequent commands.
+    SDef LocVar (Maybe Polytype) (Syntax' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
@@ -896,16 +894,16 @@ pattern (:$:) :: Term -> Syntax -> Term
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without syntax
-pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
+pattern TLet :: Var -> Maybe Polytype -> Term -> Term -> Term
+pattern TLet v pt t1 t2 <- SLet (lvVar -> v) pt (STerm t1) (STerm t2)
   where
-    TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
+    TLet v pt t1 t2 = SLet (LV NoLoc v) pt (STerm t1) (STerm t2)
 
 -- | Match a TDef without syntax
-pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
-pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
+pattern TDef :: Var -> Maybe Polytype -> Term -> Term
+pattern TDef v pt t <- SDef (lvVar -> v) pt (STerm t)
   where
-    TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
+    TDef v pt t = SDef (LV NoLoc v) pt (STerm t)
 
 -- | Match a TBind without syntax
 pattern TBind :: Maybe Var -> Term -> Term -> Term
@@ -989,8 +987,8 @@ erase (SDelay x s) = TDelay x (eraseS s)
 erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
 erase (SLam x mty body) = TLam (lvVar x) mty (eraseS body)
 erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
-erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
-erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
+erase (SLet x mty s1 s2) = TLet (lvVar x) mty (eraseS s1) (eraseS s2)
+erase (SDef x mty s) = TDef (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
 erase (SRcd m) = TRcd ((fmap . fmap) eraseS m)
 erase (SProj s x) = TProj (eraseS s) x
@@ -1029,11 +1027,11 @@ freeVarsS f = go S.empty
       | otherwise -> f s
     SLam x xty s1 -> rewrap $ SLam x xty <$> go (S.insert (lvVar x) bound) s1
     SApp s1 s2 -> rewrap $ SApp <$> go bound s1 <*> go bound s2
-    SLet r x xty s1 s2 ->
+    SLet x xty s1 s2 ->
       let bound' = S.insert (lvVar x) bound
-       in rewrap $ SLet r x xty <$> go bound' s1 <*> go bound' s2
+       in rewrap $ SLet x xty <$> go bound' s1 <*> go bound' s2
     SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
-    SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
+    SDef x xty s1 -> rewrap $ SDef x xty <$> go (S.insert (lvVar x) bound) s1
     SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
