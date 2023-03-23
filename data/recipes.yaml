@@ -814,9 +814,18 @@
 #########################################
 
 - in:
+  - [1, water]
+  - [1, silicon]
+  required:
+  - [50, solar panel]
+  out:
+  - [1, quantum dot]
+
+- in:
   - [1, small motor]
   - [1, copper pipe]
   - [1, mithril]
+  - [1, quantum dot]
   - [1, iron plate]
   out:
   - [1, victrola]

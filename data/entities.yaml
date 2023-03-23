@@ -1202,7 +1202,8 @@
   - |
     A device for reading and writing data on circular platters made of
     a soft plastic material.  The stylus must be made of an extremely
-    hard and durable material.
+    hard and durable material, with a special tip that relies on
+    quantum effects to extract information stored at very high density.
   - |
     Also allows manipulating composite values consisting of a
     collection of named fields.  For example, `[x = 2, y = "hi"]`
@@ -1213,3 +1214,12 @@
   properties: [portable]
   capabilities: [record]
 
+- name: quantum dot
+  display:
+    attr: gold
+    char: '.'
+  description:
+  - |
+    A nanoscale semiconductor particle with a wide range of
+    applications.
+  properties: [portable]
