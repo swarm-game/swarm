@@ -82,6 +82,7 @@ data GameplayAchievement
   | AttemptSelfDestructBase
   | DestroyedBase
   | LoseScenario
+  | GetDisoriented
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 instance FromJSON GameplayAchievement
