@@ -86,14 +86,20 @@ singleAchievementDetails attainedMap x =
       , case M.lookup x attainedMap of
           Nothing -> emptyWidget
           Just attainment ->
-            padTop (Pad 1) $
-              hBox
-                [ txt "Obtained: "
-                , withAttr cyanAttr $
-                    str $
-                      formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y" $
-                        attainment ^. obtainedAt
-                ]
+            padTop (Pad 1) $ vBox [
+                hBox
+                  [ txt "Obtained: "
+                  , withAttr cyanAttr $
+                      str $
+                        formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y" $
+                          attainment ^. obtainedAt
+                  ]
+              , flip (maybe emptyWidget) (attainment ^. maybeScenarioPath) $ \s -> hBox
+                  [ txt "Scenario: "
+                  , withAttr cyanAttr $
+                      str s
+                  ]
+              ]
       , padTop (Pad 1) $
           hBox
             [ txt "Effort: "
