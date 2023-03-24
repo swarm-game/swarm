@@ -75,11 +75,12 @@ describe (GameplayAchievement LoseScenario) =
 describe (GameplayAchievement GetDisoriented) =
   AchievementInfo
     "Playing Ostrich"
-    (Just $
+    ( Just $
         FTQuotation $
           Quotation
             "Lil Jon"
-            "Fire up that loud / Another round of shots / Turn down for what?")
+            "Fire up that loud / Another round of shots / Turn down for what?"
+    )
     "'turn down' without a compass. Congratulations, you are 'disoriented'. How are you supposed to move now?"
     Easy
     True
