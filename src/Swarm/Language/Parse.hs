@@ -224,7 +224,6 @@ parseTypeAtom =
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
 
--- XXX reserved words should be OK to use as record fields?
 parseRecord :: Parser a -> Parser (Map Var a)
 parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
  where
