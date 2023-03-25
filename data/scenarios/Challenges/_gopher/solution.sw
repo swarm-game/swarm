@@ -3,24 +3,20 @@ def elif = \t. \then. \else. {if t then else} end
 def else = \t. t end
 
 def makeSigned = \b. \x.
-    if b {
-        return (-x);
-    } {
-        return x;
-    }
+    if b {-x} {x};
     end;
 
 def getDirection = \n.
     if (n == 0) {
-        return forward;
+        forward;
     } $ elif (n == 1) {
-        return right;
+        right;
     } $ elif (n == 2) {
-        return back;
+        back;
     } $ elif (n == 3) {
-        return left;
+        left;
     } $ else {
-        return down;
+        down;
     };
     end;
 
@@ -28,7 +24,7 @@ def getDirection = \n.
 Loops forever
 */
 def scanDirections = \n.
-    d <- getDirection n;
+    let d = getDirection n in
     out <- scan d;
     shouldContinue <- case out
         (\_. return true)
@@ -55,7 +51,7 @@ def scanDirections = \n.
     end;
 
 def deploySensor =
-    _s <- build {scanDirections 0;};
+    _s <- build {scanDirections 0};
     return ();
     end;
 
@@ -83,25 +79,14 @@ def deployGrid = \f. \width. \height.
     if (height > 0) {
 
         let nowEven = isEven height in
-
-        offsetVal <- makeSigned nowEven $ height * 2;
-        extraOffset <- if nowEven {
-            return (-1);
-        } {
-            return 0;
-        };
+        let offsetVal = makeSigned nowEven $ height * 2 in
+        let extraOffset = if nowEven {-1} {0} in
         deployRow f (offsetVal + extraOffset) width;
 
-        d <- if nowEven {
-            return right;
-        } {
-            return left;
-        };
-
+        let d = if nowEven {right} {left} in
         turn d;
         move;
         turn d;
-
         deployGrid f width $ height - 1;
     } {};
     end;
@@ -133,11 +118,7 @@ def searchToolkitRows = \width. \rowCount.
     if (rowCount > 1) {
 
         let nowEven = isEven rowCount in
-        d <- if nowEven {
-            return right;
-        } {
-            return left;
-        };
+        let d = if nowEven {right} {left} in
 
         turn d;
         move;
@@ -148,9 +129,9 @@ def searchToolkitRows = \width. \rowCount.
     end;
 
 def listenForDefeat =
-    // Block until the gopher says something
-    m <- listen;
-    if (m == "Argh! I give up.") {} {
+    // Block until the gopher is defeated
+    m <- has "serenity";
+    if m {} {
         listenForDefeat;
     };
     end;

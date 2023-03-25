@@ -24,7 +24,7 @@ objectives:
       } {
         return true;
       }
-  - teaser: Recover swivels
+  - teaser: Recover equipment
     prerequisite: defeat_gopher
     hidden: true
     optional: true
@@ -84,6 +84,7 @@ robots:
     inventory:
       - [50, mound]
       - [1, toolkit]
+      - [1, serenity]
     program: |
       run "data/scenarios/Challenges/_gopher/gopher.sw"
 entities:
@@ -94,6 +95,13 @@ entities:
     description:
       - An unsightly pile of dirt
     properties: [known]
+  - name: serenity
+    display:
+      char: 's'
+      attr: silver
+    description:
+      - Peace of mind after having driven away the gopher.
+    properties: [known]
   - name: swivel
     display:
       char: 's'
@@ -101,7 +109,7 @@ entities:
     capabilities: [turn]
     description:
       - Allows a robot to "turn" but not "move".
-    properties: [known]
+    properties: [known, portable]
   - name: uranium
     display:
       char: 'U'

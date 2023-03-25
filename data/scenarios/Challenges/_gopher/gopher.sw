@@ -13,81 +13,60 @@ def randSign = \x.
     }
     end;
 
+def goDir = \dist. \d1. \d2.
+    if (dist < 0) {
+        turn d1;
+    } $ elif (dist > 0) {
+        turn d2;
+    } {};
+
+    doN (abs dist) move;
+    end;
+
+def randSwap = \f. \g.
+    r <- random 2;
+    if (r == 0) {
+        f; g;
+    } {
+        g; f;
+    };
+    end;
+
 def converge = \dest. \currentLoc.
+    let xDist = fst currentLoc - fst dest in
+    let yDist = snd currentLoc - snd dest in
+    randSwap (goDir xDist east west) (goDir yDist north south);
+    end;
 
-  let xDist = fst currentLoc - fst dest in
-  let yDist = snd currentLoc - snd dest in
-
-  if (xDist < 0) {
-    turn east;
-  } {
-    if (xDist > 0) {
-      turn west;
-    } {};
-  };
-  doN (abs xDist) move;
-
-  if (yDist < 0) {
-    turn north;
-  } {
-    if (yDist > 0) {
-      turn south;
-    } {};
-  };
-  doN (abs yDist) move;
-  end;
-
-/**
-TODO: Randomly alternate between horizontal and vertical
-movement.
-*/
 def navigateTo = \destTuple.
     loc <- whereami;
     converge destTuple loc;
     end;
 
 def arrive = \fieldWidth. \fieldHeight.
-
-    let leadDist = 20 in
-
     newDestinationX <- random fieldWidth;
     newDestinationYtemp <- random fieldHeight;
     let newDestinationY = -newDestinationYtemp in
-
-    offsetXrand <- random $ leadDist / 2;
-
-    // The manhattan-distance of the offset
-    // must total some preset amount.
-    let offsetXunsigned = (leadDist / 2) + offsetXrand in
-    let offsetYunsigned = leadDist - offsetXunsigned in
-
-    offsetX <- randSign offsetXunsigned;
-    offsetY <- randSign offsetYunsigned;
-
-    let startX = newDestinationX + offsetX in
-    let startY = newDestinationY + offsetY in
-
-    teleport self (startX, startY);
     navigateTo (newDestinationX, newDestinationY);
     turn down;
     end;
 
 def getTauntStage = \startingAmount. \newCount.
     if ((newCount * 5) / startingAmount < 1) {
-        return (0, "Hey, maybe we can work this out?");
+        (0, "Hey, maybe we can work this out?")
     } $ elif ((newCount * 5) / startingAmount < 2) {
-        return (1, "I didn't hear no bell!");
+        (1, "I didn't hear no bell!")
     } $ elif ((newCount * 5) / startingAmount < 3) {
-        return (2, "Why don't you just give up?");
+        (2, "Why don't you just give up?")
     } $ elif ((newCount * 5) / startingAmount < 4) {
-        return (3, "Close one!");
+        (3, "Close one!")
     } $ elif (newCount < startingAmount - 2) {
-        return (4, "OK, no more Mr. Nice Gopher!");
+        (4, "OK, no more Mr. Nice Gopher!")
     } $ elif (newCount < startingAmount - 1) {
-        return (5, "Bet you can't do that again!");
+        (5, "Bet you can't do that again!")
     } $ elif (newCount < startingAmount) {
-        return (6, "Beginner's luck!");
-    } $ else {return (7, "You'll never catch me!");};
+        (6, "Beginner's luck!")
+    } $ else {(7, "You'll never catch me!")};
     end;
 
 def waitWhileHere = \e. \remainingTime.
@@ -114,7 +93,7 @@ def waitWhileHere = \e. \remainingTime.
 def go = \width. \height. \lastTauntIndex. \startingAmount. \dropping.
     newCount <- count dropping;
     if (newCount > 0) {
-        tauntStage <- getTauntStage startingAmount newCount;
+        let tauntStage = getTauntStage startingAmount newCount in
         let tauntIndex = fst tauntStage in
         if (tauntIndex != lastTauntIndex) {
             say $ snd tauntStage;
@@ -138,6 +117,10 @@ def go = \width. \height. \lastTauntIndex. \startingAmount. \dropping.
             swap reward;
             return ();
         };
+
+        baseloc <- as base {whereami};
+        teleport self baseloc;
+        give base "serenity";
 
         selfdestruct;
     };
