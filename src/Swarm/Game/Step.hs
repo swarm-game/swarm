@@ -709,7 +709,7 @@ stepCESK cesk = case cesk of
   -- Do a record projection
   Out v s (FProj x : k) -> case v of
     VRcd m -> case M.lookup x m of
-      Nothing -> badMachineState s $ "Record projection for variable " <> x <> " that does not exist"
+      Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
       Just xv -> return $ Out xv s k
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the

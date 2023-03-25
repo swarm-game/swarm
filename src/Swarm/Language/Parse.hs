@@ -231,7 +231,7 @@ parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
   parseBinding = (,) <$> identifier <*> p
   fromListUnique kvs = case findDup (map fst kvs) of
     Nothing -> return $ Map.fromList kvs
-    Just x -> fail $ "duplicate field name '" ++ from @Text x ++ "' in record literal"
+    Just x -> fail $ T.unwords ["duplicate field name", squote $ from @Text x, "in record literal"]
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"

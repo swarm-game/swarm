@@ -1201,9 +1201,9 @@
   description:
   - |
     A device for reading and writing data on circular platters made of
-    a soft plastic material.  The stylus must be made of an extremely
+    a soft plastic material.  The stylus must be made of a
     hard and durable material, with a special tip that relies on
-    quantum effects to extract information stored at very high density.
+    quantum effects to extract high-density information.
   - |
     Also allows manipulating composite values consisting of a
     collection of named fields.  For example, `[x = 2, y = "hi"]`
