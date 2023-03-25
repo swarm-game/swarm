@@ -1,0 +1,157 @@
+version: 1
+name: Gopher
+author: Karl Ostmo
+description: |
+  Dispatch a pesky gopher
+creative: false
+seed: 0
+objectives:
+  - id: defeat_gopher
+    teaser: Defeat gopher
+    goal:
+      - |
+        A gopher (G) is defiling your immaculate garden!
+      - |
+        He will burrow (o) underground awhile, then pop up
+        anywhere within the rectangular grassy region
+        to gloat atop his "mound" of dirt for a short time.
+        `drill` the "mound" while he sits to drive him
+        away. Eventually you should wear down his resolve!
+    condition: |
+      try {
+        robotnamed "gopher";
+        return false;
+      } {
+        return true;
+      }
+  - teaser: Recover equipment
+    prerequisite: defeat_gopher
+    hidden: true
+    optional: true
+    goal:
+      - |
+        Salvage any deployed robots to get your scanners back.
+    condition: |
+      as base {
+        sCount <- count "scanner";
+        return $ sCount >= 120;
+      }
+robots:
+  - name: base
+    loc: [-1, 1]
+    display:
+      attr: blue
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - 3D printer
+      - branch predictor
+      - treads
+      - clock
+      - comparator
+      - workbench
+      - grabber
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - hearing aid
+      - scanner
+      - strange loop
+      - drill
+    inventory:
+      - [120, solar panel]
+      - [120, strange loop]
+      - [120, scanner]
+      - [120, logger]
+      - [120, lambda]
+      - [120, dictionary]
+      - [120, grabber]
+      - [120, clock]
+      - [120, comparator]
+      - [120, ADT calculator]
+      - [120, swivel]
+      - [120, branch predictor]
+      - [120, drill]
+      - [120, flower]
+  - name: gopher
+    system: true
+    dir: [0, 1]
+    display:
+      char: 'G'
+      invisible: false
+      attr: 'wood'
+    inventory:
+      - [50, mound]
+      - [1, toolkit]
+      - [1, serenity]
+    program: |
+      run "data/scenarios/Challenges/_gopher/gopher.sw"
+entities:
+  - name: mound
+    display:
+      char: 'M'
+      attr: wood
+    description:
+      - An unsightly pile of dirt
+    properties: [known]
+  - name: serenity
+    display:
+      char: 's'
+      attr: silver
+    description:
+      - Peace of mind after having driven away the gopher.
+    properties: [known]
+  - name: swivel
+    display:
+      char: 's'
+      attr: gold
+    capabilities: [turn]
+    description:
+      - Allows a robot to "turn" but not "move".
+    properties: [known, portable]
+  - name: uranium
+    display:
+      char: 'U'
+      attr: silver
+    description:
+      - Unearthed by industrious gophers.
+    properties: [known, portable]
+recipes:
+  - in:
+      - [1, mound]
+    out:
+      - [1, uranium]
+    required:
+      - [1, drill]
+solution: |
+   run "scenarios/Challenges/_gopher/solution.sw"
+known: []
+world:
+  upperleft: [-1, 1]
+  offset: false
+  palette:
+    'x': [dirt]
+    '.': [grass]
+    'g': [dirt, null, gopher]
+  map: |
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    x............................x
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxg
