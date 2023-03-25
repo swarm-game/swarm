@@ -1,4 +1,6 @@
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+def elif = \t. \then. \else. {if t then else} end
+def else = \t. t end
 
 def makeSigned = \b. \x.
     if b {
@@ -11,21 +13,15 @@ def makeSigned = \b. \x.
 def getDirection = \n.
     if (n == 0) {
         return forward;
-    } {
-        if (n == 1) {
-            return right;
-        } {
-            if (n == 2) {
-                return back;
-            } {
-                if (n == 3) {
-                    return left;
-                } {
-                    return down;
-                }
-            }
-        }
-    }
+    } $ elif (n == 1) {
+        return right;
+    } $ elif (n == 2) {
+        return back;
+    } $ elif (n == 3) {
+        return left;
+    } $ else {
+        return down;
+    };
     end;
 
 /**
@@ -68,13 +64,13 @@ def isDivisibleBy = \dividend. \divisor.
     end;
 
 // stagger at every fifth cell
-def deployRow = \offset. \cellCount.
+def deployRow = \f. \offset. \cellCount.
     if (isDivisibleBy (cellCount + offset) 5) {
-        deploySensor;
+        f;
     } {};
     if (cellCount > 1) {
         move;
-        deployRow offset $ cellCount - 1;
+        deployRow f offset $ cellCount - 1;
     } {};
     end;
 
@@ -82,7 +78,7 @@ def isEven = \x.
    isDivisibleBy x 2
    end;
 
-def deployGrid = \width. \height.
+def deployGrid = \f. \width. \height.
 
     if (height > 0) {
 
@@ -94,7 +90,7 @@ def deployGrid = \width. \height.
         } {
             return 0;
         };
-        deployRow (offsetVal + extraOffset) width;
+        deployRow f (offsetVal + extraOffset) width;
 
         d <- if nowEven {
             return right;
@@ -106,7 +102,7 @@ def deployGrid = \width. \height.
         move;
         turn d;
 
-        deployGrid width $ height - 1;
+        deployGrid f width $ height - 1;
     } {};
     end;
 
@@ -115,7 +111,9 @@ def pickupToolkit =
     case x
         (\_. return false)
         (\y. if (y == "toolkit") {
-            grab; return true
+            tk <- grab;
+            equip tk;
+            return true
         } {
             return false
         });
@@ -168,12 +166,18 @@ def searchForToolkit = \width. \height.
     end;
 
 def go = \width. \height.
-    deployGrid width height;
+    deployGrid deploySensor width height;
     turn left;
     move;
 
     listenForDefeat;
     searchForToolkit height width;
+
+    deployGrid (place "flower") width height;
+    turn left;
+    doN height move;
+    turn right;
+    deployGrid salvage width height;
     end;
 
 go 30 20;

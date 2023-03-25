@@ -6,7 +6,9 @@ description: |
 creative: false
 seed: 0
 objectives:
-  - goal:
+  - id: defeat_gopher
+    teaser: Defeat gopher
+    goal:
       - |
         A gopher (G) is defiling your immaculate garden!
       - |
@@ -22,6 +24,18 @@ objectives:
       } {
         return true;
       }
+  - teaser: Recover swivels
+    prerequisite: defeat_gopher
+    hidden: true
+    optional: true
+    goal:
+      - |
+        Salvage any deployed robots to get your scanners back.
+    condition: |
+      as base {
+        sCount <- count "scanner";
+        return $ sCount >= 120;
+      }
 robots:
   - name: base
     loc: [-1, 1]
@@ -33,7 +47,6 @@ robots:
       - 3D printer
       - branch predictor
       - treads
-      - antenna
       - clock
       - comparator
       - workbench
