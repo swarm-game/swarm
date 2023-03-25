@@ -107,7 +107,7 @@ import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, plural, reflow, (?))
+import Swarm.Util (binTuples, failT, plural, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -143,7 +143,7 @@ instance FromJSON EntityProperty where
     tryRead :: Text -> Parser EntityProperty
     tryRead t = case readMaybe . from . T.toTitle $ t of
       Just c -> return c
-      Nothing -> fail $ "Unknown entity property " ++ from t
+      Nothing -> failT ["Unknown entity property", t]
 
 -- | How long an entity takes to regrow.  This represents the minimum
 --   and maximum amount of time taken by one growth stage (there are
@@ -343,7 +343,7 @@ instance FromJSON Entity where
 instance FromJSONE EntityMap Entity where
   parseJSONE = withTextE "entity name" $ \name ->
     E $ \em -> case lookupEntityName name em of
-      Nothing -> fail $ "Unknown entity: " ++ from @Text name
+      Nothing -> failT ["Unknown entity:", name]
       Just e -> return e
 
 instance ToJSON Entity where

@@ -45,6 +45,7 @@ module Swarm.Language.Typecheck (
 
 import Control.Category ((>>>))
 import Control.Lens ((^.))
+import Control.Lens.Indexed (itraverse)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Unification hiding (applyBindings, (=:=))
@@ -237,6 +238,11 @@ data TypeErr
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
     CantInfer SrcLoc Term
+  | -- | We can't infer the type of a record projection @r.x@ if we
+    --   don't concretely know the type of the record @r@.
+    CantInferProj SrcLoc Term
+  | -- | An attempt to project out a nonexistent field
+    UnknownProj SrcLoc Var Term
   | -- | An invalid argument was provided to @atomic@.
     InvalidAtomic SrcLoc InvalidAtomicReason Term
   deriving (Show)
@@ -267,6 +273,8 @@ getTypeErrSrcLoc te = case te of
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
+  CantInferProj l _ -> Just l
+  UnknownProj l _ _ -> Just l
   InvalidAtomic l _ _ -> Just l
 
 ------------------------------------------------------------
@@ -452,6 +460,16 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+  SRcd m -> do
+    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
+    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+  SProj t1 x -> do
+    t1' <- infer t1
+    case t1' ^. sType of
+      UTyRcd m -> case M.lookup x m of
+        Just xTy -> return $ Syntax' l (SProj t1' x) xTy
+        Nothing -> throwError $ UnknownProj l x (SProj t1 x)
+      _ -> throwError $ CantInferProj l (SProj t1 x)
   SAnnotate c pty -> do
     let upty = toU pty
     -- Typecheck against skolemized polytype.
@@ -500,6 +518,15 @@ decomposeFunTy ty = do
   ty1 <- fresh
   ty2 <- fresh
   _ <- ty =:= UTyFun ty1 ty2
+  return (ty1, ty2)
+
+-- | Decompose a type that is supposed to be a product type.
+decomposeProdTy :: UType -> Infer (UType, UType)
+decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- ty =:= UTyProd ty1 ty2
   return (ty1, ty2)
 
 -- | Infer the type of a constant.
@@ -595,10 +622,21 @@ inferConst c = case c of
 -- | @check t ty@ checks that @t@ has type @ty@, returning a
 --   type-annotated AST if so.
 check :: Syntax -> UType -> Infer (Syntax' UType)
-check t ty = do
-  Syntax' l t' ty' <- infer t
-  theTy <- ty =:= ty'
-  return $ Syntax' l t' theTy
+check s@(Syntax l t) ty = (`catchError` addLocToTypeErr s) $ case t of
+  SPair s1 s2 -> do
+    (ty1, ty2) <- decomposeProdTy ty
+    s1' <- check s1 ty1
+    s2' <- check s2 ty2
+    return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
+  SLam x xTy body -> do
+    (argTy, resTy) <- decomposeFunTy ty
+    _ <- maybe (return argTy) (=:= argTy) (toU xTy)
+    body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
+    return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
+  _ -> do
+    Syntax' l' t' ty' <- infer s
+    theTy <- ty =:= ty'
+    return $ Syntax' l' t' theTy
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
@@ -669,6 +707,12 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
+  SRcd m -> sum <$> mapM analyzeField (M.assocs m)
+   where
+    analyzeField :: (Var, Maybe Syntax) -> Infer Int
+    analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
+    analyzeField (_, Just s) = analyzeAtomic locals s
+  SProj {} -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0

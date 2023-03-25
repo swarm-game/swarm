@@ -1193,3 +1193,33 @@
     inner workings.
   properties: [portable]
   capabilities: [debug]
+
+- name: victrola
+  display:
+    attr: device
+    char: 'Q'
+  description:
+  - |
+    A device for reading and writing data on circular platters made of
+    a soft plastic material.  The stylus must be made of a
+    hard and durable material, with a special tip that relies on
+    quantum effects to extract high-density information.
+  - |
+    Also allows manipulating composite values consisting of a
+    collection of named fields.  For example, `[x = 2, y = "hi"]`
+    is a value of type `[x : int, y : text]`.  Individual fields
+    can be projected using dot notation.  For example,
+    `let r = [y="hi", x=2] in r.x` has the value 2.  The order
+    of the fields does not matter.
+  properties: [portable]
+  capabilities: [record]
+
+- name: quantum dot
+  display:
+    attr: gold
+    char: '.'
+  description:
+  - |
+    A nanoscale semiconductor particle with a wide range of
+    applications.
+  properties: [portable]

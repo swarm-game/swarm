@@ -16,6 +16,7 @@ module Swarm.Util (
   listEnums,
   uniq,
   binTuples,
+  findDup,
 
   -- * Directory utilities
   readFileMay,
@@ -24,6 +25,8 @@ module Swarm.Util (
   -- * Text utilities
   isIdentChar,
   replaceLast,
+  failT,
+  showT,
 
   -- * English language utilities
   reflow,
@@ -86,6 +89,7 @@ import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
 import System.IO.Error (catchIOError)
+import Witch (from)
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -145,6 +149,15 @@ binTuples = foldr f mempty
  where
   f = uncurry (M.insertWith (<>)) . fmap pure
 
+-- | Find a duplicate element within the list, if any exists.
+findDup :: Ord a => [a] -> Maybe a
+findDup = go S.empty
+ where
+  go _ [] = Nothing
+  go seen (a : as)
+    | a `S.member` seen = Just a
+    | otherwise = go (S.insert a seen) as
+
 ------------------------------------------------------------
 -- Directory stuff
 
@@ -184,6 +197,15 @@ isIdentChar c = isAlphaNum c || c == '_' || c == '\''
 -- "(move"
 replaceLast :: Text -> Text -> Text
 replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
+
+-- | Fail with a Text-based message, made out of phrases to be joined
+--   by spaces.
+failT :: MonadFail m => [Text] -> m a
+failT = fail . from @Text . T.unwords
+
+-- | Show a value, but as Text.
+showT :: Show a => a -> Text
+showT = from @String . show
 
 ------------------------------------------------------------
 -- Some language-y stuff

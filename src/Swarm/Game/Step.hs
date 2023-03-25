@@ -30,7 +30,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (foldM, forM, forM_, guard, msum, unless, when)
+import Control.Monad (foldM, forM, forM_, guard, msum, unless, when, zipWithM)
 import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
@@ -687,6 +687,26 @@ stepCESK cesk = case cesk of
         evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
+  -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
+  -- on the first field and record the rest in a FRcd frame.
+  In (TRcd m) e s k -> return $ case M.assocs m of
+    [] -> Out (VRcd M.empty) s k
+    ((x, t) : fs) -> In (fromMaybe (TVar x) t) e s (FRcd e [] x fs : k)
+  -- When we finish evaluating the last field, return a record value.
+  Out v s (FRcd _ done x [] : k) -> return $ Out (VRcd (M.fromList ((x, v) : done))) s k
+  -- Otherwise, save the value of the field just evaluated and move on
+  -- to focus on evaluating the next one.
+  Out v s (FRcd e done x ((y, t) : rest) : k) ->
+    return $ In (fromMaybe (TVar y) t) e s (FRcd e ((x, v) : done) y rest : k)
+  -- Evaluate a record projection: evaluate the record and remember we
+  -- need to do the projection later.
+  In (TProj t x) e s k -> return $ In t e s (FProj x : k)
+  -- Do a record projection
+  Out v s (FProj x : k) -> case v of
+    VRcd m -> case M.lookup x m of
+      Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
+      Just xv -> return $ Out xv s k
+    _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
@@ -2296,6 +2316,9 @@ compareValues v1 = case v1 of
   VPair v11 v12 -> \case
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
+    v2 -> incompatCmp v1 v2
+  VRcd m1 -> \case
+    VRcd m2 -> mconcat <$> (zipWithM compareValues `on` M.elems) m1 m2
     v2 -> incompatCmp v1 v2
   VClo {} -> incomparable v1
   VCApp {} -> incomparable v1
