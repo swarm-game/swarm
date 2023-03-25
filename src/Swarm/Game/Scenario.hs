@@ -67,10 +67,11 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Util (failT)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
-import Witch (from, into)
+import Witch (from)
 
 ------------------------------------------------------------
 -- Scenario
@@ -111,9 +112,7 @@ instance FromJSONE EntityMap Scenario where
       em' <- getE
       case filter (isNothing . (`lookupEntityName` em')) known of
         [] -> return ()
-        unk ->
-          fail . into @String $
-            "Unknown entities in 'known' list: " <> T.intercalate ", " unk
+        unk -> failT ["Unknown entities in 'known' list:", T.intercalate ", " unk]
 
       -- parse robots and build RobotMap
       rs <- v ..: "robots"

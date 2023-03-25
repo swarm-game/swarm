@@ -56,6 +56,8 @@ module Swarm.Language.Syntax (
   pattern TDef,
   pattern TBind,
   pattern TDelay,
+  pattern TRcd,
+  pattern TProj,
   pattern TAnnotate,
 
   -- * Terms
@@ -88,6 +90,7 @@ import Data.Hashable (Hashable)
 import Data.List qualified as L (tail)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map.Strict (Map)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
 import Data.Text hiding (filter, map)
@@ -796,6 +799,12 @@ data Term' ty
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType (Syntax' ty)
+  | -- | Record literals @[x1 = e1, x2 = e2, x3, ...]@ Names @x@
+    --   without an accompanying definition are sugar for writing
+    --   @x=x@.
+    SRcd (Map Var (Maybe (Syntax' ty)))
+  | -- | Record projection @e.x@
+    SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
     SAnnotate (Syntax' ty) Polytype
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
@@ -908,12 +917,21 @@ pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
+-- | Match a TRcd without syntax
+pattern TRcd :: Map Var (Maybe Term) -> Term
+pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
+  where
+    TRcd m = SRcd ((fmap . fmap) STerm m)
+
+pattern TProj :: Term -> Var -> Term
+pattern TProj t x = SProj (STerm t) x
+
 -- | Match a TAnnotate without syntax
 pattern TAnnotate :: Term -> Polytype -> Term
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TAnnotate #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
@@ -974,6 +992,8 @@ erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
 erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
 erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
+erase (SRcd m) = TRcd ((fmap . fmap) eraseS m)
+erase (SProj s x) = TProj (eraseS s) x
 erase (SAnnotate s pty) = TAnnotate (eraseS s) pty
 
 ------------------------------------------------------------
@@ -1016,6 +1036,8 @@ freeVarsS f = go S.empty
     SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
     SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
+    SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
+    SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
