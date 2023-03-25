@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -49,7 +50,7 @@ import Data.Text qualified as T
 import Data.Void
 import Swarm.Language.Syntax
 import Swarm.Language.Types
-import Swarm.Util (findDup)
+import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -136,12 +137,10 @@ locIdentifier :: Parser LocVar
 locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
-  check s
+  check (into @Text -> t)
     | toLower t `elem` reservedWords =
-        fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+        failT ["reserved word", squote t, "cannot be used as variable name"]
     | otherwise = return t
-   where
-    t = into @Text s
 
 -- | Parse a text literal (including escape sequences) in double quotes.
 textLiteral :: Parser Text
@@ -225,13 +224,14 @@ parseTypeAtom =
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
 
+-- XXX reserved words should be OK to use as record fields?
 parseRecord :: Parser a -> Parser (Map Var a)
 parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
  where
   parseBinding = (,) <$> identifier <*> p
   fromListUnique kvs = case findDup (map fst kvs) of
     Nothing -> return $ Map.fromList kvs
-    Just x -> fail $ T.unwords ["duplicate field name", squote $ from @Text x, "in record literal"]
+    Just x -> failT ["duplicate field name", squote x, "in record literal"]
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"
