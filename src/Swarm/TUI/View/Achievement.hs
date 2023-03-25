@@ -87,12 +87,20 @@ singleAchievementDetails attainedMap x =
           Nothing -> emptyWidget
           Just attainment ->
             padTop (Pad 1) $
-              hBox
-                [ txt "Obtained: "
-                , withAttr cyanAttr $
-                    str $
-                      formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y" $
-                        attainment ^. obtainedAt
+              vBox
+                [ hBox
+                    [ txt "Obtained: "
+                    , withAttr cyanAttr $
+                        str $
+                          formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y" $
+                            attainment ^. obtainedAt
+                    ]
+                , flip (maybe emptyWidget) (attainment ^. maybeScenarioPath) $ \s ->
+                    hBox
+                      [ txt "Scenario: "
+                      , withAttr cyanAttr $
+                          str s
+                      ]
                 ]
       , padTop (Pad 1) $
           hBox

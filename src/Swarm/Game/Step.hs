@@ -293,12 +293,7 @@ hypotheticalWinCheck em g ws oc = do
 
   case newWinState of
     Unwinnable _ -> do
-      currentTime <- sendIO getZonedTime
-      gameAchievements
-        %= M.insertWith
-          (<>)
-          LoseScenario
-          (Attainment (GameplayAchievement LoseScenario) Nothing currentTime)
+      grantAchievement LoseScenario
     _ -> return ()
 
   announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
@@ -862,13 +857,7 @@ stepCESK cesk = case cesk of
     -- handled.
     case exn of
       CmdFailed _ _ (Just a) -> do
-        currentTime <- sendIO getZonedTime
-        scenarioPath <- use currentScenarioPath
-        gameAchievements
-          %= M.insertWith
-            (<>)
-            a
-            (Attainment (GameplayAchievement a) scenarioPath currentTime)
+        grantAchievement a
       _ -> return ()
 
     -- If an exception rises all the way to the top level without being
@@ -1065,6 +1054,11 @@ execConst c vs s k = do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
         robotOrientation . _Just %= applyTurn d
         flagRedraw
+
+        inst <- use equippedDevices
+        when (d == DRelative DDown && countByName "compass" inst == 0) $ do
+          grantAchievement GetDisoriented
+
         return $ Out VUnit s k
       _ -> badConst
     Place -> case vs of
@@ -2167,6 +2161,19 @@ execConst c vs s k = do
 ------------------------------------------------------------
 -- Some utility functions
 ------------------------------------------------------------
+
+grantAchievement ::
+  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  GameplayAchievement ->
+  m ()
+grantAchievement a = do
+  currentTime <- sendIO getZonedTime
+  scenarioPath <- use currentScenarioPath
+  gameAchievements
+    %= M.insertWith
+      (<>)
+      a
+      (Attainment (GameplayAchievement a) scenarioPath currentTime)
 
 -- | How to handle failure, for example when moving to blocked location
 data RobotFailure = ThrowExn | Destroy | IgnoreFail
