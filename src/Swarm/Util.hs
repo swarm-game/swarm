@@ -201,7 +201,7 @@ replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
 -- | Fail with a Text-based message, made out of phrases to be joined
 --   by spaces.
 failT :: MonadFail m => [Text] -> m a
-failT = fail . from @Text . T.unlines
+failT = fail . from @Text . T.unwords
 
 -- | Show a value, but as Text.
 showT :: Show a => a -> Text
