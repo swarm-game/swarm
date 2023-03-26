@@ -14,6 +14,7 @@ import Control.Unification
 import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.Map.Strict qualified as M
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -83,6 +84,7 @@ instance PrettyPrec t => PrettyPrec (TypeF t) where
   prettyPrec p (TyFunF ty1 ty2) =
     pparens (p > 0) $
       prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
+  prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
@@ -95,8 +97,9 @@ instance PrettyPrec UPolytype where
 instance PrettyPrec t => PrettyPrec (Ctx t) where
   prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
-   where
-    prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
+
+prettyBinding :: (Pretty a, PrettyPrec b) => (a, b) -> Doc ann
+prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
   prettyPrec _ = pretty . directionSyntax
@@ -167,9 +170,15 @@ instance PrettyPrec Term where
   prettyPrec p (TBind (Just x) t1 t2) =
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+  prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
+  prettyPrec _ (TProj t x) = prettyPrec 11 t <> "." <> pretty x
   prettyPrec p (TAnnotate t pt) =
     pparens (p > 0) $
       prettyPrec 1 t <+> ":" <+> ppr pt
+
+prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
+prettyEquality (x, Nothing) = pretty x
+prettyEquality (x, Just t) = pretty x <+> "=" <+> ppr t
 
 prettyTuple :: Term -> Doc a
 prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
@@ -201,6 +210,10 @@ instance PrettyPrec TypeErr where
     "Definitions may only be at the top level:" <+> ppr t
   prettyPrec _ (CantInfer _ t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
+  prettyPrec _ (CantInferProj _ t) =
+    "Can't infer the type of a record projection:" <+> ppr t
+  prettyPrec _ (UnknownProj _ x t) =
+    "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
   prettyPrec _ (InvalidAtomic _ reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
 

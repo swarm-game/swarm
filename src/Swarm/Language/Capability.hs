@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -21,6 +23,7 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax
+import Swarm.Util (failT)
 import Text.Read (readMaybe)
 import Witch (from)
 import Prelude hiding (lookup)
@@ -126,6 +129,8 @@ data Capability
     CSum
   | -- | Capability for working with product types.
     CProd
+  | -- | Capability for working with record types.
+    CRecord
   | -- | Debug capability.
     CDebug
   | -- | God-like capabilities.  For e.g. commands intended only for
@@ -146,7 +151,7 @@ instance FromJSON Capability where
     tryRead :: Text -> Parser Capability
     tryRead t = case readMaybe . from . T.cons 'C' . T.toTitle $ t of
       Just c -> return c
-      Nothing -> fail $ "Unknown capability " ++ from t
+      Nothing -> failT ["Unknown capability", t]
 
 -- | Capabilities needed to evaluate or execute a constant.
 constCaps :: Const -> Maybe Capability

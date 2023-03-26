@@ -17,9 +17,11 @@ module Swarm.Language.LSP.Hover (
 import Control.Applicative ((<|>))
 import Control.Lens ((^.))
 import Control.Monad (guard, void)
+import Data.Foldable (asum)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe)
+import Data.Map qualified as M
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Utf16.Rope qualified as R
@@ -112,6 +114,8 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   SBind mlv s1@(Syntax' _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
+  SRcd m -> asum . map d . catMaybes . M.elems $ m
+  SProj s1 _ -> d s1
   SAnnotate s _ -> d s
   SRequirements s -> d s
   -- atoms - return their position and end recursion
@@ -180,6 +184,8 @@ explain trm = case trm ^. sTerm of
   TText {} -> literal "A text literal."
   TBool {} -> literal "A boolean literal."
   TVar v -> pure $ typeSignature v ty ""
+  SRcd {} -> literal "A record literal."
+  SProj {} -> literal "A record projection."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node

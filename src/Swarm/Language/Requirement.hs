@@ -241,5 +241,10 @@ requirements' = go
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning mempty is safe.
     TDef {} -> mempty
+    TRcd m -> insert (ReqCap CRecord) $ foldMap (go ctx . expandEq) (M.assocs m)
+     where
+      expandEq (x, Nothing) = TVar x
+      expandEq (_, Just t) = t
+    TProj t _ -> insert (ReqCap CRecord) $ go ctx t
     -- A type ascription doesn't change requirements
     TAnnotate t _ -> go ctx t
