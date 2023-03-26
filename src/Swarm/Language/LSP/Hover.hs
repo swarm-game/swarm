@@ -117,7 +117,7 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   SRcd m -> asum . map d . catMaybes . M.elems $ m
   SProj s1 _ -> d s1
   SAnnotate s _ -> d s
-  SRequirements s -> d s
+  SRequirements _ s -> d s
   -- atoms - return their position and end recursion
   TUnit -> Nothing
   TConst {} -> Nothing

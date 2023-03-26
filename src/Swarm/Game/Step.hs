@@ -644,11 +644,7 @@ stepCESK cesk = case cesk of
   -- Require and requireDevice just turn into no-ops.
   In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
-  In (TRequirements t) e s k -> do
-    currentContext <- use $ robotContext . defReqs
-    let (reqs, _) = R.requirements currentContext t
-    traceLog Logged _
-    return $ Out VUnit s k
+  In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
   -- Type ascriptions are ignored
   In (TAnnotate v _) e s k -> return $ In v e s k
   -- Normally it's not possible to have a TRobot value in surface
@@ -752,6 +748,36 @@ stepCESK cesk = case cesk of
   Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
   ------------------------------------------------------------
   -- Execution
+
+  -- Executing a 'requirements' command generates an appropriate log message
+  Out (VRequirements src t _) s (FExec : k) -> do
+    currentContext <- use $ robotContext . defReqs
+    em <- use entityMap
+    let (R.Requirements caps devs inv, _) = R.requirements currentContext t
+        deviceSets :: Set (Set Text)
+        deviceSets =
+          S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
+            `S.union` S.map S.singleton devs
+
+        equipmentLog
+          | S.null caps && S.null devs = []
+          | otherwise =
+              "  Equipment:"
+                : (("    - " <>) . (T.intercalate " OR " . S.toList) <$> S.toList deviceSets)
+
+        inventoryLog
+          | M.null inv = []
+          | otherwise =
+              "  Inventory:"
+                : (("    - " <>) . (\(e, n) -> e <> " (" <> showT n <> ")") <$> M.assocs inv)
+        reqLog =
+          T.unlines $
+            [T.unwords ["Requirements for", bquote src <> ":"]]
+              ++ equipmentLog
+              ++ inventoryLog
+
+    _ <- traceLog Logged reqLog
+    return $ Out VUnit s k
 
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
@@ -2332,6 +2358,7 @@ compareValues v1 = case v1 of
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
+  VRequirements {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.
