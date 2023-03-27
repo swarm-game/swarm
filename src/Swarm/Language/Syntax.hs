@@ -775,7 +775,9 @@ data Term' ty
     TRequire Int Text
   | -- | Primitive command to log requirements of a term.  The Text
     --   field is to store the unaltered original text of the term, for use
-    --   in displaying the log message.
+    --   in displaying the log message (since once we get to execution time the
+    --   original term may have been elaborated, e.g. `force` may have been added
+    --   around some variables, etc.)
     SRequirements Text (Syntax' ty)
   | -- | A variable.
     TVar Var
