@@ -42,7 +42,6 @@ import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM)
 import Data.Function (on)
 import Data.Functor (void)
-import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
@@ -91,9 +90,6 @@ import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
-
-maxSniffRange :: Int32
-maxSniffRange = 250
 
 -- | The main function to do one game step.
 --
@@ -1212,23 +1208,25 @@ execConst c vs s k = do
       _ -> badConst
     Sniff -> case vs of
       [VText name] -> do
-        firstOne <- findNearest name
-        return $ Out (asValue $ maybe (-1) fst firstOne) s k
+        firstFound <- findNearest name
+        return $ Out (asValue $ maybe (-1) fst firstFound) s k
       _ -> badConst
     Chirp -> case vs of
       [VText name] -> do
-        firstOne <- findNearest name
+        firstFound <- findNearest name
         mh <- use robotOrientation
-
         inst <- use equippedDevices
-        let txform absDirIn =
-              if countByName "compass" inst >= 0
-                then DAbsolute absDirIn
+        let processDirection entityDir =
+              if countByName "compass" inst >= 1
+                then Just $ DAbsolute entityDir
                 else case mh >>= toDirection of
-                  Just (DAbsolute cardinalDir) -> DRelative $ relativeTo cardinalDir absDirIn
-                  _ -> DRelative DDown
-
-        return $ Out (VDir $ maybe (DRelative DDown) (txform . nearestDirection . snd) firstOne) s k
+                  Just (DAbsolute robotDir) -> Just $ DRelative $ entityDir `relativeTo` robotDir
+                  _ -> Nothing -- This may happen if the robot is facing "down"
+            val = VDir $ fromMaybe (DRelative DDown) $ do
+              entLoc <- firstFound
+              guard $ sum entLoc /= 0
+              processDirection . nearestDirection . snd $ entLoc
+        return $ Out val s k
       _ -> badConst
     Heading -> do
       mh <- use robotOrientation
@@ -1874,8 +1872,10 @@ execConst c vs s k = do
     findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
    where
     -- Grow a list of locations in a diamond shape outward, such that the nearest cells
-    -- are searched first by construction.
-    genDiamondSide diameter = concat [map (diameter,) $ take 4 $ iterate perp $ V2 x (diameter - x) | x <- [0 .. diameter]]
+    -- are searched first by construction, rather than having to sort.
+    genDiamondSide diameter = concat [f diameter x | x <- [0 .. diameter]]
+      where
+        f d x = map (d,) $ take 4 $ iterate perp $ V2 x (d - x)
     sortedLocs = (0, zero) : concatMap genDiamondSide [1 .. maxSniffRange]
 
   finishCookingRecipe ::

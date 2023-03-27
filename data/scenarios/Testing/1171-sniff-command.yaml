@@ -1,0 +1,60 @@
+version: 1
+name: Sniff test
+creative: true
+description: Locate a tree using sniff
+objectives:
+  - goal:
+      - grab a tree.
+    condition: |
+      as base {has "tree"}
+solution: |
+  def homeIn = \oldDistance.
+    if (oldDistance > 0) {
+      move;
+      newDistance <- sniff "tree";
+      d <- if (newDistance > oldDistance) {
+        turn back;
+        move;
+        turn left;
+        return oldDistance;
+      } {
+        return newDistance;
+      };
+      homeIn d;
+    } {
+      grab;
+      return ();
+    }
+    end;
+
+  initialDistance <- sniff "tree";
+  homeIn initialDistance;
+robots:
+  - name: base
+    dir: [0,-1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - string
+      - grabber
+      - treads
+known: []
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    'T': [grass, tree]
+  upperleft: [-4, 4]
+  map: |
+   .........
+   .........
+   .........
+   .........
+   ......T..
+   .........
+   .........
+   .Ω.......
+   .........
