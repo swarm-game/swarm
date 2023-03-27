@@ -37,12 +37,10 @@ module Swarm.Game.Location (
 
 import Control.Arrow ((&&&))
 import Data.Aeson (FromJSONKey, ToJSONKey)
-import Data.Function ((&))
+import Data.Function (on, (&))
 import Data.Int (Int32)
-import Data.List (elemIndex)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
 import Linear (Additive (..), V2 (..), negated, norm, perp, unangle)
 import Linear.Affine (Affine (..), Point (..), origin)
@@ -143,32 +141,30 @@ cardinalDirs =
 toDirection :: Heading -> Maybe Direction
 toDirection v = M.lookup v cardinalDirs
 
--- | Ordered by increasing angle according to
--- the standard mathematical convention.
--- That is, the right-pointing direction, East, being the reference angle
--- and ordered counter-clockwise.
--- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
-conventionalCardinalsOrder :: [AbsoluteDir]
-conventionalCardinalsOrder = [DEast, DNorth, DWest, DSouth]
-
+-- | Example:
+--      DWest `relativeTo` DSouth == DRight
 relativeTo :: AbsoluteDir -> AbsoluteDir -> RelativeDir
-relativeTo selfOrientation targetOrientation = case indexDiff of
+relativeTo targetDir referenceDir = case indexDiff of
   0 -> DForward
   1 -> DLeft
   3 -> DRight
   _ -> DBack
  where
-  selfIdx = fromMaybe (error "impossible") $ elemIndex selfOrientation conventionalCardinalsOrder
-  targetIdx = fromMaybe (error "impossible") $ elemIndex targetOrientation conventionalCardinalsOrder
-  indexDiff = (4 + (targetIdx - selfIdx)) `mod` 4
+  enumCount = length (Util.listEnums :: [AbsoluteDir])
+  indexDiff = (((-) `on` fromEnum) targetDir referenceDir + enumCount) `mod` enumCount
 
 -- | Logic adapted from:
 -- https://gamedev.stackexchange.com/questions/49290/#comment213403_49300
 nearestDirection :: Heading -> AbsoluteDir
 nearestDirection coord =
-  cycle conventionalCardinalsOrder !! index
+  -- Using `cycle` obviates the `mod` operation
+  cycle orderedDirs !! index
  where
-  index = round $ (4 :: Double) * unangle (fmap fromIntegral coord) / (2 * pi) + 4
+  index = round $ enumCount * unangle (fmap fromIntegral coord) / (2 * pi) + enumCount
+  orderedDirs = Util.listEnums
+
+  enumCount :: Double
+  enumCount = fromIntegral $ length orderedDirs
 
 -- | Convert a 'Direction' into a corresponding heading.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
