@@ -72,6 +72,8 @@ data Capability
     CSensehere
   | -- | Execute the 'Detect' command
     CDetectloc
+  | -- | Execute the 'Sniff' command
+    CDetectdistance
   | -- | Execute the 'Scan' command
     CScan
   | -- | Execute the 'Random' command
@@ -216,6 +218,7 @@ constCaps = \case
   Wait -> Just CTime
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
+  Sniff -> Just CDetectdistance
   Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations

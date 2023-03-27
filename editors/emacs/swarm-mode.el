@@ -77,6 +77,7 @@
                "time"
                "whereami"
                "detect"
+               "sniff"
                "heading"
                "blocked"
                "scan"
