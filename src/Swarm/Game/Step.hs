@@ -42,6 +42,7 @@ import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM)
 import Data.Function (on)
 import Data.Functor (void)
+import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
@@ -57,7 +58,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
-import Linear (V2 (..), zero, perp)
+import Linear (V2 (..), perp, zero)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -90,7 +91,6 @@ import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
-import Data.Int (Int32)
 
 maxSniffRange :: Int32
 maxSniffRange = 250
@@ -1215,8 +1215,8 @@ execConst c vs s k = do
         loc <- use robotLocation
         -- Grow a list of locations in a diamond shape outward, such that the nearest cells
         -- are searched first by construction.
-        let genDiamondSide diameter = concat [map (diameter,)$ take 4 $ iterate perp $ V2 x (diameter - x) | x <- [0..diameter]]
-        let sortedLocs = (0, zero) : concatMap genDiamondSide [1..maxSniffRange]
+        let genDiamondSide diameter = concat [map (diameter,) $ take 4 $ iterate perp $ V2 x (diameter - x) | x <- [0 .. diameter]]
+        let sortedLocs = (0, zero) : concatMap genDiamondSide [1 .. maxSniffRange]
         firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
         return $ Out (asValue $ maybe (-1) fst firstOne) s k
       _ -> badConst
