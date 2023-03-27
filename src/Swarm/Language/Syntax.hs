@@ -234,6 +234,9 @@ data Const
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
+  | -- | Get the distance to the closest instance of the specified entity.
+    -- Returns (-1) if none found.
+    Sniff
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -584,6 +587,12 @@ constInfo c = case c of
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
+  Sniff ->
+    command 1 short . doc "Determine distance to entity." $
+      [ "Measures concentration of airborne particles to infer distance to a certain kind of entity."
+      , "If none is detected, returns (-1)."
+      , "Has a max range of 250 units."
+      ]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
