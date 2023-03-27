@@ -74,6 +74,8 @@ data Capability
     CDetectloc
   | -- | Execute the 'Sniff' command
     CDetectdistance
+  | -- | Execute the 'Chirp' command
+    CDetectdirection
   | -- | Execute the 'Scan' command
     CScan
   | -- | Execute the 'Random' command
@@ -219,6 +221,7 @@ constCaps = \case
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
   Sniff -> Just CDetectdistance
+  Chirp -> Just CDetectdirection
   Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations

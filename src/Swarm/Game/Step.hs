@@ -1212,13 +1212,23 @@ execConst c vs s k = do
       _ -> badConst
     Sniff -> case vs of
       [VText name] -> do
-        loc <- use robotLocation
-        -- Grow a list of locations in a diamond shape outward, such that the nearest cells
-        -- are searched first by construction.
-        let genDiamondSide diameter = concat [map (diameter,) $ take 4 $ iterate perp $ V2 x (diameter - x) | x <- [0 .. diameter]]
-        let sortedLocs = (0, zero) : concatMap genDiamondSide [1 .. maxSniffRange]
-        firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
+        firstOne <- findNearest name
         return $ Out (asValue $ maybe (-1) fst firstOne) s k
+      _ -> badConst
+    Chirp -> case vs of
+      [VText name] -> do
+        firstOne <- findNearest name
+        mh <- use robotOrientation
+
+        inst <- use equippedDevices
+        let txform absDirIn =
+              if countByName "compass" inst >= 0
+                then DAbsolute absDirIn
+                else case mh >>= toDirection of
+                  Just (DAbsolute cardinalDir) -> DRelative $ relativeTo cardinalDir absDirIn
+                  _ -> DRelative DDown
+
+        return $ Out (VDir $ maybe (DRelative DDown) (txform . nearestDirection . snd) firstOne) s k
       _ -> badConst
     Heading -> do
       mh <- use robotOrientation
@@ -1858,6 +1868,15 @@ execConst c vs s k = do
       , T.pack (show (reverse vs))
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
+
+  findNearest name = do
+    loc <- use robotLocation
+    findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
+   where
+    -- Grow a list of locations in a diamond shape outward, such that the nearest cells
+    -- are searched first by construction.
+    genDiamondSide diameter = concat [map (diameter,) $ take 4 $ iterate perp $ V2 x (diameter - x) | x <- [0 .. diameter]]
+    sortedLocs = (0, zero) : concatMap genDiamondSide [1 .. maxSniffRange]
 
   finishCookingRecipe ::
     HasRobotStepState sig m =>

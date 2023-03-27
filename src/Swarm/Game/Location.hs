@@ -14,7 +14,9 @@ module Swarm.Game.Location (
   -- ** Heading and Direction functions
   Heading,
   applyTurn,
+  relativeTo,
   toDirection,
+  nearestDirection,
   fromDirection,
   isCardinal,
   north,
@@ -37,10 +39,12 @@ import Control.Arrow ((&&&))
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Function ((&))
 import Data.Int (Int32)
+import Data.List (elemIndex)
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
-import Linear (Additive (..), V2 (..), negated, norm, perp)
+import Linear (Additive (..), V2 (..), negated, norm, perp, unangle)
 import Linear.Affine (Affine (..), Point (..), origin)
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), RelativeDir (..), isCardinal)
 import Swarm.Util qualified as Util
@@ -138,6 +142,33 @@ cardinalDirs =
 --   directions.
 toDirection :: Heading -> Maybe Direction
 toDirection v = M.lookup v cardinalDirs
+
+-- | Ordered by increasing angle according to
+-- the standard mathematical convention.
+-- That is, the right-pointing direction, East, being the reference angle
+-- and ordered counter-clockwise.
+-- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
+conventionalCardinalsOrder :: [AbsoluteDir]
+conventionalCardinalsOrder = [DEast, DNorth, DWest, DSouth]
+
+relativeTo :: AbsoluteDir -> AbsoluteDir -> RelativeDir
+relativeTo selfOrientation targetOrientation = case indexDiff of
+  0 -> DForward
+  1 -> DLeft
+  3 -> DRight
+  _ -> DBack
+ where
+  selfIdx = fromMaybe (error "impossible") $ elemIndex selfOrientation conventionalCardinalsOrder
+  targetIdx = fromMaybe (error "impossible") $ elemIndex targetOrientation conventionalCardinalsOrder
+  indexDiff = (4 + (targetIdx - selfIdx)) `mod` 4
+
+-- | Logic adapted from:
+-- https://gamedev.stackexchange.com/questions/49290/#comment213403_49300
+nearestDirection :: Heading -> AbsoluteDir
+nearestDirection coord =
+  cycle conventionalCardinalsOrder !! index
+ where
+  index = round $ (4 :: Double) * unangle (fmap fromIntegral coord) / (2 * pi) + 4
 
 -- | Convert a 'Direction' into a corresponding heading.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',

@@ -237,6 +237,8 @@ data Const
   | -- | Get the distance to the closest instance of the specified entity.
     -- Returns (-1) if none found.
     Sniff
+  | -- | Get the direction to the closest instance of the specified entity.
+    Chirp
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -591,6 +593,13 @@ constInfo c = case c of
     command 1 short . doc "Determine distance to entity." $
       [ "Measures concentration of airborne particles to infer distance to a certain kind of entity."
       , "If none is detected, returns (-1)."
+      , "Has a max range of 250 units."
+      ]
+  Chirp ->
+    command 1 short . doc "Determine direction to entity." $
+      [ "Uses echolocation via a sonic emitter and two microphones to determine the direction of an entity."
+      , "Returns 'down' if none detected."
+      , "Provides absolute directions if \"compass\" equipped, relative directions otherwise."
       , "Has a max range of 250 units."
       ]
   Heading -> command 0 Intangible "Get the current heading."
