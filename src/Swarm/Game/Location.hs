@@ -144,11 +144,8 @@ toDirection v = M.lookup v cardinalDirs
 -- | Example:
 --      DWest `relativeTo` DSouth == DRight
 relativeTo :: AbsoluteDir -> AbsoluteDir -> RelativeDir
-relativeTo targetDir referenceDir = case indexDiff of
-  0 -> DForward
-  1 -> DLeft
-  3 -> DRight
-  _ -> DBack
+relativeTo targetDir referenceDir =
+  [DForward, DLeft, DBack, DRight] !! indexDiff
  where
   enumCount = length (Util.listEnums :: [AbsoluteDir])
   indexDiff = (((-) `on` fromEnum) targetDir referenceDir + enumCount) `mod` enumCount
