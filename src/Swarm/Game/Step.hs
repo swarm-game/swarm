@@ -1874,8 +1874,8 @@ execConst c vs s k = do
     -- Grow a list of locations in a diamond shape outward, such that the nearest cells
     -- are searched first by construction, rather than having to sort.
     genDiamondSide diameter = concat [f diameter x | x <- [0 .. diameter]]
-      where
-        f d x = map (d,) $ take 4 $ iterate perp $ V2 x (d - x)
+     where
+      f d x = map (d,) $ take 4 $ iterate perp $ V2 x (d - x)
     sortedLocs = (0, zero) : concatMap genDiamondSide [1 .. maxSniffRange]
 
   finishCookingRecipe ::
