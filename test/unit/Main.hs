@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -12,7 +13,7 @@ import Data.List (subsequences)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Swarm.Game.State (GameState, classicGame0)
-import Swarm.Util (smallHittingSet)
+import Swarm.Util (removeSupersets, smallHittingSet)
 import Test.QuickCheck qualified as QC
 import Test.QuickCheck.Poly qualified as QC
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -62,6 +63,15 @@ testMisc =
     [ testProperty
         "smallHittingSet produces hitting sets"
         (prop_hittingSet @QC.OrdA)
+    , testGroup
+        "removeSubsets"
+        [ testProperty
+            "no two output sets are in a subset relation"
+            (prop_removeSubsets_unrelated @QC.OrdA)
+        , testProperty
+            "all input sets are a superset of some output set"
+            (prop_removeSubsets_all_inputs @QC.OrdA)
+        ]
     ]
 
 prop_hittingSet :: Ord a => [Set a] -> Property
@@ -89,3 +99,14 @@ data El = AA | BB | CC | DD | EE | FF
 
 instance QC.Arbitrary El where
   arbitrary = QC.arbitraryBoundedEnum
+
+prop_removeSubsets_unrelated :: Ord a => Set (Set a) -> Bool
+prop_removeSubsets_unrelated (removeSupersets -> ss) =
+  (`all` ss) $ \s1 ->
+    (`all` ss) $ \s2 ->
+      (s1 == s2) || (not (s1 `S.isSubsetOf` s2) && not (s2 `S.isSubsetOf` s1))
+
+prop_removeSubsets_all_inputs :: Ord a => Set (Set a) -> Bool
+prop_removeSubsets_all_inputs (removeSupersets -> ss) =
+  (`all` ss) $ \s1 ->
+    (`any` ss) $ \s2 -> s2 `S.isSubsetOf` s1

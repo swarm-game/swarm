@@ -57,11 +57,13 @@ module Swarm.Util (
   (<>=),
   _NonEmpty,
 
-  -- * Utilities for NP-hard approximation
+  -- * Set utilities
+  removeSupersets,
   smallHittingSet,
 ) where
 
 import Control.Algebra (Has)
+import Control.Applicative (liftA2)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
@@ -349,7 +351,13 @@ _NonEmpty :: Lens' (NonEmpty a) (a, [a])
 _NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 
 ------------------------------------------------------------
--- Some utilities for NP-hard approximation
+-- Some set utilities
+
+-- | Remove any sets which are supersets of other sets.  In other words,
+--   (1) no two sets in the output are in a subset relationship
+--   (2) every element in the input is a superset of some element in the output.
+removeSupersets :: Ord a => Set (Set a) -> Set (Set a)
+removeSupersets ss = S.filter (\s -> all (liftA2 (||) (== s) (not . (`S.isSubsetOf` s))) ss) ss
 
 -- | Given a list of /nonempty/ sets, find a hitting set, that is, a
 --   set which has at least one element in common with each set in the

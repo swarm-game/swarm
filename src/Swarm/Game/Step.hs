@@ -750,14 +750,24 @@ stepCESK cesk = case cesk of
   -- Execution
 
   -- Executing a 'requirements' command generates an appropriate log message
+  -- listing the requirements of the given expression.
   Out (VRequirements src t _) s (FExec : k) -> do
     currentContext <- use $ robotContext . defReqs
     em <- use entityMap
     let (R.Requirements caps devs inv, _) = R.requirements currentContext t
         deviceSets :: Set (Set Text)
         deviceSets =
-          S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
-            `S.union` S.map S.singleton devs
+          -- Remove any device sets which are a superset of another
+          -- set.  For example, if (grabber OR fast grabber OR
+          -- harvester) is required but (grabber OR fast grabber) is
+          -- also required then we might as well remove the first set,
+          -- since satisfying the second device set will automatically
+          -- satisfy the first.
+          removeSupersets $
+            -- Generate the set of possible devices for each capability, along
+            -- with the outright required devices.
+            S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
+              `S.union` S.map S.singleton devs
 
         equipmentLog
           | S.null caps && S.null devs = []
