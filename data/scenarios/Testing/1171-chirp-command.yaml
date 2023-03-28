@@ -8,19 +8,18 @@ objectives:
     condition: |
       as base {has "tree"}
 solution: |
-  def takeStep =
-    direction <- chirp "tree";
+  def takeStep = \item.
+    direction <- chirp item;
     if (direction == down) {
       grab;
-      return ();
     } {
       turn direction;
       move;
-      takeStep;
+      takeStep item;
     }
     end;
 
-  takeStep;
+  takeStep "tree";
 robots:
   - name: base
     dir: [0,-1]
@@ -39,11 +38,8 @@ world:
     'Ω': [grass, null, base]
     '.': [grass]
     'T': [grass, tree]
-  upperleft: [-4, 4]
+  upperleft: [0, 0]
   map: |
-   .........
-   .........
-   .........
    .........
    ......T..
    .........

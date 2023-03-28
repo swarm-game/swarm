@@ -8,10 +8,10 @@ objectives:
     condition: |
       as base {has "tree"}
 solution: |
-  def homeIn = \oldDistance.
+  def homeIn = \item. \oldDistance.
     if (oldDistance > 0) {
       move;
-      newDistance <- sniff "tree";
+      newDistance <- sniff item;
       d <- if (newDistance > oldDistance) {
         turn back;
         move;
@@ -20,15 +20,15 @@ solution: |
       } {
         return newDistance;
       };
-      homeIn d;
+      homeIn item d;
     } {
       grab;
-      return ();
     }
     end;
 
-  initialDistance <- sniff "tree";
-  homeIn initialDistance;
+  let item = "tree" in
+  initialDistance <- sniff item;
+  homeIn item initialDistance;
 robots:
   - name: base
     dir: [0,-1]
@@ -47,11 +47,8 @@ world:
     'Ω': [grass, null, base]
     '.': [grass]
     'T': [grass, tree]
-  upperleft: [-4, 4]
+  upperleft: [0, 0]
   map: |
-   .........
-   .........
-   .........
    .........
    ......T..
    .........
