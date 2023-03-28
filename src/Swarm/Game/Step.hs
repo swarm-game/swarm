@@ -1871,12 +1871,13 @@ execConst c vs s k = do
     loc <- use robotLocation
     findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
    where
+    sortedLocs = (0, zero) : concatMap genDiamondSides [1 .. maxSniffRange]
     -- Grow a list of locations in a diamond shape outward, such that the nearest cells
     -- are searched first by construction, rather than having to sort.
-    genDiamondSide diameter = concat [f diameter x | x <- [0 .. diameter]]
+    genDiamondSides diameter = concat [f diameter x | x <- [0 .. diameter]]
      where
+      -- Adds a single cell to each of the four sides of the diamond
       f d x = map (d,) $ take 4 $ iterate perp $ V2 x (d - x)
-    sortedLocs = (0, zero) : concatMap genDiamondSide [1 .. maxSniffRange]
 
   finishCookingRecipe ::
     HasRobotStepState sig m =>
