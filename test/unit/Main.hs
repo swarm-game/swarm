@@ -64,13 +64,13 @@ testMisc =
         "smallHittingSet produces hitting sets"
         (prop_hittingSet @QC.OrdA)
     , testGroup
-        "removeSubsets"
+        "removeSupersets"
         [ testProperty
             "no two output sets are in a subset relation"
-            (prop_removeSubsets_unrelated @QC.OrdA)
+            (prop_removeSupersets_unrelated @QC.OrdA)
         , testProperty
             "all input sets are a superset of some output set"
-            (prop_removeSubsets_all_inputs @QC.OrdA)
+            (prop_removeSupersets_all_inputs @QC.OrdA)
         ]
     ]
 
@@ -100,13 +100,13 @@ data El = AA | BB | CC | DD | EE | FF
 instance QC.Arbitrary El where
   arbitrary = QC.arbitraryBoundedEnum
 
-prop_removeSubsets_unrelated :: Ord a => Set (Set a) -> Bool
-prop_removeSubsets_unrelated (removeSupersets -> ss) =
+prop_removeSupersets_unrelated :: Ord a => Set (Set a) -> Bool
+prop_removeSupersets_unrelated (removeSupersets -> ss) =
   (`all` ss) $ \s1 ->
     (`all` ss) $ \s2 ->
       (s1 == s2) || (not (s1 `S.isSubsetOf` s2) && not (s2 `S.isSubsetOf` s1))
 
-prop_removeSubsets_all_inputs :: Ord a => Set (Set a) -> Bool
-prop_removeSubsets_all_inputs (removeSupersets -> ss) =
+prop_removeSupersets_all_inputs :: Ord a => Set (Set a) -> Bool
+prop_removeSupersets_all_inputs (removeSupersets -> ss) =
   (`all` ss) $ \s1 ->
     (`any` ss) $ \s2 -> s2 `S.isSubsetOf` s1
