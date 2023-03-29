@@ -52,7 +52,8 @@ import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
-import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
+import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots, scenarioSolution)
+import Swarm.Game.ScenarioInfo (flatten, loadScenariosWithWarnings, scenarioCollectionToList)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
@@ -60,6 +61,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
+import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util (isRightOr, listEnums, quote)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
@@ -79,6 +81,8 @@ data GenerateDocs where
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
+  -- | List command introductions by tutorial
+  TutorialProgression :: GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
@@ -130,6 +134,7 @@ generateDocs = \case
         entities <- ExceptT loadEntities
         recipes <- withExceptT F.prettyFailure $ loadRecipes entities
         liftIO $ T.putStrLn $ recipePage address recipes
+  TutorialProgression -> generateTutorialProgression >>= putStrLn
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -401,6 +406,22 @@ recipeTable a rs = T.unlines $ header <> map (listToRow mw) recipeRows
 
 recipePage :: PageAddress -> [Recipe Entity] -> Text
 recipePage = recipeTable
+
+-- ----------------------------------------------------------------------------
+-- GENERATE TUTORIAL PROGRESSION
+-- ----------------------------------------------------------------------------
+
+generateTutorialProgression :: IO String
+generateTutorialProgression = simpleErrorHandle $ do
+  entities <- ExceptT loadEntities
+  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  let orderedTutorials =
+        concatMap flatten $
+          scenarioCollectionToList $
+            getTutorials loadedScenarios
+
+  let solutions = map (view scenarioSolution . fst) orderedTutorials
+  return "foo"
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
