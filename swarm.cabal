@@ -249,6 +249,7 @@ test-suite swarm-unit
                       TestLanguagePipeline
                       TestPretty
                       TestBoolExpr
+                      TestCommand
                       TestLSP
                       TestUtil
 

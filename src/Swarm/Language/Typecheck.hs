@@ -560,6 +560,8 @@ inferConst c = case c of
   Time -> [tyQ| cmd int |]
   Whereami -> [tyQ| cmd (int * int) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
+  Sniff -> [tyQ| text -> cmd int |]
+  Chirp -> [tyQ| text -> cmd dir |]
   Heading -> [tyQ| cmd dir |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (unit + text) |]

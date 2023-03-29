@@ -42,6 +42,7 @@ import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM)
 import Data.Function (on)
 import Data.Functor (void)
+import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
@@ -57,7 +58,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
-import Linear (V2 (..), zero)
+import Linear (V2 (..), perp, zero)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -1206,6 +1207,28 @@ execConst c vs s k = do
         firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
         return $ Out (asValue firstOne) s k
       _ -> badConst
+    Sniff -> case vs of
+      [VText name] -> do
+        firstFound <- findNearest name
+        return $ Out (asValue $ maybe (-1) fst firstFound) s k
+      _ -> badConst
+    Chirp -> case vs of
+      [VText name] -> do
+        firstFound <- findNearest name
+        mh <- use robotOrientation
+        inst <- use equippedDevices
+        let processDirection entityDir =
+              if countByName "compass" inst >= 1
+                then Just $ DAbsolute entityDir
+                else case mh >>= toDirection of
+                  Just (DAbsolute robotDir) -> Just $ DRelative $ entityDir `relativeTo` robotDir
+                  _ -> Nothing -- This may happen if the robot is facing "down"
+            val = VDir $ fromMaybe (DRelative DDown) $ do
+              entLoc <- firstFound
+              guard $ snd entLoc /= zero
+              processDirection . nearestDirection . snd $ entLoc
+        return $ Out val s k
+      _ -> badConst
     Heading -> do
       mh <- use robotOrientation
       -- In general, (1) entities might not have an orientation, and
@@ -1844,6 +1867,25 @@ execConst c vs s k = do
       , T.pack (show (reverse vs))
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
+
+  findNearest ::
+    HasRobotStepState sig m =>
+    Text ->
+    m (Maybe (Int32, V2 Int32))
+  findNearest name = do
+    loc <- use robotLocation
+    findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
+   where
+    sortedLocs :: [(Int32, V2 Int32)]
+    sortedLocs = (0, zero) : concatMap genDiamondSides [1 .. maxSniffRange]
+
+    -- Grow a list of locations in a diamond shape outward, such that the nearest cells
+    -- are searched first by construction, rather than having to sort.
+    genDiamondSides :: Int32 -> [(Int32, V2 Int32)]
+    genDiamondSides diameter = concat [f diameter x | x <- [0 .. diameter]]
+     where
+      -- Adds a single cell to each of the four sides of the diamond
+      f d x = map (d,) $ take 4 $ iterate perp $ V2 x (d - x)
 
   finishCookingRecipe ::
     HasRobotStepState sig m =>
