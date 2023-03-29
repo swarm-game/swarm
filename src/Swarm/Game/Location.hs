@@ -148,20 +148,20 @@ relativeTo targetDir referenceDir =
   [DForward, DLeft, DBack, DRight] !! indexDiff
  where
   enumCount = length (Util.listEnums :: [AbsoluteDir])
-  indexDiff = (((-) `on` fromEnum) targetDir referenceDir + enumCount) `mod` enumCount
+  indexDiff = ((-) `on` fromEnum) targetDir referenceDir `mod` enumCount
 
 -- | Logic adapted from:
 -- https://gamedev.stackexchange.com/questions/49290/#comment213403_49300
 nearestDirection :: Heading -> AbsoluteDir
 nearestDirection coord =
-  -- Using `cycle` obviates the `mod` operation
-  cycle orderedDirs !! index
+  orderedDirs !! index
  where
-  index = round $ enumCount * unangle (fmap fromIntegral coord) / (2 * pi) + enumCount
-  orderedDirs = Util.listEnums
+  angle :: Double
+  angle = unangle (fmap fromIntegral coord) / (2 * pi)
 
-  enumCount :: Double
-  enumCount = fromIntegral $ length orderedDirs
+  index = round (fromIntegral enumCount * angle) `mod` enumCount
+  orderedDirs = Util.listEnums
+  enumCount = length orderedDirs
 
 -- | Convert a 'Direction' into a corresponding heading.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',

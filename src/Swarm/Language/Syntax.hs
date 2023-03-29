@@ -105,7 +105,7 @@ import Witch.From (from)
 -- | Maximum perception distance for
 -- 'chirp' and 'sniff' commands
 maxSniffRange :: Int32
-maxSniffRange = 200
+maxSniffRange = 256
 
 ------------------------------------------------------------
 -- Directions
@@ -121,7 +121,8 @@ maxSniffRange = 200
 -- the "reference angle" and the order proceeds counter-clockwise.
 -- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
 --
--- Do not alter this ordering, as there exist functions that depend on it.
+-- Do not alter this ordering, as there exist functions that depend on it
+-- (e.g. "nearestDirection" and "relativeTo").
 data AbsoluteDir = DEast | DNorth | DWest | DSouth
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 

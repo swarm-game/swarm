@@ -42,6 +42,7 @@ import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM)
 import Data.Function (on)
 import Data.Functor (void)
+import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
@@ -1224,7 +1225,7 @@ execConst c vs s k = do
                   _ -> Nothing -- This may happen if the robot is facing "down"
             val = VDir $ fromMaybe (DRelative DDown) $ do
               entLoc <- firstFound
-              guard $ sum entLoc /= 0
+              guard $ snd entLoc /= zero
               processDirection . nearestDirection . snd $ entLoc
         return $ Out val s k
       _ -> badConst
@@ -1867,13 +1868,20 @@ execConst c vs s k = do
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
+  findNearest ::
+    HasRobotStepState sig m =>
+    Text ->
+    m (Maybe (Int32, V2 Int32))
   findNearest name = do
     loc <- use robotLocation
     findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
    where
+    sortedLocs :: [(Int32, V2 Int32)]
     sortedLocs = (0, zero) : concatMap genDiamondSides [1 .. maxSniffRange]
+
     -- Grow a list of locations in a diamond shape outward, such that the nearest cells
     -- are searched first by construction, rather than having to sort.
+    genDiamondSides :: Int32 -> [(Int32, V2 Int32)]
     genDiamondSides diameter = concat [f diameter x | x <- [0 .. diameter]]
      where
       -- Adds a single cell to each of the four sides of the diamond
