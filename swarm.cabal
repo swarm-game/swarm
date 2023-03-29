@@ -84,7 +84,9 @@ library
     exposed-modules:  Data.BoolExpr
                       Data.BoolExpr.Simplify
                       Swarm.App
-                      Swarm.DocGen
+                      Swarm.Docs.DocGen
+                      Swarm.Docs.Pedagogy
+                      Swarm.Docs.Util
                       Swarm.Game.Failure
                       Swarm.Game.Failure.Render
                       Swarm.Game.Achievement.Attainment

@@ -3,7 +3,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.DocGen (
+module Swarm.Docs.DocGen (
   generateDocs,
   GenerateDocs (..),
   EditorType (..),
@@ -26,9 +26,8 @@ module Swarm.DocGen (
 import Control.Arrow (left)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
-import Control.Monad (zipWithM, zipWithM_, (<=<))
+import Control.Monad (zipWithM, zipWithM_)
 import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
-import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
@@ -44,6 +43,8 @@ import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml (decodeFileEither)
 import Data.Yaml.Aeson (prettyPrintParseException)
+import Swarm.Docs.Pedagogy
+import Swarm.Docs.Util
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -52,8 +53,7 @@ import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
-import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots, scenarioSolution)
-import Swarm.Game.ScenarioInfo (flatten, loadScenariosWithWarnings, scenarioCollectionToList)
+import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
@@ -61,8 +61,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.TUI.Controller (getTutorials)
-import Swarm.Util (isRightOr, listEnums, quote)
+import Swarm.Util (listEnums, quote)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
@@ -82,7 +81,7 @@ data GenerateDocs where
   EditorKeywords :: Maybe EditorType -> GenerateDocs
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   -- | List command introductions by tutorial
-  TutorialProgression :: GenerateDocs
+  TutorialCoverage :: GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
@@ -134,7 +133,7 @@ generateDocs = \case
         entities <- ExceptT loadEntities
         recipes <- withExceptT F.prettyFailure $ loadRecipes entities
         liftIO $ T.putStrLn $ recipePage address recipes
-  TutorialProgression -> generateTutorialProgression >>= putStrLn
+  TutorialCoverage -> generateTutorialProgression >>= putStrLn
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -408,22 +407,6 @@ recipePage :: PageAddress -> [Recipe Entity] -> Text
 recipePage = recipeTable
 
 -- ----------------------------------------------------------------------------
--- GENERATE TUTORIAL PROGRESSION
--- ----------------------------------------------------------------------------
-
-generateTutorialProgression :: IO String
-generateTutorialProgression = simpleErrorHandle $ do
-  entities <- ExceptT loadEntities
-  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
-  let orderedTutorials =
-        concatMap flatten $
-          scenarioCollectionToList $
-            getTutorials loadedScenarios
-
-  let solutions = map (view scenarioSolution . fst) orderedTutorials
-  return "foo"
-
--- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
 -- ----------------------------------------------------------------------------
 
@@ -598,16 +581,3 @@ i .~>. j = Dot.edge i j [("style", "invis")]
 e1 ---<> e2 = Dot.edge e1 e2 attrs
  where
   attrs = [("arrowhead", "diamond"), ("color", "blue")]
-
--- ----------------------------------------------------------------------------
--- UTILITY
--- ----------------------------------------------------------------------------
-
-both :: Bifunctor p => (a -> d) -> p a a -> p d d
-both f = bimap f f
-
-guardRight :: Text -> Either Text a -> ExceptT Text IO a
-guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-
-simpleErrorHandle :: ExceptT Text IO a -> IO a
-simpleErrorHandle = either (fail . unpack) pure <=< runExceptT
