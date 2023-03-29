@@ -863,10 +863,7 @@ initGameState :: ExceptT Text IO ([SystemFailure], GameState)
 initGameState = do
   entities <- ExceptT loadEntities
   recipes <- withExceptT prettyFailure $ loadRecipes entities
-  eitherLoadedScenarios <- liftIO $ runExceptT $ loadScenarios entities
-  let (scenarioWarnings, loadedScenarios) = case eitherLoadedScenarios of
-        Left xs -> (xs, SC mempty mempty)
-        Right (warnings, x) -> (warnings, x)
+  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
 
   (adjsFile, namesFile) <- withExceptT prettyFailure $ do
     adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
