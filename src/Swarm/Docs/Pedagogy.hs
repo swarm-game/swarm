@@ -22,11 +22,11 @@ import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Data.Text (Text)
+import Data.Text qualified as T
 import Swarm.Docs.Util
 import Swarm.Game.Entity (loadEntities)
-import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioObjectives, scenarioSolution, scenarioName)
+import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)
 import Swarm.Language.Module (Module (..))
@@ -156,27 +156,30 @@ loadScenarioCollection = simpleErrorHandle $ do
 renderUsagesMarkdown :: Int -> CoverageInfo -> Text
 renderUsagesMarkdown idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novelCmds) =
   T.unlines $
-    "" :
-    firstLine
+    ""
+      : firstLine
       : "================"
       : otherLines
  where
-  otherLines = concat
-    [ pure $ "`" <> T.pack (view scenarioPath si) <> "`"
-    , [""]
-    , pure $ "*" <> T.strip (view scenarioDescription s) <> "*"
-    , [""]
-    , renderSection "Commands introduced in this solution" $ renderCmds novelCmds
-    , [""]
-    , renderSection "Commands found in description" $ renderCmds dCmds
-    ]
+  otherLines =
+    concat
+      [ pure $ "`" <> T.pack (view scenarioPath si) <> "`"
+      , [""]
+      , pure $ "*" <> T.strip (view scenarioDescription s) <> "*"
+      , [""]
+      , renderSection "Commands introduced in this solution" $ renderCmds novelCmds
+      , [""]
+      , renderSection "Commands found in description" $ renderCmds dCmds
+      ]
 
   renderSection title content =
     [title, "----------------"] <> content
 
-  renderCmds cmds = pure $ if null cmds
-    then "<none>"
-    else commaList . map linkifyCommand . sort . map (T.pack . show) . S.toList $ cmds
+  renderCmds cmds =
+    pure $
+      if null cmds
+        then "<none>"
+        else commaList . map linkifyCommand . sort . map (T.pack . show) . S.toList $ cmds
 
   linkifyCommand c = "[" <> c <> "](" <> commandsWikiPrefix <> c <> ")"
 
