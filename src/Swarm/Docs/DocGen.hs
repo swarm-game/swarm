@@ -133,7 +133,7 @@ generateDocs = \case
         entities <- ExceptT loadEntities
         recipes <- withExceptT F.prettyFailure $ loadRecipes entities
         liftIO $ T.putStrLn $ recipePage address recipes
-  TutorialCoverage -> renderTutorialProgression >>= putStrLn
+  TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED

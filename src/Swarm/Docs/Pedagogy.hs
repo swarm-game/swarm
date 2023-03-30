@@ -16,16 +16,17 @@ import Control.Lens (universe, view)
 import Control.Monad (guard)
 import Control.Monad.Except (ExceptT (..), liftIO)
 import Data.Char (isLetter)
-import Data.List (foldl')
+import Data.List (foldl', sort)
 import Data.List.Split (wordsBy)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Text (Text)
 import Swarm.Docs.Util
 import Swarm.Game.Entity (loadEntities)
-import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioObjectives, scenarioSolution)
+import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioObjectives, scenarioSolution, scenarioName)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)
 import Swarm.Language.Module (Module (..))
@@ -33,6 +34,15 @@ import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
+import Swarm.Util (commaList)
+
+-- * Constants
+
+wikiPrefix :: Text
+wikiPrefix = "https://github.com/swarm-game/swarm/wiki/"
+
+commandsWikiPrefix :: Text
+commandsWikiPrefix = wikiPrefix <> "Commands-Cheat-Sheet#"
 
 -- * Types
 
@@ -143,33 +153,41 @@ loadScenarioCollection = simpleErrorHandle $ do
   (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
   return loadedScenarios
 
-renderUsages :: Int -> CoverageInfo -> String
-renderUsages idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novelCmds) =
-  unlines $
+renderUsagesMarkdown :: Int -> CoverageInfo -> Text
+renderUsagesMarkdown idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novelCmds) =
+  T.unlines $
+    "" :
     firstLine
       : "================"
       : otherLines
  where
-  otherLines =
-    [T.unpack $ view scenarioDescription s]
-      <> renderSection "Novel to solution code" novelSolnCmds
-      <> [""]
-      <> renderSection "Found in description" descCmds
+  otherLines = concat
+    [ pure $ "`" <> T.pack (view scenarioPath si) <> "`"
+    , [""]
+    , pure $ "*" <> T.strip (view scenarioDescription s) <> "*"
+    , [""]
+    , renderSection "Commands introduced in this solution" $ renderCmds novelCmds
+    , [""]
+    , renderSection "Commands found in description" $ renderCmds dCmds
+    ]
 
   renderSection title content =
-    [title <> ":", "----------------"] <> content
+    [title, "----------------"] <> content
 
-  novelSolnCmds = renderCmds novelCmds
-  descCmds = renderCmds dCmds
-  renderCmds = map show . S.toList
+  renderCmds cmds = pure $ if null cmds
+    then "<none>"
+    else commaList . map linkifyCommand . sort . map (T.pack . show) . S.toList $ cmds
+
+  linkifyCommand c = "[" <> c <> "](" <> commandsWikiPrefix <> c <> ")"
+
   firstLine =
-    unwords
-      [ show idx <> ")"
-      , view scenarioPath si <> ":"
+    T.unwords
+      [ T.pack $ show idx <> ":"
+      , view scenarioName s
       ]
 
-renderTutorialProgression :: IO String
+renderTutorialProgression :: IO Text
 renderTutorialProgression =
   render . generateIntroductionsSequence <$> loadScenarioCollection
  where
-  render = unlines . zipWith renderUsages [0 ..]
+  render = T.unlines . zipWith renderUsagesMarkdown [0 ..]
