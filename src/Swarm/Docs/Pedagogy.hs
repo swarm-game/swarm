@@ -3,12 +3,20 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Analyze pedagogical soundness of the tutorials.
-module Swarm.Docs.Pedagogy where
+-- Assess pedagogical soundness of the tutorials.
+module Swarm.Docs.Pedagogy (
+  renderTutorialProgression,
+  generateIntroductionsSequence,
+  CoverageInfo (..),
+  TutorialInfo (..),
+) where
 
+import Control.Arrow ((&&&))
 import Control.Lens (universe, view)
+import Control.Monad (guard)
 import Control.Monad.Except (ExceptT (..), liftIO)
-import Data.Char (isLetter, toLower)
+import Data.Char (isLetter)
+import Data.List (foldl')
 import Data.List.Split (wordsBy)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -17,14 +25,21 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Swarm.Docs.Util
 import Swarm.Game.Entity (loadEntities)
-import Swarm.Game.Scenario (Scenario, scenarioObjectives, scenarioSolution)
+import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
-import Swarm.Game.ScenarioInfo (ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)
+import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
+
+-- * Types
+
+data CoverageInfo = CoverageInfo
+  { tutInfo :: TutorialInfo
+  , novelSolutionCommands :: Set Const
+  }
 
 data TutorialInfo = TutorialInfo
   { scenarioPair :: ScenarioInfoPair
@@ -32,9 +47,12 @@ data TutorialInfo = TutorialInfo
   , descriptionCommands :: Set Const
   }
 
--- ----------------------------------------------------------------------------
--- GENERATE TUTORIAL PROGRESSION
--- ----------------------------------------------------------------------------
+data CommandAccum = CommandAccum
+  { _encounteredCmds :: Set Const
+  , tuts :: [CoverageInfo]
+  }
+
+-- * Functions
 
 extractCommandUsages :: ScenarioInfoPair -> TutorialInfo
 extractCommandUsages siPair@(s, _si) =
@@ -50,36 +68,79 @@ getDescCommands s =
   goalTextParagraphs = concatMap (view objectiveGoal) $ view scenarioObjectives s
   allWords = concatMap (wordsBy (not . isLetter) . T.unpack . T.toLower) goalTextParagraphs
 
-  txtLookups = M.fromList $ map (\x -> (map toLower $ show x, x)) allConst
+  commandConsts = filter isCmd allConst
+  txtLookups = M.fromList $ map (T.unpack . syntax . constInfo &&& id) commandConsts
 
 getCommands :: ProcessedTerm -> [Const]
 getCommands (ProcessedTerm (Module stx _) _ _) =
-  mapMaybe isConst nodelist
+  mapMaybe isCommand nodelist
  where
+  ignoredCommands = S.fromList [Run, Noop]
+
   nodelist :: [Syntax' Polytype]
   nodelist = universe stx
-  isConst (Syntax' _ t _) = case t of
-    TConst c -> Just c
+  isCommand (Syntax' _ t _) = case t of
+    TConst c -> guard (isCmd c && c `S.notMember` ignoredCommands) >> Just c
     _ -> Nothing
 
-renderUsages :: TutorialInfo -> String
-renderUsages (TutorialInfo (_s, si) sCmds dCmds) =
+computeCommandIntroductions :: [ScenarioInfoPair] -> [CoverageInfo]
+computeCommandIntroductions =
+  reverse . tuts . foldl' f initial
+ where
+  initial = CommandAccum mempty mempty
+
+  f :: CommandAccum -> ScenarioInfoPair -> CommandAccum
+  f (CommandAccum encounteredPreviously xs) siPair =
+    CommandAccum updatedEncountered $ CoverageInfo usages novelCommands : xs
+   where
+    usages = extractCommandUsages siPair
+    usedCmdsForTutorial = solutionCommands usages
+
+    updatedEncountered = encounteredPreviously `S.union` usedCmdsForTutorial
+    novelCommands = usedCmdsForTutorial `S.difference` encounteredPreviously
+
+loadScenarioCollection :: IO ScenarioCollection
+loadScenarioCollection = simpleErrorHandle $ do
+  entities <- ExceptT loadEntities
+  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  return loadedScenarios
+
+generateIntroductionsSequence :: ScenarioCollection -> [CoverageInfo]
+generateIntroductionsSequence =
+  computeCommandIntroductions . getTuts
+ where
+  getTuts =
+    concatMap flatten
+      . scenarioCollectionToList
+      . getTutorials
+
+renderUsages :: Int -> CoverageInfo -> String
+renderUsages idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novelCmds) =
   unlines $
     firstLine
       : "================"
-      : (["From solution code:", "----------------"] <> solnCmds <> ["", "From description:", "----------------"] <> descCmds)
+      : otherLines
  where
-  solnCmds = map show $ S.toList sCmds
-  descCmds = map show $ S.toList dCmds
-  firstLine = view scenarioPath si <> ":"
+  otherLines =
+    [T.unpack $ view scenarioDescription s]
+      <> renderSection "Novel to solution code" novelSolnCmds
+      <> [""]
+      <> renderSection "Found in description" descCmds
 
-generateTutorialProgression :: IO String
-generateTutorialProgression = simpleErrorHandle $ do
-  entities <- ExceptT loadEntities
-  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
-  let orderedTutorials =
-        concatMap flatten $
-          scenarioCollectionToList $
-            getTutorials loadedScenarios
+  renderSection title content =
+    [title <> ":", "----------------"] <> content
 
-  return $ unlines $ map (renderUsages . extractCommandUsages) orderedTutorials
+  novelSolnCmds = renderCmds novelCmds
+  descCmds = renderCmds dCmds
+  renderCmds = map show . S.toList
+  firstLine =
+    unwords
+      [ show idx <> ")"
+      , view scenarioPath si <> ":"
+      ]
+
+renderTutorialProgression :: IO String
+renderTutorialProgression =
+  render . generateIntroductionsSequence <$> loadScenarioCollection
+ where
+  render = unlines . zipWith renderUsages [0 ..]

@@ -247,6 +247,7 @@ test-suite swarm-unit
     other-modules:    TestEval
                       TestInventory
                       TestModel
+                      TestPedagogy
                       TestNotification
                       TestLanguagePipeline
                       TestPretty

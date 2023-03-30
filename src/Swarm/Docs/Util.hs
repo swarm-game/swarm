@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -7,11 +6,11 @@
 -- Utilities for doc generation
 module Swarm.Docs.Util where
 
-import Control.Monad (zipWithM, zipWithM_, (<=<))
-import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
+import Control.Monad ((<=<))
+import Control.Monad.Except (ExceptT (..), runExceptT)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Text (Text, unpack)
-import Swarm.Util (isRightOr, listEnums, quote)
+import Swarm.Util (isRightOr)
 
 -- ----------------------------------------------------------------------------
 -- UTILITY

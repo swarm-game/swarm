@@ -24,8 +24,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
-import Swarm.DocGen (EditorType (..))
-import Swarm.DocGen qualified as DocGen
+import Swarm.Docs.DocGen (EditorType (..))
+import Swarm.Docs.DocGen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
