@@ -46,7 +46,7 @@
 # - warn: {name: Use explicit module export list}
 #
 # Replace a $ b $ c with a . b $ c
-# - group: {name: dollar, enabled: true}
+- group: {name: dollar, enabled: true}
 #
 # Generalise map to fmap, ++ to <>
 # - group: {name: generalise, enabled: true}
