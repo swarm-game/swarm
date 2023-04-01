@@ -100,7 +100,7 @@ import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View (generateModal)
 import Swarm.TUI.View.Objective qualified as GR
-import Swarm.Util hiding ((<<.=))
+import Swarm.Util hiding (both, (<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)

@@ -26,9 +26,8 @@ module Swarm.DocGen (
 import Control.Arrow (left)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
-import Control.Monad (zipWithM, zipWithM_, (<=<))
+import Control.Monad (zipWithM, zipWithM_)
 import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
-import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
@@ -60,7 +59,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (isRightOr, listEnums, quote)
+import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
@@ -577,16 +576,3 @@ i .~>. j = Dot.edge i j [("style", "invis")]
 e1 ---<> e2 = Dot.edge e1 e2 attrs
  where
   attrs = [("arrowhead", "diamond"), ("color", "blue")]
-
--- ----------------------------------------------------------------------------
--- UTILITY
--- ----------------------------------------------------------------------------
-
-both :: Bifunctor p => (a -> d) -> p a a -> p d d
-both f = bimap f f
-
-guardRight :: Text -> Either Text a -> ExceptT Text IO a
-guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-
-simpleErrorHandle :: ExceptT Text IO a -> IO a
-simpleErrorHandle = either (fail . unpack) pure <=< runExceptT
