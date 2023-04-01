@@ -277,10 +277,9 @@ testLanguagePipeline =
                in assertEqual
                     "variable types"
                     (getVars s)
-                    ( [ (TVar "g", [tyQ| int -> int |])
+                    [ (TVar "g", [tyQ| int -> int |])
                       , (TVar "x", [tyQ| int |])
                       ]
-                    )
             )
         , testCase
             "simple type ascription"
