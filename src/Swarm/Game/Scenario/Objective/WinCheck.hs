@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -60,6 +62,10 @@ partitionActiveObjectives oc =
 getActiveObjectives :: ObjectiveCompletion -> [Objective]
 getActiveObjectives =
   fst . partitionActiveObjectives
+
+
+deriving instance Generic (BE.Signed ObjectiveLabel)
+deriving instance ToJSON (BE.Signed ObjectiveLabel)
 
 -- | For debugging only (via Web API)
 data PrereqSatisfaction = PrereqSatisfaction
