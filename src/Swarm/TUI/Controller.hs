@@ -32,6 +32,9 @@ module Swarm.TUI.Controller (
 
   -- ** Info panel
   handleInfoPanelEvent,
+
+  -- ** Utils
+  getTutorials,
 ) where
 
 import Brick hiding (Direction, Location)

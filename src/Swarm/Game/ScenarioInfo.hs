@@ -26,6 +26,7 @@ module Swarm.Game.ScenarioInfo (
   -- * Scenario collection
   ScenarioCollection (..),
   scenarioCollectionToList,
+  flatten,
   scenarioItemByPath,
   normalizeScenarioPath,
   ScenarioItem (..),
@@ -34,6 +35,7 @@ module Swarm.Game.ScenarioInfo (
 
   -- * Loading and saving scenarios
   loadScenarios,
+  loadScenariosWithWarnings,
   loadScenarioInfo,
   saveScenarioInfo,
 
@@ -227,6 +229,10 @@ scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
 scenarioCollectionToList (SC Nothing m) = M.elems m
 scenarioCollectionToList (SC (Just order) m) = (m M.!) <$> order
 
+flatten :: ScenarioItem -> [ScenarioInfoPair]
+flatten (SISingle p) = [p]
+flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
+
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios ::
   EntityMap ->
@@ -237,10 +243,24 @@ loadScenarios em = do
  where
   p = "scenarios"
 
+loadScenariosWithWarnings :: EntityMap -> IO ([SystemFailure], ScenarioCollection)
+loadScenariosWithWarnings entities = do
+  eitherLoadedScenarios <- runExceptT $ loadScenarios entities
+  return $ case eitherLoadedScenarios of
+    Left xs -> (xs, SC mempty mempty)
+    Right (warnings, x) -> (warnings, x)
+
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
 orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
+
+readOrderFile ::
+  MonadIO m =>
+  FilePath ->
+  ExceptT [SystemFailure] m [String]
+readOrderFile orderFile =
+  filter (not . null) . lines <$> liftIO (readFile orderFile)
 
 -- | Recursively load all scenarios from a particular directory, and also load
 --   the 00-ORDER file (if any) giving the order for the scenarios.
@@ -263,7 +283,7 @@ loadScenarioDir em dir = do
             <> dirName
             <> ", using alphabetical order"
       return Nothing
-    True -> Just . filter (not . null) . lines <$> liftIO (readFile orderFile)
+    True -> Just <$> readOrderFile orderFile
   fs <- liftIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
 
   case morder of
