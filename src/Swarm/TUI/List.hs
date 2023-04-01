@@ -20,15 +20,13 @@ handleListEventWithSeparators ::
   (e -> Bool) ->
   EventM n (BL.GenericList n t e) ()
 handleListEventWithSeparators e isSep =
-  navigateList isSep eventMap e
- where
-  eventMap = \case
+  navigateList isSep e $ \case
     V.EvKey V.KUp [] -> Single Up
     V.EvKey (V.KChar 'k') [] -> Single Up
     V.EvKey V.KDown [] -> Single Down
     V.EvKey (V.KChar 'j') [] -> Single Down
-    V.EvKey V.KHome [] -> Multi Max Up
-    V.EvKey V.KEnd [] -> Multi Max Down
-    V.EvKey V.KPageDown [] -> Multi Page Down
-    V.EvKey V.KPageUp [] -> Multi Page Up
+    V.EvKey V.KHome [] -> Multi Up Max
+    V.EvKey V.KEnd [] -> Multi Down Max
+    V.EvKey V.KPageDown [] -> Multi Down Page
+    V.EvKey V.KPageUp [] -> Multi Up Page
     _ -> None

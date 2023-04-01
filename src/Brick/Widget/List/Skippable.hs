@@ -4,9 +4,9 @@
 -- A special modified version of 'Brick.Widgets.List.handleListEvent'
 -- to deal with skipping over separators.
 module Brick.Widget.List.Skippable (
-  Movement (..),
   Amount (..),
-  FindDir (..),
+  Jump (..),
+  Dir (..),
   navigateList,
 ) where
 
@@ -18,24 +18,36 @@ import Data.Foldable (toList)
 import Data.List (find)
 import Graphics.Vty qualified as V
 
-data Amount = Max | Page
-
-data Movement
-  = Single FindDir
-  | Multi Amount FindDir
+-- | The amount to move
+data Amount
+  = Single Dir
+  | Multi Dir Jump
   | None
 
+-- | How far to jump for multiple-row movement
+data Jump = Max | Page
+
+-- | Which direction to search: forward or backward from the current location.
+data Dir = Down | Up deriving (Eq, Ord, Show, Enum)
+
+-- | Handle a list event, taking an extra predicate to identify which
+--   list elements are separators; separators will be skipped if
+--   possible.
+--
+-- Supply a pure function that maps events to the movement amount.
 navigateList ::
   (Ord n, Foldable t, BL.Splittable t) =>
+  -- | separator predicate
   (e -> Bool) ->
-  (V.Event -> Movement) ->
   V.Event ->
+  -- | movement amount mapping
+  (V.Event -> Amount) ->
   EventM n (BL.GenericList n t e) ()
-navigateList isSep evMap e = case evMap e of
+navigateList isSep e evMap = case evMap e of
   Single d -> modify $ f d ExcludeCurrent
-  Multi amount d ->
+  Multi d stride ->
     let g = f d IncludeCurrent
-     in case amount of
+     in case stride of
           Max ->
             modify $
               g . case d of
@@ -50,14 +62,11 @@ navigateList isSep evMap e = case evMap e of
  where
   f d x = listFindByStrategy (FindStrategy d x) $ not . isSep
 
--- | Which direction to search: forward or backward from the current location.
-data FindDir = Down | Up deriving (Eq, Ord, Show, Enum)
-
 -- | Should we include or exclude the current location in the search?
 data FindStart = IncludeCurrent | ExcludeCurrent deriving (Eq, Ord, Show, Enum)
 
 -- | A 'FindStrategy' is a pair of a 'FindDir' and a 'FindStart'.
-data FindStrategy = FindStrategy FindDir FindStart
+data FindStrategy = FindStrategy Dir FindStart
 
 -- | Starting from the currently selected element, attempt to find and
 --   select the next element matching the predicate. How the search
