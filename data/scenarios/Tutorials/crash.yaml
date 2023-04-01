@@ -33,7 +33,14 @@ entities:
       - If you have this, you win!
     properties: [known, portable]
 solution: |
-  run "scenarios/Tutorials/crash-solution.sw"
+  crasher <- build {
+      turn east; move; move; move; log "bye"; move
+  };
+  wait 32;
+  salvager <- build {
+      log "I will bring home the Win!";
+      turn east; move; move; move; salvage; turn back; move; move; give base "Win"
+  };
 robots:
   - name: base
     dir: [0,1]
