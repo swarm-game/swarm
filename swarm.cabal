@@ -81,8 +81,7 @@ common ghc2021-extensions
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Data.BoolExpr
-                      Data.BoolExpr.Simplify
+    exposed-modules:  Data.BoolExpr.Simplify
                       Swarm.App
                       Swarm.DocGen
                       Swarm.Game.Failure
@@ -165,6 +164,7 @@ library
     build-depends:    base                          >= 4.14 && < 4.18,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
+                      boolexpr                      >= 0.2 && < 0.3,
                       brick                         >= 1.5 && < 1.7,
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
@@ -260,6 +260,7 @@ test-suite swarm-unit
                       -- Imports shared with the library don't need bounds
                       aeson,
                       base,
+                      boolexpr,
                       containers,
                       filepath,
                       hashable,
