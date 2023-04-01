@@ -755,19 +755,23 @@ stepCESK cesk = case cesk of
     currentContext <- use $ robotContext . defReqs
     em <- use entityMap
     let (R.Requirements caps devs inv, _) = R.requirements currentContext t
+
+        devicesForCaps, requiredDevices :: Set (Set Text)
+        -- possible devices to provide each required capability
+        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
+        -- outright required devices
+        requiredDevices = S.map S.singleton devs
+
         deviceSets :: Set (Set Text)
         deviceSets =
-          -- Remove any device sets which are a superset of another
-          -- set.  For example, if (grabber OR fast grabber OR
-          -- harvester) is required but (grabber OR fast grabber) is
-          -- also required then we might as well remove the first set,
-          -- since satisfying the second device set will automatically
+          -- Union together all required device sets, and remove any
+          -- device sets which are a superset of another set.  For
+          -- example, if (grabber OR fast grabber OR harvester) is
+          -- required but (grabber OR fast grabber) is also required
+          -- then we might as well remove the first set, since
+          -- satisfying the second device set will automatically
           -- satisfy the first.
-          removeSupersets $
-            -- Generate the set of possible devices for each capability, along
-            -- with the outright required devices.
-            S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
-              `S.union` S.map S.singleton devs
+          removeSupersets $ devicesForCaps `S.union` requiredDevices
 
         equipmentLog
           | S.null caps && S.null devs = []
@@ -779,7 +783,7 @@ stepCESK cesk = case cesk of
           | M.null inv = []
           | otherwise =
               "  Inventory:"
-                : (("    - " <>) . (\(e, n) -> e <> " (" <> showT n <> ")") <$> M.assocs inv)
+                : (("    - " <>) . (\(e, n) -> e <> " " <> parens (showT n)) <$> M.assocs inv)
         reqLog =
           T.unlines $
             [T.unwords ["Requirements for", bquote src <> ":"]]
