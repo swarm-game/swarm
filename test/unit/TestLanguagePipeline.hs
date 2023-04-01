@@ -278,8 +278,8 @@ testLanguagePipeline =
                     "variable types"
                     (getVars s)
                     [ (TVar "g", [tyQ| int -> int |])
-                      , (TVar "x", [tyQ| int |])
-                      ]
+                    , (TVar "x", [tyQ| int |])
+                    ]
             )
         , testCase
             "simple type ascription"
