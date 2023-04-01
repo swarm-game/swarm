@@ -13,6 +13,13 @@ import Data.Foldable (toList)
 import Data.List (find)
 import Graphics.Vty qualified as V
 
+data Amount = Max | Page
+
+data Movement =
+    Single FindDir
+  | Multi Amount FindDir
+  | None
+
 -- | Handle a list event, taking an extra predicate to identify which
 --   list elements are separators; separators will be skipped if
 --   possible.
@@ -23,42 +30,49 @@ handleListEventWithSeparators ::
   (e -> Bool) ->
   EventM n (BL.GenericList n t e) ()
 handleListEventWithSeparators e isSep =
-  case e of
-    V.EvKey V.KUp [] -> modify backward
-    V.EvKey (V.KChar 'k') [] -> modify backward
-    V.EvKey V.KDown [] -> modify forward
-    V.EvKey (V.KChar 'j') [] -> modify forward
-    V.EvKey V.KHome [] ->
-      modify $ listFindByStrategy fwdInclusive isItem . BL.listMoveToBeginning
-    V.EvKey V.KEnd [] ->
-      modify $ listFindByStrategy bwdInclusive isItem . BL.listMoveToEnd
-    V.EvKey V.KPageDown [] -> do
-      BL.listMovePageDown
-      modify $ listFindByStrategy bwdInclusive isItem
-    V.EvKey V.KPageUp [] -> do
-      BL.listMovePageUp
-      modify $ listFindByStrategy fwdInclusive isItem
-    _ -> return ()
+  updateList isSep eventMap e
  where
-  isItem = not . isSep
-  backward = listFindByStrategy bwdExclusive isItem
-  forward = listFindByStrategy fwdExclusive isItem
+  eventMap = \case
+    V.EvKey V.KUp [] -> Single Up
+    V.EvKey (V.KChar 'k') [] -> Single Up
+    V.EvKey V.KDown [] -> Single Down
+    V.EvKey (V.KChar 'j') [] -> Single Down
+    V.EvKey V.KHome [] -> Multi Max Up
+    V.EvKey V.KEnd [] -> Multi Max Down
+    V.EvKey V.KPageDown [] -> Multi Page Down
+    V.EvKey V.KPageUp [] -> Multi Page Up
+    _ -> None
+
+updateList :: (Ord n, Foldable t, BL.Splittable t) =>
+  (e -> Bool) ->
+  (V.Event -> Movement) ->
+  V.Event ->
+  EventM n (BL.GenericList n t e) ()
+updateList isSep evMap e = case evMap e of
+  Single d -> modify $ f d ExcludeCurrent
+  Multi amount d ->
+    let g = f d IncludeCurrent in
+    case amount of
+      Max -> modify $ g . case d of
+        Up -> BL.listMoveToBeginning
+        Down -> BL.listMoveToEnd
+      Page -> precondition >> modify g
+        where
+          precondition = case d of
+            Up -> BL.listMovePageUp
+            Down -> BL.listMovePageDown
+  None -> return ()
+  where
+    f d x = listFindByStrategy (FindStrategy d x) $ not . isSep
 
 -- | Which direction to search: forward or backward from the current location.
-data FindDir = FindFwd | FindBwd deriving (Eq, Ord, Show, Enum)
+data FindDir = Down | Up deriving (Eq, Ord, Show, Enum)
 
 -- | Should we include or exclude the current location in the search?
 data FindStart = IncludeCurrent | ExcludeCurrent deriving (Eq, Ord, Show, Enum)
 
 -- | A 'FindStrategy' is a pair of a 'FindDir' and a 'FindStart'.
 data FindStrategy = FindStrategy FindDir FindStart
-
--- | Some convenient synonyms for various 'FindStrategy' values.
-fwdInclusive, fwdExclusive, bwdInclusive, bwdExclusive :: FindStrategy
-fwdInclusive = FindStrategy FindFwd IncludeCurrent
-fwdExclusive = FindStrategy FindFwd ExcludeCurrent
-bwdInclusive = FindStrategy FindBwd IncludeCurrent
-bwdExclusive = FindStrategy FindBwd ExcludeCurrent
 
 -- | Starting from the currently selected element, attempt to find and
 --   select the next element matching the predicate. How the search
@@ -79,7 +93,7 @@ listFindByStrategy (FindStrategy dir cur) test l =
         -- If we're search forward, split on current index; if
         -- finding backward, split on current + 1 (so that the
         -- left-hand split will include the current index).
-        case dir of FindFwd -> 0; FindBwd -> 1
+        case dir of Down -> 0; Up -> 1
           -- ... but if we're excluding the current index, swap that, so
           -- the current index will be excluded rather than included in
           -- the part of the split we're going to look at.
@@ -94,5 +108,5 @@ listFindByStrategy (FindStrategy dir cur) test l =
       -- backward.
       headResult = find (test . snd) . reverse . zip [0 ..] . toList $ h
       tailResult = find (test . snd) . zip [start ..] . toList $ t
-      result = case dir of FindFwd -> tailResult; FindBwd -> headResult
+      result = case dir of Down -> tailResult; Up -> headResult
    in maybe id (set BL.listSelectedL . Just . fst) result l
