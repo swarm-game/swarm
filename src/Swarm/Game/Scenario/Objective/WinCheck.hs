@@ -63,7 +63,6 @@ getActiveObjectives :: ObjectiveCompletion -> [Objective]
 getActiveObjectives =
   fst . partitionActiveObjectives
 
-
 deriving instance Generic (BE.Signed ObjectiveLabel)
 deriving instance ToJSON (BE.Signed ObjectiveLabel)
 
