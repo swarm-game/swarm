@@ -368,13 +368,13 @@ _NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 -- [[1]]
 --
 -- >>> rss [[1,2,3], [2,4], [2,3]]
--- [[2,3], [2,4]]
+-- [[2,3],[2,4]]
 --
 -- >>> rss [[], [1], [2,3]]
 -- [[]]
 --
 -- >>> rss [[1,2], [1,3], [2,3]]
--- [[1,2], [1,3], [2,3]]
+-- [[1,2],[1,3],[2,3]]
 removeSupersets :: Ord a => Set (Set a) -> Set (Set a)
 removeSupersets ss = S.filter (not . isSuperset) ss
  where
