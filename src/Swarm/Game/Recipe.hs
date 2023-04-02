@@ -142,15 +142,15 @@ loadRecipes ::
 loadRecipes em = do
   fileName <- getDataFileNameSafe Recipes f
   textRecipes <-
-    withExceptT (AssetNotLoaded (Data Recipes) fileName . CanNotParse) $
-      ExceptT $
-        liftIO $
-          decodeFileEither @[Recipe Text] fileName
-  withExceptT (AssetNotLoaded (Data Recipes) fileName . CustomMessage) $
-    except $
-      left (T.append "Unknown entities in recipe(s): " . T.intercalate ", ") $
-        validationToEither $
-          resolveRecipes em textRecipes
+    withExceptT (AssetNotLoaded (Data Recipes) fileName . CanNotParse)
+      . ExceptT
+      . liftIO
+      $ decodeFileEither @[Recipe Text] fileName
+  withExceptT (AssetNotLoaded (Data Recipes) fileName . CustomMessage)
+    . except
+    . left (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
+    . validationToEither
+    $ resolveRecipes em textRecipes
  where
   f = "recipes.yaml"
 

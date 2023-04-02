@@ -741,10 +741,10 @@ drawKeyMenu s =
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   focusedPanelCmds =
-    map highlightKeyCmds $
-      keyCmdsFor $
-        focusGetCurrent $
-          view (uiState . uiFocusRing) s
+    map highlightKeyCmds
+      . keyCmdsFor
+      . focusGetCurrent
+      $ view (uiState . uiFocusRing) s
 
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
@@ -966,10 +966,10 @@ explainRecipes s e
   | otherwise =
       vBox
         [ padBottom (Pad 1) (hBorderWithLabel (txt "Recipes"))
-        , padLeftRight 2 $
-            hCenter $
-              vBox $
-                map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
+        , padLeftRight 2
+            . hCenter
+            . vBox
+            $ map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
         ]
  where
   recipes = recipesWith s e
