@@ -1599,6 +1599,8 @@ execConst c vs s k = do
     Fail -> case vs of
       [VText msg] -> return $ Up (User msg) s k
       _ -> badConst
+    -- XXX implement key command
+    Key -> return $ Up (User "key command is not implemented yet") s k
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
         r <- get

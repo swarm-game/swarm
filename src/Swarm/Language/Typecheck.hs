@@ -588,6 +588,7 @@ inferConst c = case c of
   Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
   Undefined -> [tyQ| a |]
   Fail -> [tyQ| text -> a |]
+  Key -> [tyQ| text -> key |]
   Not -> [tyQ| bool -> bool |]
   Neg -> [tyQ| int -> int |]
   Eq -> cmpBinT

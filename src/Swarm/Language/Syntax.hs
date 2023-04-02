@@ -83,7 +83,7 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
-import Data.Aeson.Types
+import Data.Aeson.Types hiding (Key)
 import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
@@ -310,6 +310,8 @@ data Const
     Undefined
   | -- | User error
     Fail
+  | -- | Create `key` values
+    Key
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -646,6 +648,7 @@ constInfo c = case c of
   Try -> command 2 Intangible "Execute a command, catching errors."
   Undefined -> function 0 "A value of any type, that is evaluated as error."
   Fail -> function 1 "A value of any type, that is evaluated as error with message."
+  Key -> function 1 "Create a key value from a text description."
   If ->
     function 3 . doc "If-Then-Else function." $
       ["If the bool predicate is true then evaluate the first expression, otherwise the second."]

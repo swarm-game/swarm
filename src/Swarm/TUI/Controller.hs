@@ -85,7 +85,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VUnit), prettyValue, stripVResult)
