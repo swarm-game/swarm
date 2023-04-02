@@ -26,7 +26,7 @@ testPedagogy gs =
   tutorialInfos = generateIntroductionsSequence $ view scenarios gs
 
   testFromTut :: Int -> CoverageInfo -> TestTree
-  testFromTut idx (CoverageInfo (TutorialInfo (_s, si) _ descCommands) novelCommands) =
+  testFromTut idx (CoverageInfo (TutorialInfo (_s, si) _ _ descCommands) novelCommands) =
     testCase
       (unwords [show idx, scPath])
       $ assertBool errMsg allCommandsCovered
