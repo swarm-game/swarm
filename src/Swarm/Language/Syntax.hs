@@ -49,6 +49,7 @@ module Swarm.Language.Syntax (
   SrcLoc (..),
   noLoc,
   pattern STerm,
+  pattern TRequirements,
   pattern TPair,
   pattern TLam,
   pattern TApp,
@@ -805,6 +806,12 @@ data Term' ty
     TRequireDevice Text
   | -- | Require a certain number of an entity.
     TRequire Int Text
+  | -- | Primitive command to log requirements of a term.  The Text
+    --   field is to store the unaltered original text of the term, for use
+    --   in displaying the log message (since once we get to execution time the
+    --   original term may have been elaborated, e.g. `force` may have been added
+    --   around some variables, etc.)
+    SRequirements Text (Syntax' ty)
   | -- | A variable.
     TVar Var
   | -- | A pair.
@@ -908,6 +915,9 @@ pattern STerm t <-
   where
     STerm t = Syntax mempty t
 
+pattern TRequirements :: Text -> Term -> Term
+pattern TRequirements x t = SRequirements x (STerm t)
+
 -- | Match a TPair without syntax
 pattern TPair :: Term -> Term -> Term
 pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
@@ -964,7 +974,7 @@ pattern TAnnotate :: Term -> Polytype -> Term
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
@@ -1017,6 +1027,7 @@ erase (TRobot r) = TRobot r
 erase (TRef r) = TRef r
 erase (TRequireDevice d) = TRequireDevice d
 erase (TRequire n e) = TRequire n e
+erase (SRequirements x s) = TRequirements x (eraseS s)
 erase (TVar s) = TVar s
 erase (SDelay x s) = TDelay x (eraseS s)
 erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
@@ -1057,6 +1068,7 @@ freeVarsS f = go S.empty
     TRef {} -> pure s
     TRequireDevice {} -> pure s
     TRequire {} -> pure s
+    SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s
       | otherwise -> f s

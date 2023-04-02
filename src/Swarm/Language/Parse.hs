@@ -99,6 +99,7 @@ reservedWords =
        , "false"
        , "forall"
        , "require"
+       , "requirements"
        ]
 
 -- | Skip spaces and comments.
@@ -284,6 +285,7 @@ parseTermAtom2 =
                         <*> (textLiteral <?> "entity name in double quotes")
                     )
              )
+        <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
           <$> (symbol "\\" *> locIdentifier)
           <*> optional (symbol ":" *> parseType)
