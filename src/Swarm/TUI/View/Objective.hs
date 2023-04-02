@@ -61,10 +61,10 @@ renderGoalsDisplay gd =
   -- Note: An extra "padRight" is inserted to account for the vertical scrollbar,
   -- whether or not it appears.
   goalElaboration =
-    clickable (GoalWidgets GoalSummary) $
-      maybeScroll ModalViewport $
-        maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . singleGoalDetails . snd) $
-          BL.listSelectedElement lw
+    clickable (GoalWidgets GoalSummary)
+      . maybeScroll ModalViewport
+      . maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . singleGoalDetails . snd)
+      $ BL.listSelectedElement lw
 
 getCompletionIcon :: Objective -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
