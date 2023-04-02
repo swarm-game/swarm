@@ -21,6 +21,7 @@ import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..), liftIO)
 import Data.List (foldl', sort)
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -54,7 +55,7 @@ commandsWikiPrefix = wikiPrefix <> "Commands-Cheat-Sheet#"
 -- tutorials in sequence.
 data CoverageInfo = CoverageInfo
   { tutInfo :: TutorialInfo
-  , novelSolutionCommands :: Set Const
+  , novelSolutionCommands :: Map Const [SrcLoc]
   }
 
 -- | Tutorial scenarios with the set of commands
@@ -62,7 +63,7 @@ data CoverageInfo = CoverageInfo
 -- having been extracted
 data TutorialInfo = TutorialInfo
   { scenarioPair :: ScenarioInfoPair
-  , solutionCommands :: Set Const
+  , solutionCommands :: Map Const [SrcLoc]
   , descriptionCommands :: Set Const
   }
 
@@ -79,7 +80,7 @@ extractCommandUsages :: ScenarioInfoPair -> TutorialInfo
 extractCommandUsages siPair@(s, _si) =
   TutorialInfo siPair solnCommands $ getDescCommands s
  where
-  solnCommands = S.fromList $ maybe [] getCommands maybeSoln
+  solnCommands = getCommands maybeSoln
   maybeSoln = view scenarioSolution s
 
 -- | Obtain the set of all commands mentioned by
@@ -95,7 +96,7 @@ getDescCommands s =
   allWords = concatMap (T.words . T.toLower) goalTextParagraphs
   backtickedWords = mapMaybe (T.stripPrefix "`" <=< T.stripSuffix "`") allWords
 
-  commandConsts = filter isCmd allConst
+  commandConsts = filter isUserFunc allConst
   txtLookups = M.fromList $ map (syntax . constInfo &&& id) commandConsts
 
 -- | Extract the command names from the source code of the solution.
@@ -105,16 +106,17 @@ getDescCommands s =
 -- the player did not write it explicitly in their code.
 --
 -- Also, the code from `run` is not parsed transitively yet.
-getCommands :: ProcessedTerm -> [Const]
-getCommands (ProcessedTerm (Module stx _) _ _) =
-  mapMaybe isCommand nodelist
+getCommands :: Maybe ProcessedTerm -> Map Const [SrcLoc]
+getCommands Nothing = mempty
+getCommands (Just (ProcessedTerm (Module stx _) _ _)) =
+  M.fromListWith (<>) $ mapMaybe isCommand nodelist
  where
-  ignoredCommands = S.fromList [Run, Return, Noop]
+  ignoredCommands = S.fromList [Run, Return, Noop, Force]
 
   nodelist :: [Syntax' Polytype]
   nodelist = universe stx
-  isCommand (Syntax' _ t _) = case t of
-    TConst c -> guard (isCmd c && c `S.notMember` ignoredCommands) >> Just c
+  isCommand (Syntax' sloc t _) = case t of
+    TConst c -> guard (isUserFunc c && c `S.notMember` ignoredCommands) >> Just (c, [sloc])
     _ -> Nothing
 
 -- | "fold" over the tutorials in sequence to determine which
@@ -132,8 +134,8 @@ computeCommandIntroductions =
     usages = extractCommandUsages siPair
     usedCmdsForTutorial = solutionCommands usages
 
-    updatedEncountered = encounteredPreviously `S.union` usedCmdsForTutorial
-    novelCommands = usedCmdsForTutorial `S.difference` encounteredPreviously
+    updatedEncountered = encounteredPreviously `S.union` M.keysSet usedCmdsForTutorial
+    novelCommands = M.withoutKeys usedCmdsForTutorial encounteredPreviously
 
 -- | Extract the tutorials from the complete scenario collection
 -- and derive their command coverage info.
@@ -170,7 +172,7 @@ renderUsagesMarkdown idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novel
       , [""]
       , pure $ "*" <> T.strip (view scenarioDescription s) <> "*"
       , [""]
-      , renderSection "Commands first introduced in this solution" $ renderCmds novelCmds
+      , renderSection "Commands first introduced in this solution" $ renderCmds $ M.keysSet novelCmds
       , [""]
       , renderSection "Commands referenced in description" $ renderCmds dCmds
       ]
@@ -184,8 +186,7 @@ renderUsagesMarkdown idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novel
         then "<none>"
         else T.intercalate ", " . map linkifyCommand . sort . map (T.pack . show) . S.toList $ cmds
 
-  -- linkifyCommand c = "[" <> c <> "](" <> commandsWikiPrefix <> c <> ")"
-  linkifyCommand c = c
+  linkifyCommand c = "[" <> c <> "](" <> commandsWikiPrefix <> c <> ")"
 
   firstLine =
     T.unwords

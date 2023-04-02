@@ -7,7 +7,7 @@
 module TestPedagogy where
 
 import Control.Lens (view)
-import Data.Set qualified as S
+import Data.Map qualified as M
 import Swarm.Doc.Pedagogy
 import Swarm.Game.ScenarioInfo (scenarioPath)
 import Swarm.Game.State
@@ -31,14 +31,14 @@ testPedagogy gs =
       (unwords [show idx, scPath])
       $ assertBool errMsg allCommandsCovered
    where
-    missingCmds = novelCommands `S.difference` descCommands
+    missingCmds = M.withoutKeys novelCommands descCommands
     errMsg =
       unwords
         [ "command(s) missing from description:"
-        , show missingCmds
+        , show $ M.keysSet missingCmds
         ]
 
     scPath = view scenarioPath si
-    allCommandsCovered = S.null missingCmds
+    allCommandsCovered = M.null missingCmds
 
   testList = zipWith testFromTut [0 ..] tutorialInfos

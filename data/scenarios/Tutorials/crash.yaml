@@ -4,7 +4,7 @@ description: |
   Learn how to view built robots and debug them.
 objectives:
   - goal:
-      - Before you send your robots far away you need to learn how
+      - Before you send your robots far away from the `base` you need to learn how
         to figure out what went wrong with them if they crash.
       - |
         In this challenge, you should start by
