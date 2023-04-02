@@ -51,6 +51,9 @@ pparens :: Bool -> Doc ann -> Doc ann
 pparens True = parens
 pparens False = id
 
+instance PrettyPrec Text where
+  prettyPrec _ = pretty
+
 instance PrettyPrec BaseTy where
   prettyPrec _ BVoid = "void"
   prettyPrec _ BUnit = "unit"
@@ -223,3 +226,12 @@ instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr ty
   prettyPrec _ NestedAtomic = "nested atomic block"
   prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"
+
+data BulletList i = BulletList
+  { bulletListHeader :: forall a. Doc a
+  , bulletListItems :: [i]
+  }
+
+instance PrettyPrec i => PrettyPrec (BulletList i) where
+  prettyPrec _ (BulletList hdr items) =
+    nest 2 . vcat $ hdr : map (("-" <+>) . ppr) items

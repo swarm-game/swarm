@@ -58,6 +58,7 @@ import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (V2 (..), zero)
+import Prettyprinter (pretty)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -79,7 +80,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
@@ -773,22 +774,20 @@ stepCESK cesk = case cesk of
           -- satisfy the first.
           removeSupersets $ devicesForCaps `S.union` requiredDevices
 
-        equipmentLog
-          | S.null caps && S.null devs = []
-          | otherwise =
-              "  Equipment:"
-                : (("    - " <>) . (T.intercalate " OR " . S.toList) <$> S.toList deviceSets)
-
-        inventoryLog
-          | M.null inv = []
-          | otherwise =
-              "  Inventory:"
-                : (("    - " <>) . (\(e, n) -> e <> " " <> parens (showT n)) <$> M.assocs inv)
         reqLog =
-          T.unlines $
-            [T.unwords ["Requirements for", bquote src <> ":"]]
-              ++ equipmentLog
-              ++ inventoryLog
+          prettyText $
+            BulletList
+              (pretty $ T.unwords ["Requirements for", bquote src <> ":"])
+              ( filter
+                  (not . null . bulletListItems)
+                  [ BulletList
+                      "Equipment:"
+                      (T.intercalate " OR " . S.toList <$> S.toList deviceSets)
+                  , BulletList
+                      "Inventory:"
+                      ((\(e, n) -> e <> " " <> parens (showT n)) <$> M.assocs inv)
+                  ]
+              )
 
     _ <- traceLog Logged reqLog
     return $ Out VUnit s k
