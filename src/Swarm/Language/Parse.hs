@@ -89,6 +89,7 @@ reservedWords =
        , "dir"
        , "bool"
        , "actor"
+       , "key"
        , "cmd"
        , "delay"
        , "let"
@@ -219,6 +220,7 @@ parseTypeAtom =
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
     <|> TyActor <$ reserved "actor"
+    <|> TyKey <$ reserved "key"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))

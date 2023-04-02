@@ -26,6 +26,7 @@ module Swarm.Language.Types (
   pattern TyDir,
   pattern TyBool,
   pattern TyActor,
+  pattern TyKey,
   pattern (:+:),
   pattern (:*:),
   pattern (:->:),
@@ -44,6 +45,7 @@ module Swarm.Language.Types (
   pattern UTyDir,
   pattern UTyBool,
   pattern UTyActor,
+  pattern UTyKey,
   pattern UTySum,
   pattern UTyProd,
   pattern UTyFun,
@@ -113,6 +115,8 @@ data BaseTy
     --   in-game name because they could represent other things like
     --   aliens, animals, seeds, ...
     BActor
+  | -- | Keys, i.e. things that can be pressed on the keyboard
+    BKey
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | A "structure functor" encoding the shape of type expressions.
@@ -300,6 +304,9 @@ pattern TyBool = Fix (TyBaseF BBool)
 pattern TyActor :: Type
 pattern TyActor = Fix (TyBaseF BActor)
 
+pattern TyKey :: Type
+pattern TyKey = Fix (TyBaseF BKey)
+
 infixr 5 :+:
 
 pattern (:+:) :: Type -> Type -> Type
@@ -350,6 +357,9 @@ pattern UTyBool = UTerm (TyBaseF BBool)
 
 pattern UTyActor :: UType
 pattern UTyActor = UTerm (TyBaseF BActor)
+
+pattern UTyKey :: UType
+pattern UTyKey = UTerm (TyBaseF BKey)
 
 pattern UTySum :: UType -> UType -> UType
 pattern UTySum ty1 ty2 = UTerm (TySumF ty1 ty2)
