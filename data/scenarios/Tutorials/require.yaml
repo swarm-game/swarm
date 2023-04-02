@@ -8,7 +8,8 @@ objectives:
         built robot that it knows
         will be required.  For example, if you `build {move}`, some `treads`
         will automatically be equipped on the new robot since it needs
-        them to `move`.
+        them to `move`.  (To see what the `build` command will equip,
+        you can type `requirements <e>` where `<e>` is any expression.)
       - However, sometimes you need a device but `build` can't tell that
         you need it. In this case, you can use the special `require`
         command to require a particular device.  For example, if you
