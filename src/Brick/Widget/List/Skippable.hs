@@ -17,6 +17,7 @@ import Control.Monad.State.Strict (modify)
 import Data.Foldable (toList)
 import Data.List (find)
 import Graphics.Vty qualified as V
+import Swarm.Util (cycleEnum)
 
 -- | The amount to move
 data Amount
@@ -28,7 +29,10 @@ data Amount
 data Jump = Max | Page
 
 -- | Which direction to search: forward or backward from the current location.
-data Dir = Down | Up deriving (Eq, Ord, Show, Enum)
+data Dir = Down | Up deriving (Eq, Ord, Show, Enum, Bounded)
+
+invert :: Dir -> Dir
+invert = cycleEnum
 
 -- | Handle a list event, taking an extra predicate to identify which
 --   list elements are separators; separators will be skipped if
@@ -46,7 +50,7 @@ navigateList ::
 navigateList isSep e evMap = case evMap e of
   Single d -> modify $ f d ExcludeCurrent
   Multi d stride ->
-    let g = f d IncludeCurrent
+    let g = f (invert d) IncludeCurrent
      in case stride of
           Max ->
             modify $
