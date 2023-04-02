@@ -20,7 +20,8 @@ import Control.Arrow ((&&&))
 import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..), liftIO)
-import Data.List (foldl', sort)
+import Data.List (foldl', sort, sortOn)
+import Data.List.Extra (zipFrom)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -28,6 +29,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
 import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
@@ -41,11 +43,8 @@ import Swarm.Util (simpleErrorHandle)
 
 -- * Constants
 
-wikiPrefix :: Text
-wikiPrefix = "https://github.com/swarm-game/swarm/wiki/"
-
-commandsWikiPrefix :: Text
-commandsWikiPrefix = wikiPrefix <> "Commands-Cheat-Sheet#"
+commandsWikiAnchorPrefix :: Text
+commandsWikiAnchorPrefix = wikiCheatSheet <> "#"
 
 -- * Types
 
@@ -63,6 +62,7 @@ data CoverageInfo = CoverageInfo
 -- having been extracted
 data TutorialInfo = TutorialInfo
   { scenarioPair :: ScenarioInfoPair
+  , tutIndex :: Int
   , solutionCommands :: Map Const [SrcLoc]
   , descriptionCommands :: Set Const
   }
@@ -76,9 +76,9 @@ data CommandAccum = CommandAccum
 -- * Functions
 
 -- | Extract commands from both goal descriptions and solution code.
-extractCommandUsages :: ScenarioInfoPair -> TutorialInfo
-extractCommandUsages siPair@(s, _si) =
-  TutorialInfo siPair solnCommands $ getDescCommands s
+extractCommandUsages :: Int -> ScenarioInfoPair -> TutorialInfo
+extractCommandUsages idx siPair@(s, _si) =
+  TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
   solnCommands = getCommands maybeSoln
   maybeSoln = view scenarioSolution s
@@ -94,10 +94,16 @@ getDescCommands s =
  where
   goalTextParagraphs = concatMap (view objectiveGoal) $ view scenarioObjectives s
   allWords = concatMap (T.words . T.toLower) goalTextParagraphs
-  backtickedWords = mapMaybe (T.stripPrefix "`" <=< T.stripSuffix "`") allWords
+  getBackticked = T.stripPrefix "`" <=< T.stripSuffix "`"
+  backtickedWords = mapMaybe getBackticked allWords
 
-  commandConsts = filter isUserFunc allConst
+  commandConsts = filter isConsidered allConst
   txtLookups = M.fromList $ map (syntax . constInfo &&& id) commandConsts
+
+isConsidered :: Const -> Bool
+isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
+ where
+  ignoredCommands = S.fromList [Run, Return, Noop, Force]
 
 -- | Extract the command names from the source code of the solution.
 --
@@ -111,27 +117,25 @@ getCommands Nothing = mempty
 getCommands (Just (ProcessedTerm (Module stx _) _ _)) =
   M.fromListWith (<>) $ mapMaybe isCommand nodelist
  where
-  ignoredCommands = S.fromList [Run, Return, Noop, Force]
-
   nodelist :: [Syntax' Polytype]
   nodelist = universe stx
   isCommand (Syntax' sloc t _) = case t of
-    TConst c -> guard (isUserFunc c && c `S.notMember` ignoredCommands) >> Just (c, [sloc])
+    TConst c -> guard (isConsidered c) >> Just (c, [sloc])
     _ -> Nothing
 
 -- | "fold" over the tutorials in sequence to determine which
 -- commands are novel to each tutorial's solution.
-computeCommandIntroductions :: [ScenarioInfoPair] -> [CoverageInfo]
+computeCommandIntroductions :: [(Int, ScenarioInfoPair)] -> [CoverageInfo]
 computeCommandIntroductions =
   reverse . tuts . foldl' f initial
  where
   initial = CommandAccum mempty mempty
 
-  f :: CommandAccum -> ScenarioInfoPair -> CommandAccum
-  f (CommandAccum encounteredPreviously xs) siPair =
+  f :: CommandAccum -> (Int, ScenarioInfoPair) -> CommandAccum
+  f (CommandAccum encounteredPreviously xs) (idx, siPair) =
     CommandAccum updatedEncountered $ CoverageInfo usages novelCommands : xs
    where
-    usages = extractCommandUsages siPair
+    usages = extractCommandUsages idx siPair
     usedCmdsForTutorial = solutionCommands usages
 
     updatedEncountered = encounteredPreviously `S.union` M.keysSet usedCmdsForTutorial
@@ -141,7 +145,7 @@ computeCommandIntroductions =
 -- and derive their command coverage info.
 generateIntroductionsSequence :: ScenarioCollection -> [CoverageInfo]
 generateIntroductionsSequence =
-  computeCommandIntroductions . getTuts
+  computeCommandIntroductions . zipFrom 0 . getTuts
  where
   getTuts =
     concatMap flatten
@@ -158,44 +162,81 @@ loadScenarioCollection = simpleErrorHandle $ do
   (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
   return loadedScenarios
 
-renderUsagesMarkdown :: Int -> CoverageInfo -> Text
-renderUsagesMarkdown idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novelCmds) =
-  T.unlines $
-    ""
-      : firstLine
-      : "================"
-      : otherLines
+renderUsagesMarkdown :: CoverageInfo -> Text
+renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novelCmds) =
+  T.unlines bodySections
  where
+  bodySections = firstLine : otherLines
   otherLines =
     concat
-      [ pure $ "`" <> T.pack (view scenarioPath si) <> "`"
+      [ pure . surround "`" . T.pack $ view scenarioPath si
       , [""]
-      , pure $ "*" <> T.strip (view scenarioDescription s) <> "*"
+      , pure . surround "*" . T.strip $ view scenarioDescription s
       , [""]
-      , renderSection "Commands first introduced in this solution" $ renderCmds $ M.keysSet novelCmds
+      , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
       , [""]
-      , renderSection "Commands referenced in description" $ renderCmds dCmds
+      , renderSection "Referenced in description" $ renderCmdList dCmds
       ]
+  surround x y = x <> y <> x
 
   renderSection title content =
-    [title, "----------------"] <> content
-
-  renderCmds cmds =
-    pure $
-      if null cmds
-        then "<none>"
-        else T.intercalate ", " . map linkifyCommand . sort . map (T.pack . show) . S.toList $ cmds
-
-  linkifyCommand c = "[" <> c <> "](" <> commandsWikiPrefix <> c <> ")"
+    ["### " <> title] <> content
 
   firstLine =
     T.unwords
-      [ T.pack $ show idx <> ":"
-      , view scenarioName s
+      [ "##"
+      , renderTutorialTitle idx s
       ]
+
+renderTutorialTitle :: Show a => a -> Scenario -> Text
+renderTutorialTitle idx s =
+  T.unwords
+    [ T.pack $ show idx <> ":"
+    , view scenarioName s
+    ]
+
+linkifyCommand :: Text -> Text
+linkifyCommand c = "[" <> c <> "](" <> commandsWikiAnchorPrefix <> c <> ")"
+
+renderList :: [Text] -> [Text]
+renderList items =
+  if null items
+    then pure "(none)"
+    else map ("* " <>) items
+
+cmdSetToSortedText :: Set Const -> [Text]
+cmdSetToSortedText = sort . map (T.pack . show) . S.toList
+
+renderCmdList :: Set Const -> [Text]
+renderCmdList = renderList . map linkifyCommand . cmdSetToSortedText
 
 renderTutorialProgression :: IO Text
 renderTutorialProgression =
-  render . generateIntroductionsSequence <$> loadScenarioCollection
+  processAndRender <$> loadScenarioCollection
  where
-  render = T.unlines . zipWith renderUsagesMarkdown [0 ..]
+  processAndRender ss =
+    T.unlines allLines
+   where
+    introSection =
+      "# Command introductions by tutorial"
+        : "This document indicates which tutorials introduce various commands and keywords."
+        : ""
+        : "All used:"
+        : renderFullCmdList allUsed
+
+    render (cmd, tut) =
+      T.unwords
+        [ linkifyCommand cmd
+        , "(" <> renderTutorialTitle (tutIndex tut) (fst $ scenarioPair tut) <> ")"
+        ]
+    renderFullCmdList = renderList . map render . sortOn fst
+    infos = generateIntroductionsSequence ss
+    allLines = introSection <> map renderUsagesMarkdown infos
+    allUsed = concatMap mkTuplesForTutorial infos
+
+    mkTuplesForTutorial tut =
+      map (\x -> (T.pack $ show x, tutIdxScenario)) $
+        M.keys $
+          novelSolutionCommands tut
+     where
+      tutIdxScenario = tutInfo tut

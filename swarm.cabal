@@ -84,6 +84,7 @@ library
     exposed-modules:  Brick.Widget.List.Skippable
                       Data.BoolExpr.Simplify
                       Swarm.App
+                      Swarm.Constant
                       Swarm.Doc.Gen
                       Swarm.Doc.Pedagogy
                       Swarm.Game.Failure

@@ -65,6 +65,7 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Constant
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
@@ -551,7 +552,7 @@ helpWidget theSeed mport =
     vBox
       [ txt "Have questions? Want some tips? Check out:"
       , txt " "
-      , txt "  - The Swarm wiki, https://github.com/swarm-game/swarm/wiki"
+      , txt $ "  - The Swarm wiki, " <> wikiUrl
       , txt "  - The #swarm IRC channel on Libera.Chat"
       ]
   info =
@@ -622,7 +623,7 @@ commandsListWidget gs =
     vBox
       [ table
       , padTop (Pad 1) $ txt "For the full list of available commands see the Wiki at:"
-      , txt "https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet"
+      , txt wikiCheatSheet
       ]
  where
   commands = gs ^. availableCommands . notificationsContent
