@@ -20,7 +20,7 @@ import Control.Arrow ((&&&))
 import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..), liftIO)
-import Data.List (foldl', sort, sortOn)
+import Data.List (foldl', intercalate, sort, sortOn)
 import Data.List.Extra (zipFrom)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -165,13 +165,11 @@ renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novel
  where
   bodySections = firstLine : otherLines
   otherLines =
-    concat
+    intercalate
+      [""]
       [ pure . surround "`" . T.pack $ view scenarioPath si
-      , [""]
       , pure . surround "*" . T.strip $ view scenarioDescription s
-      , [""]
       , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
-      , [""]
       , renderSection "Referenced in description" $ renderCmdList dCmds
       ]
   surround x y = x <> y <> x
