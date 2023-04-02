@@ -85,9 +85,6 @@ extractCommandUsages idx siPair@(s, _si) =
 
 -- | Obtain the set of all commands mentioned by
 -- name in the tutorial's goal descriptions.
---
--- NOTE: It may be more robust to require that a command reference
--- be surrounded by backticks and parse for that accordingly.
 getDescCommands :: Scenario -> Set Const
 getDescCommands s =
   S.fromList $ mapMaybe (`M.lookup` txtLookups) backtickedWords
