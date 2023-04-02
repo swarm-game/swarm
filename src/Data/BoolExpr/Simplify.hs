@@ -27,11 +27,11 @@ extractConstFromSigned v = case v of
 
 hasContradiction :: Ord a => Conj (Signed a) -> Bool
 hasContradiction (Conj items) =
-  not $
-    M.null $
-      M.filter ((> 1) . S.size) $
-        M.fromListWith (<>) $
-          fmap (fmap S.singleton . extractConstFromSigned) items
+  not
+    . M.null
+    . M.filter ((> 1) . S.size)
+    . M.fromListWith (<>)
+    $ fmap (fmap S.singleton . extractConstFromSigned) items
 
 simplifyDNF :: Ord a => DNF a -> DNF a
 simplifyDNF (DNF (Disj disjunctions)) =

@@ -228,8 +228,8 @@ loadScenarioFile ::
   EntityMap ->
   FilePath ->
   ExceptT SystemFailure m Scenario
-loadScenarioFile em fileName = do
-  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse) $
-    ExceptT $
-      liftIO $
-        decodeFileEitherE em fileName
+loadScenarioFile em fileName =
+  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse)
+    . ExceptT
+    . liftIO
+    $ decodeFileEitherE em fileName

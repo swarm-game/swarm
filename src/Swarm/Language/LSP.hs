@@ -46,7 +46,7 @@ lspMain =
                         (Just syncKind)
                         (Just False)
                         (Just False)
-                        (Just $ J.InR $ J.SaveOptions $ Just True)
+                        (Just . J.InR . J.SaveOptions $ Just True)
                     )
               }
         }

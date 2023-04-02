@@ -1929,7 +1929,7 @@ execConst c vs s k = do
     genDiamondSides diameter = concat [f diameter x | x <- [0 .. diameter]]
      where
       -- Adds a single cell to each of the four sides of the diamond
-      f d x = map (d,) $ take 4 $ iterate perp $ V2 x (d - x)
+      f d x = map (d,) . take 4 . iterate perp $ V2 x (d - x)
 
   finishCookingRecipe ::
     HasRobotStepState sig m =>
@@ -2381,7 +2381,7 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
     Gt -> fmap (== GT)
     Leq -> fmap (/= GT)
     Geq -> fmap (/= LT)
-    _ -> const $ throwError $ Fatal $ T.append "evalCmp called on bad constant " (from (show c))
+    _ -> const . throwError . Fatal . T.append "evalCmp called on bad constant " . from $ show c
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
