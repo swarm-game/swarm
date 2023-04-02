@@ -7,11 +7,11 @@
 module TestPedagogy where
 
 import Control.Lens (view)
+import Data.Map qualified as M
 import Swarm.Doc.Pedagogy
 import Swarm.Game.ScenarioInfo (scenarioPath)
 import Swarm.Game.State
 import Test.Tasty
-import Data.Map qualified as M
 import Test.Tasty.HUnit
 
 testPedagogy :: GameState -> TestTree

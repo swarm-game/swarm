@@ -21,9 +21,9 @@ import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..), liftIO)
 import Data.List (foldl', sort)
-import Data.Map qualified as M
 import Data.Map (Map)
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Map qualified as M
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
