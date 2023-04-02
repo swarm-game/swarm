@@ -36,6 +36,7 @@ module Swarm.Language.Syntax (
   isBuiltinFunction,
   isTangible,
   isLong,
+  maxSniffRange,
 
   -- * Syntax
   Syntax' (..),
@@ -88,6 +89,7 @@ import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
+import Data.Int (Int32)
 import Data.List qualified as L (tail)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -101,6 +103,11 @@ import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
 
+-- | Maximum perception distance for
+-- 'chirp' and 'sniff' commands
+maxSniffRange :: Int32
+maxSniffRange = 256
+
 ------------------------------------------------------------
 -- Directions
 ------------------------------------------------------------
@@ -108,7 +115,16 @@ import Witch.From (from)
 -- | An absolute direction is one which is defined with respect to an
 --   external frame of reference; robots need a compass in order to
 --   use them.
-data AbsoluteDir = DNorth | DSouth | DEast | DWest
+--
+-- NOTE: These values are ordered by increasing angle according to
+-- the standard mathematical convention.
+-- That is, the right-pointing direction, East, is considered
+-- the "reference angle" and the order proceeds counter-clockwise.
+-- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
+--
+-- Do not alter this ordering, as there exist functions that depend on it
+-- (e.g. "nearestDirection" and "relativeTo").
+data AbsoluteDir = DEast | DNorth | DWest | DSouth
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
 cardinalDirectionKeyOptions :: JSONKeyOptions
@@ -235,6 +251,10 @@ data Const
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
+  | -- | Get the distance to the closest instance of the specified entity.
+    Sniff
+  | -- | Get the direction to the closest instance of the specified entity.
+    Chirp
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -585,6 +605,19 @@ constInfo c = case c of
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
+  Sniff ->
+    command 1 short . doc "Determine distance to entity." $
+      [ "Measures concentration of airborne particles to infer distance to a certain kind of entity."
+      , "If none is detected, returns (-1)."
+      , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
+      ]
+  Chirp ->
+    command 1 short . doc "Determine direction to entity." $
+      [ "Uses a directional sonic emitter and microphone tuned to the acoustic signature of a specific entity to determine its direction."
+      , "Returns 'down' if out of range or the direction is indeterminate."
+      , "Provides absolute directions if \"compass\" equipped, relative directions otherwise."
+      , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
+      ]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->

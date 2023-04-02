@@ -17,6 +17,7 @@ module Swarm.Util (
   uniq,
   binTuples,
   findDup,
+  both,
 
   -- * Directory utilities
   readFileMay,
@@ -46,6 +47,8 @@ module Swarm.Util (
   isJustOr,
   isRightOr,
   isSuccessOr,
+  guardRight,
+  simpleErrorHandle,
 
   -- * Template Haskell utilities
   liftText,
@@ -67,8 +70,9 @@ import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (unless)
-import Data.Bifunctor (first)
+import Control.Monad (unless, (<=<))
+import Control.Monad.Except (ExceptT (..), runExceptT)
+import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
 import Data.List (maximumBy, partition)
@@ -159,6 +163,9 @@ findDup = go S.empty
   go seen (a : as)
     | a `S.member` seen = Just a
     | otherwise = go (S.insert a seen) as
+
+both :: Bifunctor p => (a -> d) -> p a a -> p d d
+both f = bimap f f
 
 ------------------------------------------------------------
 -- Directory stuff
@@ -317,6 +324,12 @@ Left b `isRightOr` f = throwError (f b)
 isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
+
+guardRight :: Text -> Either Text a -> ExceptT Text IO a
+guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
+
+simpleErrorHandle :: ExceptT Text IO a -> IO a
+simpleErrorHandle = either (fail . T.unpack) pure <=< runExceptT
 
 ------------------------------------------------------------
 -- Template Haskell utilities
