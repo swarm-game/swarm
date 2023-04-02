@@ -18,11 +18,9 @@ module Swarm.Doc.Pedagogy (
 
 import Control.Arrow ((&&&))
 import Control.Lens (universe, view)
-import Control.Monad (guard)
+import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..), liftIO)
-import Data.Char (isLetter)
 import Data.List (foldl', sort)
-import Data.List.Split (wordsBy)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -38,7 +36,7 @@ import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
-import Swarm.Util (commaList, simpleErrorHandle)
+import Swarm.Util (simpleErrorHandle)
 
 -- * Constants
 
@@ -91,26 +89,27 @@ extractCommandUsages siPair@(s, _si) =
 -- be surrounded by backticks and parse for that accordingly.
 getDescCommands :: Scenario -> Set Const
 getDescCommands s =
-  S.fromList $ mapMaybe (`M.lookup` txtLookups) allWords
+  S.fromList $ mapMaybe (`M.lookup` txtLookups) backtickedWords
  where
   goalTextParagraphs = concatMap (view objectiveGoal) $ view scenarioObjectives s
-  allWords = concatMap (wordsBy (not . isLetter) . T.unpack . T.toLower) goalTextParagraphs
+  allWords = concatMap (T.words . T.toLower) goalTextParagraphs
+  backtickedWords = mapMaybe (T.stripPrefix "`" <=< T.stripSuffix "`") allWords
 
   commandConsts = filter isCmd allConst
-  txtLookups = M.fromList $ map (T.unpack . syntax . constInfo &&& id) commandConsts
+  txtLookups = M.fromList $ map (syntax . constInfo &&& id) commandConsts
 
 -- | Extract the command names from the source code of the solution.
 --
--- NOTE: The processed solution stored in the scenario has been "elaborated";
--- e.g. `noop` gets inserted for an empty `build {}` command.
--- So we explicitly ignore `noop`.
+-- NOTE: `noop` gets automatically inserted for an empty `build {}` command
+-- at parse time, so we explicitly ignore the `noop` in the case that
+-- the player did not write it explicitly in their code.
 --
 -- Also, the code from `run` is not parsed transitively yet.
 getCommands :: ProcessedTerm -> [Const]
 getCommands (ProcessedTerm (Module stx _) _ _) =
   mapMaybe isCommand nodelist
  where
-  ignoredCommands = S.fromList [Run, Noop]
+  ignoredCommands = S.fromList [Run, Return, Noop]
 
   nodelist :: [Syntax' Polytype]
   nodelist = universe stx
@@ -171,9 +170,9 @@ renderUsagesMarkdown idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novel
       , [""]
       , pure $ "*" <> T.strip (view scenarioDescription s) <> "*"
       , [""]
-      , renderSection "Commands introduced in this solution" $ renderCmds novelCmds
+      , renderSection "Commands first introduced in this solution" $ renderCmds novelCmds
       , [""]
-      , renderSection "Commands found in description" $ renderCmds dCmds
+      , renderSection "Commands referenced in description" $ renderCmds dCmds
       ]
 
   renderSection title content =
@@ -183,9 +182,10 @@ renderUsagesMarkdown idx (CoverageInfo (TutorialInfo (s, si) _sCmds dCmds) novel
     pure $
       if null cmds
         then "<none>"
-        else commaList . map linkifyCommand . sort . map (T.pack . show) . S.toList $ cmds
+        else T.intercalate ", " . map linkifyCommand . sort . map (T.pack . show) . S.toList $ cmds
 
-  linkifyCommand c = "[" <> c <> "](" <> commandsWikiPrefix <> c <> ")"
+  -- linkifyCommand c = "[" <> c <> "](" <> commandsWikiPrefix <> c <> ")"
+  linkifyCommand c = c
 
   firstLine =
     T.unwords
