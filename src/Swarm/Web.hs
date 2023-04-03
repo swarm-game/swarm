@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
 -- |
@@ -21,20 +21,29 @@
 --   * TODO: #493 export the whole game state
 module Swarm.Web where
 
+import CMarkGFM qualified as CMark (commonmarkToHtml)
+import Control.Arrow (left)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
 import Control.Exception (Exception (displayException), IOException, catch, throwIO)
-import Control.Lens ((^.))
+import Control.Lens
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
+import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
 import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Data.Text.Lazy qualified as L
+import Data.Text.Lazy.Encoding (encodeUtf8)
+import Network.HTTP.Types (ok200)
+import Network.Wai (responseLBS)
 import Network.Wai qualified
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
+import Servant.Docs (ToCapture)
+import Servant.Docs qualified as SD
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -44,18 +53,53 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import System.Timeout (timeout)
+import Text.Read (readEither)
 
-type SwarmApi =
+newtype RobotID = RobotID Int
+
+instance FromHttpApiData RobotID where
+  parseUrlPiece = fmap RobotID . left T.pack . readEither . T.unpack
+
+type SwarmAPI =
   "robots" :> Get '[JSON] [Robot]
-    :<|> "robot" :> Capture "id" Int :> Get '[JSON] (Maybe Robot)
+    :<|> "robot" :> Capture "id" RobotID :> Get '[JSON] (Maybe Robot)
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
     :<|> "goals" :> "active" :> Get '[JSON] [Objective]
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
-    :<|> "repl" :> "history" :> "full" :> Get '[JSON] [T.Text]
+    :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
 
-mkApp :: IORef AppState -> Servant.Server SwarmApi
+instance ToCapture (Capture "id" RobotID) where
+  toCapture _ =
+    SD.DocCapture
+      "id" -- name
+      "(integer) robot ID" -- description
+
+swarmApi :: Proxy SwarmAPI
+swarmApi = Proxy
+
+type ToplevelAPI = SwarmAPI :<|> Raw
+
+api :: Proxy ToplevelAPI
+api = Proxy
+
+docsBS :: ByteString
+docsBS =
+  encodeUtf8
+    . L.fromStrict
+    . CMark.commonmarkToHtml [] []
+    . T.pack
+    . SD.markdownWith
+      ( SD.defRenderingOptions
+          & SD.requestExamples .~ SD.FirstContentType
+          & SD.responseExamples .~ SD.FirstContentType
+      )
+    $ SD.docsWithIntros [intro] swarmApi
+ where
+  intro = SD.DocIntro "Swarm Web API" ["All of the valid endpoints are documented below."]
+
+mkApp :: IORef AppState -> Servant.Server SwarmAPI
 mkApp appStateRef =
   robotsHandler
     :<|> robotHandler
@@ -69,7 +113,7 @@ mkApp appStateRef =
   robotsHandler = do
     appState <- liftIO (readIORef appStateRef)
     pure $ IM.elems $ appState ^. gameState . robotMap
-  robotHandler rid = do
+  robotHandler (RobotID rid) = do
     appState <- liftIO (readIORef appStateRef)
     pure $ IM.lookup rid (appState ^. gameState . robotMap)
   prereqsHandler = do
@@ -96,7 +140,7 @@ mkApp appStateRef =
   replHandler = do
     appState <- liftIO (readIORef appStateRef)
     let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
-        items = [x | REPLEntry x <- toList replHistorySeq]
+        items = toList replHistorySeq
     pure items
 
 webMain :: Maybe (MVar (Either String ())) -> Warp.Port -> IORef AppState -> IO ()
@@ -106,8 +150,17 @@ webMain baton port appStateRef = catch (Warp.runSettings settings app) handleErr
   onReady = case baton of
     Just mv -> Warp.setBeforeMainLoop $ putMVar mv (Right ())
     Nothing -> id
+
+  server :: Server ToplevelAPI
+  server = mkApp appStateRef :<|> Tagged serveDocs
+   where
+    serveDocs _ resp =
+      resp $ responseLBS ok200 [plain] docsBS
+    plain = ("Content-Type", "text/html")
+
   app :: Network.Wai.Application
-  app = Servant.serve (Proxy @SwarmApi) (mkApp appStateRef)
+  app = Servant.serve api server
+
   handleErr :: IOException -> IO ()
   handleErr e = case baton of
     Just mv -> putMVar mv (Left $ displayException e)

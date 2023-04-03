@@ -86,6 +86,8 @@ import Data.Text (Text)
 import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
@@ -218,6 +220,9 @@ type TRobot = RobotR 'TemplateRobot
 
 -- | A concrete robot, with a unique ID number and a specific location.
 type Robot = RobotR 'ConcreteRobot
+
+instance ToSample Robot where
+  toSamples _ = SD.noSamples
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice

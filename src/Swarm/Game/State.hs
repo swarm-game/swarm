@@ -147,6 +147,8 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
@@ -234,6 +236,9 @@ data WinCondition
   deriving (Show, Generic, FromJSON, ToJSON)
 
 makePrisms ''WinCondition
+
+instance ToSample WinCondition where
+  toSamples _ = SD.noSamples
 
 -- | A data type to keep track of the pause mode.
 data RunStatus
