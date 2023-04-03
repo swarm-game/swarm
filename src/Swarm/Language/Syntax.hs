@@ -591,7 +591,10 @@ constInfo c = case c of
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 short "Log the string in the robot's logger."
-  View -> command 1 short "View the given actor."
+  View ->
+    command 1 short . doc "View the given actor." $
+      [ "This will recenter the map on the target robot and allow its inventory and logs to be inspected."
+      ]
   Appear ->
     command 1 short . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."

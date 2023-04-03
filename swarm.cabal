@@ -84,7 +84,9 @@ library
     exposed-modules:  Brick.Widget.List.Skippable
                       Data.BoolExpr.Simplify
                       Swarm.App
-                      Swarm.DocGen
+                      Swarm.Constant
+                      Swarm.Doc.Gen
+                      Swarm.Doc.Pedagogy
                       Swarm.Game.Failure
                       Swarm.Game.Failure.Render
                       Swarm.Game.Achievement.Attainment
@@ -246,6 +248,7 @@ test-suite swarm-unit
     other-modules:    TestEval
                       TestInventory
                       TestModel
+                      TestPedagogy
                       TestNotification
                       TestLanguagePipeline
                       TestPretty

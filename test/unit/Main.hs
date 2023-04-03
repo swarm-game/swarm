@@ -32,6 +32,7 @@ import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
 import TestModel (testModel)
 import TestNotification (testNotification)
+import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
 import Witch (from)
 
@@ -52,6 +53,7 @@ tests g =
     , testCommands
     , testEval g
     , testModel
+    , testPedagogy g
     , testInventory
     , testNotification g
     , testMisc
