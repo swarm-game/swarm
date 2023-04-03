@@ -38,9 +38,9 @@ import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Data.Tree (Tree (Node), drawTree)
 import Data.Text.Lazy qualified as L
 import Data.Text.Lazy.Encoding (encodeUtf8)
+import Data.Tree (Tree (Node), drawTree)
 import Network.HTTP.Types (ok200)
 import Network.Wai (responseLBS)
 import Network.Wai qualified
