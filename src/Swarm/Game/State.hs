@@ -285,10 +285,10 @@ getParsedInitialCode toRun = case toRun of
   Just filepath -> do
     contents <- liftIO $ TIO.readFile filepath
     pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
-      ExceptT $
-        return $
-          left T.pack $
-            processTermEither contents
+      ExceptT
+        . return
+        . left T.pack
+        $ processTermEither contents
     let strippedText = stripSrc srcLoc contents
         programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
         sha1Hash = showDigest $ sha1 programBytestring

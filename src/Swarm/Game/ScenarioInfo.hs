@@ -349,10 +349,10 @@ loadScenarioInfo p = do
     then do
       return $ ScenarioInfo path NotStarted NotStarted NotStarted
     else
-      withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParse) $
-        ExceptT $
-          liftIO $
-            decodeFileEither infoPath
+      withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParse)
+        . ExceptT
+        . liftIO
+        $ decodeFileEither infoPath
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
