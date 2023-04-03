@@ -22,6 +22,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Constant
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
@@ -82,7 +83,7 @@ formatExn em = \case
     T.unlines
       [ "Fatal error: " <> t
       , "Please report this as a bug at"
-      , "<https://github.com/swarm-game/swarm/issues/new>."
+      , "<" <> swarmRepoUrl <> "issues/new>."
       ]
   InfiniteLoop -> "Infinite loop detected!"
   (CmdFailed c t _) -> T.concat [prettyText c, ": ", t]
@@ -141,7 +142,7 @@ formatIncapable em f (Requirements caps _ inv) tm
         [ "Missing the " <> capMsg <> " for:"
         , squote $ prettyText tm
         , "but no device yet provides it. See"
-        , "https://github.com/swarm-game/swarm/issues/26"
+        , swarmRepoUrl <> "issues/26"
         ]
   | not (S.null caps) =
       unlinesExText

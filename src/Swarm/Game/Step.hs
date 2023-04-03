@@ -59,6 +59,7 @@ import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
+import Prettyprinter (pretty)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -80,7 +81,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
@@ -645,6 +646,7 @@ stepCESK cesk = case cesk of
   -- Require and requireDevice just turn into no-ops.
   In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
   -- Type ascriptions are ignored
   In (TAnnotate v _) e s k -> return $ In v e s k
   -- Normally it's not possible to have a TRobot value in surface
@@ -748,6 +750,48 @@ stepCESK cesk = case cesk of
   Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
   ------------------------------------------------------------
   -- Execution
+
+  -- Executing a 'requirements' command generates an appropriate log message
+  -- listing the requirements of the given expression.
+  Out (VRequirements src t _) s (FExec : k) -> do
+    currentContext <- use $ robotContext . defReqs
+    em <- use entityMap
+    let (R.Requirements caps devs inv, _) = R.requirements currentContext t
+
+        devicesForCaps, requiredDevices :: Set (Set Text)
+        -- possible devices to provide each required capability
+        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
+        -- outright required devices
+        requiredDevices = S.map S.singleton devs
+
+        deviceSets :: Set (Set Text)
+        deviceSets =
+          -- Union together all required device sets, and remove any
+          -- device sets which are a superset of another set.  For
+          -- example, if (grabber OR fast grabber OR harvester) is
+          -- required but (grabber OR fast grabber) is also required
+          -- then we might as well remove the first set, since
+          -- satisfying the second device set will automatically
+          -- satisfy the first.
+          removeSupersets $ devicesForCaps `S.union` requiredDevices
+
+        reqLog =
+          prettyText $
+            BulletList
+              (pretty $ T.unwords ["Requirements for", bquote src <> ":"])
+              ( filter
+                  (not . null . bulletListItems)
+                  [ BulletList
+                      "Equipment:"
+                      (T.intercalate " OR " . S.toList <$> S.toList deviceSets)
+                  , BulletList
+                      "Inventory:"
+                      ((\(e, n) -> e <> " " <> parens (showT n)) <$> M.assocs inv)
+                  ]
+              )
+
+    _ <- traceLog Logged reqLog
+    return $ Out VUnit s k
 
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
@@ -1885,7 +1929,7 @@ execConst c vs s k = do
     genDiamondSides diameter = concat [f diameter x | x <- [0 .. diameter]]
      where
       -- Adds a single cell to each of the four sides of the diamond
-      f d x = map (d,) $ take 4 $ iterate perp $ V2 x (d - x)
+      f d x = map (d,) . take 4 . iterate perp $ V2 x (d - x)
 
   finishCookingRecipe ::
     HasRobotStepState sig m =>
@@ -2337,7 +2381,7 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
     Gt -> fmap (== GT)
     Leq -> fmap (/= GT)
     Geq -> fmap (/= LT)
-    _ -> const $ throwError $ Fatal $ T.append "evalCmp called on bad constant " (from (show c))
+    _ -> const . throwError . Fatal . T.append "evalCmp called on bad constant " . from $ show c
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
@@ -2369,6 +2413,7 @@ compareValues v1 = case v1 of
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
+  VRequirements {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.

@@ -85,12 +85,12 @@ testBoolExpr =
         "Prerequisite expressions"
         [ testCase
             "A negated goal is completed"
-            $ assertBool "Should have returned true"
+            . assertBool "Should have returned true"
             $ WC.isUnwinnablePrereq (Set.singleton "b") demoPrereqs
         , testCase
             "A non-negated goal is completed"
-            $ assertBool "Should have returned false"
-            $ not
+            . assertBool "Should have returned false"
+            . not
             $ WC.isUnwinnablePrereq (Set.singleton "c") demoPrereqs
         ]
     ]

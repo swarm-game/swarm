@@ -3,7 +3,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.DocGen (
+module Swarm.Doc.Gen (
   generateDocs,
   GenerateDocs (..),
   EditorType (..),
@@ -43,6 +43,7 @@ import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml (decodeFileEither)
 import Data.Yaml.Aeson (prettyPrintParseException)
+import Swarm.Doc.Pedagogy
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -78,6 +79,8 @@ data GenerateDocs where
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
+  -- | List command introductions by tutorial
+  TutorialCoverage :: GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
@@ -129,6 +132,7 @@ generateDocs = \case
         entities <- ExceptT loadEntities
         recipes <- withExceptT F.prettyFailure $ loadRecipes entities
         liftIO $ T.putStrLn $ recipePage address recipes
+  TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED

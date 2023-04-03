@@ -34,6 +34,7 @@ module Swarm.Util (
   quote,
   squote,
   bquote,
+  parens,
   commaList,
   indefinite,
   indefiniteQ,
@@ -60,7 +61,8 @@ module Swarm.Util (
   (<>=),
   _NonEmpty,
 
-  -- * Utilities for NP-hard approximation
+  -- * Set utilities
+  removeSupersets,
   smallHittingSet,
 ) where
 
@@ -282,6 +284,10 @@ quote t = T.concat ["\"", t, "\""]
 bquote :: Text -> Text
 bquote t = T.concat ["`", t, "`"]
 
+-- | Surround some text in parentheses.
+parens :: Text -> Text
+parens t = T.concat ["(", t, ")"]
+
 -- | Make a list of things with commas and the word "and".
 commaList :: [Text] -> Text
 commaList [] = ""
@@ -362,7 +368,30 @@ _NonEmpty :: Lens' (NonEmpty a) (a, [a])
 _NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 
 ------------------------------------------------------------
--- Some utilities for NP-hard approximation
+-- Some set utilities
+
+-- | Remove any sets which are supersets of other sets.  In other words,
+--   (1) no two sets in the output are in a subset relationship
+--   (2) every element in the input is a superset of some element in the output.
+--
+-- >>> import qualified Data.Set as S
+-- >>> rss = map S.toList . S.toList . removeSupersets . S.fromList . map S.fromList
+--
+-- >>> rss [[1,2,3], [1]]
+-- [[1]]
+--
+-- >>> rss [[1,2,3], [2,4], [2,3]]
+-- [[2,3],[2,4]]
+--
+-- >>> rss [[], [1], [2,3]]
+-- [[]]
+--
+-- >>> rss [[1,2], [1,3], [2,3]]
+-- [[1,2],[1,3],[2,3]]
+removeSupersets :: Ord a => Set (Set a) -> Set (Set a)
+removeSupersets ss = S.filter (not . isSuperset) ss
+ where
+  isSuperset s = any (`S.isSubsetOf` s) (S.delete s ss)
 
 -- | Given a list of /nonempty/ sets, find a hitting set, that is, a
 --   set which has at least one element in common with each set in the

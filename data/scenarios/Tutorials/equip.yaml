@@ -9,12 +9,12 @@ objectives:
         By equipping devices, you learn new capabilities which allow you to
         perform more complex commands.
       - Before you start building new robots in the later tutorials, you need
-        to gain the "build" capability.
+        to gain the `build` capability.
         Try typing `build {}` - you should get an error telling you that you
         need to equip a "3D printer".
       - |
         Fortunately, there is a 3D printer lying nearby.  Go `grab` it, then
-        equip it with `equip "3D printer"`.
+        `equip` it with `equip "3D printer"`.
       - |
         You win by building your first robot:
       - |

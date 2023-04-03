@@ -154,8 +154,8 @@ maybeScroll vpName contents =
     if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
       then return result
       else
-        render $
-          withVScrollBars OnRight $
-            viewport vpName Vertical $
-              Widget Fixed Fixed $
-                return result
+        render
+          . withVScrollBars OnRight
+          . viewport vpName Vertical
+          . Widget Fixed Fixed
+          $ return result
