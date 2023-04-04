@@ -162,7 +162,7 @@ mkApp appStateRef chan =
         drawTree . fmap prettyString . para Node $ stx
       Left x -> x
   codeRunHandler contents = do
-    liftIO $ writeBChan chan $ Web $ RunWebCode contents
+    liftIO . writeBChan chan . Web $ RunWebCode contents
     return $ T.pack "Sent\n"
   replHandler = do
     appState <- liftIO (readIORef appStateRef)
