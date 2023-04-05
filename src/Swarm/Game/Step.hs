@@ -1606,6 +1606,9 @@ execConst c vs s k = do
         Right kc -> return $ Out (VKey kc) s k
         Left _ -> return $ Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing) s k
       _ -> badConst
+    InstallKeyHandler -> case vs of
+      [VText hint, handler] -> return $ Up (User "installKeyHandler is not implemented yet") s k
+      _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
         r <- get

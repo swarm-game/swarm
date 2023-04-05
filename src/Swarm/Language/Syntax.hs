@@ -310,8 +310,6 @@ data Const
     Undefined
   | -- | User error
     Fail
-  | -- | Create `key` values
-    Key
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -375,6 +373,12 @@ data Const
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
+  | -- Keyboard input
+
+    -- | Create `key` values.
+    Key
+  | -- | Install a new keyboard input handler.
+    InstallKeyHandler
   | -- God-like commands that are omnipresent or omniscient.
 
     -- | Teleport a robot to the given position.
@@ -648,7 +652,6 @@ constInfo c = case c of
   Try -> command 2 Intangible "Execute a command, catching errors."
   Undefined -> function 0 "A value of any type, that is evaluated as error."
   Fail -> function 1 "A value of any type, that is evaluated as error with message."
-  Key -> function 1 "Create a key value from a text description."
   If ->
     function 3 . doc "If-Then-Else function." $
       ["If the bool predicate is true then evaluate the first expression, otherwise the second."]
@@ -705,6 +708,17 @@ constInfo c = case c of
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
+      ]
+  Key ->
+    function 1 . doc "Create a key value from a text description." $
+      [ "The key description can optionally start with modifiers like 'C-', 'M-', 'A-', or 'S-', followed by either a regular key, or a special key name like 'Down' or 'End'"
+      , "For example, 'M-C-x', 'Down', or 'S-4'."
+      , "Which key combinations are actually possible to type may vary by keyboard and terminal program."
+      ]
+  InstallKeyHandler ->
+    command 2 Intangible . doc "Install a keyboard input handler." $
+      [ "The first argument is a hint line that will be displayed when the input handler is active."
+      , "The second argument is a function to handle keyboard inputs."
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
   As -> command 2 Intangible "Hypothetically run a command as if you were another robot."

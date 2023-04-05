@@ -7,7 +7,6 @@
 -- Swarm command implementation unit tests
 module TestCommand where
 
-import Data.Either (isRight)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Graphics.Vty.Input.Events qualified as V

@@ -226,6 +226,7 @@ constCaps = \case
   Chirp -> Just CDetectdirection
   Heading -> Just COrient
   Key -> Just CHandleInput
+  InstallKeyHandler -> Just CHandleInput
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText
