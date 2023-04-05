@@ -917,7 +917,7 @@ handleREPLEvent x = do
           else uiState . uiError ?= "Please clear the REPL first."
     _ -> case controlMode of
       Typing -> handleREPLEventTyping x
-      Piloting -> handleREPLEventPiloting x
+      InputHandler -> handleREPLEventPiloting x
 
 -- | Handle a user "piloting" input event for the REPL.
 handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()

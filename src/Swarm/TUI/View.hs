@@ -760,8 +760,8 @@ drawKeyMenu s =
 
   renderControlModeSwitch :: ReplControlMode -> T.Text
   renderControlModeSwitch = \case
-    Piloting -> "REPL"
-    Typing -> "pilot"
+    InputHandler -> "REPL"
+    Typing -> "handler"
 
   gameModeWidget =
     padLeft Max
