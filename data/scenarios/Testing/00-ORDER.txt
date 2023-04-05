@@ -12,6 +12,7 @@
 562-lodestone.yaml
 378-objectives.yaml
 684-swap.yaml
+687-watch-command.yaml
 699-movement-fail
 858-inventory
 795-prerequisite
