@@ -39,6 +39,7 @@ module Swarm.TUI.Model.Repl (
   replLast,
   replType,
   replControlMode,
+  replInputHandler,
   replHistory,
   newREPLEditor,
 
@@ -59,6 +60,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Swarm.Language.Types
+import Swarm.Language.Value (Value)
 import Swarm.TUI.Model.Name
 
 ------------------------------------------------------------
@@ -209,9 +211,9 @@ defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt []
 
 data ReplControlMode
-  = Piloting
-  | Typing
-  deriving (Enum, Bounded, Eq)
+  = Typing
+  | InputHandler
+  deriving (Eq, Bounded, Enum)
 
 data REPLState = REPLState
   { _replPromptType :: REPLPrompt
@@ -220,6 +222,7 @@ data REPLState = REPLState
   , _replLast :: Text
   , _replType :: Maybe Polytype
   , _replControlMode :: ReplControlMode
+  , _replInputHandler :: Maybe Value
   , _replHistory :: REPLHistory
   }
 
@@ -231,7 +234,17 @@ newREPLEditor t = applyEdit gotoEnd $ editorText REPLInput (Just 1) t
   gotoEnd = if null ls then id else TZ.moveCursor pos
 
 initREPLState :: REPLHistory -> REPLState
-initREPLState = REPLState defaultPrompt (newREPLEditor "") True "" Nothing Typing
+initREPLState hist =
+  REPLState
+    { _replPromptType = defaultPrompt
+    , _replPromptEditor = newREPLEditor ""
+    , _replValid = True
+    , _replLast = ""
+    , _replType = Nothing
+    , _replControlMode = Typing
+    , _replInputHandler = Nothing
+    , _replHistory = hist
+    }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''REPLState
 
@@ -260,8 +273,11 @@ replType :: Lens' REPLState (Maybe Polytype)
 --   This is used to restore the repl form after the user visited the history.
 replLast :: Lens' REPLState Text
 
--- | Piloting or Typing mode
+-- | Input handler or typing mode
 replControlMode :: Lens' REPLState ReplControlMode
+
+-- | Installed input handler
+replInputHandler :: Lens' REPLState (Maybe Value)
 
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
