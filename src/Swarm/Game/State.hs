@@ -39,6 +39,7 @@ module Swarm.Game.State (
   robotMap,
   robotsByLocation,
   robotsAtLocation,
+  robotsWatching,
   robotsInArea,
   baseRobot,
   activeRobots,
@@ -102,6 +103,7 @@ module Swarm.Game.State (
   addRobot,
   addTRobot,
   emitMessage,
+  wakeWatchingRobots,
   sleepUntil,
   sleepForever,
   wakeUpRobotsDoneSleeping,
@@ -151,7 +153,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (CESK (Waiting), emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.Failure.Render
@@ -371,6 +373,13 @@ data GameState = GameState
     -- append to a list than to a Set.
     _waitingRobots :: Map Integer [RID]
   , _robotsByLocation :: Map Location IntSet
+  , -- This member exists as an optimization so
+    -- that we do not have to iterate over all of the robots,
+    -- since there may be many.
+    -- In contrast with "_waitingRobots", the values of "_robotsWatching"
+    -- can actually be represented as a more semantically-appropriate Set
+    -- because insertion is "rare".
+    _robotsWatching :: S.Set RID
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
@@ -473,6 +482,10 @@ robotsAtLocation loc gs =
     . M.lookup loc
     . view robotsByLocation
     $ gs
+
+-- | Get a list of all the robots that are "watching" any location.
+-- This is the counterpart to the per-robot "watchedLocations" member.
+robotsWatching :: Lens' GameState (S.Set RID)
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
@@ -842,6 +855,7 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
+
   mrids <- internalWaitingRobots . at time <<.= Nothing
   case mrids of
     Nothing -> return ()
@@ -849,6 +863,61 @@ wakeUpRobotsDoneSleeping = do
       robots <- use robotMap
       let aliveRids = filter (`IM.member` robots) rids
       internalActiveRobots %= IS.union (IS.fromList aliveRids)
+
+      -- These robots' wake times may have been moved "forward"
+      -- by "wakeWatchingRobots".
+      clearWatchingRobots aliveRids rids
+
+-- | Clear the "watch" state of all of the
+-- awakened robots
+clearWatchingRobots ::
+  (Has (State GameState) sig m, Foldable t) =>
+  t Int ->
+  [RID] ->
+  m ()
+clearWatchingRobots aliveRids rids = do
+  robotsWatching %= (`S.difference` S.fromList rids)
+  forM_ aliveRids $ \rid -> robotMap . at rid . _Just . watchedLocations .= mempty
+
+-- | Iterates through all of the currently "wait"-ing robots,
+-- and moves forward the wake time of the ones that are watching this location.
+--
+-- NOTE: Clearing the "wake time" ticks entries in "internalWaitingRobots"
+-- is handled by "wakeUpRobotsDoneSleeping" in State.hs
+wakeWatchingRobots :: Has (State GameState) sig m => Location -> m ()
+wakeWatchingRobots loc = do
+  currentTick <- use ticks
+  waitingMap <- use waitingRobots
+  rMap <- use robotMap
+
+  let watchingBots =
+        S.filter (botHasWatchedLoc rMap)
+          . S.unions
+          . map S.fromList
+          $ M.elems waitingMap
+
+      newWakeTime = currentTick + 1
+      newInsertions = M.singleton newWakeTime $ S.toList watchingBots
+
+      filteredWaitingMap =
+        M.filter (not . null) $
+          M.map (filter (`S.notMember` watchingBots)) waitingMap
+
+  -- NOTE: There are two "sources of truth" for the waiting state of robots:
+  -- 1. In the GameState via "internalWaitingRobots"
+  -- 2. In each robot, via the CESK machine state
+
+  -- 1. Update the game state
+  internalWaitingRobots .= M.unionWith (<>) filteredWaitingMap newInsertions
+
+  -- 2. Update the machine of each robot
+  forM_ watchingBots $ \rid ->
+    robotMap . at rid . _Just . machine %= \case
+      Waiting _ c -> Waiting newWakeTime c
+      x -> x
+ where
+  botHasWatchedLoc rMap =
+    S.member loc . maybe mempty (view watchedLocations) . (`IM.lookup` rMap)
 
 deleteRobot :: Has (State GameState) sig m => RID -> m ()
 deleteRobot rn = do
@@ -895,6 +964,7 @@ initGameState = do
         , _runStatus = Running
         , _robotMap = IM.empty
         , _robotsByLocation = M.empty
+        , _robotsWatching = mempty
         , _availableRecipes = mempty
         , _availableCommands = mempty
         , _allDiscoveredEntities = empty

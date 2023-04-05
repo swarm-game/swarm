@@ -1,0 +1,70 @@
+version: 1
+name: Watch command test
+creative: true
+description: Wake from wait upon entity placement
+objectives:
+  - goal:
+      - grab a tree before the competitor steals it.
+    condition: |
+      as base {has "tree"}
+solution: |
+  watch forward;
+  wait 80;
+  move;
+  grab;
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - string
+      - grabber
+      - treads
+  - name: competitor
+    dir: [0, -1]
+    display:
+      char: b
+      attr: robot
+    devices:
+      - logger
+      - string
+      - grabber
+      - treads
+    program: |
+      wait 70;
+      move;
+      grab;
+      turn back;
+      move;
+  - name: planter
+    dir: [1, 0]
+    display:
+      char: p
+      attr: robot
+    inventory:
+      - [10, tree]
+    devices:
+      - logger
+      - string
+      - grabber
+      - treads
+    program: |
+      def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+      doN 7 (move; wait 4; place "tree";);
+known: []
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    p : [grass, null, planter]
+    b : [grass, null, competitor]
+    '.': [grass]
+    'T': [grass, tree]
+  upperleft: [0, 0]
+  map: |
+   ......b...
+   .p........
+   ......Ω...
