@@ -76,6 +76,8 @@ data Capability
     CDetectdistance
   | -- | Execute the 'Chirp' command
     CDetectdirection
+  | -- | Execute the 'Watch' command
+    CWakeself
   | -- | Execute the 'Scan' command
     CScan
   | -- | Execute the 'Random' command
@@ -222,6 +224,7 @@ constCaps = \case
   Detect -> Just CDetectloc
   Sniff -> Just CDetectdistance
   Chirp -> Just CDetectdirection
+  Watch -> Just CWakeself
   Heading -> Just COrient
   -- ----------------------------------------------------------------
   -- Text operations
@@ -237,6 +240,7 @@ constCaps = \case
   RobotNamed -> Just CGod
   RobotNumbered -> Just CGod
   Create -> Just CGod
+  Surveil -> Just CGod
   -- ----------------------------------------------------------------
   -- arithmetic
   Eq -> Just CCompare

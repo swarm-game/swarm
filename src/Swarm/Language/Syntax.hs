@@ -255,6 +255,10 @@ data Const
     Sniff
   | -- | Get the direction to the closest instance of the specified entity.
     Chirp
+  | -- | Register a location to interrupt a `wait` upon changes
+    Watch
+  | -- | Register a (remote) location to interrupt a `wait` upon changes
+    Surveil
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -620,6 +624,17 @@ constInfo c = case c of
       , "Returns 'down' if out of range or the direction is indeterminate."
       , "Provides absolute directions if \"compass\" equipped, relative directions otherwise."
       , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
+      ]
+  Watch ->
+    command 1 short . doc "Interrupt `wait` upon location changes." $
+      [ "Place seismic detectors to alert upon entity changes to the specified location."
+      , "Supply a direction, as with the `scan` command, to specify a nearby location."
+      , "Can be invoked more than once until the next `wait` command, at which time the only the registered locations that are currently nearby are preserved."
+      , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
+      ]
+  Surveil ->
+    command 1 short . doc "Interrupt `wait` upon (remote) location changes." $
+      [ "Like `watch`, but with no restriction on distance."
       ]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."

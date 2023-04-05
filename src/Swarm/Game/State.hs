@@ -39,6 +39,7 @@ module Swarm.Game.State (
   robotMap,
   robotsByLocation,
   robotsAtLocation,
+  robotsWatching,
   robotsInArea,
   baseRobot,
   activeRobots,
@@ -371,6 +372,13 @@ data GameState = GameState
     -- append to a list than to a Set.
     _waitingRobots :: Map Integer [RID]
   , _robotsByLocation :: Map Location IntSet
+    -- This member exists as an optimization so
+    -- that we do not have to iterate over all of the robots,
+    -- since there may be many.
+    -- In contrast with "_waitingRobots", the values of "_watchesByLocation"
+    -- can actually be represented as a more semantically-appropriate Set
+    -- because insertion is "rare".
+  , _robotsWatching :: S.Set RID
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
@@ -473,6 +481,10 @@ robotsAtLocation loc gs =
     . M.lookup loc
     . view robotsByLocation
     $ gs
+
+-- | Get a list of all the robots that are "watching" any location.
+-- This is the counterpart to the per-robot "watchedLocations" member.
+robotsWatching :: Lens' GameState (S.Set RID)
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
@@ -846,9 +858,19 @@ wakeUpRobotsDoneSleeping = do
   case mrids of
     Nothing -> return ()
     Just rids -> do
+      robotsWatching %= (`S.difference` S.fromList rids)
+
       robots <- use robotMap
       let aliveRids = filter (`IM.member` robots) rids
       internalActiveRobots %= IS.union (IS.fromList aliveRids)
+
+      forM_ aliveRids $ \rid -> do
+        let maybeRobotObj = IM.lookup rid robots
+        case maybeRobotObj of
+          Nothing -> return ()
+          Just obj -> do
+            let updatedObj = obj . watchedLocations .= mempty
+            robotMap %= IM.insert rid updatedObj
 
 deleteRobot :: Has (State GameState) sig m => RID -> m ()
 deleteRobot rn = do
@@ -895,6 +917,7 @@ initGameState = do
         , _runStatus = Running
         , _robotMap = IM.empty
         , _robotsByLocation = M.empty
+        , _robotsWatching = mempty
         , _availableRecipes = mempty
         , _availableCommands = mempty
         , _allDiscoveredEntities = empty

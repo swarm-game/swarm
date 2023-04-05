@@ -1041,6 +1041,11 @@ execConst c vs s k = do
     Wait -> case vs of
       [VInt d] -> do
         time <- use ticks
+
+        creative <- use creativeMode
+        unless creative $ do
+          purgeFarAwayWatches
+          
         return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
@@ -1255,6 +1260,16 @@ execConst c vs s k = do
       [VText name] -> do
         firstFound <- findNearest name
         return $ Out (asValue $ maybe (-1) fst firstFound) s k
+      _ -> badConst
+    Watch -> case vs of
+      [VDir d] -> do
+        (loc, _me) <- lookInDirection d
+        addWatchedLocation loc
+      _ -> badConst
+    Surveil -> case vs of
+      [VPair (VInt x) (VInt y)] -> do
+        let loc = Location (fromIntegral x) (fromIntegral y)
+        addWatchedLocation loc
       _ -> badConst
     Chirp -> case vs of
       [VText name] -> do
@@ -1912,6 +1927,33 @@ execConst c vs s k = do
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
+  addWatchedLocation :: 
+    HasRobotStepState sig m =>
+    Location ->
+    m CESK
+  addWatchedLocation loc = do
+    rid <- use robotID
+    robotsWatching %= S.insert rid
+    watchedLocations %= S.insert loc
+    return $ Out VUnit s k
+
+
+  -- clear watches that are out of range
+  purgeFarAwayWatches ::
+    HasRobotStepState sig m => m ()
+  purgeFarAwayWatches = do
+
+    privileged <- isPrivilegedBot
+    myLoc <- use robotLocation
+    let isNearby = isNearbyOrExempt privileged myLoc
+
+    watchedLocations %= S.filter isNearby
+    
+    watchedLocs <- use watchedLocations
+    when (null watchedLocs) $ do
+      rid <- use robotID
+      robotsWatching %= S.delete rid
+
   findNearest ::
     HasRobotStepState sig m =>
     Text ->
@@ -2158,12 +2200,22 @@ execConst c vs s k = do
       else do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
-        -- Make sure it is either in the same location or we do not care
-        omni <- (||) <$> use systemRobot <*> use creativeMode
-        loc <- use robotLocation
-        (omni || (other ^. robotLocation) `manhattan` loc <= 1)
+
+        let otherLoc = other ^. robotLocation
+        privileged <- isPrivilegedBot
+        myLoc <- use robotLocation
+        isNearbyOrExempt privileged myLoc otherLoc
           `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
         return other
+
+  -- Exempts the robot from various command constraints
+  -- when it is either a system robot or playing in creative mode
+  isPrivilegedBot :: HasRobotStepState sig m => m Bool
+  isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
+
+  -- Make sure it is either in the same location or we do not care
+  isNearbyOrExempt privileged myLoc otherLoc =
+    privileged || otherLoc `manhattan` myLoc <= 1
 
   holdsOrFail :: (Has (Throw Exn) sig m) => Bool -> [Text] -> m ()
   holdsOrFail a ts = a `holdsOr` cmdExn c ts

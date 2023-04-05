@@ -565,6 +565,8 @@ inferConst c = case c of
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Sniff -> [tyQ| text -> cmd int |]
   Chirp -> [tyQ| text -> cmd dir |]
+  Watch -> [tyQ| dir -> cmd unit |]
+  Surveil -> [tyQ| (int * int) -> cmd unit |]
   Heading -> [tyQ| cmd dir |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (unit + text) |]
