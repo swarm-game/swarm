@@ -269,6 +269,7 @@ handleMainEvent ev = do
         WinConditions (Unwinnable _) _ -> toggleModal LoseModal
         _ -> toggleModal QuitModal
     VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
+    -- XXX input handler toggle + handling goes here?  but what about Ctrl-c at REPL?
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do

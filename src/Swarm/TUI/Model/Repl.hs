@@ -39,7 +39,6 @@ module Swarm.TUI.Model.Repl (
   replLast,
   replType,
   replControlMode,
-  replInputHandler,
   replHistory,
   newREPLEditor,
 
@@ -60,7 +59,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Swarm.Language.Types
-import Swarm.Language.Value (Value)
 import Swarm.TUI.Model.Name
 
 ------------------------------------------------------------
@@ -222,7 +220,6 @@ data REPLState = REPLState
   , _replLast :: Text
   , _replType :: Maybe Polytype
   , _replControlMode :: ReplControlMode
-  , _replInputHandler :: Maybe Value
   , _replHistory :: REPLHistory
   }
 
@@ -242,7 +239,6 @@ initREPLState hist =
     , _replLast = ""
     , _replType = Nothing
     , _replControlMode = Typing
-    , _replInputHandler = Nothing
     , _replHistory = hist
     }
 
@@ -275,9 +271,6 @@ replLast :: Lens' REPLState Text
 
 -- | Input handler or typing mode
 replControlMode :: Lens' REPLState ReplControlMode
-
--- | Installed input handler
-replInputHandler :: Lens' REPLState (Maybe Value)
 
 -- | History of things the user has typed at the REPL, interleaved
 --   with outputs the system has generated.
