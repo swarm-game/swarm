@@ -372,13 +372,13 @@ data GameState = GameState
     -- append to a list than to a Set.
     _waitingRobots :: Map Integer [RID]
   , _robotsByLocation :: Map Location IntSet
-    -- This member exists as an optimization so
+  , -- This member exists as an optimization so
     -- that we do not have to iterate over all of the robots,
     -- since there may be many.
     -- In contrast with "_waitingRobots", the values of "_watchesByLocation"
     -- can actually be represented as a more semantically-appropriate Set
     -- because insertion is "rare".
-  , _robotsWatching :: S.Set RID
+    _robotsWatching :: S.Set RID
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const

@@ -1045,7 +1045,7 @@ execConst c vs s k = do
         creative <- use creativeMode
         unless creative $ do
           purgeFarAwayWatches
-          
+
         return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
@@ -1927,7 +1927,7 @@ execConst c vs s k = do
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
-  addWatchedLocation :: 
+  addWatchedLocation ::
     HasRobotStepState sig m =>
     Location ->
     m CESK
@@ -1937,18 +1937,16 @@ execConst c vs s k = do
     watchedLocations %= S.insert loc
     return $ Out VUnit s k
 
-
   -- clear watches that are out of range
   purgeFarAwayWatches ::
     HasRobotStepState sig m => m ()
   purgeFarAwayWatches = do
-
     privileged <- isPrivilegedBot
     myLoc <- use robotLocation
     let isNearby = isNearbyOrExempt privileged myLoc
 
     watchedLocations %= S.filter isNearby
-    
+
     watchedLocs <- use watchedLocations
     when (null watchedLocs) $ do
       rid <- use robotID
