@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -13,6 +14,16 @@ import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Robot
 import Swarm.Language.Value
+
+-- * Patterns
+
+type VRect = Value
+pattern VRect :: Integer -> Integer -> Integer -> Integer -> VRect
+pattern VRect x1 y1 x2 y2 = VPair (VPair (VInt x1) (VInt y1)) (VPair (VInt x2) (VInt y2))
+
+{-# COMPLETE VRect #-}
+
+-- * Conversions
 
 -- | Conversion from native Haskell types
 -- to their swarm-lang equivalents, useful for

@@ -77,6 +77,7 @@
                "time"
                "whereami"
                "detect"
+               "resonate"
                "sniff"
                "chirp"
                "heading"
