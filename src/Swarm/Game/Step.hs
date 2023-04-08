@@ -1243,18 +1243,18 @@ execConst c vs s k = do
       let Location x y = loc
       return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
     Detect -> case vs of
-      [VText name, r] -> do
+      [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation
-        let locs = rectCells r
+        let locs = rectCells x1 y1 x2 y2
         -- sort offsets by (Manhattan) distance so that we return the closest occurrence
         let sortedLocs = sortOn (\(V2 x y) -> abs x + abs y) locs
         firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
         return $ Out (asValue firstOne) s k
       _ -> badConst
     Resonate -> case vs of
-      [VText name, r] -> do
+      [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation
-        let locs = rectCells r
+        let locs = rectCells x1 y1 x2 y2
         hits <- mapM (fmap (fromEnum . maybe False (isEntityNamed name)) . entityAt . (loc .+^)) locs
         return $ Out (VInt $ fromIntegral $ sum hits) s k
       _ -> badConst
@@ -1919,8 +1919,8 @@ execConst c vs s k = do
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
-  rectCells :: VRect -> [V2 Int32]
-  rectCells (VRect x1 y1 x2 y2) = [V2 x y | x <- [fromIntegral xMin .. fromIntegral xMax], y <- [fromIntegral yMin .. fromIntegral yMax]]
+  rectCells :: Integer -> Integer -> Integer -> Integer -> [V2 Int32]
+  rectCells x1 y1 x2 y2 = [V2 x y | x <- [fromIntegral xMin .. fromIntegral xMax], y <- [fromIntegral yMin .. fromIntegral yMax]]
    where
     (xMin, xMax) = sortPair (x1, x2)
     (yMin, yMax) = sortPair (y1, y2)
