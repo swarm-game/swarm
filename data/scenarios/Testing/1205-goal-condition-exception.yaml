@@ -1,0 +1,39 @@
+version: 1
+name: Test goal exceptions
+description: |
+  Goal exceptions should not be counted as a win.
+objectives:
+  - condition: |
+      as base {
+        let x = 1 / 0 in
+        has "boulder";
+      }
+    goal:
+      - |
+        Pick up a "boulder".
+solution: |
+  move; move; grab;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - scanner
+      - branch predictor
+      - grabber
+      - strange loop
+      - lambda
+      - dictionary
+      - logger
+      - treads
+      - solar panel
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'T': [grass, tree]
+  upperleft: [0, 0]
+  map: |
+    .....
+    .B.T.
+    .....

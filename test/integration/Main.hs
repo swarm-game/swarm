@@ -269,6 +269,8 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1157-drill-return-value"
         , testSolution Default "Testing/1171-sniff-command"
         , testSolution Default "Testing/1171-chirp-command"
+        , testSolution Default "Testing/1171-resonate-command"
+        , testSolution Default "Testing/1205-goal-condition-exception"
         ]
     ]
  where
