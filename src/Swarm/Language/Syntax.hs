@@ -251,6 +251,9 @@ data Const
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
+  | -- | Count the number of a given entity within the rectangle
+    -- specified by opposite corners, relative to the current location.
+    Resonate
   | -- | Get the distance to the closest instance of the specified entity.
     Sniff
   | -- | Get the direction to the closest instance of the specified entity.
@@ -608,6 +611,11 @@ constInfo c = case c of
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
+  Resonate ->
+    command 2 Intangible . doc "Count entities within a rectangle." $
+      [ "Applies a strong magnetic field over a given area and stimulates the matter within, generating a non-directional radio signal. A receiver tuned to the resonant frequency of the target entity is able to measure its quantity."
+      , "Counts the entities within the rectangle specified by opposite corners, relative to the current location."
+      ]
   Sniff ->
     command 1 short . doc "Determine distance to entity." $
       [ "Measures concentration of airborne particles to infer distance to a certain kind of entity."

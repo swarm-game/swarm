@@ -10,6 +10,7 @@
 module Swarm.Util (
   -- * Miscellaneous utilities
   (?),
+  sortPair,
   maxOn,
   maximum0,
   cycleEnum,
@@ -106,6 +107,10 @@ infix 4 %%=, <+=, <%=, <<.=, <>=
 --   defaulting to @def@ as a last resort.
 (?) :: Maybe a -> a -> a
 (?) = flip fromMaybe
+
+-- | Ensure the smaller value in a pair is the first element.
+sortPair :: Ord b => (b, b) -> (b, b)
+sortPair (x, y) = if x <= y then (x, y) else (y, x)
 
 -- | Find the maximum of two values, comparing them according to a
 --   custom projection function.
