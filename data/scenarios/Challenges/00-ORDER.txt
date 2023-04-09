@@ -5,6 +5,7 @@ teleport.yaml
 2048.yaml
 word-search.yaml
 gopher.yaml
+sneak.yaml
 ice-cream.yaml
 hanoi.yaml
 hackman.yaml
