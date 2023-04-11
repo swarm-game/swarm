@@ -29,6 +29,7 @@ import Data.Text.Utf16.Rope qualified as R
 import Language.LSP.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
+import Swarm.Language.LSP.Util
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parse (readTerm', unTuple)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
@@ -37,7 +38,6 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
 import Swarm.Util qualified as U
-import Swarm.Language.LSP.Util
 
 withinBound :: Int -> SrcLoc -> Bool
 withinBound pos (SrcLoc s e) = pos >= s && pos < e

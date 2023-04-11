@@ -6,24 +6,23 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text.Utf16.Rope qualified as R
 import Language.LSP.Types qualified as J
+import Swarm.Language.LSP.Hover (prettyType)
+import Swarm.Language.LSP.Util
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parse (readTerm')
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm')
-import Swarm.Language.Syntax
-    ( Syntax'(Syntax'),
-      Term'(SDelay, SLam, SDef, SApp, SLet, SPair, SBind) )
+import Swarm.Language.Syntax (
+  Syntax' (Syntax'),
+  Term' (SApp, SBind, SDef, SDelay, SLam, SLet, SPair),
+ )
 import Swarm.Language.Types
-import Swarm.Language.LSP.Util
-import Swarm.Language.LSP.Hover (prettyType)
-
 
 data TypeSuggestion = TypeSuggestion Polytype (Syntax' Polytype)
-
 
 suggestTypes :: R.Rope -> Text -> [J.TextEdit]
 suggestTypes rope content =
   suggestions
-  where
+ where
   suggestions = case readTerm' content of
     Right (Just term) -> case processParsedTerm' mempty mempty term of
       Right (ProcessedTerm (Module stx _) _ _) -> mapMaybe makeEdit $ getSites stx
@@ -35,8 +34,8 @@ suggestTypes rope content =
     J.Range (J.Position sLine sChar) (J.Position eLine eChar) <- posToRange rope pos
     let newRange = J.Range (J.Position sLine (sChar + 4)) (J.Position sLine (sChar + 5))
     return $ J.TextEdit newRange typeText
-    where
-      typeText = " : " <> prettyType ty
+   where
+    typeText = " : " <> prettyType ty
 
 getSites :: Syntax' Polytype -> [TypeSuggestion]
 getSites s0@(Syntax' _pos term _ty) = case term of
