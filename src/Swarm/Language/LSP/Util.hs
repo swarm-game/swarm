@@ -16,7 +16,6 @@ posToRange myRope foundSloc = do
       (ropeToLspPosition $ R.lengthAsPosition startRope)
       (ropeToLspPosition $ R.lengthAsPosition endRope)
 
-
 ropeToLspPosition :: R.Position -> J.Position
 ropeToLspPosition (R.Position l c) =
   J.Position (fromIntegral l) (fromIntegral c)
