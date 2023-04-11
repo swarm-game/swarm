@@ -41,7 +41,7 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Border (hBorder, hBorderAttr, hBorderWithLabel, joinableBorder, vBorder )
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
@@ -309,7 +309,8 @@ drawGameUI s =
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
   showREPL = s ^. uiState . uiShowREPL
-  rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ [padLeftRight 1 $ hBorderWithLabel (txt "REPL")]
+  rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
+  minimizedREPL =  [separateBorders $ forceAttr cyanAttr hBorder ]
   worldPanel =
     [ panel
         highlightAttr
