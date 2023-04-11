@@ -58,6 +58,8 @@ data Capability
     CMake
   | -- | Execute the 'Count' command
     CCount
+  | -- | Execute the 'Scout' command. Reconnaissance along a line.
+    CReconline
   | -- | Execute the 'Build' command
     CBuild
   | -- | Execute the 'Salvage' command
@@ -222,6 +224,7 @@ constCaps = \case
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  Scout -> Just CReconline
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount

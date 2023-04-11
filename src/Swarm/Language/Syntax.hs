@@ -246,6 +246,8 @@ data Const
 
     -- | Get current time
     Time
+  | -- Detect whether a robot is within line-of-sight in a direction
+    Scout
   | -- | Get the current x, y coordinates
     Whereami
   | -- | Locate the closest instance of a given entity within the rectangle
@@ -611,6 +613,9 @@ constInfo c = case c of
     command 1 short . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
+  Scout ->
+    command 1 short . doc "Detect whether a robot is within line-of-sight in a direction." $
+      ["Perception is blocked by 'Opaque' entities."]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $

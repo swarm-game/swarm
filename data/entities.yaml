@@ -7,7 +7,7 @@
     A tall, living entity made of a tough cellular material called "wood".
     They regrow after being harvested and are an important raw ingredient used
     in making many different devices.
-  properties: [portable, growable]
+  properties: [portable, growable, opaque]
   growth: [500, 600]
 
 - name: branch
@@ -117,7 +117,7 @@
     char: 'A'
   description:
   - A mountain. Can be tunneled through with a drill, but it takes time.
-  properties: [unwalkable]
+  properties: [unwalkable, opaque]
 
 - name: mountain tunnel
   display:

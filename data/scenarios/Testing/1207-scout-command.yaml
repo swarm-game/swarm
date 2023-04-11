@@ -1,0 +1,99 @@
+version: 1
+name: Scout test
+creative: false
+description: Locate a robot using scout
+objectives:
+  - goal:
+      - Grab the flower in front of the exposed bot
+    condition: |
+      as base {has "flower"}
+solution: |
+  def search =
+    found <- scout north;
+    if found {} {
+      move;
+      search;
+    };
+    end;
+
+  def grabFlower =
+    here <- ishere "flower";
+    if here {
+      grab;
+    } {
+      move;
+      grabFlower;
+    };
+    end;
+
+  turn east;
+  search;
+  turn left;
+  grabFlower
+robots:
+  - name: base
+    dir: [0,-1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - binoculars
+      - branch predictor
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - scanner
+      - string
+      - treads
+  - name: bot
+    dir: [0,1]
+    system: true
+    display:
+      invisible: false
+      char: b
+      attr: robot
+  - name: obscuredbot
+    dir: [0,1]
+    system: true
+    display:
+      invisible: false
+      char: o
+      attr: robot
+  - name: invisiblebot
+    dir: [0,1]
+    system: true
+    display:
+      invisible: true
+      char: i
+      attr: robot
+entities:
+- name: binoculars
+  display:
+    attr: silver
+    char: 'B'
+  description:
+  - Allows one to "scout" for other robots
+  properties: [known, portable]
+  capabilities: [reconline]
+known: [tree, flower, boulder]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    'b': [grass, null, bot]
+    'o': [grass, null, obscuredbot]
+    'i': [grass, null, invisiblebot]
+    '.': [grass]
+    '@': [grass, boulder]
+    '*': [grass, flower]
+    'T': [grass, tree]
+  upperleft: [0, 0]
+  map: |
+   .........
+   ..o.i.b..
+   .........
+   ..T...*..
+   .........
+   Ω.......@
+   .........

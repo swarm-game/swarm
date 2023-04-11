@@ -75,6 +75,7 @@
                "appear"
                "create"
                "time"
+               "scout"
                "whereami"
                "detect"
                "resonate"
