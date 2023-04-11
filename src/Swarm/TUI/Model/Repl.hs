@@ -208,9 +208,14 @@ data REPLPrompt
 defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt []
 
+-- | What is being done with user input to the REPL panel?
 data ReplControlMode
-  = Typing
-  | InputHandler
+  = -- | The user is typing at the REPL.
+    Typing
+  | -- | The user is driving the base using piloting mode.
+    Piloting
+  | -- | A custom user key handler is processing user input.
+    Handling
   deriving (Eq, Bounded, Enum)
 
 data REPLState = REPLState

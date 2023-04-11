@@ -913,12 +913,20 @@ handleREPLEvent x = do
   case x of
     MetaChar 'p' ->
       onlyCreative $ do
+        curMode <- use $ uiState . uiREPL . replControlMode
         if T.null uinput
-          then uiState . uiREPL . replControlMode %= cycleEnum
+          then
+            (uiState . uiREPL . replControlMode)
+              .= case curMode of Piloting -> Typing; _ -> Piloting
           else uiState . uiError ?= "Please clear the REPL first."
+    -- XXX move this and running handler earlier, so almost all shortcuts can be overridden
+    MetaChar 'k' -> do
+      curMode <- use $ uiState . uiREPL . replControlMode
+      (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
     _ -> case controlMode of
       Typing -> handleREPLEventTyping x
-      InputHandler -> handleREPLEventPiloting x
+      Piloting -> handleREPLEventPiloting x
+      Handling -> undefined
 
 -- | Handle a user "piloting" input event for the REPL.
 handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
