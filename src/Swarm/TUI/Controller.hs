@@ -79,6 +79,7 @@ import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
+import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
@@ -914,19 +915,41 @@ handleREPLEvent x = do
     MetaChar 'p' ->
       onlyCreative $ do
         curMode <- use $ uiState . uiREPL . replControlMode
-        if T.null uinput
-          then
-            (uiState . uiREPL . replControlMode)
-              .= case curMode of Piloting -> Typing; _ -> Piloting
-          else uiState . uiError ?= "Please clear the REPL first."
+        case curMode of
+          Piloting -> uiState . uiREPL . replControlMode .= Typing
+          _ ->
+            if T.null uinput
+              then uiState . uiREPL . replControlMode .= Piloting
+              else uiState . uiError ?= "Please clear the REPL first."
     -- XXX move this and running handler earlier, so almost all shortcuts can be overridden
+    -- XXX don't switch into handler mode if there is no installed handler
     MetaChar 'k' -> do
       curMode <- use $ uiState . uiREPL . replControlMode
       (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
     _ -> case controlMode of
       Typing -> handleREPLEventTyping x
       Piloting -> handleREPLEventPiloting x
-      Handling -> undefined
+      -- XXX move this earlier!
+      Handling -> case x of
+        -- Handle keypresses using the custom installed handler
+        VtyEvent (V.EvKey k mods) -> runInputHandler (mkKeyCombo mods k)
+        -- Handle all other events normally
+        _ -> handleREPLEventTyping x
+
+-- | XXX
+runInputHandler :: KeyCombo -> EventM Name AppState ()
+runInputHandler kc = do
+  mhandler <- use $ gameState . inputHandler
+  case mhandler of
+    -- Shouldn't be possible to get here if there is no input handler, but
+    -- if we do somehow, just do nothing.
+    Nothing -> return ()
+    Just handler -> do
+      -- Make sure the base is currently idle; if so, apply the
+      -- installed input handler function to a `key` value
+      -- representing the typed input.
+      working <- use $ gameState . replWorking
+      unless working $ undefined -- XXX factor out function to start base
 
 -- | Handle a user "piloting" input event for the REPL.
 handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -970,6 +993,9 @@ handleREPLEventTyping = \case
     let topCtx = topContext s
         repl = s ^. uiState . uiREPL
         uinput = repl ^. replPromptText
+
+        -- XXX factor this out so we can also start the base from
+        -- processing an input handler!
 
         -- The player typed something at the REPL and hit Enter; this
         -- function takes the resulting ProcessedTerm (if the REPL
