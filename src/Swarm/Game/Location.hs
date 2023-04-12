@@ -154,14 +154,8 @@ relativeTo targetDir referenceDir =
 -- | Substitutes all nonzero values with one, preserving sign.
 -- Compare to "signorm", which is constrained to class "Floating":
 -- https://hackage.haskell.org/package/linear-1.22/docs/Linear-Metric.html#v:signorm
-sigdir :: (Ord a, Num a) => V2 a -> V2 a
-sigdir = fmap $ signOrdering . compare 0
-
-signOrdering :: Num a => Ordering -> a
-signOrdering = \case
-  LT -> -1
-  EQ -> 0
-  GT -> 1
+sigdir :: Num a => V2 a -> V2 a
+sigdir = fmap signum
 
 -- | Logic adapted from:
 -- https://gamedev.stackexchange.com/questions/49290/#comment213403_49300
