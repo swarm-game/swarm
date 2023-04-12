@@ -68,7 +68,7 @@ import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.CESK (cancel, emptyStore, initMachine)
+import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
@@ -89,7 +89,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VUnit), prettyValue, stripVResult)
+import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
@@ -949,7 +949,12 @@ runInputHandler kc = do
       -- installed input handler function to a `key` value
       -- representing the typed input.
       working <- use $ gameState . replWorking
-      unless working $ undefined -- XXX factor out function to start base
+      unless working $ do
+        s <- get
+        let topCtx = topContext s
+            handlerCESK = Out (VKey kc) (topCtx ^. defStore) [FApp handler, FExec]
+        gameState . baseRobot . machine .= handlerCESK
+        gameState %= execState (activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
 handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
