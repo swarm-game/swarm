@@ -91,7 +91,7 @@ import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
-import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.Repl (replControlMode)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
@@ -1171,8 +1171,9 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
   latestHistory :: [Widget n]
   latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines - debugLines) (repl ^. replHistory))
   currentPrompt :: Widget Name
-  currentPrompt = case isActive <$> base of
-    Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
+  currentPrompt = case (isActive <$> base, repl ^. replControlMode) of
+    (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
+    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
   inputLines = 1
   debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)
