@@ -7,8 +7,8 @@ module Swarm.TUI.List (handleListEventWithSeparators) where
 
 import Brick (EventM)
 import Brick.Widgets.List qualified as BL
-import Graphics.Vty qualified as V
 import Brick.Widgets.List.Skip
+import Graphics.Vty qualified as V
 
 -- | Handle a list event, taking an extra predicate to identify which
 --   list elements are separators; separators will be skipped if
