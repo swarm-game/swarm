@@ -1972,6 +1972,8 @@ execConst c vs s k = do
     (xMin, xMax) = sortPair (x1, x2)
     (yMin, yMax) = sortPair (y1, y2)
 
+  -- NOTE: This function only makes sense to use with two locations that share
+  -- either the same x-coordinate or y-coordinate.
   hasSightLineTo :: HasRobotStepState sig m => Location -> Location -> m Bool
   hasSightLineTo (P (V2 x1 y1)) (P (V2 x2 y2)) =
     fmap not $ anyM hasOpaque $ rectCellsInt32 x1 y1 x2 y2
