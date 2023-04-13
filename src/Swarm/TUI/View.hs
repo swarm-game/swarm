@@ -91,7 +91,7 @@ import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
-import Swarm.TUI.Model.Repl (replControlMode)
+import Swarm.TUI.Model.Repl (lastEntry)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement

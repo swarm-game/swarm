@@ -64,6 +64,8 @@ import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
 
+-- XXX add keys cheatsheet
+
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
 -- ============================================================================
