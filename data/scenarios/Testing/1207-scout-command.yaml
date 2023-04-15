@@ -75,7 +75,7 @@ entities:
   description:
   - Allows one to "scout" for other robots
   properties: [known, portable]
-  capabilities: [reconline]
+  capabilities: [recondir]
 known: [tree, flower, boulder]
 world:
   default: [blank]

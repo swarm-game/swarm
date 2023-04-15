@@ -83,7 +83,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirement qualified as R
-import Swarm.Language.Syntax hiding (P)
+import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util hiding (both)
@@ -1251,7 +1251,7 @@ execConst c vs s k = do
         botsByLocs <- use robotsByLocation
         selfRid <- use robotID
 
-        -- Includes the base location, so we exclude it later.
+        -- Includes the base location, so we exclude the base robot later.
         let locsInDirection :: [Location]
             locsInDirection = take maxScoutRange $ iterate (.+^ heading) myLoc
 
