@@ -531,7 +531,7 @@ isActive :: Robot -> Bool
 isActive = isNothing . getResult
 
 -- | The time until which the robot is waiting, if any.
-waitingUntil :: Robot -> Maybe Integer
+waitingUntil :: Robot -> Maybe TickNumber
 waitingUntil robot =
   case _machine robot of
     Waiting time _ -> Just time

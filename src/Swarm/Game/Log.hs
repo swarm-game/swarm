@@ -32,6 +32,7 @@ import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Location (Location)
 
 -- | Severity of the error - critical errors are bugs
@@ -51,7 +52,7 @@ data LogSource
 
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
-  { _leTime :: Integer
+  { _leTime :: TickNumber
   -- ^ The time at which the entry was created.
   --   Note that this is the first field we sort on.
   , _leSource :: LogSource

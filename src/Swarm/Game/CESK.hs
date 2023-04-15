@@ -78,6 +78,7 @@ module Swarm.Game.CESK (
 
   -- ** Extracting information
   finalValue,
+  TickNumber,
 ) where
 
 import Control.Lens ((^.))
@@ -98,6 +99,8 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
+
+type TickNumber = Integer
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -269,7 +272,7 @@ data CESK
     Up Exn Store Cont
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
-    Waiting Integer CESK
+    Waiting TickNumber CESK
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract

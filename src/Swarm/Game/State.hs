@@ -153,7 +153,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (CESK (Waiting), emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (CESK (Waiting), TickNumber, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.Failure.Render
@@ -371,7 +371,7 @@ data GameState = GameState
     -- wakeUpRobotsDoneSleeping.
     -- Waiting robots for a given time are a list because it is cheaper to
     -- append to a list than to a Set.
-    _waitingRobots :: Map Integer [RID]
+    _waitingRobots :: Map TickNumber [RID]
   , _robotsByLocation :: Map Location IntSet
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all of the robots,
@@ -403,9 +403,9 @@ data GameState = GameState
   , _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
   , _messageQueue :: Seq LogEntry
-  , _lastSeenMessageTime :: Integer
+  , _lastSeenMessageTime :: TickNumber
   , _focusedRobotID :: RID
-  , _ticks :: Integer
+  , _ticks :: TickNumber
   , _robotStepsPerTick :: Int
   }
 
@@ -516,7 +516,7 @@ activeRobots = internalActiveRobots
 -- | The names of the robots that are currently sleeping, indexed by wake up
 --   time. Note that this may not include all sleeping robots, particularly
 --   those that are only taking a short nap (e.g. wait 1).
-waitingRobots :: Getter GameState (Map Integer [RID])
+waitingRobots :: Getter GameState (Map TickNumber [RID])
 waitingRobots = internalWaitingRobots
 
 -- | A counter used to generate globally unique IDs.
@@ -593,7 +593,7 @@ replNextValueIndex :: Lens' GameState Integer
 messageQueue :: Lens' GameState (Seq LogEntry)
 
 -- | Last time message queue has been viewed (used for notification).
-lastSeenMessageTime :: Lens' GameState Integer
+lastSeenMessageTime :: Lens' GameState TickNumber
 
 -- | The current robot in focus.
 --
@@ -606,7 +606,7 @@ focusedRobotID :: Getter GameState RID
 focusedRobotID = to _focusedRobotID
 
 -- | The number of ticks elapsed since the game started.
-ticks :: Lens' GameState Integer
+ticks :: Lens' GameState TickNumber
 
 -- | The maximum number of CESK machine steps a robot may take during
 --   a single tick.
@@ -836,7 +836,7 @@ emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
-sleepUntil :: Has (State GameState) sig m => RID -> Integer -> m ()
+sleepUntil :: Has (State GameState) sig m => RID -> TickNumber -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
   internalWaitingRobots . at time . non [] %= (rid :)
