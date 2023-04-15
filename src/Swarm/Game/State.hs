@@ -148,6 +148,7 @@ import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
+import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
@@ -370,7 +371,7 @@ data GameState = GameState
     -- wake-up time is reached, at which point it is removed via
     -- wakeUpRobotsDoneSleeping.
     -- Waiting robots for a given time are a list because it is cheaper to
-    -- append to a list than to a Set.
+    -- prepend to a list than insert into a Set.
     _waitingRobots :: Map TickNumber [RID]
   , _robotsByLocation :: Map Location IntSet
   , -- This member exists as an optimization so
@@ -855,7 +856,6 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
-
   mrids <- internalWaitingRobots . at time <<.= Nothing
   case mrids of
     Nothing -> return ()
@@ -889,35 +889,53 @@ wakeWatchingRobots loc = do
   currentTick <- use ticks
   waitingMap <- use waitingRobots
   rMap <- use robotMap
+  watchingSet <- use robotsWatching
 
-  let watchingBots =
-        S.filter (botHasWatchedLoc rMap)
-          . S.unions
-          . map S.fromList
-          $ M.elems waitingMap
+  let -- Step 1: Identify the robots that are watching this location.
+      botsWatchingThisLoc :: [Robot]
+      botsWatchingThisLoc =
+        filter botHasWatchedLoc $
+          mapMaybe (`IM.lookup` rMap) $
+            S.toList watchingSet
 
+      -- Step 2: Get the target wake time for each of these robots
+      wakeTimes :: [(RID, TickNumber)]
+      wakeTimes = mapMaybe (sequenceA . (view robotID &&& waitingUntil)) botsWatchingThisLoc
+
+      wakeTimesToPurge :: Map TickNumber (S.Set RID)
+      wakeTimesToPurge = M.fromListWith (<>) $ map (fmap S.singleton . swap) wakeTimes
+
+      -- Step 3: Take these robots out of their time-indexed slot in waitingRobots.
+      -- To preserve performance, this should be done without iterating over the
+      -- complete waitingRobots map.
+      filteredWaiting = foldr f waitingMap $ M.toList wakeTimesToPurge
+       where
+        -- Note: some of the map values may become empty lists.
+        -- But we shall not worry about cleaning those up here;
+        -- they will be "garbage collected" as a matter of course
+        -- when their tick comes up in "wakeUpRobotsDoneSleeping".
+        f (k, botsToRemove) = M.adjust (filter (`S.notMember` botsToRemove)) k
+
+      -- Step 4: Re-add the watching bots to be awakened at the next tick:
+      wakeableBotIds = map fst wakeTimes
       newWakeTime = currentTick + 1
-      newInsertions = M.singleton newWakeTime $ S.toList watchingBots
-
-      filteredWaitingMap =
-        M.filter (not . null) $
-          M.map (filter (`S.notMember` watchingBots)) waitingMap
+      newInsertions = M.singleton newWakeTime wakeableBotIds
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
   -- 1. In the GameState via "internalWaitingRobots"
   -- 2. In each robot, via the CESK machine state
 
   -- 1. Update the game state
-  internalWaitingRobots .= M.unionWith (<>) filteredWaitingMap newInsertions
+  internalWaitingRobots .= M.unionWith (<>) filteredWaiting newInsertions
 
   -- 2. Update the machine of each robot
-  forM_ watchingBots $ \rid ->
+  forM_ wakeableBotIds $ \rid ->
     robotMap . at rid . _Just . machine %= \case
       Waiting _ c -> Waiting newWakeTime c
       x -> x
  where
-  botHasWatchedLoc rMap =
-    S.member loc . maybe mempty (view watchedLocations) . (`IM.lookup` rMap)
+  botHasWatchedLoc :: Robot -> Bool
+  botHasWatchedLoc = S.member loc . view watchedLocations
 
 deleteRobot :: Has (State GameState) sig m => RID -> m ()
 deleteRobot rn = do
