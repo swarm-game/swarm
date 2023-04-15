@@ -7,6 +7,14 @@ objectives:
       - grab a tree before the competitor steals it.
     condition: |
       as base {has "tree"}
+    prerequisite:
+      not: stolen
+  - id: stolen
+    goal:
+      - Competitor steals a tree
+    condition: |
+      competitor <- robotnamed "competitor";
+      as competitor {has "tree"}
 solution: |
   watch forward;
   wait 80;

@@ -420,8 +420,9 @@ entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 updateEntityAt ::
   (Has (State GameState) sig m) => Location -> (Maybe Entity -> Maybe Entity) -> m ()
 updateEntityAt loc upd = do
-  zoomWorld (W.updateM @Int (W.locToCoords loc) upd)
-  wakeWatchingRobots loc
+  didChange <- zoomWorld $ W.updateM @Int (W.locToCoords loc) upd
+  when didChange $
+    wakeWatchingRobots loc
 
 -- | Get the robot with a given ID.
 robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
@@ -604,10 +605,7 @@ updateWorld c (ReplaceEntity loc eThen down) = do
   let eNow = W.lookupEntity (W.locToCoords loc) w
   if Just eThen /= eNow
     then throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
-    else do
-      world %= W.update (W.locToCoords loc) (const down)
-      wakeWatchingRobots loc
-      pure ()
+    else updateEntityAt loc $ const down
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.

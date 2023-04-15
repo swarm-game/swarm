@@ -45,7 +45,7 @@ module Swarm.Game.World (
 
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
-import Control.Effect.State (State, get, modify)
+import Control.Effect.State (State, get, modify, state)
 import Control.Lens
 import Data.Array qualified as A
 import Data.Array.IArray
@@ -247,15 +247,27 @@ lookupEntityM c = do
   lookupEntity c <$> get @(World t e)
 
 -- | Update the entity (or absence thereof) at a certain location,
---   returning an updated 'World'.  See also 'updateM'.
-update :: Coords -> (Maybe e -> Maybe e) -> World t e -> World t e
+--   returning an updated 'World' and a Boolean indicating whether.
+--   the update changed the entity here.
+--   See also 'updateM'.
+update :: Eq e => Coords -> (Maybe e -> Maybe e) -> World t e -> (World t e, Bool)
 update i g w@(World f t m) =
-  World f t (M.insert i (g (lookupEntity i w)) m)
+  (wNew, entityAfter /= entityBefore)
+ where
+  wNew = World f t $ M.insert i entityAfter m
+  entityBefore = lookupEntity i w
+  entityAfter = g entityBefore
 
 -- | A stateful variant of 'update', which also ensures the tile
 --   containing the given coordinates is loaded.
-updateM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
-updateM c g = modify @(World t e) $ update c g . loadCell c
+updateM ::
+  forall t e sig m.
+  (Has (State (World t e)) sig m, IArray U.UArray t, Eq e) =>
+  Coords ->
+  (Maybe e -> Maybe e) ->
+  m Bool
+updateM c g = do
+  state @(World t e) $ update c g . loadCell c
 
 -- | Load the tile containing a specific cell.
 loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
