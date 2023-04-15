@@ -39,7 +39,7 @@ import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, for_, traverse_)
-import Data.Foldable.Extra (anyM, findM)
+import Data.Foldable.Extra (findM)
 import Data.Function (on)
 import Data.Functor (void)
 import Data.Int (Int32)
@@ -1248,26 +1248,38 @@ execConst c vs s k = do
         rMap <- use robotMap
         myLoc <- use robotLocation
         heading <- deriveHeading d
-
-        let hasVisibleBot = any f . IS.toList
-             where
-              f = maybe False isVisible . (`IM.lookup` rMap)
-              isVisible = not . (^. robotDisplay . invisible)
-            isStraightAhead = (== heading) . sigdir . (myLoc .-.)
-            predicate x =
-              all
-                ($ x)
-                [ isStraightAhead . fst
-                , hasVisibleBot . snd
-                ]
-
         botsByLocs <- use robotsByLocation
-        hasOrthographicBotLocations <-
-          anyM (hasSightLineTo myLoc . fst)
-            . filter predicate
-            $ M.toList botsByLocs
+        selfRid <- use robotID
 
-        return $ Out (VBool hasOrthographicBotLocations) s k
+        -- Includes the base location, so we exclude it later.
+        let locsInDirection :: [Location]
+            locsInDirection = take maxScoutRange $ iterate (.+^ heading) myLoc
+
+        let hasOpaqueEntity =
+              fmap (maybe False (`hasProperty` E.Opaque)) . entityAt
+
+        let hasVisibleBot :: Location -> Bool
+            hasVisibleBot = any botIsVisible . IS.toList . excludeSelf . botsHere
+             where
+              excludeSelf = (`IS.difference` IS.singleton selfRid)
+              botsHere loc = M.findWithDefault mempty loc botsByLocs
+              botIsVisible = maybe False canSee . (`IM.lookup` rMap)
+              canSee = not . (^. robotDisplay . invisible)
+
+        -- A robot on the same cell as an opaque entity is considered hidden.
+        let evalLocation :: Bool -> Location -> Maybe Bool
+            evalLocation isOpaque loc
+              | isOpaque = Just False
+              | hasVisibleBot loc = Just True
+              | otherwise = Nothing
+
+        let evalLocationM loc = do
+              opaque <- hasOpaqueEntity loc
+              return $ evalLocation opaque loc
+
+        result <- asum <$> mapM evalLocationM locsInDirection
+        let foundBot = fromMaybe False result
+        return $ Out (VBool foundBot) s k
       _ -> badConst
     Whereami -> do
       loc <- use robotLocation
@@ -1971,14 +1983,6 @@ execConst c vs s k = do
    where
     (xMin, xMax) = sortPair (x1, x2)
     (yMin, yMax) = sortPair (y1, y2)
-
-  -- NOTE: This function only makes sense to use with two locations that share
-  -- either the same x-coordinate or y-coordinate.
-  hasSightLineTo :: HasRobotStepState sig m => Location -> Location -> m Bool
-  hasSightLineTo (P (V2 x1 y1)) (P (V2 x2 y2)) =
-    fmap not $ anyM hasOpaque $ rectCellsInt32 x1 y1 x2 y2
-   where
-    hasOpaque = fmap (maybe False (`hasProperty` E.Opaque)) . entityAt . P
 
   findNearest ::
     HasRobotStepState sig m =>

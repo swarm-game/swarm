@@ -28,7 +28,6 @@ module Swarm.Game.Location (
   manhattan,
   euclidean,
   getElemsInArea,
-  sigdir,
 
   -- ** reexports for convenience
   Affine (..),
@@ -150,12 +149,6 @@ relativeTo targetDir referenceDir =
  where
   enumCount = length (Util.listEnums :: [AbsoluteDir])
   indexDiff = ((-) `on` fromEnum) targetDir referenceDir `mod` enumCount
-
--- | Substitutes all nonzero values with one, preserving sign.
--- Compare to "signorm", which is constrained to class "Floating":
--- https://hackage.haskell.org/package/linear-1.22/docs/Linear-Metric.html#v:signorm
-sigdir :: Num a => V2 a -> V2 a
-sigdir = fmap signum
 
 -- | Logic adapted from:
 -- https://gamedev.stackexchange.com/questions/49290/#comment213403_49300

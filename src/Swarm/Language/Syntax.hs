@@ -37,6 +37,7 @@ module Swarm.Language.Syntax (
   isTangible,
   isLong,
   maxSniffRange,
+  maxScoutRange,
 
   -- * Syntax
   Syntax' (..),
@@ -107,6 +108,9 @@ import Witch.From (from)
 -- 'chirp' and 'sniff' commands
 maxSniffRange :: Int32
 maxSniffRange = 256
+
+maxScoutRange :: Int
+maxScoutRange = 64
 
 ------------------------------------------------------------
 -- Directions
