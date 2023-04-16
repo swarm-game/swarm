@@ -876,14 +876,17 @@ clearWatchingRobots rids = do
 -- | Iterates through all of the currently "wait"-ing robots,
 -- and moves forward the wake time of the ones that are watching this location.
 --
--- NOTE: Clearing the "wake time" ticks entries in "internalWaitingRobots"
--- is handled by "wakeUpRobotsDoneSleeping" in State.hs
+-- NOTE: Clearing "TickNumber" map entries from "internalWaitingRobots"
+-- upon wakeup is handled by "wakeUpRobotsDoneSleeping" in State.hs
 wakeWatchingRobots :: Has (State GameState) sig m => Location -> m ()
 wakeWatchingRobots loc = do
   currentTick <- use ticks
   waitingMap <- use waitingRobots
   rMap <- use robotMap
   watchingMap <- use robotsWatching
+
+  -- The bookkeeping updates to robot waiting
+  -- states are prepared in 4 steps...
 
   let -- Step 1: Identify the robots that are watching this location.
       botsWatchingThisLoc :: [Robot]
@@ -899,9 +902,9 @@ wakeWatchingRobots loc = do
       wakeTimesToPurge :: Map TickNumber (S.Set RID)
       wakeTimesToPurge = M.fromListWith (<>) $ map (fmap S.singleton . swap) wakeTimes
 
-      -- Step 3: Take these robots out of their time-indexed slot in waitingRobots.
+      -- Step 3: Take these robots out of their time-indexed slot in "waitingRobots".
       -- To preserve performance, this should be done without iterating over the
-      -- complete waitingRobots map.
+      -- entire "waitingRobots" map.
       filteredWaiting = foldr f waitingMap $ M.toList wakeTimesToPurge
        where
         -- Note: some of the map values may become empty lists.

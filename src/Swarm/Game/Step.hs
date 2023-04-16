@@ -2295,10 +2295,10 @@ purgeFarAwayWatches = do
   rid <- use robotID
 
   let isNearby = isNearbyOrExempt privileged myLoc
-      f loc watchingSet =
-        if rid `S.member` watchingSet && not (isNearby loc)
-          then S.delete rid watchingSet
-          else watchingSet
+      f loc =
+        if not $ isNearby loc
+          then S.delete rid
+          else id
 
   robotsWatching %= M.filter (not . null) . M.mapWithKey f
 
