@@ -4,7 +4,7 @@ description: |
   Learn how to view built robots and debug them.
 objectives:
   - goal:
-      - Before you send your robots far away you need to learn how
+      - Before you send your robots far away from the `base` you need to learn how
         to figure out what went wrong with them if they crash.
       - |
         In this challenge, you should start by
@@ -16,10 +16,12 @@ objectives:
         For example:
       - |
         build {log "Hi!"; turn east; move; move; move; log "3"; move; log "OK"}
-      - After the robot crashes, execute `view it0` (or whichever
+      - |
+        `wait` for the robot to crash, then execute `view it0` (or whichever
         `itN` variable corresponds to the result of the `build`
         command) to see how far it got. Further instructions should
-        appear in the crashed robot's log.
+        appear in the crashed robot's log and `give` you an opportunity to `salvage`
+        the situation...
     condition: |
       try {
         as base {has "Win"}

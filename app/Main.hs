@@ -14,7 +14,7 @@ import Data.Text.IO qualified as Text
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
-import Swarm.DocGen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
+import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
@@ -72,6 +72,7 @@ cliParser =
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
       , command "keys" (info (pure SpecialKeyNames) $ progDesc "Output list of recognized special key names")
       , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
+      , command "pedagogy" (info (pure TutorialCoverage) $ progDesc "Output tutorial coverage")
       ]
   editor :: Parser (Maybe EditorType)
   editor =

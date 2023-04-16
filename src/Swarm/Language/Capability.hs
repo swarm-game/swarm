@@ -72,6 +72,8 @@ data Capability
     CSensehere
   | -- | Execute the 'Detect' command
     CDetectloc
+  | -- | Execute the 'Resonate' command
+    CDetectcount
   | -- | Execute the 'Sniff' command
     CDetectdistance
   | -- | Execute the 'Chirp' command
@@ -222,6 +224,7 @@ constCaps = \case
   Wait -> Just CTime
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
+  Resonate -> Just CDetectcount
   Sniff -> Just CDetectdistance
   Chirp -> Just CDetectdirection
   Heading -> Just COrient

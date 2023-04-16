@@ -50,7 +50,8 @@ module Swarm.TUI.Model.Repl (
 
 import Brick.Widgets.Edit (Editor, applyEdit, editorText, getEditContents)
 import Control.Applicative (Applicative (liftA2))
-import Control.Lens hiding (from, (<.>))
+import Control.Lens hiding (from, (.=), (<.>))
+import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.Foldable (toList)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
@@ -58,6 +59,8 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 
@@ -72,6 +75,14 @@ data REPLHistItem
   | -- | A response printed by the system.
     REPLOutput Text
   deriving (Eq, Ord, Show, Read)
+
+instance ToSample REPLHistItem where
+  toSamples _ = SD.noSamples
+
+instance ToJSON REPLHistItem where
+  toJSON e = case e of
+    REPLEntry x -> object ["in" .= x]
+    REPLOutput x -> object ["out" .= x]
 
 -- | Useful helper function to only get user input text.
 getREPLEntry :: REPLHistItem -> Maybe Text

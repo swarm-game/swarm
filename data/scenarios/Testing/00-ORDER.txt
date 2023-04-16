@@ -28,3 +28,4 @@
 1157-drill-return-value.yaml
 1171-sniff-command.yaml
 1171-chirp-command.yaml
+1171-resonate-command.yaml

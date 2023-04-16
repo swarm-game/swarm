@@ -117,6 +117,7 @@ narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
   SRcd m -> asum . map d . catMaybes . M.elems $ m
   SProj s1 _ -> d s1
   SAnnotate s _ -> d s
+  SRequirements _ s -> d s
   -- atoms - return their position and end recursion
   TUnit -> Nothing
   TConst {} -> Nothing
@@ -194,6 +195,7 @@ explain trm = case trm ^. sTerm of
   SApp {} -> explainFunction trm
   TRequireDevice {} -> pure "Require a specific device to be equipped."
   TRequire {} -> pure "Require a certain number of an entity."
+  SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
   SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition False isRecursive var (rhs ^. sType) mTypeAnn
   SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition True isRecursive var (rhs ^. sType) mTypeAnn

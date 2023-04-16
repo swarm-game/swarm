@@ -86,6 +86,8 @@ data Value where
   VRcd :: Map Var Value -> Value
   -- | A keyboard input.
   VKey :: KeyCombo -> Value
+  -- | A 'requirements' command awaiting execution.
+  VRequirements :: Text -> Term -> Env -> Value
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Ensure that a value is not wrapped in 'VResult'.
@@ -120,6 +122,7 @@ valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TRef n
 valueToTerm (VRcd m) = TRcd (Just . valueToTerm <$> m)
 valueToTerm (VKey kc) = TApp (TConst Key) (TText (prettyKeyCombo kc))
+valueToTerm (VRequirements x t _) = TRequirements x t
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value

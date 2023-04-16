@@ -33,6 +33,8 @@
 # Will suggest replacing "wibbleMany [myvar]" with "wibbleOne myvar"
 # - error: {lhs: "wibbleMany [x]", rhs: wibbleOne x}
 
+- warn: {lhs: a $ b $ c $ d, rhs: a . b . c $ d}
+
 # The hints are named by the string they display in warning messages.
 # For example, if you see a warning starting like
 #

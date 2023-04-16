@@ -149,6 +149,8 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
@@ -237,6 +239,9 @@ data WinCondition
 
 makePrisms ''WinCondition
 
+instance ToSample WinCondition where
+  toSamples _ = SD.noSamples
+
 -- | A data type to keep track of the pause mode.
 data RunStatus
   = -- | The game is running.
@@ -287,10 +292,10 @@ getParsedInitialCode toRun = case toRun of
   Just filepath -> do
     contents <- liftIO $ TIO.readFile filepath
     pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
-      ExceptT $
-        return $
-          left T.pack $
-            processTermEither contents
+      ExceptT
+        . return
+        . left T.pack
+        $ processTermEither contents
     let strippedText = stripSrc srcLoc contents
         programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
         sha1Hash = showDigest $ sha1 programBytestring
@@ -873,10 +878,7 @@ initGameState :: ExceptT Text IO ([SystemFailure], GameState)
 initGameState = do
   entities <- ExceptT loadEntities
   recipes <- withExceptT prettyFailure $ loadRecipes entities
-  eitherLoadedScenarios <- liftIO $ runExceptT $ loadScenarios entities
-  let (scenarioWarnings, loadedScenarios) = case eitherLoadedScenarios of
-        Left xs -> (xs, SC mempty mempty)
-        Right (warnings, x) -> (warnings, x)
+  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
 
   (adjsFile, namesFile) <- withExceptT prettyFailure $ do
     adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
