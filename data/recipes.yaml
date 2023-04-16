@@ -452,6 +452,11 @@
 
 - in:
   - [1, iron plate]
+  out:
+  - [1, handle]
+
+- in:
+  - [1, iron plate]
   - [1, water]
   - [1, box]
   out:

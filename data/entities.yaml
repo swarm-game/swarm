@@ -185,6 +185,22 @@
   - It also possess some electro-magnetic properties.
   properties: [portable]
 
+- name: handle
+  display:
+    attr: iron
+    char: 'C'
+  description:
+  - An iron handle. Useful for, you know, handling things.
+  - |
+    `installKeyHandler : text -> (key -> cmd unit) -> cmd unit`
+    installs a custom handler function that can be activated to
+    respond to inputs typed at the REPL.
+  - |
+    `key : text -> key` constructs values of type `key`, for
+    example `key "Down"` or `key "C-S-x"`.
+  properties: [portable]
+  capabilities: [handleinput]
+
 - name: iron gear
   display:
     attr: iron
