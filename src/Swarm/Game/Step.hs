@@ -2284,8 +2284,7 @@ addWatchedLocation ::
   m ()
 addWatchedLocation loc = do
   rid <- use robotID
-  robotsWatching %= S.insert rid
-  watchedLocations %= S.insert loc
+  robotsWatching %= M.insertWith (<>) loc (S.singleton rid)
 
 -- | Clear watches that are out of range
 purgeFarAwayWatches ::
@@ -2293,14 +2292,15 @@ purgeFarAwayWatches ::
 purgeFarAwayWatches = do
   privileged <- isPrivilegedBot
   myLoc <- use robotLocation
+  rid <- use robotID
+
   let isNearby = isNearbyOrExempt privileged myLoc
+      f loc watchingSet =
+        if rid `S.member` watchingSet && not (isNearby loc)
+          then S.delete rid watchingSet
+          else watchingSet
 
-  watchedLocations %= S.filter isNearby
-
-  watchedLocs <- use watchedLocations
-  when (null watchedLocs) $ do
-    rid <- use robotID
-    robotsWatching %= S.delete rid
+  robotsWatching %= M.filter (not . null) . M.mapWithKey f
 
 ------------------------------------------------------------
 -- Some utility functions

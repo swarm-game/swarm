@@ -375,12 +375,9 @@ data GameState = GameState
     _waitingRobots :: Map TickNumber [RID]
   , _robotsByLocation :: Map Location IntSet
   , -- This member exists as an optimization so
-    -- that we do not have to iterate over all of the robots,
+    -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
-    -- In contrast with "_waitingRobots", the values of "_robotsWatching"
-    -- can actually be represented as a more semantically-appropriate Set
-    -- because insertion is "rare".
-    _robotsWatching :: S.Set RID
+    _robotsWatching :: Map Location (S.Set RID)
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
@@ -484,9 +481,8 @@ robotsAtLocation loc gs =
     . view robotsByLocation
     $ gs
 
--- | Get a list of all the robots that are "watching" any location.
--- This is the counterpart to the per-robot "watchedLocations" member.
-robotsWatching :: Lens' GameState (S.Set RID)
+-- | Get a list of all the robots that are "watching" by location.
+robotsWatching :: Lens' GameState (Map Location (S.Set RID))
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
@@ -866,18 +862,16 @@ wakeUpRobotsDoneSleeping = do
 
       -- These robots' wake times may have been moved "forward"
       -- by "wakeWatchingRobots".
-      clearWatchingRobots aliveRids rids
+      clearWatchingRobots rids
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
 clearWatchingRobots ::
-  (Has (State GameState) sig m, Foldable t) =>
-  t Int ->
+  Has (State GameState) sig m =>
   [RID] ->
   m ()
-clearWatchingRobots aliveRids rids = do
-  robotsWatching %= (`S.difference` S.fromList rids)
-  forM_ aliveRids $ \rid -> robotMap . at rid . _Just . watchedLocations .= mempty
+clearWatchingRobots rids = do
+  robotsWatching %= M.map (`S.difference` S.fromList rids)
 
 -- | Iterates through all of the currently "wait"-ing robots,
 -- and moves forward the wake time of the ones that are watching this location.
@@ -889,14 +883,14 @@ wakeWatchingRobots loc = do
   currentTick <- use ticks
   waitingMap <- use waitingRobots
   rMap <- use robotMap
-  watchingSet <- use robotsWatching
+  watchingMap <- use robotsWatching
 
   let -- Step 1: Identify the robots that are watching this location.
       botsWatchingThisLoc :: [Robot]
       botsWatchingThisLoc =
-        filter botHasWatchedLoc $
-          mapMaybe (`IM.lookup` rMap) $
-            S.toList watchingSet
+        mapMaybe (`IM.lookup` rMap) $
+          S.toList $
+            M.findWithDefault mempty loc watchingMap
 
       -- Step 2: Get the target wake time for each of these robots
       wakeTimes :: [(RID, TickNumber)]
@@ -933,9 +927,6 @@ wakeWatchingRobots loc = do
     robotMap . at rid . _Just . machine %= \case
       Waiting _ c -> Waiting newWakeTime c
       x -> x
- where
-  botHasWatchedLoc :: Robot -> Bool
-  botHasWatchedLoc = S.member loc . view watchedLocations
 
 deleteRobot :: Has (State GameState) sig m => RID -> m ()
 deleteRobot rn = do

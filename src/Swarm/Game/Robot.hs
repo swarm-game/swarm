@@ -39,7 +39,6 @@ module Swarm.Game.Robot (
   robotName,
   trobotName,
   robotCreatedAt,
-  watchedLocations,
   robotDisplay,
   robotLocation,
   unsafeSetRobotLocation,
@@ -195,7 +194,6 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _tickSteps :: Int
   , _runningAtomic :: Bool
   , _robotCreatedAt :: TimeSpec
-  , _watchedLocations :: Set Location
   }
   deriving (Generic)
 
@@ -244,10 +242,6 @@ robotEntity :: Lens' (RobotR phase) Entity
 
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
-
--- | Locations 'watched' by this robot. Must be kept
--- manually in sync with "robotsWatching" in the GameState.
-watchedLocations :: Lens' Robot (Set Location)
 
 -- robotName and trobotName could be generalized to robotName' ::
 -- Lens' (RobotR phase) Text.  However, type inference does not work
@@ -494,7 +488,6 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
     , _selfDestruct = False
     , _tickSteps = 0
     , _runningAtomic = False
-    , _watchedLocations = mempty
     }
  where
   inst = fromList devs
