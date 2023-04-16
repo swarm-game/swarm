@@ -723,7 +723,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       ]
 
 -- | Draw a menu explaining what key commands are available for the
---   current panel.  This menu is displayed as a single line in
+--   current panel.  This menu is displayed as one or two lines in
 --   between the world panel and the REPL.
 --
 -- This excludes the F-key modals that are shown elsewhere.
@@ -733,13 +733,16 @@ drawKeyMenu s =
     hBox
       [ vBox
           [ mkCmdRow globalKeyCmds
-          , padLeft (Pad 2) $ mkCmdRow focusedPanelCmds
+          , padLeft (Pad 2) $ contextCmds
           ]
       , gameModeWidget
       ]
  where
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
+  contextCmds
+    | ctrlMode == Handling = txt $ fromMaybe "" (s ^. gameState . inputHandlerHint)
+    | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
       . keyCmdsFor

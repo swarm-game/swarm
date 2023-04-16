@@ -270,7 +270,6 @@ handleMainEvent ev = do
         WinConditions (Unwinnable _) _ -> toggleModal LoseModal
         _ -> toggleModal QuitModal
     VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
-    -- XXX input handler toggle + handling goes here?  but what about Ctrl-c at REPL?
     Key V.KEsc
       | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do
@@ -912,6 +911,10 @@ handleREPLEvent x = do
       controlMode = repl ^. replControlMode
       uinput = repl ^. replPromptText
   case x of
+    ControlChar 'c' -> do
+      gameState . baseRobot . machine %= cancel
+      uiState . uiREPL . replPromptType .= CmdPrompt []
+      uiState . uiREPL . replPromptText .= ""
     MetaChar 'p' ->
       onlyCreative $ do
         curMode <- use $ uiState . uiREPL . replControlMode
@@ -921,22 +924,20 @@ handleREPLEvent x = do
             if T.null uinput
               then uiState . uiREPL . replControlMode .= Piloting
               else uiState . uiError ?= "Please clear the REPL first."
-    -- XXX move this and running handler earlier, so almost all shortcuts can be overridden
-    -- XXX don't switch into handler mode if there is no installed handler
     MetaChar 'k' -> do
-      curMode <- use $ uiState . uiREPL . replControlMode
-      (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
+      when (isJust (s ^. gameState . inputHandler)) $ do
+        curMode <- use $ uiState . uiREPL . replControlMode
+        (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
     _ -> case controlMode of
       Typing -> handleREPLEventTyping x
       Piloting -> handleREPLEventPiloting x
-      -- XXX move this earlier!
       Handling -> case x of
         -- Handle keypresses using the custom installed handler
         VtyEvent (V.EvKey k mods) -> runInputHandler (mkKeyCombo mods k)
         -- Handle all other events normally
         _ -> handleREPLEventTyping x
 
--- | XXX
+-- | Run the installed input handler on a key combo entered by the user.
 runInputHandler :: KeyCombo -> EventM Name AppState ()
 runInputHandler kc = do
   mhandler <- use $ gameState . inputHandler
@@ -989,18 +990,11 @@ handleREPLEventPiloting x = case x of
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventTyping = \case
-  ControlChar 'c' -> do
-    gameState . baseRobot . machine %= cancel
-    uiState . uiREPL . replPromptType .= CmdPrompt []
-    uiState . uiREPL . replPromptText .= ""
   Key V.KEnter -> do
     s <- get
     let topCtx = topContext s
         repl = s ^. uiState . uiREPL
         uinput = repl ^. replPromptText
-
-        -- XXX factor this out so we can also start the base from
-        -- processing an input handler!
 
         -- The player typed something at the REPL and hit Enter; this
         -- function takes the resulting ProcessedTerm (if the REPL
