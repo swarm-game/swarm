@@ -52,10 +52,12 @@ import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Bits
 import Data.Foldable (foldl')
+import Data.Function (on)
 import Data.Int (Int32)
 import Data.Map.Strict qualified as M
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
 import Swarm.Util ((?))
 import Prelude hiding (lookup)
@@ -247,12 +249,12 @@ lookupEntityM c = do
   lookupEntity c <$> get @(World t e)
 
 -- | Update the entity (or absence thereof) at a certain location,
---   returning an updated 'World' and a Boolean indicating whether.
+--   returning an updated 'World' and a Boolean indicating whether
 --   the update changed the entity here.
 --   See also 'updateM'.
-update :: Eq e => Coords -> (Maybe e -> Maybe e) -> World t e -> (World t e, Bool)
+update :: Coords -> (Maybe Entity -> Maybe Entity) -> World t Entity -> (World t Entity, Bool)
 update i g w@(World f t m) =
-  (wNew, entityAfter /= entityBefore)
+  (wNew, ((/=) `on` fmap (view entityHash)) entityAfter entityBefore)
  where
   wNew = World f t $ M.insert i entityAfter m
   entityBefore = lookupEntity i w
@@ -261,13 +263,13 @@ update i g w@(World f t m) =
 -- | A stateful variant of 'update', which also ensures the tile
 --   containing the given coordinates is loaded.
 updateM ::
-  forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t, Eq e) =>
+  forall t sig m.
+  (Has (State (World t Entity)) sig m, IArray U.UArray t) =>
   Coords ->
-  (Maybe e -> Maybe e) ->
+  (Maybe Entity -> Maybe Entity) ->
   m Bool
 updateM c g = do
-  state @(World t e) $ update c g . loadCell c
+  state @(World t Entity) $ update c g . loadCell c
 
 -- | Load the tile containing a specific cell.
 loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
