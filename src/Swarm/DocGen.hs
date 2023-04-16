@@ -55,6 +55,7 @@ import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
+import Swarm.Language.Key (specialKeyNames)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
@@ -79,6 +80,8 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
+  -- | List of special key names recognized by 'key' command
+  SpecialKeyNames :: GenerateDocs
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   deriving (Eq, Show)
 
@@ -113,6 +116,7 @@ generateDocs = \case
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
         mapM_ editorGen listEnums
+  SpecialKeyNames -> generateSpecialKeyNames
   CheatSheet address s -> case s of
     Nothing -> error "Not implemented for all Wikis"
     Just st -> case st of
@@ -192,6 +196,14 @@ operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
   escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
 
 -- ----------------------------------------------------------------------------
+-- GENERATE SPECIAL KEY NAMES
+-- ----------------------------------------------------------------------------
+
+generateSpecialKeyNames :: IO ()
+generateSpecialKeyNames =
+  T.putStr . T.unlines . Set.toList $ specialKeyNames
+
+-- ----------------------------------------------------------------------------
 -- GENERATE TABLES: COMMANDS, ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
 -- ----------------------------------------------------------------------------
 
@@ -218,7 +230,7 @@ maxWidths = map (maximum . map T.length) . transpose
 addLink :: Text -> Text -> Text
 addLink l t = T.concat ["[", t, "](", l, ")"]
 
-tshow :: Show a => a -> Text
+tshow :: (Show a) => a -> Text
 tshow = T.pack . show
 
 -- ---------
