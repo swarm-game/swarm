@@ -419,7 +419,10 @@ entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
   (Has (State GameState) sig m) => Location -> (Maybe Entity -> Maybe Entity) -> m ()
-updateEntityAt loc upd = zoomWorld (W.updateM @Int (W.locToCoords loc) upd)
+updateEntityAt loc upd = do
+  didChange <- zoomWorld $ W.updateM @Int (W.locToCoords loc) upd
+  when didChange $
+    wakeWatchingRobots loc
 
 -- | Get the robot with a given ID.
 robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
@@ -602,9 +605,7 @@ updateWorld c (ReplaceEntity loc eThen down) = do
   let eNow = W.lookupEntity (W.locToCoords loc) w
   if Just eThen /= eNow
     then throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
-    else do
-      world %= W.update (W.locToCoords loc) (const down)
-      pure ()
+    else updateEntityAt loc $ const down
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
@@ -1041,6 +1042,7 @@ execConst c vs s k = do
     Wait -> case vs of
       [VInt d] -> do
         time <- use ticks
+        purgeFarAwayWatches
         return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
@@ -1262,6 +1264,18 @@ execConst c vs s k = do
       [VText name] -> do
         firstFound <- findNearest name
         return $ Out (asValue $ maybe (-1) fst firstFound) s k
+      _ -> badConst
+    Watch -> case vs of
+      [VDir d] -> do
+        (loc, _me) <- lookInDirection d
+        addWatchedLocation loc
+        return $ Out VUnit s k
+      _ -> badConst
+    Surveil -> case vs of
+      [VPair (VInt x) (VInt y)] -> do
+        let loc = Location (fromIntegral x) (fromIntegral y)
+        addWatchedLocation loc
+        return $ Out VUnit s k
       _ -> badConst
     Chirp -> case vs of
       [VText name] -> do
@@ -2171,10 +2185,13 @@ execConst c vs s k = do
       else do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
+
+        let otherLoc = other ^. robotLocation
+        privileged <- isPrivilegedBot
+        myLoc <- use robotLocation
+
         -- Make sure it is either in the same location or we do not care
-        omni <- (||) <$> use systemRobot <*> use creativeMode
-        loc <- use robotLocation
-        (omni || (other ^. robotLocation) `manhattan` loc <= 1)
+        isNearbyOrExempt privileged myLoc otherLoc
           `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
         return other
 
@@ -2258,8 +2275,47 @@ execConst c vs s k = do
     return $ Out (VText (e' ^. entityName)) s k
 
 ------------------------------------------------------------
+-- The "watch" command
+------------------------------------------------------------
+
+addWatchedLocation ::
+  HasRobotStepState sig m =>
+  Location ->
+  m ()
+addWatchedLocation loc = do
+  rid <- use robotID
+  robotsWatching %= M.insertWith (<>) loc (S.singleton rid)
+
+-- | Clear watches that are out of range
+purgeFarAwayWatches ::
+  HasRobotStepState sig m => m ()
+purgeFarAwayWatches = do
+  privileged <- isPrivilegedBot
+  myLoc <- use robotLocation
+  rid <- use robotID
+
+  let isNearby = isNearbyOrExempt privileged myLoc
+      f loc =
+        if not $ isNearby loc
+          then S.delete rid
+          else id
+
+  robotsWatching %= M.filter (not . null) . M.mapWithKey f
+
+------------------------------------------------------------
 -- Some utility functions
 ------------------------------------------------------------
+
+-- | Exempts the robot from various command constraints
+-- when it is either a system robot or playing in creative mode
+isPrivilegedBot :: HasRobotStepState sig m => m Bool
+isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
+
+-- | Requires that the target location is within one cell.
+-- Requirement is waived if the bot is privileged.
+isNearbyOrExempt :: Bool -> Location -> Location -> Bool
+isNearbyOrExempt privileged myLoc otherLoc =
+  privileged || otherLoc `manhattan` myLoc <= 1
 
 grantAchievement ::
   (Has (State GameState) sig m, Has (Lift IO) sig m) =>

@@ -45,17 +45,19 @@ module Swarm.Game.World (
 
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
-import Control.Effect.State (State, get, modify)
+import Control.Effect.State (State, get, modify, state)
 import Control.Lens
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Bits
 import Data.Foldable (foldl')
+import Data.Function (on)
 import Data.Int (Int32)
 import Data.Map.Strict qualified as M
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
 import Swarm.Util ((?))
 import Prelude hiding (lookup)
@@ -247,15 +249,27 @@ lookupEntityM c = do
   lookupEntity c <$> get @(World t e)
 
 -- | Update the entity (or absence thereof) at a certain location,
---   returning an updated 'World'.  See also 'updateM'.
-update :: Coords -> (Maybe e -> Maybe e) -> World t e -> World t e
+--   returning an updated 'World' and a Boolean indicating whether
+--   the update changed the entity here.
+--   See also 'updateM'.
+update :: Coords -> (Maybe Entity -> Maybe Entity) -> World t Entity -> (World t Entity, Bool)
 update i g w@(World f t m) =
-  World f t (M.insert i (g (lookupEntity i w)) m)
+  (wNew, ((/=) `on` fmap (view entityHash)) entityAfter entityBefore)
+ where
+  wNew = World f t $ M.insert i entityAfter m
+  entityBefore = lookupEntity i w
+  entityAfter = g entityBefore
 
 -- | A stateful variant of 'update', which also ensures the tile
 --   containing the given coordinates is loaded.
-updateM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> (Maybe e -> Maybe e) -> m ()
-updateM c g = modify @(World t e) $ update c g . loadCell c
+updateM ::
+  forall t sig m.
+  (Has (State (World t Entity)) sig m, IArray U.UArray t) =>
+  Coords ->
+  (Maybe Entity -> Maybe Entity) ->
+  m Bool
+updateM c g = do
+  state @(World t Entity) $ update c g . loadCell c
 
 -- | Load the tile containing a specific cell.
 loadCell :: IArray U.UArray t => Coords -> World t e -> World t e

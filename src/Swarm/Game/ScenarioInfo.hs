@@ -64,6 +64,7 @@ import Data.Text (Text)
 import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
+import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
@@ -92,7 +93,7 @@ data ScenarioStatus
       -- ^ Time when the scenario was started including time zone.
       , _scenarioElapsed :: NominalDiffTime
       -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: Integer
+      , _scenarioElapsedTicks :: TickNumber
       -- ^ Ticks elapsed until quitting the scenario.
       }
   | Complete
@@ -100,7 +101,7 @@ data ScenarioStatus
       -- ^ Time when the scenario was started including time zone.
       , _scenarioElapsed :: NominalDiffTime
       -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: Integer
+      , _scenarioElapsedTicks :: TickNumber
       -- ^ Ticks elapsed until quitting the scenario.
       }
   deriving (Eq, Ord, Show, Read, Generic)
@@ -156,7 +157,7 @@ scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
 -- Note that when comparing "best" times, shorter is not always better!
 -- As long as the scenario is not completed (e.g. some do not have win condition)
 -- we consider having fun _longer_ to be better.
-updateScenarioInfoOnFinish :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
+updateScenarioInfoOnFinish :: ZonedTime -> TickNumber -> Bool -> ScenarioInfo -> ScenarioInfo
 updateScenarioInfoOnFinish z ticks completed si@(ScenarioInfo p s bTime bTicks) = case s of
   InProgress start _ _ ->
     let el = (diffUTCTime `on` zonedTimeToUTC) z start
