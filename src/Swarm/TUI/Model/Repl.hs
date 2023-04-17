@@ -285,7 +285,8 @@ replType :: Lens' REPLState (Maybe Polytype)
 --   This is used to restore the repl form after the user visited the history.
 replLast :: Lens' REPLState Text
 
--- | Input handler or typing mode
+-- | The current REPL control mode, i.e. how user input to the REPL
+--   panel is being handled.
 replControlMode :: Lens' REPLState ReplControlMode
 
 -- | History of things the user has typed at the REPL, interleaved
