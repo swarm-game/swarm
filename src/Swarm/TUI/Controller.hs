@@ -833,7 +833,7 @@ doGoalUpdates = do
       return True
     WinConditions _ oc -> do
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
-          -- The "uiGoal" field is intialized with empty members, so we know that
+          -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
           isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)

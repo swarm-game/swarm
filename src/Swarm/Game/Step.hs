@@ -325,7 +325,7 @@ hypotheticalWinCheck em g ws oc = do
       Left exnText ->
         CompletionsWithExceptions
           (exnText : exnTexts)
-          currentCompletions
+          (OB.addIncomplete obj currentCompletions)
           announcements
       Right boolResult ->
         CompletionsWithExceptions
