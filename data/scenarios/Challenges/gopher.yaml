@@ -73,6 +73,7 @@ robots:
       - [120, swivel]
       - [120, branch predictor]
       - [120, drill]
+      - [120, rolex]
       - [120, flower]
   - name: gopher
     system: true
@@ -117,6 +118,14 @@ entities:
     description:
       - Unearthed by industrious gophers.
     properties: [known, portable]
+  - name: rolex
+    display:
+      char: 'R'
+      attr: silver
+    description:
+      - Enables robots to use the 'watch' command.
+    properties: [known, portable]
+    capabilities: [wakeself]
 recipes:
   - in:
       - [1, mound]
