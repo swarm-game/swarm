@@ -232,7 +232,7 @@ maxWidths = map (maximum . map T.length) . transpose
 addLink :: Text -> Text -> Text
 addLink l t = T.concat ["[", t, "](", l, ")"]
 
-tshow :: (Show a) => a -> Text
+tshow :: Show a => a -> Text
 tshow = T.pack . show
 
 -- ---------
