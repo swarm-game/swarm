@@ -81,6 +81,8 @@
                "resonate"
                "sniff"
                "chirp"
+               "watch"
+               "surveil"
                "heading"
                "blocked"
                "scan"

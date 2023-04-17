@@ -66,7 +66,7 @@ import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
-import Swarm.Game.CESK (CESK (..))
+import Swarm.Game.CESK (CESK (..), TickNumber)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -378,7 +378,7 @@ clockEquipped gs = case focusedRobot gs of
     | otherwise -> False
 
 -- | Format a ticks count as a hexadecimal clock.
-drawTime :: Integer -> Bool -> Widget n
+drawTime :: TickNumber -> Bool -> Widget n
 drawTime t showTicks =
   str . mconcat $
     [ printf "%x" (t `shiftR` 20)
@@ -394,7 +394,7 @@ drawTime t showTicks =
 --   of ticks (e.g. 943 = 0x3af), and the second argument indicates
 --   whether the time should be shown down to single-tick resolution
 --   (e.g. 0:00:3a.f) or not (e.g. 0:00:3a).
-maybeDrawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
+maybeDrawTime :: TickNumber -> Bool -> GameState -> Maybe (Widget n)
 maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> drawTime t showTicks
 
 -- | Draw info about the current number of ticks per second.
