@@ -734,7 +734,7 @@ drawKeyMenu s =
     hBox
       [ vBox
           [ mkCmdRow globalKeyCmds
-          , padLeft (Pad 2) $ contextCmds
+          , padLeft (Pad 2) contextCmds
           ]
       , gameModeWidget
       ]
