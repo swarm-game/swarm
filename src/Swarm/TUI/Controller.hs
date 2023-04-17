@@ -911,10 +911,14 @@ handleREPLEvent x = do
       controlMode = repl ^. replControlMode
       uinput = repl ^. replPromptText
   case x of
+    -- Handle Ctrl-c here so we can always cancel the currently running
+    -- base program no matter what REPL control mode we are in.
     ControlChar 'c' -> do
       gameState . baseRobot . machine %= cancel
       uiState . uiREPL . replPromptType .= CmdPrompt []
       uiState . uiREPL . replPromptText .= ""
+
+    -- Handle M-p and M-k, shortcuts for toggling pilot + key handler modes.
     MetaChar 'p' ->
       onlyCreative $ do
         curMode <- use $ uiState . uiREPL . replControlMode
@@ -928,6 +932,9 @@ handleREPLEvent x = do
       when (isJust (s ^. gameState . inputHandler)) $ do
         curMode <- use $ uiState . uiREPL . replControlMode
         (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
+
+    -- Handle other events in a way appropriate to the current REPL
+    -- control mode.
     _ -> case controlMode of
       Typing -> handleREPLEventTyping x
       Piloting -> handleREPLEventPiloting x
