@@ -30,3 +30,4 @@
 1171-sniff-command.yaml
 1171-chirp-command.yaml
 1171-resonate-command.yaml
+1207-scout-command.yaml

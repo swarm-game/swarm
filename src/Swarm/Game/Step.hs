@@ -39,7 +39,7 @@ import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, for_, traverse_)
-import Data.Foldable.Extra (findM)
+import Data.Foldable.Extra (findM, firstJustM)
 import Data.Function (on)
 import Data.Functor (void)
 import Data.Int (Int32)
@@ -1243,10 +1243,52 @@ execConst c vs s k = do
         inv <- use robotInventory
         return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
+    Scout -> case vs of
+      [VDir d] -> do
+        rMap <- use robotMap
+        myLoc <- use robotLocation
+        heading <- deriveHeading d
+        botsByLocs <- use robotsByLocation
+        selfRid <- use robotID
+
+        -- Includes the base location, so we exclude the base robot later.
+        let locsInDirection :: [Location]
+            locsInDirection = take maxScoutRange $ iterate (.+^ heading) myLoc
+
+        let hasOpaqueEntity =
+              fmap (maybe False (`hasProperty` E.Opaque)) . entityAt
+
+        let hasVisibleBot :: Location -> Bool
+            hasVisibleBot = any botIsVisible . IS.toList . excludeSelf . botsHere
+             where
+              excludeSelf = (`IS.difference` IS.singleton selfRid)
+              botsHere loc = M.findWithDefault mempty loc botsByLocs
+              botIsVisible = maybe False canSee . (`IM.lookup` rMap)
+              canSee = not . (^. robotDisplay . invisible)
+
+        -- A robot on the same cell as an opaque entity is considered hidden.
+        -- Returns (Just Bool) if the result is conclusively visible or opaque,
+        -- or Nothing if we don't have a conclusive answer yet.
+        let isConclusivelyVisible :: Bool -> Location -> Maybe Bool
+            isConclusivelyVisible isOpaque loc
+              | isOpaque = Just False
+              | hasVisibleBot loc = Just True
+              | otherwise = Nothing
+
+        let isConclusivelyVisibleM loc = do
+              opaque <- hasOpaqueEntity loc
+              return $ isConclusivelyVisible opaque loc
+
+        -- This ensures that we only evaluate locations until
+        -- a conclusive result is obtained, so we don't always
+        -- have to inspect the maximum range of the command.
+        result <- firstJustM isConclusivelyVisibleM locsInDirection
+        let foundBot = fromMaybe False result
+        return $ Out (VBool foundBot) s k
+      _ -> badConst
     Whereami -> do
       loc <- use robotLocation
-      let Location x y = loc
-      return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
+      return $ Out (asValue loc) s k
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation
@@ -1446,16 +1488,14 @@ execConst c vs s k = do
     RobotNamed -> case vs of
       [VText rname] -> do
         r <- robotWithName rname >>= (`isJustOrFail` ["There is no robot named", rname])
-        let robotValue = VRobot (r ^. robotID)
-        return $ Out robotValue s k
+        return $ Out (asValue r) s k
       _ -> badConst
     RobotNumbered -> case vs of
       [VInt rid] -> do
         r <-
           robotWithID (fromIntegral rid)
             >>= (`isJustOrFail` ["There is no robot with number", from (show rid)])
-        let robotValue = VRobot (r ^. robotID)
-        return $ Out robotValue s k
+        return $ Out (asValue r) s k
       _ -> badConst
     Say -> case vs of
       [VText msg] -> do
@@ -1568,9 +1608,8 @@ execConst c vs s k = do
       [VText name] -> do
         loc <- use robotLocation
         me <- entityAt loc
-        case me of
-          Nothing -> return $ Out (VBool False) s k
-          Just e -> return $ Out (VBool $ isEntityNamed name e) s k
+        let here = maybe False (isEntityNamed name) me
+        return $ Out (VBool here) s k
       _ -> badConst
     Isempty -> do
       loc <- use robotLocation
@@ -1781,7 +1820,7 @@ execConst c vs s k = do
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
-        return $ Out (VRobot (newRobot ^. robotID)) s k
+        return $ Out (asValue newRobot) s k
       _ -> badConst
     Salvage -> case vs of
       [] -> do
@@ -1937,7 +1976,15 @@ execConst c vs s k = do
       ]
 
   rectCells :: Integer -> Integer -> Integer -> Integer -> [V2 Int32]
-  rectCells x1 y1 x2 y2 = [V2 x y | x <- [fromIntegral xMin .. fromIntegral xMax], y <- [fromIntegral yMin .. fromIntegral yMax]]
+  rectCells x1 y1 x2 y2 =
+    rectCellsInt32
+      (fromIntegral x1)
+      (fromIntegral y1)
+      (fromIntegral x2)
+      (fromIntegral y2)
+
+  rectCellsInt32 :: Int32 -> Int32 -> Int32 -> Int32 -> [V2 Int32]
+  rectCellsInt32 x1 y1 x2 y2 = [V2 x y | x <- [xMin .. xMax], y <- [yMin .. yMax]]
    where
     (xMin, xMax) = sortPair (x1, x2)
     (yMin, yMax) = sortPair (y1, y2)
@@ -1974,12 +2021,17 @@ execConst c vs s k = do
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
       Out v s (FImmediate c wf rf : k)
 
+  deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
+  deriveHeading d = do
+    orient <- use robotOrientation
+    when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
+    return $ applyTurn d $ orient ? zero
+
   lookInDirection :: HasRobotStepState sig m => Direction -> m (Location, Maybe Entity)
   lookInDirection d = do
+    newHeading <- deriveHeading d
     loc <- use robotLocation
-    orient <- use robotOrientation
-    when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
-    let nextLoc = loc .+^ applyTurn d (orient ? zero)
+    let nextLoc = loc .+^ newHeading
     (nextLoc,) <$> entityAt nextLoc
 
   ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
