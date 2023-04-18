@@ -325,11 +325,14 @@ hypotheticalWinCheck em g ws oc = do
       Left exnText ->
         CompletionsWithExceptions
           (exnText : exnTexts)
-          currentCompletions
+          -- Push back the incomplete goal that had been popped for inspection
+          (OB.addIncomplete obj currentCompletions)
           announcements
       Right boolResult ->
         CompletionsWithExceptions
           exnTexts
+          -- Either restore the goal to the incomplete list from which it was popped
+          -- or move it to the complete (or unwinnable) bucket.
           (modifyCompletions obj currentCompletions)
           (modifyAnnouncements announcements)
        where
