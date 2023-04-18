@@ -39,7 +39,7 @@ import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, for_, traverse_)
-import Data.Foldable.Extra (findM)
+import Data.Foldable.Extra (findM, firstJustM)
 import Data.Function (on)
 import Data.Functor (void)
 import Data.Int (Int32)
@@ -1267,17 +1267,22 @@ execConst c vs s k = do
               canSee = not . (^. robotDisplay . invisible)
 
         -- A robot on the same cell as an opaque entity is considered hidden.
-        let evalLocation :: Bool -> Location -> Maybe Bool
-            evalLocation isOpaque loc
+        -- Returns (Just Bool) if the result is conclusively visible or opaque,
+        -- or Nothing if we don't have a conclusive answer yet.
+        let isConclusivelyVisible :: Bool -> Location -> Maybe Bool
+            isConclusivelyVisible isOpaque loc
               | isOpaque = Just False
               | hasVisibleBot loc = Just True
               | otherwise = Nothing
 
-        let evalLocationM loc = do
+        let isConclusivelyVisibleM loc = do
               opaque <- hasOpaqueEntity loc
-              return $ evalLocation opaque loc
+              return $ isConclusivelyVisible opaque loc
 
-        result <- asum <$> mapM evalLocationM locsInDirection
+        -- This ensures that we only evaluate locations until
+        -- a conclusive result is obtained, so we don't always
+        -- have to inspect the maximum range of the command.
+        result <- firstJustM isConclusivelyVisibleM locsInDirection
         let foundBot = fromMaybe False result
         return $ Out (VBool foundBot) s k
       _ -> badConst
