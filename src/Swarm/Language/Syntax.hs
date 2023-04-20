@@ -38,6 +38,7 @@ module Swarm.Language.Syntax (
   isLong,
   maxSniffRange,
   maxScoutRange,
+  maxStrideRange,
 
   -- * Syntax
   Syntax' (..),
@@ -111,6 +112,9 @@ maxSniffRange = 256
 
 maxScoutRange :: Int
 maxScoutRange = 64
+
+maxStrideRange :: Int
+maxStrideRange = 64
 
 ------------------------------------------------------------
 -- Directions
@@ -202,6 +206,8 @@ data Const
 
     -- | Move forward one step.
     Move
+  | -- | Move forward multiple steps.
+    Stride
   | -- | Turn in some direction.
     Turn
   | -- | Grab an item from the current location.
@@ -557,6 +563,7 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
+  Stride -> command 1 short "Move forward multiple steps."
   Turn -> command 1 short "Turn in some direction."
   Grab -> command 0 short "Grab an item from the current location."
   Harvest ->
