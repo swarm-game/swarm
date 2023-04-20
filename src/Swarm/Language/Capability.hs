@@ -34,6 +34,8 @@ data Capability
     CPower
   | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Stride' command
+    CMovemultiple
   | -- | Execute the 'Move' command for a heavy robot
     CMoveheavy
   | -- | Execute the 'Turn' command
@@ -191,6 +193,7 @@ constCaps = \case
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
+  Stride -> Just CMovemultiple
   Turn -> Just CTurn
   Grab -> Just CGrab
   Harvest -> Just CHarvest

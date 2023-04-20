@@ -1064,6 +1064,31 @@ execConst c vs s k = do
           }
       updateRobotLocation loc nextLoc
       return $ Out VUnit s k
+    Stride -> case vs of
+      [VInt d] -> do
+        -- Figure out where we're going
+        loc <- use robotLocation
+        orient <- use robotOrientation
+        let heading = orient ? zero
+
+        -- Excludes the base location.
+        let locsInDirection :: [Location]
+            locsInDirection =
+              take (min (fromIntegral d) maxStrideRange) $
+                drop 1 $
+                  iterate (.+^ heading) loc
+
+        failureMaybes <- mapM checkMoveFailure locsInDirection
+        let maybeFailure = sequenceA failureMaybes
+
+        let maybeLastLoc = do
+              guard $ null maybeFailure
+              listToMaybe $ reverse locsInDirection
+
+        forM_ maybeLastLoc $ updateRobotLocation loc
+
+        return $ Out VUnit s k
+      _ -> badConst
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
         -- Make sure the other robot exists and is close
@@ -2207,30 +2232,39 @@ execConst c vs s k = do
       mAch
     selfDestruct .= True
 
+  checkMoveFailure :: HasRobotStepState sig m => Location -> m (Maybe MoveFailureDetails)
+  checkMoveFailure nextLoc = do
+    me <- entityAt nextLoc
+    systemRob <- use systemRobot
+    caps <- use robotCapabilities
+    return $ do
+      e <- me
+      guard $ not systemRob
+
+      -- robots can not walk through walls
+      if e `hasProperty` Unwalkable
+        then Just $ MoveFailureDetails e PathBlocked
+        else -- robots drown if they walk over liquid without boat
+
+          if e `hasProperty` Liquid && CFloat `S.notMember` caps
+            then Just $ MoveFailureDetails e PathLiquid
+            else Nothing
+
   -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
   checkMoveAhead :: HasRobotStepState sig m => Location -> MoveFailure -> m ()
   checkMoveAhead nextLoc MoveFailure {..} = do
-    me <- entityAt nextLoc
-    systemRob <- use systemRobot
-    case me of
+    maybeFailure <- checkMoveFailure nextLoc
+    case maybeFailure of
       Nothing -> return ()
-      Just e
-        | systemRob -> return ()
-        | otherwise -> do
-            -- robots can not walk through walls
-            when (e `hasProperty` Unwalkable) $
-              case failIfBlocked of
-                Destroy -> destroyIfNotBase Nothing
-                ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
-                IgnoreFail -> return ()
-
-            -- robots drown if they walk over liquid without boat
-            caps <- use robotCapabilities
-            when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
-              case failIfDrown of
-                Destroy -> destroyIfNotBase Nothing
-                ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
-                IgnoreFail -> return ()
+      Just (MoveFailureDetails e failureMode) -> case failureMode of
+        PathBlocked -> case failIfBlocked of
+          Destroy -> destroyIfNotBase Nothing
+          ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
+          IgnoreFail -> return ()
+        PathLiquid -> case failIfDrown of
+          Destroy -> destroyIfNotBase Nothing
+          ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+          IgnoreFail -> return ()
 
   getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
   getRobotWithinTouch rid = do
@@ -2384,6 +2418,9 @@ grantAchievement a = do
       (<>)
       a
       (Attainment (GameplayAchievement a) scenarioPath currentTime)
+
+data MoveFailureMode = PathBlocked | PathLiquid
+data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
 
 -- | How to handle failure, for example when moving to blocked location
 data RobotFailure = ThrowExn | Destroy | IgnoreFail

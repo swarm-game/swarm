@@ -539,6 +539,7 @@ inferConst c = case c of
   Noop -> [tyQ| cmd unit |]
   Selfdestruct -> [tyQ| cmd unit |]
   Move -> [tyQ| cmd unit |]
+  Stride -> [tyQ| int -> cmd unit |]
   Turn -> [tyQ| dir -> cmd unit |]
   Grab -> [tyQ| cmd text |]
   Harvest -> [tyQ| cmd text |]
