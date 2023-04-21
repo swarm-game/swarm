@@ -1082,10 +1082,11 @@ execConst c vs s k = do
         let maybeFirstFailure = asum failureMaybes
         let maybeFailures = sequenceA failureMaybes
 
-        applyMoveFailureEffect maybeFirstFailure $ MoveFailure
-          { failIfBlocked = ThrowExn
-          , failIfDrown = Destroy
-          }
+        applyMoveFailureEffect maybeFirstFailure $
+          MoveFailure
+            { failIfBlocked = ThrowExn
+            , failIfDrown = Destroy
+            }
 
         let maybeLastLoc = do
               guard $ null maybeFailures
@@ -2264,7 +2265,6 @@ execConst c vs s k = do
   -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
   applyMoveFailureEffect :: HasRobotStepState sig m => Maybe MoveFailureDetails -> MoveFailure -> m ()
   applyMoveFailureEffect maybeFailure MoveFailure {..} = do
-
     case maybeFailure of
       Nothing -> return ()
       Just (MoveFailureDetails e failureMode) -> case failureMode of
