@@ -1079,10 +1079,16 @@ execConst c vs s k = do
                   iterate (.+^ heading) loc
 
         failureMaybes <- mapM checkMoveFailure locsInDirection
-        let maybeFailure = sequenceA failureMaybes
+        let maybeFirstFailure = asum failureMaybes
+        let maybeFailures = sequenceA failureMaybes
+
+        applyMoveFailureEffect maybeFirstFailure $ MoveFailure
+          { failIfBlocked = ThrowExn
+          , failIfDrown = Destroy
+          }
 
         let maybeLastLoc = do
-              guard $ null maybeFailure
+              guard $ null maybeFailures
               listToMaybe $ reverse locsInDirection
 
         forM_ maybeLastLoc $ updateRobotLocation loc
@@ -2250,10 +2256,15 @@ execConst c vs s k = do
             then Just $ MoveFailureDetails e PathLiquid
             else Nothing
 
-  -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
   checkMoveAhead :: HasRobotStepState sig m => Location -> MoveFailure -> m ()
-  checkMoveAhead nextLoc MoveFailure {..} = do
+  checkMoveAhead nextLoc failureHandlers = do
     maybeFailure <- checkMoveFailure nextLoc
+    applyMoveFailureEffect maybeFailure failureHandlers
+
+  -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
+  applyMoveFailureEffect :: HasRobotStepState sig m => Maybe MoveFailureDetails -> MoveFailure -> m ()
+  applyMoveFailureEffect maybeFailure MoveFailure {..} = do
+
     case maybeFailure of
       Nothing -> return ()
       Just (MoveFailureDetails e failureMode) -> case failureMode of

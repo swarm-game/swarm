@@ -1,0 +1,51 @@
+version: 1
+name: Stride test
+creative: false
+description: Move multiple cells at once
+objectives:
+  - goal:
+      - Grab the tree
+    condition: |
+      as base {has "tree"}
+solution: |
+  stride 5;
+  grab;
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - branch predictor
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - scanner
+      - string
+      - treads
+      - turbocharger
+entities:
+- name: turbocharger
+  display:
+    attr: silver
+    char: 't'
+  description:
+  - Allows one to "stride" across multiple cells
+  properties: [known, portable]
+  capabilities: [movemultiple]
+known: [tree, flower, boulder]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '@': [grass, boulder]
+    '*': [grass, flower]
+    'T': [grass, tree]
+  upperleft: [0, 0]
+  map: |
+   ........
+   Ω....T..
+   ........
