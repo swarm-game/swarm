@@ -958,6 +958,7 @@ displayProperties = displayList . mapMaybe showProperty
   showProperty Infinite = Just "infinite"
   showProperty Liquid = Just "liquid"
   showProperty Unwalkable = Just "blocking"
+  showProperty Opaque = Just "opaque"
   -- Most things are portable so we don't show that.
   showProperty Portable = Nothing
   -- 'Known' is just a technical detail of how we handle some entities

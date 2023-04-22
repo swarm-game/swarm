@@ -124,6 +124,8 @@ data EntityProperty
     Unwalkable
   | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab' or 'Swarm.Language.Syntax.Harvest').
     Portable
+  | -- | Obstructs the view of robots that attempt to "scout"
+    Opaque
   | -- | Regrows from a seed after it is harvested.
     Growable
   | -- | Regenerates infinitely when grabbed or harvested.

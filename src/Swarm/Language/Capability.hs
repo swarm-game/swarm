@@ -58,6 +58,8 @@ data Capability
     CMake
   | -- | Execute the 'Count' command
     CCount
+  | -- | Execute the 'Scout' command. Reconnaissance along a line in a direction.
+    CRecondir
   | -- | Execute the 'Build' command
     CBuild
   | -- | Execute the 'Salvage' command
@@ -224,6 +226,7 @@ constCaps = \case
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  Scout -> Just CRecondir
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount

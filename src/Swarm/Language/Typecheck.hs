@@ -561,6 +561,7 @@ inferConst c = case c of
   Appear -> [tyQ| text -> cmd unit |]
   Create -> [tyQ| text -> cmd unit |]
   Time -> [tyQ| cmd int |]
+  Scout -> [tyQ| dir -> cmd bool |]
   Whereami -> [tyQ| cmd (int * int) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
