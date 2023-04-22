@@ -952,7 +952,7 @@ runInputHandler kc = do
     -- Shouldn't be possible to get here if there is no input handler, but
     -- if we do somehow, just do nothing.
     Nothing -> return ()
-    Just handler -> do
+    Just (_, handler) -> do
       -- Make sure the base is currently idle; if so, apply the
       -- installed input handler function to a `key` value
       -- representing the typed input.

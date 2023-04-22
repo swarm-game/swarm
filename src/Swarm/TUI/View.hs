@@ -742,7 +742,7 @@ drawKeyMenu s =
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
-    | ctrlMode == Handling = txt $ fromMaybe "" (s ^. gameState . inputHandlerHint)
+    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
