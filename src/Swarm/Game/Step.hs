@@ -93,10 +93,10 @@ import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
 
--- | The main function to do one game step.
+-- | The main function to do one game tick.
 --
--- Note that the game may be in 'RobotStep' mode and not finish
--- the tick. Use the return value to check that a full tick happened.
+--   Note that the game may be in 'RobotStep' mode and not finish
+--   the tick. Use the return value to check whether a full tick happened.
 gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m Bool
 gameTick = do
   wakeUpRobotsDoneSleeping
@@ -1424,6 +1424,10 @@ execConst c vs s k = do
         for_ me $ \e -> do
           robotInventory %= insertCount 0 e
           updateDiscoveredEntities e
+          -- Flag the world for a redraw since scanning something may
+          -- change the way it is drawn (if the base is doing the
+          -- scanning)
+          flagRedraw
         return $ Out (asValue me) s k
       _ -> badConst
     Knows -> case vs of
@@ -1449,6 +1453,11 @@ execConst c vs s k = do
         -- Upload our log
         rlog <- use robotLog
         robotMap . at otherID . _Just . robotLog <>= rlog
+
+        -- Flag the world for redraw since uploading may change the
+        -- base's knowledge and hence how entities are drawn (if they
+        -- go from unknown to known).
+        flagRedraw
 
         return $ Out VUnit s k
       _ -> badConst
