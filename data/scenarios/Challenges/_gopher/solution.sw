@@ -20,6 +20,13 @@ def getDirection = \n.
     };
     end;
 
+def watchDir = \n.
+    watch $ getDirection n;
+    if (n > 0) {
+        watchDir $ n - 1;
+    } {};
+    end;
+
 /**
 Loops forever
 */
@@ -42,9 +49,8 @@ def scanDirections = \n.
         if (n > 0) {
             scanDirections $ n - 1;
         } {
-            // Inserting this "wait" speeds up the
-            // integration test significantly (more than 3x)
-            wait 64;
+            watchDir 4;
+            wait 1000;
             scanDirections 4;
         };
     } {};
