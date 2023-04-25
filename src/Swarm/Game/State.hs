@@ -39,6 +39,7 @@ module Swarm.Game.State (
   robotMap,
   robotsByLocation,
   robotsAtLocation,
+  robotsWatching,
   robotsInArea,
   baseRobot,
   activeRobots,
@@ -68,6 +69,7 @@ module Swarm.Game.State (
   replNextValueIndex,
   replWorking,
   replActiveType,
+  inputHandler,
   messageQueue,
   lastSeenMessageTime,
   focusedRobotID,
@@ -102,6 +104,7 @@ module Swarm.Game.State (
   addRobot,
   addTRobot,
   emitMessage,
+  wakeWatchingRobots,
   sleepUntil,
   sleepForever,
   wakeUpRobotsDoneSleeping,
@@ -146,12 +149,13 @@ import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Time (getZonedTime)
+import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (CESK (Waiting), TickNumber, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.Failure.Render
@@ -368,9 +372,13 @@ data GameState = GameState
     -- wake-up time is reached, at which point it is removed via
     -- wakeUpRobotsDoneSleeping.
     -- Waiting robots for a given time are a list because it is cheaper to
-    -- append to a list than to a Set.
-    _waitingRobots :: Map Integer [RID]
+    -- prepend to a list than insert into a Set.
+    _waitingRobots :: Map TickNumber [RID]
   , _robotsByLocation :: Map Location IntSet
+  , -- This member exists as an optimization so
+    -- that we do not have to iterate over all "waiting" robots,
+    -- since there may be many.
+    _robotsWatching :: Map Location (S.Set RID)
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
@@ -393,10 +401,11 @@ data GameState = GameState
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
+  , _inputHandler :: Maybe (Text, Value)
   , _messageQueue :: Seq LogEntry
-  , _lastSeenMessageTime :: Integer
+  , _lastSeenMessageTime :: TickNumber
   , _focusedRobotID :: RID
-  , _ticks :: Integer
+  , _ticks :: TickNumber
   , _robotStepsPerTick :: Int
   }
 
@@ -474,6 +483,9 @@ robotsAtLocation loc gs =
     . view robotsByLocation
     $ gs
 
+-- | Get a list of all the robots that are "watching" by location.
+robotsWatching :: Lens' GameState (Map Location (S.Set RID))
+
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
 robotsInArea :: Location -> Int32 -> GameState -> [Robot]
@@ -503,7 +515,7 @@ activeRobots = internalActiveRobots
 -- | The names of the robots that are currently sleeping, indexed by wake up
 --   time. Note that this may not include all sleeping robots, particularly
 --   those that are only taking a short nap (e.g. wait 1).
-waitingRobots :: Getter GameState (Map Integer [RID])
+waitingRobots :: Getter GameState (Map TickNumber [RID])
 waitingRobots = internalWaitingRobots
 
 -- | A counter used to generate globally unique IDs.
@@ -574,13 +586,16 @@ replStatus :: Lens' GameState REPLStatus
 -- | The index of the next it{index} value
 replNextValueIndex :: Lens' GameState Integer
 
+-- | The currently installed input handler and hint text.
+inputHandler :: Lens' GameState (Maybe (Text, Value))
+
 -- | A queue of global messages.
 --
 -- Note that we put the newest entry to the right.
 messageQueue :: Lens' GameState (Seq LogEntry)
 
 -- | Last time message queue has been viewed (used for notification).
-lastSeenMessageTime :: Lens' GameState Integer
+lastSeenMessageTime :: Lens' GameState TickNumber
 
 -- | The current robot in focus.
 --
@@ -593,7 +608,7 @@ focusedRobotID :: Getter GameState RID
 focusedRobotID = to _focusedRobotID
 
 -- | The number of ticks elapsed since the game started.
-ticks :: Lens' GameState Integer
+ticks :: Lens' GameState TickNumber
 
 -- | The maximum number of CESK machine steps a robot may take during
 --   a single tick.
@@ -823,7 +838,7 @@ emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
-sleepUntil :: Has (State GameState) sig m => RID -> Integer -> m ()
+sleepUntil :: Has (State GameState) sig m => RID -> TickNumber -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
   internalWaitingRobots . at time . non [] %= (rid :)
@@ -849,6 +864,77 @@ wakeUpRobotsDoneSleeping = do
       robots <- use robotMap
       let aliveRids = filter (`IM.member` robots) rids
       internalActiveRobots %= IS.union (IS.fromList aliveRids)
+
+      -- These robots' wake times may have been moved "forward"
+      -- by "wakeWatchingRobots".
+      clearWatchingRobots rids
+
+-- | Clear the "watch" state of all of the
+-- awakened robots
+clearWatchingRobots ::
+  Has (State GameState) sig m =>
+  [RID] ->
+  m ()
+clearWatchingRobots rids = do
+  robotsWatching %= M.map (`S.difference` S.fromList rids)
+
+-- | Iterates through all of the currently "wait"-ing robots,
+-- and moves forward the wake time of the ones that are watching this location.
+--
+-- NOTE: Clearing "TickNumber" map entries from "internalWaitingRobots"
+-- upon wakeup is handled by "wakeUpRobotsDoneSleeping" in State.hs
+wakeWatchingRobots :: Has (State GameState) sig m => Location -> m ()
+wakeWatchingRobots loc = do
+  currentTick <- use ticks
+  waitingMap <- use waitingRobots
+  rMap <- use robotMap
+  watchingMap <- use robotsWatching
+
+  -- The bookkeeping updates to robot waiting
+  -- states are prepared in 4 steps...
+
+  let -- Step 1: Identify the robots that are watching this location.
+      botsWatchingThisLoc :: [Robot]
+      botsWatchingThisLoc =
+        mapMaybe (`IM.lookup` rMap) $
+          S.toList $
+            M.findWithDefault mempty loc watchingMap
+
+      -- Step 2: Get the target wake time for each of these robots
+      wakeTimes :: [(RID, TickNumber)]
+      wakeTimes = mapMaybe (sequenceA . (view robotID &&& waitingUntil)) botsWatchingThisLoc
+
+      wakeTimesToPurge :: Map TickNumber (S.Set RID)
+      wakeTimesToPurge = M.fromListWith (<>) $ map (fmap S.singleton . swap) wakeTimes
+
+      -- Step 3: Take these robots out of their time-indexed slot in "waitingRobots".
+      -- To preserve performance, this should be done without iterating over the
+      -- entire "waitingRobots" map.
+      filteredWaiting = foldr f waitingMap $ M.toList wakeTimesToPurge
+       where
+        -- Note: some of the map values may become empty lists.
+        -- But we shall not worry about cleaning those up here;
+        -- they will be "garbage collected" as a matter of course
+        -- when their tick comes up in "wakeUpRobotsDoneSleeping".
+        f (k, botsToRemove) = M.adjust (filter (`S.notMember` botsToRemove)) k
+
+      -- Step 4: Re-add the watching bots to be awakened at the next tick:
+      wakeableBotIds = map fst wakeTimes
+      newWakeTime = currentTick + 1
+      newInsertions = M.singleton newWakeTime wakeableBotIds
+
+  -- NOTE: There are two "sources of truth" for the waiting state of robots:
+  -- 1. In the GameState via "internalWaitingRobots"
+  -- 2. In each robot, via the CESK machine state
+
+  -- 1. Update the game state
+  internalWaitingRobots .= M.unionWith (<>) filteredWaiting newInsertions
+
+  -- 2. Update the machine of each robot
+  forM_ wakeableBotIds $ \rid ->
+    robotMap . at rid . _Just . machine %= \case
+      Waiting _ c -> Waiting newWakeTime c
+      x -> x
 
 deleteRobot :: Has (State GameState) sig m => RID -> m ()
 deleteRobot rn = do
@@ -895,6 +981,7 @@ initGameState = do
         , _runStatus = Running
         , _robotMap = IM.empty
         , _robotsByLocation = M.empty
+        , _robotsWatching = mempty
         , _availableRecipes = mempty
         , _availableCommands = mempty
         , _allDiscoveredEntities = empty
@@ -919,6 +1006,7 @@ initGameState = do
         , _needsRedraw = False
         , _replStatus = REPLDone Nothing
         , _replNextValueIndex = 0
+        , _inputHandler = Nothing
         , _messageQueue = Empty
         , _lastSeenMessageTime = -1
         , _focusedRobotID = 0
@@ -973,6 +1061,7 @@ scenarioToGameState scenario userSeed toRun g = do
           False -> REPLDone Nothing
           True -> REPLWorking (Typed Nothing PolyUnit mempty)
       , _replNextValueIndex = 0
+      , _inputHandler = Nothing
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0

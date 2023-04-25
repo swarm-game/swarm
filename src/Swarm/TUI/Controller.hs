@@ -69,7 +69,7 @@ import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.CESK (cancel, emptyStore, initMachine)
+import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
@@ -80,16 +80,17 @@ import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
+import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
 import Swarm.Language.Parse (reservedWords)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VUnit), prettyValue, stripVResult)
+import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
@@ -626,7 +627,8 @@ runFrameTicks dt = do
   a <- use (uiState . accumulatedTime)
   t <- use (uiState . frameTickCount)
 
-  -- Is there still time left?  Or have we hit the cap on ticks per frame?
+  -- Ensure there is still enough time left, and we haven't hit the
+  -- tick limit for this frame.
   when (a >= dt && t < ticksPerFrameCap) $ do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
@@ -704,7 +706,7 @@ updateUI = do
   -- If the robot moved in or out of range, or hashes don't match
   -- (either because which robot (or whether any robot) is focused
   -- changed, or the focused robot's inventory changed), or the
-  -- inventory was flagged to be updated, regenerate the list.
+  -- inventory was flagged to be updated, regenerate the inventory list.
   inventoryUpdated <-
     if farChanged || (not farChanged && listRobotHash /= focusedRobotHash) || shouldUpdate
       then do
@@ -837,7 +839,7 @@ doGoalUpdates = do
       return True
     WinConditions _ oc -> do
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
-          -- The "uiGoal" field is intialized with empty members, so we know that
+          -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
           isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)
@@ -914,14 +916,58 @@ handleREPLEvent x = do
       controlMode = repl ^. replControlMode
       uinput = repl ^. replPromptText
   case x of
+    -- Handle Ctrl-c here so we can always cancel the currently running
+    -- base program no matter what REPL control mode we are in.
+    ControlChar 'c' -> do
+      gameState . baseRobot . machine %= cancel
+      uiState . uiREPL . replPromptType .= CmdPrompt []
+      uiState . uiREPL . replPromptText .= ""
+
+    -- Handle M-p and M-k, shortcuts for toggling pilot + key handler modes.
     MetaChar 'p' ->
       onlyCreative $ do
-        if T.null uinput
-          then uiState . uiREPL . replControlMode %= cycleEnum
-          else uiState . uiError ?= "Please clear the REPL first."
+        curMode <- use $ uiState . uiREPL . replControlMode
+        case curMode of
+          Piloting -> uiState . uiREPL . replControlMode .= Typing
+          _ ->
+            if T.null uinput
+              then uiState . uiREPL . replControlMode .= Piloting
+              else uiState . uiError ?= "Please clear the REPL first."
+    MetaChar 'k' -> do
+      when (isJust (s ^. gameState . inputHandler)) $ do
+        curMode <- use $ uiState . uiREPL . replControlMode
+        (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
+
+    -- Handle other events in a way appropriate to the current REPL
+    -- control mode.
     _ -> case controlMode of
       Typing -> handleREPLEventTyping x
       Piloting -> handleREPLEventPiloting x
+      Handling -> case x of
+        -- Handle keypresses using the custom installed handler
+        VtyEvent (V.EvKey k mods) -> runInputHandler (mkKeyCombo mods k)
+        -- Handle all other events normally
+        _ -> handleREPLEventTyping x
+
+-- | Run the installed input handler on a key combo entered by the user.
+runInputHandler :: KeyCombo -> EventM Name AppState ()
+runInputHandler kc = do
+  mhandler <- use $ gameState . inputHandler
+  case mhandler of
+    -- Shouldn't be possible to get here if there is no input handler, but
+    -- if we do somehow, just do nothing.
+    Nothing -> return ()
+    Just (_, handler) -> do
+      -- Make sure the base is currently idle; if so, apply the
+      -- installed input handler function to a `key` value
+      -- representing the typed input.
+      working <- use $ gameState . replWorking
+      unless working $ do
+        s <- get
+        let topCtx = topContext s
+            handlerCESK = Out (VKey kc) (topCtx ^. defStore) [FApp handler, FExec]
+        gameState . baseRobot . machine .= handlerCESK
+        gameState %= execState (activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
 handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -1001,10 +1047,6 @@ runBaseTerm topCtx =
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventTyping = \case
-  ControlChar 'c' -> do
-    gameState . baseRobot . machine %= cancel
-    uiState . uiREPL . replPromptType .= CmdPrompt []
-    uiState . uiREPL . replPromptText .= ""
   Key V.KEnter -> do
     s <- get
     let topCtx = topContext s

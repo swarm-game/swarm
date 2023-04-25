@@ -34,6 +34,8 @@ data Capability
     CPower
   | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Stride' command
+    CMovemultiple
   | -- | Execute the 'Move' command for a heavy robot
     CMoveheavy
   | -- | Execute the 'Turn' command
@@ -58,6 +60,8 @@ data Capability
     CMake
   | -- | Execute the 'Count' command
     CCount
+  | -- | Execute the 'Scout' command. Reconnaissance along a line in a direction.
+    CRecondir
   | -- | Execute the 'Build' command
     CBuild
   | -- | Execute the 'Salvage' command
@@ -72,10 +76,14 @@ data Capability
     CSensehere
   | -- | Execute the 'Detect' command
     CDetectloc
+  | -- | Execute the 'Resonate' command
+    CDetectcount
   | -- | Execute the 'Sniff' command
     CDetectdistance
   | -- | Execute the 'Chirp' command
     CDetectdirection
+  | -- | Execute the 'Watch' command
+    CWakeself
   | -- | Execute the 'Scan' command
     CScan
   | -- | Execute the 'Random' command
@@ -137,6 +145,8 @@ data Capability
     CRecord
   | -- | Debug capability.
     CDebug
+  | -- | Capability to handle keyboard input.
+    CHandleinput
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -185,6 +195,7 @@ constCaps = \case
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
+  Stride -> Just CMovemultiple
   Turn -> Just CTurn
   Grab -> Just CGrab
   Harvest -> Just CHarvest
@@ -218,11 +229,16 @@ constCaps = \case
   Atomic -> Just CAtomic
   Time -> Just CTime
   Wait -> Just CTime
+  Scout -> Just CRecondir
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
+  Resonate -> Just CDetectcount
   Sniff -> Just CDetectdistance
   Chirp -> Just CDetectdirection
+  Watch -> Just CWakeself
   Heading -> Just COrient
+  Key -> Just CHandleinput
+  InstallKeyHandler -> Just CHandleinput
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText
@@ -237,6 +253,7 @@ constCaps = \case
   RobotNamed -> Just CGod
   RobotNumbered -> Just CGod
   Create -> Just CGod
+  Surveil -> Just CGod
   -- ----------------------------------------------------------------
   -- arithmetic
   Eq -> Just CCompare

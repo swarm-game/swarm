@@ -12,6 +12,7 @@
 562-lodestone.yaml
 378-objectives.yaml
 684-swap.yaml
+687-watch-command.yaml
 699-movement-fail
 858-inventory
 795-prerequisite
@@ -28,3 +29,6 @@
 1157-drill-return-value.yaml
 1171-sniff-command.yaml
 1171-chirp-command.yaml
+1171-resonate-command.yaml
+1207-scout-command.yaml
+1218-stride-command.yaml

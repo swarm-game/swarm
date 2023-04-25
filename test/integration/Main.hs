@@ -190,7 +190,7 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
-        , testSolution (Sec 20) "Challenges/gopher"
+        , testSolution (Sec 5) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution Default "Challenges/friend"
@@ -269,6 +269,8 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1157-drill-return-value"
         , testSolution Default "Testing/1171-sniff-command"
         , testSolution Default "Testing/1171-chirp-command"
+        , testSolution Default "Testing/1171-resonate-command"
+        , testSolution Default "Testing/1207-scout-command"
         ]
     ]
  where

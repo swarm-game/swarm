@@ -7,7 +7,7 @@
     A tall, living entity made of a tough cellular material called "wood".
     They regrow after being harvested and are an important raw ingredient used
     in making many different devices.
-  properties: [portable, growable]
+  properties: [portable, growable, opaque]
   growth: [500, 600]
 
 - name: branch
@@ -117,7 +117,7 @@
     char: 'A'
   description:
   - A mountain. Can be tunneled through with a drill, but it takes time.
-  properties: [unwalkable]
+  properties: [unwalkable, opaque]
 
 - name: mountain tunnel
   display:
@@ -1223,3 +1223,28 @@
     A nanoscale semiconductor particle with a wide range of
     applications.
   properties: [portable]
+
+- name: 'key'
+  display:
+    attr: gold
+    char: 'k'
+  description:
+  - A versatile item, with uses such as opening
+    locked doors, entering input, and retrieving stored values.
+  properties: [portable]
+
+- name: keyboard
+  display:
+    attr: device
+    char: 'K'
+  description:
+  - A small device with multiple keys, adapted for your unique anatomy.
+  - |
+    `installKeyHandler : text -> (key -> cmd unit) -> cmd unit`
+    installs a custom handler function that can be activated to
+    respond to keyboard inputs typed at the REPL.
+  - |
+    `key : text -> key` constructs values of type `key`, for
+    example `key "Down"` or `key "C-S-x"`.
+  properties: [portable]
+  capabilities: [handleinput]

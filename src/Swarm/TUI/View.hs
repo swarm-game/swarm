@@ -56,7 +56,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set qualified as Set (toList)
@@ -66,7 +66,7 @@ import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
-import Swarm.Game.CESK (CESK (..))
+import Swarm.Game.CESK (CESK (..), TickNumber)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -92,7 +92,7 @@ import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
-import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.Repl (lastEntry)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
@@ -378,7 +378,7 @@ clockEquipped gs = case focusedRobot gs of
     | otherwise -> False
 
 -- | Format a ticks count as a hexadecimal clock.
-drawTime :: Integer -> Bool -> Widget n
+drawTime :: TickNumber -> Bool -> Widget n
 drawTime t showTicks =
   str . mconcat $
     [ printf "%x" (t `shiftR` 20)
@@ -394,7 +394,7 @@ drawTime t showTicks =
 --   of ticks (e.g. 943 = 0x3af), and the second argument indicates
 --   whether the time should be shown down to single-tick resolution
 --   (e.g. 0:00:3a.f) or not (e.g. 0:00:3a).
-maybeDrawTime :: Integer -> Bool -> GameState -> Maybe (Widget n)
+maybeDrawTime :: TickNumber -> Bool -> GameState -> Maybe (Widget n)
 maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> drawTime t showTicks
 
 -- | Draw info about the current number of ticks per second.
@@ -724,7 +724,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       ]
 
 -- | Draw a menu explaining what key commands are available for the
---   current panel.  This menu is displayed as a single line in
+--   current panel.  This menu is displayed as one or two lines in
 --   between the world panel and the REPL.
 --
 -- This excludes the F-key modals that are shown elsewhere.
@@ -734,18 +734,22 @@ drawKeyMenu s =
     hBox
       [ vBox
           [ mkCmdRow globalKeyCmds
-          , padLeft (Pad 2) $ mkCmdRow focusedPanelCmds
+          , padLeft (Pad 2) contextCmds
           ]
       , gameModeWidget
       ]
  where
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
+  contextCmds
+    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . inputHandler . _Just . _1)
+    | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
       . keyCmdsFor
       . focusGetCurrent
-      $ view (uiState . uiFocusRing) s
+      . view (uiState . uiFocusRing)
+      $ s
 
   isReplWorking = s ^. gameState . replWorking
   isPaused = s ^. gameState . paused
@@ -758,11 +762,17 @@ drawKeyMenu s =
   inventorySort = s ^. uiState . uiInventorySort
   ctrlMode = s ^. uiState . uiREPL . replControlMode
   canScroll = creative || (s ^. gameState . worldScrollable)
+  handlerInstalled = isJust (s ^. gameState . inputHandler)
 
-  renderControlModeSwitch :: ReplControlMode -> T.Text
-  renderControlModeSwitch = \case
+  renderPilotModeSwitch :: ReplControlMode -> T.Text
+  renderPilotModeSwitch = \case
     Piloting -> "REPL"
-    Typing -> "pilot"
+    _ -> "pilot"
+
+  renderHandlerModeSwitch :: ReplControlMode -> T.Text
+  renderHandlerModeSwitch = \case
+    Handling -> "REPL"
+    _ -> "key handler"
 
   gameModeWidget =
     padLeft Max
@@ -793,7 +803,8 @@ drawKeyMenu s =
     ]
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [("^c", "cancel") | isReplWorking]
-      ++ [("M-p", renderControlModeSwitch ctrlMode) | creative]
+      ++ [("M-p", renderPilotModeSwitch ctrlMode) | creative]
+      ++ [("M-k", renderHandlerModeSwitch ctrlMode) | handlerInstalled]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
     [ ("←↓↑→ / hjkl", "scroll") | canScroll
     ]
@@ -947,6 +958,7 @@ displayProperties = displayList . mapMaybe showProperty
   showProperty Infinite = Just "infinite"
   showProperty Liquid = Just "liquid"
   showProperty Unwalkable = Just "blocking"
+  showProperty Opaque = Just "opaque"
   -- Most things are portable so we don't show that.
   showProperty Portable = Nothing
   -- 'Known' is just a technical detail of how we handle some entities
@@ -1164,8 +1176,9 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
   latestHistory :: [Widget n]
   latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines - debugLines) (repl ^. replHistory))
   currentPrompt :: Widget Name
-  currentPrompt = case isActive <$> base of
-    Just False -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
+  currentPrompt = case (isActive <$> base, repl ^. replControlMode) of
+    (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
+    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
   inputLines = 1
   debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)

@@ -37,6 +37,8 @@ module Swarm.Language.Syntax (
   isTangible,
   isLong,
   maxSniffRange,
+  maxScoutRange,
+  maxStrideRange,
 
   -- * Syntax
   Syntax' (..),
@@ -84,7 +86,7 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
-import Data.Aeson.Types
+import Data.Aeson.Types hiding (Key)
 import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
@@ -107,6 +109,12 @@ import Witch.From (from)
 -- 'chirp' and 'sniff' commands
 maxSniffRange :: Int32
 maxSniffRange = 256
+
+maxScoutRange :: Int
+maxScoutRange = 64
+
+maxStrideRange :: Int
+maxStrideRange = 64
 
 ------------------------------------------------------------
 -- Directions
@@ -198,6 +206,8 @@ data Const
 
     -- | Move forward one step.
     Move
+  | -- | Move forward multiple steps.
+    Stride
   | -- | Turn in some direction.
     Turn
   | -- | Grab an item from the current location.
@@ -246,15 +256,24 @@ data Const
 
     -- | Get current time
     Time
+  | -- Detect whether a robot is within line-of-sight in a direction
+    Scout
   | -- | Get the current x, y coordinates
     Whereami
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
+  | -- | Count the number of a given entity within the rectangle
+    -- specified by opposite corners, relative to the current location.
+    Resonate
   | -- | Get the distance to the closest instance of the specified entity.
     Sniff
   | -- | Get the direction to the closest instance of the specified entity.
     Chirp
+  | -- | Register a location to interrupt a `wait` upon changes
+    Watch
+  | -- | Register a (remote) location to interrupt a `wait` upon changes
+    Surveil
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -374,6 +393,12 @@ data Const
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
+  | -- Keyboard input
+
+    -- | Create `key` values.
+    Key
+  | -- | Install a new keyboard input handler.
+    InstallKeyHandler
   | -- God-like commands that are omnipresent or omniscient.
 
     -- | Teleport a robot to the given position.
@@ -538,6 +563,10 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
+  Stride ->
+    command 1 short . doc "Move forward multiple steps." $
+      [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
+      ]
   Turn -> command 1 short "Turn in some direction."
   Grab -> command 0 short "Grab an item from the current location."
   Harvest ->
@@ -604,10 +633,20 @@ constInfo c = case c of
     command 1 short . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
+  Scout ->
+    command 1 short . doc "Detect whether a robot is within line-of-sight in a direction." $
+      [ "Perception is blocked by 'Opaque' entities."
+      , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
+      ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
+  Resonate ->
+    command 2 Intangible . doc "Count entities within a rectangle." $
+      [ "Applies a strong magnetic field over a given area and stimulates the matter within, generating a non-directional radio signal. A receiver tuned to the resonant frequency of the target entity is able to measure its quantity."
+      , "Counts the entities within the rectangle specified by opposite corners, relative to the current location."
+      ]
   Sniff ->
     command 1 short . doc "Determine distance to entity." $
       [ "Measures concentration of airborne particles to infer distance to a certain kind of entity."
@@ -620,6 +659,17 @@ constInfo c = case c of
       , "Returns 'down' if out of range or the direction is indeterminate."
       , "Provides absolute directions if \"compass\" equipped, relative directions otherwise."
       , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
+      ]
+  Watch ->
+    command 1 short . doc "Interrupt `wait` upon location changes." $
+      [ "Place seismic detectors to alert upon entity changes to the specified location."
+      , "Supply a direction, as with the `scan` command, to specify a nearby location."
+      , "Can be invoked more than once until the next `wait` command, at which time the only the registered locations that are currently nearby are preserved."
+      , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
+      ]
+  Surveil ->
+    command 1 short . doc "Interrupt `wait` upon (remote) location changes." $
+      [ "Like `watch`, but with no restriction on distance."
       ]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
@@ -706,6 +756,17 @@ constInfo c = case c of
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
+      ]
+  Key ->
+    function 1 . doc "Create a key value from a text description." $
+      [ "The key description can optionally start with modifiers like 'C-', 'M-', 'A-', or 'S-', followed by either a regular key, or a special key name like 'Down' or 'End'"
+      , "For example, 'M-C-x', 'Down', or 'S-4'."
+      , "Which key combinations are actually possible to type may vary by keyboard and terminal program."
+      ]
+  InstallKeyHandler ->
+    command 2 Intangible . doc "Install a keyboard input handler." $
+      [ "The first argument is a hint line that will be displayed when the input handler is active."
+      , "The second argument is a function to handle keyboard inputs."
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
   As -> command 2 Intangible "Hypothetically run a command as if you were another robot."

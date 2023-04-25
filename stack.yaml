@@ -4,5 +4,6 @@ extra-deps:
 - simple-enumeration-0.2.1@sha256:8625b269c1650d3dd0e3887351c153049f4369853e0d525219e07480ea004b9f,1178
 - servant-docs-0.12@sha256:f63abafd79f53c8cf1f14a2b9d2835cf4f46212ce798a20437b9fbffc45933a4,3383
 - boolexpr-0.2@sha256:07f38a0206ad63c2c893e3c6271a2e45ea25ab4ef3a9e973edc746876f0ab9e8,853
+- brick-list-skip-0.1.1.2
 resolver: nightly-2023-01-11
 

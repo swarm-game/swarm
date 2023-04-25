@@ -219,10 +219,15 @@ data REPLPrompt
 defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt []
 
+-- | What is being done with user input to the REPL panel?
 data ReplControlMode
-  = Piloting
-  | Typing
-  deriving (Enum, Bounded, Eq)
+  = -- | The user is typing at the REPL.
+    Typing
+  | -- | The user is driving the base using piloting mode.
+    Piloting
+  | -- | A custom user key handler is processing user input.
+    Handling
+  deriving (Eq, Bounded, Enum)
 
 data REPLState = REPLState
   { _replPromptType :: REPLPrompt
@@ -242,7 +247,16 @@ newREPLEditor t = applyEdit gotoEnd $ editorText REPLInput (Just 1) t
   gotoEnd = if null ls then id else TZ.moveCursor pos
 
 initREPLState :: REPLHistory -> REPLState
-initREPLState = REPLState defaultPrompt (newREPLEditor "") True "" Nothing Typing
+initREPLState hist =
+  REPLState
+    { _replPromptType = defaultPrompt
+    , _replPromptEditor = newREPLEditor ""
+    , _replValid = True
+    , _replLast = ""
+    , _replType = Nothing
+    , _replControlMode = Typing
+    , _replHistory = hist
+    }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''REPLState
 
@@ -271,7 +285,8 @@ replType :: Lens' REPLState (Maybe Polytype)
 --   This is used to restore the repl form after the user visited the history.
 replLast :: Lens' REPLState Text
 
--- | Piloting or Typing mode
+-- | The current REPL control mode, i.e. how user input to the REPL
+--   panel is being handled.
 replControlMode :: Lens' REPLState ReplControlMode
 
 -- | History of things the user has typed at the REPL, interleaved
