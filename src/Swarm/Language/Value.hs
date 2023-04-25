@@ -26,9 +26,9 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Context
+import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
-import Prelude
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -84,6 +84,8 @@ data Value where
   VRef :: Int -> Value
   -- | A record value.
   VRcd :: Map Var Value -> Value
+  -- | A keyboard input.
+  VKey :: KeyCombo -> Value
   -- | A 'requirements' command awaiting execution.
   VRequirements :: Text -> Term -> Env -> Value
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -119,6 +121,7 @@ valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
 valueToTerm (VDelay t _) = TDelay SimpleDelay t
 valueToTerm (VRef n) = TRef n
 valueToTerm (VRcd m) = TRcd (Just . valueToTerm <$> m)
+valueToTerm (VKey kc) = TApp (TConst Key) (TText (prettyKeyCombo kc))
 valueToTerm (VRequirements x t _) = TRequirements x t
 
 -- | An environment is a mapping from variable names to values.

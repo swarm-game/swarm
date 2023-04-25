@@ -69,6 +69,7 @@ module Swarm.Game.State (
   replNextValueIndex,
   replWorking,
   replActiveType,
+  inputHandler,
   messageQueue,
   lastSeenMessageTime,
   focusedRobotID,
@@ -400,6 +401,7 @@ data GameState = GameState
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
+  , _inputHandler :: Maybe (Text, Value)
   , _messageQueue :: Seq LogEntry
   , _lastSeenMessageTime :: TickNumber
   , _focusedRobotID :: RID
@@ -583,6 +585,9 @@ replStatus :: Lens' GameState REPLStatus
 
 -- | The index of the next it{index} value
 replNextValueIndex :: Lens' GameState Integer
+
+-- | The currently installed input handler and hint text.
+inputHandler :: Lens' GameState (Maybe (Text, Value))
 
 -- | A queue of global messages.
 --
@@ -1001,6 +1006,7 @@ initGameState = do
         , _needsRedraw = False
         , _replStatus = REPLDone Nothing
         , _replNextValueIndex = 0
+        , _inputHandler = Nothing
         , _messageQueue = Empty
         , _lastSeenMessageTime = -1
         , _focusedRobotID = 0
@@ -1055,6 +1061,7 @@ scenarioToGameState scenario userSeed toRun g = do
           False -> REPLDone Nothing
           True -> REPLWorking (Typed Nothing PolyUnit mempty)
       , _replNextValueIndex = 0
+      , _inputHandler = Nothing
       , _messageQueue = Empty
       , _focusedRobotID = baseID
       , _ticks = 0

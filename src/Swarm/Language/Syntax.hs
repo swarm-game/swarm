@@ -85,7 +85,7 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
-import Data.Aeson.Types
+import Data.Aeson.Types hiding (Key)
 import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
@@ -387,6 +387,12 @@ data Const
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
+  | -- Keyboard input
+
+    -- | Create `key` values.
+    Key
+  | -- | Install a new keyboard input handler.
+    InstallKeyHandler
   | -- God-like commands that are omnipresent or omniscient.
 
     -- | Teleport a robot to the given position.
@@ -738,6 +744,17 @@ constInfo c = case c of
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
+      ]
+  Key ->
+    function 1 . doc "Create a key value from a text description." $
+      [ "The key description can optionally start with modifiers like 'C-', 'M-', 'A-', or 'S-', followed by either a regular key, or a special key name like 'Down' or 'End'"
+      , "For example, 'M-C-x', 'Down', or 'S-4'."
+      , "Which key combinations are actually possible to type may vary by keyboard and terminal program."
+      ]
+  InstallKeyHandler ->
+    command 2 Intangible . doc "Install a keyboard input handler." $
+      [ "The first argument is a hint line that will be displayed when the input handler is active."
+      , "The second argument is a function to handle keyboard inputs."
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
   As -> command 2 Intangible "Hypothetically run a command as if you were another robot."

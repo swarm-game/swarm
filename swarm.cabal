@@ -121,6 +121,7 @@ library
                       Swarm.Language.Capability
                       Swarm.Language.Context
                       Swarm.Language.Elaborate
+                      Swarm.Language.Key
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
                       Swarm.Language.LSP.VarUsage
@@ -276,7 +277,8 @@ test-suite swarm-unit
                       mtl,
                       swarm,
                       text,
-                      witch
+                      witch,
+                      vty
     hs-source-dirs:   test/unit
     default-language: Haskell2010
     ghc-options:      -threaded

@@ -143,6 +143,8 @@ data Capability
     CRecord
   | -- | Debug capability.
     CDebug
+  | -- | Capability to handle keyboard input.
+    CHandleinput
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -232,6 +234,8 @@ constCaps = \case
   Chirp -> Just CDetectdirection
   Watch -> Just CWakeself
   Heading -> Just COrient
+  Key -> Just CHandleinput
+  InstallKeyHandler -> Just CHandleinput
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText

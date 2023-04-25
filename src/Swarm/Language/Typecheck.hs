@@ -619,6 +619,8 @@ inferConst c = case c of
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| text -> cmd text |]
   Atomic -> [tyQ| cmd a -> cmd a |]
+  Key -> [tyQ| text -> key |]
+  InstallKeyHandler -> [tyQ| text -> (key -> cmd unit) -> cmd unit |]
   Teleport -> [tyQ| actor -> (int * int) -> cmd unit |]
   As -> [tyQ| actor -> {cmd a} -> cmd a |]
   RobotNamed -> [tyQ| text -> cmd actor |]

@@ -47,6 +47,7 @@
                "split"
                "charat"
                "tochar"
+               "key"
              ))
              (x-commands '(
                "noop"
@@ -99,6 +100,7 @@
                "try"
                "swap"
                "atomic"
+               "installkeyhandler"
                "teleport"
                "as"
                "robotnamed"

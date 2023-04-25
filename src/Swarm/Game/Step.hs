@@ -79,6 +79,8 @@ import Swarm.Game.Value
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
+import Swarm.Language.Key (parseKeyComboFull)
+import Swarm.Language.Parse (runParser)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
@@ -1715,6 +1717,16 @@ execConst c vs s k = do
     Fail -> case vs of
       [VText msg] -> return $ Up (User msg) s k
       _ -> badConst
+    Key -> case vs of
+      [VText ktxt] -> case runParser parseKeyComboFull ktxt of
+        Right kc -> return $ Out (VKey kc) s k
+        Left _ -> return $ Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing) s k
+      _ -> badConst
+    InstallKeyHandler -> case vs of
+      [VText hint, handler] -> do
+        inputHandler .= Just (hint, handler)
+        return $ Out VUnit s k
+      _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
         r <- get
@@ -2538,6 +2550,9 @@ compareValues v1 = case v1 of
     v2 -> incompatCmp v1 v2
   VRcd m1 -> \case
     VRcd m2 -> mconcat <$> (zipWithM compareValues `on` M.elems) m1 m2
+    v2 -> incompatCmp v1 v2
+  VKey kc1 -> \case
+    VKey kc2 -> return (compare kc1 kc2)
     v2 -> incompatCmp v1 v2
   VClo {} -> incomparable v1
   VCApp {} -> incomparable v1
