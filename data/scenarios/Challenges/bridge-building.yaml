@@ -157,7 +157,7 @@ robots:
       - counter
       - dictionary
       - grabber
-      - handle
+      - keyboard
       - lambda
       - logger
       - mirror
