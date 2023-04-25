@@ -33,7 +33,6 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
-import Data.IORef (IORef, readIORef)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -56,6 +55,7 @@ import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Language.Syntax
+import Swarm.ReadableIORef
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
@@ -112,8 +112,7 @@ docsBS =
   intro = SD.DocIntro "Swarm Web API" ["All of the valid endpoints are documented below."]
 
 mkApp ::
-  -- | Readonly
-  IORef AppState ->
+  ReadableIORef AppState ->
   -- | Writable
   BChan AppEvent ->
   Servant.Server SwarmAPI
@@ -173,8 +172,7 @@ mkApp appStateRef chan =
 webMain ::
   Maybe (MVar (Either String ())) ->
   Warp.Port ->
-  -- | Readonly
-  IORef AppState ->
+  ReadableIORef AppState ->
   -- | Writable
   BChan AppEvent ->
   IO ()
@@ -212,7 +210,7 @@ defaultPort = 5357
 startWebThread ::
   Maybe Warp.Port ->
   -- | Read-only reference to the application state.
-  IORef AppState ->
+  ReadableIORef AppState ->
   -- | Writable channel to send events to the game
   BChan AppEvent ->
   IO (Either String Warp.Port)
