@@ -19,6 +19,7 @@ module Swarm.TUI.Controller (
   updateUI,
 
   -- ** REPL panel
+  runBaseWebCode,
   handleREPLEvent,
   validateREPLForm,
   adjReplHistIndex,
@@ -260,9 +261,12 @@ handleMainEvent ev = do
   let isCreative = s ^. gameState . creativeMode
   let hasDebug = fromMaybe isCreative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   case ev of
-    AppEvent Frame
-      | s ^. gameState . paused -> continueWithoutRedraw
-      | otherwise -> runFrameUI
+    AppEvent ae -> case ae of
+      Frame
+        | s ^. gameState . paused -> continueWithoutRedraw
+        | otherwise -> runFrameUI
+      Web (RunWebCode c) -> runBaseWebCode c
+      _ -> continueWithoutRedraw
     -- ctrl-q works everywhere
     ControlChar 'q' ->
       case s ^. gameState . winCondition of
@@ -995,6 +999,51 @@ handleREPLEventPiloting x = case x of
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt []
 
+runBaseWebCode :: MonadState AppState m => T.Text -> m ()
+runBaseWebCode uinput = do
+  s <- get
+  let topCtx = topContext s
+  unless (s ^. gameState . replWorking) $
+    runBaseCode topCtx uinput
+
+runBaseCode :: MonadState AppState m => RobotContext -> T.Text -> m ()
+runBaseCode topCtx uinput =
+  case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
+    Right mt -> do
+      uiState %= resetREPL "" (CmdPrompt [])
+      uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
+      runBaseTerm topCtx mt
+    Left err -> do
+      uiState . uiError ?= err
+
+runBaseTerm :: MonadState AppState m => RobotContext -> Maybe ProcessedTerm -> m ()
+runBaseTerm topCtx =
+  modify . maybe id startBaseProgram
+ where
+  -- The player typed something at the REPL and hit Enter; this
+  -- function takes the resulting ProcessedTerm (if the REPL
+  -- input is valid) and sets up the base robot to run it.
+  startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
+    -- Set the REPL status to Working
+    (gameState . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
+      -- The `reqCtx` maps names of variables defined in the
+      -- term (by `def` statements) to their requirements.
+      -- E.g. if we had `def m = move end`, the reqCtx would
+      -- record the fact that `m` needs the `move` capability.
+      -- We simply add the entire `reqCtx` to the robot's
+      -- context, so we can look up requirements if we later
+      -- need to requirements-check an argument to `build` or
+      -- `reprogram` at runtime.  See the discussion at
+      -- https://github.com/swarm-game/swarm/pull/827 for more
+      -- details.
+      . (gameState . baseRobot . robotContext . defReqs <>~ reqCtx)
+      -- Set up the robot's CESK machine to evaluate/execute the
+      -- given term, being sure to initialize the CESK machine
+      -- environment and store from the top-level context.
+      . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
+      -- Finally, be sure to activate the base robot.
+      . (gameState %~ execState (activateRobot 0))
+
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventTyping = \case
@@ -1004,39 +1053,9 @@ handleREPLEventTyping = \case
         repl = s ^. uiState . uiREPL
         uinput = repl ^. replPromptText
 
-        -- The player typed something at the REPL and hit Enter; this
-        -- function takes the resulting ProcessedTerm (if the REPL
-        -- input is valid) and sets up the base robot to run it.
-        startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
-          -- Set the REPL status to Working
-          (gameState . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
-            -- The `reqCtx` maps names of variables defined in the
-            -- term (by `def` statements) to their requirements.
-            -- E.g. if we had `def m = move end`, the reqCtx would
-            -- record the fact that `m` needs the `move` capability.
-            -- We simply add the entire `reqCtx` to the robot's
-            -- context, so we can look up requirements if we later
-            -- need to requirements-check an argument to `build` or
-            -- `reprogram` at runtime.  See the discussion at
-            -- https://github.com/swarm-game/swarm/pull/827 for more
-            -- details.
-            . (gameState . baseRobot . robotContext . defReqs <>~ reqCtx)
-            -- Set up the robot's CESK machine to evaluate/execute the
-            -- given term, being sure to initialize the CESK machine
-            -- environment and store from the top-level context.
-            . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
-            -- Finally, be sure to activate the base robot.
-            . (gameState %~ execState (activateRobot 0))
-
     if not $ s ^. gameState . replWorking
       then case repl ^. replPromptType of
-        CmdPrompt _ ->
-          case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
-            Right mt -> do
-              uiState %= resetREPL "" (CmdPrompt [])
-              uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
-              modify $ maybe id startBaseProgram mt
-            Left err -> uiState . uiError ?= err
+        CmdPrompt _ -> runBaseCode topCtx uinput
         SearchPrompt hist ->
           case lastEntry uinput hist of
             Nothing -> uiState %= resetREPL "" (CmdPrompt [])
