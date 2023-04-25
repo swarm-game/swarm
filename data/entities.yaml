@@ -1036,7 +1036,8 @@
     explains, a type is just a collection of values, and a finite collection
     of values is just a fancy number.  For example, the type `bool` is
     just a fancy version of the number 2, where the two things happen to be
-    labelled `false` and `true`.
+    labelled `false` and `true`.  There are also types `unit` and
+    `void` that correspond to 1 and 0, respectively.
   - |
     The product of two types is a type of pairs, since, for example,
     if `t` is a type with three elements, then there are 2 * 3 = 6
