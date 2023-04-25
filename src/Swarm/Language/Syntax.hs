@@ -563,7 +563,10 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
-  Stride -> command 1 short "Move forward multiple steps."
+  Stride ->
+    command 1 short . doc "Move forward multiple steps." $
+      [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
+      ]
   Turn -> command 1 short "Turn in some direction."
   Grab -> command 0 short "Grab an item from the current location."
   Harvest ->
@@ -632,7 +635,9 @@ constInfo c = case c of
   Time -> command 0 Intangible "Get the current time."
   Scout ->
     command 1 short . doc "Detect whether a robot is within line-of-sight in a direction." $
-      ["Perception is blocked by 'Opaque' entities."]
+      [ "Perception is blocked by 'Opaque' entities."
+      , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
+      ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
