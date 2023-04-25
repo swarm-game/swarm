@@ -54,6 +54,7 @@
                "wait"
                "selfdestruct"
                "move"
+               "stride"
                "turn"
                "grab"
                "harvest"

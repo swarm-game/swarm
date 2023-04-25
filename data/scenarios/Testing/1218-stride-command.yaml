@@ -1,0 +1,102 @@
+version: 1
+name: Stride test
+creative: false
+description: Move multiple cells at once
+objectives:
+  - goal:
+      - Grab the tree, but not a flower
+    condition: |
+      as base {has "tree"}
+    prerequisite:
+        logic:
+          not:
+            id: grab_flower
+  - id: grab_flower
+    teaser: Grab flower
+    goal:
+      - Grab a flower
+    condition: |
+      as base {has "flower"}
+solution: |
+  stride 0;
+  stride (-1);
+
+  turn north;
+  try {
+    stride 5;
+    grab;
+    return ();
+  } {
+    log "Could not grab northern flower";
+  };
+
+  turn west;
+  try {    
+    stride 1;
+  } {
+    log "Could not stride west";
+  };
+
+  turn south;
+  try {
+    stride 5;
+    grab;
+    return ();
+  } {
+    log "Could not grab southern flower";
+  };
+  
+  turn east;
+  stride 5;
+  grab;
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - branch predictor
+      - calculator
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - net
+      - scanner
+      - treads
+      - turbocharger
+entities:
+- name: turbocharger
+  display:
+    attr: silver
+    char: 't'
+  description:
+  - Allows one to "stride" across multiple cells
+  properties: [known, portable]
+  capabilities: [movemultiple]
+known: [tree, flower, boulder, water]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '@': [grass, boulder]
+    'T': [grass, tree]
+    '*': [grass, flower]
+    'w': [grass, water]
+  upperleft: [0, 0]
+  map: |
+   ..............
+   ......*.......
+   ..............
+   ......w.......
+   ..............
+   ...www........
+   .*.wwwΩ....T..
+   ...www@.......
+   ..............
+   ..............
+   ..............
+   ......*.......
+   ..............
