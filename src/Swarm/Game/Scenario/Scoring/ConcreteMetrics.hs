@@ -8,6 +8,7 @@ import Data.Aeson
 import Data.Char (toLower)
 import Data.Time (NominalDiffTime)
 import GHC.Generics (Generic)
+import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Scenario.Scoring.CodeSize
 
 scenarioOptions :: Options
@@ -19,7 +20,7 @@ scenarioOptions =
 data DurationMetrics = DurationMetrics
   { _scenarioElapsed :: NominalDiffTime
   -- ^ Time elapsed until winning the scenario.
-  , _scenarioElapsedTicks :: Integer
+  , _scenarioElapsedTicks :: TickNumber
   -- ^ Ticks elapsed until winning the scenario.
   }
   deriving (Eq, Ord, Show, Read, Generic)

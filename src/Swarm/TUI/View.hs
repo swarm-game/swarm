@@ -251,7 +251,7 @@ describeProgress (Metric p (ProgressStats _startedAt (AttemptMetrics (DurationMe
   Completed ->
     withAttr greenAttr . vBox $
       [ txt $ T.unwords ["completed in", formatTimeDiff e]
-      , txt $ (" " <>) $ parens $ T.unwords [T.pack $ drawTime t True, "ticks"]
+      , txt . (" " <>) . parens $ T.unwords [T.pack $ drawTime t True, "ticks"]
       ]
         <> maybeToList (sizeDisplay <$> maybeCodeMetrics)
    where

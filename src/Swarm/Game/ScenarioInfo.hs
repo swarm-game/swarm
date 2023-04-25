@@ -49,7 +49,6 @@ import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Yaml as Y
-import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)

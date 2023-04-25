@@ -16,6 +16,7 @@ import Data.Function (on)
 import Data.Time (ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
+import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
@@ -72,7 +73,7 @@ scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 updateScenarioInfoOnFinish ::
   CodeSizeDeterminators ->
   ZonedTime ->
-  Integer ->
+  TickNumber ->
   Bool ->
   ScenarioInfo ->
   ScenarioInfo
