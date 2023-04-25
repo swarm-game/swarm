@@ -5,7 +5,7 @@ end
 def nil : a -> cmd unit = \a. return () end
 
 // Suitable to use as e.g.
-//   installKeyHandler "(S-)←↓↑→ [g]rab [h]arvest [d]rill [s]can [u]pload" pilot
+//   installKeyHandler "(S-)←↓↑→ [Del] [g]rab [h]arvest [d]rill [s]can [b]locked [u]pload" pilot
 def pilot : key -> cmd unit =
   cons (key "Up",      move) $
   cons (key "Down",    turn back) $
