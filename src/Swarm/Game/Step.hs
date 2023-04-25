@@ -1068,6 +1068,18 @@ execConst c vs s k = do
       return $ Out VUnit s k
     Stride -> case vs of
       [VInt d] -> do
+        when (d > fromIntegral maxStrideRange) $
+          throwError $
+            CmdFailed
+              Stride
+              ( T.unwords
+                  [ "Can only stride up to"
+                  , T.pack $ show maxStrideRange
+                  , "units."
+                  ]
+              )
+              Nothing
+
         -- Figure out where we're going
         loc <- use robotLocation
         orient <- use robotOrientation
