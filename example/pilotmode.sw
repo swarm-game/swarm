@@ -15,10 +15,12 @@ def pilot : key -> cmd unit =
   cons (key "S-Down",  turn south) $
   cons (key "S-Left",  turn west) $
   cons (key "S-Right", turn east) $
-  cons (key "g",       grab; return ()) $
-  cons (key "h",       harvest; return ()) $
-  cons (key "d",       drill forward; return ()) $
-  cons (key "s",       scan forward; return ()) $
+  cons (key "Del",     selfdestruct) $
+  cons (key "g",       res <- grab; log res) $
+  cons (key "h",       res <- harvest; log res) $
+  cons (key "d",       res <- drill forward; case res (\_. return ()) log) $
+  cons (key "s",       res <- scan forward; case res (\_. return ()) log) $
+  cons (key "b",       b <- blocked; if b {log "blocked"} {log "not blocked"}) $
   cons (key "u",       upload base) $
   nil
 end
