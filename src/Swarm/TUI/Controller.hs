@@ -622,7 +622,8 @@ runFrameTicks dt = do
   a <- use (uiState . accumulatedTime)
   t <- use (uiState . frameTickCount)
 
-  -- Is there still time left?  Or have we hit the cap on ticks per frame?
+  -- Ensure there is still enough time left, and we haven't hit the
+  -- tick limit for this frame.
   when (a >= dt && t < ticksPerFrameCap) $ do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
@@ -700,7 +701,7 @@ updateUI = do
   -- If the robot moved in or out of range, or hashes don't match
   -- (either because which robot (or whether any robot) is focused
   -- changed, or the focused robot's inventory changed), or the
-  -- inventory was flagged to be updated, regenerate the list.
+  -- inventory was flagged to be updated, regenerate the inventory list.
   inventoryUpdated <-
     if farChanged || (not farChanged && listRobotHash /= focusedRobotHash) || shouldUpdate
       then do
@@ -833,7 +834,7 @@ doGoalUpdates = do
       return True
     WinConditions _ oc -> do
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
-          -- The "uiGoal" field is intialized with empty members, so we know that
+          -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
           isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)

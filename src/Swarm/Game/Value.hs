@@ -12,6 +12,7 @@ import Control.Lens (view)
 import Data.Int (Int32)
 import Linear (V2 (..))
 import Swarm.Game.Entity
+import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Language.Value
 
@@ -42,6 +43,9 @@ instance Valuable Entity where
 
 instance Valuable Robot where
   asValue = VRobot . view robotID
+
+instance Valuable Location where
+  asValue (Location x y) = VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))
 
 instance (Valuable a) => Valuable (Maybe a) where
   asValue Nothing = VInj False VUnit
