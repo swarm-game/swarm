@@ -103,7 +103,10 @@ makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
 instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
-    em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
+    emRaw <- liftE (v .:? "entities" .!= [])
+    em <- case buildEntityMap emRaw of
+      Right x -> return x
+      Left x -> failT [x]
     -- extend ambient EntityMap with custom entities
 
     withE em $ do
