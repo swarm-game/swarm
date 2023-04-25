@@ -81,7 +81,7 @@ module Swarm.Game.Entity (
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
-import Control.Monad.Trans.Except (ExceptT (..), runExceptT, withExceptT)
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT, withExceptT, except)
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
@@ -107,7 +107,7 @@ import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, failT, plural, reflow, (?))
+import Swarm.Util (binTuples, failT, plural, reflow, (?), findDup, quote)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -313,12 +313,18 @@ deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: [Entity] -> EntityMap
-buildEntityMap es =
-  EntityMap
-    { entitiesByName = M.fromList . map (view entityName &&& id) $ es
+buildEntityMap :: [Entity] -> Either Text EntityMap
+buildEntityMap es = do
+  case findDup (map fst namedEntities) of
+    Nothing -> Right ()
+    Just duped -> Left $ T.unwords ["Duplicate entity named", quote duped]
+  return $ EntityMap
+    { entitiesByName = M.fromList namedEntities
     , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (Set.toList $ e ^. entityCapabilities)) $ es
     }
+  where
+    namedEntities = map (view entityName &&& id) es
+    
 
 ------------------------------------------------------------
 -- Serialization
@@ -369,7 +375,7 @@ loadEntities = runExceptT $ do
   let f = "entities.yaml"
   fileName <- withExceptT prettyFailure $ getDataFileNameSafe Entities f
   decoded <- withExceptT (from . prettyPrintParseException) . ExceptT . liftIO $ decodeFileEither fileName
-  return $ buildEntityMap decoded
+  except $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses
