@@ -1081,7 +1081,7 @@ execConst c vs s k = do
         Just e -> do
           -- Make sure there's nothing already occupying the destination
           nothingHere <- isNothing <$> entityAt placementLoc
-          nothingHere `holdsOrFail` ["Blocked by an entity."]
+          nothingHere `holdsOrFail` ["Something is in the way!"]
 
           let verbed = verbedGrabbingCmd Push'
           -- Ensure it can be pushed.
