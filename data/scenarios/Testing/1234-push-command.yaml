@@ -1,0 +1,78 @@
+version: 1
+name: Push test
+creative: false
+description: Push items as in Sokoban
+objectives:
+  - goal:
+      - Push a crate onto the stone pad
+    condition: |
+      j <- robotnamed "judge";
+      as j {ishere "crate"}
+solution: |
+  push;
+  turn left;
+  move;
+  turn right;
+  move;
+  move;
+  turn right;
+  push;
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - branch predictor
+      - calculator
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - net
+      - scanner
+      - treads
+      - dozer blade
+  - name: judge
+    dir: [0, 1]
+    system: true
+    display:
+      char: j
+      attr: robot
+      invisible: true
+entities:
+- name: dozer blade
+  display:
+    attr: silver
+    char: '/'
+  description:
+  - Facilitates pushing
+  properties: [known, portable]
+  capabilities: [push]
+- name: crate
+  display:
+    attr: wood
+    char: '▪'
+  description:
+  - Pushable crate
+  properties: [known, portable, unwalkable]
+  capabilities: [push]
+known: [tree, flower, boulder, water]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    'j': [stone, null, judge]
+    '.': [grass]
+    '@': [grass, boulder]
+    'w': [grass, water]
+    '*': [grass, flower]
+    'x': [grass, crate]
+  upperleft: [0, 0]
+  map: |
+   ..............
+   ......w.......
+   .....@Ωx.x....
+   ......*..j....
+   ......*.......

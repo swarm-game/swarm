@@ -206,6 +206,8 @@ data Const
 
     -- | Move forward one step.
     Move
+  | -- | Push an entity forward one step.
+    Push
   | -- | Move forward multiple steps.
     Stride
   | -- | Turn in some direction.
@@ -565,6 +567,11 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
+  Push ->
+    command 1 short . doc "Push an entity forward one step." $
+      [ "Both entity and robot moves forward one step."
+      , "Destination must not contain an entity."
+      ]
   Stride ->
     command 1 short . doc "Move forward multiple steps." $
       [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
