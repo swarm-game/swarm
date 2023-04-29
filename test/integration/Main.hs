@@ -271,6 +271,8 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1171-chirp-command"
         , testSolution Default "Testing/1171-resonate-command"
         , testSolution Default "Testing/1207-scout-command"
+        , testSolution Default "Testing/1218-stride-command"
+        , testSolution Default "Testing/1234-push-command"
         ]
     ]
  where

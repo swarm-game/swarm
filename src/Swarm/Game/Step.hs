@@ -1066,6 +1066,36 @@ execConst c vs s k = do
           }
       updateRobotLocation loc nextLoc
       return $ Out VUnit s k
+    Push -> do
+      -- Figure out where we're going
+      loc <- use robotLocation
+      orient <- use robotOrientation
+      let heading = orient ? zero
+          nextLoc = loc .+^ heading
+          placementLoc = nextLoc .+^ heading
+
+      -- If unobstructed, the robot will move even if
+      -- there is nothing to push.
+      maybeCurrentE <- entityAt nextLoc
+      case maybeCurrentE of
+        Just e -> do
+          -- Make sure there's nothing already occupying the destination
+          nothingHere <- isNothing <$> entityAt placementLoc
+          nothingHere `holdsOrFail` ["Something is in the way!"]
+
+          let verbed = verbedGrabbingCmd Push'
+          -- Ensure it can be pushed.
+          omni <- isPrivilegedBot
+          (omni || e `hasProperty` Portable && not (e `hasProperty` Liquid))
+            `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
+
+          -- Place the entity and remove it from previous loc
+          updateEntityAt nextLoc (const Nothing)
+          updateEntityAt placementLoc (const (Just e))
+        Nothing -> return ()
+
+      updateRobotLocation loc nextLoc
+      return $ Out VUnit s k
     Stride -> case vs of
       [VInt d] -> do
         when (d > fromIntegral maxStrideRange) $
@@ -2386,7 +2416,7 @@ execConst c vs s k = do
         >>= (`isJustOrFail` ["There is nothing here to", verb <> "."])
 
     -- Ensure it can be picked up.
-    omni <- (||) <$> use systemRobot <*> use creativeMode
+    omni <- isPrivilegedBot
     (omni || e `hasProperty` Portable)
       `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
@@ -2489,19 +2519,21 @@ data MoveFailure = MoveFailure
   , failIfDrown :: RobotFailure
   }
 
-data GrabbingCmd = Grab' | Harvest' | Swap' deriving (Eq, Show)
+data GrabbingCmd = Grab' | Harvest' | Swap' | Push' deriving (Eq, Show)
 
 verbGrabbingCmd :: GrabbingCmd -> Text
 verbGrabbingCmd = \case
   Harvest' -> "harvest"
   Grab' -> "grab"
   Swap' -> "swap"
+  Push' -> "push"
 
 verbedGrabbingCmd :: GrabbingCmd -> Text
 verbedGrabbingCmd = \case
   Harvest' -> "harvested"
   Grab' -> "grabbed"
   Swap' -> "swapped"
+  Push' -> "pushed"
 
 -- | Format a set of suggested devices for use in an error message,
 --   in the format @device1 or device2 or ... or deviceN@.
