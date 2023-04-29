@@ -270,8 +270,8 @@ handleMainEvent ev = do
     -- ctrl-q works everywhere
     ControlChar 'q' ->
       case s ^. gameState . winCondition of
-        WinConditions (Won _) _ -> toggleModal WinModal
-        WinConditions (Unwinnable _) _ -> toggleModal LoseModal
+        WinConditions (Won _) _ -> toggleModal $ ScenarioEndModal WinModal
+        WinConditions (Unwinnable _) _ -> toggleModal $ ScenarioEndModal LoseModal
         _ -> toggleModal QuitModal
     VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
     Key V.KEsc
@@ -821,13 +821,13 @@ doGoalUpdates = do
     WinConditions (Unwinnable False) x -> do
       -- This clears the "flag" that the Lose dialog needs to pop up
       gameState . winCondition .= WinConditions (Unwinnable True) x
-      openModal LoseModal
+      openModal $ ScenarioEndModal LoseModal
       saveScenarioInfoOnFinish
       return True
     WinConditions (Won False) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
       gameState . winCondition .= WinConditions (Won True) x
-      openModal WinModal
+      openModal $ ScenarioEndModal WinModal
       saveScenarioInfoOnFinish
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to

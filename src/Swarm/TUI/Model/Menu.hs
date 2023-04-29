@@ -36,14 +36,16 @@ import Witch (into)
 -- Menus and dialogs
 ------------------------------------------------------------
 
+data ScenarioOutcome = WinModal | LoseModal
+  deriving (Show)
+
 data ModalType
   = HelpModal
   | RecipesModal
   | CommandsModal
   | MessagesModal
   | RobotsModal
-  | WinModal
-  | LoseModal
+  | ScenarioEndModal ScenarioOutcome
   | QuitModal
   | KeepPlayingModal
   | DescriptionModal Entity

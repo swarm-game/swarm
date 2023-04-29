@@ -452,15 +452,19 @@ drawModal s = \case
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
-  WinModal -> padBottom (Pad 1) $ hCenter $ txt "Congratulations!"
-  LoseModal ->
+  ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
         map
           (hCenter . txt)
-          [ "Condolences!"
-          , "This scenario is no longer winnable."
-          ]
+          content
+   where
+    content = case outcome of
+      WinModal -> ["Congratulations!"]
+      LoseModal ->
+        [ "Condolences!"
+        , "This scenario is no longer winnable."
+        ]
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
