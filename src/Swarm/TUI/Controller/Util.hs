@@ -8,6 +8,7 @@ import Brick hiding (Direction)
 import Brick.Focus
 import Control.Lens
 import Control.Monad (unless)
+import Control.Monad.IO.Class (liftIO)
 import Graphics.Vty qualified as V
 import Swarm.Game.State
 import Swarm.TUI.Model
@@ -37,6 +38,12 @@ openModal mt = do
   newModal <- gets $ flip generateModal mt
   ensurePause
   uiState . uiModal ?= newModal
+  -- Beep
+  case mt of
+    ScenarioEndModal _ -> do
+      vty <- getVtyHandle
+      liftIO $ V.ringTerminalBell $ V.outputIface vty
+    _ -> return ()
  where
   -- Set the game to AutoPause if needed
   ensurePause = do

@@ -43,7 +43,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       MessagesModal -> ("Messages", Nothing, descriptionWidth)
-      WinModal ->
+      ScenarioEndModal WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
             continueMsg = "Keep playing"
@@ -59,7 +59,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
-      LoseModal ->
+      ScenarioEndModal LoseModal ->
         let stopMsg = fromMaybe "Return to the menu" haltingMessage
             continueMsg = "Keep playing"
             maybeStartOver = do
