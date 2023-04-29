@@ -101,6 +101,7 @@
                "try"
                "swap"
                "atomic"
+               "instant"
                "installkeyhandler"
                "teleport"
                "as"

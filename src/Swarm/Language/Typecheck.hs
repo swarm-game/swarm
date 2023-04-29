@@ -395,17 +395,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- the form 'cmd a'.  't' must also be syntactically free of
   -- variables.
 
-  TConst Atomic :$: at -> do
-    argTy <- fresh
-    at' <- check at (UTyCmd argTy)
-    atomic' <- infer (Syntax l (TConst Atomic))
-    -- It's important that we typecheck the subterm @at@ *before* we
-    -- check that it is a valid argument to @atomic@: this way we can
-    -- ensure that we have already inferred the types of any variables
-    -- referenced.
-    validAtomic at
-    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
-
+  TConst Atomic :$: at -> inferAtomic True Atomic at
+  TConst Instant :$: at -> inferAtomic False Instant at
   -- Just look up variables in the context.
   TVar x -> Syntax' l (TVar x) <$> lookup l x
   -- To infer the type of a lambda if the type of the argument is
@@ -500,6 +491,19 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     unless (S.null ftyvs) $
       throwError $
         EscapedSkolem l (head (S.toList ftyvs))
+
+  inferAtomic :: Bool -> Const -> Syntax -> Infer (Syntax' UType)
+  inferAtomic validateTickBudget constName at = do
+    argTy <- fresh
+    at' <- check at (UTyCmd argTy)
+    atomic' <- infer (Syntax l (TConst constName))
+    -- It's important that we typecheck the subterm @at@ *before* we
+    -- check that it is a valid argument to @atomic@: this way we can
+    -- ensure that we have already inferred the types of any variables
+    -- referenced.
+    when validateTickBudget $
+      validAtomic at
+    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
 
 addLocToTypeErr :: Syntax' ty -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
@@ -620,6 +624,7 @@ inferConst c = case c of
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| text -> cmd text |]
   Atomic -> [tyQ| cmd a -> cmd a |]
+  Instant -> [tyQ| cmd a -> cmd a |]
   Key -> [tyQ| text -> key |]
   InstallKeyHandler -> [tyQ| text -> (key -> cmd unit) -> cmd unit |]
   Teleport -> [tyQ| actor -> (int * int) -> cmd unit |]
