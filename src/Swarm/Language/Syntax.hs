@@ -393,6 +393,8 @@ data Const
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
+  | -- | Like @atomic@, but with no restriction on program size.
+    Instant
   | -- Keyboard input
 
     -- | Create `key` values.
@@ -756,6 +758,10 @@ constInfo c = case c of
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
+      ]
+  Instant ->
+    command 1 Intangible . doc "Execute a block of commands instantly." $
+      [ "Like `atomic`, but with no restriction on program size."
       ]
   Key ->
     function 1 . doc "Create a key value from a text description." $

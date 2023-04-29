@@ -227,6 +227,7 @@ constCaps = \case
   Self -> Just CWhoami
   Swap -> Just CSwap
   Atomic -> Just CAtomic
+  Instant -> Just CGod
   Time -> Just CTime
   Wait -> Just CTime
   Scout -> Just CRecondir
