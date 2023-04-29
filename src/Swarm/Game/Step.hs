@@ -1512,7 +1512,7 @@ execConst c vs s k = do
         return $ Out (VInt n) s k
       _ -> badConst
     Atomic -> goAtomic
-    Instant ->  goAtomic
+    Instant -> goAtomic
     As -> case vs of
       [VRobot rid, prog] -> do
         -- Get the named robot and current game state
