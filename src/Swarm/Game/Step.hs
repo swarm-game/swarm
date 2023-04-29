@@ -1511,14 +1511,8 @@ execConst c vs s k = do
         n <- uniform (0, hi - 1)
         return $ Out (VInt n) s k
       _ -> badConst
-    Atomic -> case vs of
-      -- To execute an atomic block, set the runningAtomic flag,
-      -- push an FFinishAtomic frame so that we unset the flag when done, and
-      -- proceed to execute the argument.
-      [cmd] -> do
-        runningAtomic .= True
-        return $ Out cmd s (FExec : FFinishAtomic : k)
-      _ -> badConst
+    Atomic -> goAtomic
+    Instant -> goAtomic
     As -> case vs of
       [VRobot rid, prog] -> do
         -- Get the named robot and current game state
@@ -2023,6 +2017,16 @@ execConst c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
+  goAtomic :: HasRobotStepState sig m => m CESK
+  goAtomic = case vs of
+    -- To execute an atomic block, set the runningAtomic flag,
+    -- push an FFinishAtomic frame so that we unset the flag when done, and
+    -- proceed to execute the argument.
+    [cmd] -> do
+      runningAtomic .= True
+      return $ Out cmd s (FExec : FFinishAtomic : k)
+    _ -> badConst
+
   -- Case-insensitive matching on entity names
   isEntityNamed :: T.Text -> Entity -> Bool
   isEntityNamed n e = ((==) `on` T.toLower) (e ^. entityName) n

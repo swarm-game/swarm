@@ -6,16 +6,6 @@ description: |
 seed: 2
 creative: false
 objectives:
-  - id: prepare_playfield
-    teaser: Wait patiently
-    goal:
-      - |
-        First, wait for the playfield to be set up,
-        and then your path forward will be cleared.
-      - |
-        You can speed this process up with CTRL+x.
-    condition: |
-      as base {knows "capital C"};
   - goal:
       - Use the `drill` command (e.g. "drill down" when on top of the
         intended letter) to mark the sequence of letters that
@@ -25,7 +15,6 @@ objectives:
         leftward or rightward direction,
         or vertically in either the upward or downward direction.
         Diagonal appearances are not valid.
-    prerequisite: prepare_playfield
     condition: |
       /**
       Algorithm:
