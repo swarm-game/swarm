@@ -104,9 +104,9 @@ restartGame currentSeed siPair = startGameWithSeed siPair $ ValidatedLaunchParms
 -- with "initGameStateForScenario".
 startGameWithSeed ::
   (MonadIO m, MonadState AppState m) =>
-   ScenarioInfoPair ->
-   ValidatedLaunchParms ->
-   m ()
+  ScenarioInfoPair ->
+  ValidatedLaunchParms ->
+  m ()
 startGameWithSeed siPair@(_scene, si) (ValidatedLaunchParms userSeed toRun) = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
