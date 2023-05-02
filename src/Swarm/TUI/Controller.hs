@@ -1017,6 +1017,7 @@ runBaseCode topCtx uinput =
     Right mt -> do
       uiState %= resetREPL "" (CmdPrompt [])
       uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
+      uiState . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm topCtx mt
     Left err -> do
       uiState . uiError ?= err
