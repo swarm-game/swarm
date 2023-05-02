@@ -73,13 +73,14 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario.Scoring.Best
+import Swarm.Game.Scenario.Scoring.CodeSize
+import Swarm.Game.Scenario.Scoring.ConcreteMetrics
+import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
-  ScenarioStatus (..),
-  scenarioBestTicks,
-  scenarioBestTime,
   scenarioItemName,
-  scenarioStatus,
  )
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
@@ -182,32 +183,17 @@ drawNewGameMenuUI (l :| ls) =
  where
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
-  drawStatusInfo s si = case si ^. scenarioBestTime of
+  drawStatusInfo s si = case si ^. scenarioStatus of
     NotStarted -> txt " ○ "
-    InProgress {} -> case s ^. scenarioObjectives of
+    Played (Metric Attempted _) _ -> case s ^. scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
-    Complete {} -> withAttr greenAttr $ txt " ● "
+    Played (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
 
+  describeStatus :: ScenarioStatus -> Widget n
   describeStatus = \case
-    NotStarted -> txt "none"
-    InProgress _s e _t ->
-      withAttr yellowAttr . vBox $
-        [ txt "in progress"
-        , txt $ "(played for " <> formatTimeDiff e <> ")"
-        ]
-    Complete _s e t ->
-      withAttr greenAttr . vBox $
-        [ txt $ "completed in " <> formatTimeDiff e
-        , hBox
-            [ txt "("
-            , drawTime t True
-            , txt " ticks)"
-            ]
-        ]
-
-  formatTimeDiff :: NominalDiffTime -> Text
-  formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %Mm %Ss"
+    NotStarted -> withAttr cyanAttr $ txt "not started"
+    Played pm _best -> describeProgress pm
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
@@ -218,31 +204,127 @@ drawNewGameMenuUI (l :| ls) =
 
   drawDescription :: ScenarioItem -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle (s, si)) = do
-    let oneBest = si ^. scenarioBestTime == si ^. scenarioBestTicks
-    let bestRealTime = if oneBest then "best:" else "best real time:"
-    let noSame = if oneBest then const Nothing else Just
-    let lastText = let la = "last:" in padRight (Pad $ T.length bestRealTime - T.length la) (txt la)
-    vBox . catMaybes $
-      [ Just $ txtWrap (nonBlank (s ^. scenarioDescription))
-      , padTop (Pad 1)
-          . withAttr dimAttr
-          . (txt "Author: " <+>)
-          . txt
-          <$> (s ^. scenarioAuthor)
-      , Just $
-          padTop (Pad 3) $
-            padRight (Pad 1) (txt bestRealTime) <+> describeStatus (si ^. scenarioBestTime)
-      , noSame $ -- hide best game time if it is same as best real time
-          padTop (Pad 1) $
-            txt "best game time: " <+> describeStatus (si ^. scenarioBestTicks)
-      , Just $
-          padTop (Pad 1) $
-            padRight (Pad 1) lastText <+> describeStatus (si ^. scenarioStatus)
+  drawDescription (SISingle (s, si)) =
+    vBox
+      [ txtWrap (nonBlank (s ^. scenarioDescription))
+      , padTop (Pad 1) table
       ]
+   where
+    firstRow =
+      ( withAttr dimAttr $ txt "Author:"
+      , withAttr dimAttr . txt <$> s ^. scenarioAuthor
+      )
+    secondRow =
+      ( txt "last:"
+      , Just $ describeStatus $ si ^. scenarioStatus
+      )
+
+    padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
+
+    tableRows =
+      map (map padTopLeft . pairToList) $
+        mapMaybe sequenceA $
+          firstRow : secondRow : makeBestScoreRows (si ^. scenarioStatus)
+    table =
+      BT.renderTable
+        . BT.surroundingBorder False
+        . BT.rowBorders False
+        . BT.columnBorders False
+        . BT.alignRight 0
+        . BT.alignLeft 1
+        . BT.table
+        $ tableRows
 
   nonBlank "" = " "
   nonBlank t = t
+
+pairToList :: (a, a) -> [a]
+pairToList (x, y) = [x, y]
+
+describeProgress :: ProgressMetric -> Widget n
+describeProgress (Metric p (ProgressStats _startedAt (AttemptMetrics (DurationMetrics e t) maybeCodeMetrics))) = case p of
+  Attempted ->
+    withAttr yellowAttr . vBox $
+      [ txt "in progress"
+      , txt $ parens $ T.unwords ["played for", formatTimeDiff e]
+      ]
+  Completed ->
+    withAttr greenAttr . vBox $
+      [ txt $ T.unwords ["completed in", formatTimeDiff e]
+      , txt . (" " <>) . parens $ T.unwords [T.pack $ drawTime t True, "ticks"]
+      ]
+        <> maybeToList (sizeDisplay <$> maybeCodeMetrics)
+   where
+    sizeDisplay (ScenarioCodeMetrics myCharCount myAstSize) =
+      withAttr greenAttr $
+        vBox $
+          map
+            txt
+            [ T.unwords
+                [ "Code:"
+                , T.pack $ show myCharCount
+                , "chars"
+                ]
+            , (" " <>) $
+                parens $
+                  T.unwords
+                    [ T.pack $ show myAstSize
+                    , "AST nodes"
+                    ]
+            ]
+ where
+  formatTimeDiff :: NominalDiffTime -> Text
+  formatTimeDiff = T.pack . formatTime defaultTimeLocale "%hh %Mm %Ss"
+
+-- | If there are multiple different games that each are \"best\"
+-- by different criteria, display them all separately, labeled
+-- by which criteria they were best in.
+--
+-- On the other hand, if all of the different \"best\" criteria are for the
+-- same game, consolidate them all into one entry and don't bother
+-- labelling the criteria.
+makeBestScoreRows ::
+  ScenarioStatus ->
+  [(Widget n1, Maybe (Widget n2))]
+makeBestScoreRows scenarioStat =
+  maybe [] makeBestRows getBests
+ where
+  getBests = case scenarioStat of
+    NotStarted -> Nothing
+    Played _ best -> Just best
+
+  makeBestRows b = map (makeBestRow hasMultiple) groups
+   where
+    groups = getBestGroups b
+    hasMultiple = length groups > 1
+
+  makeBestRow hasDistinctByCriteria (b, criteria) =
+    ( hLimit (maxLeftColumnWidth + 2) $
+        vBox $
+          [ padLeft Max $ txt "best:"
+          ]
+            <> elaboratedCriteria
+    , Just $ describeProgress b
+    )
+   where
+    maxLeftColumnWidth = maximum (map (T.length . describeCriteria) listEnums)
+    mkCriteriaRow =
+      withAttr dimAttr
+        . padLeft Max
+        . txt
+        . mconcat
+        . pairToList
+        . fmap (\x -> T.singleton $ if x == 0 then ',' else ' ')
+    elaboratedCriteria =
+      if hasDistinctByCriteria
+        then
+          map mkCriteriaRow
+            . flip zip [(0 :: Int) ..]
+            . NE.toList
+            . NE.reverse
+            . NE.map describeCriteria
+            $ criteria
+        else []
 
 drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
 drawMainMenuEntry s = \case
@@ -378,9 +460,9 @@ clockEquipped gs = case focusedRobot gs of
     | otherwise -> False
 
 -- | Format a ticks count as a hexadecimal clock.
-drawTime :: TickNumber -> Bool -> Widget n
+drawTime :: TickNumber -> Bool -> String
 drawTime t showTicks =
-  str . mconcat $
+  mconcat $
     [ printf "%x" (t `shiftR` 20)
     , ":"
     , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
@@ -395,7 +477,7 @@ drawTime t showTicks =
 --   whether the time should be shown down to single-tick resolution
 --   (e.g. 0:00:3a.f) or not (e.g. 0:00:3a).
 maybeDrawTime :: TickNumber -> Bool -> GameState -> Maybe (Widget n)
-maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> drawTime t showTicks
+maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> str (drawTime t showTicks)
 
 -- | Draw info about the current number of ticks per second.
 drawTPS :: AppState -> Widget Name

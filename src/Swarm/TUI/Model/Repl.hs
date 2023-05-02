@@ -15,6 +15,7 @@ module Swarm.TUI.Model.Repl (
   REPLHistory,
   replIndex,
   replLength,
+  replHasExecutedManualInput,
   replSeq,
   newREPLHistory,
   addREPLItem,
@@ -108,7 +109,9 @@ data REPLHistory = REPLHistory
   { _replSeq :: Seq REPLHistItem
   , _replIndex :: Int
   , _replStart :: Int
+  , _replHasExecutedManualInput :: Bool
   }
+  deriving (Show)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''REPLHistory
 
@@ -124,6 +127,25 @@ replIndex :: Lens' REPLHistory Int
 -- It will be set on load and reset on save (happens during exit).
 replStart :: Lens' REPLHistory Int
 
+-- | Note: Instead of adding a dedicated field to the REPLHistory record,
+-- an early attempt entailed checking for:
+--
+--    _replIndex > _replStart
+--
+-- However, executing an initial script causes
+-- a "REPLOutput" to be appended to the REPL history,
+-- which increments the replIndex, and thus makes
+-- the Index greater than the Start even though
+-- the player has input not commands into the REPL.
+--
+-- Therefore, a dedicated boolean is introduced into
+-- REPLHistory which simply latches True when the user
+-- has input a command.
+--
+-- An alternative is described here:
+-- https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380
+replHasExecutedManualInput :: Lens' REPLHistory Bool
+
 -- | Create new REPL history (i.e. from loaded history file lines).
 newREPLHistory :: [REPLHistItem] -> REPLHistory
 newREPLHistory xs =
@@ -132,6 +154,7 @@ newREPLHistory xs =
         { _replSeq = s
         , _replStart = length s
         , _replIndex = length s
+        , _replHasExecutedManualInput = False
         }
 
 -- | Point the start of REPL history after current last line. See 'replStart'.

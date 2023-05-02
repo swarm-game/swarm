@@ -464,6 +464,7 @@ saveScenarioInfoOnFinish = do
     getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
       Just p -> do
+        initialCode <- use $ gameState . initiallyRunCode
         t <- liftIO getZonedTime
         wc <- use $ gameState . winCondition
         let won = case wc of
@@ -472,7 +473,11 @@ saveScenarioInfoOnFinish = do
         ts <- use $ gameState . ticks
         let currentScenarioInfo :: Traversal' AppState ScenarioInfo
             currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
-        currentScenarioInfo %= updateScenarioInfoOnFinish t ts won
+
+        replHist <- use $ uiState . uiREPL . replHistory
+        let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
+        currentScenarioInfo
+          %= updateScenarioInfoOnFinish determinator t ts won
         status <- preuse currentScenarioInfo
         case status of
           Nothing -> return ()
@@ -1012,6 +1017,7 @@ runBaseCode topCtx uinput =
     Right mt -> do
       uiState %= resetREPL "" (CmdPrompt [])
       uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
+      uiState . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm topCtx mt
     Left err -> do
       uiState . uiError ?= err

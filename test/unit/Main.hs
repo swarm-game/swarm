@@ -34,6 +34,7 @@ import TestModel (testModel)
 import TestNotification (testNotification)
 import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
+import TestScoring (testHighScores)
 import Witch (from)
 
 main :: IO ()
@@ -51,6 +52,7 @@ tests g =
     , testPrettyConst
     , testBoolExpr
     , testCommands
+    , testHighScores
     , testEval g
     , testModel
     , testPedagogy g

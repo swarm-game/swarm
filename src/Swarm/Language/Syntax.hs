@@ -83,9 +83,11 @@ module Swarm.Language.Syntax (
   freeVarsV,
   mapFreeS,
   locVarToSyntax',
+  asTree,
+  measureAstSize,
 ) where
 
-import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
+import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
 import Data.Aeson.Types hiding (Key)
 import Data.Char qualified as C (toLower)
 import Data.Data (Data)
@@ -98,8 +100,9 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
-import Data.Text hiding (filter, map)
+import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
+import Data.Tree
 import GHC.Generics (Generic)
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
@@ -1183,3 +1186,13 @@ freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 -- | Apply a function to all free occurrences of a particular variable.
 mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
+
+-- | Transform the AST into a Tree datatype.
+-- Useful for pretty-printing (e.g. via "Data.Tree.drawTree").
+asTree :: Data a => Syntax' a -> Tree (Syntax' a)
+asTree = para Node
+
+-- | Each constructor is a assigned a value of 1, plus
+-- any recursive syntax it entails.
+measureAstSize :: Data a => Syntax' a -> Int
+measureAstSize = length . universe

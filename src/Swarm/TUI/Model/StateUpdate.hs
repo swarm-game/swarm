@@ -28,15 +28,15 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
+import Swarm.Game.Scenario.Scoring.Best
+import Swarm.Game.Scenario.Scoring.ConcreteMetrics
+import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
-  ScenarioInfo (..),
-  ScenarioInfoPair,
-  ScenarioStatus (..),
+  loadScenarioInfo,
   normalizeScenarioPath,
   scenarioItemByPath,
-  scenarioPath,
   scenarioSolution,
-  scenarioStatus,
   _SISingle,
  )
 import Swarm.Game.State
@@ -57,7 +57,8 @@ initAppState AppOpts {..} = do
   (gsWarnings, gs) <- initGameState
   (uiWarnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
-  let rs = List.foldl' logWarning initRuntimeState $ gsWarnings <> uiWarnings
+  let addWarnings = List.foldl' logWarning
+  let rs = addWarnings initRuntimeState $ gsWarnings <> uiWarnings
   case skipMenu of
     False -> return $ AppState gs ui rs
     True -> do
@@ -70,9 +71,13 @@ initAppState AppOpts {..} = do
             return $ CodeToRun ScenarioSuggested soln
       let codeToRun = maybeAutoplay <|> maybeRunScript
 
+      eitherSi <- runExceptT $ loadScenarioInfo path
+      let (si, newRs) = case eitherSi of
+            Right x -> (x, rs)
+            Left e -> (ScenarioInfo path NotStarted, addWarnings rs e)
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) codeToRun)
-        (AppState gs ui rs)
+        (startGameWithSeed userSeed (scenario, si) codeToRun)
+        (AppState gs ui newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -92,14 +97,27 @@ restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Not
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
+--
+-- Note: Some of the code in this function is duplicated
+-- with "initGameStateForScenario".
+startGameWithSeed ::
+  (MonadIO m, MonadState AppState m) =>
+  Maybe Seed ->
+  ScenarioInfoPair ->
+  Maybe CodeToRun ->
+  m ()
 startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
+  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus
+    .= Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (prevBest t)
   scenarioToAppState siPair userSeed toRun
+ where
+  prevBest t = case si ^. scenarioStatus of
+    NotStarted -> emptyBest t
+    Played _ b -> b
 
 -- TODO: #516 do we need to keep an old entity map around???
 

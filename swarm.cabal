@@ -109,6 +109,11 @@ library
                       Swarm.Game.Scenario.Objective.Validation
                       Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.Scoring.Best
+                      Swarm.Game.Scenario.Scoring.CodeSize
+                      Swarm.Game.Scenario.Scoring.ConcreteMetrics
+                      Swarm.Game.Scenario.Scoring.GenericMetrics
+                      Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.ScenarioInfo
@@ -260,6 +265,7 @@ test-suite swarm-unit
                       TestBoolExpr
                       TestCommand
                       TestLSP
+                      TestScoring
                       TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
@@ -278,6 +284,7 @@ test-suite swarm-unit
                       mtl,
                       swarm,
                       text,
+                      time,
                       witch,
                       vty
     hs-source-dirs:   test/unit
