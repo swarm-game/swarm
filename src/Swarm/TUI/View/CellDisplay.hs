@@ -1,10 +1,9 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Lens (to, view, (^.), (.~), (&))
+import Control.Lens (to, view, (&), (.~), (^.))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
@@ -87,31 +86,32 @@ staticDisplay g coords = maybe mempty displayStatic (getStatic g coords)
 -- | Draw static given a number from 0-15 representing the state of
 --   the four quarter-pixels in a cell
 displayStatic :: Word32 -> Display
-displayStatic s = defaultEntityDisplay (staticChar s)
-  & displayPriority .~ 100   -- Static has higher priority than anything else
-  & displayAttr .~ AEntity
+displayStatic s =
+  defaultEntityDisplay (staticChar s)
+    & displayPriority .~ 100 -- Static has higher priority than anything else
+    & displayAttr .~ AEntity
 
 -- | Given a value from 0--15, considered as 4 bits, pick the
 --   character with the corresponding quarter pixels turned on.
 staticChar :: Word32 -> Char
 staticChar = \case
-  0  -> ' '
-  1  -> '▖'
-  2  -> '▗'
-  3  -> '▄'
-  4  -> '▘'
-  5  -> '▌'
-  6  -> '▚'
-  7  -> '▙'
-  8  -> '▝'
-  9  -> '▞'
+  0 -> ' '
+  1 -> '▖'
+  2 -> '▗'
+  3 -> '▄'
+  4 -> '▘'
+  5 -> '▌'
+  6 -> '▚'
+  7 -> '▙'
+  8 -> '▝'
+  9 -> '▞'
   10 -> '▐'
   11 -> '▟'
   12 -> '▀'
   13 -> '▛'
   14 -> '▜'
   15 -> '█'
-  _  -> ' '
+  _ -> ' '
 
 -- | Random "static" based on the distance to the robot being
 --   @view@ed.  A cell can either be static-free (represented by
