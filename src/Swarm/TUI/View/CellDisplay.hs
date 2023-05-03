@@ -1,10 +1,12 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+
+{-# LANGUAGE OverloadedStrings #-}
+
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Lens (to, view, (^.))
-import Data.Bool (bool)
+import Control.Lens (to, view, (^.), (.~), (&))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
@@ -65,7 +67,7 @@ hidingMode g
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
 displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords = addStatic g coords $ displayLocRaw showRobots g coords
+displayLoc showRobots g coords = staticDisplay g coords <> displayLocRaw showRobots g coords
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
@@ -79,21 +81,47 @@ displayLocRaw showRobots g coords = sconcat $ terrain NE.:| entity <> robots
       then displayRobotCell g coords
       else []
 
--- | Add random "static" based on the distance to the robot being
+-- | Random "static" based on the distance to the robot being
 --   @view@ed.
-addStatic :: GameState -> W.Coords -> Display -> Display
-addStatic g coords d = maybe d displayStatic (getStatic g coords)
+staticDisplay :: GameState -> W.Coords -> Display
+staticDisplay g coords = maybe mempty displayStatic (getStatic g coords)
 
--- | Draw black or white static.
-displayStatic :: Bool -> Display
-displayStatic = bool mempty (terrainMap M.! IceT)
+-- | Draw static given a number from 0-15 representing the state of
+--   the four quarter-pixels in a cell
+displayStatic :: Word32 -> Display
+displayStatic s = defaultEntityDisplay (staticChar s)
+  & displayPriority .~ 100   -- Static has higher priority than anything else
+  & displayAttr .~ AEntity
+
+-- | Given a value from 0--15, considered as 4 bits, pick the
+--   character with the corresponding quarter pixels turned on.
+staticChar :: Word32 -> Char
+staticChar = \case
+  0  -> ' '
+  1  -> '▖'
+  2  -> '▗'
+  3  -> '▄'
+  4  -> '▘'
+  5  -> '▌'
+  6  -> '▚'
+  7  -> '▙'
+  8  -> '▝'
+  9  -> '▞'
+  10 -> '▐'
+  11 -> '▟'
+  12 -> '▀'
+  13 -> '▛'
+  14 -> '▜'
+  15 -> '█'
+  _  -> ' '
 
 -- | Random "static" based on the distance to the robot being
 --   @view@ed.  A cell can either be static-free (represented by
---   @Nothing@) or can have one of two types ("black" or "white").
-getStatic :: GameState -> W.Coords -> Maybe Bool
+--   @Nothing@) or can have one of sixteen values (representing the
+--   state of the four quarter-pixels in one cell).
+getStatic :: GameState -> W.Coords -> Maybe Word32
 getStatic g coords
-  | isStatic = Just (even h)
+  | isStatic = Just (h `mod` 16)
   | otherwise = Nothing
  where
   -- Offset from the location of the view center to the location under
