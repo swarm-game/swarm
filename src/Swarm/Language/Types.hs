@@ -119,6 +119,11 @@ data BaseTy
     BKey
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
+data Nat where
+  Z :: Nat
+  S :: Nat -> Nat
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
 --   functor.  We represent types in this way, via a "two-level type",
@@ -129,8 +134,10 @@ data TypeF t
     TyBaseF BaseTy
   | -- | A type variable.
     TyVarF Var
-  | -- | Commands, with return type.  Note that
-    --   commands form a monad.
+  | -- | A recursive type variable bound by an enclosing Mu,
+    --   represented by a de Bruijn index.
+    TyRecVarF Nat
+  | -- | Commands, with return type.  Note that commands form a monad.
     TyCmdF t
   | -- | Type of delayed computations.
     TyDelayF t
@@ -142,6 +149,10 @@ data TypeF t
     TyFunF t t
   | -- | Record type.
     TyRcdF (Map Var t)
+  | -- | Recursive type.  The variable is just a suggestion for a name to use
+    --   when pretty-printing; the actual bound variables are represented
+    --   via de Bruijn indices.
+    TyMuF Var t
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Unifiable, Data, FromJSON, ToJSON)
 
 -- | Unify two Maps by insisting they must have exactly the same keys,
