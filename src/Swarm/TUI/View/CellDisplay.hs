@@ -88,7 +88,7 @@ staticDisplay g coords = maybe mempty displayStatic (getStatic g coords)
 displayStatic :: Word32 -> Display
 displayStatic s =
   defaultEntityDisplay (staticChar s)
-    & displayPriority .~ 100 -- Static has higher priority than anything else
+    & displayPriority .~ maxBound -- Static has higher priority than anything else
     & displayAttr .~ AEntity
 
 -- | Given a value from 0--15, considered as 4 bits, pick the
