@@ -454,52 +454,76 @@ getNormalizedCurrentScenarioPath =
       gs <- use $ gameState . scenarios
       Just <$> liftIO (normalizeScenarioPath gs p')
 
+saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
+saveScenarioInfoOnFinish p = do
+  initialCode <- use $ gameState . initiallyRunCode
+  t <- liftIO getZonedTime
+  wc <- use $ gameState . winCondition
+  let won = case wc of
+        WinConditions (Won _) _ -> True
+        _ -> False
+  ts <- use $ gameState . ticks
+
+  -- NOTE: This traversal is apparently not the same one as used by
+  -- the scenario selection menu, so the menu needs to be updated separately.
+  -- See Note [scenario menu update]
+  let currentScenarioInfo :: Traversal' AppState ScenarioInfo
+      currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
+
+  replHist <- use $ uiState . uiREPL . replHistory
+  let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
+  currentScenarioInfo
+    %= updateScenarioInfoOnFinish determinator t ts won
+  status <- preuse currentScenarioInfo
+  case status of
+    Nothing -> return ()
+    Just si -> do
+      let segments = splitDirectories p
+      case segments of
+        firstDir : _ -> do
+          when (won && firstDir == tutorialsDirname) $
+            attainAchievement' t (Just p) (GlobalAchievement CompletedSingleTutorial)
+        _ -> return ()
+      liftIO $ saveScenarioInfo p si
+  return status
+
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
-saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnFinish = do
+saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnFinishNocheat = do
   -- Don't save progress if we are in cheat mode
   cheat <- use $ uiState . uiCheatMode
   unless cheat $ do
     -- the path should be normalized and good to search in scenario collection
     getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
-      Just p -> do
-        initialCode <- use $ gameState . initiallyRunCode
-        t <- liftIO getZonedTime
-        wc <- use $ gameState . winCondition
-        let won = case wc of
-              WinConditions (Won _) _ -> True
-              _ -> False
-        ts <- use $ gameState . ticks
-        let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-            currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
-
-        replHist <- use $ uiState . uiREPL . replHistory
-        let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
-        currentScenarioInfo
-          %= updateScenarioInfoOnFinish determinator t ts won
-        status <- preuse currentScenarioInfo
-        case status of
-          Nothing -> return ()
-          Just si -> do
-            let segments = splitDirectories p
-            case segments of
-              firstDir : _ -> do
-                when (won && firstDir == tutorialsDirname) $
-                  attainAchievement' t (Just p) (GlobalAchievement CompletedSingleTutorial)
-              _ -> return ()
-            liftIO $ saveScenarioInfo p si
+      Just p -> void $ saveScenarioInfoOnFinish p
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
 saveScenarioInfoOnQuit = do
-  saveScenarioInfoOnFinish
   -- Don't save progress if we are in cheat mode
+  -- NOTE This check is duplicated in "saveScenarioInfoOnFinishNocheat"
   cheat <- use $ uiState . uiCheatMode
   unless cheat $ do
     getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
       Just p -> do
+        maybeSi <- saveScenarioInfoOnFinish p
+        -- Note [scenario menu update]
+        -- Ensures that the scenario selection menu gets updated
+        -- with the high score/completion status
+        forM_
+          maybeSi
+          ( uiState
+              . uiMenu
+              . _NewGameMenu
+              . ix 0
+              . BL.listSelectedElementL
+              . _SISingle
+              . _2
+              .=
+          )
+
         -- See what scenario is currently focused in the menu.  Depending on how the
         -- previous scenario ended (via quit vs. via win), it might be the same as
         -- currentScenarioPath or it might be different.
@@ -802,7 +826,7 @@ updateUI = do
 -- | Either pops up the updated Goals modal
 -- or pops up the Congratulations (Win) modal, or pops
 -- up the Condolences (Lose) modal.
--- The Win modal will take precendence if the player
+-- The Win modal will take precedence if the player
 -- has met the necessary conditions to win the game.
 --
 -- If the player chooses to "Keep Playing" from the Win modal, the
@@ -827,13 +851,13 @@ doGoalUpdates = do
       -- This clears the "flag" that the Lose dialog needs to pop up
       gameState . winCondition .= WinConditions (Unwinnable True) x
       openModal $ ScenarioEndModal LoseModal
-      saveScenarioInfoOnFinish
+      saveScenarioInfoOnFinishNocheat
       return True
     WinConditions (Won False) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
       gameState . winCondition .= WinConditions (Won True) x
       openModal $ ScenarioEndModal WinModal
-      saveScenarioInfoOnFinish
+      saveScenarioInfoOnFinishNocheat
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
       -- select 'keep playing' or 'next challenge'.  We maintain the
