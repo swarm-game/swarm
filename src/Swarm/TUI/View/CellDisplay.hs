@@ -2,7 +2,7 @@
 
 -- |
 -- Rendering of cells in the map view
--- 
+--
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.CellDisplay where
 
@@ -89,8 +89,9 @@ hidingMode g
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
 displayLoc :: Bool -> WorldEditor Name -> GameState -> W.Coords -> Display
-displayLoc showRobots we g coords = staticDisplay g coords
-  <> displayLocRaw showRobots we g coords
+displayLoc showRobots we g coords =
+  staticDisplay g coords
+    <> displayLocRaw showRobots we g coords
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.

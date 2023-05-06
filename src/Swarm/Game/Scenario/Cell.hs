@@ -42,12 +42,13 @@ data PCell e = Cell
 type Cell = PCell Entity
 
 mkPCellJson :: ToJSON b => (a -> b) -> PCell a -> Value
-mkPCellJson modifier x = toJSON $
-  catMaybes
-    [ Just . toJSON . getTerrainWord $ cellTerrain x
-    , toJSON . modifier <$> cellEntity x
-    , listToMaybe []
-    ]
+mkPCellJson modifier x =
+  toJSON $
+    catMaybes
+      [ Just . toJSON . getTerrainWord $ cellTerrain x
+      , toJSON . modifier <$> cellEntity x
+      , listToMaybe []
+      ]
 
 instance ToJSON Cell where
   toJSON = mkPCellJson $ view entityName
