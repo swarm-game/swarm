@@ -20,11 +20,11 @@ import Swarm.TUI.Model
 
 getEntitiesForList :: EntityMap -> V.Vector EntityFacade
 getEntitiesForList em =
-  V.fromList $ map mkPaint entities
+  V.fromList $ map mkFacade entities
  where
   entities = M.elems $ entitiesByName em
 
-getEditingBounds :: WorldDescription -> (Bool, BoundsRectangle)
+getEditingBounds :: WorldDescription -> (Bool, W.BoundsRectangle)
 getEditingBounds myWorld =
   (EA.isEmpty a, newBounds)
  where
@@ -86,7 +86,7 @@ isOutsideBottomRightCorner (W.Coords (yBottom, xRight)) (W.Coords (y, x)) =
 
 isOutsideRegion ::
   -- | full bounds
-  BoundsRectangle ->
+  W.BoundsRectangle ->
   -- | current coords
   W.Coords ->
   Bool
@@ -95,7 +95,7 @@ isOutsideRegion (tl, br) coord =
 
 getEditedMapRectangle ::
   WorldEditor Name ->
-  Maybe BoundsRectangle ->
+  Maybe W.BoundsRectangle ->
   W.World Int Entity ->
   [[CellPaintDisplay]]
 getEditedMapRectangle _ Nothing _ = []

@@ -111,7 +111,7 @@ handleMiddleClick mouseLoc = do
              where
               p = case elementPaint of
                 Facade efd -> efd
-                Ref r -> mkPaint r
+                Ref r -> mkFacade r
 
     mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
     whenJust mouseCoordsM setTerrainPaint

@@ -18,10 +18,6 @@ import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.Clock
 
--- | Represents the top-left and bottom-right coordinates
--- of a bounding rectangle of cells in the world map
-type BoundsRectangle = (W.Coords, W.Coords)
-
 data BoundsSelectionStep
   = UpperLeftPending
   | -- | Stores the *world coords* of the upper-left click
@@ -40,13 +36,13 @@ getDisplay (Ref e) = e ^. E.entityDisplay
 toFacade :: EntityPaint -> EntityFacade
 toFacade = \case
   Facade f -> f
-  Ref e -> mkPaint e
+  Ref e -> mkFacade e
 
 getEntityName :: EntityFacade -> EntityName
 getEntityName (EntityFacade name _) = name
 
 data MapEditingBounds = MapEditingBounds
-  { _boundsRect :: Maybe BoundsRectangle
+  { _boundsRect :: Maybe W.BoundsRectangle
   -- ^ Upper-left and lower-right coordinates
   -- of the map to be saved.
   , _boundsPersistDisplayUntil :: TimeSpec

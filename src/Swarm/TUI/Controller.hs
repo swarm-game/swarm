@@ -442,14 +442,10 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
-      Just TerrainPaletteModal -> do
-        lw <- use $ uiState . uiWorldEditor . terrainList
-        newList <- refreshList lw
-        uiState . uiWorldEditor . terrainList .= newList
+      Just TerrainPaletteModal ->
+        refreshList $ uiState . uiWorldEditor . terrainList
       Just EntityPaletteModal -> do
-        lw <- use $ uiState . uiWorldEditor . entityPaintList
-        newList <- refreshList lw
-        uiState . uiWorldEditor . entityPaintList .= newList
+        refreshList $ uiState . uiWorldEditor . entityPaintList
       Just GoalModal -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiState . uiGoal . focus %= focusNext
         _ -> do
@@ -465,7 +461,7 @@ handleModalEvent = \case
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
-    refreshList w = nestEventM' w $ BL.handleListEvent ev
+    refreshList z = Brick.zoom z $ BL.handleListEvent ev
 
 getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
 getNormalizedCurrentScenarioPath =
