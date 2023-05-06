@@ -4,6 +4,7 @@ import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.FileBrowser
+import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens
 import Control.Monad.Except (forM_, liftIO, when)
 import Graphics.Vty qualified as V
@@ -14,7 +15,6 @@ import Swarm.TUI.Launch.Prep (toValidatedParms)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
-import Brick.Widgets.FileBrowser qualified as FB
 import Swarm.TUI.Model.UI
 
 cacheValidatedInputs :: EventM Name AppState ()

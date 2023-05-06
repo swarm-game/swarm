@@ -240,7 +240,7 @@ prepareLaunchDialog ::
   EventM Name AppState ()
 prepareLaunchDialog siPair@(_, si) = do
   let maybePlayedScript = getPlayedScript $ si ^. scenarioStatus
-  fb <- use $ uiState . uiLaunchConfig . controls . fileBrowser . fbWidget 
+  fb <- use $ uiState . uiLaunchConfig . controls . fileBrowser . fbWidget
   forM_ maybePlayedScript $ \playedScript -> do
     newFb <- liftIO $ setWorkingDirectory (takeDirectory playedScript) fb
     uiState . uiLaunchConfig . controls . fileBrowser . fbWidget .= newFb
