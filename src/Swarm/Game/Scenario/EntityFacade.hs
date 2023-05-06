@@ -1,5 +1,11 @@
 {-# LANGUAGE DerivingVia #-}
 
+-- | Stand-in type for an "Entity" for purposes
+-- that do not require carrying around the entire state
+-- of an Entity.
+--
+-- Useful for simplified serialization, debugging,
+-- and equality checking, particularly for the World Editor.
 module Swarm.Game.Scenario.EntityFacade where
 
 import Control.Lens hiding (from, (.=), (<.>))
@@ -10,6 +16,9 @@ import Swarm.Game.Entity qualified as E
 
 type EntityName = Text
 
+-- | This datatype is a lightweight stand-in for the
+-- full-fledged "Entity" type without the baggage of all
+-- of its other fields.
 data EntityFacade = EntityFacade EntityName Display
   deriving (Eq)
 
@@ -17,8 +26,8 @@ data EntityFacade = EntityFacade EntityName Display
 instance ToJSON EntityFacade where
   toJSON (EntityFacade eName _display) = toJSON eName
 
-mkPaint :: E.Entity -> EntityFacade
-mkPaint e =
+mkFacade :: E.Entity -> EntityFacade
+mkFacade e =
   EntityFacade
     (e ^. E.entityName)
     (e ^. E.entityDisplay)

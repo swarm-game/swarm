@@ -88,7 +88,7 @@ cellToTerrainEntityNamePair (Cell terrain maybeEntity _) = (terrain, maybeEntity
 
 toCellPaintDisplay :: Cell -> CellPaintDisplay
 toCellPaintDisplay (Cell terrain maybeEntity r) =
-  Cell terrain (mkPaint <$> maybeEntity) r
+  Cell terrain (mkFacade <$> maybeEntity) r
 
 type WorldDescriptionPaint = PWorldDescription EntityFacade
 

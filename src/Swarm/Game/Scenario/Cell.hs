@@ -41,14 +41,16 @@ data PCell e = Cell
 --   and optionally an entity and robot.
 type Cell = PCell Entity
 
+mkPCellJson :: ToJSON b => (a -> b) -> PCell a -> Value
+mkPCellJson modifier x = toJSON $
+  catMaybes
+    [ Just . toJSON . getTerrainWord $ cellTerrain x
+    , toJSON . modifier <$> cellEntity x
+    , listToMaybe []
+    ]
+
 instance ToJSON Cell where
-  toJSON x =
-    toJSON $
-      catMaybes
-        [ Just $ toJSON $ getTerrainWord $ cellTerrain x
-        , toJSON . (^. entityName) <$> cellEntity x
-        , listToMaybe []
-        ]
+  toJSON = mkPCellJson $ view entityName
 
 -- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
 --   entity and robot, if present, are immediately looked up and
@@ -83,10 +85,4 @@ type CellPaintDisplay = PCell EntityFacade
 
 -- Note: This instance is used only for the purpose of WorldPalette
 instance ToJSON CellPaintDisplay where
-  toJSON x =
-    toJSON $
-      catMaybes
-        [ Just $ toJSON $ getTerrainWord $ cellTerrain x
-        , toJSON <$> cellEntity x
-        , listToMaybe []
-        ]
+  toJSON = mkPCellJson id
