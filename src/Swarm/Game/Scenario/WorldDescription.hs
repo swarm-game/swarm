@@ -79,11 +79,9 @@ paintMap pal = traverse (traverse toCell . into @String) . T.lines
 -- World editor
 ------------------------------------------------------------
 
-type TerrainEntityNamePair = (TerrainType, Maybe EntityName)
+type TerrainWith a = (TerrainType, Maybe a)
 
-type TerrainEntityFacadePair = (TerrainType, Maybe EntityFacade)
-
-cellToTerrainEntityNamePair :: CellPaintDisplay -> TerrainEntityFacadePair
+cellToTerrainEntityNamePair :: CellPaintDisplay -> TerrainWith EntityFacade
 cellToTerrainEntityNamePair (Cell terrain maybeEntity _) = (terrain, maybeEntity)
 
 toCellPaintDisplay :: Cell -> CellPaintDisplay
@@ -106,10 +104,10 @@ instance ToJSON WorldDescriptionPaint where
     suggestedPalette = palette w
     (mapText, paletteKeymap) = prepForJson suggestedPalette cellGrid
 
-toKey :: TerrainEntityFacadePair -> TerrainEntityNamePair
+toKey :: TerrainWith EntityFacade -> TerrainWith EntityName
 toKey = fmap $ fmap (\(EntityFacade eName _display) -> eName)
 
-getUniquePairs :: [[CellPaintDisplay]] -> M.Map TerrainEntityNamePair TerrainEntityFacadePair
+getUniquePairs :: [[CellPaintDisplay]] -> M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
 getUniquePairs cellGrid =
   M.fromList $ concatMap (map genTuple) cellGrid
  where
@@ -119,7 +117,7 @@ getUniquePairs cellGrid =
     terrainEfd = cellToTerrainEntityNamePair c
 
 constructPalette ::
-  [(Char, TerrainEntityFacadePair)] ->
+  [(Char, TerrainWith EntityFacade)] ->
   KM.KeyMap CellPaintDisplay
 constructPalette mappedPairs =
   KM.fromMapText terrainEntityPalette
@@ -128,7 +126,7 @@ constructPalette mappedPairs =
   terrainEntityPalette = M.fromList $ map (bimap T.singleton g) mappedPairs
 
 constructWorldMap ::
-  [(Char, TerrainEntityFacadePair)] ->
+  [(Char, TerrainWith EntityFacade)] ->
   [[CellPaintDisplay]] ->
   Text
 constructWorldMap mappedPairs =
@@ -156,16 +154,16 @@ prepForJson ::
 prepForJson (WorldPalette suggestedPalette) cellGrid =
   (constructWorldMap mappedPairs cellGrid, constructPalette mappedPairs)
  where
-  preassignments :: [(Char, TerrainEntityFacadePair)]
+  preassignments :: [(Char, TerrainWith EntityFacade)]
   preassignments =
     map (first T.head . fmap cellToTerrainEntityNamePair) $
       M.toList $
         KM.toMapText suggestedPalette
 
-  entityCells :: M.Map TerrainEntityNamePair TerrainEntityFacadePair
+  entityCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
   entityCells = getUniquePairs cellGrid
 
-  unassignedCells :: M.Map TerrainEntityNamePair TerrainEntityFacadePair
+  unassignedCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
   unassignedCells =
     M.withoutKeys entityCells $
       Set.fromList $
@@ -179,7 +177,7 @@ prepForJson (WorldPalette suggestedPalette) cellGrid =
       Set.fromList $
         map fst preassignments
 
-  newlyAssignedPairs :: [(Char, TerrainEntityFacadePair)]
+  newlyAssignedPairs :: [(Char, TerrainWith EntityFacade)]
   newlyAssignedPairs = zip (Set.toList unassignedCharacters) $ M.elems unassignedCells
 
   mappedPairs = preassignments <> newlyAssignedPairs

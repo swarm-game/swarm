@@ -186,11 +186,11 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 
   invertPaletteMapToDedupe ::
     Map a CellPaintDisplay ->
-    [(TerrainEntityNamePair, (a, CellPaintDisplay))]
+    [(TerrainWith EntityName, (a, CellPaintDisplay))]
   invertPaletteMapToDedupe =
     map (\x@(_, c) -> (toKey $ cellToTerrainEntityNamePair c, x)) . M.toList
 
-  paletteCellsByKey :: Map TerrainEntityNamePair (T.Text, CellPaintDisplay)
+  paletteCellsByKey :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   paletteCellsByKey =
     M.map (NE.head . NE.sortWith toSortVal)
       . binTuples
@@ -207,7 +207,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
     KM.map toCellPaintDisplay $
       maybe mempty (unPalette . palette . (^. scenarioWorld)) maybeOriginalScenario
 
-  pairsWithDisplays :: Map TerrainEntityNamePair (T.Text, CellPaintDisplay)
+  pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
    where
     g (terrain, eName) = do
@@ -219,7 +219,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 
   -- TODO (#1153): Filter out terrain-only palette entries that aren't actually
   -- used in the map.
-  terrainOnlyPalette :: Map TerrainEntityNamePair (T.Text, CellPaintDisplay)
+  terrainOnlyPalette :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   terrainOnlyPalette = M.fromList $ map f U.listEnums
    where
     f x = ((x, Nothing), (T.singleton $ getTerrainDefaultPaletteChar x, Cell x Nothing []))

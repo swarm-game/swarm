@@ -57,7 +57,7 @@ data WorldEditor n = WorldEditor
   , _entityPaintList :: BL.List n EntityFacade
   -- ^ This field has deferred initialization; it gets populated when a game
   -- is initialized.
-  , _paintedTerrain :: M.Map W.Coords TerrainEntityFacadePair
+  , _paintedTerrain :: M.Map W.Coords (TerrainWith EntityFacade)
   , _editingBounds :: MapEditingBounds
   , _editorFocusRing :: FocusRing n
   , _outputFilePath :: FilePath
