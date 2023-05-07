@@ -19,6 +19,8 @@ type EntityName = Text
 -- | This datatype is a lightweight stand-in for the
 -- full-fledged "Entity" type without the baggage of all
 -- of its other fields.
+-- It contains the bare minimum display information
+-- for rendering.
 data EntityFacade = EntityFacade EntityName Display
   deriving (Eq)
 

@@ -82,6 +82,9 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
 -- World editor
 ------------------------------------------------------------
 
+-- | Stateless cells used for the World Editor.
+-- These cells contain the bare minimum display information
+-- for rendering.
 type CellPaintDisplay = PCell EntityFacade
 
 -- Note: This instance is used only for the purpose of WorldPalette

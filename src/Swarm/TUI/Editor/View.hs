@@ -81,7 +81,7 @@ drawWorldEditor toplevelFocusRing uis =
         <+> swatchContent (worldEditor ^. entityPaintList) drawLabeledEntitySwatch
 
   clearEntityButtonWidget =
-    if null (worldEditor ^. entityPaintList . BL.listSelectedL)
+    if null $ worldEditor ^. entityPaintList . BL.listSelectedL
       then emptyWidget
       else
         mkFormControl (WorldEditorPanelControl ClearEntityButton)

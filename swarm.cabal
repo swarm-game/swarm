@@ -156,6 +156,7 @@ library
                       Swarm.TUI.Editor.Json
                       Swarm.TUI.Editor.Masking
                       Swarm.TUI.Editor.Model
+                      Swarm.TUI.Editor.Palette
                       Swarm.TUI.Editor.View
                       Swarm.TUI.Editor.Util
                       Swarm.TUI.Controller

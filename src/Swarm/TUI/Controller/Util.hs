@@ -7,7 +7,7 @@ module Swarm.TUI.Controller.Util where
 import Brick hiding (Direction)
 import Brick.Focus
 import Control.Lens
-import Control.Monad (unless)
+import Control.Monad (forM_, unless)
 import Control.Monad.IO.Class (liftIO)
 import Graphics.Vty qualified as V
 import Swarm.Game.State
@@ -75,11 +75,9 @@ immediatelyRedrawWorld = do
 loadVisibleRegion :: EventM Name AppState ()
 loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
-  case mext of
-    Nothing -> return ()
-    Just (Extent _ _ size) -> do
-      gs <- use gameState
-      gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
+  forM_ mext $ \(Extent _ _ size) -> do
+    gs <- use gameState
+    gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe W.Coords)
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do

@@ -88,6 +88,8 @@ toCellPaintDisplay :: Cell -> CellPaintDisplay
 toCellPaintDisplay (Cell terrain maybeEntity r) =
   Cell terrain (mkFacade <$> maybeEntity) r
 
+-- | A pared-down (stateless) version of "WorldDescription" just for
+-- the purpose of rendering a Scenario file
 type WorldDescriptionPaint = PWorldDescription EntityFacade
 
 instance ToJSON WorldDescriptionPaint where
@@ -149,6 +151,9 @@ constructWorldMap mappedPairs =
    where
     k = toKey $ cellToTerrainPair c
 
+-- | All alphanumeric characters. These are used as supplemental
+-- map placeholders in case a pre-existing display character is
+-- not available to re-use.
 genericCharacterPool :: Set.Set Char
 genericCharacterPool = Set.fromList $ ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9']
 
