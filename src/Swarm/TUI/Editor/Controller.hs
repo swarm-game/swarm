@@ -188,7 +188,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
     Map a CellPaintDisplay ->
     [(TerrainWith EntityName, (a, CellPaintDisplay))]
   invertPaletteMapToDedupe =
-    map (\x@(_, c) -> (toKey $ cellToTerrainEntityNamePair c, x)) . M.toList
+    map (\x@(_, c) -> (toKey $ cellToTerrainPair c, x)) . M.toList
 
   paletteCellsByKey :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   paletteCellsByKey =

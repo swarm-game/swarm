@@ -81,8 +81,8 @@ paintMap pal = traverse (traverse toCell . into @String) . T.lines
 
 type TerrainWith a = (TerrainType, Maybe a)
 
-cellToTerrainEntityNamePair :: CellPaintDisplay -> TerrainWith EntityFacade
-cellToTerrainEntityNamePair (Cell terrain maybeEntity _) = (terrain, maybeEntity)
+cellToTerrainPair :: CellPaintDisplay -> TerrainWith EntityFacade
+cellToTerrainPair (Cell terrain maybeEntity _) = (terrain, maybeEntity)
 
 toCellPaintDisplay :: Cell -> CellPaintDisplay
 toCellPaintDisplay (Cell terrain maybeEntity r) =
@@ -114,7 +114,7 @@ getUniquePairs cellGrid =
   genTuple c =
     (toKey terrainEfd, terrainEfd)
    where
-    terrainEfd = cellToTerrainEntityNamePair c
+    terrainEfd = cellToTerrainPair c
 
 constructPalette ::
   [(Char, TerrainWith EntityFacade)] ->
@@ -139,7 +139,7 @@ constructWorldMap mappedPairs =
     M.findWithDefault (error "Palette lookup failed!") k $
       M.fromList invertedMappedPairs
    where
-    k = toKey $ cellToTerrainEntityNamePair c
+    k = toKey $ cellToTerrainPair c
 
 genericCharacterPool :: Set.Set Char
 genericCharacterPool = Set.fromList $ ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9']
@@ -156,7 +156,7 @@ prepForJson (WorldPalette suggestedPalette) cellGrid =
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]
   preassignments =
-    map (first T.head . fmap cellToTerrainEntityNamePair) $
+    map (first T.head . fmap cellToTerrainPair) $
       M.toList $
         KM.toMapText suggestedPalette
 
