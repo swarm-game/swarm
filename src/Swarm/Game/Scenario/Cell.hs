@@ -41,6 +41,7 @@ data PCell e = Cell
 --   and optionally an entity and robot.
 type Cell = PCell Entity
 
+-- | Re-usable serialization for variants of "PCell"
 mkPCellJson :: ToJSON b => (a -> b) -> PCell a -> Value
 mkPCellJson modifier x =
   toJSON $
