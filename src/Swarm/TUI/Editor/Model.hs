@@ -11,7 +11,7 @@ import Data.Vector qualified as V
 import Swarm.Game.Display (Display)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.EntityFacade
-import Swarm.Game.Scenario.WorldDescription
+import Swarm.Game.Scenario.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Model.Name

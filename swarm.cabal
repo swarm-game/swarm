@@ -121,6 +121,7 @@ library
                       Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
+                      Swarm.Game.Scenario.WorldPalette
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
@@ -157,8 +158,8 @@ library
                       Swarm.TUI.Editor.Masking
                       Swarm.TUI.Editor.Model
                       Swarm.TUI.Editor.Palette
-                      Swarm.TUI.Editor.View
                       Swarm.TUI.Editor.Util
+                      Swarm.TUI.Editor.View
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
                       Swarm.TUI.Inventory.Sorting

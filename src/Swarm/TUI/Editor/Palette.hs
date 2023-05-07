@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Editor.Palette where
 
 import Control.Lens
@@ -21,7 +23,7 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.EntityFacade
-import Swarm.Game.Scenario.WorldDescription
+import Swarm.Game.Scenario.WorldPalette
 import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
 import Swarm.TUI.Editor.Area (AreaDimensions (..), getAreaDimensions)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
