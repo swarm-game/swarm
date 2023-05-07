@@ -140,7 +140,9 @@ getStatic g coords
   isStatic = case focusedRange g of
     -- If we're not viewing a robot, display static.  This
     -- can happen if e.g. the robot we were viewing drowned.
-    Nothing -> True
+    -- This is overridden by creative mode, e.g. when no robots
+    -- have been defined for the scenario.
+    Nothing -> not $ g ^. creativeMode
     -- Don't display static if the robot is close, or when we're in
     -- creative mode or the player is allowed to scroll the world.
     Just Close -> False
