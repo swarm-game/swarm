@@ -406,10 +406,10 @@ drawGameUI s =
                         .~ (if moreBot then Just (txt " · · · ") else Nothing)
                   )
                   $ drawInfoPanel s
-              , hCenter $
-                  clickable (FocusablePanel WorldEditorPanel) $
-                    EV.drawWorldEditor fr $
-                      s ^. uiState
+              , hCenter
+                  . clickable (FocusablePanel WorldEditorPanel)
+                  . EV.drawWorldEditor fr
+                  $ s ^. uiState
               ]
         , vBox rightPanel
         ]

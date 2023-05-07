@@ -179,10 +179,10 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
   -- paired with each entity
   entitiesWithModalTerrain :: [(TerrainType, EntityName)]
   entitiesWithModalTerrain =
-    map (swap . fmap (fst . NE.head)) $
-      mapMaybe sequenceA $
-        M.toList $
-          M.map (NE.nonEmpty . sortOn snd . M.toList) getEntityTerrainMultiplicity
+    map (swap . fmap (fst . NE.head))
+      . mapMaybe sequenceA
+      . M.toList
+      $ M.map (NE.nonEmpty . sortOn snd . M.toList) getEntityTerrainMultiplicity
 
   invertPaletteMapToDedupe ::
     Map a CellPaintDisplay ->
@@ -192,10 +192,10 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 
   paletteCellsByKey :: Map TerrainEntityNamePair (T.Text, CellPaintDisplay)
   paletteCellsByKey =
-    M.map (NE.head . NE.sortWith toSortVal) $
-      binTuples $
-        invertPaletteMapToDedupe $
-          KM.toMapText originalPalette
+    M.map (NE.head . NE.sortWith toSortVal)
+      . binTuples
+      . invertPaletteMapToDedupe
+      $ KM.toMapText originalPalette
    where
     toSortVal (symbol, Cell _terrain _maybeEntity robots) = Down (null robots, symbol)
 

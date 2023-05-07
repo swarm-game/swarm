@@ -84,10 +84,10 @@ drawWorldEditor toplevelFocusRing uis =
     if null (worldEditor ^. entityPaintList . BL.listSelectedL)
       then emptyWidget
       else
-        mkFormControl (WorldEditorPanelControl ClearEntityButton) $
-          hLimit 20 $
-            hCenter $
-              str "None"
+        mkFormControl (WorldEditorPanelControl ClearEntityButton)
+          . hLimit 20
+          . hCenter
+          $ str "None"
 
   areaContent = case worldEditor ^. editingBounds . boundsSelectionStep of
     UpperLeftPending -> str "Click top-left"
@@ -121,10 +121,10 @@ drawWorldEditor toplevelFocusRing uis =
   outputWidgetContent = str $ worldEditor ^. outputFilePath
 
   saveButtonWidget =
-    mkFormControl (WorldEditorPanelControl MapSaveButton) $
-      hLimit 20 $
-        hCenter $
-          str "Save"
+    mkFormControl (WorldEditorPanelControl MapSaveButton)
+      . hLimit 20
+      . hCenter
+      $ str "Save"
 
   statusBox = maybe emptyWidget str $ worldEditor ^. lastWorldEditorMessage
 
@@ -136,11 +136,11 @@ drawLabeledEntitySwatch (EntityFacade eName eDisplay) =
 
 drawTerrainSelector :: AppState -> Widget Name
 drawTerrainSelector s =
-  padAll 1 $
-    hCenter $
-      vLimit (length (listEnums :: [TerrainType])) $
-        BL.renderListWithIndex listDrawTerrainElement True $
-          s ^. uiState . uiWorldEditor . terrainList
+  padAll 1
+    . hCenter
+    . vLimit (length (listEnums :: [TerrainType]))
+    . BL.renderListWithIndex listDrawTerrainElement True
+    $ s ^. uiState . uiWorldEditor . terrainList
 
 listDrawTerrainElement :: Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement pos _isSelected a =
@@ -148,11 +148,11 @@ listDrawTerrainElement pos _isSelected a =
 
 drawEntityPaintSelector :: AppState -> Widget Name
 drawEntityPaintSelector s =
-  padAll 1 $
-    hCenter $
-      vLimit 10 $
-        BL.renderListWithIndex listDrawEntityPaintElement True $
-          s ^. uiState . uiWorldEditor . entityPaintList
+  padAll 1
+    . hCenter
+    . vLimit 10
+    . BL.renderListWithIndex listDrawEntityPaintElement True
+    $ s ^. uiState . uiWorldEditor . entityPaintList
 
 listDrawEntityPaintElement :: Int -> Bool -> EntityFacade -> Widget Name
 listDrawEntityPaintElement pos _isSelected a =
