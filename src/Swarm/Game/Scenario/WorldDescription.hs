@@ -107,8 +107,16 @@ instance ToJSON WorldDescriptionPaint where
 toKey :: TerrainWith EntityFacade -> TerrainWith EntityName
 toKey = fmap $ fmap (\(EntityFacade eName _display) -> eName)
 
-getUniquePairs :: [[CellPaintDisplay]] -> M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
-getUniquePairs cellGrid =
+-- | We want to identify all of the unique (terrain, entity facade) pairs.
+-- However, "EntityFacade" includes a "Display" record, which contains more
+-- fields than desirable for use as a unique key.
+-- Therefore, we extract just the entity name for use in a
+-- (terrain, entity name) key, and couple it with the original
+-- (terrain, entity facade) pair in a Map.
+getUniqueTerrainFacadePairs ::
+  [[CellPaintDisplay]] ->
+  M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
+getUniqueTerrainFacadePairs cellGrid =
   M.fromList $ concatMap (map genTuple) cellGrid
  where
   genTuple c =
@@ -161,7 +169,7 @@ prepForJson (WorldPalette suggestedPalette) cellGrid =
         KM.toMapText suggestedPalette
 
   entityCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
-  entityCells = getUniquePairs cellGrid
+  entityCells = getUniqueTerrainFacadePairs cellGrid
 
   unassignedCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
   unassignedCells =
