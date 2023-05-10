@@ -1326,6 +1326,12 @@ handleRobotPanelEvent = \case
   (CharKey ':') -> do
     uiState . uiInventoryShouldUpdate .= True
     uiState . uiInventorySort %= cycleSortDirection
+  (CharKey '/') -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySearch .= Just ""
+  EscapeKey -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySearch .= Nothing
   (VtyEvent ev) -> do
     -- This does not work we want to skip redrawing in the no-list case
     -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
