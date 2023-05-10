@@ -107,7 +107,6 @@ module Swarm.TUI.Model (
   initRuntimeState,
 ) where
 
-import Text.Fuzzy qualified as Fuzzy
 import Brick
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
@@ -135,6 +134,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
+import Text.Fuzzy qualified as Fuzzy
 
 ------------------------------------------------------------
 -- Custom UI label types
