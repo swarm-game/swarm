@@ -909,13 +909,15 @@ drawKeyMenu s =
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]
   keyCmdsFor (Just (FocusablePanel RobotPanel)) =
-    [ ("Enter", "pop out")
-    , ("m", "make")
-    , ("0", (if showZero then "hide" else "show") <> " 0")
-    , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
-    ]
-      ++ [("/", "search") | isNothing inventorySearch]
-      ++ [("Esc", "exit search") | isJust inventorySearch]
+    [ ("Enter", "pop out") ]
+    ++ if isJust inventorySearch
+         then [("Esc", "exit search")]
+         else
+           [ ("m", "make")
+           , ("0", (if showZero then "hide" else "show") <> " 0")
+           , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
+           , ("/", "search")
+           ]
   keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
 
