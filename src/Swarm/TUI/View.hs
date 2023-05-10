@@ -56,7 +56,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set qualified as Set (toList)
