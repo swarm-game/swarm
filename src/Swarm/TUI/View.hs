@@ -56,7 +56,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set qualified as Set (toList)
@@ -846,6 +846,7 @@ drawKeyMenu s =
   goal = hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
   showZero = s ^. uiState . uiShowZero
   inventorySort = s ^. uiState . uiInventorySort
+  inventorySearch = s ^. uiState . uiInventorySearch
   ctrlMode = s ^. uiState . uiREPL . replControlMode
   canScroll = creative || (s ^. gameState . worldScrollable)
   handlerInstalled = isJust (s ^. gameState . inputHandler)
@@ -902,6 +903,8 @@ drawKeyMenu s =
     , ("0", (if showZero then "hide" else "show") <> " 0")
     , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
     ]
+      ++ [("/", "search") | isNothing inventorySearch]
+      ++ [("Esc", "exit search") | isJust inventorySearch]
   keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
 
