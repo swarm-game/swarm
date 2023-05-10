@@ -30,6 +30,9 @@ pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
 pattern EscapeKey :: BrickEvent n e
 pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
 
+pattern BackspaceKey :: BrickEvent n e
+pattern BackspaceKey = VtyEvent (V.EvKey V.KBS [])
+
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 

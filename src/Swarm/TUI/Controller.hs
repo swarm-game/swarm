@@ -1312,35 +1312,56 @@ adjustTPS (+/-) = uiState . lgTicksPerSecond %~ (+/- 1)
 
 -- | Handle user input events in the robot panel.
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleRobotPanelEvent = \case
-  (Key V.KEnter) ->
-    gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
-  (CharKey 'm') ->
-    gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
-  (CharKey '0') -> do
-    uiState . uiInventoryShouldUpdate .= True
-    uiState . uiShowZero %= not
-  (CharKey ';') -> do
-    uiState . uiInventoryShouldUpdate .= True
-    uiState . uiInventorySort %= cycleSortOrder
-  (CharKey ':') -> do
-    uiState . uiInventoryShouldUpdate .= True
-    uiState . uiInventorySort %= cycleSortDirection
-  (CharKey '/') -> do
-    uiState . uiInventoryShouldUpdate .= True
-    uiState . uiInventorySearch .= Just ""
+handleRobotPanelEvent bev = do
+  search <- use (uiState . uiInventorySearch)
+  case search of
+    Just _ -> handleInventorySearchEvent bev
+    Nothing -> case bev of
+      Key V.KEnter ->
+        gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
+      CharKey 'm' ->
+        gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
+      CharKey '0' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiShowZero %= not
+      CharKey ';' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiInventorySort %= cycleSortOrder
+      CharKey ':' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiInventorySort %= cycleSortDirection
+      CharKey '/' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiInventorySearch .= Just ""
+      VtyEvent ev -> do
+        -- This does not work we want to skip redrawing in the no-list case
+        -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
+        mList <- preuse $ uiState . uiInventory . _Just . _2
+        case mList of
+          Nothing -> continueWithoutRedraw
+          Just l -> do
+            l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
+            uiState . uiInventory . _Just . _2 .= l'
+      _ -> continueWithoutRedraw
+
+-- | XXX
+handleInventorySearchEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleInventorySearchEvent = \case
   EscapeKey -> do
     uiState . uiInventoryShouldUpdate .= True
     uiState . uiInventorySearch .= Nothing
-  (VtyEvent ev) -> do
-    -- This does not work we want to skip redrawing in the no-list case
-    -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
-    mList <- preuse $ uiState . uiInventory . _Just . _2
-    case mList of
-      Nothing -> continueWithoutRedraw
-      Just l -> do
-        l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
-        uiState . uiInventory . _Just . _2 .= l'
+  Key V.KEnter -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySearch .= Nothing
+    gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
+  CharKey c -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySearch %= fmap (`snoc` c)
+  BackspaceKey -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySearch %= fmap (T.dropEnd 1)
+  -- XXX need to handle list events too, consider splitting out list handling stuff into a
+  -- helper function
   _ -> continueWithoutRedraw
 
 -- | Attempt to make an entity selected from the inventory, if the
