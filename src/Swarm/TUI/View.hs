@@ -358,7 +358,18 @@ drawGameUI s =
       hBox
         [ hLimitPercent 25 $
             vBox
-              [ vLimitPercent 50 $ panel highlightAttr fr (FocusablePanel RobotPanel) plainBorder $ drawRobotPanel s
+              [ vLimitPercent 50 $
+                panel
+                  highlightAttr
+                  fr
+                  (FocusablePanel RobotPanel)
+                  ( plainBorder
+                      & bottomLabels . centerLabel
+                        .~ fmap
+                             (txt . (" Search: " <>) . (<>" "))
+                             (s ^. uiState . uiInventorySearch)
+                  )
+                  $ drawRobotPanel s
               , panel
                   highlightAttr
                   fr
