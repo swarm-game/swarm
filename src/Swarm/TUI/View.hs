@@ -909,8 +909,8 @@ drawKeyMenu s =
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]
   keyCmdsFor (Just (FocusablePanel RobotPanel)) =
-    [("Enter", "pop out")]
-      ++ if isJust inventorySearch
+    ("Enter", "pop out")
+      : if isJust inventorySearch
         then [("Esc", "exit search")]
         else
           [ ("m", "make")
