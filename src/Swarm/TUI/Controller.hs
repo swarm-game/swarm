@@ -1339,7 +1339,6 @@ handleRobotPanelEvent bev = do
 -- | Handle an event to navigate through the inventory list.
 handleInventoryListEvent :: V.Event -> EventM Name AppState ()
 handleInventoryListEvent ev = do
-
   -- Note, refactoring like this is tempting:
   --
   --   Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
