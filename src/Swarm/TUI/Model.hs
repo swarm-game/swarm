@@ -107,6 +107,7 @@ module Swarm.TUI.Model (
   initRuntimeState,
 ) where
 
+import Text.Fuzzy qualified as Fuzzy
 import Brick
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
@@ -264,13 +265,14 @@ populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   showZero <- use uiShowZero
   sortOptions <- use uiInventorySort
+  search <- use uiInventorySearch
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = EquippedEntry e
       itemList isInventoryDisplay mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
           . sortInventory sortOptions
-          . filter shouldDisplay
+          . filter ((&&) <$> matchesSearch <*> shouldDisplay)
           . elems
        where
         -- Display items if we have a positive number of them, or they
@@ -282,6 +284,9 @@ populateInventoryList (Just r) = do
             || isInventoryDisplay
               && showZero
               && not ((r ^. equippedDevices) `E.contains` e)
+
+      matchesSearch :: (Count, Entity) -> Bool
+      matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
 
       items =
         (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
