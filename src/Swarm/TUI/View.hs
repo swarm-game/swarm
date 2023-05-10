@@ -358,17 +358,17 @@ drawGameUI s =
       hBox
         [ hLimitPercent 25 $
             vBox
-              [ vLimitPercent 50 $
-                panel
-                  highlightAttr
-                  fr
-                  (FocusablePanel RobotPanel)
-                  ( plainBorder
-                      & bottomLabels . centerLabel
-                        .~ fmap
-                             (txt . (" Search: " <>) . (<>" "))
-                             (s ^. uiState . uiInventorySearch)
-                  )
+              [ vLimitPercent 50
+                  $ panel
+                    highlightAttr
+                    fr
+                    (FocusablePanel RobotPanel)
+                    ( plainBorder
+                        & bottomLabels . centerLabel
+                          .~ fmap
+                            (txt . (" Search: " <>) . (<> " "))
+                            (s ^. uiState . uiInventorySearch)
+                    )
                   $ drawRobotPanel s
               , panel
                   highlightAttr
@@ -909,15 +909,15 @@ drawKeyMenu s =
       ++ [("c", "recenter") | not viewingBase]
       ++ [("f", "FPS")]
   keyCmdsFor (Just (FocusablePanel RobotPanel)) =
-    [ ("Enter", "pop out") ]
-    ++ if isJust inventorySearch
-         then [("Esc", "exit search")]
-         else
-           [ ("m", "make")
-           , ("0", (if showZero then "hide" else "show") <> " 0")
-           , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
-           , ("/", "search")
-           ]
+    [("Enter", "pop out")]
+      ++ if isJust inventorySearch
+        then [("Esc", "exit search")]
+        else
+          [ ("m", "make")
+          , ("0", (if showZero then "hide" else "show") <> " 0")
+          , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
+          , ("/", "search")
+          ]
   keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
 
