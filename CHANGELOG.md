@@ -1,5 +1,86 @@
 # Revision history for swarm
 
+## **0.4.0.0** - ???
+
+07fc47e6 * feature/scroll-repl main origin/main Inventory search/filter mode (#1250)
+305867a5 * add new `give` tutorial (#1249)
+271b4852 * Do not show static when no robots exist in creative mode (#1248)
+f4776e25 * reduce lag in monitor bot for Maypole scenario (#1244)
+6555a412 * Fix scenario menu update after quitting to menu (#1243)
+f2ae7dd6 * finer texture for static (#1241)
+0e63c7af * Record best code size (#974)
+8d2b5236 * place hanoi files in subdirectory (#1236)
+da7190a0 * Implement push command (#1235)
+2dddea13 * unrestricted variant of atomic (#1231)
+5fd85246 * Immersive multimedia experience (#1233)
+e2b4eaa1 * mention `unit` and `void` types in `ADT calculator` description (#1226)
+eb90bfbe * web api to parse, render, and run code (#1142)
+ffafb8bf * implement stride command (#1219)
+599225f4 * Key input handler (#1214)
+11165df7 * More efficient gopher solution using 'watch' (#1216)
+7df69168 * Immediately flag world for redraw when scanning/uploading (#1225)
+593ac937 * enforce no duplicate entity names (#1223)
+b793bd07 * add integration test for 'resonate' command (#1217)
+1795e12f * scout command (#1209)
+9477c100 * Fix objective management upon goal condition exception (#1215)
+2e6207e4 * Implement 'watch' and 'surveil' (#1201)
+079ca057 * Fix `brick-list-skip` versions (#1213)
+ffbb303b * use brick-list-skip package (#1211)
+dc90996d * resonate command (#1204)
+
+
+### Bugfixes
+
+* Save completion time immediately upon finishing scenario by @xsebek
+  in [#1118](https://github.com/swarm-game/swarm/pull/1118)
+* Fix rightward bleeding of custom attributes by @kostmo in [#1137](https://github.com/swarm-game/swarm/pull/1137)
+
+### New Features
+
+#### Swarm language
+
+* The `drill` command now returns the first inventory addition by @kostmo in [#1165](https://github.com/swarm-game/swarm/pull/1165)
+* Type ascription syntax by @Alexander-Block in [#1164](https://github.com/swarm-game/swarm/pull/1164)
+* New `detect` command by @kostmo in [#1170](https://github.com/swarm-game/swarm/pull/1170)
+* Records and record types by @byorgey in [#1148](https://github.com/swarm-game/swarm/pull/1148)
+* New `sniff` and `chirp` commands by @kostmo in [#1181](https://github.com/swarm-game/swarm/pull/1181)
+* `requirements` command for viewing requirements of any expression by @byorgey in [#1183](https://github.com/swarm-game/swarm/pull/1183)
+
+#### Entities
+
+* Make `sand` a bit harder to get by @byorgey in [#1024](https://github.com/swarm-game/swarm/pull/1024)
+* New `tweezers` entity to enable debugging view and single-stepping CESK machine by @xsebek in [#1081](https://github.com/swarm-game/swarm/pull/1081)
+
+#### LSP improvements
+
+* let-in syntax highlighting by @kostmo in [#1162](https://github.com/swarm-game/swarm/pull/1162)
+
+#### Web API
+
+#### Command line options
+
+#### New scenarios
+
+* Adventure game scenario by @kostmo in [#1136](https://github.com/swarm-game/swarm/pull/1136)
+* Run around in circles by @kostmo in [#1158](https://github.com/swarm-game/swarm/pull/1158)
+* hackman by @kostmo in [#1135](https://github.com/swarm-game/swarm/pull/1135)
+* Whack-a-mole by @kostmo in [#1026](https://github.com/swarm-game/swarm/pull/1026)
+
+#### Scenario development
+
+#### UI enhancements
+
+* Allow scrolling the world map unless explicitly disallowed by @byorgey in [#1109](https://github.com/swarm-game/swarm/pull/1109)
+* Add random "static" to `view` outside a certain range by @byorgey in [#1110](https://github.com/swarm-game/swarm/pull/1110)
+* Display the scenario in which an achievement was obtained by @kostmo in [#1175](https://github.com/swarm-game/swarm/pull/1175)
+
+#### Achievements
+
+* Achievement for disorientation by @kostmo in [#1173](https://github.com/swarm-game/swarm/pull/1173)
+
+#### Debugging
+
+
 ## **0.3.0.1** - 2023-02-01
 
 A few critical bug fixes and improvements:
