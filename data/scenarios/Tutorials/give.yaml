@@ -13,11 +13,13 @@ objectives:
         around your `base`, by `build`ing one or more robots to
         collect them and then `give` them to you.
     condition: |
-      bd <- as base {has "board"};
-      b0 <- as base {has "bit (0)"};
-      lx <- as base {has "LaTeX"};
-      co <- as base {has "copper ore"};
-      return (bd && b0 && lx && co);
+      as base {
+          bd <- has "board";
+          b0 <- has "bit (0)";
+          lx <- has "LaTeX";
+          co <- has "copper ore";
+          return $ bd && b0 && lx && co;
+      };
 solution: |
   build {
     turn back; move; turn right; move; move; move; grab;
