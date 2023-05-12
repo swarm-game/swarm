@@ -1,0 +1,76 @@
+version: 1
+name: Give
+description: |
+  Learn how to give items to other robots.
+objectives:
+  - goal:
+      - |
+        Robots can transfer items between them using the `give`
+        command. This command takes two arguments: the target
+        robot, and the name of the item to give.  The target robot
+        is often the special `base` robot, but could be any robot.
+      - In this scenario, you will need to collect the items scattered
+        around your `base`, by `build`ing one or more robots to
+        collect them and then `give` them to you.
+    condition: |
+      as base {
+          bd <- has "board";
+          b0 <- has "bit (0)";
+          lx <- has "LaTeX";
+          co <- has "copper ore";
+          return $ bd && b0 && lx && co;
+      };
+solution: |
+  build {
+    turn back; move; turn right; move; move; move; grab;
+    turn right; move; move; turn right; move; grab;
+    move; move; move; move; turn right; move; grab;
+    turn left; move; move; turn right; move; move; grab;
+    turn right; move; move; move; move; turn right; move; move;
+    give base "LaTeX";
+    give base "board";
+    give base "copper ore";
+    give base "bit (0)";
+  }
+robots:
+  - name: base
+    dir: [0,1]
+    heavy: true
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+    inventory:
+      - [10, logger]
+      - [10, compass]
+      - [10, grabber]
+      - [10, scanner]
+      - [10, treads]
+      - [10, solar panel]
+known: [board, LaTeX, bit (0), copper ore]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    'w': [grass, board]
+    '$': [grass, LaTeX]
+    '0': [grass, bit (0)]
+    'C': [grass, copper ore]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 3]
+  map: |
+    ┌─────────┐
+    │.........│
+    │..w......│
+    │....Ω.0..│
+    │.$.......│
+    │........C│
+    └─────────┘
