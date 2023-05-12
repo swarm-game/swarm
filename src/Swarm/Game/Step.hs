@@ -1682,6 +1682,24 @@ execConst c vs s k = do
 
         return $ Out VUnit s k
       _ -> badConst
+    Halt -> case vs of
+      [VRobot targetID] -> do
+        myID <- use robotID
+        case myID == targetID of
+          -- To halt ourselves, just return a cancelled CESK machine.
+          -- It will be reinstalled as our current machine; then,
+          -- based on the fact that our CESK machine is done we will
+          -- be put to sleep and the REPL will be reset if we are the
+          -- base robot.
+          True -> return $ cancel $ Out VUnit s k
+          False -> do
+            -- Make sure the other robot exists and is close enough.
+            _other <- getRobotWithinTouch targetID
+            -- Cancel its CESK machine, and put it to sleep.
+            robotMap . at targetID . _Just . machine %= cancel
+            sleepForever targetID
+            return $ Out VUnit s k
+      _ -> badConst
     Ishere -> case vs of
       [VText name] -> do
         loc <- use robotLocation

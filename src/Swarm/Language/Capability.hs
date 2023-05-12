@@ -149,6 +149,8 @@ data Capability
     CDebug
   | -- | Capability to handle keyboard input.
     CHandleinput
+  | -- | Capability to make other robots halt.
+    CHalt
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -243,6 +245,7 @@ constCaps = \case
   Heading -> Just COrient
   Key -> Just CHandleinput
   InstallKeyHandler -> Just CHandleinput
+  Halt -> Just CHalt
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText
