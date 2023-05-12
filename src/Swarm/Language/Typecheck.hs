@@ -60,6 +60,7 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
@@ -206,6 +207,9 @@ skolemize (Forall xs uty) = do
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
+--
+--   Pick nice type variable names instead of reusing whatever fresh
+--   names happened to be used for the free variables.
 generalize :: UType -> Infer UPolytype
 generalize uty = do
   uty' <- applyBindings uty
@@ -213,7 +217,10 @@ generalize uty = do
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
-      xs = map (mkVarName "a") fvs
+      alphabet = ['a' .. 'z']
+      xs =
+        take (length fvs) $
+          map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
   return $ Forall xs (substU (M.fromList (zip (map Right fvs) (map UTyVar xs))) uty')
 
 ------------------------------------------------------------
