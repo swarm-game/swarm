@@ -17,6 +17,7 @@ module Swarm.TUI.Model.UI (
   uiREPL,
   uiInventory,
   uiInventorySort,
+  uiInventorySearch,
   uiMoreInfoTop,
   uiMoreInfoBot,
   uiScrollToEnd,
@@ -94,6 +95,7 @@ data UIState = UIState
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
+  , _uiInventorySearch :: Maybe Text
   , _uiMoreInfoTop :: Bool
   , _uiMoreInfoBot :: Bool
   , _uiScrollToEnd :: Bool
@@ -155,6 +157,9 @@ uiREPL :: Lens' UIState REPLState
 
 -- | The order and direction of sorting inventory list.
 uiInventorySort :: Lens' UIState InventorySortOptions
+
+-- | The current search string used to narrow the inventory view.
+uiInventorySearch :: Lens' UIState (Maybe Text)
 
 -- | The hash value of the focused robot entity (so we can tell if its
 --   inventory changed) along with a list of the items in the
@@ -296,6 +301,7 @@ initUIState showMainMenu cheatMode = do
           , _uiREPL = initREPLState $ newREPLHistory history
           , _uiInventory = Nothing
           , _uiInventorySort = defaultSortOptions
+          , _uiInventorySearch = Nothing
           , _uiMoreInfoTop = False
           , _uiMoreInfoBot = False
           , _uiScrollToEnd = False

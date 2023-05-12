@@ -1312,29 +1312,70 @@ adjustTPS (+/-) = uiState . lgTicksPerSecond %~ (+/- 1)
 
 -- | Handle user input events in the robot panel.
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleRobotPanelEvent = \case
-  (Key V.KEnter) ->
+handleRobotPanelEvent bev = do
+  search <- use (uiState . uiInventorySearch)
+  case search of
+    Just _ -> handleInventorySearchEvent bev
+    Nothing -> case bev of
+      Key V.KEnter ->
+        gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
+      CharKey 'm' ->
+        gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
+      CharKey '0' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiShowZero %= not
+      CharKey ';' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiInventorySort %= cycleSortOrder
+      CharKey ':' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiInventorySort %= cycleSortDirection
+      CharKey '/' -> do
+        uiState . uiInventoryShouldUpdate .= True
+        uiState . uiInventorySearch .= Just ""
+      VtyEvent ev -> handleInventoryListEvent ev
+      _ -> continueWithoutRedraw
+
+-- | Handle an event to navigate through the inventory list.
+handleInventoryListEvent :: V.Event -> EventM Name AppState ()
+handleInventoryListEvent ev = do
+  -- Note, refactoring like this is tempting:
+  --
+  --   Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
+  --
+  -- However, this does not work since we want to skip redrawing in the no-list case!
+
+  mList <- preuse $ uiState . uiInventory . _Just . _2
+  case mList of
+    Nothing -> continueWithoutRedraw
+    Just l -> do
+      l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
+      uiState . uiInventory . _Just . _2 .= l'
+
+-- | Handle a user input event in the robot/inventory panel, while in
+--   inventory search mode.
+handleInventorySearchEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleInventorySearchEvent = \case
+  -- Escape: stop filtering and go back to regular inventory mode
+  EscapeKey -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySearch .= Nothing
+  -- Enter: return to regular inventory mode, and pop out the selected item
+  Key V.KEnter -> do
+    uiState . uiInventoryShouldUpdate .= True
+    uiState . uiInventorySearch .= Nothing
     gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
-  (CharKey 'm') ->
-    gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
-  (CharKey '0') -> do
+  -- Any old character: append to the current search string
+  CharKey c -> do
     uiState . uiInventoryShouldUpdate .= True
-    uiState . uiShowZero %= not
-  (CharKey ';') -> do
+    uiState . uiInventorySearch %= fmap (`snoc` c)
+  -- Backspace: chop the last character off the end of the current search string
+  BackspaceKey -> do
     uiState . uiInventoryShouldUpdate .= True
-    uiState . uiInventorySort %= cycleSortOrder
-  (CharKey ':') -> do
-    uiState . uiInventoryShouldUpdate .= True
-    uiState . uiInventorySort %= cycleSortDirection
-  (VtyEvent ev) -> do
-    -- This does not work we want to skip redrawing in the no-list case
-    -- Brick.zoom (uiState . uiInventory . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
-    mList <- preuse $ uiState . uiInventory . _Just . _2
-    case mList of
-      Nothing -> continueWithoutRedraw
-      Just l -> do
-        l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
-        uiState . uiInventory . _Just . _2 .= l'
+    uiState . uiInventorySearch %= fmap (T.dropEnd 1)
+  -- Handle any other event as list navigation, so we can look through
+  -- the filtered inventory using e.g. arrow keys
+  VtyEvent ev -> handleInventoryListEvent ev
   _ -> continueWithoutRedraw
 
 -- | Attempt to make an entity selected from the inventory, if the
