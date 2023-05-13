@@ -223,7 +223,7 @@ generalize uty = do
       prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
   return $
     Forall
-      (zipWith const prettyNames fvs)   -- one pretty name per free variable
+      (zipWith const prettyNames fvs) -- one pretty name per free variable
       (substU (M.fromList . map (Right *** UTyVar) $ zip fvs prettyNames) uty')
 
 ------------------------------------------------------------
