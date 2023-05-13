@@ -1020,6 +1020,7 @@ handleREPLEventPiloting x = case x of
   CharKey 's' -> inputCmd "scan forward"
   CharKey 'b' -> inputCmd "blocked"
   CharKey 'u' -> inputCmd "upload base"
+  CharKey 'p' -> inputCmd "push"
   _ -> inputCmd "noop"
  where
   inputCmd cmdText = do

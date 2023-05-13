@@ -191,6 +191,7 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
+        , testSolution Default "Challenges/capture"
         , testSolution (Sec 5) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 10) "Challenges/hanoi"
