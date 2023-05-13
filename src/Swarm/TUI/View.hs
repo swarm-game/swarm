@@ -41,7 +41,7 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderAttr, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
@@ -310,7 +310,9 @@ drawGameUI s =
   moreBot = s ^. uiState . uiMoreInfoBot
   showREPL = s ^. uiState . uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
-  minimizedREPL = [separateBorders $ forceAttr cyanAttr hBorder]
+  minimizedREPL = case focusGetCurrent fr of
+    (Just (FocusablePanel REPLPanel)) -> [separateBorders $ clickable (FocusablePanel REPLPanel) (forceAttr highlightAttr hBorder)]
+    _ -> [separateBorders $ clickable (FocusablePanel REPLPanel) hBorder]
   worldPanel =
     [ panel
         highlightAttr
@@ -594,7 +596,7 @@ helpWidget theSeed mport =
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
     , ("Ctrl-q", "quit the current scenario")
-    , ("Ctrl-k", "collapse/expand REPL")
+    , ("Ctrl-s", "collapse/expand REPL")
     , ("Meta-h", "hide robots for 2s")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
@@ -785,7 +787,7 @@ drawKeyMenu s =
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
       , Just (NoHighlight, "^o", "step")
       , Just (NoHighlight, "^zx", "speed")
-      , Just (NoHighlight, "^k", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
+      , Just (NoHighlight, "^s", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing
