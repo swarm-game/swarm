@@ -327,6 +327,8 @@ data AppOpts = AppOpts
   -- ^ Code to be run on base.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
+  , speed :: Int
+  -- ^ Initial game speed (logarithm)
   , cheatMode :: Bool
   -- ^ Should cheat mode be enabled?
   , colorMode :: Maybe ColorMode

@@ -18,6 +18,7 @@ import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), Shee
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
+import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Exit (exitFailure, exitSuccess)
@@ -55,6 +56,7 @@ cliParser =
               <*> scenario
               <*> run
               <*> autoplay
+              <*> speedFactor
               <*> cheat
               <*> color
               <*> webPort
@@ -119,6 +121,8 @@ cliParser =
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
   autoplay :: Parser Bool
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
+  speedFactor :: Parser Int
+  speedFactor = option auto (long "speed" <> short 'm' <> value defaultInitLgTicksPerSecond <> help "Initial game speed multiplier")
   cheat :: Parser Bool
   cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
   color :: Parser (Maybe ColorMode)
