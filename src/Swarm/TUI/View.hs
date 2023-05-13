@@ -419,7 +419,7 @@ drawGameUI s =
        in bottomLabels . leftLabel ?~ padLeftRight 1 worldCursorInfo
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
@@ -455,10 +455,10 @@ drawWorldCursorInfo g coords@(W.Coords (y, x)) =
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.
-drawClockDisplay :: GameState -> Widget n
-drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
+drawClockDisplay :: Int -> GameState -> Widget n
+drawClockDisplay lgTPS gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused) gs
+  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused || lgTPS < 3) gs
   pauseWidget = guard (gs ^. paused) $> txt "(PAUSED)"
 
 -- | Check whether the currently focused robot (if any) has a clock
@@ -473,11 +473,9 @@ clockEquipped gs = case focusedRobot gs of
 -- | Format a ticks count as a hexadecimal clock.
 drawTime :: TickNumber -> Bool -> String
 drawTime t showTicks =
-  mconcat $
+  mconcat $ intersperse ":"
     [ printf "%x" (t `shiftR` 20)
-    , ":"
     , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
-    , ":"
     , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
     ]
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
@@ -778,7 +776,7 @@ messagesWidget gs = widgetList
     withAttr (colorLogs e) $
       hBox
         [ fromMaybe (txt "") $ maybeDrawTime (e ^. leTime) True gs
-        , padLeft (Pad 2) . txt $ "[" <> e ^. leRobotName <> "]"
+        , padLeft (Pad 2) . txt $ brackets $ e ^. leRobotName
         , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
   txt2 = txtWrapWith indent2
