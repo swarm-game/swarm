@@ -473,11 +473,13 @@ clockEquipped gs = case focusedRobot gs of
 -- | Format a ticks count as a hexadecimal clock.
 drawTime :: TickNumber -> Bool -> String
 drawTime t showTicks =
-  mconcat $ intersperse ":"
-    [ printf "%x" (t `shiftR` 20)
-    , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
-    , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
-    ]
+  mconcat $
+    intersperse
+      ":"
+      [ printf "%x" (t `shiftR` 20)
+      , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
+      , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
+      ]
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
 
 -- | Return a possible time display, if the currently focused robot
