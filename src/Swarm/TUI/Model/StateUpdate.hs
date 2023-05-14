@@ -55,12 +55,12 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   (gsWarnings, gs) <- initGameState
-  (uiWarnings, ui) <- initUIState (not skipMenu) (cheatMode || autoPlay)
+  (uiWarnings, ui) <- initUIState speed (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
       addWarnings = List.foldl' logWarning
       rs = addWarnings initRuntimeState $ gsWarnings <> uiWarnings
   case skipMenu of
-    False -> return $ AppState gs ui rs
+    False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
       maybeRunScript <- getParsedInitialCode scriptToRun
@@ -171,7 +171,6 @@ scenarioToUIState siPair u = do
       & uiInventorySort .~ defaultSortOptions
       & uiShowFPS .~ False
       & uiShowZero .~ True
-      & lgTicksPerSecond .~ initLgTicksPerSecond
       & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
       & uiREPL . replHistory %~ restartREPLHistory
       & uiAttrMap .~ applyAttrMappings (map toAttrPair $ fst siPair ^. scenarioAttrs) swarmAttrMap
