@@ -43,6 +43,7 @@ module Swarm.Language.Typecheck (
   isSimpleUType,
 ) where
 
+import Control.Arrow ((***))
 import Control.Category ((>>>))
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
@@ -60,6 +61,7 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
@@ -206,6 +208,9 @@ skolemize (Forall xs uty) = do
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
+--
+--   Pick nice type variable names instead of reusing whatever fresh
+--   names happened to be used for the free variables.
 generalize :: UType -> Infer UPolytype
 generalize uty = do
   uty' <- applyBindings uty
@@ -213,8 +218,15 @@ generalize uty = do
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
-      xs = map (mkVarName "a") fvs
-  return $ Forall xs (substU (M.fromList (zip (map Right fvs) (map UTyVar xs))) uty')
+      alphabet = ['a' .. 'z']
+      -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
+      prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
+      -- Associate each free variable with a new pretty name
+      renaming = zip fvs prettyNames
+  return $
+    Forall
+      (map snd renaming)
+      (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
 ------------------------------------------------------------
 -- Type errors

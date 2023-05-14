@@ -192,7 +192,7 @@ testLanguagePipeline =
             "atomic non-simple"
             ( process
                 "def dup = \\c. c; c end; atomic (dup (dup move))"
-                "1: Invalid atomic block: reference to variable with non-simple type ∀ a3. cmd a3 -> cmd a3: dup"
+                "1: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: dup"
             )
         , testCase
             "atomic nested"
