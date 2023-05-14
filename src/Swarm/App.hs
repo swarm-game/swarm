@@ -20,7 +20,7 @@ import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.Model.StateUpdate
-import Swarm.TUI.Model.UI (uiAttrMap)
+import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond, uiAttrMap)
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
@@ -117,6 +117,7 @@ demoWeb = do
           , userScenario = demoScenario
           , scriptToRun = Nothing
           , autoPlay = False
+          , speed = defaultInitLgTicksPerSecond
           , cheatMode = False
           , colorMode = Nothing
           , userWebPort = Nothing
