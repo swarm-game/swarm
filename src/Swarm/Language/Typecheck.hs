@@ -219,12 +219,14 @@ generalize uty = do
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
       alphabet = ['a' .. 'z']
-      -- infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
+      -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
       prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
+      -- Associate each free variable with a new pretty name
+      renaming = zip fvs prettyNames
   return $
     Forall
-      (zipWith const prettyNames fvs)   -- one pretty name per free variable
-      (substU (M.fromList . map (Right *** UTyVar) $ zip fvs prettyNames) uty')
+      (map snd renaming)
+      (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
 ------------------------------------------------------------
 -- Type errors
