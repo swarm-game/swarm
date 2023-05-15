@@ -321,7 +321,9 @@ handleMainEvent ev = do
     ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
     -- toggle collapse/expand REPL
-    ControlChar 's' -> uiState . uiShowREPL %= not
+    ControlChar 's' -> do
+      invalidateCacheEntry WorldCache
+      uiState . uiShowREPL %= not
     MouseDown n _ _ mouseLoc ->
       case n of
         FocusablePanel WorldPanel -> do
