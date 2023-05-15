@@ -715,6 +715,17 @@
   capabilities: [move, turn, moveheavy]
   properties: [portable]
 
+- name: dozer blade
+  display:
+    attr: silver
+    char: '/'
+  description:
+  - A broad, sturdy surface that can be attached to a robot and used to `push` objects.
+  - |
+    `push : cmd unit` will advance the robot and the entity in front of it forward by one step.
+  properties: [portable]
+  capabilities: [push]
+
 - name: grabber
   display:
     attr: device
@@ -943,6 +954,16 @@
   properties: [portable]
   capabilities: [scan, sensefront, sensehere]
 
+- name: olfactometer
+  display:
+    char: 'N'
+  description:
+  - An electronic "nose" that can tell how far away something is.
+  - |
+    `sniff : text -> cmd int` returns the distance to the nearest specified entity.
+  properties: [portable]
+  capabilities: [detectdistance]
+
 - name: flash memory
   display:
     attr: device
@@ -1099,6 +1120,18 @@
     `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
   capabilities: [timerel]
+
+- name: rolex
+  display:
+    char: R
+    attr: silver
+  description:
+  - Enables robots to use the 'watch' command.
+  - |
+    `watch : dir -> cmd unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
+    A subsequent call to `wait` will be interrupted upon a change to the location.
+  properties: [portable]
+  capabilities: [wakeself]
 
 - name: comparator
   display:
