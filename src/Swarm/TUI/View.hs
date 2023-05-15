@@ -382,33 +382,7 @@ drawGameUI s =
                   )
                   $ drawInfoPanel s
               ]
-        , vBox
-            [ panel
-                highlightAttr
-                fr
-                (FocusablePanel WorldPanel)
-                ( plainBorder
-                    & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
-                    & topLabels . leftLabel ?~ drawModalMenu s
-                    & addCursorPos
-                    & addClock
-                )
-                (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
-            , drawKeyMenu s
-            , clickable (FocusablePanel REPLPanel) $
-                panel
-                  highlightAttr
-                  fr
-                  (FocusablePanel REPLPanel)
-                  ( plainBorder
-                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
-                  )
-                  ( vLimit replHeight
-                      . padBottom Max
-                      . padLeftRight 1
-                      $ drawREPL s
-                  )
-            ]
+        , vBox rightPanel
         ]
   ]
  where
@@ -423,6 +397,40 @@ drawGameUI s =
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
+  showREPL = s ^. uiState . uiShowREPL
+  rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
+  minimizedREPL = case focusGetCurrent fr of
+    (Just (FocusablePanel REPLPanel)) -> [separateBorders $ clickable (FocusablePanel REPLPanel) (forceAttr highlightAttr hBorder)]
+    _ -> [separateBorders $ clickable (FocusablePanel REPLPanel) hBorder]
+  worldPanel =
+    [ panel
+        highlightAttr
+        fr
+        (FocusablePanel WorldPanel)
+        ( plainBorder
+            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+            & topLabels . leftLabel ?~ drawModalMenu s
+            & addCursorPos
+            & addClock
+        )
+        (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
+    , drawKeyMenu s
+    ]
+  replPanel =
+    [ clickable (FocusablePanel REPLPanel) $
+        panel
+          highlightAttr
+          fr
+          (FocusablePanel REPLPanel)
+          ( plainBorder
+              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
+          )
+          ( vLimit replHeight
+              . padBottom Max
+              . padLeftRight 1
+              $ drawREPL s
+          )
+    ]
 
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g coords@(W.Coords (y, x)) =
@@ -684,6 +692,7 @@ helpWidget theSeed mport =
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
     , ("Ctrl-q", "quit the current scenario")
+    , ("Ctrl-s", "collapse/expand REPL")
     , ("Meta-h", "hide robots for 2s")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
@@ -888,6 +897,7 @@ drawKeyMenu s =
       , may isPaused (NoHighlight, "^o", "step")
       , may (isPaused && hasDebug) (if s ^. uiState . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
       , Just (NoHighlight, "^zx", "speed")
+      , Just (NoHighlight, "^s", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing

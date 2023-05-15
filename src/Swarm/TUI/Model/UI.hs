@@ -33,6 +33,7 @@ module Swarm.TUI.Model.UI (
   frameTickCount,
   lastInfoTime,
   uiShowFPS,
+  uiShowREPL,
   uiShowZero,
   uiShowDebug,
   uiShowRobots,
@@ -104,6 +105,7 @@ data UIState = UIState
   , _uiGoal :: GoalDisplay
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
+  , _uiShowREPL :: Bool
   , _uiShowZero :: Bool
   , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
@@ -193,6 +195,9 @@ uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
+
+-- | A toggle to expand or collapse the REPL by pressing `Ctrl-k`
+uiShowREPL :: Lens' UIState Bool
 
 -- | A toggle to show or hide inventory items with count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
@@ -310,6 +315,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiGoal = emptyGoalDisplay
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
+          , _uiShowREPL = True
           , _uiShowZero = True
           , _uiShowDebug = False
           , _uiHideRobotsUntil = startTime - 1
